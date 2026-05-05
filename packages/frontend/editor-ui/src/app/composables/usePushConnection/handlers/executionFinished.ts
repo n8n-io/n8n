@@ -488,20 +488,20 @@ export function setRunExecutionData(
 
 	workflowState.executingNode.clearNodeExecutionQueue();
 
-	const execStore = useExecutionDataStore(createExecutionDataId(execution.id));
-	const workflowExecution = execStore.execution;
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
+	const workflowExecution = executionDataStore.execution;
 
 	if (workflowExecution === null) {
 		return;
 	}
 
-	execStore.setExecution({
+	executionDataStore.setExecution({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	} as IExecutionResponse);
-	execStore.setExecutionRunData(runExecutionData);
+	executionDataStore.setExecutionRunData(runExecutionData);
 	stateStore.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that

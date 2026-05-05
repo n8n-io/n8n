@@ -105,9 +105,9 @@ export function useWorkflowState() {
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 		if (typeof aid === 'string') {
-			const execStore = useExecutionDataStore(createExecutionDataId(aid));
-			execStore.clearExecutionStartedData();
-			execStore.markAsStopped(stopData);
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(aid));
+			executionDataStore.clearExecutionStartedData();
+			executionDataStore.markAsStopped(stopData);
 		}
 
 		clearPopupWindowState();

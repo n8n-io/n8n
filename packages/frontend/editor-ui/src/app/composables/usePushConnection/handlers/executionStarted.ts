@@ -44,11 +44,11 @@ export async function executionStarted(
 		stateStore.promotePendingExecution(data.executionId);
 	}
 
-	const execStore = useExecutionDataStore(createExecutionDataId(data.executionId));
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
 
 	// Initialize or reinitialize execution data to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
-	if (!execStore.execution?.data || needsInit) {
+	if (!executionDataStore.execution?.data || needsInit) {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
@@ -58,7 +58,7 @@ export async function executionStarted(
 			executionData.resultData.runData = parse(data.flattedRunData);
 		}
 
-		execStore.setExecution({
+		executionDataStore.setExecution({
 			id: data.executionId,
 			finished: false,
 			mode: 'manual',
@@ -69,10 +69,10 @@ export async function executionStarted(
 			data: executionData,
 		});
 	} else if (data.flattedRunData) {
-		execStore.setExecutionRunData({
-			...execStore.execution.data,
+		executionDataStore.setExecutionRunData({
+			...executionDataStore.execution.data,
 			resultData: {
-				...execStore.execution.data.resultData,
+				...executionDataStore.execution.data.resultData,
 				runData: parse(data.flattedRunData),
 			},
 		} as IRunExecutionData);

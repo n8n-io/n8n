@@ -23,7 +23,7 @@ describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
-	let execStore: ReturnType<typeof useExecutionDataStore>;
+	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -33,8 +33,8 @@ describe('nodeExecuteAfter', () => {
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 
-		execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		execStore.setExecution({
+		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		executionDataStore.setExecution({
 			id: 'exec-1',
 			finished: false,
 			mode: 'manual',
@@ -84,7 +84,7 @@ describe('nodeExecuteAfter', () => {
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
 		// Verify the placeholder data structure written to the execution data store
-		const runData = execStore.execution?.data?.resultData.runData;
+		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node']).toHaveLength(1);
 		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [
@@ -116,7 +116,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const runData = execStore.execution?.data?.resultData.runData;
+		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [
 				Array.from({ length: 3 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
@@ -149,7 +149,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const runData = execStore.execution?.data?.resultData.runData;
+		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [],
 		});
@@ -173,7 +173,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const runData = execStore.execution?.data?.resultData.runData;
+		const runData = executionDataStore.execution?.data?.resultData.runData;
 		const taskData = runData?.['Test Node'][0];
 		expect(taskData?.executionTime).toBe(100);
 		expect(taskData?.startTime).toBe(1234567890);
@@ -210,7 +210,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const runData = execStore.execution?.data?.resultData.runData;
+		const runData = executionDataStore.execution?.data?.resultData.runData;
 		// Should only contain main connection, invalid_connection should be filtered out
 		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [

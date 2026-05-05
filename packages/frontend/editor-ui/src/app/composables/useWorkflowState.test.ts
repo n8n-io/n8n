@@ -13,7 +13,7 @@ describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowState: WorkflowState;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
-	let execStore: ReturnType<typeof useExecutionDataStore>;
+	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -30,8 +30,8 @@ describe('useWorkflowState', () => {
 			// Set up active execution in the facade stores
 			stateStore.setActiveExecutionId('test-exec-id');
 
-			execStore = useExecutionDataStore(createExecutionDataId('test-exec-id'));
-			execStore.setExecution(
+			executionDataStore = useExecutionDataStore(createExecutionDataId('test-exec-id'));
+			executionDataStore.setExecution(
 				createTestWorkflowExecutionResponse({
 					id: 'test-exec-id',
 					status: 'running',
@@ -59,7 +59,7 @@ describe('useWorkflowState', () => {
 		it('should remove non successful node runs', () => {
 			workflowState.markExecutionAsStopped();
 
-			const runData = execStore.execution?.data?.resultData?.runData;
+			const runData = executionDataStore.execution?.data?.resultData?.runData;
 			expect(runData?.node1).toHaveLength(1);
 			expect(runData?.node1[0].executionStatus).toBe('success');
 			expect(runData?.node2).toHaveLength(1);
@@ -74,17 +74,17 @@ describe('useWorkflowState', () => {
 				mode: 'manual',
 			});
 
-			expect(execStore.execution?.status).toBe('canceled');
-			expect(execStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
-			expect(execStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
+			expect(executionDataStore.execution?.status).toBe('canceled');
+			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
+			expect(executionDataStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
 		});
 
 		it('should not update execution data when stopData is not provided', () => {
 			workflowState.markExecutionAsStopped();
 
-			expect(execStore.execution?.status).toBe('running');
-			expect(execStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
-			expect(execStore.execution?.stoppedAt).toBeUndefined();
+			expect(executionDataStore.execution?.status).toBe('running');
+			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
+			expect(executionDataStore.execution?.stoppedAt).toBeUndefined();
 		});
 	});
 });

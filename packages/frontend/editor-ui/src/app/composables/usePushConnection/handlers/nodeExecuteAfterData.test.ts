@@ -12,7 +12,7 @@ import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/execu
 describe('nodeExecuteAfterData', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
-	let execStore: ReturnType<typeof useExecutionDataStore>;
+	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -22,8 +22,8 @@ describe('nodeExecuteAfterData', () => {
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 
-		execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		execStore.setExecution({
+		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		executionDataStore.setExecution({
 			id: 'exec-1',
 			finished: false,
 			mode: 'manual',
@@ -75,7 +75,7 @@ describe('nodeExecuteAfterData', () => {
 		await nodeExecuteAfterData(event);
 
 		// The exec store's run data for 'Test Node' should now have the real data
-		const runData = execStore.execution?.data?.resultData.runData;
+		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node']).toHaveLength(1);
 		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [[{ json: { foo: 'bar' } }]],

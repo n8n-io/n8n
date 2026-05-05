@@ -684,8 +684,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		const aid = resolveActiveExecId();
 		if (!aid) return;
-		const execStore = useExecutionDataStore(createExecutionDataId(aid));
-		execStore.updateNodeExecutionStatus(pushData);
+		const executionDataStore = useExecutionDataStore(createExecutionDataId(aid));
+		executionDataStore.updateNodeExecutionStatus(pushData);
 
 		const { data } = pushData;
 		if (data.executionStatus === 'waiting' && data.metadata?.resumeFormUrl) {

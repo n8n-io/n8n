@@ -51,8 +51,8 @@ describe('executionStarted', () => {
 		expect(stateStore.activeExecutionId).toBeUndefined();
 
 		// No execution data store should have been created for exec-1
-		const execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		expect(execStore.execution).toBeNull();
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution).toBeNull();
 	});
 
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
@@ -62,8 +62,8 @@ describe('executionStarted', () => {
 
 		expect(stateStore.activeExecutionId).toBe('exec-1');
 
-		const execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		expect(execStore.execution).toMatchObject({
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution).toMatchObject({
 			id: 'exec-1',
 			status: 'running',
 			workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
@@ -73,8 +73,8 @@ describe('executionStarted', () => {
 	it('should not reinitialize when same execution ID arrives', async () => {
 		// Set up an active execution with existing data
 		stateStore.promotePendingExecution('exec-1');
-		const execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		execStore.setExecution({
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		executionDataStore.setExecution({
 			id: 'exec-1',
 			finished: false,
 			mode: 'manual',
@@ -85,7 +85,7 @@ describe('executionStarted', () => {
 			data: { resultData: { runData: {} } } as never,
 		});
 
-		const executionBefore = execStore.execution;
+		const executionBefore = executionDataStore.execution;
 
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 
@@ -93,9 +93,9 @@ describe('executionStarted', () => {
 		expect(stateStore.activeExecutionId).toBe('exec-1');
 
 		// execution data should not have been overwritten (same reference or same id)
-		expect(execStore.execution?.id).toBe('exec-1');
+		expect(executionDataStore.execution?.id).toBe('exec-1');
 		// status should remain the same (not reinitialised)
-		expect(execStore.execution?.status).toBe(executionBefore?.status);
+		expect(executionDataStore.execution?.status).toBe(executionBefore?.status);
 	});
 
 	describe('iframe re-execution', () => {
@@ -124,8 +124,8 @@ describe('executionStarted', () => {
 
 			expect(stateStore.activeExecutionId).toBe('exec-2');
 
-			const execStore = useExecutionDataStore(createExecutionDataId('exec-2'));
-			expect(execStore.execution).toMatchObject({
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-2'));
+			expect(executionDataStore.execution).toMatchObject({
 				id: 'exec-2',
 				status: 'running',
 			});
@@ -162,8 +162,8 @@ describe('executionStarted', () => {
 		it('should not reset when same execution ID arrives in iframe', async () => {
 			// Set up an existing active execution with data
 			stateStore.promotePendingExecution('exec-1');
-			const execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-			execStore.setExecution({
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+			executionDataStore.setExecution({
 				id: 'exec-1',
 				finished: false,
 				mode: 'manual',
