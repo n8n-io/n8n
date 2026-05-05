@@ -321,9 +321,11 @@ export async function autoMapInputData(
 	}
 
 	// Store the final resolved column names so convertObjectArrayToSheetDataArray
-	// can reuse them without an extra API call
-	if (columnNames.length > 0) {
-		sheet.setColumnNamesHint(columnNames);
+	// can reuse them without an extra API call. Filter out ROW_NUMBER since it
+	// is a virtual field and is never written as a sheet column header.
+	const columnNamesForHint = columnNames.filter((name) => name !== ROW_NUMBER);
+	if (columnNamesForHint.length > 0) {
+		sheet.setColumnNamesHint(columnNamesForHint);
 	}
 
 	return returnData;
