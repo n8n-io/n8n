@@ -26,7 +26,10 @@ const tone = computed<'running' | 'done' | 'failed' | 'cancelled'>(() => {
 		case 'cancelled':
 			return 'cancelled';
 		default:
-			return 'running';
+			// All known statuses are handled above. Surface anything new as
+			// "failed" rather than as "running" — a never-resolving spinner
+			// is a worse UX failure than a noisy badge.
+			return 'failed';
 	}
 });
 

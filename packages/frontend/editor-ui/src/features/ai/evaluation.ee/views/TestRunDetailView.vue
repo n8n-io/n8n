@@ -104,6 +104,15 @@ const rerunRun = async () => {
 	try {
 		await evaluationStore.startTestRun(workflowId.value);
 		await evaluationStore.fetchTestRuns(workflowId.value);
+		// startTestRun returns { success: boolean } — to land on the new run we
+		// look up the most recent one for this workflow and navigate to it.
+		const latest = orderedRuns.value[orderedRuns.value.length - 1];
+		if (latest && latest.id !== runId.value) {
+			await router.push({
+				name: VIEWS.EVALUATION_RUNS_DETAIL,
+				params: { workflowId: workflowId.value, runId: latest.id },
+			});
+		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}

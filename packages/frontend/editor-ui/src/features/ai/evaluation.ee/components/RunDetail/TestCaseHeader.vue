@@ -25,19 +25,21 @@ const locale = useI18n();
 
 const tokensLabel = computed(() => formatTokens(props.tokens));
 const durationLabel = computed(() => formatDuration(props.durationMs));
-const isFinished = computed(() => props.status === 'success' || props.status === 'error');
+const isFinished = computed(
+	() => props.status === 'success' || props.status === 'error' || props.status === 'warning',
+);
 const isPending = computed(() => props.status === 'new');
 const isRunning = computed(
 	() => props.status === 'running' || props.status === 'evaluation_running',
 );
 const isCancelled = computed(() => props.status === 'cancelled');
-const isFailed = computed(() => props.status === 'error');
+const isFailed = computed(() => props.status === 'error' || props.status === 'warning');
 
 const hasMetadata = computed(
 	() => isFinished.value && (props.tokens !== undefined || props.durationMs !== undefined),
 );
 
-const cyclingVerb = useCyclingVerb();
+const cyclingVerb = useCyclingVerb(isRunning);
 </script>
 
 <template>

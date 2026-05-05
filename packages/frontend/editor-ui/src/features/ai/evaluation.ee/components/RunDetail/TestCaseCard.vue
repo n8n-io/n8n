@@ -44,7 +44,8 @@ const durationMs = computed(() => {
 });
 
 const isOpaque = computed(() => status.value === 'new' || status.value === 'cancelled');
-const showMetricRows = computed(() => status.value === 'success' || status.value === 'error');
+const isErrored = computed(() => status.value === 'error' || status.value === 'warning');
+const showRows = computed(() => status.value === 'success' || isErrored.value);
 
 const errorMessage = computed(() => {
 	const code = props.testCase.errorCode;
@@ -53,8 +54,10 @@ const errorMessage = computed(() => {
 	return locale.baseText('evaluation.runDetail.error.unknownError');
 });
 
+const errorTitle = computed(() => locale.baseText('evaluation.runDetail.testCase.failed'));
+
 const rows = computed(() => {
-	if (!showMetricRows.value) return [];
+	if (status.value !== 'success') return [];
 	return getUserDefinedMetricNames(props.testCase.metrics).map((name) => {
 		const tone = props.metricTones[name] ?? 'default';
 		const source = props.metricSources?.[name];
@@ -72,6 +75,7 @@ const rows = computed(() => {
 <template>
 	<N8nCard
 		:class="[$style.card, { [$style.opaque]: isOpaque }]"
+		:style="{ '--card--padding': 'var(--spacing--md)' }"
 		data-test-id="test-case-card"
 		:data-status="status"
 	>
@@ -88,18 +92,25 @@ const rows = computed(() => {
 			/>
 		</template>
 
-		<Transition name="fade-rows" appear>
-			<div v-if="showMetricRows" :class="$style.rowList">
+		<Transition name="tc-rows-fade-in" appear>
+			<div v-if="showRows" :class="$style.rowList">
 				<TestCaseMetricRow
-					v-for="(row, idx) in rows"
+					v-if="isErrored"
+					:name="errorTitle"
+					:value="undefined"
+					tone="negative"
+					errored
+					:error-message="errorMessage"
+				/>
+				<TestCaseMetricRow
+					v-for="row in rows"
+					v-else
 					:key="row.name"
 					:name="row.name"
 					:value="row.value"
 					:tone="row.tone"
 					:category="row.category"
 					:source-node-name="row.sourceNodeName"
-					:errored="status === 'error' && idx === 0"
-					:error-message="status === 'error' && idx === 0 ? errorMessage : undefined"
 				/>
 			</div>
 		</Transition>
@@ -111,7 +122,6 @@ const rows = computed(() => {
 	flex-direction: column;
 	align-items: stretch;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--md);
 	transition: opacity 0.15s ease-out;
 }
 
@@ -127,16 +137,16 @@ const rows = computed(() => {
 </style>
 
 <style scoped lang="scss">
-.fade-rows-enter-active,
-.fade-rows-appear-active {
-	animation: rows-fade-in 0.32s ease-out;
+.tc-rows-fade-in-enter-active,
+.tc-rows-fade-in-appear-active {
+	animation: tc-rows-fade-in 0.32s ease-out;
 }
 
-.fade-rows-leave-active {
-	animation: rows-fade-in 0.18s ease-in reverse;
+.tc-rows-fade-in-leave-active {
+	animation: tc-rows-fade-in 0.18s ease-in reverse;
 }
 
-@keyframes rows-fade-in {
+@keyframes tc-rows-fade-in {
 	from {
 		opacity: 0;
 		transform: translateY(-4px);
