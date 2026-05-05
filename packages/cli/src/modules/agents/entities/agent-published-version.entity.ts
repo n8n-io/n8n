@@ -54,7 +54,7 @@ export class AgentPublishedVersion extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	publishedById: string | null;
 
 	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
