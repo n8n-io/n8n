@@ -1,11 +1,10 @@
 import { CohereRerank } from '@langchain/cohere';
-import { mock } from 'vitest-mock-extended';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
-
 import { logWrapper } from '@n8n/ai-utilities';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mock, Mocked, MockedClass } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { RerankerCohere } from '../RerankerCohere.node';
-import { Mock, Mocked, MockedClass } from 'vitest';
 
 // Mock the CohereRerank class
 vi.mock('@langchain/cohere', () => ({

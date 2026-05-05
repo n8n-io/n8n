@@ -6,9 +6,9 @@ import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
-import { Mocked } from 'vitest';
 
 vi.mock('@langchain/anthropic', () => ({
 	ChatAnthropic: vi.fn(),

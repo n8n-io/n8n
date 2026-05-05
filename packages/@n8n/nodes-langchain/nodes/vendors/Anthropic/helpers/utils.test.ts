@@ -1,5 +1,5 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { downloadFile, getBaseUrl, getMimeType, splitByComma, uploadFile } from './utils';
 import * as transport from '../transport';

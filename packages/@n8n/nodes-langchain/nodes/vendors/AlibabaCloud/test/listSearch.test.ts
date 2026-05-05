@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
 	apiRequest: vi.fn(),
@@ -13,7 +13,8 @@ import {
 	imageToVideoModelSearch,
 } from '../methods/listSearch';
 import { apiRequest } from '../transport';
-import { Mock } from 'vitest';
+
+import type { Mock } from 'vitest';
 
 const mockApiRequest = apiRequest as Mock;
 

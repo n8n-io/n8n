@@ -1,9 +1,8 @@
 import type { EngineResponse } from 'n8n-workflow';
 
-import * as agentExecution from '../buildSteps';
-
-import type { RequestResponseMetadata } from '../types';
 import { buildResponseMetadata } from '../buildResponseMetadata';
+import * as agentExecution from '../buildSteps';
+import type { RequestResponseMetadata } from '../types';
 
 // Mock the buildSteps function from agent-execution
 vi.mock('../buildSteps', () => ({

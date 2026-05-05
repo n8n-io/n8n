@@ -1,5 +1,3 @@
-import type { RequestResponseMetadata } from '@utils/agent-execution';
-import { mock } from 'vitest-mock-extended';
 import {
 	sleep,
 	type IExecuteFunctions,
@@ -7,6 +5,9 @@ import {
 	type EngineRequest,
 	type EngineResponse,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
 import * as helpers from '../../agents/ToolsAgent/V3/helpers';

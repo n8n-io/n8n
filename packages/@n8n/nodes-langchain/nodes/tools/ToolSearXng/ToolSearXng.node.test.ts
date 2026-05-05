@@ -1,11 +1,11 @@
 import { SearxngSearch } from '@langchain/community/tools/searxng_search';
-import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolSearXng } from './ToolSearXng.node';
 

@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import { MongoClient } from 'mongodb';
 import type { ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	EMBEDDING_NAME,

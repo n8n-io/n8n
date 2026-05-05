@@ -1,6 +1,6 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 

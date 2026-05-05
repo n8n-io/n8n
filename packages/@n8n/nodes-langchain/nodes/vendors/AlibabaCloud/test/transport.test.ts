@@ -1,6 +1,6 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { apiRequest, pollTaskResult } from '../transport';
 

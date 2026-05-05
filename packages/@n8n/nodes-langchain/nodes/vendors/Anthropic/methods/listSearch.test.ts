@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { modelSearch } from './listSearch';
 import * as transport from '../transport';

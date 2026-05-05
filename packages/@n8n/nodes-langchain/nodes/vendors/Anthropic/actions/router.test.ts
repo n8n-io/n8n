@@ -1,5 +1,6 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as document from './document';
 import * as file from './file';
@@ -7,7 +8,6 @@ import * as image from './image';
 import * as prompt from './prompt';
 import { router } from './router';
 import * as text from './text';
-import { Mock } from 'vitest';
 
 describe('Anthropic router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();

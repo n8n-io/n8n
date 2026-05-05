@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/nodes/Postgres/v2/helpers/interfaces';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { getPostgresDataSource } from './postgres';
 

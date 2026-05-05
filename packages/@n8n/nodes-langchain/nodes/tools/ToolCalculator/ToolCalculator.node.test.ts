@@ -1,11 +1,11 @@
 import { Calculator } from '@langchain/community/tools/calculator';
-import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolCalculator } from './ToolCalculator.node';
 

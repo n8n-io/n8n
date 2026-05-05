@@ -1,16 +1,16 @@
-import type { RequestResponseMetadata } from '@utils/agent-execution';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'vitest-mock-extended';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import * as agentExecution from '@utils/agent-execution';
 import * as tracing from '@utils/tracing';
 
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
-import { Mock } from 'vitest';
 
 vi.mock('@utils/agent-execution', async () => {
 	const originalModule = await vi.importActual('@utils/agent-execution');

@@ -2,8 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import * as tracing from '@utils/tracing';
@@ -11,7 +12,6 @@ import * as tracing from '@utils/tracing';
 import { executeChain, NaiveJsonOutputParser } from '../methods/chainExecutor';
 import * as chainExecutor from '../methods/chainExecutor';
 import * as promptUtils from '../methods/promptUtils';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('@utils/tracing', () => ({
 	getTracingConfig: vi.fn(() => ({})),

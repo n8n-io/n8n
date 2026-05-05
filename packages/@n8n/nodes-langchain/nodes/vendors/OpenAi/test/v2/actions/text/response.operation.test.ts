@@ -1,15 +1,16 @@
-import { mock, mockDeep } from 'vitest-mock-extended';
+import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getConnectedTools } from '@utils/helpers';
+
 import { pollUntilAvailable } from '../../../../helpers/polling';
+import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
 import * as transport from '../../../../transport';
 import * as helpers from '../../../../v2/actions/text/helpers/responses';
 import { execute } from '../../../../v2/actions/text/response.operation';
-import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
-import type { Tool } from '@langchain/classic/tools';
-import { Mocked } from 'vitest';
 
 vi.mock('../../../../transport');
 vi.mock('../../../../v2/actions/text/helpers/responses');

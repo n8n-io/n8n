@@ -1,13 +1,13 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'vitest-mock-extended';
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '../../../../../utils/helpers';
 import * as tracing from '../../../../../utils/tracing';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V1/execute';
-import { Mock } from 'vitest';
 
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });

@@ -1,8 +1,8 @@
 import type { Tool } from '@langchain/core/tools';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { RedisSessionStore, type RedisPublisher } from '../RedisSessionStore';
-import { Mocked } from 'vitest';
 
 describe('RedisSessionStore', () => {
 	let store: RedisSessionStore;

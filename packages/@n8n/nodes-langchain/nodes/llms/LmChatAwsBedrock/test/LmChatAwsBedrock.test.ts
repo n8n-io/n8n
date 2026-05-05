@@ -3,9 +3,9 @@ import { ChatBedrockConverse } from '@langchain/aws';
 import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
-import { Mocked } from 'vitest';
 
 vi.mock('@langchain/aws', () => ({
 	ChatBedrockConverse: vi.fn(),

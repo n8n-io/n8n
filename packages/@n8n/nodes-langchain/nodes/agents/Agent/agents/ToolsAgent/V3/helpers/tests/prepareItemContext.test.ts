@@ -1,7 +1,7 @@
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
-import { mock } from 'vitest-mock-extended';
 import type { Tool } from '@langchain/classic/tools';
+import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 import * as outputParsers from '@utils/output_parsers/N8nOutputParser';

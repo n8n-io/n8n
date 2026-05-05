@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
+
 import { createMockServer, createMockTransport, createMockTool } from '../../__tests__/helpers';
 import { SessionManager } from '../SessionManager';
 import type { SessionStore } from '../SessionStore';
-import { Mocked } from 'vitest';
 
 describe('SessionManager', () => {
 	let manager: SessionManager;

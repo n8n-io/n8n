@@ -1,5 +1,6 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as audio from './audio';
 import * as document from './document';
@@ -9,7 +10,6 @@ import * as image from './image';
 import { router } from './router';
 import * as text from './text';
 import * as video from './video';
-import { Mock } from 'vitest';
 
 describe('Google Gemini router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();

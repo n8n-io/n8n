@@ -1,7 +1,8 @@
 import axios from 'axios';
-import { mockDeep } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import {
 	createFileSearchStore,
@@ -14,7 +15,6 @@ import {
 	uploadToFileSearchStore,
 } from './utils';
 import * as transport from '../transport';
-import { Mocked } from 'vitest';
 
 vi.mock('axios');
 const mockedAxios = axios as Mocked<typeof axios>;

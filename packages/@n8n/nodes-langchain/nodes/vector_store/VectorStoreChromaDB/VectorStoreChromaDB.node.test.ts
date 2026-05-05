@@ -1,7 +1,8 @@
-import { mock } from 'vitest-mock-extended';
-import { ChromaClient, CloudClient } from 'chromadb';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
+import { ChromaClient, CloudClient } from 'chromadb';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import * as ChromaNode from './VectorStoreChromaDB.node';
 
 // Mock external modules

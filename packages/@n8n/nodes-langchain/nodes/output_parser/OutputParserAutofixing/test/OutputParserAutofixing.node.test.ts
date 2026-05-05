@@ -2,8 +2,6 @@
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { OutputParserException } from '@langchain/core/output_parsers';
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import type {
 	ISupplyDataFunctions,
@@ -11,6 +9,8 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type {
 	N8nOutputFixingParser,

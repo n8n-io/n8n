@@ -4,9 +4,9 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { N8nLlmTracing, makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
 import { LmChatAnthropic } from '../LMChatAnthropic/LmChatAnthropic.node';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('@langchain/anthropic', () => ({
 	ChatAnthropic: vi.fn(),

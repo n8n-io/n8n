@@ -1,5 +1,3 @@
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
@@ -7,6 +5,8 @@ import {
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { Chat } from '../Chat.node';
 

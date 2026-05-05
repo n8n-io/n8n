@@ -1,11 +1,12 @@
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
+
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { VideoJob } from '../../../../helpers/interfaces';
 import * as pollingHelpers from '../../../../helpers/polling';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/video/generate.operation';
-import { Mock, Mocked } from 'vitest';
 
 const { mockFormDataAppend, mockFormDataGetHeaders } = vi.hoisted(() => ({
 	mockFormDataAppend: vi.fn(),

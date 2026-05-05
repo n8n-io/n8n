@@ -1,10 +1,10 @@
-import { mock } from 'vitest-mock-extended';
 import type { INode, IWebhookFunctions, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
-import { McpTrigger } from '../McpTrigger.node';
 import { McpServer } from '../McpServer';
-import { Mock, Mocked } from 'vitest';
+import { McpTrigger } from '../McpTrigger.node';
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
 	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";

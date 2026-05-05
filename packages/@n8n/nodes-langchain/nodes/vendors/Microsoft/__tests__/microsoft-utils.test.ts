@@ -1,7 +1,11 @@
-import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import { createCallTool, mcpToolToDynamicTool } from '../../../mcp/McpClientTool/utils';
+import { connectMcpClient, getAllTools } from '../../../mcp/shared/utils';
+import { invokeAgent } from '../langchain-utils';
 import {
 	createMicrosoftAgentApplication,
 	configureAdapterProcessCallback,
@@ -105,11 +109,7 @@ vi.mock('uuid', () => ({
 }));
 
 import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
-import { invokeAgent } from '../langchain-utils';
-import { connectMcpClient, getAllTools } from '../../../mcp/shared/utils';
-import { createCallTool, mcpToolToDynamicTool } from '../../../mcp/McpClientTool/utils';
 import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
-import { Mock } from 'vitest';
 
 describe('microsoft-utils', () => {
 	beforeAll(async () => {
@@ -1185,8 +1185,8 @@ describe('microsoft-utils', () => {
 					undefined,
 				);
 
-				await capturedFuncs[0]!({ query: 'today' });
-				await capturedFuncs[1]!({ title: 'Standup' });
+				await capturedFuncs[0]({ query: 'today' });
+				await capturedFuncs[1]({ title: 'Standup' });
 
 				expect(result?.logs).toHaveLength(2);
 				expect(result?.logs[0].toolName).toBe('mcp_CalendarTools_list_events');

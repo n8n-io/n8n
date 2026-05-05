@@ -1,4 +1,3 @@
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -9,7 +8,7 @@ const mockRecursiveCharacterTextSplitterConstructor = vi.hoisted(() => vi.fn());
 vi.mock('@langchain/textsplitters', () => ({
 	RecursiveCharacterTextSplitter: class {
 		constructor(...args: unknown[]) {
-			mockRecursiveCharacterTextSplitterConstructor(...args);
+			mockRecursiveCharacterTextSplitterConstructor.apply(undefined, args);
 		}
 
 		splitDocuments = vi.fn(

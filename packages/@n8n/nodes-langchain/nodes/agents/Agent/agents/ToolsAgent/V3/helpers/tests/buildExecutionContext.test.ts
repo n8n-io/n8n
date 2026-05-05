@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as commonHelpers from '../../../common';
 import { buildToolsAgentExecutionContext } from '../buildExecutionContext';

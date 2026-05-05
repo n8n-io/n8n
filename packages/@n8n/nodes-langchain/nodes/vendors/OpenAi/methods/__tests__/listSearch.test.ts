@@ -1,8 +1,8 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
 import * as transport from '../../transport';
 import { imageGenerateModelSearch, imageModelSearch, modelSearch } from '../listSearch';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('../../transport');
 

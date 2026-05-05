@@ -1,14 +1,15 @@
-import type { INodeType, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import type { INodeType, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { MicrosoftAgent365Trigger } from './MicrosoftAgent365Trigger.node';
-import { Mock } from 'vitest';
+
 import {
 	createMicrosoftAgentApplication,
 	configureAdapterProcessCallback,
 	type MicrosoftAgent365Credentials,
 	type ActivityCapture,
 } from './microsoft-utils';
+import { MicrosoftAgent365Trigger } from './MicrosoftAgent365Trigger.node';
 
 // Mock the dependencies
 vi.mock('./microsoft-utils', () => ({
@@ -197,16 +198,14 @@ describe('MicrosoftAgent365Trigger', () => {
 				const mockCallback = vi.fn();
 				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
-				const result = (await microsoftAgent365Trigger.webhook!.call(
-					mockWebhookFunctions,
-				)) as IWebhookResponseData;
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
 				expect(result.workflowData).toBeDefined();
 				expect(Array.isArray(result.workflowData)).toBe(true);
 				expect(result.workflowData).toHaveLength(1);
 
 				// Verify returnJsonArray was called with activity capture
-				expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith(
+				expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith(
 					expect.objectContaining({
 						input: '',
 						output: [],
@@ -237,14 +236,12 @@ describe('MicrosoftAgent365Trigger', () => {
 					},
 				);
 
-				const result = (await microsoftAgent365Trigger.webhook!.call(
-					mockWebhookFunctions,
-				)) as IWebhookResponseData;
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
 				expect(result.workflowData).toHaveLength(1);
 
 				// conversationId is lifted into conversation.id; other activity fields are spread
-				expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith(
+				expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith(
 					expect.objectContaining({
 						input: 'Hello agent',
 						output: ['Hi there!'],
@@ -255,7 +252,7 @@ describe('MicrosoftAgent365Trigger', () => {
 				);
 
 				// conversationId must NOT appear at the top level
-				const calledWith = (mockWebhookFunctions.helpers!.returnJsonArray as Mock).mock.calls[0][0];
+				const calledWith = (mockWebhookFunctions.helpers.returnJsonArray as Mock).mock.calls[0][0];
 				expect(calledWith).not.toHaveProperty('conversationId');
 				expect(calledWith).not.toHaveProperty('activity');
 			});

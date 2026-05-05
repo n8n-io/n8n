@@ -1,6 +1,6 @@
 import type { CallbackManager } from '@langchain/core/callbacks/manager';
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { buildTracingMetadata, getTracingConfig } from './tracing';
 

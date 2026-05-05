@@ -1,6 +1,7 @@
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('../actions/text', () => ({
 	message: { execute: vi.fn() },
@@ -16,11 +17,10 @@ vi.mock('../actions/video', () => ({
 	imageToVideo: { execute: vi.fn() },
 }));
 
+import * as image from '../actions/image';
 import { router } from '../actions/router';
 import * as text from '../actions/text';
-import * as image from '../actions/image';
 import * as video from '../actions/video';
-import { Mock } from 'vitest';
 
 describe('AlicloudModelStudio Router', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;

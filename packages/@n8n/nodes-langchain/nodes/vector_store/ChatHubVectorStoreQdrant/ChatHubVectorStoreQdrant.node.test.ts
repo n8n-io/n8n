@@ -1,5 +1,5 @@
 // Capture the deleteDocuments action handler from createVectorStoreNode config
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 vi.mock('@langchain/qdrant', () => {
 	class QdrantVectorStore {
 		static fromDocuments = vi.fn();
@@ -16,10 +16,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 		globalThis.capturedDeleteDocuments = config.methods?.actionHandler?.deleteDocuments;
 		return class BaseNode {
 			async getVectorStoreClient(...args: unknown[]) {
-				return await config.getVectorStoreClient(...args);
+				return await config.getVectorStoreClient.apply(config, args);
 			}
 			async populateVectorStore(...args: unknown[]) {
-				return await config.populateVectorStore(...args);
+				return await config.populateVectorStore.apply(config, args);
 			}
 		};
 	},
@@ -31,8 +31,9 @@ vi.mock('../VectorStoreQdrant/Qdrant.utils', () => ({
 }));
 
 import { QdrantVectorStore } from '@langchain/qdrant';
-import { createQdrantClient } from '../VectorStoreQdrant/Qdrant.utils';
+
 import { ChatHubVectorStoreQdrant } from './ChatHubVectorStoreQdrant.node';
+import { createQdrantClient } from '../VectorStoreQdrant/Qdrant.utils';
 
 const MockQdrantVectorStore = QdrantVectorStore as vi.MockedClass<typeof QdrantVectorStore>;
 const MockCreateQdrantClient = createQdrantClient as vi.MockedFunction<typeof createQdrantClient>;

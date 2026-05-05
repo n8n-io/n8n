@@ -1,3 +1,4 @@
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	HumanMessage,
@@ -6,8 +7,8 @@ import {
 	ToolMessage,
 	trimMessages,
 } from '@langchain/core/messages';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { BaseChatMemory } from '@langchain/classic/memory';
 
 import {
 	loadMemory,
@@ -17,7 +18,6 @@ import {
 	buildMessagesFromSteps,
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('@langchain/core/messages', async () => ({
 	...(await vi.importActual('@langchain/core/messages')),

@@ -10,14 +10,15 @@ vi.mock('@utils/agent-execution/createEngineRequests', () => ({
 }));
 
 import { DynamicTool, DynamicStructuredTool } from '@langchain/core/tools';
-import type { RequestResponseMetadata } from '@utils/agent-execution/types';
-import { mock } from 'vitest-mock-extended';
 import type { EngineResponse, IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import type { RequestResponseMetadata } from '@utils/agent-execution/types';
+
 import { ToolExecutor } from '../ToolExecutor.node';
-import { Mocked } from 'vitest';
 
 describe('ToolExecutor Node', async () => {
 	let node: ToolExecutor;

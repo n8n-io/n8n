@@ -1,21 +1,21 @@
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
-import { mock } from 'vitest-mock-extended';
-import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
-import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
-import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
-import { Mock } from 'vitest';
 import {
 	getOutputParserSchema,
 	extractBinaryMessages,

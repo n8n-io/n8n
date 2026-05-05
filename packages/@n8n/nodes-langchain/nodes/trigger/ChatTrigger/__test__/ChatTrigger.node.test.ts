@@ -1,11 +1,11 @@
-import type { Request, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
-import type { INode, IWebhookFunctions } from 'n8n-workflow';
+import { ChatTriggerConfig } from '@n8n/config/src';
 import { Container } from '@n8n/di';
+import type { Request, Response } from 'express';
+import type { INode, IWebhookFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
-import { LoadPreviousSessionChatOption } from '../types';
-import { ChatTriggerConfig } from '@n8n/config/src';
+import type { LoadPreviousSessionChatOption } from '../types';
 
 vi.mock('../GenericFunctions', () => ({
 	validateAuth: vi.fn(),

@@ -1,12 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { execute } from '../actions/execute';
 import * as ProcessActions from '../actions/process';
 import * as ModelHelpers from '../helpers/model';
-import { execute } from '../actions/execute';
-import { Mocked } from 'vitest';
 
 describe('Guardrails', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;

@@ -1,14 +1,13 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
-
 import { proxyFetch } from '@n8n/ai-utilities';
+import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock, MockedClass, MockedFunction } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import type { McpAuthenticationOption } from '../types';
 import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
-import type { Mock, MockedClass, MockedFunction } from 'vitest';
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');

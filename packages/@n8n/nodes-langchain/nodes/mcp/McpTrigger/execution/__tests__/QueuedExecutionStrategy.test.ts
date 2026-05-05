@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
+
 import { createMockTool } from '../../__tests__/helpers';
 import type { PendingCallsManager } from '../PendingCallsManager';
 import { QueuedExecutionStrategy } from '../QueuedExecutionStrategy';
-import { Mocked } from 'vitest';
 
 describe('QueuedExecutionStrategy', () => {
 	let strategy: QueuedExecutionStrategy;

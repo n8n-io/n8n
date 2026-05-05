@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import { DynamicTool } from '@langchain/classic/tools';
 import {
 	type INode,
@@ -6,6 +5,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolWorkflow } from './ToolWorkflow.node';
 import type { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node';

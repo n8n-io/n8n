@@ -1,7 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 vi.mock('../helpers/model', () => ({
 	createLLMCheckFn: vi.fn(() => vi.fn()),
@@ -48,7 +49,6 @@ import { createTopicalAlignmentCheckFn } from '../actions/checks/topicalAlignmen
 import { createUrlsCheckFn } from '../actions/checks/urls';
 import { process as processGuardrails } from '../actions/process';
 import { createLLMCheckFn } from '../helpers/model';
-import { Mock, Mocked } from 'vitest';
 
 describe('Guardrails Process', () => {
 	let exec: Mocked<IExecuteFunctions>;
@@ -73,8 +73,8 @@ describe('Guardrails Process', () => {
 		exec.getNodeParameter.mockImplementation((name: string, index: number) => {
 			// Prefer specific index key, fall back to global
 			const key = `${name}@${index}`;
-			if (key in params) return params[key] as unknown as any;
-			return params[name] as unknown as any;
+			if (key in params) return params[key] as any;
+			return params[name] as any;
 		});
 	}
 

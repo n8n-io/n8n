@@ -2,16 +2,16 @@ import type { AgentAction, AgentFinish } from '@langchain/core/agents';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { N8nStructuredOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import * as imageUtils from '../methods/imageUtils';
 import { createPromptTemplate, getAgentStepsParser } from '../methods/promptUtils';
 import type { MessageTemplate } from '../methods/types';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('../methods/imageUtils', () => ({
 	createImageMessage: vi.fn(),

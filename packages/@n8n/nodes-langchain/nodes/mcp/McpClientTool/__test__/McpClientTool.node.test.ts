@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { mock, mockDeep } from 'vitest-mock-extended';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	type IExecuteFunctions,
@@ -12,8 +12,7 @@ import {
 	type ISupplyDataFunctions,
 	jsonParse,
 } from 'n8n-workflow';
-
-import { proxyFetch } from '@n8n/ai-utilities';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';

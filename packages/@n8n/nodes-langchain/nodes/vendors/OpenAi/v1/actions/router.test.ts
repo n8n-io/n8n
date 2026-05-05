@@ -1,6 +1,6 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as audio from './audio';
 import { router } from './router';

@@ -1,5 +1,5 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as transport from '../../../../transport';
 import * as classify from '../../../../v2/actions/text/classify.operation';

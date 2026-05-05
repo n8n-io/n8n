@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as helperModule from '@utils/helpers';
 import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
@@ -11,7 +12,6 @@ import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
 import { ChainLlm } from '../ChainLlm.node';
 import * as executeChainModule from '../methods/chainExecutor';
 import * as responseFormatterModule from '../methods/responseFormatter';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('@utils/helpers', () => ({
 	getPromptInputByType: vi.fn(),

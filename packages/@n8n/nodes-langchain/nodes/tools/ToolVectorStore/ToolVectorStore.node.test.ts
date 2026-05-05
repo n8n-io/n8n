@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import { VectorStoreQATool } from '@langchain/classic/tools';
 import {
 	NodeConnectionTypes,
@@ -7,6 +6,7 @@ import {
 	type INodeExecutionData,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolVectorStore } from './ToolVectorStore.node';
 

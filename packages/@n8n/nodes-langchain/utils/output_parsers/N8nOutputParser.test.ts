@@ -1,10 +1,10 @@
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { getOptionalOutputParser } from './N8nOutputParser';
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
-import { Mocked } from 'vitest';
 
 describe('getOptionalOutputParser', () => {
 	let mockContext: Mocked<IExecuteFunctions>;

@@ -1,5 +1,5 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 
@@ -7,9 +7,9 @@ import * as file from './actions/file';
 import * as image from './actions/image';
 import * as prompt from './actions/prompt';
 import * as text from './actions/text';
+import type { File } from './helpers/interfaces';
 import * as utils from './helpers/utils';
 import * as transport from './transport';
-import type { File } from './helpers/interfaces';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();

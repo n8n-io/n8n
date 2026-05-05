@@ -1,11 +1,10 @@
 import { LOG_LEVELS } from 'n8n-workflow';
+
 import { transformLegacyLangchainImport, createSandboxLogger } from './Code.node';
 
 describe('Code.node', () => {
 	describe('createSandboxLogger', () => {
-		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent') as Array<
-			Exclude<(typeof LOG_LEVELS)[number], 'silent'>
-		>;
+		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent');
 
 		function buildMockLogger() {
 			const logger = {

@@ -23,8 +23,8 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import { ZepCloudVectorStore } from '@langchain/community/vectorstores/zep_cloud';
-import { mock } from 'vitest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { VectorStoreZep } from './VectorStoreZep.node';
 

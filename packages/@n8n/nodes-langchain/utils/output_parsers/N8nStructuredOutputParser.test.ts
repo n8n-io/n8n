@@ -1,10 +1,10 @@
-import { mock } from 'vitest-mock-extended';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
-import { Mocked } from 'vitest';
 
 describe('N8nStructuredOutputParser', () => {
 	let mockContext: Mocked<ISupplyDataFunctions>;

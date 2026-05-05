@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 // Mock external modules that are not needed for these unit tests
 vi.mock('@langchain/qdrant', () => {
@@ -50,8 +50,8 @@ vi.mock('../shared/descriptions', () => ({
 
 import { QdrantVectorStore } from '@langchain/qdrant';
 
-import * as QdrantNode from './VectorStoreQdrant.node';
 import { createQdrantClient } from './Qdrant.utils';
+import * as QdrantNode from './VectorStoreQdrant.node';
 
 const MockCreateQdrantClient = createQdrantClient as vi.MockedFunction<typeof createQdrantClient>;
 const MockQdrantVectorStore = QdrantVectorStore as vi.MockedClass<typeof QdrantVectorStore>;

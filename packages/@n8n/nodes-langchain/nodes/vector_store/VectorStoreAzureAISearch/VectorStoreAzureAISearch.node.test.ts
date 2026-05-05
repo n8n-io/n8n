@@ -1,12 +1,12 @@
 import { AzureKeyCredential, SearchIndexClient } from '@azure/search-documents';
 import { AzureAISearchVectorStore } from '@langchain/community/vectorstores/azure_aisearch';
-import { mock } from 'vitest-mock-extended';
 import type {
 	ISupplyDataFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	VectorStoreAzureAISearch,

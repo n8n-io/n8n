@@ -1,9 +1,9 @@
-import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { invokeAgent } from '../langchain-utils';
-
+import { getOptionalOutputParser } from '../../../../utils/output_parsers/N8nOutputParser';
 import {
 	getChatModel,
 	getOptionalMemory,
@@ -11,8 +11,7 @@ import {
 	preparePrompt,
 } from '../../../agents/Agent/agents/ToolsAgent/common';
 import { createAgentExecutor } from '../../../agents/Agent/agents/ToolsAgent/V2/execute';
-import { getOptionalOutputParser } from '../../../../utils/output_parsers/N8nOutputParser';
-import { Mock } from 'vitest';
+import { invokeAgent } from '../langchain-utils';
 
 vi.mock('../../../agents/Agent/agents/ToolsAgent/common', () => ({
 	getChatModel: vi.fn(),

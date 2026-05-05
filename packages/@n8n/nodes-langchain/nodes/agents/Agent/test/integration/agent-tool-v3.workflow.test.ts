@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import path from 'node:path';
 import type { WorkflowTestData } from 'n8n-workflow';
+import path from 'node:path';
 
 // CI has cold-start overhead on the first test (coverage instrumentation, module loading)
 vi.setConfig({

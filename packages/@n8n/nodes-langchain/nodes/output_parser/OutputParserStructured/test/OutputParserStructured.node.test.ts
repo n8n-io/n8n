@@ -1,6 +1,5 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { OutputParserException } from '@langchain/core/output_parsers';
-import { mock, type MockProxy } from 'vitest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import {
 	jsonParse,
@@ -10,6 +9,7 @@ import {
 	type ISupplyDataFunctions,
 	type IWorkflowDataProxyData,
 } from 'n8n-workflow';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import {
 	N8nStructuredOutputParser,

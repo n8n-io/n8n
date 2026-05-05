@@ -1,11 +1,11 @@
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { ChatResponse } from '../../../../helpers/interfaces';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/analyze.operation';
-import { Mock, Mocked } from 'vitest';
 
 vi.mock('../../../../helpers/binary-data');
 vi.mock('../../../../transport');

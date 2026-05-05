@@ -1,9 +1,10 @@
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOllama } from '@langchain/ollama';
-import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	createImageMessage,
@@ -11,7 +12,6 @@ import {
 	UnsupportedMimeTypeError,
 } from '../methods/imageUtils';
 import type { MessageTemplate } from '../methods/types';
-import { Mock, Mocked } from 'vitest';
 
 // Mock ChatGoogleGenerativeAI and ChatOllama
 vi.mock('@langchain/google-genai', () => ({

@@ -1,11 +1,11 @@
 import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
-import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolWolframAlpha } from './ToolWolframAlpha.node';
 

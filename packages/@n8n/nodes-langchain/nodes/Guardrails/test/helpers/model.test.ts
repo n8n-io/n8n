@@ -1,10 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { GuardrailError } from '../../actions/types';
 import { getChatModel, runLLMValidation } from '../../helpers/model';
-import { Mock } from 'vitest';
 
 const {
 	MockChatPromptTemplate,

@@ -1,15 +1,15 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'vitest-mock-extended';
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '../../../../../utils/helpers';
 import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutputParser';
 import * as tracing from '../../../../../utils/tracing';
 import * as commonModule from '../../agents/ToolsAgent/common';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V2/execute';
-import { Mock } from 'vitest';
 
 vi.mock('../../../../../utils/output_parsers/N8nOutputParser', () => ({
 	getOptionalOutputParser: vi.fn(),

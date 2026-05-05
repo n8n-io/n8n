@@ -1,6 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as sharedUtils from '../../shared/utils';
 import { getTools } from '../listSearch';

@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { searchModels, type AnthropicModel } from '../searchModels';
-import { Mocked } from 'vitest';
 
 describe('searchModels', () => {
 	let mockContext: Mocked<ILoadOptionsFunctions>;

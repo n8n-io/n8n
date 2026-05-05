@@ -1,11 +1,9 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable @typescript-eslint/unbound-method */
 import { AzureOpenAIEmbeddings } from '@langchain/openai';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { EmbeddingsAzureOpenAi } from '../EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
-import { Mocked } from 'vitest';
 
 vi.mock('@langchain/openai');
 

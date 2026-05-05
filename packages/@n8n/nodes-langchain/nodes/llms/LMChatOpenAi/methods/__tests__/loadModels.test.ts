@@ -1,8 +1,8 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import OpenAI from 'openai';
+import type { Mocked, MockedClass } from 'vitest';
 
 import { searchModels } from '../loadModels';
-import type { Mocked, MockedClass } from 'vitest';
 
 vi.mock('openai');
 

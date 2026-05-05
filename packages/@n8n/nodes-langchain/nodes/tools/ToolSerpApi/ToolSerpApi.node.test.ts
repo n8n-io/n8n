@@ -1,11 +1,11 @@
 import { SerpAPI } from '@langchain/community/tools/serpapi';
-import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolSerpApi } from './ToolSerpApi.node';
 

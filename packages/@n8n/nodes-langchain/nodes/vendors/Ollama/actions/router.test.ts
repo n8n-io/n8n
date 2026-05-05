@@ -1,9 +1,9 @@
-import { mockDeep } from 'vitest-mock-extended';
 import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as image from './image';
-import * as text from './text';
 import { router } from './router';
+import * as text from './text';
 
 vi.mock('./image');
 vi.mock('./text');

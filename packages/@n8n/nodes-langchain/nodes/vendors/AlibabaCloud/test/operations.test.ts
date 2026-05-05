@@ -1,5 +1,5 @@
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
 	apiRequest: vi.fn(),
@@ -23,13 +23,14 @@ vi.mock('n8n-workflow', async () => {
 	};
 });
 
-import { execute as textMessageExecute } from '../actions/text/message.operation';
 import { execute as imageAnalyzeExecute } from '../actions/image/analyze.operation';
 import { execute as imageGenerateExecute } from '../actions/image/generate.operation';
-import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operation';
+import { execute as textMessageExecute } from '../actions/text/message.operation';
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
+import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operation';
 import { apiRequest, pollTaskResult } from '../transport';
-import { Mock } from 'vitest';
+
+import type { Mock } from 'vitest';
 
 const mockApiRequest = apiRequest as Mock;
 const mockPollTaskResult = pollTaskResult as Mock;
