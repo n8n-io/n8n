@@ -2,10 +2,19 @@ import type { WorkSummary } from '../../stream/work-summary-accumulator';
 import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
 
-jest.mock('../resumable-stream-executor', () => ({
-	executeResumableStream: jest.fn(),
-	createLlmStepTraceHooks: jest.fn(),
-}));
+jest.mock('../resumable-stream-executor', () => {
+	const actual =
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		jest.requireActual<typeof import('../resumable-stream-executor')>(
+			'../resumable-stream-executor',
+		);
+
+	return {
+		...actual,
+		executeResumableStream: jest.fn(),
+		createLlmStepTraceHooks: jest.fn(),
+	};
+});
 
 const emptyWorkSummary: WorkSummary = { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 };
 

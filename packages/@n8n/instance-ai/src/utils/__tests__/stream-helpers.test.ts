@@ -1,4 +1,4 @@
-import { isRecord, parseSuspension, asResumable } from '../stream-helpers';
+import { isRecord, parseSuspension, asResumable, resumeStream } from '../stream-helpers';
 
 describe('isRecord', () => {
 	it('returns true for plain objects', () => {
@@ -125,5 +125,33 @@ describe('asResumable', () => {
 		const agent = { resumeStream: jest.fn() };
 		const resumable = asResumable(agent);
 		expect(resumable.resumeStream).toBe(agent.resumeStream);
+	});
+});
+
+describe('resumeStream', () => {
+	it('uses Mastra-style resumeStream when available', async () => {
+		const resumed = { runId: 'run-2' };
+		const agent = { resumeStream: jest.fn().mockResolvedValue(resumed) };
+
+		await expect(resumeStream(agent, { approved: true }, { runId: 'run-1' })).resolves.toBe(
+			resumed,
+		);
+		expect(agent.resumeStream).toHaveBeenCalledWith({ approved: true }, { runId: 'run-1' });
+	});
+
+	it('uses native agent resume in stream mode when resumeStream is absent', async () => {
+		const resumed = { runId: 'run-2' };
+		const agent = { resume: jest.fn().mockResolvedValue(resumed) };
+
+		await expect(resumeStream(agent, { approved: true }, { runId: 'run-1' })).resolves.toBe(
+			resumed,
+		);
+		expect(agent.resume).toHaveBeenCalledWith('stream', { approved: true }, { runId: 'run-1' });
+	});
+
+	it('throws when the agent cannot resume streams', async () => {
+		await expect(resumeStream({}, { approved: true }, { runId: 'run-1' })).rejects.toThrow(
+			'Agent does not support stream resume',
+		);
 	});
 });

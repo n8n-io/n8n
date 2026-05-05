@@ -34,13 +34,38 @@ export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 
 /** Type for Mastra's resumeStream method (not exported by the framework). */
 export interface Resumable {
-	resumeStream: (
+	resumeStream?: (
 		data: Record<string, unknown>,
 		options: Record<string, unknown>,
-	) => Promise<{ runId?: string; fullStream: AsyncIterable<unknown>; text: Promise<string> }>;
+	) => Promise<unknown>;
+	resume?: (
+		method: 'stream',
+		data: Record<string, unknown>,
+		options: Record<string, unknown>,
+	) => Promise<unknown>;
 }
 
 /** Cast an agent to Resumable for suspend/resume operations. */
 export function asResumable(agent: unknown): Resumable {
 	return agent as Resumable;
+}
+
+export async function resumeStream(
+	agent: unknown,
+	data: Record<string, unknown>,
+	options: Record<string, unknown>,
+): Promise<unknown> {
+	if (!isRecord(agent)) {
+		throw new Error('Agent does not support stream resume');
+	}
+
+	if (typeof agent.resumeStream === 'function') {
+		return await agent.resumeStream(data, options);
+	}
+
+	if (typeof agent.resume === 'function') {
+		return await agent.resume('stream', data, options);
+	}
+
+	throw new Error('Agent does not support stream resume');
 }

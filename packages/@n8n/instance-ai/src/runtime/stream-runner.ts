@@ -1,5 +1,4 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { StreamResult } from '@n8n/agents';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
@@ -7,20 +6,16 @@ import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
 	type LlmStepTraceHooks,
+	normalizeStreamSource,
 	type ResumableStreamSource,
 	type TraceStatus,
 } from './resumable-stream-executor';
 import { getTraceParentRun, withTraceParentContext } from '../tracing/langsmith-tracing';
-import { asResumable, isRecord } from '../utils/stream-helpers';
+import { resumeStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
-type StreamableAgentStreamResult = ResumableStreamSource | StreamResult;
-
 export interface StreamableAgent {
-	stream: (
-		input: unknown,
-		options: Record<string, unknown>,
-	) => Promise<StreamableAgentStreamResult>;
+	stream: (input: unknown, options: Record<string, unknown>) => Promise<unknown>;
 }
 
 export interface StreamRunOptions {
@@ -38,59 +33,6 @@ export interface StreamRunResult {
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
-}
-
-function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		typeof Reflect.get(value, Symbol.asyncIterator) === 'function'
-	);
-}
-
-function isReadableStream(value: unknown): value is ReadableStream<unknown> {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		typeof Reflect.get(value, 'getReader') === 'function'
-	);
-}
-
-function isResumableStreamSource(value: unknown): value is ResumableStreamSource {
-	return isRecord(value) && isAsyncIterable(value.fullStream);
-}
-
-function isNativeStreamResult(value: unknown): value is StreamResult {
-	return isRecord(value) && isReadableStream(value.stream);
-}
-
-async function* readableStreamToAsyncIterable(stream: ReadableStream<unknown>) {
-	const reader = stream.getReader();
-	try {
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) return;
-			yield value;
-		}
-	} finally {
-		reader.releaseLock();
-	}
-}
-
-function normalizeStreamSource(result: StreamableAgentStreamResult): ResumableStreamSource {
-	if (isResumableStreamSource(result)) {
-		return result;
-	}
-
-	if (isNativeStreamResult(result)) {
-		return {
-			runId: result.runId,
-			streamFormat: 'agent',
-			fullStream: readableStreamToAsyncIterable(result.stream),
-		};
-	}
-
-	throw new Error('Unsupported agent stream result');
 }
 
 export async function streamAgentRun(
@@ -121,7 +63,7 @@ export async function resumeAgentRun(
 	const resumeTraceParent = getTraceParentRun();
 	return await withTraceParentContext(resumeTraceParent, async () => {
 		const llmStepTraceHooks = createLlmStepTraceHooks(resumeTraceParent);
-		const resumed = await asResumable(agent).resumeStream(resumeData, {
+		const resumed = await resumeStream(agent, resumeData, {
 			...resumeOptions,
 			...(llmStepTraceHooks?.executionOptions ?? {}),
 		});

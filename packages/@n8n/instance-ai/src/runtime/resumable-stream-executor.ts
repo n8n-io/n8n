@@ -1,4 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { StreamResult } from '@n8n/agents';
 import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
@@ -6,7 +7,7 @@ import type { Logger } from '../logger';
 import { mapAgentChunkToEvent, mapMastraChunkToEvent } from '../stream/map-chunk';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
-import { asResumable, parseSuspension } from '../utils/stream-helpers';
+import { parseSuspension, resumeStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
@@ -165,6 +166,64 @@ const SYNTHETIC_TOOL_TRACE_NAMES = new Set<string>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, Symbol.asyncIterator) === 'function'
+	);
+}
+
+function isReadableStream(value: unknown): value is ReadableStream<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'getReader') === 'function'
+	);
+}
+
+function isResumableStreamSource(value: unknown): value is ResumableStreamSource {
+	return isRecord(value) && isAsyncIterable(value.fullStream);
+}
+
+function isNativeStreamResult(value: unknown): value is StreamResult {
+	return isRecord(value) && isReadableStream(value.stream);
+}
+
+async function* readableStreamToAsyncIterable(stream: ReadableStream<unknown>) {
+	const reader = stream.getReader();
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) return;
+			yield value;
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
+
+export function normalizeStreamSource(
+	result: unknown,
+	options?: { streamFormat?: ResumableStreamFormat },
+): ResumableStreamSource {
+	if (isResumableStreamSource(result)) {
+		return options?.streamFormat && !result.streamFormat
+			? { ...result, streamFormat: options.streamFormat }
+			: result;
+	}
+
+	if (isNativeStreamResult(result)) {
+		return {
+			runId: result.runId,
+			streamFormat: 'agent',
+			fullStream: readableStreamToAsyncIterable(result.stream),
+		};
+	}
+
+	throw new Error('Unsupported agent stream result');
 }
 
 function getFiniteNumber(value: unknown): number | undefined {
@@ -2024,15 +2083,19 @@ export async function executeResumableStream(
 			runId: activeAgentRunId,
 			toolCallId: suspension.toolCallId,
 		};
-		const resumed = await asResumable(options.agent).resumeStream(resumeData, {
+		const resumed = await resumeStream(options.agent, resumeData, {
 			...resumeOptions,
 			...(options.llmStepTraceHooks?.executionOptions ?? {}),
 		});
+		const resumedSource = normalizeStreamSource(resumed, {
+			streamFormat: activeSource.streamFormat,
+		});
 
-		activeAgentRunId = (typeof resumed.runId === 'string' ? resumed.runId : '') || activeAgentRunId;
-		activeSource = { ...resumed, streamFormat: activeSource.streamFormat };
-		activeStream = resumed.fullStream;
-		text = resumed.text;
+		activeAgentRunId =
+			(typeof resumedSource.runId === 'string' ? resumedSource.runId : '') || activeAgentRunId;
+		activeSource = resumedSource;
+		activeStream = resumedSource.fullStream;
+		text = resumedSource.text;
 	}
 }
 

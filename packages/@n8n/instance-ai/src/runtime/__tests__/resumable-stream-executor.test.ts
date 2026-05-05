@@ -218,6 +218,17 @@ async function* fromChunks(chunks: unknown[]) {
 	}
 }
 
+function readableFromChunks(chunks: unknown[]) {
+	return new ReadableStream<unknown>({
+		start(controller) {
+			for (const chunk of chunks) {
+				controller.enqueue(chunk);
+			}
+			controller.close();
+		},
+	});
+}
+
 function createDeferred<T>() {
 	let resolve!: (value: T | PromiseLike<T>) => void;
 	let reject!: (reason?: unknown) => void;
@@ -457,6 +468,63 @@ describe('executeResumableStream', () => {
 			expect.objectContaining({
 				type: 'text-delta',
 				payload: { text: '\n[USER CORRECTION]: Prefer Slack instead of email\n' },
+			}),
+		);
+	});
+
+	it('auto-resumes native agent streams', async () => {
+		const eventBus = createEventBus();
+		const resume = jest.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([{ type: 'text-delta', delta: 'Done.' }]),
+			getState: jest.fn(),
+		});
+		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
+
+		const result = await executeResumableStream({
+			agent: { resume },
+			stream: {
+				runId: 'agent-run-1',
+				streamFormat: 'agent',
+				fullStream: fromChunks([
+					{
+						type: 'tool-call-suspended',
+						toolCallId: 'tool-call-1',
+						toolName: 'pause-for-user',
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Please confirm',
+						},
+					},
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+			},
+			control: {
+				mode: 'auto',
+				waitForConfirmation,
+			},
+		});
+
+		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
+		expect(resume).toHaveBeenCalledWith(
+			'stream',
+			{ approved: true },
+			{ runId: 'agent-run-1', toolCallId: 'tool-call-1' },
+		);
+		expect(result.status).toBe('completed');
+		expect(result.agentRunId).toBe('agent-run-2');
+		expect(eventBus.publish).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({
+				type: 'text-delta',
+				payload: { text: 'Done.' },
 			}),
 		);
 	});
