@@ -71,8 +71,8 @@ export async function consumeStreamWithHitl(
 			waitForCorrection: options.waitForCorrection,
 			...(options.maxSteps
 				? {
-						buildResumeOptions: ({ mastraRunId, suspension }) => ({
-							runId: mastraRunId,
+						buildResumeOptions: ({ agentRunId, suspension }) => ({
+							runId: agentRunId,
 							toolCallId: suspension.toolCallId,
 							maxSteps: options.maxSteps,
 							...(options.resumeOptions ?? {}),

@@ -28,7 +28,7 @@ export interface StreamRunOptions {
 
 export interface StreamRunResult {
 	status: TraceStatus;
-	mastraRunId: string;
+	agentRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
@@ -47,8 +47,8 @@ export async function streamAgentRun(
 			...streamOptions,
 			...(llmStepTraceHooks?.executionOptions ?? {}),
 		});
-		const mastraRunId = typeof result.runId === 'string' ? result.runId : '';
-		return await consumeStream(agent, result, { ...options, mastraRunId, llmStepTraceHooks });
+		const agentRunId = typeof result.runId === 'string' ? result.runId : '';
+		return await consumeStream(agent, result, { ...options, agentRunId, llmStepTraceHooks });
 	});
 }
 
@@ -56,7 +56,7 @@ export async function resumeAgentRun(
 	agent: unknown,
 	resumeData: Record<string, unknown>,
 	resumeOptions: Record<string, unknown>,
-	options: StreamRunOptions & { mastraRunId: string },
+	options: StreamRunOptions & { agentRunId: string },
 ): Promise<StreamRunResult> {
 	const resumeTraceParent = getTraceParentRun();
 	return await withTraceParentContext(resumeTraceParent, async () => {
@@ -65,15 +65,15 @@ export async function resumeAgentRun(
 			...resumeOptions,
 			...(llmStepTraceHooks?.executionOptions ?? {}),
 		});
-		const mastraRunId = (typeof resumed.runId === 'string' && resumed.runId) || options.mastraRunId;
-		return await consumeStream(agent, resumed, { ...options, mastraRunId, llmStepTraceHooks });
+		const agentRunId = (typeof resumed.runId === 'string' && resumed.runId) || options.agentRunId;
+		return await consumeStream(agent, resumed, { ...options, agentRunId, llmStepTraceHooks });
 	});
 }
 
 async function consumeStream(
 	agent: unknown,
 	stream: ResumableStreamSource,
-	options: StreamRunOptions & { mastraRunId: string; llmStepTraceHooks?: LlmStepTraceHooks },
+	options: StreamRunOptions & { agentRunId: string; llmStepTraceHooks?: LlmStepTraceHooks },
 ): Promise<StreamRunResult> {
 	const result = await executeResumableStream({
 		agent,
@@ -87,14 +87,14 @@ async function consumeStream(
 			logger: options.logger,
 		},
 		control: { mode: 'manual' },
-		initialMastraRunId: options.mastraRunId,
+		initialAgentRunId: options.agentRunId,
 		llmStepTraceHooks: options.llmStepTraceHooks,
 	});
 
 	if (result.status === 'suspended' && result.suspension) {
 		return {
 			status: 'suspended',
-			mastraRunId: result.mastraRunId,
+			agentRunId: result.agentRunId,
 			text: result.text,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
@@ -108,7 +108,7 @@ async function consumeStream(
 				: result.status === 'errored'
 					? 'errored'
 					: 'completed',
-		mastraRunId: result.mastraRunId,
+		agentRunId: result.agentRunId,
 		text: result.text,
 	};
 }

@@ -45,7 +45,7 @@ export interface AutoResumeControl {
 	waitForCorrection?: () => Promise<void>;
 	onSuspension?: (suspension: SuspensionInfo) => void;
 	buildResumeOptions?: (input: {
-		mastraRunId: string;
+		agentRunId: string;
 		suspension: SuspensionInfo;
 	}) => Record<string, unknown>;
 }
@@ -57,7 +57,7 @@ export interface ExecuteResumableStreamOptions {
 	stream: ResumableStreamSource;
 	context: ResumableStreamContext;
 	control: ResumableStreamControl;
-	initialMastraRunId?: string;
+	initialAgentRunId?: string;
 	llmStepTraceHooks?: LlmStepTraceHooks;
 }
 
@@ -65,7 +65,7 @@ export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
 
 export interface ExecuteResumableStreamResult {
 	status: TraceStatus;
-	mastraRunId: string;
+	agentRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: ConfirmationRequestEvent;
@@ -1818,7 +1818,7 @@ export async function executeResumableStream(
 ): Promise<ExecuteResumableStreamResult> {
 	let activeSource = options.stream;
 	let activeStream = options.stream.fullStream;
-	let activeMastraRunId = options.stream.runId ?? options.initialMastraRunId ?? '';
+	let activeAgentRunId = options.stream.runId ?? options.initialAgentRunId ?? '';
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
 
@@ -1853,7 +1853,7 @@ export async function executeResumableStream(
 				});
 				return {
 					status: 'cancelled',
-					mastraRunId: activeMastraRunId,
+					agentRunId: activeAgentRunId,
 					text,
 					workSummary: workSummaryAccumulator.toSummary(),
 				};
@@ -1973,7 +1973,7 @@ export async function executeResumableStream(
 		if (options.context.signal.aborted) {
 			return {
 				status: 'cancelled',
-				mastraRunId: activeMastraRunId,
+				agentRunId: activeAgentRunId,
 				text,
 				workSummary: workSummaryAccumulator.toSummary(),
 			};
@@ -1982,7 +1982,7 @@ export async function executeResumableStream(
 		if (!suspension) {
 			return {
 				status: hasError ? 'errored' : 'completed',
-				mastraRunId: activeMastraRunId,
+				agentRunId: activeAgentRunId,
 				text,
 				workSummary: workSummaryAccumulator.toSummary(),
 			};
@@ -1991,7 +1991,7 @@ export async function executeResumableStream(
 		if (options.control.mode === 'manual') {
 			return {
 				status: 'suspended',
-				mastraRunId: activeMastraRunId,
+				agentRunId: activeAgentRunId,
 				text,
 				suspension,
 				workSummary: workSummaryAccumulator.toSummary(),
@@ -2008,10 +2008,10 @@ export async function executeResumableStream(
 			options.context,
 		);
 		const resumeOptions = options.control.buildResumeOptions?.({
-			mastraRunId: activeMastraRunId,
+			agentRunId: activeAgentRunId,
 			suspension,
 		}) ?? {
-			runId: activeMastraRunId,
+			runId: activeAgentRunId,
 			toolCallId: suspension.toolCallId,
 		};
 		const resumed = await asResumable(options.agent).resumeStream(resumeData, {
@@ -2019,8 +2019,7 @@ export async function executeResumableStream(
 			...(options.llmStepTraceHooks?.executionOptions ?? {}),
 		});
 
-		activeMastraRunId =
-			(typeof resumed.runId === 'string' ? resumed.runId : '') || activeMastraRunId;
+		activeAgentRunId = (typeof resumed.runId === 'string' ? resumed.runId : '') || activeAgentRunId;
 		activeSource = resumed;
 		activeStream = resumed.fullStream;
 		text = resumed.text;

@@ -112,7 +112,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			const gatewayBrowserTools = context.localMcpServer?.getToolsByCategory('browser') ?? [];
 
 			if (gatewayBrowserTools.length > 0 && context.localMcpServer) {
-				// Gateway path: create Mastra tools from gateway, keep only browser category tools
+				// Gateway path: create native tools from gateway, keep only browser category tools
 				const gatewayBrowserNames = new Set(gatewayBrowserTools.map((t) => t.name));
 				const allGatewayTools = createToolsFromLocalMcpServer(context.localMcpServer);
 				for (const [name, tool] of Object.entries(allGatewayTools)) {
@@ -278,7 +278,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						});
 
 						let activeStream = stream;
-						let activeMastraRunId = typeof stream.runId === 'string' ? stream.runId : '';
+						let activeAgentRunId = typeof stream.runId === 'string' ? stream.runId : '';
 						let lastSuspendedToolName = '';
 						const MAX_NUDGES = 3;
 						let nudgeCount = 0;
@@ -287,7 +287,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 							const result = await executeResumableStream({
 								agent: subAgent,
 								stream: activeStream,
-								initialMastraRunId: activeMastraRunId,
+								initialAgentRunId: activeAgentRunId,
 								context: {
 									threadId: context.threadId,
 									runId: context.runId,
@@ -333,10 +333,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 									},
 								);
 								activeStream = nudge;
-								activeMastraRunId =
+								activeAgentRunId =
 									(typeof nudge.runId === 'string' && nudge.runId) ||
-									result.mastraRunId ||
-									activeMastraRunId;
+									result.agentRunId ||
+									activeAgentRunId;
 								continue;
 							}
 

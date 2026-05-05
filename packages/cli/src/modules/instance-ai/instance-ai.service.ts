@@ -208,7 +208,7 @@ interface MessageTraceFinalization {
 }
 
 /** Collapse the frontend's typed confirmation union into the flat payload
- *  consumed by Mastra tool resume schemas and sub-agent HITL. Only the fields
+ *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
@@ -1999,7 +1999,7 @@ export class InstanceAiService {
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 	): Promise<void> {
 		const signal = abortController.signal;
-		let mastraRunId = '';
+		let agentRunId = '';
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
@@ -2337,13 +2337,13 @@ export class InstanceAiService {
 							logger: this.logger,
 						},
 					);
-			mastraRunId = result.mastraRunId;
+			agentRunId = result.agentRunId;
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
 						runId,
-						mastraRunId: result.mastraRunId,
+						agentRunId: result.agentRunId,
 						agent,
 						threadId,
 						user,
@@ -2475,8 +2475,8 @@ export class InstanceAiService {
 			}
 			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
 			// Mastra only persists snapshots on suspension and never deletes them on completion.
-			if (!this.runState.hasSuspendedRun(threadId) && mastraRunId) {
-				void this.cleanupMastraSnapshots(mastraRunId);
+			if (!this.runState.hasSuspendedRun(threadId) && agentRunId) {
+				void this.cleanupMastraSnapshots(agentRunId);
 			}
 			// Post-run planned-task wiring (only when the run is actually ending,
 			// not when it merely suspended for HITL):
@@ -2727,7 +2727,7 @@ export class InstanceAiService {
 		const {
 			agent,
 			runId,
-			mastraRunId,
+			agentRunId,
 			threadId,
 			user,
 			toolCallId,
@@ -2756,7 +2756,7 @@ export class InstanceAiService {
 
 		void this.processResumedStream(agent, resumeData, {
 			runId,
-			mastraRunId,
+			agentRunId,
 			threadId,
 			user,
 			toolCallId,
@@ -2774,7 +2774,7 @@ export class InstanceAiService {
 		resumeData: Record<string, unknown>,
 		opts: {
 			runId: string;
-			mastraRunId: string;
+			agentRunId: string;
 			threadId: string;
 			user: User;
 			toolCallId: string;
@@ -2794,7 +2794,7 @@ export class InstanceAiService {
 							agent,
 							resumeData,
 							{
-								runId: opts.mastraRunId,
+								runId: opts.agentRunId,
 								toolCallId: opts.toolCallId,
 								memory: { resource: opts.user.id, thread: opts.threadId },
 							},
@@ -2805,7 +2805,7 @@ export class InstanceAiService {
 								signal: opts.signal,
 								eventBus: this.eventBus,
 								logger: this.logger,
-								mastraRunId: opts.mastraRunId,
+								agentRunId: opts.agentRunId,
 							},
 						);
 					})
@@ -2813,7 +2813,7 @@ export class InstanceAiService {
 						agent,
 						resumeData,
 						{
-							runId: opts.mastraRunId,
+							runId: opts.agentRunId,
 							toolCallId: opts.toolCallId,
 							memory: { resource: opts.user.id, thread: opts.threadId },
 						},
@@ -2824,7 +2824,7 @@ export class InstanceAiService {
 							signal: opts.signal,
 							eventBus: this.eventBus,
 							logger: this.logger,
-							mastraRunId: opts.mastraRunId,
+							agentRunId: opts.agentRunId,
 						},
 					);
 
@@ -2832,7 +2832,7 @@ export class InstanceAiService {
 				if (result.suspension) {
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
-						mastraRunId: result.mastraRunId,
+						agentRunId: result.agentRunId,
 						agent,
 						threadId: opts.threadId,
 						user: opts.user,
@@ -3316,8 +3316,8 @@ export class InstanceAiService {
 			this.dbSnapshotStorage,
 			true,
 		);
-		if (suspended.mastraRunId) {
-			void this.cleanupMastraSnapshots(suspended.mastraRunId);
+		if (suspended.agentRunId) {
+			void this.cleanupMastraSnapshots(suspended.agentRunId);
 		}
 		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
@@ -3485,13 +3485,13 @@ export class InstanceAiService {
 	 * status "suspended") and never clean them up on completion. This leaves
 	 * orphaned "suspended" rows that accumulate over time.
 	 */
-	private async cleanupMastraSnapshots(mastraRunId: string): Promise<void> {
+	private async cleanupMastraSnapshots(agentRunId: string): Promise<void> {
 		try {
 			const workflowsStorage = this.compositeStore.stores.workflows as TypeORMWorkflowsStorage;
-			await workflowsStorage.deleteAllByRunId(mastraRunId);
+			await workflowsStorage.deleteAllByRunId(agentRunId);
 		} catch (error) {
 			this.logger.warn('Failed to clean up Mastra workflow snapshots', {
-				mastraRunId,
+				agentRunId,
 				error: getErrorMessage(error),
 			});
 		}

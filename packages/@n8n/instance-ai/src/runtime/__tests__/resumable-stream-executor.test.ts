@@ -279,7 +279,7 @@ describe('executeResumableStream', () => {
 		expect(result).toEqual(
 			expect.objectContaining({
 				status: 'suspended',
-				mastraRunId: 'mastra-run-1',
+				agentRunId: 'mastra-run-1',
 				suspension: {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
@@ -330,7 +330,7 @@ describe('executeResumableStream', () => {
 		});
 
 		expect(result.status).toBe('errored');
-		expect(result.mastraRunId).toBe('mastra-run-1');
+		expect(result.agentRunId).toBe('mastra-run-1');
 	});
 
 	it('auto-resumes suspended streams and surfaces queued corrections', async () => {
@@ -382,7 +382,7 @@ describe('executeResumableStream', () => {
 			{ runId: 'mastra-run-1', toolCallId: 'tool-call-1' },
 		);
 		expect(result.status).toBe('completed');
-		expect(result.mastraRunId).toBe('mastra-run-2');
+		expect(result.agentRunId).toBe('mastra-run-2');
 		await expect(result.text ?? Promise.resolve('')).resolves.toBe('Done.');
 		expect(eventBus.publish).toHaveBeenCalledWith(
 			'thread-1',
@@ -460,7 +460,7 @@ describe('executeResumableStream', () => {
 		await expect(execution).resolves.toEqual(
 			expect.objectContaining({
 				status: 'completed',
-				mastraRunId: 'mastra-run-2',
+				agentRunId: 'mastra-run-2',
 			}),
 		);
 		expect(resumeStream).toHaveBeenCalledWith(
@@ -1069,7 +1069,7 @@ describe('executeResumableStream', () => {
 		]);
 	});
 
-	it('creates synthetic tool spans for native Mastra tools', async () => {
+	it('creates synthetic tool spans for native tools', async () => {
 		const eventBus = createEventBus();
 		const parentRun = new RunTree({
 			name: 'subagent:workflow-builder',
