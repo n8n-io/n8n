@@ -9,7 +9,32 @@
  * only LocalSandbox gets a filesystem attached in createWorkspace().
  */
 
-import type { Workspace } from '@mastra/core/workspace';
+interface SandboxCommandResult {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
+
+export interface SandboxWorkspace {
+	filesystem?: {
+		provider?: string;
+		basePath?: string;
+		writeFile: (path: string, content: string, options?: { recursive?: boolean }) => Promise<void>;
+	};
+	sandbox?: {
+		executeCommand?: (
+			command: string,
+			args?: string[],
+			options?: { cwd?: string },
+		) => Promise<SandboxCommandResult>;
+		processes?: {
+			spawn: (
+				command: string,
+				options?: { cwd?: string },
+			) => Promise<{ wait: () => Promise<SandboxCommandResult> }>;
+		};
+	};
+}
 
 /**
  * Execute a shell command in the sandbox and wait for completion.
@@ -17,7 +42,7 @@ import type { Workspace } from '@mastra/core/workspace';
  * are provided), falls back to `processes.spawn` + wait.
  */
 export async function runInSandbox(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	command: string,
 	cwd?: string,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -45,7 +70,7 @@ export async function runInSandbox(
  * Creates parent directories automatically.
  */
 export async function writeFileViaSandbox(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	filePath: string,
 	content: string | Buffer,
 ): Promise<void> {
@@ -72,7 +97,7 @@ export async function writeFileViaSandbox(
  * Returns null if the file doesn't exist.
  */
 export async function readFileViaSandbox(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	filePath: string,
 ): Promise<string | null> {
 	const result = await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`);
