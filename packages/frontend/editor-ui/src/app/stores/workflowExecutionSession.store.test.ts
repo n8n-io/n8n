@@ -318,6 +318,38 @@ describe('workflowExecutionSession.store', () => {
 			expect(session.lastSuccessfulExecutionId).toBeNull();
 			expect(session.lastSuccessfulExecution).toBeNull();
 		});
+
+		it('does not dispose the previous store when it is also the active execution', () => {
+			const session = useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('A')).setExecution(makeExecution({ id: 'A' }));
+			session.setActiveExecutionId('A');
+			session.setLastSuccessfulExecution(makeExecution({ id: 'A' }));
+			const pinia = getActivePinia();
+			const aStoreId = useExecutionDataStore(createExecutionDataId('A')).$id;
+
+			session.setLastSuccessfulExecution(makeExecution({ id: 'B' }));
+
+			expect(pinia?.state.value[aStoreId]).toBeDefined();
+			expect(session.activeExecution?.id).toBe('A');
+			expect(session.lastSuccessfulExecution?.id).toBe('B');
+		});
+
+		it('does not dispose the previous store when it is also the displayed execution', () => {
+			const session = useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId('wf-1'));
+			useExecutionDataStore(createExecutionDataId('A')).setExecution(makeExecution({ id: 'A' }));
+			session.setActiveExecutionId('A');
+			session.setLastSuccessfulExecution(makeExecution({ id: 'A' }));
+			session.setActiveExecutionId(undefined);
+			const pinia = getActivePinia();
+			const aStoreId = useExecutionDataStore(createExecutionDataId('A')).$id;
+
+			session.setLastSuccessfulExecution(makeExecution({ id: 'B' }));
+
+			expect(pinia?.state.value[aStoreId]).toBeDefined();
+			expect(session.displayedExecutionId).toBe('A');
+			expect(session.activeExecution?.id).toBe('A');
+			expect(session.lastSuccessfulExecution?.id).toBe('B');
+		});
 	});
 
 	describe('chat + trigger + flags', () => {

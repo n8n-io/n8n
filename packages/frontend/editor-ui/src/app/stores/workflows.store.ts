@@ -64,6 +64,11 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
@@ -98,20 +103,61 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 
-	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
+	const workflowId = computed(() => workflow.value.id);
+
+	// --- Compatibility adapter wiring ---
+	//
+	// Per-workflow session state (active/previous execution id, webhook wait,
+	// debug mode, chat, trigger selection, current executions list, last
+	// successful execution) lives in `workflowExecutionSession` keyed by
+	// workflowId. The fields below are writable computeds that route through
+	// the session store so existing direct-state mutations via
+	// `createTestingPinia` keep working.
+	//
+	// Execution-data refs (`workflowExecutionData`, `workflowExecutionStartedData`,
+	// `workflowExecutionResultDataLastUpdate`, `workflowExecutionPairedItemMappings`)
+	// remain workflow-store-local for now. They will migrate to the
+	// per-execution `executionData` store in M5/M6 alongside push-handler and
+	// read-consumer migrations, where the refactor of writers/readers can be
+	// done together to preserve test contracts.
+
+	const currentSession = computed(() =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
+	);
+
+	const currentWorkflowExecutions = computed<ExecutionSummary[]>({
+		get: () => currentSession.value.currentWorkflowExecutions as ExecutionSummary[],
+		set: (value) => currentSession.value.setCurrentWorkflowExecutions([...value]),
+	});
+
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const lastSuccessfulExecution = ref<IExecutionResponse | null>(null);
 	const workflowExecutionStartedData =
 		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
 	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
-	const executionWaitingForWebhook = ref(false);
-	const isInDebugMode = ref(false);
-	const chatMessages = ref<string[]>([]);
-	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const selectedTriggerNodeName = ref<string>();
 
-	const workflowId = computed(() => workflow.value.id);
+	const executionWaitingForWebhook = computed<boolean>({
+		get: () => currentSession.value.executionWaitingForWebhook,
+		set: (value) => currentSession.value.setExecutionWaitingForWebhook(value),
+	});
+
+	const isInDebugMode = computed<boolean>({
+		get: () => currentSession.value.isInDebugMode,
+		set: (value) => currentSession.value.setIsInDebugMode(value),
+	});
+
+	const chatMessages = computed<string[]>(() => currentSession.value.chatMessages as string[]);
+
+	const chatPartialExecutionDestinationNode = computed<string | null>({
+		get: () => currentSession.value.chatPartialExecutionDestinationNode,
+		set: (value) => currentSession.value.setChatPartialExecutionDestinationNode(value),
+	});
+
+	const selectedTriggerNodeName = computed<string | undefined>({
+		get: () => currentSession.value.selectedTriggerNodeName,
+		set: (value) => currentSession.value.setSelectedTriggerNodeName(value),
+	});
 
 	// A workflow is new if it hasn't been saved to the backend yet.
 	// TODO: move to workflowDocumentStore after `workflow` ref is removed from this store.
@@ -207,20 +253,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	);
 
 	/**
-	 * Sets the active execution id
+	 * Active execution id (tri-state):
+	 *   - undefined → no active execution being tracked
+	 *   - null      → execution started but backend id not yet known
+	 *   - string    → active backend execution id
 	 *
-	 * @param {string} id used to indicate the id of the active execution
-	 * @param {null} id used to indicate that an execution has started but its id has not been retrieved yet
-	 * @param {undefined} id used to indicate there is no active execution
+	 * Routes through the per-workflow session store. Exposed as a writable
+	 * computed so existing test setups that mutate via `createTestingPinia`
+	 * continue to work.
 	 */
-	const activeExecutionId = ref<string | null | undefined>();
-	const previousExecutionId = ref<string | null | undefined>();
-	const readonlyActiveExecutionId = computed(() => activeExecutionId.value);
-	const readonlyPreviousExecutionId = computed(() => previousExecutionId.value);
+	const activeExecutionId = computed<string | null | undefined>({
+		get: () => currentSession.value.activeExecutionId,
+		set: (value) => currentSession.value.setActiveExecutionId(value),
+	});
+	const readonlyActiveExecutionId = computed(() => currentSession.value.activeExecutionId);
+	const readonlyPreviousExecutionId = computed(() => currentSession.value.previousExecutionId);
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		if (id) previousExecutionId.value = activeExecutionId.value;
-		activeExecutionId.value = id;
+		currentSession.value.setActiveExecutionId(id);
 	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
@@ -535,6 +585,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(execution);
 		workflowExecutionResultDataLastUpdate.value = Date.now();
 		workflowExecutionStartedData.value = undefined;
+
+		// Mirror IN_PROGRESS scaffolds into the session's pendingExecution so
+		// future consumers reading via the session facade see the right state.
+		if (execution?.id === IN_PROGRESS_EXECUTION_ID) {
+			currentSession.value.setPendingExecution(execution);
+		} else if (execution === null) {
+			currentSession.value.setPendingExecution(null);
+		}
 	}
 
 	function clearExecutionStartedData(): void {
@@ -542,15 +600,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setExecutionWaitingForWebhook(value: boolean): void {
-		executionWaitingForWebhook.value = value;
+		currentSession.value.setExecutionWaitingForWebhook(value);
 	}
 
 	function setIsInDebugMode(value: boolean): void {
-		isInDebugMode.value = value;
+		currentSession.value.setIsInDebugMode(value);
 	}
 
 	function setChatPartialExecutionDestinationNode(value: string | null): void {
-		chatPartialExecutionDestinationNode.value = value;
+		currentSession.value.setChatPartialExecutionDestinationNode(value);
 	}
 
 	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
@@ -558,11 +616,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function clearCurrentWorkflowExecutions(): void {
-		currentWorkflowExecutions.value = [];
+		currentSession.value.clearCurrentWorkflowExecutions();
 	}
 
 	function setCurrentWorkflowExecutions(executions: ExecutionSummary[]): void {
-		currentWorkflowExecutions.value = executions;
+		currentSession.value.setCurrentWorkflowExecutions(executions);
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
@@ -575,6 +633,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			runData[nameData.new] = runData[nameData.old];
 			delete runData[nameData.old];
 		}
+
+		// Delegate session-level rename (selectedTriggerNodeName + chatPartialDest).
+		currentSession.value.renameExecutionSessionNode(nameData.old, nameData.new);
 
 		// In case the renamed node was last selected set it also there with the new name
 		if (uiStore.lastSelectedNode === nameData.old) {
@@ -1013,16 +1074,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {
-		currentWorkflowExecutions.value.splice(currentWorkflowExecutions.value.indexOf(execution), 1);
+		currentSession.value.deleteExecution(execution);
 	}
 
 	function addToCurrentExecutions(executions: ExecutionSummary[]): void {
-		executions.forEach((execution) => {
-			const exists = currentWorkflowExecutions.value.find((ex) => ex.id === execution.id);
-			if (!exists && execution.workflowId === workflowId.value) {
-				currentWorkflowExecutions.value.push(execution);
-			}
-		});
+		currentSession.value.addToCurrentExecutions(executions);
 	}
 
 	function getBinaryUrl(
@@ -1042,33 +1098,34 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resetChatMessages(): void {
-		chatMessages.value = [];
+		currentSession.value.resetChatMessages();
 	}
 
 	function appendChatMessage(message: string): void {
-		chatMessages.value.push(message);
+		currentSession.value.appendChatMessage(message);
 	}
 
 	function setSelectedTriggerNodeName(value: string) {
-		selectedTriggerNodeName.value = value;
+		currentSession.value.setSelectedTriggerNodeName(value);
 	}
 
 	watch(
 		[selectableTriggerNodes, workflowExecutionTriggerNodeName],
 		([newSelectable, currentTrigger], [oldSelectable]) => {
+			const session = currentSession.value;
 			if (currentTrigger !== undefined) {
-				selectedTriggerNodeName.value = currentTrigger;
+				session.setSelectedTriggerNodeName(currentTrigger);
 				return;
 			}
 
 			if (
-				selectedTriggerNodeName.value === undefined ||
-				newSelectable.every((node) => node.name !== selectedTriggerNodeName.value)
+				session.selectedTriggerNodeName === undefined ||
+				newSelectable.every((node) => node.name !== session.selectedTriggerNodeName)
 			) {
-				selectedTriggerNodeName.value = findTriggerNodeToAutoSelect(
-					selectableTriggerNodes.value,
-					nodeTypesStore.getNodeType,
-				)?.name;
+				session.setSelectedTriggerNodeName(
+					findTriggerNodeToAutoSelect(selectableTriggerNodes.value, nodeTypesStore.getNodeType)
+						?.name,
+				);
 				return;
 			}
 
@@ -1078,7 +1135,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 			if (newTrigger !== undefined) {
 				// Select newly added node
-				selectedTriggerNodeName.value = newTrigger.name;
+				session.setSelectedTriggerNodeName(newTrigger.name);
 			}
 		},
 		{ immediate: true },
@@ -1112,7 +1169,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
 		getPastChatMessages,
-		selectedTriggerNodeName: computed(() => selectedTriggerNodeName.value),
+		selectedTriggerNodeName,
 		workflowExecutionTriggerNodeName,
 		getExecutionDataById,
 		getNodeTypes,

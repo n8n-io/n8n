@@ -266,7 +266,12 @@ export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId)
 		 */
 		function setLastSuccessfulExecution(execution: IExecutionResponse | null) {
 			const previousId = lastSuccessfulExecutionId.value;
-			if (previousId && previousId !== execution?.id) {
+			if (
+				previousId &&
+				previousId !== execution?.id &&
+				previousId !== activeExecutionId.value &&
+				previousId !== displayedExecutionId.value
+			) {
 				disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(previousId)));
 			}
 			if (execution === null) {
