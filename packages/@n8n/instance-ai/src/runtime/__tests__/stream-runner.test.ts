@@ -36,6 +36,14 @@ async function* emptyStream() {
 	yield* [];
 }
 
+async function collectAsyncIterable(stream: AsyncIterable<unknown>) {
+	const chunks: unknown[] = [];
+	for await (const chunk of stream) {
+		chunks.push(chunk);
+	}
+	return chunks;
+}
+
 describe('streamAgentRun', () => {
 	it('returns errored status when agent stream contains an error chunk', async () => {
 		jest.mocked(executeResumableStream).mockResolvedValue({
@@ -209,5 +217,56 @@ describe('streamAgentRun', () => {
 				stream: streamResult,
 			}),
 		);
+	});
+
+	it('normalizes native agent readable streams for the resumable executor', async () => {
+		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
+		mockedExecuteResumableStream.mockClear();
+		const nativeChunk = { type: 'text-delta', delta: 'All good' };
+		const readable = new ReadableStream<unknown>({
+			start(controller) {
+				controller.enqueue(nativeChunk);
+				controller.close();
+			},
+		});
+		const agent = {
+			stream: jest.fn().mockResolvedValue({
+				runId: 'agent-run-1',
+				stream: readable,
+				getState: jest.fn(),
+			}),
+		};
+		const eventBus = createEventBus();
+
+		mockedExecuteResumableStream.mockResolvedValue({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			workSummary: emptyWorkSummary,
+		});
+
+		await streamAgentRun(
+			agent,
+			'hello',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus,
+				logger: createLogger(),
+			},
+		);
+
+		const call = mockedExecuteResumableStream.mock.calls[0];
+		expect(call).toBeDefined();
+		const source = call?.[0].stream;
+		expect(source).toEqual(
+			expect.objectContaining({
+				runId: 'agent-run-1',
+				streamFormat: 'agent',
+			}),
+		);
+		await expect(collectAsyncIterable(source.fullStream)).resolves.toEqual([nativeChunk]);
 	});
 });

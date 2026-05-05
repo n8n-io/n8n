@@ -1,4 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { StreamResult } from '@n8n/agents';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
@@ -10,11 +11,16 @@ import {
 	type TraceStatus,
 } from './resumable-stream-executor';
 import { getTraceParentRun, withTraceParentContext } from '../tracing/langsmith-tracing';
-import { asResumable } from '../utils/stream-helpers';
+import { asResumable, isRecord } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
+type StreamableAgentStreamResult = ResumableStreamSource | StreamResult;
+
 export interface StreamableAgent {
-	stream: (input: unknown, options: Record<string, unknown>) => Promise<ResumableStreamSource>;
+	stream: (
+		input: unknown,
+		options: Record<string, unknown>,
+	) => Promise<StreamableAgentStreamResult>;
 }
 
 export interface StreamRunOptions {
@@ -34,6 +40,59 @@ export interface StreamRunResult {
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
 
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, Symbol.asyncIterator) === 'function'
+	);
+}
+
+function isReadableStream(value: unknown): value is ReadableStream<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'getReader') === 'function'
+	);
+}
+
+function isResumableStreamSource(value: unknown): value is ResumableStreamSource {
+	return isRecord(value) && isAsyncIterable(value.fullStream);
+}
+
+function isNativeStreamResult(value: unknown): value is StreamResult {
+	return isRecord(value) && isReadableStream(value.stream);
+}
+
+async function* readableStreamToAsyncIterable(stream: ReadableStream<unknown>) {
+	const reader = stream.getReader();
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) return;
+			yield value;
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
+
+function normalizeStreamSource(result: StreamableAgentStreamResult): ResumableStreamSource {
+	if (isResumableStreamSource(result)) {
+		return result;
+	}
+
+	if (isNativeStreamResult(result)) {
+		return {
+			runId: result.runId,
+			streamFormat: 'agent',
+			fullStream: readableStreamToAsyncIterable(result.stream),
+		};
+	}
+
+	throw new Error('Unsupported agent stream result');
+}
+
 export async function streamAgentRun(
 	agent: StreamableAgent,
 	input: unknown,
@@ -47,8 +106,9 @@ export async function streamAgentRun(
 			...streamOptions,
 			...(llmStepTraceHooks?.executionOptions ?? {}),
 		});
-		const agentRunId = typeof result.runId === 'string' ? result.runId : '';
-		return await consumeStream(agent, result, { ...options, agentRunId, llmStepTraceHooks });
+		const stream = normalizeStreamSource(result);
+		const agentRunId = typeof stream.runId === 'string' ? stream.runId : '';
+		return await consumeStream(agent, stream, { ...options, agentRunId, llmStepTraceHooks });
 	});
 }
 
@@ -65,8 +125,9 @@ export async function resumeAgentRun(
 			...resumeOptions,
 			...(llmStepTraceHooks?.executionOptions ?? {}),
 		});
-		const agentRunId = (typeof resumed.runId === 'string' && resumed.runId) || options.agentRunId;
-		return await consumeStream(agent, resumed, { ...options, agentRunId, llmStepTraceHooks });
+		const stream = normalizeStreamSource(resumed);
+		const agentRunId = (typeof stream.runId === 'string' && stream.runId) || options.agentRunId;
+		return await consumeStream(agent, stream, { ...options, agentRunId, llmStepTraceHooks });
 	});
 }
 
