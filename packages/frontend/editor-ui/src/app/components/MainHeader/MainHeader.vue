@@ -14,7 +14,6 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
@@ -35,7 +34,6 @@ const pushConnection = usePushConnection({ router });
 const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -71,7 +69,6 @@ const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
-const workflow = computed(() => workflowsStore.workflow);
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
@@ -265,7 +262,7 @@ async function onWorkflowDeactivated() {
 	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
-			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId.value);
 			workflowDocumentStore?.value?.hydrate(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
@@ -291,7 +288,7 @@ async function onWorkflowDeactivated() {
 			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
 					v-if="workflowName"
-					:id="workflow.id"
+					:id="workflowId"
 					:tags="workflowTags"
 					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"

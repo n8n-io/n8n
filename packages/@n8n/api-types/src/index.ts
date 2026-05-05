@@ -368,7 +368,6 @@ export type {
 	InstanceAiEvent,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
-	InstanceAiConfirmResponse,
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -413,6 +412,13 @@ export {
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+
+export {
+	EVAL_PARALLEL_EXECUTION_FLAG,
+	startTestRunPayloadSchema,
+	StartTestRunRequestDto,
+	type StartTestRunPayload,
+} from './schemas/evaluations.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 

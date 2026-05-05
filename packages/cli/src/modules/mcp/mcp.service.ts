@@ -28,6 +28,7 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
@@ -151,6 +152,18 @@ export class McpService {
 			this.telemetry,
 		);
 		server.registerTool(getExecutionTool.name, getExecutionTool.config, getExecutionTool.handler);
+
+		const searchExecutionsTool = createSearchExecutionsTool(
+			user,
+			this.executionService,
+			this.workflowFinderService,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchExecutionsTool.name,
+			searchExecutionsTool.config,
+			searchExecutionsTool.handler,
+		);
 
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,

@@ -25,6 +25,8 @@ import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 
 @Service()
 export class ImportService {
@@ -57,6 +59,7 @@ export class ImportService {
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly dataTableDDLService: DataTableDDLService,
 	) {}
 
 	async initRecords() {
@@ -410,6 +413,10 @@ export class ImportService {
 			if (truncateTables) {
 				this.logger.info('\n🗑️  Truncating tables before import...');
 
+				// Drop dynamic data-table user tables first; once the registry is
+				// truncated we have no way to enumerate them.
+				await this.dropExistingDataTableUserTables(transactionManager);
+
 				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
 
 				await Promise.all(
@@ -436,6 +443,10 @@ export class ImportService {
 				entityFiles,
 				customEncryptionKey,
 			);
+
+			// After the data_table / data_table_column registry rows are imported,
+			// recreate the dynamic backing tables (empty) so the imported tables work.
+			await this.recreateDataTableUserTablesFromRegistry(transactionManager);
 
 			if (!skipTogglingForeignKeyConstraints) {
 				await this.enableForeignKeyConstraints(transactionManager);
@@ -604,6 +615,101 @@ export class ImportService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Drop every dynamic data-table user backing table referenced in the destination's
+	 * `data_table` registry. Called before truncating registry rows so that backing
+	 * tables don't end up orphaned.
+	 */
+	async dropExistingDataTableUserTables(transactionManager: EntityManager): Promise<void> {
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+
+		let existing: Array<{ id: string }>;
+		try {
+			existing = await transactionManager.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not found, skipping dynamic-table cleanup...`,
+				{ error },
+			);
+			return;
+		}
+
+		if (existing.length === 0) return;
+
+		this.logger.info(`🗑️  Dropping ${existing.length} existing data-table backing table(s)...`);
+		for (const { id } of existing) {
+			await this.dataTableDDLService.dropTable(id, transactionManager);
+		}
+	}
+
+	/**
+	 * Recreate dynamic data-table backing tables for every entry in the imported
+	 * `data_table` registry. The export bug (ADO-5143) means archives produced
+	 * before this fix only contain registry rows; without recreating the backing
+	 * tables the imported data tables would reference tables that don't exist on
+	 * the destination.
+	 *
+	 * Tables are dropped before recreation so the operation is idempotent and
+	 * handles stale tables left over from a partially-failed prior import.
+	 */
+	async recreateDataTableUserTablesFromRegistry(transactionManager: EntityManager): Promise<void> {
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+		const dataTableColumnTableName = `${tablePrefix}data_table_column`;
+
+		let dataTables: Array<{ id: string }>;
+		try {
+			dataTables = await transactionManager.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not present; skipping data-table backing-table recreation.`,
+				{ error },
+			);
+			return;
+		}
+
+		if (dataTables.length === 0) return;
+
+		const escapedColumnTable = this.dataSource.driver.escape(dataTableColumnTableName);
+		const escapedDataTableId = this.dataSource.driver.escape('dataTableId');
+		const escapedIndex = this.dataSource.driver.escape('index');
+
+		const columnRows: Array<{
+			id: string;
+			dataTableId: string;
+			name: string;
+			type: 'string' | 'number' | 'boolean' | 'date';
+			index: number;
+		}> = await transactionManager.query(
+			`SELECT id, ${escapedDataTableId}, name, type, ${escapedIndex} FROM ${escapedColumnTable}`,
+		);
+
+		const columnsByDataTableId = new Map<string, DataTableColumn[]>();
+		for (const row of columnRows) {
+			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
+			list.push(transactionManager.create(DataTableColumn, row));
+			columnsByDataTableId.set(row.dataTableId, list);
+		}
+
+		this.logger.info(`\n📚 Recreating ${dataTables.length} data-table backing table(s)...`);
+
+		for (const { id: dataTableId } of dataTables) {
+			const cols = (columnsByDataTableId.get(dataTableId) ?? [])
+				.slice()
+				.sort((a, b) => a.index - b.index);
+
+			await this.dataTableDDLService.dropTable(dataTableId, transactionManager);
+			await this.dataTableDDLService.createTableWithColumns(dataTableId, cols, transactionManager);
+		}
+
+		this.logger.info(`✅ Recreated ${dataTables.length} data-table backing table(s)`);
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {

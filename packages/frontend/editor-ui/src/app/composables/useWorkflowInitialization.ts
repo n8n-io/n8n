@@ -184,7 +184,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.isInDebugMode = true;
+				workflowsStore.setIsInDebugMode(true);
 			}
 		}
 	}

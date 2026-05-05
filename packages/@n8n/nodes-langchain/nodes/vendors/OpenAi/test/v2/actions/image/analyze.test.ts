@@ -1,19 +1,20 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { ChatResponse } from '../../../../helpers/interfaces';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/analyze.operation';
 
-jest.mock('../../../../helpers/binary-data');
-jest.mock('../../../../transport');
+vi.mock('../../../../helpers/binary-data');
+vi.mock('../../../../transport');
 
 describe('Image Analyze Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
-	const getBinaryDataFileSpy = jest.spyOn(binaryDataHelpers, 'getBinaryDataFile');
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
+	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -27,11 +28,11 @@ describe('Image Analyze Operation', () => {
 		});
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.helpers.binaryToBuffer = jest.fn();
+		mockExecuteFunctions.helpers.binaryToBuffer = vi.fn();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('successful execution with URL input', () => {
@@ -317,7 +318,7 @@ describe('Image Analyze Operation', () => {
 			} as ChatResponse;
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -400,7 +401,7 @@ describe('Image Analyze Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -482,7 +483,7 @@ describe('Image Analyze Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockResponse);

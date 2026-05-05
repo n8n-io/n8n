@@ -2215,6 +2215,26 @@ onUpdated(async () => {
 	}
 }
 
+.input-with-opener .textarea-modal-opener {
+	top: 1px;
+	bottom: auto;
+	border-top: none;
+	border-bottom: var(--border);
+	border-top-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border-top-right-radius: var(--radius);
+	border-bottom-left-radius: var(--radius);
+}
+
+.input-with-opener textarea {
+	resize: both;
+	max-width: 100%;
+}
+
+.input-with-opener .n8n-input__wrapper {
+	gap: 0;
+}
+
 .focused {
 	border-color: var(--color--secondary);
 }

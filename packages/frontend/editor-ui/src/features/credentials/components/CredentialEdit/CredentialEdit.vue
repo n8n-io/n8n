@@ -1188,6 +1188,7 @@ async function deleteCredential() {
 async function oAuthCredentialAuthorize() {
 	let url;
 
+	credentialsStore.pendingOAuthRefresh = true;
 	const credential = await saveCredential();
 	if (!credential) {
 		return;
