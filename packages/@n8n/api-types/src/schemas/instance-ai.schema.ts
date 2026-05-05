@@ -946,6 +946,7 @@ const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflo
 const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
 	'manage-data-tables-with-agent',
 	'agent-data-table-manager',
+	'eval-data',
 ]);
 const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
 const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
