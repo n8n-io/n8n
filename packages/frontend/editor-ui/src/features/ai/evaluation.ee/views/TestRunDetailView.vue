@@ -225,7 +225,7 @@ onMounted(async () => {
 
 <style module lang="scss">
 .container {
-	height: 100%;
+	height: fit-content;
 	width: 100%;
 	max-width: var(--content-container--width);
 	padding: var(--spacing--lg) 0 var(--spacing--3xl) 0;

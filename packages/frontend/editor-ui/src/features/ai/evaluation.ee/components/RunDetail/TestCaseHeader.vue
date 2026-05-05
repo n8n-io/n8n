@@ -44,7 +44,8 @@ const cyclingVerb = useCyclingVerb(isRunning);
 
 <template>
 	<div :class="$style.header" data-test-id="test-case-header">
-		<div :class="$style.leftGroup">
+		<div :class="[$style.leftGroup, { [$style.shimmering]: isRunning }]">
+			<N8nSpinner v-if="isRunning" size="small" :class="$style.leadingSpinner" />
 			<N8nText size="medium" bold>
 				{{ locale.baseText('evaluation.runDetail.testCase.title', { interpolate: { index } }) }}
 			</N8nText>
@@ -69,7 +70,7 @@ const cyclingVerb = useCyclingVerb(isRunning);
 			<template v-if="isPending">
 				<N8nIcon icon="circle" size="small" :class="$style.pendingIcon" />
 				<N8nButton
-					type="tertiary"
+					variant="ghost"
 					size="mini"
 					:label="locale.baseText('evaluation.runDetail.testCase.cancel')"
 					:disabled="cancelDisabled"
@@ -78,7 +79,6 @@ const cyclingVerb = useCyclingVerb(isRunning);
 				/>
 			</template>
 			<template v-else-if="isRunning">
-				<N8nSpinner size="small" />
 				<N8nText size="small" :class="$style.runningVerb">{{ cyclingVerb }}…</N8nText>
 			</template>
 			<template v-else-if="isCancelled">
@@ -118,7 +118,7 @@ const cyclingVerb = useCyclingVerb(isRunning);
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/animations' as animations;
+@use '@n8n/design-system/css/mixins/motion';
 
 .header {
 	display: flex;
@@ -135,9 +135,21 @@ const cyclingVerb = useCyclingVerb(isRunning);
 
 .leftGroup {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-wrap: wrap;
+}
+
+// When the test case is running, shimmer the entire leading group so the
+// "Test #N" label matches the cycling verb on the right. The mixin paints
+// a moving gradient across `color` only, so the spinner (svg fill) keeps
+// its own color.
+.shimmering {
+	@include motion.shimmer;
+}
+
+.leadingSpinner {
+	flex: 0 0 auto;
 }
 
 .rightGroup {
@@ -160,7 +172,7 @@ const cyclingVerb = useCyclingVerb(isRunning);
 }
 
 .runningVerb {
-	@include animations.shimmer;
+	@include motion.shimmer;
 }
 
 .viewIcon {

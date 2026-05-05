@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
 const label = computed(() => formatDeltaPercent(props.delta, { category: props.category }));
-const icon = computed(() => (tone.value === 'negative' ? 'arrow-down' : 'arrow-up'));
+const icon = computed(() => (tone.value === 'negative' ? 'trending-down' : 'trending-up'));
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const icon = computed(() => (tone.value === 'negative' ? 'arrow-down' : 'arrow-u
 		:class="[$style.badge, $style[tone]]"
 		data-test-id="trend-delta-badge"
 	>
-		<N8nIcon :icon="icon" size="xsmall" />
+		<N8nIcon :icon="icon" size="large" />
 		<N8nText size="small" :class="$style.label">{{ label }}</N8nText>
 	</span>
 </template>
