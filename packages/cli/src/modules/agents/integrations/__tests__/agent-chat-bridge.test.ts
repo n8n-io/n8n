@@ -1,4 +1,4 @@
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-workflow';
@@ -92,7 +92,6 @@ class StreamingTestIntegration extends AgentChatIntegration {
 
 describe('AgentChatBridge — consumeStream', () => {
 	let registry: ChatIntegrationRegistry;
-	const credentialProvider = mock<CredentialProvider>();
 	const componentMapper = mock<ComponentMapper>();
 	const logger = mock<Logger>();
 
@@ -129,10 +128,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
-				credentialProvider,
 				componentMapper,
 				logger,
-				'user-1',
 				'project-1',
 				'test-buffered',
 			);
@@ -165,10 +162,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
-				credentialProvider,
 				componentMapper,
 				logger,
-				'user-1',
 				'project-1',
 				'test-buffered',
 			);
@@ -193,10 +188,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
-				credentialProvider,
 				componentMapper,
 				logger,
-				'user-1',
 				'project-1',
 				'test-buffered',
 			);
@@ -221,10 +214,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
-				credentialProvider,
 				componentMapper,
 				logger,
-				'user-1',
 				'project-1',
 				'test-streaming',
 			);

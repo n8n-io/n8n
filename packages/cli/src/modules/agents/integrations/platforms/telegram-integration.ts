@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
@@ -39,6 +40,24 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly needsShortCallbackData = true;
 
 	readonly disableStreaming = true;
+
+	readonly formatThreadId = {
+		fromSdk: (thread: Thread<unknown, unknown>) => {
+			const adapter = thread.adapter;
+			const botUserId = adapter.botUserId;
+			if (!botUserId) {
+				throw new Error('Telegram bot user ID is not set');
+			}
+			// thread.id is simply user id, which means connecting agent to another bot user will result in the same thread id
+			return `chat:${botUserId}-${thread.id}`;
+		},
+		toSdk: (threadId: string) => {
+			if (!threadId.includes('-')) {
+				return threadId;
+			}
+			return threadId.split('-').slice(1).join('-');
+		},
+	};
 
 	constructor(
 		private readonly logger: Logger,

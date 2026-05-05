@@ -436,15 +436,13 @@ export class AgentsController {
 
 		try {
 			await pumpChunks(
-				this.agentsService.executeForChat(
+				this.agentsService.executeForChat({
 					agentId,
-					message,
-					threadId,
-					req.user.id,
 					projectId,
-					credentialProvider,
-					'chat',
-				),
+					message,
+					userId: req.user.id,
+					memory: { threadId, resourceId: req.user.id },
+				}),
 				send,
 			);
 			send({ type: 'done', sessionId: threadId });

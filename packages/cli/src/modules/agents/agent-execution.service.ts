@@ -19,7 +19,6 @@ export interface RecordMessageParams {
 	agentId: string;
 	agentName: string;
 	projectId: string;
-	userId: string;
 	userMessage: string;
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */

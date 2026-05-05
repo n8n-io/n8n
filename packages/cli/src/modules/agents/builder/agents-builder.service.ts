@@ -104,10 +104,10 @@ export class AgentsBuilderService {
 		user: User,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
-		if (checkpointStatus === 'expired') {
+		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Builder checkpoint ${runId} has expired and cannot be resumed`);
 		}
-		if (checkpointStatus === 'not-found') {
+		if (checkpointStatus.status === 'not-found') {
 			throw new UserError(`Builder checkpoint ${runId} not found`);
 		}
 
