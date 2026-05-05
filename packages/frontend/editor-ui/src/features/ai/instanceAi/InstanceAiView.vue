@@ -353,6 +353,26 @@ watch(
 	{ immediate: true },
 );
 
+// Spacer height tracks the peak overlay height for the lifetime of the
+// thread — it never shrinks. Without this, a tall approval panel
+// dismissing while the user is scrolled into the spacer area would
+// contract scrollHeight, the browser would clamp scrollTop back to the
+// new max, and the chat content would visibly drop. Letting the spacer
+// stay at its peak leaves a persistent empty region at the bottom of the
+// scroll area, which the user has explicitly accepted as the trade-off.
+const renderedSpacerHeight = ref(0);
+
+watch(floatingOverlayHeight, (newH) => {
+	if (newH > renderedSpacerHeight.value) renderedSpacerHeight.value = newH;
+});
+
+watch(
+	() => store.currentThreadId,
+	() => {
+		renderedSpacerHeight.value = floatingOverlayHeight.value;
+	},
+);
+
 onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
@@ -562,7 +582,7 @@ function handleStop() {
 							<div
 								ref="scrollable"
 								:class="$style.messageList"
-								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
+								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--2xl))` }"
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
@@ -593,8 +613,10 @@ function handleStop() {
 								 content into view) without triggering the messageList resize
 								 observer — that observer drives stream auto-scroll, and we
 								 don't want approvals appearing or disappearing to shift the
-								 visible content. -->
-							<div :style="{ height: `${floatingOverlayHeight}px`, flexShrink: 0 }" />
+								 visible content. Height is sticky at the per-thread peak so
+								 dismissing a dialog never contracts scrollHeight under the
+								 user's current scrollTop. -->
+							<div :style="{ height: `${renderedSpacerHeight}px`, flexShrink: 0 }" />
 						</N8nScrollArea>
 
 						<!-- Scroll to bottom button -->
@@ -888,14 +910,32 @@ function handleStop() {
 
 .scrollToBottomButton {
 	pointer-events: auto;
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
+	border-radius: var(--radius--lg);
+	color: var(--icon-color--strong);
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
+	// N8nButton drives bg/border/shadow via CSS custom properties internally,
+	// and the `.outline` variant sets `--button--color--background: transparent`
+	// at higher specificity (`.button.outline`). Force our values with
+	// `!important` so the button has an opaque background at rest, on hover,
+	// and on active — never letting chat text bleed through.
+	--button--color--background: var(--color--background--light-2) !important;
+	--button--color--background-hover: var(--color--background--light-2) !important;
+	--button--color--background-active: var(--color--background--light-2) !important;
+	--button--border-color: light-dark(
+		var(--color--black-alpha-200),
+		var(--color--white-alpha-100)
+	) !important;
+	--button--border-color--hover: light-dark(
+		var(--color--black-alpha-200),
+		var(--color--white-alpha-100)
+	) !important;
+	--button--border-color--active: light-dark(
+		var(--color--black-alpha-200),
+		var(--color--white-alpha-100)
+	) !important;
+	--button--shadow: var(--shadow--sm) !important;
+	--button--shadow--hover: var(--shadow--sm) !important;
+	--button--shadow--active: var(--shadow--sm) !important;
 }
 
 .inputContainer {
@@ -904,7 +944,9 @@ function handleStop() {
 	left: 0;
 	right: 0;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
+	// Solid so messages can't peek through the input's rounded top corners.
+	// The fade above happens in `floatingOverlay`.
+	background: var(--color--background--light-2);
 	pointer-events: none;
 	z-index: 2;
 
@@ -923,8 +965,27 @@ function handleStop() {
 	left: 0;
 	right: 0;
 	padding: 0 var(--spacing--lg);
+	// Solid so the dialog's rounded corners and the gap below it never
+	// reveal scrolling chat content behind them. The fade above the whole
+	// floating group is provided by the ::before pseudo-element below.
+	background: var(--color--background--light-2);
 	pointer-events: none;
 	z-index: 2;
+
+	// Gradient that sits above the entire floating group (status bar +
+	// approval panel + chat input). Lets chat text fade into the chat
+	// background as it scrolls toward the floating components instead of
+	// crashing into them with a hard edge.
+	&::before {
+		content: '';
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		right: 0;
+		height: 48px;
+		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
+		pointer-events: none;
+	}
 
 	& > * {
 		pointer-events: auto;

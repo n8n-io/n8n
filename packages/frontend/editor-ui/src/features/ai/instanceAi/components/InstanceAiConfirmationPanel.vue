@@ -541,7 +541,7 @@ function handlePlanRequestChanges(
 }
 
 .root {
-	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	border: 1px solid light-dark(var(--color--black-alpha-150), var(--color--white-alpha-100));
 	border-radius: var(--radius--xl);
 	background-color: var(--color--background--light-3);
 	box-shadow: var(--shadow--sm);
@@ -605,7 +605,7 @@ function handlePlanRequestChanges(
 }
 
 .commentary {
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 }
 
 .approveGroup {

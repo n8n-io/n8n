@@ -202,7 +202,7 @@ defineExpose({
 	padding: var(--spacing--sm);
 	box-shadow: var(--shadow--sm);
 	background-color: var(--background--surface);
-	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	border: 1px solid light-dark(var(--color--black-alpha-150), var(--color--white-alpha-100));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
