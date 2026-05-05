@@ -62,7 +62,7 @@ async function createPiniaWithActiveNode() {
 	workflowsStore.workflow = workflow;
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.initPristineNodeMetadata(node.name);
-	workflowsStore.workflowExecutionData = {
+	workflowsStore.setWorkflowExecutionData({
 		id: '1',
 		finished: true,
 		mode: 'trigger',
@@ -120,7 +120,7 @@ async function createPiniaWithActiveNode() {
 				},
 			},
 		}),
-	};
+	});
 
 	ndvStore.setActiveNodeName(node.name, 'other');
 

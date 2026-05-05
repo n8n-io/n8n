@@ -92,6 +92,10 @@ export class McpTrigger extends Node {
 				],
 				default: 'none',
 				description: 'The way to authenticate',
+				builderHint: {
+					message:
+						"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+				},
 			},
 			{
 				displayName: 'Path',

@@ -161,6 +161,7 @@ describe('GlobalConfig', () => {
 			logWriter: {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
+				logFullPath: '',
 				maxFileSizeInKB: 10240,
 				maxMessagesPerParse: 10_000,
 				maxTotalMessagesPerFile: 500_000,
@@ -204,6 +205,7 @@ describe('GlobalConfig', () => {
 			indexingEnabled: true,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			autosaveDisabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -235,7 +237,7 @@ describe('GlobalConfig', () => {
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
 			mcpBuilderEnabled: true,
-			mcpMaxRegisteredClients: 200,
+			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -284,6 +286,7 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
+			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
@@ -368,6 +371,9 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+		},
+		evaluation: {
+			parallelExecutionEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
