@@ -15,6 +15,20 @@ jest.mock('@n8n/instance-ai', () => {
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),
+		buildAgentTreeFromEvents: jest.fn(
+			(events: Array<{ type: string; payload?: { text?: string } }>) => ({
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: events
+					.map((event) => (event.type === 'text-delta' ? (event.payload?.text ?? '') : ''))
+					.join(''),
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			}),
+		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
 		createMemory: jest.fn(),
@@ -339,6 +353,30 @@ type TerminalGuardOrderServiceInternals = {
 	) => Promise<void>;
 };
 
+type SnapshotServiceInternals = {
+	saveAgentTreeSnapshot: (
+		threadId: string,
+		runId: string,
+		snapshotStorage: {
+			getLatest: jest.Mock;
+			save: jest.Mock;
+			updateLast: jest.Mock;
+		},
+		isUpdate?: boolean,
+		overrideMessageGroupId?: string,
+	) => Promise<void>;
+	runState: {
+		getMessageGroupId: jest.Mock;
+		getRunIdsForMessageGroup: jest.Mock;
+	};
+	eventBus: {
+		getEventsForRun: jest.Mock;
+		getEventsForRuns: jest.Mock;
+	};
+	traceContextsByRunId: Map<string, { tracing?: { rootRun: { id: string; traceId: string } } }>;
+	logger: { warn: jest.Mock };
+};
+
 function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	const events: InstanceAiEvent[] = [];
 	const service = Object.create(
@@ -370,6 +408,21 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
+	return service;
+}
+
+function createSnapshotService(): SnapshotServiceInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as SnapshotServiceInternals;
+	service.runState = {
+		getMessageGroupId: jest.fn(() => undefined),
+		getRunIdsForMessageGroup: jest.fn(() => []),
+	};
+	service.eventBus = {
+		getEventsForRun: jest.fn(() => []),
+		getEventsForRuns: jest.fn(() => []),
+	};
+	service.traceContextsByRunId = new Map();
+	service.logger = { warn: jest.fn() };
 	return service;
 }
 
@@ -623,6 +676,90 @@ describe('InstanceAiService — terminal outcome replay', () => {
 
 		expect(service.createTerminalOutcomeStorage).toHaveBeenCalledTimes(2);
 		expect(storage.getUndelivered).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('InstanceAiService — agent tree snapshots', () => {
+	it('falls back to persisted run ids when an old background group mapping was pruned', async () => {
+		const service = createSnapshotService();
+		const terminalEvent: InstanceAiEvent = {
+			type: 'text-delta',
+			runId: 'run-background',
+			agentId: 'agent-001',
+			payload: { text: 'background finished' },
+		};
+		const snapshotStorage = {
+			getLatest: jest.fn(async () => ({
+				tree: makeAgentTree(),
+				runId: 'run-original',
+				messageGroupId: 'group-old',
+				runIds: ['run-original', 'run-background'],
+			})),
+			save: jest.fn(async () => {}),
+			updateLast: jest.fn(async () => {}),
+		};
+		service.eventBus.getEventsForRuns.mockReturnValue([terminalEvent]);
+
+		await service.saveAgentTreeSnapshot(
+			'thread-a',
+			'run-background',
+			snapshotStorage,
+			true,
+			'group-old',
+		);
+
+		expect(service.runState.getRunIdsForMessageGroup).toHaveBeenCalledWith('group-old');
+		expect(snapshotStorage.getLatest).toHaveBeenCalledWith('thread-a', {
+			messageGroupId: 'group-old',
+			runId: 'run-background',
+		});
+		expect(service.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
+			'run-original',
+			'run-background',
+		]);
+		expect(snapshotStorage.updateLast).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({ textContent: 'background finished' }),
+			'run-background',
+			expect.objectContaining({
+				messageGroupId: 'group-old',
+				runIds: ['run-original', 'run-background'],
+			}),
+		);
+		expect(snapshotStorage.save).not.toHaveBeenCalled();
+	});
+
+	it('skips update snapshots when no events are available for a pruned group', async () => {
+		const service = createSnapshotService();
+		const snapshotStorage = {
+			getLatest: jest.fn(async () => ({
+				tree: makeAgentTree(),
+				runId: 'run-original',
+				messageGroupId: 'group-old',
+				runIds: ['run-background'],
+			})),
+			save: jest.fn(async () => {}),
+			updateLast: jest.fn(async () => {}),
+		};
+
+		await service.saveAgentTreeSnapshot(
+			'thread-a',
+			'run-background',
+			snapshotStorage,
+			true,
+			'group-old',
+		);
+
+		expect(snapshotStorage.updateLast).not.toHaveBeenCalled();
+		expect(snapshotStorage.save).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Skipped updating empty Instance AI agent tree snapshot',
+			expect.objectContaining({
+				threadId: 'thread-a',
+				runId: 'run-background',
+				messageGroupId: 'group-old',
+			}),
+		);
 	});
 });
 

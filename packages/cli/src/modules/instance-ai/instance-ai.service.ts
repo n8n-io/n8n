@@ -4051,9 +4051,21 @@ export class InstanceAiService {
 			let groupRunIds: string[] | undefined;
 			if (messageGroupId) {
 				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
+				if (groupRunIds.length === 0) {
+					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
+					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
+				}
 				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
 			} else {
 				events = this.eventBus.getEventsForRun(threadId, runId);
+			}
+			if (isUpdate && events.length === 0) {
+				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
+					threadId,
+					runId,
+					messageGroupId,
+				});
+				return;
 			}
 			const agentTree = buildAgentTreeFromEvents(events);
 
