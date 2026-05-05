@@ -96,6 +96,7 @@ const rows = computed(() => {
 			<div v-if="showRows" :class="$style.rowList">
 				<TestCaseMetricRow
 					v-if="isErrored"
+					key="__error__"
 					:name="errorTitle"
 					:value="undefined"
 					tone="negative"

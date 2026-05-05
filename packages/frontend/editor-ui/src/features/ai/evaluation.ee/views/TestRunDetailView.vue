@@ -102,17 +102,22 @@ const caseValuesByKey = computed<Record<string, Array<number | boolean | undefin
 const rerunRun = async () => {
 	if (!workflowId.value) return;
 	try {
+		// startTestRun returns only { success: boolean }, so we identify the
+		// newly created run by diffing the run-id set before and after the
+		// refetch instead of relying on runAt ordering (which is unstable
+		// when two runs land in the same millisecond).
+		const previousRunIds = new Set(orderedRuns.value.map((record) => record.id));
 		await evaluationStore.startTestRun(workflowId.value);
 		await evaluationStore.fetchTestRuns(workflowId.value);
-		// startTestRun returns { success: boolean } — to land on the new run we
-		// look up the most recent one for this workflow and navigate to it.
-		const latest = orderedRuns.value[orderedRuns.value.length - 1];
-		if (latest && latest.id !== runId.value) {
-			await router.push({
-				name: VIEWS.EVALUATION_RUNS_DETAIL,
-				params: { workflowId: workflowId.value, runId: latest.id },
-			});
-		}
+		const newRun = orderedRuns.value.find((record) => !previousRunIds.has(record.id));
+		await router.push(
+			newRun
+				? {
+						name: VIEWS.EVALUATION_RUNS_DETAIL,
+						params: { workflowId: workflowId.value, runId: newRun.id },
+					}
+				: { name: VIEWS.EVALUATION_EDIT, params: { workflowId: workflowId.value } },
+		);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
