@@ -51,6 +51,33 @@ type ServiceInternals = {
 	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
 };
 
+type RunningTask = { taskId: string };
+type MarkedWorkflow = { workflowId: string };
+type ArchiveIfAiTemporary = jest.MockedFunction<(workflowId: string) => Promise<boolean>>;
+
+type TemporaryCleanupService = {
+	reapAiTemporaryFromRun: (
+		threadId: string,
+		user: User,
+		createdWorkflowIds: Set<string> | undefined,
+	) => Promise<string[]>;
+	backgroundTasks: {
+		getRunningTasks: jest.MockedFunction<(threadId: string) => RunningTask[]>;
+	};
+	aiBuilderTemporaryWorkflowRepository: {
+		findByThread: jest.MockedFunction<(threadId: string) => Promise<MarkedWorkflow[]>>;
+	};
+	adapterService: {
+		createContext: jest.MockedFunction<
+			(
+				user: User,
+				options: { threadId: string },
+			) => { workflowService: { archiveIfAiTemporary: ArchiveIfAiTemporary } }
+		>;
+	};
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
 function createCheckpointService(): ServiceInternals {
 	// Bypass the constructor — we only exercise the three pending-reentry helpers
 	// and their direct dependencies. Everything else (scheduler, event bus, etc.)
@@ -75,6 +102,46 @@ function createCheckpointService(): ServiceInternals {
 	};
 
 	return service;
+}
+
+function createTemporaryCleanupService({
+	runningTaskCount = 0,
+	markedWorkflows = [],
+	archivedWorkflowIds = new Set<string>(),
+}: {
+	runningTaskCount?: number;
+	markedWorkflows?: MarkedWorkflow[];
+	archivedWorkflowIds?: Set<string>;
+} = {}): {
+	service: TemporaryCleanupService;
+	archiveIfAiTemporary: ArchiveIfAiTemporary;
+} {
+	const service = Object.create(InstanceAiService.prototype) as unknown as TemporaryCleanupService;
+	const runningTasks: RunningTask[] = Array.from({ length: runningTaskCount }, (_value, index) => ({
+		taskId: `task-${index}`,
+	}));
+	const archiveIfAiTemporary: ArchiveIfAiTemporary = jest.fn(async (workflowId: string) =>
+		archivedWorkflowIds.has(workflowId),
+	);
+
+	service.backgroundTasks = {
+		getRunningTasks: jest.fn((_threadId: string) => runningTasks),
+	};
+	service.aiBuilderTemporaryWorkflowRepository = {
+		findByThread: jest.fn(async (_threadId: string) => markedWorkflows),
+	};
+	service.adapterService = {
+		createContext: jest.fn((_user: User, _options: { threadId: string }) => ({
+			workflowService: { archiveIfAiTemporary },
+		})),
+	};
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+	};
+
+	return { service, archiveIfAiTemporary };
 }
 
 const fakeUser = { id: 'user-1' } as User;
@@ -181,5 +248,53 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 
 			expect(service.reenterCheckpointById).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — AI temporary workflow cleanup', () => {
+	it('defers cleanup while background tasks are running', async () => {
+		const { service, archiveIfAiTemporary } = createTemporaryCleanupService({
+			runningTaskCount: 1,
+			markedWorkflows: [{ workflowId: 'wf-marked' }],
+			archivedWorkflowIds: new Set(['wf-marked', 'wf-created']),
+		});
+
+		await expect(
+			service.reapAiTemporaryFromRun('thread-a', fakeUser, new Set(['wf-created'])),
+		).resolves.toEqual([]);
+
+		expect(service.backgroundTasks.getRunningTasks).toHaveBeenCalledWith('thread-a');
+		expect(service.aiBuilderTemporaryWorkflowRepository.findByThread).not.toHaveBeenCalled();
+		expect(service.adapterService.createContext).not.toHaveBeenCalled();
+		expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Deferring AI-builder temporary workflow cleanup until tasks settle',
+			{
+				threadId: 'thread-a',
+				runningTaskCount: 1,
+			},
+		);
+	});
+
+	it('archives marked temporary workflows after background tasks settle', async () => {
+		const { service, archiveIfAiTemporary } = createTemporaryCleanupService({
+			markedWorkflows: [{ workflowId: 'wf-marked' }],
+			archivedWorkflowIds: new Set(['wf-marked', 'wf-created']),
+		});
+
+		await expect(
+			service.reapAiTemporaryFromRun('thread-a', fakeUser, new Set(['wf-created'])),
+		).resolves.toEqual(['wf-marked', 'wf-created']);
+
+		expect(service.backgroundTasks.getRunningTasks).toHaveBeenCalledWith('thread-a');
+		expect(service.aiBuilderTemporaryWorkflowRepository.findByThread).toHaveBeenCalledWith(
+			'thread-a',
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+			threadId: 'thread-a',
+		});
+		expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
+		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
+		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 	});
 });

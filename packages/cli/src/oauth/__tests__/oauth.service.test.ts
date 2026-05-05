@@ -2485,6 +2485,125 @@ describe('OauthService', () => {
 			}
 		});
 
+		it('should succeed when server advertises only authorization_code without refresh_token', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://login.commonroom.io/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://login.commonroom.io',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			// Server metadata omits refresh_token from grant_types_supported (Common Room pattern)
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // protected resource path-specific
+				.mockRejectedValueOnce(new Error('404')) // protected resource root
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://login.commonroom.io/authorize',
+						token_endpoint: 'https://login.commonroom.io/token',
+						registration_endpoint: 'https://login.commonroom.io/register',
+						grant_types_supported: ['authorization_code'], // no refresh_token
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			// Should not throw "No supported grant type and authentication method found"
+			await expect(
+				service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				}),
+			).resolves.toBeDefined();
+
+			// PKCE should be selected since S256 is supported
+			const callArgs = (service.encryptAndSaveData as jest.Mock).mock.calls[0];
+			expect(callArgs[1]).toHaveProperty('grantType', 'pkce');
+		});
+
+		it('should not produce double /.well-known/ paths when authorization server URL already contains /.well-known/', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			// Simulate the fallback path where serverUrl itself is the MCP server URL,
+			// protected resource discovery fails, and authorizationServerUrl ends up being
+			// a .well-known URL (or the server URL resolves to one with a .well-known path).
+			// We test by providing a serverUrl whose path starts with /.well-known/ directly.
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/.well-known/openid-configuration',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Protected resource discovery fails (both)
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // protected resource path-specific
+				.mockRejectedValueOnce(new Error('404')) // protected resource root
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://example.domain/authorize',
+						token_endpoint: 'https://example.domain/token',
+						registration_endpoint: 'https://example.domain/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify the discovery URL used is the root-level one (no double /.well-known/)
+			const authServerDiscoveryCall = (axios.get as jest.Mock).mock.calls[2]; // after 2 protected resource calls
+			expect(authServerDiscoveryCall[0]).not.toContain(
+				'/.well-known/openid-configuration/.well-known/',
+			);
+			expect(authServerDiscoveryCall[0]).toBe(
+				'https://example.domain/.well-known/oauth-authorization-server',
+			);
+		});
+
 		it('should reject malicious serverUrl before making any requests (SSRF protection)', async () => {
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
 			const oauthCredentials = {

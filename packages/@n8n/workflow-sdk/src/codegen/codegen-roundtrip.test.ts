@@ -35,6 +35,10 @@ interface TestWorkflow {
 	nodeCount: number;
 	expectedWarnings?: ExpectedWarning[];
 	expectedErrors?: ExpectedError[];
+	/** Warnings expected from validateWorkflow when run with a nodeTypesProvider. */
+	expectedValidationWarnings?: ExpectedWarning[];
+	/** Errors expected from WorkflowBuilder.validate() (plugin validator pipeline). */
+	expectedBuilderErrors?: ExpectedError[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -53,6 +57,8 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			skipReason?: string;
 			expectedWarnings?: ExpectedWarning[];
 			expectedErrors?: ExpectedError[];
+			expectedValidationWarnings?: ExpectedWarning[];
+			expectedBuilderErrors?: ExpectedError[];
 		}>;
 	};
 
@@ -70,6 +76,8 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				nodeCount: json.nodes?.length ?? 0,
 				expectedWarnings: entry.expectedWarnings,
 				expectedErrors: entry.expectedErrors,
+				expectedValidationWarnings: entry.expectedValidationWarnings,
+				expectedBuilderErrors: entry.expectedBuilderErrors,
 			});
 		}
 	}
@@ -2630,10 +2638,43 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 	}
 });
 
+describe('Committed workflows — builder validator errors', () => {
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedBuilderErrors = workflows.filter(
+		(w) => w.expectedBuilderErrors && w.expectedBuilderErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedBuilderErrors.length === 0) {
+		it('has at least one fixture with expectedBuilderErrors declared', () => {
+			expect(workflowsWithExpectedBuilderErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedBuilderErrors.forEach(({ id, name, json, expectedBuilderErrors }) => {
+			it(`emits expected builder validation errors for workflow ${id}: "${name}"`, () => {
+				const code = generateWorkflowCode(json);
+				const builder = parseWorkflowCodeToBuilder(code);
+				const result = builder.validate({ allowDisconnectedNodes: true });
+
+				const actualErrors: ExpectedError[] = result.errors
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedBuilderErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
+			});
+		});
+	}
+});
+
 describe('Committed workflows — schema validation errors', () => {
-	// Mirror the relevant builderHint.inputs declarations from the real node types
-	// so validateWorkflow can resolve required AI inputs without pulling in the
-	// full nodes-langchain dependency tree.
+	// Mirror the relevant builderHint.inputs / builderHint.outputs declarations from the
+	// real node types so validateWorkflow can resolve required AI inputs and emit
+	// output-mode warnings without pulling in the full nodes-langchain dependency tree.
 	const mockNodeTypesProvider = {
 		getByNameAndVersion: (type: string, _version?: number) => {
 			if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
@@ -2665,6 +2706,27 @@ describe('Committed workflows — schema validation errors', () => {
 								ai_languageModel: { required: true },
 								ai_memory: { required: false },
 								ai_tool: { required: false },
+							},
+						},
+					},
+				};
+			}
+			if (type === '@n8n/n8n-nodes-langchain.vectorStoreInMemory') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: { ai_embedding: { required: true } },
+							outputs: {
+								main: { displayOptions: { show: { mode: ['insert', 'load', 'update'] } } },
+								ai_vectorStore: {
+									required: true,
+									displayOptions: { show: { mode: ['retrieve'] } },
+								},
+								ai_tool: {
+									required: true,
+									displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+								},
 							},
 						},
 					},
@@ -2711,5 +2773,41 @@ describe('Committed workflows — schema validation errors', () => {
 				expect(result.valid).toBe(false);
 			});
 		});
+	}
+
+	const normalizeWarning = (w: ExpectedWarning): string => `${w.code}:${w.nodeName ?? ''}`;
+
+	const workflowsWithExpectedValidationWarnings = workflows.filter(
+		(w) => w.expectedValidationWarnings && w.expectedValidationWarnings.length > 0,
+	);
+
+	if (workflowsWithExpectedValidationWarnings.length === 0) {
+		it('has at least one fixture with expectedValidationWarnings declared', () => {
+			expect(workflowsWithExpectedValidationWarnings.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedValidationWarnings.forEach(
+			({ id, name, json, expectedValidationWarnings }) => {
+				it(`emits expected validation warnings for workflow ${id}: "${name}"`, () => {
+					const expectedCodes = new Set((expectedValidationWarnings ?? []).map((w) => w.code));
+
+					const result = validateWorkflow(json, {
+						nodeTypesProvider: mockNodeTypesProvider as never,
+						allowDisconnectedNodes: true,
+					});
+
+					const actualWarnings: ExpectedWarning[] = result.warnings
+						.filter((w) => expectedCodes.has(w.code))
+						.map((w) => ({ code: w.code, nodeName: w.nodeName }))
+						.sort((a, b) => normalizeWarning(a).localeCompare(normalizeWarning(b)));
+
+					const expected = (expectedValidationWarnings ?? [])
+						.slice()
+						.sort((a, b) => normalizeWarning(a).localeCompare(normalizeWarning(b)));
+
+					expect(actualWarnings).toEqual(expected);
+				});
+			},
+		);
 	}
 });
