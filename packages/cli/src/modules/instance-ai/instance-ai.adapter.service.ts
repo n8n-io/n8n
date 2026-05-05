@@ -329,12 +329,18 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
 			async unarchive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.unarchive(user, workflowId);
+				const result = await workflowService.unarchive(user, workflowId);
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
 			async clearAiTemporary(workflowId: string) {

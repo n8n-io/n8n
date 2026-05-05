@@ -1352,8 +1352,8 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const mockWorkflowService = {
 		getMany: jest.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
-		archive: jest.fn().mockResolvedValue(undefined),
-		unarchive: jest.fn().mockResolvedValue(undefined),
+		archive: jest.fn().mockResolvedValue(savedWorkflow),
+		unarchive: jest.fn().mockResolvedValue(savedWorkflow),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
 
@@ -1617,6 +1617,24 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowService.unarchive).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			'wf-1',
+		);
+	});
+
+	it('throws when archive cannot find or access the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.archive.mockResolvedValueOnce(undefined);
+
+		await expect(adapter.archive('wf-missing')).rejects.toThrow(
+			'Workflow wf-missing not found or not accessible',
+		);
+	});
+
+	it('throws when unarchive cannot find or access the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.unarchive.mockResolvedValueOnce(undefined);
+
+		await expect(adapter.unarchive('wf-missing')).rejects.toThrow(
+			'Workflow wf-missing not found or not accessible',
 		);
 	});
 
