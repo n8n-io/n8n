@@ -520,6 +520,7 @@ describe('executeResumableStream', () => {
 		);
 		expect(result.status).toBe('completed');
 		expect(result.agentRunId).toBe('agent-run-2');
+		await expect(result.text).resolves.toBe('Done.');
 		expect(eventBus.publish).toHaveBeenCalledWith(
 			'thread-1',
 			expect.objectContaining({

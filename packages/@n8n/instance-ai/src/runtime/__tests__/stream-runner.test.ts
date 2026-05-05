@@ -277,5 +277,6 @@ describe('streamAgentRun', () => {
 			}),
 		);
 		await expect(collectAsyncIterable(source.fullStream)).resolves.toEqual([nativeChunk]);
+		await expect(source.text).resolves.toBe('All good');
 	});
 });

@@ -192,6 +192,58 @@ function isNativeStreamResult(value: unknown): value is StreamResult {
 	return isRecord(value) && isReadableStream(value.stream);
 }
 
+function extractContentText(content: unknown): string {
+	if (typeof content === 'string') {
+		return content;
+	}
+
+	if (!Array.isArray(content)) {
+		return '';
+	}
+
+	return content
+		.map((part) => {
+			if (!isRecord(part) || part.type !== 'text') {
+				return '';
+			}
+
+			return typeof part.text === 'string' ? part.text : '';
+		})
+		.join('');
+}
+
+async function collectNativeStreamText(stream: ReadableStream<unknown>): Promise<string> {
+	const reader = stream.getReader();
+	let deltaText = '';
+	let messageText = '';
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) return deltaText || messageText;
+
+			if (!isRecord(value)) {
+				continue;
+			}
+
+			if (value.type === 'text-delta' && typeof value.delta === 'string') {
+				deltaText += value.delta;
+				continue;
+			}
+
+			if (value.type !== 'message' || !isRecord(value.message)) {
+				continue;
+			}
+
+			if (value.message.role === 'assistant') {
+				messageText += extractContentText(value.message.content);
+			}
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
+
 async function* readableStreamToAsyncIterable(stream: ReadableStream<unknown>) {
 	const reader = stream.getReader();
 	try {
@@ -216,10 +268,13 @@ export function normalizeStreamSource(
 	}
 
 	if (isNativeStreamResult(result)) {
+		const [eventStream, textStream] = result.stream.tee();
+
 		return {
 			runId: result.runId,
 			streamFormat: 'agent',
-			fullStream: readableStreamToAsyncIterable(result.stream),
+			fullStream: readableStreamToAsyncIterable(eventStream),
+			text: collectNativeStreamText(textStream),
 		};
 	}
 
