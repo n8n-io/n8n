@@ -49,6 +49,7 @@ import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-Chan
 import { ConvertAgentIdToUuid1765804780000 } from './1765804780000-ConvertAgentIdToUuid';
 import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-ExpandInsightsWorkflowIdLength';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
+import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -345,4 +346,5 @@ export const postgresMigrations: Migration[] = [
 	CreateEvaluationConfig1778100000000,
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,
+	ExpandVariablesValueColumnToText1777420800000,
 ];
