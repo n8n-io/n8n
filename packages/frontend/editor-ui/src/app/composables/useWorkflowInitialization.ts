@@ -274,7 +274,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				),
 			);
 		} catch (error) {
-			// Sending unexpected errors to Sentry
+			// Using error instead of warn so that unexpected errors are captured by Sentry
 			console.error('Failed to initialize workspace for workflow', {
 				workflowId: data.id,
 				error,
