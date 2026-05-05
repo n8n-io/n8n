@@ -225,7 +225,7 @@ export async function fetchExecutionData(
 			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: {
-				...workflowsStore.workflow,
+				...workflowDocumentStore.getSnapshot(),
 				pinData: workflowDocumentStore.getPinDataSnapshot(),
 			},
 			data: executionResponse.data,
