@@ -15,7 +15,6 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 
-import { bootstrapBrowserConnection } from './browser-bootstrap';
 import { ensureDaemon } from './daemon';
 import { formatTokens } from './formatting';
 import { renderHtml } from './report-html';
@@ -42,7 +41,6 @@ interface CliArgs {
 	autoStartDaemon: boolean;
 	daemonSandboxDir?: string;
 	usePublishedDaemon: boolean;
-	bootstrapBrowser: boolean;
 	keepData: boolean;
 }
 
@@ -62,7 +60,6 @@ const argsSchema = z.object({
 	autoStartDaemon: z.boolean().default(true),
 	daemonSandboxDir: z.string().optional(),
 	usePublishedDaemon: z.boolean().default(false),
-	bootstrapBrowser: z.boolean().default(false),
 	keepData: z.boolean().default(false),
 });
 
@@ -104,9 +101,6 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case '--use-published-daemon':
 				raw.usePublishedDaemon = true;
-				break;
-			case '--bootstrap-browser':
-				raw.bootstrapBrowser = true;
 				break;
 			case '--keep-data':
 				raw.keepData = true;
@@ -263,10 +257,6 @@ async function main(): Promise<void> {
 		usePublishedDaemon: args.usePublishedDaemon,
 	});
 	logger.info(`Using daemon at ${daemon.directory}`);
-
-	if (args.bootstrapBrowser) {
-		await bootstrapBrowserConnection({ client, logger, keepData: args.keepData });
-	}
 
 	const manifest = await collectManifest();
 	logger.info(

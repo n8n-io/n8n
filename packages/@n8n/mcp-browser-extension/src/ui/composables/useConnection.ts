@@ -25,6 +25,11 @@ export function useConnection() {
 	const settings = ref<TabManagementSettings>({ ...DEFAULT_SETTINGS });
 	const relayUrl = ref<string | null>(null);
 
+	// Set when the page is opened with `?autoConnect=1` (eval harness only).
+	// Skips the manual click: every available tab is selected and `connect()`
+	// fires once relayUrl + tab registry are ready.
+	const isAutoConnect = ref<boolean>(false);
+
 	// ── Single source of truth: reactive tab registry ─────────────────────────
 	// Maps chromeTabId → tab object. Kept in sync by Chrome tab event listeners.
 	const tabRegistry = reactive(new Map<number, chrome.tabs.Tab>());
@@ -212,6 +217,7 @@ export function useConnection() {
 		// This is more reliable than session storage, which can race with the UI mount
 		// (the background script writes it asynchronously when the tab is created).
 		const params = new URLSearchParams(window.location.search);
+		isAutoConnect.value = params.get('autoConnect') === '1';
 		const urlParam = params.get('mcpRelayUrl');
 		if (urlParam) {
 			log.debug('relay URL from query param:', urlParam);
@@ -241,6 +247,16 @@ export function useConnection() {
 		chrome.tabs.onCreated.addListener(onTabCreated);
 		chrome.tabs.onRemoved.addListener(onTabRemoved);
 		chrome.tabs.onUpdated.addListener(onTabUpdated);
+
+		// Auto-connect for eval harness — select all eligible tabs and connect.
+		// The eval daemon sets `?autoConnect=1` so subsequent `browser_connect`
+		// calls don't require a manual click between scenarios.
+		if (isAutoConnect.value && relayUrl.value && status.value === 'disconnected') {
+			for (const tab of availableTabs.value) {
+				if (tab.id !== undefined) selectedTabIds.add(tab.id);
+			}
+			void connect();
+		}
 	});
 
 	return {
@@ -252,6 +268,7 @@ export function useConnection() {
 		settings,
 		relayUrl,
 		hasRelayUrl,
+		isAutoConnect,
 		controlledTabs: controlledTabDetails,
 		allSelected,
 		someSelected,

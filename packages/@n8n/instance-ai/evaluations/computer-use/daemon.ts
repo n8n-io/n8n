@@ -188,7 +188,12 @@ async function spawnDaemonDetached(args: SpawnArgs): Promise<number> {
 		const child = spawn(command, commandArgs, {
 			detached: true,
 			stdio: ['ignore', logFile.fd, logFile.fd],
-			env: { ...process.env, FORCE_COLOR: '0' },
+			// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` makes the mcp-browser playwright
+			// adapter append `autoConnect=1` to the extension's connect URL, so
+			// the UI clicks Connect itself between scenarios. Avoids the manual
+			// click each time `browser_disconnect` resets the session at the end
+			// of a credential-setup orchestration run.
+			env: { ...process.env, FORCE_COLOR: '0', N8N_EVAL_AUTO_BROWSER_CONNECT: '1' },
 		});
 		child.unref();
 		return child.pid ?? -1;

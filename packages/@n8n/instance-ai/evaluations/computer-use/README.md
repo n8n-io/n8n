@@ -163,7 +163,6 @@ if you need them elsewhere.
 | `--no-auto-start-daemon` | (auto-start enabled) | Fail fast if no daemon is paired instead of spawning one |
 | `--daemon-sandbox-dir` | `<.eval-output>/daemon-sandbox/` | Override the auto-spawn daemon's `--dir` |
 | `--use-published-daemon` | `false` | Spawn `npx --yes @n8n/computer-use` instead of the local workspace build |
-| `--bootstrap-browser` | `false` | Trigger one `browser_connect` at startup so you click "Connect" once before scenarios run |
 | `--keep-data` | `false` | Skip post-run cleanup. Leaves chat threads and any workflows / credentials / data tables the agent created in n8n. Useful for inspecting an agent's session in the n8n UI. |
 | `--verbose` | `false` | Stream grader detail, pre-clean logs, n8n cleanup detail |
 
@@ -234,23 +233,20 @@ pnpm --filter @n8n/computer-use watch
 
 Browser tools route through the n8n AI Browser Bridge **Chrome extension**.
 Each `browser_connect` MCP call has the daemon launch Chrome at the
-extension's `connect.html` page, where you select tabs and click "Connect".
-There is no flag-based bypass — it's a deliberate human-in-the-loop step.
+extension's `connect.html` page, where the user normally selects tabs and
+clicks "Connect" — a deliberate human-in-the-loop step for real users.
 
-The daemon's BrowserConnection persists across MCP calls, so once you've
-clicked Connect, subsequent `browser_connect` invocations from scenarios
-will throw `AlreadyConnectedError` and the agent proceeds with
-`browser_navigate` etc. against the same session.
+For eval runs the click is automated. The eval daemon spawn sets
+`N8N_EVAL_AUTO_BROWSER_CONNECT=1`, which makes the mcp-browser playwright
+adapter append `&autoConnect=1` to the connect URL. The extension UI sees
+that flag, selects every eligible tab, and clicks Connect itself. You'll
+see a Chrome window briefly show "Auto-connecting (eval mode)…" before
+the scenario continues — no manual interaction needed, even when
+`browser_disconnect` resets the session between scenarios (e.g. at the
+end of a credential-setup orchestration).
 
-Pass `--bootstrap-browser` to trigger the connect once at eval startup:
-
-```bash
-pnpm exec dotenvx run -f .env.local -- \
-  pnpm --filter @n8n/instance-ai eval:computer-use --bootstrap-browser --verbose
-```
-
-You'll see a Chrome window appear with the connect page; click Connect,
-and the eval continues. The daemon caches the session for any later runs.
+The flag is gated by `N8N_EVAL_AUTO_BROWSER_CONNECT=1` and only set by
+the eval daemon spawn — real users still get the manual Connect button.
 
 ## Adding a scenario
 
@@ -300,21 +296,21 @@ external state needs to be in place for that scenario to run meaningfully.
 
 | Notion ID | Requires | Tag(s) for filtering |
 |---|---|---|
-| 1.1 Slack OAuth | browser bootstrap, real Slack account | `requires:third-party-account:slack` |
-| 1.2 GCP OAuth | browser bootstrap, real GCP account | `requires:third-party-account:gcp` |
-| 1.3 Anthropic API key | browser bootstrap, real Anthropic account | `requires:third-party-account:anthropic` |
-| 1.4 Notion integration | browser bootstrap, real Notion workspace | `requires:third-party-account:notion` |
+| 1.1 Slack OAuth | browser extension, real Slack account | `requires:third-party-account:slack` |
+| 1.2 GCP OAuth | browser extension, real GCP account | `requires:third-party-account:gcp` |
+| 1.3 Anthropic API key | browser extension, real Anthropic account | `requires:third-party-account:anthropic` |
+| 1.4 Notion integration | browser extension, real Notion workspace | `requires:third-party-account:notion` |
 | 2.1 Read local context | — (`.md` substitute, see below) | `filesystem-read` |
 | 2.2 CSV sample data | — | `filesystem-read` |
 | 3.1 Workflow docs | — | `filesystem-write` |
 | 3.2 Handover document | — | `filesystem-write` |
-| 4.1 Authenticated API docs | browser bootstrap | `requires:browser-bootstrap` |
-| 4.2 Stripe dashboard | browser bootstrap, real Stripe account | `requires:third-party-account:stripe` |
-| 5.1 Form trigger fill | browser bootstrap | `requires:browser-bootstrap` |
+| 4.1 Authenticated API docs | browser extension | `requires:browser-bootstrap` |
+| 4.2 Stripe dashboard | browser extension, real Stripe account | `requires:third-party-account:stripe` |
+| 5.1 Form trigger fill | browser extension | `requires:browser-bootstrap` |
 | 6.1 curl connectivity | network access | `shell` |
 | 6.2 Environment check | — | `shell` |
 | 6.3 Move files | — | `filesystem-write`, `shell` |
-| 7.1 Make.com migration | browser bootstrap, real Make.com account | `requires:third-party-account:make` |
+| 7.1 Make.com migration | browser extension, real Make.com account | `requires:third-party-account:make` |
 | M.1 Proactive CU suggestion | — | `meta`, `proposal` |
 | M.2 No CU when unnecessary | — | `meta`, `proposal` |
 | M.3 Extension not installed | extension *not* installed/connected | `requires:no-browser-extension` |
@@ -329,8 +325,8 @@ you can selectively run subsets:
 # Just the no-prerequisites scenarios (safe to run anywhere)
 pnpm --filter @n8n/instance-ai eval:computer-use --filter "2.|3.|6.|M."
 
-# Only the OAuth ones (needs real third-party accounts + browser bootstrap)
-pnpm --filter @n8n/instance-ai eval:computer-use --filter "1." --bootstrap-browser
+# Only the OAuth ones (needs real third-party accounts)
+pnpm --filter @n8n/instance-ai eval:computer-use --filter "1."
 ```
 
 ### Notes on adaptations
