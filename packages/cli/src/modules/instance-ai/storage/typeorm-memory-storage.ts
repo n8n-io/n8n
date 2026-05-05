@@ -38,7 +38,11 @@ import { InstanceAiResourceRepository } from '../repositories/instance-ai-resour
 import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 /** Metadata keys that must only be mutated via patchThread (atomic read-modify-write). */
-const PATCH_ONLY_METADATA_KEYS = ['instanceAiPlannedTasks', 'instanceAiTasks'] as const;
+const PATCH_ONLY_METADATA_KEYS = [
+	'instanceAiPlannedTasks',
+	'instanceAiTasks',
+	'instanceAiWorkflowLoop',
+] as const;
 
 function countLines(value: string): number {
 	return value === '' ? 0 : value.split(/\r?\n/u).length;

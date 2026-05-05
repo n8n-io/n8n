@@ -202,6 +202,7 @@ export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
 export {
 	ProvisioningConfigDto,

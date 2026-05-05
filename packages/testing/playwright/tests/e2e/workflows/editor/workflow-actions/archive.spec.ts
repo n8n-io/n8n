@@ -97,6 +97,48 @@ test.describe(
 			expect(saveRequestDetected).toBe(false);
 		});
 
+		test('should not trigger autosave when pasting nodes on an archived workflow', async ({
+			n8n,
+		}) => {
+			const workflowId = await addNodeAndGetWorkflowId(n8n);
+
+			await n8n.workflowSettingsModal.getWorkflowMenu().click();
+			await n8n.workflowSettingsModal.clickArchiveMenuItem();
+			await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+			await expect(n8n.page).toHaveURL(/\/workflows$/);
+
+			await goToWorkflow(n8n, workflowId);
+			await expect(n8n.canvas.getArchivedTag()).toBeVisible();
+
+			let saveRequestDetected = false;
+			n8n.page.on('request', (request) => {
+				if (request.url().includes('/rest/workflows/') && request.method() === 'PATCH') {
+					saveRequestDetected = true;
+				}
+			});
+
+			const workflowData = JSON.stringify({
+				nodes: [
+					{
+						parameters: {},
+						id: 'paste-test-node',
+						name: 'No Operation, do nothing',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [300, 300],
+					},
+				],
+				connections: {},
+			});
+			await n8n.clipboard.paste(workflowData);
+
+			// eslint-disable-next-line playwright/no-wait-for-timeout
+			await n8n.page.waitForTimeout(2000);
+
+			expect(saveRequestDetected).toBe(false);
+			await expect(n8n.notifications.getErrorNotifications().first()).not.toBeAttached();
+		});
+
 		test('should not be able to archive or delete unsaved workflow', async ({ n8n }) => {
 			await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
 			await n8n.workflowSettingsModal.getWorkflowMenu().click();

@@ -175,6 +175,8 @@ function formatJson(value: unknown): string {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .userMessage {
 	align-self: flex-end;
 	display: flex;
@@ -232,11 +234,14 @@ function formatJson(value: unknown): string {
 }
 
 .statusDot {
+	--animation--opacity-pulse--duration: 1.5s;
+	--animation--opacity-pulse--opacity-end: 0.3;
+
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
 	background: var(--color--primary);
-	animation: pulse 1.5s ease-in-out infinite;
+	@include motion.opacity-pulse;
 }
 
 @keyframes status-fade-in {
@@ -245,16 +250,6 @@ function formatJson(value: unknown): string {
 	}
 	to {
 		opacity: 1;
-	}
-}
-
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.3;
 	}
 }
 

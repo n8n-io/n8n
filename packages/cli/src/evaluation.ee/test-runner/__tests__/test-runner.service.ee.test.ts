@@ -22,6 +22,7 @@ import path from 'path';
 import { TestRunnerService } from '../test-runner.service.ee';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -45,6 +46,7 @@ describe('TestRunnerService', () => {
 	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
+	const concurrencyControlService = mock<ConcurrencyControlService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -65,6 +67,7 @@ describe('TestRunnerService', () => {
 			mock(),
 			publisher,
 			instanceSettings,
+			concurrencyControlService,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -507,6 +510,7 @@ describe('TestRunnerService', () => {
 				mock(),
 				publisher,
 				instanceSettings,
+				concurrencyControlService,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -824,6 +828,7 @@ describe('TestRunnerService', () => {
 					mock(),
 					publisher,
 					instanceSettings,
+					concurrencyControlService,
 				);
 			});
 
@@ -1938,6 +1943,470 @@ describe('TestRunnerService', () => {
 			expect(() => {
 				(testRunnerService as any).validateSetOutputsNodes(workflow);
 			}).not.toThrow();
+		});
+	});
+
+	describe('runTest - parallel execution', () => {
+		const TRIGGER_NODE_NAME = 'Dataset Trigger';
+		const METRICS_NODE_NAME = 'Set Metrics';
+		const USER = mock<{ id: string }>({ id: 'user-1' });
+		const WORKFLOW_ID = 'wf-1';
+
+		// Builds a minimal workflow that passes validateWorkflowConfiguration.
+		// Using a plain object cast (not mock<IWorkflowBase>) so per-node
+		// boolean fields like `disabled` read as undefined instead of being
+		// auto-mocked as truthy functions by jest-mock-extended's deep proxy.
+		const buildWorkflow = (): IWorkflowBase =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Eval Workflow',
+				active: false,
+				nodes: [
+					{
+						id: 'trigger',
+						name: TRIGGER_NODE_NAME,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0] as [number, number],
+						parameters: {
+							source: 'dataTable',
+							dataTableId: 'dt-1',
+						},
+					},
+					{
+						id: 'metrics',
+						name: METRICS_NODE_NAME,
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [200, 0] as [number, number],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [{ id: '1', name: 'score', value: 1 }],
+							},
+						},
+					},
+				],
+				connections: {},
+				settings: {},
+			}) as unknown as IWorkflowBase;
+
+		// Dataset-trigger execution result containing N test rows.
+		const buildDatasetExecution = (rowCount: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[TRIGGER_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [
+											Array.from({ length: rowCount }, (_, i) => ({
+												json: { caseId: i, prompt: `prompt ${i}` },
+											})),
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// Per-case execution result with a single user-defined metric.
+		const buildCaseExecution = (score: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[METRICS_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: { score } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// Wires repository and runner mocks for an N-case happy-path runTest.
+		// Returns a counter object the caller can read after `runTest` resolves.
+		const setupHappyPathMocks = (caseCount: number) => {
+			const workflow = buildWorkflow();
+			workflowRepository.findById.mockResolvedValue(workflow as never);
+
+			// Default: throttle resolves immediately (capacity always available).
+			// Tests that exercise abort-during-throttle override this.
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCancelled.mockResolvedValue(undefined as never);
+			testRunRepository.clearInstanceTracking.mockResolvedValue(undefined as never);
+			testRunRepository.isCancellationRequested.mockResolvedValue(false);
+			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
+			// `manager` is a TypeORM EntityManager not auto-deep-mocked by mock<T>().
+			// Provide a transaction stub that just invokes the callback so cancel
+			// paths run end-to-end.
+			Object.assign(testRunRepository, {
+				manager: {
+					transaction: jest
+						.fn()
+						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
+				},
+			});
+
+			let runCallIndex = 0;
+			const inFlightTracker = { inFlight: 0, max: 0, perCaseStarted: 0 };
+
+			workflowRunner.run.mockImplementation(async () => {
+				const id = runCallIndex === 0 ? 'dataset-exec' : `case-exec-${runCallIndex}`;
+				runCallIndex++;
+				return id;
+			});
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return buildDatasetExecution(caseCount);
+				}
+				inFlightTracker.inFlight++;
+				inFlightTracker.perCaseStarted++;
+				inFlightTracker.max = Math.max(inFlightTracker.max, inFlightTracker.inFlight);
+				// Yield to the event loop so other queued tasks observably overlap.
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				inFlightTracker.inFlight--;
+				const score = parseInt(executionId.replace('case-exec-', ''), 10) / 10;
+				return buildCaseExecution(score);
+			});
+
+			return { workflow, inFlightTracker };
+		};
+
+		test('concurrency=1 runs cases sequentially (max in-flight = 1)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(4);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			expect(inFlightTracker.perCaseStarted).toBe(4);
+			expect(inFlightTracker.max).toBe(1);
+			// 1 dataset trigger + 4 test cases.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(5);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+			expect(testRunRepository.markAsCancelled).not.toHaveBeenCalled();
+		});
+
+		test('concurrency=3 fans out cases in parallel (max in-flight > 1)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
+
+			expect(inFlightTracker.perCaseStarted).toBe(6);
+			expect(inFlightTracker.max).toBeGreaterThan(1);
+			expect(inFlightTracker.max).toBeLessThanOrEqual(3);
+			expect(workflowRunner.run).toHaveBeenCalledTimes(7);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('concurrency clamped 1-10 defensively (above-bound input does not exceed cap)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(12);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 99);
+
+			expect(inFlightTracker.perCaseStarted).toBe(12);
+			expect(inFlightTracker.max).toBeLessThanOrEqual(10);
+		});
+
+		test('aggregate metrics produce the same average regardless of concurrency', async () => {
+			setupHappyPathMocks(5);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+			const sequentialMetrics = testRunRepository.markAsCompleted.mock.calls[0][1];
+
+			// `clearAllMocks` resets call history but not implementations. The
+			// `createTestRun` stub is set in the outer `beforeEach`, so it needs
+			// re-stubbing here. `setupHappyPathMocks` re-wires everything else.
+			jest.clearAllMocks();
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
+			setupHappyPathMocks(5);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
+			const parallelMetrics = testRunRepository.markAsCompleted.mock.calls[0][1];
+
+			expect(Object.keys(parallelMetrics ?? {}).sort()).toEqual(
+				Object.keys(sequentialMetrics ?? {}).sort(),
+			);
+			for (const key of Object.keys(sequentialMetrics ?? {})) {
+				expect((parallelMetrics as Record<string, number>)[key]).toBeCloseTo(
+					(sequentialMetrics as Record<string, number>)[key],
+					15,
+				);
+			}
+		});
+
+		test('per-case error does not stop other cases from completing', async () => {
+			setupHappyPathMocks(4);
+
+			// Override per-case mock so case 2 throws.
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return buildDatasetExecution(4);
+				}
+				if (executionId === 'case-exec-2') {
+					throw new Error('synthetic failure');
+				}
+				return buildCaseExecution(0.5);
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			// 4 test-case executions attempted; 1 errored, 3 succeeded.
+			const createCalls = testCaseExecutionRepository.createTestCaseExecution.mock.calls;
+			const errorRows = createCalls.filter(([row]) => row.status === 'error');
+			const successRows = createCalls.filter(([row]) => row.status === 'success');
+			expect(errorRows).toHaveLength(1);
+			expect(successRows).toHaveLength(3);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('throttle is called once per case and release is called once per case', async () => {
+			setupHappyPathMocks(4);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			expect(concurrencyControlService.throttle).toHaveBeenCalledTimes(4);
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(4);
+			expect(concurrencyControlService.throttle).toHaveBeenCalledWith({
+				mode: 'evaluation',
+				executionId: expect.stringContaining('test-run-id-case-'),
+			});
+			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: 'evaluation' });
+		});
+
+		test('release is called even when runTestCase throws', async () => {
+			// `setupHappyPathMocks` wires the dataset-trigger execution; the
+			// override below replaces only the per-case execution path so each
+			// case throws. The `dataset-exec` branch is preserved manually here
+			// to keep the dataset trigger intact.
+			setupHappyPathMocks(3);
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return {
+						data: {
+							resultData: {
+								runData: {
+									[TRIGGER_NODE_NAME]: [
+										{
+											data: {
+												[NodeConnectionTypes.Main]: [
+													[{ json: { id: 0 } }, { json: { id: 1 } }, { json: { id: 2 } }],
+												],
+											},
+										},
+									],
+								},
+							},
+						},
+					} as unknown as IRun;
+				}
+				throw new Error('synthetic per-case failure');
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			expect(concurrencyControlService.throttle).toHaveBeenCalledTimes(3);
+			// release fires in the finally block — must run even though every
+			// case threw.
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
+		});
+
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, flag_enabled_for_user', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4, true);
+
+			const trackCalls = telemetry.track.mock.calls.filter(
+				([eventName]) => eventName === 'Test run finished',
+			);
+			expect(trackCalls).toHaveLength(1);
+			const payload = trackCalls[0][1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 4,
+					parallel_enabled: true,
+					concurrency_limited_by_config: false,
+					flag_enabled_for_user: true,
+				}),
+			);
+		});
+
+		test('flag_enabled_for_user defaults to false when not passed', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload.flag_enabled_for_user).toBe(false);
+		});
+
+		test('telemetry parallel_enabled is false for sequential runs', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			const trackCalls = telemetry.track.mock.calls.filter(
+				([eventName]) => eventName === 'Test run finished',
+			);
+			expect(trackCalls).toHaveLength(1);
+			const payload = trackCalls[0][1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 1,
+					parallel_enabled: false,
+					concurrency_limited_by_config: false,
+				}),
+			);
+		});
+
+		test('telemetry payload reports realised fan-out (cases_started, peak_in_flight)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3, true);
+
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload.cases_started).toBe(6);
+			// Should match what the test harness independently observed —
+			// proves the telemetry stat is the same number a watcher would see.
+			expect(payload.peak_in_flight).toBe(inFlightTracker.max);
+			expect(payload.peak_in_flight).toBeGreaterThan(1);
+			expect(payload.peak_in_flight).toBeLessThanOrEqual(3);
+		});
+
+		test('evaluationLimit clamps requested concurrency and flags concurrency_limited_by_config', async () => {
+			const cappedConfig = mockInstance(ExecutionsConfig, {
+				mode: 'regular',
+				concurrency: { productionLimit: -1, evaluationLimit: 2 } as never,
+			});
+			const cappedService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				cappedConfig,
+				mock(),
+				publisher,
+				instanceSettings,
+				concurrencyControlService,
+			);
+
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
+
+			expect(inFlightTracker.max).toBeLessThanOrEqual(2);
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 2,
+					parallel_enabled: true,
+					concurrency_limited_by_config: true,
+				}),
+			);
+		});
+
+		test('abort during throttle wait evicts the queue entry and short-circuits without an UNKNOWN_ERROR row', async () => {
+			setupHappyPathMocks(3);
+
+			// Hold throttle indefinitely so all per-case tasks are stuck in the
+			// queue when we fire the abort.
+			concurrencyControlService.throttle.mockImplementation(
+				async () =>
+					await new Promise<void>(() => {
+						/* never resolves */
+					}),
+			);
+
+			// Kick off the run, then abort while cases are queued in throttle.
+			const runPromise = testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			// Reach into the service's abort controllers map and trip it.
+			// `cancelTestRunLocally` is the path the public cancel API takes.
+			const cancelled = (
+				testRunnerService as never as {
+					cancelTestRunLocally: (id: string) => boolean;
+				}
+			).cancelTestRunLocally('test-run-id');
+			expect(cancelled).toBe(true);
+
+			await runPromise;
+
+			// Each queued case should have been evicted via remove().
+			expect(concurrencyControlService.remove).toHaveBeenCalledWith({
+				mode: 'evaluation',
+				executionId: expect.stringContaining('test-run-id-case-'),
+			});
+
+			// And no test-case row should have been written for the evicted
+			// cases — they short-circuit before touching the DB. The legacy
+			// path would have produced UNKNOWN_ERROR rows here.
+			const errorRows = testCaseExecutionRepository.createTestCaseExecution.mock.calls.filter(
+				([row]) => row.errorCode === 'UNKNOWN_ERROR',
+			);
+			expect(errorRows).toHaveLength(0);
+
+			// Run is marked cancelled, not completed.
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		test('multi-main DB cancel flag flipped mid-run aborts the controller', async () => {
+			const multiMainInstance = mock<InstanceSettings>({
+				hostId: 'main-a',
+				isMultiMain: true,
+			});
+			const multiMainService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				executionsConfig,
+				mock(),
+				publisher,
+				multiMainInstance,
+				concurrencyControlService,
+			);
+
+			setupHappyPathMocks(4);
+
+			// Flip the cancellation flag after the first case sees it as false.
+			let pollCount = 0;
+			testRunRepository.isCancellationRequested.mockImplementation(async () => {
+				pollCount++;
+				return pollCount > 1;
+			});
+
+			await multiMainService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			expect(testRunRepository.isCancellationRequested).toHaveBeenCalled();
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 	});
 });
