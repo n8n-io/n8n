@@ -10,7 +10,11 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-const positionSchema = z.tuple([z.number(), z.number()]).describe('Canvas position as [x, y]');
+const positionSchema = z
+	.array(z.number())
+	.length(2)
+	.transform((v): [number, number] => [v[0], v[1]])
+	.describe('Canvas position as [x, y]');
 
 const credentialsSchema = z.record(
 	z.string(),
