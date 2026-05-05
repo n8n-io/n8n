@@ -301,7 +301,7 @@ describe('ExternalSecretsManager', () => {
 
 			const decryptedSettings = { key: 'value' };
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedSettings));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedSettings));
 
 			const newProvider = new DummyProvider();
 			await newProvider.init({ connected: true, connectedAt: null, settings: {} });
@@ -319,7 +319,7 @@ describe('ExternalSecretsManager', () => {
 			expect(mockProviderRegistry.remove).toHaveBeenCalledWith('my-vault');
 
 			// Sets up new provider with decrypted settings
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 			expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', {
 				connected: true,
 				connectedAt: null,
@@ -359,7 +359,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should skip cache refresh when provider initialization fails', async () => {
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			// Provider initialization fails, so it won't be added to the registry
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -379,7 +379,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should broadcast reload even when no existing provider to tear down', async () => {
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const newProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -852,7 +852,7 @@ describe('ExternalSecretsManager', () => {
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
@@ -896,7 +896,7 @@ describe('ExternalSecretsManager', () => {
 				enabledConnection,
 				disabledConnection,
 			] as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
@@ -945,7 +945,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider1 = new DummyProvider();
 			const dummyProvider2 = new DummyProvider();
@@ -986,7 +986,7 @@ describe('ExternalSecretsManager', () => {
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedSettings));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedSettings));
 
 			const dummyProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -996,7 +996,7 @@ describe('ExternalSecretsManager', () => {
 
 			await managerWithProjectMode.reloadAllProviders();
 
-			expect(mockCipher.decrypt).toHaveBeenCalledWith(encryptedSettings);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedSettings);
 			expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', {
 				connected: true,
 				connectedAt: null,
@@ -1031,7 +1031,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const providerA = new DummyProvider();
 			const providerB = new DummyProvider();
@@ -1077,7 +1077,7 @@ describe('ExternalSecretsManager', () => {
 			mockProviderRegistry.add('my-vault', existingProvider);
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const newProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -1107,7 +1107,7 @@ describe('ExternalSecretsManager', () => {
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue('invalid-json{');
+			mockCipher.decryptV2.mockResolvedValue('invalid-json{');
 
 			await expect(managerWithProjectMode.reloadAllProviders()).rejects.toThrow(
 				'External Secrets Settings could not be decrypted',
@@ -1161,7 +1161,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -1203,7 +1203,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider1 = new DummyProvider();
 			const dummyProvider2 = new DummyProvider();

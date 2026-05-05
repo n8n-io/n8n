@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { type FindOptionsOrder, In } from '@n8n/typeorm';
+import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -228,6 +228,12 @@ export class RoleMappingRuleService {
 		await this.roleMappingRuleRepository.remove(rule);
 		await this.normalizeOrderForType(ruleType);
 		return { ruleType };
+	}
+
+	async deleteAllOfType(type: 'instance' | 'project', tx?: EntityManager): Promise<number> {
+		const repo = tx ? tx.getRepository(RoleMappingRule) : this.roleMappingRuleRepository;
+		const result = await repo.delete({ type });
+		return result.affected ?? 0;
 	}
 
 	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {

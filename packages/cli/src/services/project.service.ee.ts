@@ -278,6 +278,20 @@ export class ProjectService {
 		return await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
 	}
 
+	// Returns the projects a caller can pick as share targets, including peer
+	// personal projects. Admins (project:read) still see everything; non-admin
+	// callers also see all personal projects so the share dropdown can surface
+	// other users. See `ProjectRepository.getShareableProjectsAndCount`.
+	async getShareableProjectsAndCount(
+		user: User,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		if (hasGlobalScope(user, 'project:read')) {
+			return await this.projectRepository.findAllProjectsAndCount(options);
+		}
+		return await this.projectRepository.getShareableProjectsAndCount(user.id, options);
+	}
+
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}

@@ -409,6 +409,46 @@ describe('dataTable', () => {
 			await expect(result).rejects.toThrow(DataTableNotFoundError);
 		});
 
+		it('should clamp insertion index to append when index exceeds current column count', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'clampIndexTable',
+				columns: [
+					{ name: 'a', type: 'string' },
+					{ name: 'b', type: 'number' },
+				],
+			});
+
+			const added = await dataTableService.addColumn(dataTableId, project1.id, {
+				name: 'c',
+				type: 'string',
+				index: 100,
+			});
+
+			expect(added.index).toBe(2);
+
+			const columnResult = await dataTableService.getColumns(dataTableId, project1.id);
+			expect(columnResult.map((c) => ({ name: c.name, index: c.index }))).toEqual([
+				{ name: 'a', index: 0 },
+				{ name: 'b', index: 1 },
+				{ name: 'c', index: 2 },
+			]);
+		});
+
+		it('should reject a negative insertion index when adding a column', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'negativeIndexTable',
+				columns: [{ name: 'a', type: 'string' }],
+			});
+
+			await expect(
+				dataTableService.addColumn(dataTableId, project1.id, {
+					name: 'b',
+					type: 'string',
+					index: -1,
+				}),
+			).rejects.toThrow(DataTableValidationError);
+		});
+
 		it('should succeed with adding column to table that already has rows and set null values for existing rows', async () => {
 			// ARRANGE
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {

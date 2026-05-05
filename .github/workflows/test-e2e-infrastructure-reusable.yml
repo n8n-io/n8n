@@ -37,7 +37,7 @@ jobs:
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --workers=1
+      test-command: pnpm --filter=n8n-playwright test:all --project=${{ matrix.profile }}:infrastructure --workers=1
       runner: ${{ matrix.runner }}
       timeout-minutes: 60
     secrets: inherit

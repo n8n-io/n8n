@@ -140,7 +140,9 @@ describe('data-tables tool', () => {
 				noSuspendCtx(),
 			);
 
-			expect(context.dataTableService.getSchema).toHaveBeenCalledWith('dt-1');
+			expect(context.dataTableService.getSchema).toHaveBeenCalledWith('dt-1', {
+				projectId: undefined,
+			});
 			expect(result).toEqual({ columns });
 		});
 	});
@@ -168,6 +170,7 @@ describe('data-tables tool', () => {
 				filter,
 				limit: 10,
 				offset: 0,
+				projectId: undefined,
 			});
 			expect(result).toEqual(queryResult);
 		});
@@ -399,7 +402,9 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteInput as never, noSuspendCtx());
 
-			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1');
+			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1', {
+				projectId: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -409,7 +414,9 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteInput as never, resumeCtx(true));
 
-			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1');
+			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1', {
+				projectId: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -469,10 +476,11 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(addColumnInput as never, noSuspendCtx());
 
-			expect(context.dataTableService.addColumn).toHaveBeenCalledWith('dt-1', {
-				name: 'age',
-				type: 'number',
-			});
+			expect(context.dataTableService.addColumn).toHaveBeenCalledWith(
+				'dt-1',
+				{ name: 'age', type: 'number' },
+				{ projectId: undefined },
+			);
 			expect(result).toEqual({ column });
 		});
 
@@ -542,7 +550,9 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteColumnInput as never, noSuspendCtx());
 
-			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1');
+			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1', {
+				projectId: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -552,7 +562,9 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteColumnInput as never, resumeCtx(true));
 
-			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1');
+			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1', {
+				projectId: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -614,6 +626,7 @@ describe('data-tables tool', () => {
 				'dt-1',
 				'col-1',
 				'full_name',
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -628,6 +641,7 @@ describe('data-tables tool', () => {
 				'dt-1',
 				'col-1',
 				'full_name',
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -689,6 +703,7 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
 				'dt-1',
 				insertRowsInput.rows,
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({ insertedCount: 2 });
 		});
@@ -703,6 +718,7 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
 				'dt-1',
 				insertRowsInput.rows,
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({ insertedCount: 2 });
 		});
@@ -789,6 +805,7 @@ describe('data-tables tool', () => {
 				'dt-1',
 				updateRowsInput.filter,
 				updateRowsInput.data,
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({ updatedCount: 5 });
 		});
@@ -804,6 +821,7 @@ describe('data-tables tool', () => {
 				'dt-1',
 				updateRowsInput.filter,
 				updateRowsInput.data,
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({ updatedCount: 3 });
 		});
@@ -900,6 +918,7 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
 				'dt-1',
 				deleteRowsInput.filter,
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({
 				success: true,
@@ -925,6 +944,7 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
 				'dt-1',
 				deleteRowsInput.filter,
+				{ projectId: undefined },
 			);
 			expect(result).toEqual({
 				success: true,

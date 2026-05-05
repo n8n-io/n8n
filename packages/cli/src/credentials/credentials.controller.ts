@@ -218,7 +218,7 @@ export class CredentialsController {
 			req.body,
 			credential,
 		);
-		const newCredentialData = this.credentialsService.createEncryptedData({
+		const newCredentialData = await this.credentialsService.createEncryptedData({
 			id: credential.id,
 			name: preparedCredentialData.name,
 			type: preparedCredentialData.type,

@@ -40,3 +40,12 @@ export class DeleteOAuthClientResponseDto extends Z.class({
 	success: z.boolean(),
 	message: z.string(),
 }) {}
+
+/**
+ * DTO for instance-wide MCP OAuth client capacity stats (admin-only)
+ */
+export class InstanceMcpClientStatsResponseDto extends Z.class({
+	count: z.number(),
+	limit: z.number(),
+	atCapacity: z.boolean(),
+}) {}

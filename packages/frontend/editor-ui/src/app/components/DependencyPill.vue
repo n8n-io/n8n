@@ -164,7 +164,7 @@ function onSelect(value: string) {
 		case 'workflowParent':
 		case 'errorWorkflow':
 		case 'errorWorkflowParent':
-			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { name: dep.id } }).href;
+			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: dep.id } }).href;
 			window.open(href, '_blank');
 			break;
 		case 'dataTableId':

@@ -40,6 +40,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
@@ -318,18 +319,50 @@ export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[]
 		.map(applyNodeTags);
 }
 
+const hasMatchingOutput = (
+	node: SimplifiedNodeType,
+	connectionType: NodeConnectionType,
+): boolean => {
+	const outputs = node.outputs;
+	if (!Array.isArray(outputs)) return false;
+	return outputs.some((output: NodeConnectionType | INodeOutputConfiguration) =>
+		typeof output === 'string' ? output === connectionType : output?.type === connectionType,
+	);
+};
+
 export const filterAndSearchNodes = (
 	mergedNodes: SimplifiedNodeType[],
 	search: string,
-	isAgentSubcategory: boolean,
+	options: {
+		isAiSubcategory?: boolean;
+		isHitlSubcategory?: boolean;
+		aiConnectionType?: NodeConnectionType;
+	} = {},
 ) => {
-	if (!search || isAgentSubcategory) return [];
+	if (!search) return [];
+
+	const { isAiSubcategory = false, isHitlSubcategory = false, aiConnectionType } = options;
+
+	// HITL surfacing from community nodes is not supported yet — see
+	// CommunityNodeTypesService.createAiTools which only generates `...Tool`
+	// variants, never `...HitlTool` variants.
+	if (isHitlSubcategory) return [];
+
+	// AI sub-pickers (Tools, Language Model, Memory, Vector Store, …) all share
+	// rootView === AI_OTHERS_NODE_CREATOR_VIEW but target different connection
+	// types. Only surface community results when we know which connection type
+	// the picker is scoped to, and only for nodes whose outputs match it, so
+	// tool nodes don't leak into the Language Model / Memory / … pickers.
+	if (isAiSubcategory) {
+		if (!aiConnectionType) return [];
+		const candidates = mergedNodes.filter((node) => hasMatchingOutput(node, aiConnectionType));
+		const vettedNodes = candidates.map((item) => transformNodeType(item)) as NodeCreateElement[];
+		return finalizeItems(searchNodes(search, vettedNodes));
+	}
 
 	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
 
-	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
-
-	return searchResult;
+	return finalizeItems(searchNodes(search, vettedNodes));
 };
 
 export function prepareCommunityNodeDetailsViewStack(

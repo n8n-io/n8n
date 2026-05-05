@@ -63,7 +63,7 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 
 const telemetry = useTelemetry();
@@ -93,7 +93,7 @@ const parentNodes = computed(() => {
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const rootNodesParents = computed(() => {
