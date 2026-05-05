@@ -130,6 +130,31 @@ describe('list-credentials MCP tool', () => {
 			});
 		});
 
+		test('strips extra fields (e.g. icon) from homeProject so output matches the schema', async () => {
+			const credentials = [
+				buildCredential({
+					id: 'a',
+					homeProject: {
+						id: 'proj-1',
+						name: 'My team',
+						type: 'team',
+						icon: { type: 'icon', value: 'bug' },
+					},
+				}),
+			];
+			const credentialsService = mockInstance(CredentialsService, {
+				getMany: jest.fn().mockResolvedValue(credentials),
+			});
+
+			const result = await listCredentials(user, credentialsService, {});
+
+			expect(result.data[0].homeProject).toEqual({
+				id: 'proj-1',
+				name: 'My team',
+				type: 'team',
+			});
+		});
+
 		test('disables includeGlobal when onlySharedWithMe is true so globals do not leak through', async () => {
 			const credentialsService = mockInstance(CredentialsService, {
 				getMany: jest.fn().mockResolvedValue([]),

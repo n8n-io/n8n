@@ -1,4 +1,4 @@
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { ListQueryDb, ScopesField, User } from '@n8n/db';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -13,10 +13,7 @@ const MAX_RESULTS = 200;
 
 const inputSchema = {
 	limit: createLimitSchema(MAX_RESULTS),
-	query: z
-		.string()
-		.optional()
-		.describe('Filter credentials by name (case-insensitive partial match)'),
+	query: z.string().optional().describe('Filter credentials by name (partial match)'),
 	type: z
 		.string()
 		.optional()
@@ -33,9 +30,9 @@ const inputSchema = {
 
 const homeProjectSchema = z
 	.object({
-		id: z.string(),
-		name: z.string(),
-		type: z.string(),
+		id: z.string().describe('The unique identifier of the project'),
+		name: z.string().describe('The name of the project'),
+		type: z.string().describe("The project type, e.g. 'personal' or 'team'"),
 	})
 	.nullable()
 	.describe('The project that owns the credential, if available');
@@ -59,6 +56,7 @@ const outputSchema = {
 		)
 		.describe('List of credentials accessible to the current user'),
 	count: z.number().int().min(0).describe('Number of credentials returned'),
+	error: z.string().optional().describe('Error message when the tool failed'),
 } satisfies z.ZodRawShape;
 
 export type ListCredentialsParams = {
@@ -82,6 +80,7 @@ export type ListCredentialsItem = {
 export type ListCredentialsResult = {
 	data: ListCredentialsItem[];
 	count: number;
+	error?: string;
 };
 
 export const createListCredentialsTool = (
@@ -143,7 +142,7 @@ export const createListCredentialsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output: ListCredentialsResult & { error: string } = {
+			const output: ListCredentialsResult = {
 				data: [],
 				count: 0,
 				error: errorMessage,
@@ -183,22 +182,21 @@ export async function listCredentials(
 		onlySharedWithMe,
 	});
 
-	const data: ListCredentialsItem[] = credentials.map((credential) => {
-		const c = credential as CredentialsEntity & {
-			scopes?: string[];
-			homeProject?: { id: string; name: string; type: string } | null;
-		};
+	const enriched = credentials as Array<
+		ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
+	>;
 
-		return {
-			id: c.id,
-			name: c.name,
-			type: c.type,
-			scopes: c.scopes ?? [],
-			isManaged: c.isManaged ?? false,
-			isGlobal: c.isGlobal ?? false,
-			homeProject: c.homeProject ?? null,
-		};
-	});
+	const data: ListCredentialsItem[] = enriched.map((c) => ({
+		id: c.id,
+		name: c.name,
+		type: c.type,
+		scopes: c.scopes ?? [],
+		isManaged: c.isManaged,
+		isGlobal: c.isGlobal,
+		homeProject: c.homeProject
+			? { id: c.homeProject.id, name: c.homeProject.name, type: c.homeProject.type }
+			: null,
+	}));
 
 	return { data, count: data.length };
 }
