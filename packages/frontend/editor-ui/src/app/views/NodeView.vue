@@ -1871,6 +1871,7 @@ onBeforeUnmount(() => {
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:embedded="isDemoRoute"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
