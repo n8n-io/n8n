@@ -57,8 +57,15 @@ if (resourceCenterStore.shouldAutoExpandSidebar) {
 	resourceCenterStore.markSidebarAutoExpanded();
 }
 
-const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
-	useSidebarLayout();
+const {
+	isCollapsed,
+	isResizing,
+	sidebarWidth,
+	onResizeStart,
+	onResize,
+	onResizeEnd,
+	toggleCollapse,
+} = useSidebarLayout();
 
 const { settingsItems } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
@@ -339,6 +346,7 @@ useKeybindings({
 		:class="{
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
+			[$style.sideMenuResizing]: isResizing,
 		}"
 		:width="sidebarWidth"
 		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
@@ -388,10 +396,16 @@ useKeybindings({
 	flex-direction: column;
 	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
+	transition: width var(--duration--snappy) var(--easing--ease-out);
+	will-change: width;
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
 		min-width: auto;
+	}
+
+	&.sideMenuResizing {
+		transition: none;
 	}
 }
 

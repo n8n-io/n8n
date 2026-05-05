@@ -589,6 +589,8 @@ The key (\`openWeatherMapApi\`) is the credential **type** from the node type de
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
+The credential-selection guidance above applies to outbound service calls. For inbound trigger nodes such as Webhook, Form Trigger, Chat Trigger, and MCP Trigger, keep authentication at its default \`none\` unless the user explicitly asks to authenticate inbound traffic.
+
 ## Data Tables
 
 n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). Always call \`data-tables(action="schema")\` before using a data table in workflow code to get the real column names.

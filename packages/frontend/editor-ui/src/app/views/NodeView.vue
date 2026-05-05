@@ -518,6 +518,7 @@ async function onCopyNodes(ids: string[]) {
 
 async function onClipboardPaste(plainTextData: string): Promise<void> {
 	if (
+		isCanvasReadOnly.value ||
 		getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW ||
 		!keyBindingsEnabled.value ||
 		!checkIfEditingIsAllowed()
@@ -611,6 +612,10 @@ function removeWorkflowSavedEventBindings() {
 
 async function onCreateWorkflow() {
 	await router.push({ name: VIEWS.NEW_WORKFLOW });
+}
+
+async function onSaveWorkflow() {
+	await workflowSaving.saveCurrentWorkflow({});
 }
 
 function onRenameNode(name: string) {
@@ -1844,6 +1849,7 @@ onBeforeUnmount(() => {
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
+			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"

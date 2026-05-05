@@ -30,20 +30,22 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
-const WorkflowExecuteModeSchema = z.union([
-	z.literal('cli'),
-	z.literal('error'),
-	z.literal('integrated'),
-	z.literal('internal'),
-	z.literal('manual'),
-	z.literal('retry'),
-	z.literal('trigger'),
-	z.literal('webhook'),
-	z.literal('evaluation'),
-	z.literal('chat'),
-]);
+export const WorkflowExecuteModeList = [
+	'cli',
+	'error',
+	'integrated',
+	'internal',
+	'manual',
+	'retry',
+	'trigger',
+	'webhook',
+	'evaluation',
+	'chat',
+] as const;
 
-export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;
+const WorkflowExecuteModeSchema = z.enum(WorkflowExecuteModeList);
+
+export type WorkflowExecuteModeValues = (typeof WorkflowExecuteModeList)[number];
 
 const RedactionPolicySchema = z.union([
 	z.literal('none'),

@@ -181,6 +181,7 @@ export class BuilderSandboxFactory {
 		// failure is reported with a `strategy` tag so missing-snapshot bugs
 		// are loud and trackable in Sentry, regardless of which path
 		// ultimately succeeds.
+		const createTimeoutSeconds = config.createTimeoutSeconds ?? 300;
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
 			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);
@@ -192,7 +193,10 @@ export class BuilderSandboxFactory {
 
 			if (snapshotName) {
 				try {
-					return await daytona.create({ ...baseParams, snapshot: snapshotName }, { timeout: 300 });
+					return await daytona.create(
+						{ ...baseParams, snapshot: snapshotName },
+						{ timeout: createTimeoutSeconds },
+					);
 				} catch (error) {
 					this.errorReporter?.error(error, {
 						tags: {
@@ -213,7 +217,7 @@ export class BuilderSandboxFactory {
 			try {
 				return await daytona.create(
 					{ ...baseParams, image: snapshotManager.ensureImage() },
-					{ timeout: 300 },
+					{ timeout: createTimeoutSeconds },
 				);
 			} catch (error) {
 				this.errorReporter?.error(error, {

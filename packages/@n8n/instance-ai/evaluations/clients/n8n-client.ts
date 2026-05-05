@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSubAgentRequest,
@@ -121,16 +122,12 @@ export class N8nClient {
 	/**
 	 * Confirm or reject an action requested by the agent.
 	 * POST /rest/instance-ai/confirm/:requestId
-	 * body: { approved, mockCredentials?, credentialId?, ... }
+	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
-	async confirmAction(
-		requestId: string,
-		approved: boolean,
-		options?: { mockCredentials?: boolean },
-	): Promise<void> {
+	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
-			body: { approved, ...options },
+			body: payload,
 		});
 	}
 
