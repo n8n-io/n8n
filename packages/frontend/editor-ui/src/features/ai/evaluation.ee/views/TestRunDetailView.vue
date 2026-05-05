@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
-import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -10,16 +9,9 @@ import { useEvaluationStore } from '../evaluation.store';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
-import { getErrorBaseKey } from '../evaluation.constants';
-import { N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
-import {
-	computeDelta,
-	getDeltaTone,
-	getUserDefinedMetricNames,
-	type DeltaTone,
-} from '../evaluation.utils';
+import { N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
+import { getUserDefinedMetricNames } from '../evaluation.utils';
 import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
-import AiSummarySection from '../components/RunDetail/AiSummarySection.vue';
 import RunStatusPill from '../components/RunDetail/RunStatusPill.vue';
 import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
 
@@ -37,17 +29,11 @@ const testCases = computed<TestCaseExecutionRecord[]>(() =>
 		(record) => record.testRunId === runId.value,
 	),
 );
-const hasFailedTestCases = computed(() =>
-	testCases.value.some((testCase) => testCase.status === 'error'),
-);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = useInjectWorkflowId();
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
-const runErrorDetails = computed(() => {
-	return run.value?.errorDetails as Record<string, string | number>;
-});
 
 const orderedRuns = computed<TestRunRecord[]>(() =>
 	orderBy(
@@ -79,15 +65,6 @@ const orderedTestCases = computed(() =>
 		['asc', 'asc'],
 	),
 );
-
-const metricTones = computed<Record<string, DeltaTone>>(() => {
-	const tones: Record<string, DeltaTone> = {};
-	for (const name of getUserDefinedMetricNames(run.value?.metrics)) {
-		const delta = computeDelta(run.value?.metrics?.[name], previousRun.value?.metrics?.[name]);
-		tones[name] = getDeltaTone(delta);
-	}
-	return tones;
-});
 
 const metricSources = computed(() => evaluationStore.metricSourceByKey);
 
@@ -213,28 +190,6 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<N8nCallout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
-			<N8nText size="small" :class="$style.capitalized">
-				{{
-					locale.baseText(
-						`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey,
-						runErrorDetails ? { interpolate: runErrorDetails } : {},
-					) ?? locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
-				}}
-			</N8nText>
-		</N8nCallout>
-
-		<N8nCallout
-			v-if="run?.status === 'completed' && hasFailedTestCases"
-			theme="warning"
-			icon="triangle-alert"
-			class="mb-s"
-		>
-			<N8nText size="small" :class="$style.capitalized">
-				{{ locale.baseText('evaluation.runDetail.error.partialCasesFailed') }}
-			</N8nText>
-		</N8nCallout>
-
 		<MetricSummaryStrip
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
@@ -242,8 +197,6 @@ onMounted(async () => {
 			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>
-
-		<AiSummarySection />
 
 		<div v-if="isLoading" :class="$style.loading">
 			<N8nLoading :loading="true" :rows="5" />
@@ -255,7 +208,6 @@ onMounted(async () => {
 				:key="testCase.id"
 				:test-case="testCase"
 				:index="index + 1"
-				:metric-tones="metricTones"
 				:metric-sources="metricSources"
 				@view="openRelatedExecution"
 				@cancel="cancelPendingCase"

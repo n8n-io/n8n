@@ -8,7 +8,6 @@ import {
 	computeDurationMs,
 	getUserDefinedMetricNames,
 	normalizeMetricValue,
-	type DeltaTone,
 	type MetricSource,
 } from '../../evaluation.utils';
 import { getErrorBaseKey } from '../../evaluation.constants';
@@ -18,7 +17,6 @@ import TestCaseMetricRow from './TestCaseMetricRow.vue';
 const props = defineProps<{
 	testCase: TestCaseExecutionRecord;
 	index: number;
-	metricTones: Record<string, DeltaTone>;
 	metricSources?: Record<string, MetricSource>;
 }>();
 
@@ -59,12 +57,10 @@ const errorTitle = computed(() => locale.baseText('evaluation.runDetail.testCase
 const rows = computed(() => {
 	if (status.value !== 'success') return [];
 	return getUserDefinedMetricNames(props.testCase.metrics).map((name) => {
-		const tone = props.metricTones[name] ?? 'default';
 		const source = props.metricSources?.[name];
 		return {
 			name,
 			value: normalizeMetricValue(props.testCase.metrics?.[name]),
-			tone,
 			category: source?.category,
 			sourceNodeName: source?.nodeName,
 		};
@@ -99,7 +95,6 @@ const rows = computed(() => {
 					key="__error__"
 					:name="errorTitle"
 					:value="undefined"
-					tone="negative"
 					errored
 					:error-message="errorMessage"
 				/>
@@ -109,7 +104,6 @@ const rows = computed(() => {
 					:key="row.name"
 					:name="row.name"
 					:value="row.value"
-					:tone="row.tone"
 					:category="row.category"
 					:source-node-name="row.sourceNodeName"
 				/>

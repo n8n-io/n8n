@@ -189,11 +189,12 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
-	it('renders the AI summary stub section', async () => {
+	it('does not render the AI summary section (hidden per Figma rebuild)', async () => {
 		const { container } = renderComponent();
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="ai-summary-section"]')).toBeTruthy();
+			expect(container.querySelector('[data-test-id="metric-summary-strip"]')).toBeTruthy();
 		});
+		expect(container.querySelector('[data-test-id="ai-summary-section"]')).toBeNull();
 	});
 
 	it('renders one TestCaseCard per case', async () => {
@@ -204,11 +205,12 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
-	it('shows a partial-failure callout when at least one case errored', async () => {
-		const { getByText } = renderComponent();
+	it('does not render a partial-failure callout — failures are surfaced per-card via RunStatusPill', async () => {
+		const { container, queryByText } = renderComponent();
 		await waitFor(() => {
-			expect(getByText('Finished with errors')).toBeTruthy();
+			expect(container.querySelector('[data-test-id="run-status-pill"]')).toBeTruthy();
 		});
+		expect(queryByText('Finished with errors')).toBeNull();
 	});
 
 	it('renders the back button', async () => {
@@ -228,7 +230,7 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
-	it('renders an error callout when the run status is error', async () => {
+	it('renders without crashing when the run status is error', async () => {
 		vi.mocked(evaluationStore.getTestRun).mockResolvedValue({
 			...mockTestRun,
 			status: 'error',

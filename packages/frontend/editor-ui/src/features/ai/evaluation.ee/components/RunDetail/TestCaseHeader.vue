@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nExternalLink, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { formatDuration, formatTokens } from '../../evaluation.utils';
 import { useCyclingVerb } from '../../composables/useCyclingVerb';
 import type { TestCaseExecutionStatus } from '../../evaluation.api';
@@ -96,14 +96,22 @@ const cyclingVerb = useCyclingVerb(isRunning);
 				/>
 			</template>
 			<template v-else>
-				<N8nExternalLink
+				<N8nTooltip
 					v-if="executionId"
-					class="open-execution-link"
-					data-test-id="test-case-view-link"
-					@click.stop.prevent="emit('view')"
+					:content="locale.baseText('evaluation.runDetail.testCase.viewLink')"
+					placement="top"
 				>
-					{{ locale.baseText('evaluation.runDetail.testCase.viewLink') }}
-				</N8nExternalLink>
+					<button
+						type="button"
+						class="open-execution-link"
+						:class="$style.viewIcon"
+						data-test-id="test-case-view-link"
+						:aria-label="locale.baseText('evaluation.runDetail.testCase.viewLink')"
+						@click.stop="emit('view')"
+					>
+						<N8nIcon icon="external-link" size="small" />
+					</button>
+				</N8nTooltip>
 			</template>
 		</div>
 	</div>
@@ -149,13 +157,20 @@ const cyclingVerb = useCyclingVerb(isRunning);
 	@include animations.shimmer;
 }
 
-.header :global(.open-execution-link) {
-	color: var(--color--primary);
-	font-weight: var(--font-weight--medium);
-	text-decoration: underline;
+.viewIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	border: none;
+	background: none;
+	color: var(--color--text--tint-1);
+	cursor: pointer;
+	border-radius: var(--radius--sm);
+	transition: color 0.1s ease-in-out;
 
 	&:hover {
-		color: var(--color--primary--shade-1);
+		color: var(--color--text);
 	}
 }
 </style>

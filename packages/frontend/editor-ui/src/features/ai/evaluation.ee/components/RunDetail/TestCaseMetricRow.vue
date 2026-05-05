@@ -7,14 +7,12 @@ import {
 	formatMetricLabel,
 	formatMetricPercent,
 	formatMetricRawScore,
-	type DeltaTone,
 	type MetricCategory,
 } from '../../evaluation.utils';
 
 const props = defineProps<{
 	name: string;
 	value: number | boolean | undefined;
-	tone: DeltaTone;
 	category?: MetricCategory;
 	sourceNodeName?: string;
 	errored?: boolean;
@@ -62,13 +60,9 @@ const categoryLabel = computed(() =>
 				{{ errorMessage ?? locale.baseText('evaluation.runDetail.testCase.failed') }}
 			</N8nText>
 			<N8nTooltip v-else-if="tooltipContent" :content="tooltipContent" placement="top">
-				<N8nText size="medium" :class="[$style.value, $style[`tone-${tone}`]]">{{
-					formattedPercent
-				}}</N8nText>
+				<N8nText size="medium" :class="$style.value">{{ formattedPercent }}</N8nText>
 			</N8nTooltip>
-			<N8nText v-else size="medium" :class="[$style.value, $style[`tone-${tone}`]]">{{
-				formattedPercent
-			}}</N8nText>
+			<N8nText v-else size="medium" :class="$style.value">{{ formattedPercent }}</N8nText>
 		</div>
 	</div>
 </template>
@@ -123,18 +117,6 @@ const categoryLabel = computed(() =>
 .value {
 	font-variant-numeric: tabular-nums;
 	color: var(--color--text);
-}
-
-.tone-default {
-	color: var(--color--text);
-}
-
-.tone-positive {
-	color: var(--text-color--success);
-}
-
-.tone-negative {
-	color: var(--text-color--danger);
 }
 
 .errorMessage {
