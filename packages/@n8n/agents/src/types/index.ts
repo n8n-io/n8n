@@ -68,6 +68,20 @@ export type {
 } from './sdk/memory';
 
 export type {
+	BuiltObservationStore,
+	CompactFn,
+	FormatContextFn,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObserveFn,
+	ScopeKind,
+} from './sdk/observation';
+export { OBSERVATION_SCHEMA_VERSION } from './sdk/observation';
+
+export type {
 	EvalInput,
 	EvalScore,
 	JudgeFn,

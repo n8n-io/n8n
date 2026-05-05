@@ -1,9 +1,16 @@
-import { LessThan } from '@n8n/typeorm';
+import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '@n8n/agents';
+import { In, IsNull, LessThan, LessThanOrEqual, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
+import type { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
+import type { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
+import type { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import type { AgentThreadEntity } from '../../entities/agent-thread.entity';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
+import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
+import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
+import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
@@ -13,6 +20,9 @@ describe('N8nMemory', () => {
 	let messageRepository: jest.Mocked<AgentMessageRepository>;
 	let threadRepository: jest.Mocked<AgentThreadRepository>;
 	let resourceRepository: jest.Mocked<AgentResourceRepository>;
+	let observationRepository: jest.Mocked<AgentObservationRepository>;
+	let observationCursorRepository: jest.Mocked<AgentObservationCursorRepository>;
+	let observationLockRepository: jest.Mocked<AgentObservationLockRepository>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -20,8 +30,18 @@ describe('N8nMemory', () => {
 		messageRepository = mock<AgentMessageRepository>();
 		threadRepository = mock<AgentThreadRepository>();
 		resourceRepository = mock<AgentResourceRepository>();
+		observationRepository = mock<AgentObservationRepository>();
+		observationCursorRepository = mock<AgentObservationCursorRepository>();
+		observationLockRepository = mock<AgentObservationLockRepository>();
 
-		memory = new N8nMemory(threadRepository, messageRepository, resourceRepository);
+		memory = new N8nMemory(
+			threadRepository,
+			messageRepository,
+			resourceRepository,
+			observationRepository,
+			observationCursorRepository,
+			observationLockRepository,
+		);
 	});
 
 	function makeMessageEntity(id: string, createdAt: Date, text: string): AgentMessageEntity {
@@ -303,6 +323,296 @@ describe('N8nMemory', () => {
 					scope: 'thread',
 				}),
 			).resolves.toBe('bob notes');
+		});
+	});
+
+	// ── Observational memory ─────────────────────────────────────────────
+
+	function makeNewObs(overrides: Partial<NewObservation> = {}): NewObservation {
+		return {
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			kind: 'observation',
+			payload: { text: 'hello' },
+			durationMs: null,
+			schemaVersion: OBSERVATION_SCHEMA_VERSION,
+			createdAt: new Date('2026-05-05T00:00:00Z'),
+			compactedAt: null,
+			...overrides,
+		};
+	}
+
+	describe('appendObservations', () => {
+		beforeEach(() => {
+			observationRepository.create.mockImplementation(
+				(input) => ({ ...input }) as AgentObservationEntity,
+			);
+		});
+
+		it('returns [] for an empty input without touching the repo', async () => {
+			const result = await memory.appendObservations([]);
+			expect(result).toEqual([]);
+			expect(observationRepository.findOne).not.toHaveBeenCalled();
+			expect(observationRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('allocates seq=1 when the scope is empty', async () => {
+			observationRepository.findOne.mockResolvedValue(null);
+			observationRepository.save.mockImplementation(async (input) =>
+				(Array.isArray(input) ? input : [input]).map((e, i) => ({
+					...(e as AgentObservationEntity),
+					id: `obs-${i + 1}`,
+				})),
+			);
+
+			const result = await memory.appendObservations([makeNewObs(), makeNewObs()]);
+
+			expect(observationRepository.findOne).toHaveBeenCalledWith({
+				where: { scopeKind: 'thread', scopeId: 't-1' },
+				order: { seq: 'DESC' },
+			});
+			expect(result.map((r) => r.seq)).toEqual([1, 2]);
+		});
+
+		it('continues seq from the previous max for the scope', async () => {
+			observationRepository.findOne.mockResolvedValue({
+				seq: 7,
+			} as AgentObservationEntity);
+			observationRepository.save.mockImplementation(async (input) =>
+				(Array.isArray(input) ? input : [input]).map((e, i) => ({
+					...(e as AgentObservationEntity),
+					id: `obs-${i + 1}`,
+				})),
+			);
+
+			const result = await memory.appendObservations([makeNewObs(), makeNewObs()]);
+			expect(result.map((r) => r.seq)).toEqual([8, 9]);
+		});
+
+		it('queries MAX once per distinct scope, not once per row', async () => {
+			observationRepository.findOne.mockResolvedValue(null);
+			observationRepository.save.mockImplementation(async (input) =>
+				(Array.isArray(input) ? input : [input]).map((e, i) => ({
+					...(e as AgentObservationEntity),
+					id: `obs-${i + 1}`,
+				})),
+			);
+
+			await memory.appendObservations([
+				makeNewObs({ scopeId: 'A' }),
+				makeNewObs({ scopeId: 'A' }),
+				makeNewObs({ scopeId: 'B' }),
+			]);
+
+			expect(observationRepository.findOne).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('getObservations', () => {
+		beforeEach(() => {
+			observationRepository.find.mockResolvedValue([]);
+		});
+
+		it('passes filters through to find()', async () => {
+			await memory.getObservations({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				sinceSeq: 5,
+				kindIs: 'summary',
+				onlyUncompacted: true,
+				schemaVersionAtMost: 1,
+				limit: 10,
+			});
+
+			expect(observationRepository.find).toHaveBeenCalledWith({
+				where: {
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					seq: MoreThan(5),
+					kind: 'summary',
+					compactedAt: IsNull(),
+					schemaVersion: LessThanOrEqual(1),
+				},
+				order: { seq: 'ASC' },
+				take: 10,
+			});
+		});
+
+		it('omits absent filters', async () => {
+			await memory.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+
+			expect(observationRepository.find).toHaveBeenCalledWith({
+				where: { scopeKind: 'thread', scopeId: 't-1' },
+				order: { seq: 'ASC' },
+			});
+		});
+
+		it('coerces bigint columns back to numbers on read', async () => {
+			observationRepository.find.mockResolvedValue([
+				{
+					id: 'obs-1',
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					seq: '42' as unknown as number,
+					kind: 'observation',
+					payload: { text: 'hi' },
+					durationMs: '1000' as unknown as number | null,
+					schemaVersion: '1' as unknown as number,
+					createdAt: new Date('2026-05-05T00:00:00Z'),
+					updatedAt: new Date('2026-05-05T00:00:00Z'),
+					compactedAt: null,
+				} as AgentObservationEntity,
+			]);
+
+			const [row] = await memory.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+			expect(row.seq).toBe(42);
+			expect(row.durationMs).toBe(1000);
+			expect(row.schemaVersion).toBe(1);
+		});
+	});
+
+	describe('markObservationsCompacted', () => {
+		it('issues a single update only over uncompacted ids', async () => {
+			const at = new Date('2026-05-05T01:00:00Z');
+			await memory.markObservationsCompacted(['a', 'b'], at);
+
+			expect(observationRepository.update).toHaveBeenCalledWith(
+				{ id: In(['a', 'b']), compactedAt: IsNull() },
+				{ compactedAt: at },
+			);
+		});
+
+		it('no-ops on empty input', async () => {
+			await memory.markObservationsCompacted([], new Date());
+			expect(observationRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('cursors', () => {
+		it('returns null when no cursor row exists', async () => {
+			observationCursorRepository.findOneBy.mockResolvedValue(null);
+			expect(await memory.getCursor('thread', 't-1')).toBeNull();
+		});
+
+		it('coerces bigint lastObservedSeq back to number', async () => {
+			observationCursorRepository.findOneBy.mockResolvedValue({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				lastObservedMessageId: 'm-7',
+				lastObservedSeq: '7' as unknown as number,
+				createdAt: new Date(),
+				updatedAt: new Date('2026-05-05T00:00:00Z'),
+			} as AgentObservationCursorEntity);
+
+			const cursor = await memory.getCursor('thread', 't-1');
+			expect(cursor?.lastObservedSeq).toBe(7);
+			expect(cursor?.lastObservedMessageId).toBe('m-7');
+		});
+
+		it('upserts on setCursor keyed by (scopeKind, scopeId)', async () => {
+			await memory.setCursor({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				lastObservedMessageId: 'm-9',
+				lastObservedSeq: 9,
+				updatedAt: new Date('2026-05-05T00:00:00Z'),
+			});
+
+			expect(observationCursorRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					lastObservedMessageId: 'm-9',
+					lastObservedSeq: 9,
+				}),
+				['scopeKind', 'scopeId'],
+			);
+		});
+	});
+
+	describe('locks', () => {
+		beforeEach(() => {
+			observationLockRepository.create.mockImplementation(
+				(input) => ({ ...input }) as AgentObservationLockEntity,
+			);
+			observationLockRepository.save.mockImplementation(
+				async (input) => input as AgentObservationLockEntity,
+			);
+		});
+
+		it('grants the lock when the row is missing', async () => {
+			observationLockRepository.findOneBy.mockResolvedValue(null);
+			const handle = await memory.acquireObservationLock('thread', 't-1', {
+				ttlMs: 60_000,
+				holderId: 'A',
+			});
+
+			expect(handle).not.toBeNull();
+			expect(handle?.holderId).toBe('A');
+			expect(observationLockRepository.save).toHaveBeenCalledTimes(1);
+		});
+
+		it('refuses a different holder while the lock is live', async () => {
+			observationLockRepository.findOneBy.mockResolvedValue({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				holderId: 'A',
+				heldUntil: new Date(Date.now() + 60_000),
+			} as AgentObservationLockEntity);
+
+			const handle = await memory.acquireObservationLock('thread', 't-1', {
+				ttlMs: 60_000,
+				holderId: 'B',
+			});
+			expect(handle).toBeNull();
+			expect(observationLockRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('reclaims the lock for a new holder once the prior one has expired', async () => {
+			observationLockRepository.findOneBy.mockResolvedValue({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				holderId: 'A',
+				heldUntil: new Date(Date.now() - 1_000),
+			} as AgentObservationLockEntity);
+
+			const handle = await memory.acquireObservationLock('thread', 't-1', {
+				ttlMs: 60_000,
+				holderId: 'B',
+			});
+			expect(handle).not.toBeNull();
+			expect(handle?.holderId).toBe('B');
+			expect(observationLockRepository.save).toHaveBeenCalledTimes(1);
+		});
+
+		it('lets the same holder refresh the TTL while still held', async () => {
+			observationLockRepository.findOneBy.mockResolvedValue({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				holderId: 'A',
+				heldUntil: new Date(Date.now() + 30_000),
+			} as AgentObservationLockEntity);
+
+			const handle = await memory.acquireObservationLock('thread', 't-1', {
+				ttlMs: 60_000,
+				holderId: 'A',
+			});
+			expect(handle).not.toBeNull();
+			expect(observationLockRepository.save).toHaveBeenCalledTimes(1);
+		});
+
+		it('release deletes only the matching holder', async () => {
+			await memory.releaseObservationLock({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				holderId: 'A',
+				heldUntil: new Date(),
+			});
+			expect(observationLockRepository.delete).toHaveBeenCalledWith({
+				scopeKind: 'thread',
+				scopeId: 't-1',
+				holderId: 'A',
+			});
 		});
 	});
 });

@@ -40,10 +40,21 @@ export type {
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
+	BuiltObservationStore,
+	CompactFn,
+	FormatContextFn,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObserveFn,
+	ScopeKind,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
+export { OBSERVATION_SCHEMA_VERSION } from './types';
 
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
