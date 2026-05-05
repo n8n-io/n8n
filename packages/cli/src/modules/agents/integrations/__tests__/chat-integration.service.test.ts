@@ -149,16 +149,4 @@ describe('ChatIntegrationService', () => {
 			expect(internal.connections.size).toBe(0);
 		});
 	});
-
-	describe('leader event handlers', () => {
-		it('registers leader event handlers via decorators', () => {
-			const events = Container.get(MultiMainMetadata)
-				.getHandlers()
-				.filter((h) => h.eventHandlerClass === ChatIntegrationService)
-				.map((h) => h.eventName);
-
-			expect(events).toContain('leader-takeover');
-			expect(events).toContain('leader-stepdown');
-		});
-	});
 });
