@@ -1186,11 +1186,15 @@ describe('ImportService', () => {
 				// @ts-expect-error overriding for the test
 				mockDataSource.options = { type: 'postgres' };
 
+				// Mixed-case id matters: pg_get_serial_sequence folds unquoted
+				// identifiers to lowercase, so the param must be the quoted form.
+				const mixedCaseId = 'AbC123';
+
 				mockEntityManager.query = jest
 					.fn()
-					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([{ id: mixedCaseId }])
 					.mockResolvedValueOnce([
-						{ id: 'col-1', dataTableId: 'abc', name: 'foo', type: 'string', index: 0 },
+						{ id: 'col-1', dataTableId: mixedCaseId, name: 'foo', type: 'string', index: 0 },
 					])
 					.mockResolvedValue(undefined);
 
@@ -1204,13 +1208,15 @@ describe('ImportService', () => {
 				);
 
 				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
-					abc: ['/test/input/data_table_user_abc.jsonl'],
+					[mixedCaseId]: [`/test/input/data_table_user_${mixedCaseId}.jsonl`],
 				});
 
 				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
 					([sql]) => typeof sql === 'string' && sql.includes('setval('),
 				);
 				expect(setvalCalls).toHaveLength(1);
+				const [, params] = setvalCalls[0];
+				expect(params).toEqual([`"data_table_user_${mixedCaseId}"`]);
 			});
 
 			it('should NOT call setval on Postgres when no rows were inserted', async () => {
