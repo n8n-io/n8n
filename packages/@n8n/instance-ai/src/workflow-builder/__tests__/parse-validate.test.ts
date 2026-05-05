@@ -8,6 +8,8 @@ jest.mock('../extract-code', () => ({
 }));
 
 import { parseWorkflowCodeToBuilder, validateWorkflow } from '@n8n/workflow-sdk';
+import { mock } from 'jest-mock-extended';
+import type { INodeTypes } from 'n8n-workflow';
 
 import { stripImportStatements } from '../extract-code';
 import { parseAndValidate, partitionWarnings } from '../parse-validate';
@@ -118,6 +120,33 @@ describe('parseAndValidate', () => {
 		expect(() => parseAndValidate('bad code')).toThrow(
 			'Failed to parse workflow code: Unknown error',
 		);
+	});
+
+	it('forwards nodeTypesProvider to both validators with strictMode on for schema validation', () => {
+		const builder = makeBuilder();
+		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
+		const nodeTypesProvider = mock<INodeTypes>();
+
+		parseAndValidate('code', { nodeTypesProvider });
+
+		expect(builder.validate).toHaveBeenCalledWith({ nodeTypesProvider });
+		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
+			nodeTypesProvider,
+			strictMode: true,
+		});
+	});
+
+	it('passes undefined provider but keeps strictMode on when no options are supplied', () => {
+		const builder = makeBuilder();
+		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
+
+		parseAndValidate('code');
+
+		expect(builder.validate).toHaveBeenCalledWith({ nodeTypesProvider: undefined });
+		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
+			nodeTypesProvider: undefined,
+			strictMode: true,
+		});
 	});
 });
 

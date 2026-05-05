@@ -323,7 +323,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: props.data.id },
+			params: { workflowId: props.data.id },
 		});
 		window.open(route.href, '_blank');
 
@@ -332,7 +332,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 
 	await router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: props.data.id },
+		params: { workflowId: props.data.id },
 	});
 }
 
@@ -454,9 +454,13 @@ async function toggleMCPAccess(enabled: boolean) {
 }
 
 async function deleteWorkflow() {
+	await deleteWorkflowById(props.data.id, props.data.name);
+}
+
+async function deleteWorkflowById(id: WorkflowResource['id'], name: WorkflowResource['name']) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 		{
@@ -475,7 +479,7 @@ async function deleteWorkflow() {
 	}
 
 	try {
-		await workflowsListStore.deleteWorkflow(props.data.id);
+		await workflowsListStore.deleteWorkflow(id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -484,7 +488,7 @@ async function deleteWorkflow() {
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		type: 'success',
 	});
@@ -514,17 +518,27 @@ async function archiveWorkflow() {
 		}
 	}
 
+	const archivedWorkflowId = props.data.id;
+	const archivedWorkflowName = props.data.name;
+
 	try {
-		await workflowsStore.archiveWorkflow(props.data.id);
+		await workflowsStore.archiveWorkflow(archivedWorkflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
 	}
 
-	toast.showMessage({
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteWorkflowById(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 	emit('workflow:archived');

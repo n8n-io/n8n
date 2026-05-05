@@ -691,7 +691,7 @@ describe('RunStateRegistry', () => {
 
 				registry.registerPendingConfirmation('req-1', pending);
 
-				const data: ConfirmationData = { approved: true, credentialId: 'cred-1' };
+				const data: ConfirmationData = { approved: true, userInput: 'looks good' };
 				const result = registry.resolvePendingConfirmation('user-1', 'req-1', data);
 
 				expect(result).toBe(true);

@@ -15,11 +15,16 @@ import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
-const props = defineProps<{
-	agentNode: InstanceAiAgentNode;
-	/** When provided, renders only these entries instead of the full timeline. */
-	visibleEntries?: InstanceAiTimelineEntry[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		agentNode: InstanceAiAgentNode;
+		/** When provided, renders only these entries instead of the full timeline. */
+		visibleEntries?: InstanceAiTimelineEntry[];
+		/** Peek mode: compact, pins streaming text to the bottom. */
+		peek?: boolean;
+	}>(),
+	{ visibleEntries: undefined, peek: false },
+);
 
 const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
@@ -137,7 +142,12 @@ const steps = computed((): TimelineStep[] => {
 					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
-					<InstanceAiMarkdown :content="step.label" />
+					<!-- Peek mode only: column-reverse + overflow-y pins the scroll
+						 to the bottom so the latest streamed tokens stay visible. -->
+					<div v-if="props.peek" :class="$style.streamingMarkdown">
+						<InstanceAiMarkdown :content="step.label" />
+					</div>
+					<InstanceAiMarkdown v-else :content="step.label" />
 				</ButtonLike>
 			</template>
 		</template>
@@ -154,5 +164,15 @@ const steps = computed((): TimelineStep[] => {
 .toggleContent {
 	max-height: 300px;
 	overflow-y: auto;
+}
+
+.streamingMarkdown {
+	display: flex;
+	flex-direction: column-reverse;
+	overflow-y: auto;
+	max-height: 120px;
+	flex: 1 1 auto;
+	min-width: 0;
+	scrollbar-width: none;
 }
 </style>

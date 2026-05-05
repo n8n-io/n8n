@@ -12,6 +12,7 @@ import {
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
 import type {
+	ExecutionStatus,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -57,7 +58,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteAfter':
 					hooks.addHandler(eventName, async function (runData, newStaticData) {
 						const context = {
-							type: 'workflowExecuteAfter',
+							type: 'workflowExecuteAfter' as const,
 							workflow: this.workflowData,
 							runData,
 							newStaticData,
@@ -72,7 +73,7 @@ class ModulesHooksRegistry {
 				case 'nodeExecuteBefore':
 					hooks.addHandler(eventName, async function (nodeName, taskData) {
 						const context = {
-							type: 'nodeExecuteBefore',
+							type: 'nodeExecuteBefore' as const,
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
@@ -86,7 +87,7 @@ class ModulesHooksRegistry {
 				case 'nodeExecuteAfter':
 					hooks.addHandler(eventName, async function (nodeName, taskData, executionData) {
 						const context = {
-							type: 'nodeExecuteAfter',
+							type: 'nodeExecuteAfter' as const,
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
@@ -101,7 +102,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteBefore':
 					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
-							type: 'workflowExecuteBefore',
+							type: 'workflowExecuteBefore' as const,
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
@@ -115,7 +116,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteResume':
 					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
-							type: 'workflowExecuteResume',
+							type: 'workflowExecuteResume' as const,
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
@@ -770,8 +771,11 @@ export function getLifecycleHooksForScalingMain(
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-		// Don't delete executions before they are finished
-		if (!fullRunData.finished) return;
+		// Only process executions that have reached a terminal status.
+		// We check `status` (not the deprecated `finished` field) because
+		// errored executions have `finished = false` but a terminal `status`.
+		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+		if (!terminalStatuses.includes(fullRunData.status) && !fullRunData.waitTill) return;
 
 		const isManualMode = this.mode === 'manual';
 

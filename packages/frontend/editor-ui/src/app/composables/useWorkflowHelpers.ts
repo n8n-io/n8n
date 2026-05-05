@@ -98,7 +98,7 @@ export async function resolveParameter<T = IDataObject>(
 
 	return await resolveParameterImpl(
 		parameter,
-		workflowDocumentStore.getSnapshot(),
+		workflowDocumentStore.getWorkflowObjectAccessorSnapshot(),
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,

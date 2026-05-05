@@ -276,7 +276,6 @@ export class ApiHelpers {
 
 	/**
 	 * Fetch cluster info from the instance registry endpoint.
-	 * Requires `N8N_ENV_FEAT_INSTANCE_REGISTRY=true` on every container.
 	 */
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
 		const response = await this.request.get('/rest/instance-registry');
@@ -288,6 +287,18 @@ export class ApiHelpers {
 		const plain = await response.json();
 		console.log('Cluster info: ', JSON.stringify(plain));
 		return (plain as { data: ClusterInfoResponse }).data;
+	}
+
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
 	}
 
 	/**

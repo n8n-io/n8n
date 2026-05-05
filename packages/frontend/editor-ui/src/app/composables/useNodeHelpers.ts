@@ -288,7 +288,7 @@ export function useNodeHelpers() {
 		}
 
 		const nodeInputIssues = getNodeInputIssues(
-			workflowDocumentStore.value.getSnapshot(),
+			workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			node,
 			nodeType,
 		);

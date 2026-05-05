@@ -9,8 +9,27 @@ import { Webhook } from '../Webhook.node';
 jest.mock('fs/promises');
 const mockFs = jest.mocked(fs);
 
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
+
 describe('Test Webhook Node', () => {
 	new NodeTestHarness().setupTests();
+
+	describe('description', () => {
+		it('should tell builders to keep inbound authentication disabled unless requested', () => {
+			const node = new Webhook();
+			const authParam = node.description.properties.find(
+				(property) => property.name === 'authentication',
+			);
+
+			expect(authParam).toMatchObject({
+				default: 'none',
+				builderHint: {
+					message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		});
+	});
 
 	describe('handleFormData', () => {
 		const node = new Webhook();

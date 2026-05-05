@@ -66,8 +66,14 @@ ${NATIVE_NODE_PREFERENCE}
 
 ## Critical Rules
 
+- **User time zone is in context as \`<current-datetime>\` / \`<user-timezone>\`.** Schedule times, cron expressions, and digest times must be stated in the user's time zone. Never write "instance default timezone" or leave the zone ambiguous — spell it out (e.g. "daily at 08:00 America/New_York").
 - **Dependencies are mandatory.** Every workflow must list the data table IDs it reads from or writes to in \`dependsOn\`. If workflow C needs data from A and B, it must depend on both.
 - **No duplicate items.** Each piece of work appears exactly once. Use \`workflow\` kind for workflows, \`data-table\` kind for all data table operations (create, delete, modify, seed), \`research\` kind for web research. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
 - **Data-table-only plans are valid.** When the request is purely about data tables (no triggers, schedules, or integrations), use only \`data-table\` items — don't wrap them in \`workflow\` or \`delegate\`. For creation, include \`columns\`; for other operations, omit \`columns\` and describe the operation in \`purpose\`. Include seed rows in \`purpose\` when the user wants sample data.
 - **Each item's \`purpose\` describes only that item.** Do not reference work handled by other plan items — each agent only sees its own spec, and cross-task context causes scope creep.
+- **Workflow verification is mandatory.** For **every** \`workflow\` item you add, also add a \`checkpoint\` item whose \`dependsOn\` includes that workflow's ID. Checkpoints are orchestrator-executed — the orchestrator runs them itself using its own tools, they are not delegated.
+  - \`title\`: a user-readable verification goal, e.g. \`"Verify 'Daily API Email' workflow runs successfully"\`.
+  - \`instructions\`: detailed steps the orchestrator must execute. Prefer \`verify-built-workflow\` with the work item ID from the build outcome — it uses pin data captured at build time, so it works even for event-triggered workflows (webhook, form, chat, mcp). For workflows with real credentials and a testable trigger (manual, schedule), \`executions(action="run")\` is acceptable. State the pass condition in plain terms (e.g. "run completes without errors and produces at least one output row").
+  - Do NOT list \`tools\` on a checkpoint — it is not a delegate task.
+  - Do NOT emit a checkpoint for a \`data-table\`, \`research\`, or \`delegate\` item. Checkpoints are for workflows only.
 - **Always call \`submit-plan\` after the last \`add-plan-item\`.** On rejection, be surgical — change only what the user asked for. Never fabricate node names; search first if unsure.`;
