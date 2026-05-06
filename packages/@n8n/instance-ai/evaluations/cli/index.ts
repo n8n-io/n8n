@@ -151,6 +151,16 @@ async function main(): Promise<void> {
 		? loadPrebuiltManifest(args.prebuiltWorkflows)
 		: undefined;
 	if (prebuiltManifest) {
+		// Multi-lane is for distributing the orchestrator build phase across
+		// n8n instances. Prebuilt workflows live on a single instance — fetching
+		// them from any other lane's URL would 404 — and prebuilt mode skips
+		// builds anyway, so multi-lane buys nothing. Refuse the combination
+		// rather than silently fetching from one lane and ignoring the rest.
+		if (args.baseUrls.length > 1) {
+			throw new Error(
+				'--prebuilt-workflows is incompatible with multiple --base-url values. Prebuilt workflows live on a single n8n instance; pass exactly one --base-url.',
+			);
+		}
 		const slugCount = Object.keys(prebuiltManifest).length;
 		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)`);
 
@@ -344,15 +354,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const promise = (async () => {
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
-				// Prebuilt path: no orchestrator concurrency to manage — just fetch
-				// the workflow. Pin to lane 0; every lane shares the same n8n
-				// instance, so any will do. The CLI guarantees at least one lane
-				// (cliArgsSchema enforces baseUrls.min(1)), but we guard explicitly
-				// so a future regression in lane init surfaces as a clear error
-				// rather than a TypeError on `undefined.runner`.
-				if (laneStates.length === 0) {
-					throw new Error('Cannot fetch prebuilt workflow: no lanes available');
-				}
+				// Prebuilt path: no orchestrator concurrency to manage — just
+				// fetch the workflow. main() rejects multi-lane + prebuilt at
+				// startup, so laneStates always has exactly one entry here.
 				const lane = laneStates[0];
 				const start = Date.now();
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);

@@ -402,11 +402,17 @@ where <id> is the workflowId returned by create_workflow_from_code. Emit it verb
 
 function readExistingWorkflows(manifestPath: string): Record<string, string[]> {
 	if (!existsSync(manifestPath)) return {};
+	// The file exists — it must be parseable. Silently treating a malformed
+	// manifest as empty would clobber accumulated entries on the next write
+	// (especially destructive with --append, where the entire prior corpus
+	// could be lost). Force the user to fix or remove the file first.
 	try {
-		const existing = prebuiltManifestSchema.parse(readJson(manifestPath, 'existing manifest'));
-		return { ...existing };
-	} catch {
-		return {};
+		return { ...prebuiltManifestSchema.parse(readJson(manifestPath, 'existing manifest')) };
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Existing manifest at ${manifestPath} is malformed; remove or fix it before re-running:\n  ${msg}`,
+		);
 	}
 }
 
