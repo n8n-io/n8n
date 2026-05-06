@@ -16,6 +16,7 @@ import {
 import type { Context as OtelContext, Span as OtelApiSpan } from '@opentelemetry/api';
 import { Client } from 'langsmith';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
 
 import type {
 	InstanceAiToolTraceOptions,
@@ -657,7 +658,79 @@ function parseTelemetryTools(value: unknown): unknown[] | undefined {
 	return tools.length > 0 ? tools : undefined;
 }
 
+function stableStringify(value: unknown): string {
+	if (Array.isArray(value)) {
+		return `[${value.map((entry) => stableStringify(entry)).join(',')}]`;
+	}
+
+	if (isRecord(value)) {
+		const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
+		return `{${entries
+			.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`)
+			.join(',')}}`;
+	}
+
+	return JSON.stringify(value);
+}
+
+function stableHash(value: unknown): string {
+	return createHash('sha256').update(stableStringify(value)).digest('hex');
+}
+
+function toolNameFromDefinition(tool: unknown): string | undefined {
+	if (!isRecord(tool)) return undefined;
+	if (typeof tool.name === 'string') return tool.name;
+	if (typeof tool.id === 'string') return tool.id;
+	if (isRecord(tool.function) && typeof tool.function.name === 'string') {
+		return tool.function.name;
+	}
+	return undefined;
+}
+
+function enrichLangSmithToolAttributes(attributes: Record<string, unknown>): unknown[] | undefined {
+	const tools = parseTelemetryTools(attributes['ai.prompt.tools']);
+	if (!tools) {
+		return undefined;
+	}
+
+	const redactedTools = redactTelemetryJsonValue(
+		tools,
+		undefined,
+		0,
+		MAX_PROMPT_SCHEMA_TRACE_DEPTH,
+	);
+	const normalizedTools = Array.isArray(redactedTools) ? redactedTools : tools;
+	const toolNames = normalizedTools
+		.map(toolNameFromDefinition)
+		.filter((name): name is string => name !== undefined);
+	const serializedTools = JSON.stringify(normalizedTools);
+	const schemaHash = stableHash(normalizedTools);
+
+	attributes['llm.available_tool_count'] = normalizedTools.length;
+	attributes['llm.available_tool_names'] = toolNames;
+	attributes['llm.available_tools'] = serializedTools;
+	attributes['llm.tool_schema_hash'] = schemaHash;
+	attributes.tools = serializedTools;
+	attributes['invocation_params.tools'] = serializedTools;
+
+	const toolChoice = parseTelemetryJson(attributes['ai.prompt.toolChoice']);
+	if (toolChoice !== undefined) {
+		const redactedToolChoice = redactTelemetryJsonValue(
+			toolChoice,
+			undefined,
+			0,
+			MAX_PROMPT_SCHEMA_TRACE_DEPTH,
+		);
+		attributes['llm.tool_choice'] = JSON.stringify(redactedToolChoice);
+		attributes['invocation_params.tool_choice'] = JSON.stringify(redactedToolChoice);
+	}
+
+	return normalizedTools;
+}
+
 function enrichLangSmithPromptAttribute(attributes: Record<string, unknown>): void {
+	const tools = enrichLangSmithToolAttributes(attributes);
+
 	if (attributes['gen_ai.prompt'] !== undefined) {
 		return;
 	}
@@ -667,7 +740,6 @@ function enrichLangSmithPromptAttribute(attributes: Record<string, unknown>): vo
 		return;
 	}
 
-	const tools = parseTelemetryTools(attributes['ai.prompt.tools']);
 	const toolChoice = parseTelemetryJson(attributes['ai.prompt.toolChoice']);
 	if (!tools && toolChoice === undefined) {
 		return;
@@ -687,6 +759,105 @@ function enrichLangSmithPromptAttribute(attributes: Record<string, unknown>): vo
 	);
 }
 
+function numberFromAttribute(value: unknown): number | undefined {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string' && value.trim()) {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	}
+	return undefined;
+}
+
+function readTokenDetail(details: unknown, keys: string[]): number | undefined {
+	const parsedDetails = typeof details === 'string' ? parseTelemetryJson(details) : details;
+	if (!isRecord(parsedDetails)) {
+		return undefined;
+	}
+
+	for (const key of keys) {
+		const value = numberFromAttribute(parsedDetails[key]);
+		if (value !== undefined) {
+			return value;
+		}
+	}
+	return undefined;
+}
+
+function firstNumberAttribute(
+	attributes: Record<string, unknown>,
+	keys: string[],
+): number | undefined {
+	for (const key of keys) {
+		const value = numberFromAttribute(attributes[key]);
+		if (value !== undefined) {
+			return value;
+		}
+	}
+	return undefined;
+}
+
+function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>): void {
+	const inputTokens = firstNumberAttribute(attributes, [
+		'gen_ai.usage.input_tokens',
+		'ai.usage.inputTokens',
+		'ai.usage.promptTokens',
+	]);
+	if (inputTokens === undefined) {
+		return;
+	}
+
+	const inputDetails = attributes['gen_ai.usage.input_token_details'];
+	const cacheReadTokens =
+		firstNumberAttribute(attributes, [
+			'ai.usage.inputTokenDetails.cacheReadTokens',
+			'ai.usage.cachedInputTokens',
+			'ai.usage.cacheReadInputTokens',
+		]) ??
+		readTokenDetail(inputDetails, [
+			'cache_read',
+			'cache_read_tokens',
+			'cache_read_input_tokens',
+			'cached_tokens',
+		]) ??
+		0;
+	const cacheCreationTokens =
+		firstNumberAttribute(attributes, [
+			'ai.usage.inputTokenDetails.cacheCreationTokens',
+			'ai.usage.cacheCreationInputTokens',
+			'ai.usage.inputTokenDetails.cacheWriteTokens',
+			'ai.usage.cacheWriteInputTokens',
+		]) ??
+		readTokenDetail(inputDetails, [
+			'cache_creation',
+			'cache_creation_tokens',
+			'cache_creation_input_tokens',
+			'cache_write',
+			'cache_write_tokens',
+			'cache_write_input_tokens',
+		]) ??
+		0;
+
+	if (cacheReadTokens === 0 && cacheCreationTokens === 0) {
+		return;
+	}
+
+	const regularInputTokens = Math.max(0, inputTokens - cacheReadTokens - cacheCreationTokens);
+	attributes['gen_ai.usage.input_tokens'] = regularInputTokens;
+	attributes['ai.usage.inputTokens'] = regularInputTokens;
+	attributes['langsmith.metadata.anthropic_original_input_tokens'] = inputTokens;
+	attributes['langsmith.metadata.anthropic_regular_input_tokens'] = regularInputTokens;
+	attributes['langsmith.metadata.anthropic_cache_read_input_tokens'] = cacheReadTokens;
+	attributes['langsmith.metadata.anthropic_cache_creation_input_tokens'] = cacheCreationTokens;
+	attributes['gen_ai.usage.input_token_details'] = JSON.stringify({
+		cache_read: cacheReadTokens,
+		cache_creation: cacheCreationTokens,
+		regular: regularInputTokens,
+		original_input_tokens: inputTokens,
+	});
+}
+
 export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	if (!isRecord(span) || !isRecord(span.attributes)) {
 		return span;
@@ -697,6 +868,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		attributes[key] = redactTelemetryAttribute(key, value);
 	}
 	enrichLangSmithPromptAttribute(attributes);
+	normalizeAnthropicUsageForLangSmith(attributes);
 	span.attributes = attributes;
 	return span;
 }
@@ -744,6 +916,67 @@ function summarizeToolDescription(tool: unknown): string | undefined {
 	return typeof tool.description === 'string' ? tool.description : undefined;
 }
 
+function getToolInputSchema(tool: unknown): unknown {
+	if (!isRecord(tool)) {
+		return undefined;
+	}
+
+	const inputSchema = tool.inputSchema;
+	if (inputSchema === undefined) {
+		return undefined;
+	}
+
+	if (
+		isRecord(inputSchema) &&
+		typeof inputSchema.toJSONSchema === 'function' &&
+		inputSchema.toJSONSchema.length === 0
+	) {
+		try {
+			return inputSchema.toJSONSchema();
+		} catch {
+			return { type: 'zod', conversion: 'failed' };
+		}
+	}
+
+	if (isRecord(inputSchema) && typeof inputSchema.safeParse === 'function') {
+		const definition = isRecord(inputSchema._def) ? inputSchema._def : undefined;
+		return {
+			type: 'zod',
+			...(typeof definition?.typeName === 'string' ? { typeName: definition.typeName } : {}),
+		};
+	}
+
+	return inputSchema;
+}
+
+function summarizeToolForManifest(name: string, tool: unknown): Record<string, unknown> {
+	const schema = getToolInputSchema(tool);
+	const redactedSchema =
+		schema === undefined
+			? undefined
+			: redactTelemetryJsonValue(schema, undefined, 0, MAX_PROMPT_SCHEMA_TRACE_DEPTH);
+	const toolRecord = isRecord(tool) ? tool : {};
+	const providerOptions = isRecord(toolRecord.providerOptions)
+		? redactTelemetryJsonValue(toolRecord.providerOptions)
+		: undefined;
+
+	return {
+		name,
+		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
+		kind: toolRecord.mcpTool === true ? 'mcp' : 'local',
+		...(typeof toolRecord.mcpServerName === 'string'
+			? { mcp_server_name: toolRecord.mcpServerName }
+			: {}),
+		approval: {
+			default_approval: toolRecord.withDefaultApproval === true,
+			suspend: toolRecord.suspendSchema !== undefined,
+			resume: toolRecord.resumeSchema !== undefined,
+		},
+		...(redactedSchema !== undefined ? { input_schema: redactedSchema } : {}),
+		...(providerOptions !== undefined ? { provider_options: providerOptions } : {}),
+	};
+}
+
 function summarizeToolSet(
 	fieldPrefix: 'loaded' | 'deferred',
 	tools: InstanceAiToolRegistry | undefined,
@@ -752,19 +985,29 @@ function summarizeToolSet(
 		return {};
 	}
 
-	const summaries = Object.entries(tools).map(([name, tool]) => ({
-		name,
-		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
-	}));
+	const summaries = Object.entries(tools).map(([name, tool]) =>
+		summarizeToolForManifest(name, tool),
+	);
 	const catalogText = summaries
 		.map((tool) =>
 			typeof tool.description === 'string' ? `${tool.name}: ${tool.description}` : tool.name,
 		)
 		.join('\n');
+	const manifestHash = stableHash(summaries);
+	const toolNames = summaries
+		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
+		.filter((name): name is string => name !== undefined);
 
 	return {
 		[`${fieldPrefix}_tool_count`]: summaries.length,
-		[`${fieldPrefix}_tools`]: summaries,
+		[`${fieldPrefix}_tool_names`]: toolNames,
+		[`${fieldPrefix}_tool_manifest`]: serializeTraceText(JSON.stringify(summaries)),
+		[`${fieldPrefix}_tool_schema_hash`]: manifestHash,
+		[`${fieldPrefix}_tools`]: summaries.map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			kind: tool.kind,
+		})),
 		[`${fieldPrefix}_tool_catalog`]: serializeTraceText(catalogText),
 	};
 }

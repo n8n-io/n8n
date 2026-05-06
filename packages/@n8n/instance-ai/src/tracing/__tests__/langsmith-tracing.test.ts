@@ -598,16 +598,25 @@ describe('createInstanceAiTraceContext', () => {
 				]),
 				'ai.response.text': 'Authorization: Bearer [redacted]',
 				'ai.telemetry.metadata.thread_id': 'thread-1',
-				'ai.usage.inputTokens': 123,
+				'ai.usage.inputTokens': 56,
 				'ai.usage.outputTokens': 45,
 				'ai.usage.cachedInputTokens': 67,
 				'ai.usage.inputTokenDetails.cacheReadTokens': 67,
-				'gen_ai.usage.input_tokens': 123,
-				'gen_ai.usage.input_token_details': JSON.stringify({ cache_read: 67 }),
+				'gen_ai.usage.input_tokens': 56,
+				'gen_ai.usage.input_token_details': JSON.stringify({
+					cache_read: 67,
+					cache_creation: 0,
+					regular: 56,
+					original_input_tokens: 123,
+				}),
 				'headers.authorization': '[redacted]',
 				'metadata.access_token': '[redacted]',
 				'langsmith.span.parent_id': 'parent-run-1',
 				'langsmith.is_root': true,
+				'langsmith.metadata.anthropic_original_input_tokens': 123,
+				'langsmith.metadata.anthropic_regular_input_tokens': 56,
+				'langsmith.metadata.anthropic_cache_read_input_tokens': 67,
+				'langsmith.metadata.anthropic_cache_creation_input_tokens': 0,
 			},
 		});
 	});
@@ -656,6 +665,16 @@ describe('createInstanceAiTraceContext', () => {
 				},
 			],
 			tool_choice: { type: 'auto' },
+		});
+		expect(redacted.attributes['llm.available_tool_names']).toEqual(['lookup']);
+		expect(redacted.attributes['llm.available_tool_count']).toBe(1);
+		expect(redacted.attributes['llm.tool_schema_hash']).toEqual(expect.any(String));
+		expect(JSON.parse(redacted.attributes['tools'] as string)).toEqual(prompt.tools);
+		expect(JSON.parse(redacted.attributes['invocation_params.tools'] as string)).toEqual(
+			prompt.tools,
+		);
+		expect(JSON.parse(redacted.attributes['invocation_params.tool_choice'] as string)).toEqual({
+			type: 'auto',
 		});
 	});
 
@@ -804,6 +823,13 @@ describe('createInstanceAiTraceContext', () => {
 				tools: {
 					'build-workflow': {
 						description: 'Build or patch a workflow from SDK code.',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								task: { type: 'string' },
+							},
+							required: ['task'],
+						},
 					},
 					'submit-workflow': {
 						description: 'Submit a workflow to n8n.',
@@ -815,15 +841,33 @@ describe('createInstanceAiTraceContext', () => {
 
 		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
 		const loadedTools = actorInputs.loaded_tools as Array<Record<string, unknown>>;
+		const loadedToolManifest = JSON.parse(actorInputs.loaded_tool_manifest as string) as Array<
+			Record<string, unknown>
+		>;
 		const systemPrompt = actorInputs.system_prompt as Record<string, unknown>;
 
 		expect(actorInputs.task).toBe('Build a workflow');
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
 		expect(actorInputs.loaded_tool_count).toBe(2);
+		expect(actorInputs.loaded_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.loaded_tool_schema_hash).toEqual(expect.any(String));
 		expect(loadedTools).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ name: 'build-workflow' }),
-				expect.objectContaining({ name: 'submit-workflow' }),
+				expect.objectContaining({ name: 'build-workflow', kind: 'local' }),
+				expect.objectContaining({ name: 'submit-workflow', kind: 'local' }),
+			]),
+		);
+		expect(loadedToolManifest).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'build-workflow',
+					input_schema: expect.objectContaining({ type: 'object' }),
+					approval: {
+						default_approval: false,
+						suspend: false,
+						resume: false,
+					},
+				}),
 			]),
 		);
 		expect(systemPrompt.part_01).toEqual(expect.any(String));
