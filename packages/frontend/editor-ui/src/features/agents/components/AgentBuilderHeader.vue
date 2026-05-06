@@ -12,11 +12,11 @@ import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
 	N8nButton,
-	N8nDropdown,
+	N8nDropdownMenu,
 	N8nIcon,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import type { N8nDropdownOption } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
@@ -68,20 +68,20 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const switcherOptions = computed<Array<N8nDropdownOption<string>>>(() => {
+const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
 	const others = list.filter((a) => a.id !== props.agentId);
 	if (others.length === 0) {
 		return [
 			{
-				value: '__empty__',
+				id: '__empty__',
 				label: i18n.baseText('agents.builder.header.switcher.empty'),
 				disabled: true,
 			},
 		];
 	}
 	return others.map((a) => ({
-		value: a.id,
+		id: a.id,
 		label: a.name,
 	}));
 });
@@ -103,8 +103,8 @@ function onBreadcrumbSelect(item: PathItem) {
 			<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-					<N8nDropdown
-						:options="switcherOptions"
+					<N8nDropdownMenu
+						:items="switcherOptions"
 						data-testid="agent-header-switcher"
 						@select="onSwitcherSelect"
 					>
@@ -119,7 +119,7 @@ function onBreadcrumbSelect(item: PathItem) {
 								<N8nIcon icon="chevron-down" :size="12" />
 							</N8nButton>
 						</template>
-					</N8nDropdown>
+					</N8nDropdownMenu>
 				</template>
 			</N8nBreadcrumbs>
 		</div>

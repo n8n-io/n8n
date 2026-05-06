@@ -39,16 +39,16 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
-	N8nDropdown: {
-		name: 'N8nDropdown',
+	N8nDropdownMenu: {
+		name: 'N8nDropdownMenu',
 		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
-		props: ['options'],
+		props: ['items'],
 		emits: ['select'],
 	},
-	'n8n-dropdown': {
-		name: 'N8nDropdown',
+	'n8n-dropdown-menu': {
+		name: 'N8nDropdownMenu',
 		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
-		props: ['options'],
+		props: ['items'],
 		emits: ['select'],
 	},
 	N8nActionDropdown: {
@@ -62,7 +62,7 @@ vi.mock('@n8n/design-system', () => ({
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 
 type DropdownStubWrapper = VueWrapper<{
-	options: Array<{ value: string; label?: string; disabled?: boolean }>;
+	items: Array<{ id: string; label?: string; disabled?: boolean }>;
 	$options: unknown;
 	$emit: (event: 'select', value: string) => void;
 }>;
@@ -71,7 +71,7 @@ function getSwitcherOptions(wrapper: ReturnType<typeof mountHeader>) {
 	const switcher = wrapper.findComponent(
 		'[data-testid="agent-header-switcher"]',
 	) as DropdownStubWrapper;
-	return switcher.vm.options;
+	return switcher.vm.items;
 }
 
 const baseAgent = {
@@ -179,7 +179,7 @@ describe('AgentBuilderHeader', () => {
 		const wrapper = mountHeader();
 		await flushPromises();
 		const options = getSwitcherOptions(wrapper);
-		expect(options.map((option) => option.value)).toEqual(['a2']);
+		expect(options.map((option) => option.id)).toEqual(['a2']);
 	});
 
 	it('shows a disabled "No other agents" entry when the project has only this agent', async () => {

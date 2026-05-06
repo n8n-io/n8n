@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nResizeWrapper, type N8nDropdownOption } from '@n8n/design-system';
+import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -99,9 +99,9 @@ const {
 	onNewChat,
 } = useAgentBuilderSession();
 
-const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
+const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	sessionMenu.value.map((item) => ({
-		value: item.id,
+		id: item.id,
 		label: item.when ? `${item.label} · ${item.when}` : (item.label ?? item.title),
 		disabled: item.disabled,
 	})),

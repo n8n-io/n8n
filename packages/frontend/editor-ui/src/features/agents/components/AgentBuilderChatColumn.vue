@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { DropdownMenuItemProps, N8nDropdownOption } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
@@ -26,7 +26,7 @@ const props = defineProps<{
 	effectiveSessionId?: string;
 	currentSessionTitle: string;
 	currentSessionHasMessages: boolean;
-	sessionOptions: Array<N8nDropdownOption<string>>;
+	sessionOptions: Array<DropdownMenuItemProps<string>>;
 	initialPrompt?: string;
 	isBuilt: boolean;
 	isBuilderConfigured: boolean;
@@ -52,13 +52,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const sessionMenuMaxHeight = 'calc((var(--spacing--xl) * 5) + var(--spacing--xs))';
 
-const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
-	props.sessionOptions.map((option) => ({
-		id: option.value,
-		label: option.label,
-		disabled: option.disabled,
-	})),
-);
+// `sessionOptions` already match `DropdownMenuItemProps`; alias for template clarity.
+const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => props.sessionOptions);
 </script>
 
 <template>
