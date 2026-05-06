@@ -78,7 +78,7 @@ export function parseAndValidate(
 		collectValidationIssues(graphValidation.errors, allWarnings);
 		collectValidationIssues(graphValidation.warnings, allWarnings);
 
-		const json = builder.toJSON();
+		const json = builder.toJSON({ tidyUp: true });
 
 		// Stage 2: Schema validation via Zod schemas from schemaBaseDirs.
 		// strictMode is hardcoded on at AI-builder call sites — we want every

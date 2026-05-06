@@ -225,7 +225,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					</div>
 				</template>
 				<template #append>
-					<div :class="$style['card-actions']" @click.prevent>
+					<div :class="$style['card-actions']" @click.stop.prevent>
 						<div v-if="data.homeProject && showOwnershipBadge">
 							<ProjectCardBadge
 								:class="{

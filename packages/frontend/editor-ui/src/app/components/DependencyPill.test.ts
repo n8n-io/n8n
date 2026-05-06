@@ -42,35 +42,40 @@ let capturedOpenHandler: ((open: boolean) => void) | undefined;
 let capturedItems: unknown[] = [];
 let capturedSearchable: boolean | undefined;
 
-vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
-	N8nDropdownMenu: {
-		name: 'N8nDropdownMenu',
-		props: [
-			'items',
-			'trigger',
-			'placement',
-			'loading',
-			'searchable',
-			'searchPlaceholder',
-			'emptyText',
-			'maxHeight',
-			'dataTestId',
-			'extraPopperClass',
-		],
-		emits: ['select', 'search', 'update:modelValue'],
-		setup(
-			props: { items: unknown[]; searchable: boolean },
-			{ emit }: { emit: (e: string, v: unknown) => void },
-		) {
-			capturedItems = props.items;
-			capturedSearchable = props.searchable;
-			capturedSelectHandler = (value: string) => emit('select', value);
-			capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+
+	return {
+		...actual,
+		N8nDropdownMenu: {
+			name: 'N8nDropdownMenu',
+			props: [
+				'items',
+				'trigger',
+				'placement',
+				'loading',
+				'searchable',
+				'searchPlaceholder',
+				'emptyText',
+				'maxHeight',
+				'dataTestId',
+				'extraPopperClass',
+			],
+			emits: ['select', 'search', 'update:modelValue'],
+			setup(
+				props: { items: unknown[]; searchable: boolean },
+				{ emit }: { emit: (e: string, v: unknown) => void },
+			) {
+				capturedItems = props.items;
+				capturedSearchable = props.searchable;
+				capturedSelectHandler = (value: string) => emit('select', value);
+				capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
+			},
+			template:
+				'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
 		},
-		template:
-			'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
-	},
-}));
+	};
+});
 
 const renderComponent = createComponentRenderer(DependencyPill, {
 	pinia: createTestingPinia(),

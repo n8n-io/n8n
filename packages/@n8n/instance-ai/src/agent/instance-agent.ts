@@ -146,6 +146,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const systemPrompt = getSystemPrompt({
 		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
+		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
