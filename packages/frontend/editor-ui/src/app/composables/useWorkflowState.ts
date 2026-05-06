@@ -45,11 +45,17 @@ export function useWorkflowState() {
 			stateStore.setPendingExecution(null);
 		} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
 			stateStore.setPendingExecution(workflowResultData);
+			stateStore.setActiveExecutionId(null);
+			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+				workflowResultData,
+			);
 		} else {
 			useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
 				workflowResultData,
 			);
 			if (typeof stateStore.activeExecutionId !== 'string') {
+				stateStore.setPendingExecution(null);
+				stateStore.setActiveExecutionId(undefined);
 				stateStore.setDisplayedExecutionId(workflowResultData.id);
 			}
 		}

@@ -11,6 +11,7 @@ import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
 import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -1367,31 +1368,6 @@ describe('RunData', () => {
 					workflow: {
 						workflowNodes,
 					},
-					workflowExecutionData: {
-						id: '1',
-						finished: true,
-						mode: 'trigger',
-						startedAt: new Date(),
-						workflowData: {
-							id: '1',
-							name: 'Test Workflow',
-							versionId: '1',
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-							active: false,
-							nodes: [],
-							connections: {},
-						},
-						data: {
-							resultData: {
-								runData: {
-									'Test Node': runs ?? [defaultRun],
-								},
-							},
-							...(redactionInfo ? { redactionInfo } : {}),
-						},
-					},
-					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
 				},
 			},
 		});
@@ -1413,6 +1389,35 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
 		workflowsStore.workflow.id = testWorkflowId;
+
+		workflowsStore.setWorkflowExecutionData({
+			id: '1',
+			finished: true,
+			mode: 'trigger',
+			startedAt: new Date(),
+			workflowData: {
+				id: '1',
+				name: 'Test Workflow',
+				versionId: '1',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				active: false,
+				nodes: [],
+				connections: {},
+			},
+			data: {
+				resultData: {
+					runData: {
+						'Test Node': runs ?? [defaultRun],
+					},
+				},
+				...(redactionInfo ? { redactionInfo } : {}),
+			},
+		} as IExecutionResponse);
+
+		if (lastSuccessfulExecution) {
+			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
+		}
 
 		if (pinnedData) {
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);

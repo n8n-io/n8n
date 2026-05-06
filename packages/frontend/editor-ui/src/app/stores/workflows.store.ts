@@ -129,9 +129,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		set: (value) => currentState.value.setCurrentWorkflowExecutions([...value]),
 	});
 
-	const workflowExecutionData = computed<IExecutionResponse | null>(
-		() => currentState.value.activeExecution as IExecutionResponse | null,
-	);
+	const workflowExecutionData = computed<IExecutionResponse | null>(() => {
+		// Access the timestamp to establish a dependency — in-place mutations to the
+		// execution data store update this timestamp, which forces this computed to
+		// re-evaluate even when the execution object reference doesn't change.
+		const eid = resolveActiveExecId();
+		if (eid) {
+			void useExecutionDataStore(createExecutionDataId(eid)).executionResultDataLastUpdate;
+		}
+		return currentState.value.activeExecution as IExecutionResponse | null;
+	});
 	const lastSuccessfulExecution = computed<IExecutionResponse | null>(
 		() => currentState.value.lastSuccessfulExecution as IExecutionResponse | null,
 	);
@@ -585,6 +592,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function resolveActiveExecId(): string | undefined {
 		const aid = currentState.value.activeExecutionId;
 		if (typeof aid === 'string') return aid;
+		if (aid === null) return IN_PROGRESS_EXECUTION_ID;
 		const did = currentState.value.displayedExecutionId;
 		if (typeof did === 'string') return did;
 		return undefined;
@@ -603,12 +611,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			currentState.value.clearDisplayedExecution();
 		} else if (execution.id === IN_PROGRESS_EXECUTION_ID) {
 			currentState.value.setPendingExecution(execution);
+			currentState.value.setActiveExecutionId(null);
+			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+				execution,
+			);
 		} else {
 			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
 			// Ensure the data is visible through the computed chain.
 			// When activeExecutionId isn't yet pointing at this execution,
-			// set displayedExecutionId so workflowExecutionData reads see it.
+			// clear pending state and set displayedExecutionId so reads see it.
 			if (typeof currentState.value.activeExecutionId !== 'string') {
+				currentState.value.setPendingExecution(null);
+				currentState.value.setActiveExecutionId(undefined);
 				currentState.value.setDisplayedExecutionId(execution.id);
 			}
 		}
