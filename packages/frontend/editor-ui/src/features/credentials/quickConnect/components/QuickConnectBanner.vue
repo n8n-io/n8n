@@ -31,12 +31,12 @@ const disclaimerHtml = computed(() => {
 		<N8nCallout v-if="text" theme="secondary" iconless>
 			<div v-n8n-html="text"></div>
 		</N8nCallout>
-		<p
+		<div
 			v-if="disclaimer"
 			:class="$style.disclaimer"
 			data-test-id="quick-connect-banner-disclaimer"
 			v-n8n-html="disclaimerHtml"
-		></p>
+		></div>
 	</div>
 </template>
 

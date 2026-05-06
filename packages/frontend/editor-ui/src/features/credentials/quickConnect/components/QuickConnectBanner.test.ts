@@ -66,6 +66,28 @@ describe('QuickConnectBanner', () => {
 		expect(disclaimer.querySelector('a')).toHaveTextContent('here');
 	});
 
+	it('should escape HTML in disclaimer text, linkLabel, and linkUrl', () => {
+		const wrapper = renderComponent({
+			pinia,
+			props: {
+				disclaimer: {
+					text: 'Read <terms> (available {link}).',
+					linkUrl: 'https://example.com/terms?a=1&b=2',
+					linkLabel: '<b>evil</b>',
+				},
+			},
+		});
+
+		const disclaimer = wrapper.getByTestId('quick-connect-banner-disclaimer');
+		expect(disclaimer.querySelector('b')).toBeNull();
+		expect(disclaimer).toHaveTextContent('Read <terms> (available <b>evil</b>).');
+
+		const link = disclaimer.querySelector('a');
+		expect(link).not.toBeNull();
+		expect(link).toHaveTextContent('<b>evil</b>');
+		expect(link).toHaveAttribute('href', 'https://example.com/terms?a=1&b=2');
+	});
+
 	it('should render disclaimer alongside callout text', () => {
 		const wrapper = renderComponent({
 			pinia,
