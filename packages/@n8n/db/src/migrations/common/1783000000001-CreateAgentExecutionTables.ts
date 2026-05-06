@@ -31,34 +31,7 @@ export class CreateAgentExecutionTables1783000000001 implements ReversibleMigrat
 	}: MigrationContext) {
 		const tablePrefix = escape.tableName('').replace(/"/g, '');
 
-		// ── 1. Roll back the previous migration's effects on execution_entity ──
-
-		const executionEntity = escape.tableName('execution_entity');
-
-		// Delete agent rows. FK CASCADE on execution_data and
-		// execution_metadata clears their child rows automatically.
-		await runQuery(`DELETE FROM ${executionEntity} WHERE mode = 'agent'`);
-
-		const threadIdIndex = escape.indexName('IDX_execution_entity_threadId');
-		await runQuery(`DROP INDEX IF EXISTS ${threadIdIndex}`);
-
-		const executionTable = await queryRunner.getTable(`${tablePrefix}execution_entity`);
-		if (executionTable?.findColumnByName('threadId')) {
-			await dropColumns('execution_entity', ['threadId']);
-		}
-
-		const refreshedExecutionTable = await queryRunner.getTable(`${tablePrefix}execution_entity`);
-		const workflowIdCol = refreshedExecutionTable?.findColumnByName('workflowId');
-		if (workflowIdCol?.isNullable) {
-			await addNotNull('execution_entity', 'workflowId');
-		}
-
-		const oldThreadsTable = await queryRunner.getTable(`${tablePrefix}execution_threads`);
-		if (oldThreadsTable) {
-			await dropTable('execution_threads');
-		}
-
-		// ── 2. Create the new tables ──
+		// ── Create new agent execution threads and execution recording tables ──
 
 		await createTable('agent_execution_threads')
 			.withColumns(
