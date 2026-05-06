@@ -1,21 +1,21 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as commonHelpers from '../../../common';
 import { buildToolsAgentExecutionContext } from '../buildExecutionContext';
 
-jest.mock('../../../common', () => ({
-	getChatModel: jest.fn(),
-	getOptionalMemory: jest.fn(),
+vi.mock('../../../common', () => ({
+	getChatModel: vi.fn(),
+	getOptionalMemory: vi.fn(),
 }));
 
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 });
 
@@ -35,8 +35,8 @@ describe('buildExecutionContext', () => {
 			return defaultValue;
 		});
 
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+		vi.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
 		const result = await buildToolsAgentExecutionContext(mockContext);
 
@@ -66,8 +66,8 @@ describe('buildExecutionContext', () => {
 			return defaultValue;
 		});
 
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+		vi.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
 		const result = await buildToolsAgentExecutionContext(mockContext);
 
@@ -88,11 +88,10 @@ describe('buildExecutionContext', () => {
 			return defaultValue;
 		});
 
-		jest
-			.spyOn(commonHelpers, 'getChatModel')
+		vi.spyOn(commonHelpers, 'getChatModel')
 			.mockResolvedValueOnce(mockModel)
 			.mockResolvedValueOnce(mockFallbackModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
 		const result = await buildToolsAgentExecutionContext(mockContext);
 
@@ -113,11 +112,10 @@ describe('buildExecutionContext', () => {
 			return defaultValue;
 		});
 
-		jest
-			.spyOn(commonHelpers, 'getChatModel')
+		vi.spyOn(commonHelpers, 'getChatModel')
 			.mockResolvedValueOnce(mockModel)
 			.mockResolvedValueOnce(undefined);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
 		await expect(buildToolsAgentExecutionContext(mockContext)).rejects.toThrow(NodeOperationError);
 	});
@@ -130,8 +128,8 @@ describe('buildExecutionContext', () => {
 			return defaultValue;
 		});
 
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
 		await expect(buildToolsAgentExecutionContext(mockContext)).rejects.toThrow(
 			'Please connect a model to the Chat Model input',
@@ -148,8 +146,8 @@ describe('buildExecutionContext', () => {
 			return defaultValue;
 		});
 
-		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
-		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(mockMemory);
+		vi.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
+		vi.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(mockMemory);
 
 		const result = await buildToolsAgentExecutionContext(mockContext);
 

@@ -7,7 +7,6 @@ import {
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
-import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
@@ -31,15 +30,7 @@ export function useWorkflowState() {
 	////
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
-		}
-		ws.workflowExecutionData = workflowResultData;
-		ws.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
-		ws.workflowExecutionResultDataLastUpdate = Date.now();
-		ws.workflowExecutionStartedData = undefined;
+		ws.setWorkflowExecutionData(workflowResultData);
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
@@ -83,10 +74,10 @@ export function useWorkflowState() {
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
-		ws.executionWaitingForWebhook = false;
+		ws.setExecutionWaitingForWebhook(false);
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		ws.workflowExecutionStartedData = undefined;
+		ws.clearExecutionStartedData();
 
 		// TODO(ckolb): confirm this works across files?
 		clearPopupWindowState();
@@ -115,7 +106,7 @@ export function useWorkflowState() {
 
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
-		ws.executionWaitingForWebhook = false;
+		ws.setExecutionWaitingForWebhook(false);
 		useBuilderStore().resetManualExecutionStats();
 	}
 

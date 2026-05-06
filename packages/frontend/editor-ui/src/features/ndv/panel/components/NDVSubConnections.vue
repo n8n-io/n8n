@@ -15,7 +15,7 @@ import type {
 import { useDebounce } from '@/app/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -61,7 +61,7 @@ const nodeType = computed(() =>
 const nodeData = computed(
 	() => workflowDocumentStore?.value?.getNodeByName(props.rootNode.name) ?? null,
 );
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const workflowObjectAccessors = computed(() =>
 	workflowDocumentStore?.value

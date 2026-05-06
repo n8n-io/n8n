@@ -248,6 +248,8 @@ function handleQuickExampleLeave() {
 </template>
 
 <style module lang="scss">
+@use '../../shared/styles/prompt-suggestion-buttons' as promptSuggestions;
+
 .suggestions {
 	position: relative;
 	width: 100%;
@@ -262,39 +264,7 @@ function handleQuickExampleLeave() {
 }
 
 .suggestionButton {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) transparent;
-	border-radius: var(--radius--xl);
-	background: var(--color--foreground--tint-2);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	line-height: var(--line-height--sm);
-	cursor: pointer;
-	animation: suggestionSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-	transition:
-		border-color 0.15s ease,
-		background-color 0.15s ease,
-		color 0.15s ease,
-		box-shadow 0.15s ease,
-		transform 0.15s ease;
-
-	&:hover,
-	&:focus-visible {
-		color: color-mix(in srgb, var(--color--primary) 68%, var(--color--text));
-		border-color: color-mix(in srgb, var(--color--primary) 28%, var(--color--foreground--tint-1));
-		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-		box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
-		transform: translateY(-1px);
-	}
-
-	&:active {
-		transform: translateY(0);
-		box-shadow: none;
-	}
+	@include promptSuggestions.prompt-suggestion-button;
 }
 
 .menuSuggestionButton {
@@ -302,16 +272,11 @@ function handleQuickExampleLeave() {
 }
 
 .menuSuggestionButtonActive {
-	color: color-mix(in srgb, var(--color--primary) 68%, var(--color--text));
-	border-color: color-mix(in srgb, var(--color--primary) 28%, var(--color--foreground--tint-1));
-	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-	box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+	@include promptSuggestions.prompt-suggestion-button-active;
 }
 
 .suggestionIcon {
-	opacity: 0.7;
-	flex-shrink: 0;
-	transition: opacity 0.15s ease;
+	@include promptSuggestions.prompt-suggestion-icon;
 
 	.suggestionButton:hover &,
 	.suggestionButton:focus-visible &,
@@ -426,17 +391,5 @@ function handleQuickExampleLeave() {
 :global(.quick-examples-fade-leave-to) {
 	opacity: 0;
 	transform: translateY(4px);
-}
-
-@keyframes suggestionSlideIn {
-	from {
-		opacity: 0;
-		transform: translateY(6px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 </style>
