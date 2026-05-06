@@ -235,6 +235,20 @@ export {
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
+export { CreateAgentDto } from './agents/create-agent.dto';
+export { UpdateAgentDto } from './agents/update-agent.dto';
+export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
+export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
+export {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	CreateAgentSkillDto,
+	agentSkillSchema,
+} from './agents/create-agent-skill.dto';
+export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
+export { AgentIntegrationDto } from './agents/agent-integration.dto';
+export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
+export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
+
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
 export {
 	ListEncryptionKeysQueryDto,

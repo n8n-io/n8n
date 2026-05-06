@@ -162,6 +162,8 @@ import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateInstanceAiPendingConfirmation1778100000000 } from '../common/1778100000000-CreateInstanceAiPendingConfirmation';
+import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
+import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -324,10 +326,12 @@ const sqliteMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
 	AddJweKeyIndexesToDeploymentKey1777023444000,
-	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
-	AddExecutionDeduplicationKey1778000000000,
 	AddTracingContextToExecution1777045000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	AddExecutionDeduplicationKey1778000000000,
+	CreateAgentTables1783000000000,
+	CreateAgentExecutionTables1783000000001,
 	CreateInstanceAiPendingConfirmation1778100000000,
 ];
 
