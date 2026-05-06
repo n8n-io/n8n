@@ -214,6 +214,11 @@ export class OAuth2Api implements ICredentialType {
 			doNotInherit: true,
 		},
 		{
+			// `jwksUri` is inheritable so future JWE-aware credentials extending
+			// `oAuth2Api` can opt in by simply re-declaring `jweEnabled` and the
+			// JWKS URI surfaces for free. `displayOptions.show.jweEnabled` keeps
+			// this field hidden on extending credentials that don't re-declare
+			// the toggle, so no UI noise.
 			displayName: 'JWKS URI',
 			name: 'jwksUri',
 			type: 'string',
@@ -228,7 +233,6 @@ export class OAuth2Api implements ICredentialType {
 					jweEnabled: [true],
 				},
 			},
-			doNotInherit: true,
 		},
 	];
 }

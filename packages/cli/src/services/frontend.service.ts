@@ -695,11 +695,13 @@ export class FrontendService {
 				credential.__skipManagedCreation = true;
 			}
 
-			// Inject the per-instance JWKS URI as the default of `jwksUri` for
-			// `oAuth2Api` and any credential that extends it. The field is hidden
-			// behind the `jweEnabled` toggle (and the toggle itself is gated by
-			// the OAuth2 JWE feature flag on the frontend), so the value only
-			// surfaces when the feature is in use.
+			// Inject the per-instance JWKS URI as the default of `jwksUri` on
+			// `oAuth2Api` and any credential that extends it. The field stays
+			// hidden by the `jweEnabled` toggle's `displayOptions`, which only
+			// resolves on credentials that explicitly re-declare `jweEnabled`
+			// (it carries `doNotInherit: true`). Net effect: bare `oAuth2Api`
+			// surfaces the JWE flow today, future JWE-aware extending
+			// credentials get the URL injected automatically when they opt in.
 			const isOAuth2Credential =
 				credential.name === 'oAuth2Api' ||
 				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');

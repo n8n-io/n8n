@@ -615,7 +615,6 @@ describe('FrontendService', () => {
 				} as unknown as ICredentialType;
 
 				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
-				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue([]);
 
 				const { service } = createMockService();
 				(service as any).overwriteCredentialsProperties();
@@ -625,6 +624,11 @@ describe('FrontendService', () => {
 			});
 
 			it('should inject the instance JWKS URI on credentials extending oAuth2Api', () => {
+				// `jwksUri` is inheritable so an extending credential that
+				// re-declares `jweEnabled` (opting into JWE) gets the runtime URL
+				// for free. Without a re-declared `jweEnabled`, the field's
+				// `displayOptions` keeps it hidden anyway — but the default is
+				// still populated server-side.
 				const credential = {
 					name: 'slackOAuth2Api',
 					displayName: 'Slack OAuth2 API',
@@ -656,7 +660,6 @@ describe('FrontendService', () => {
 				} as unknown as ICredentialType;
 
 				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
-				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue([]);
 
 				const { service } = createMockService();
 				(service as any).overwriteCredentialsProperties();
