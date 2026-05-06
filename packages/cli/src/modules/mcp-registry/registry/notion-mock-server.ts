@@ -8,6 +8,7 @@ export const notionMockServer: McpRegistryServer = {
 	description:
 		"Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
 	version: '1.2.0',
+	updatedAt: '2026-04-22T10:00:00.000Z',
 	icons: [{ src: 'https://mcp.notion.com/notion-logo-block-main.svg', mimeType: 'image/svg+xml' }],
 	websiteUrl: 'https://developers.notion.com/docs/mcp',
 	authType: 'oauth2',
@@ -19,23 +20,17 @@ export const notionMockServer: McpRegistryServer = {
 		{
 			name: 'notion-search',
 			title: 'Search Notion and connected sources',
-			description:
-				'Semantic search over a Notion workspace and connected sources (Slack, Google Drive, GitHub, Jira, Microsoft Teams, SharePoint, OneDrive, Linear), or search for users by name or email.',
-			annotations: { readOnlyHint: true, destructiveHint: false },
+			annotations: { readOnlyHint: true },
 		},
 		{
 			name: 'notion-fetch',
 			title: 'Fetch Notion entities',
-			description:
-				'Retrieve details about a Notion entity (page, database, or data source) by URL or ID.',
-			annotations: { readOnlyHint: true, destructiveHint: false },
+			annotations: { readOnlyHint: true },
 		},
 		{
 			name: 'notion-create-pages',
 			title: 'Create pages in Markdown',
-			description:
-				'Create one or more Notion pages under a shared parent (page, database, or data source) with specified properties and content.',
-			annotations: { readOnlyHint: false, destructiveHint: false },
+			annotations: { readOnlyHint: false },
 		},
 	],
 	isOfficial: true,

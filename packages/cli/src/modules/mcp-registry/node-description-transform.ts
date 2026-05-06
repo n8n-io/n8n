@@ -1,7 +1,7 @@
 import { camelCase } from 'change-case';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeProperties, INodeTypeDescription, Themed } from 'n8n-workflow';
 
-import type { McpRegistryServer } from './registry/mcp-registry.types';
+import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -21,6 +21,17 @@ function pickRemote(
 	if (sse) return { transport: 'sse', endpointUrl: sse.url };
 
 	return null;
+}
+
+/**
+ * Returns a themed icon URL when both light and dark variants exist,
+ * otherwise the first icon's URL (or undefined when none are provided).
+ */
+function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
+	const light = icons.find((icon) => icon.theme === 'light');
+	const dark = icons.find((icon) => icon.theme === 'dark');
+	if (light && dark) return { light: light.src, dark: dark.src };
+	return icons[0]?.src;
 }
 
 /**
@@ -55,10 +66,14 @@ export function serverToNodeDescription(
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
 
-	delete description.hidden;
+	if (server.status === 'deprecated') {
+		description.hidden = true;
+	} else {
+		delete description.hidden;
+	}
 	description.displayName = displayName;
 	description.name = camelCase(server.slug);
-	description.iconUrl = server.icons[0]?.src;
+	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.description;
 	description.defaults = { name: displayName };
 	if (description.codex) {

@@ -103,7 +103,7 @@ describe('McpRegistryNodeLoader', () => {
 	});
 
 	describe('loadAll', () => {
-		it('populates types, nodeTypes, known.nodes, and loadedNodes for each supported server', async () => {
+		it('populates types, registers the synthetic node, and known.nodes for each supported server', async () => {
 			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
 			const service = createServiceWithServers([notionMockServer]);
 			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);
@@ -116,15 +116,14 @@ describe('McpRegistryNodeLoader', () => {
 				displayName: 'Notion MCP',
 			});
 
-			expect(loader.nodeTypes.notion).toBeDefined();
-			expect(loader.nodeTypes.notion.sourcePath).toBe(sourcePath);
+			const loaded = loader.getNode('notion');
+			expect(loaded).toBeDefined();
+			expect(loaded.sourcePath).toBe(sourcePath);
 
 			expect(loader.known.nodes.notion).toEqual({
 				className: 'McpRegistryClientTool',
 				sourcePath,
 			});
-
-			expect(loader.loadedNodes).toEqual([{ name: 'notion', version: 1 }]);
 		});
 
 		it('inherits prototype methods from the base node class on synthetic nodes', async () => {
@@ -134,7 +133,7 @@ describe('McpRegistryNodeLoader', () => {
 
 			await loader.loadAll();
 
-			const synthetic = loader.nodeTypes.notion.type as INodeType;
+			const synthetic = loader.getNode('notion').type as INodeType;
 			expect(synthetic.methods).toBe(baseNode.methods);
 			expect(synthetic.description.name).toBe('notion');
 			expect(synthetic.description.displayName).toBe('Notion MCP');
@@ -155,7 +154,7 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('notion');
-			expect(loader.nodeTypes.noRemotes).toBeUndefined();
+			expect(() => loader.getNode('noRemotes')).toThrow(UnrecognizedNodeTypeError);
 		});
 
 		it('no-ops when the langchain loader is missing', async () => {
@@ -168,7 +167,6 @@ describe('McpRegistryNodeLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.types.nodes).toHaveLength(0);
-			expect(loader.loadedNodes).toHaveLength(0);
 		});
 
 		it('no-ops when the base node is not registered on the langchain loader', async () => {
@@ -181,7 +179,6 @@ describe('McpRegistryNodeLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.types.nodes).toHaveLength(0);
-			expect(loader.loadedNodes).toHaveLength(0);
 		});
 
 		it('resets prior state before loading', async () => {
@@ -193,7 +190,16 @@ describe('McpRegistryNodeLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.types.nodes).toHaveLength(1);
-			expect(loader.loadedNodes).toHaveLength(1);
+		});
+
+		it('requests deprecated servers from the registry so existing workflows keep loading', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const service = createServiceWithServers([notionMockServer]);
+			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);
+
+			await loader.loadAll();
+
+			expect(service.getAll).toHaveBeenCalledWith({ includeDeprecated: true });
 		});
 	});
 
@@ -230,7 +236,7 @@ describe('McpRegistryNodeLoader', () => {
 	});
 
 	describe('state management', () => {
-		it('reset clears known, types, nodeTypes, and loadedNodes', async () => {
+		it('reset clears known, types, and registered node types', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
 			const service = createServiceWithServers([notionMockServer]);
 			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);
@@ -239,9 +245,8 @@ describe('McpRegistryNodeLoader', () => {
 			loader.reset();
 
 			expect(loader.types.nodes).toEqual([]);
-			expect(loader.nodeTypes).toEqual({});
 			expect(loader.known.nodes).toEqual({});
-			expect(loader.loadedNodes).toEqual([]);
+			expect(() => loader.getNode('notion')).toThrow(UnrecognizedNodeTypeError);
 		});
 
 		it('releaseTypes only clears types', async () => {
@@ -253,8 +258,7 @@ describe('McpRegistryNodeLoader', () => {
 			loader.releaseTypes();
 
 			expect(loader.types.nodes).toEqual([]);
-			expect(loader.nodeTypes.notion).toBeDefined();
-			expect(loader.loadedNodes).toEqual([{ name: 'notion', version: 1 }]);
+			expect(loader.getNode('notion')).toBeDefined();
 		});
 
 		it('ensureTypesLoaded calls loadAll only when types are empty', async () => {

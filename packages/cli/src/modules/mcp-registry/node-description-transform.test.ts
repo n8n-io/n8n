@@ -88,6 +88,42 @@ describe('serverToNodeDescription', () => {
 		expect(serverToNodeDescription(unsupportedServer, baseDescription)).toBeNull();
 	});
 
+	it('marks deprecated servers as hidden so the node creator skips them', () => {
+		const deprecatedServer: McpRegistryServer = { ...notionMockServer, status: 'deprecated' };
+
+		const description = serverToNodeDescription(deprecatedServer, baseDescription);
+
+		expect(description?.hidden).toBe(true);
+	});
+
+	it('returns a themed iconUrl when both light and dark variants are available', () => {
+		const themedServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [
+				{ src: 'https://example.com/light.svg', theme: 'light' },
+				{ src: 'https://example.com/dark.svg', theme: 'dark' },
+			],
+		};
+
+		const description = serverToNodeDescription(themedServer, baseDescription);
+
+		expect(description?.iconUrl).toEqual({
+			light: 'https://example.com/light.svg',
+			dark: 'https://example.com/dark.svg',
+		});
+	});
+
+	it('falls back to the first icon when only one theme is provided', () => {
+		const lightOnlyServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [{ src: 'https://example.com/light.svg', theme: 'light' }],
+		};
+
+		const description = serverToNodeDescription(lightOnlyServer, baseDescription);
+
+		expect(description?.iconUrl).toBe('https://example.com/light.svg');
+	});
+
 	it('extends codex.alias with the title and displayName', () => {
 		const description = serverToNodeDescription(notionMockServer, baseDescription);
 

@@ -551,8 +551,8 @@ export class LoadNodesAndCredentials {
 			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in loader.credentialTypes) {
-				const credentialType = loader.credentialTypes[credentialTypeName];
+			for (const credentialTypeName in known.credentials) {
+				const credentialType = loader.getCredential(credentialTypeName);
 				if (this.shouldAddDomainRestrictions(credentialType)) {
 					// Access properties through the type field
 					credentialType.type.properties = this.injectDomainRestrictionFields([

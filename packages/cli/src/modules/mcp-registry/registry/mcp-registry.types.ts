@@ -8,6 +8,7 @@ export type McpRegistryServer = {
 	title: string;
 	description: string;
 	version: string;
+	updatedAt: string;
 	icons: McpRegistryIcon[];
 	websiteUrl?: string;
 	authType: 'oauth2';
@@ -22,7 +23,6 @@ export type McpRegistryServer = {
 export type McpRegistryIcon = {
 	src: string;
 	mimeType?: 'image/png' | 'image/jpeg' | 'image/jpg' | 'image/svg+xml' | 'image/webp';
-	sizes?: string[];
 	theme?: 'light' | 'dark';
 };
 
@@ -35,12 +35,10 @@ export type McpRegistryRemote = {
 
 export type McpRegistryToolAnnotations = {
 	readOnlyHint?: boolean;
-	destructiveHint?: boolean;
 };
 
 export type McpRegistryTool = {
 	name: string;
 	title?: string;
-	description: string;
 	annotations?: McpRegistryToolAnnotations;
 };

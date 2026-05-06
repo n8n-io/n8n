@@ -10,8 +10,9 @@ export class McpRegistryService {
 		[notionMockServer.slug, notionMockServer],
 	]);
 
-	getAll(): McpRegistryServer[] {
-		return Array.from(this.servers.values());
+	getAll({ includeDeprecated = false }: { includeDeprecated?: boolean } = {}): McpRegistryServer[] {
+		const all = Array.from(this.servers.values());
+		return includeDeprecated ? all : all.filter((server) => server.status === 'active');
 	}
 
 	get(slug: string): McpRegistryServer | undefined {
