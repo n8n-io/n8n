@@ -9,29 +9,26 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import {
-	N8nCallout,
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from './instanceAi.store';
-import { useSidebarState } from './instanceAiLayout';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
-import { INSTANCE_AI_SETTINGS_VIEW, INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -39,10 +36,10 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
-import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
@@ -52,15 +49,13 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
-const sourceControlStore = useSourceControlStore();
+const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
-const sidebar = useSidebarState();
 const { goToUpgrade } = usePageRedirectionHelper();
-
-const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
+const creditBanner = useCreditWarningBanner(isLowCredits);
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -100,18 +95,6 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
-
-// --- Credit warning banner ---
-const creditBannerDismissed = ref(false);
-watch(
-	() => store.isLowCredits,
-	(isLow, wasLow) => {
-		if (isLow && !wasLow) {
-			creditBannerDismissed.value = false;
-		}
-	},
-);
-const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
 
 // --- Side panels ---
 const showArtifactsPanel = ref(true);
@@ -320,64 +303,27 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 function handleStop() {
 	void store.cancelRun();
 }
-
-function goToSettings() {
-	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
-}
 </script>
 
 <template>
 	<div :class="$style.threadArea">
 		<!-- Main chat area -->
 		<div :class="$style.chatArea">
-			<!-- Header -->
-			<div :class="$style.header">
-				<Transition name="sidebar-toggle-fade">
-					<span v-if="sidebar.collapsed.value" :class="$style.sidebarToggle">
-						<N8nTooltip
-							:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<N8nIconButton
-								icon="history"
-								variant="ghost"
-								size="small"
-								icon-size="large"
-								data-test-id="instance-ai-sidebar-toggle"
-								:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-								@click="sidebar.toggle"
-							/>
-						</N8nTooltip>
-					</span>
-				</Transition>
-				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
-					{{ currentThreadTitle }}
-				</N8nHeading>
-				<N8nText
-					v-if="store.sseState === 'reconnecting'"
-					size="small"
-					color="text-light"
-					:class="$style.reconnecting"
-				>
-					{{ i18n.baseText('instanceAi.view.reconnecting') }}
-				</N8nText>
-				<div :class="$style.headerActions">
-					<CreditsSettingsDropdown
-						v-if="store.creditsRemaining !== undefined"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
-						:is-low-credits="store.isLowCredits"
-						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-					/>
-					<N8nIconButton
-						icon="cog"
-						variant="ghost"
+			<InstanceAiViewHeader>
+				<template #title>
+					<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+						{{ currentThreadTitle }}
+					</N8nHeading>
+					<N8nText
+						v-if="store.sseState === 'reconnecting'"
 						size="small"
-						icon-size="large"
-						data-test-id="instance-ai-settings-button"
-						@click="goToSettings"
-					/>
+						color="text-light"
+						:class="$style.reconnecting"
+					>
+						{{ i18n.baseText('instanceAi.view.reconnecting') }}
+					</N8nText>
+				</template>
+				<template #actions>
 					<N8nIconButton
 						v-if="isDebugEnabled"
 						icon="bug"
@@ -398,17 +344,8 @@ function goToSettings() {
 						icon-size="large"
 						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
-				</div>
-			</div>
-
-			<N8nCallout
-				v-if="isReadOnlyEnvironment"
-				theme="warning"
-				icon="lock"
-				:class="$style.readOnlyBanner"
-			>
-				{{ i18n.baseText('readOnlyEnv.instanceAi.notice') }}
-			</N8nCallout>
+				</template>
+			</InstanceAiViewHeader>
 
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div :class="$style.contentArea">
@@ -464,11 +401,11 @@ function goToSettings() {
 						<div :class="$style.inputConstraint">
 							<InstanceAiStatusBar />
 							<CreditWarningBanner
-								v-if="showCreditBanner"
+								v-if="creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
 								:credits-quota="store.creditsQuota"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-								@dismiss="creditBannerDismissed = true"
+								@dismiss="creditBanner.dismiss()"
 							/>
 							<InstanceAiInput
 								ref="chatInputRef"
@@ -596,15 +533,6 @@ function goToSettings() {
 	}
 }
 
-.header {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	background-color: var(--color--background--light-2);
-}
-
 .headerTitle {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -613,27 +541,12 @@ function goToSettings() {
 	color: var(--color--text);
 }
 
-.headerActions {
-	margin-left: auto;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.sidebarToggle {
-	display: inline-flex;
-}
-
 .activeButton {
 	color: var(--color--primary);
 }
 
 .reconnecting {
 	font-style: italic;
-}
-
-.readOnlyBanner {
-	margin: var(--spacing--xs) var(--spacing--sm) 0;
 }
 
 .contentArea {
