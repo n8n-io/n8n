@@ -27,6 +27,16 @@ vi.mock('@/app/composables/useWorkflowState', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
+	useWorkflowHelpers: () => ({
+		getNodeTypes: () => ({
+			getByName: () => undefined,
+			getByNameAndVersion: () => undefined,
+			getKnownTypes: () => ({}),
+		}),
+	}),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: () => null,
