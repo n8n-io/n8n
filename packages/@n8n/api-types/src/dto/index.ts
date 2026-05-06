@@ -25,7 +25,11 @@ export type {
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
-export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export {
+	InstanceAiConfirmRequestDto,
+	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmRequestKind,
+} from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
@@ -198,8 +202,14 @@ export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
-export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+export {
+	ProvisioningConfigDto,
+	ProvisioningConfigPatchDto,
+	type ProvisioningMode,
+	type ProvisioningModeFlags,
+} from './provisioning/config.dto';
 
 export {
 	SecuritySettingsDto,
@@ -226,5 +236,9 @@ export { VersionSinceDateQueryDto } from './instance-version-history/version-sin
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
-export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export {
+	ListEncryptionKeysQueryDto,
+	ENCRYPTION_KEYS_SORT_OPTIONS,
+	type EncryptionKeysSortOption,
+} from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

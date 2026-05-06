@@ -258,9 +258,10 @@ export const useActions = () => {
 
 	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
-		const { workflowTriggerNodes } = useWorkflowsStore();
+		const { workflowId } = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const hasTrigger = addedNodes.some((node) => useNodeTypesStore().isTriggerNode(node.type));
-		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
+		const workflowContainsTrigger = workflowDocumentStore.workflowTriggerNodes.length > 0;
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 

@@ -14,6 +14,7 @@ import {
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
+	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
 	type ToggleWorkflowsMcpAccessResponse,
@@ -22,7 +23,12 @@ import {
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
-import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
+import type {
+	ApiKey,
+	InstanceMcpClientStatsResponseDto,
+	OAuthClientResponseDto,
+	DeleteOAuthClientResponseDto,
+} from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
@@ -33,6 +39,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
@@ -150,6 +157,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response.data;
 	}
 
+	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
+		try {
+			const stats = await fetchInstanceMcpClientStats(rootStore.restApiContext);
+			instanceClientStats.value = stats;
+			return stats;
+		} catch {
+			// Endpoint is admin-only; non-admin members get 403. Swallow silently
+			// so the settings page still renders for them.
+			instanceClientStats.value = null;
+			return null;
+		}
+	}
+
 	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
 		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
 		// Remove the client from the local store
@@ -185,7 +205,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		instanceClientStats,
 		getAllOAuthClients,
+		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
 		connectPopoverOpen,

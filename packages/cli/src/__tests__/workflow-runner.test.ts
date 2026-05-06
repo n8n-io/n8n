@@ -16,6 +16,7 @@ import {
 	type IExecuteData,
 	type INode,
 	type IRun,
+	type IRunExecutionData,
 	type ITaskData,
 	type IWaitingForExecution,
 	type IWaitingForExecutionSource,
@@ -23,9 +24,11 @@ import {
 	type IWorkflowExecutionDataProcess,
 	type StartNodeData,
 	type IWorkflowExecuteAdditionalData,
+	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
 	TimeoutExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -627,6 +630,202 @@ describe('needsFullExecutionData', () => {
 		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
 
 		expect(result).toBe(true);
+	});
+});
+
+describe('pre-persist context establishment', () => {
+	const callOrder: string[] = [];
+	let establishSpy: jest.SpyInstance;
+	let addSpy: jest.SpyInstance;
+	let capturedAddData: IWorkflowExecutionDataProcess | undefined;
+
+	const buildRunData = (
+		executionData: IRunExecutionData | undefined,
+		executionMode: WorkflowExecuteMode = 'webhook',
+	): IWorkflowExecutionDataProcess =>
+		mock<IWorkflowExecutionDataProcess>({
+			executionMode,
+			workflowData: {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [],
+				connections: {},
+				settings: undefined,
+			},
+			executionData,
+			userId: 'u1',
+		});
+
+	const buildExecutionDataWithHeader = (): IRunExecutionData =>
+		createRunExecutionData({
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [
+					{
+						node: {
+							id: 'n1',
+							name: 'Webhook',
+							type: 'n8n-nodes-base.webhook',
+							typeVersion: 2,
+							position: [0, 0],
+							parameters: {},
+						},
+						data: {
+							main: [[{ json: { headers: { authorization: 'Bearer eyJtest' } } }]],
+						},
+						source: null,
+					},
+				],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		});
+
+	beforeEach(() => {
+		callOrder.length = 0;
+		capturedAddData = undefined;
+
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValue();
+
+		establishSpy = jest
+			.spyOn(core, 'establishExecutionContext')
+			.mockImplementation(async (_workflow, runExecutionData) => {
+				callOrder.push('establishExecutionContext');
+				// Simulate real behaviour: mask header, set runtimeData.
+				const stack = runExecutionData.executionData?.nodeExecutionStack;
+				const item = stack?.[0]?.data?.main?.[0]?.[0];
+				const headers = item && (item.json as { headers?: Record<string, string> }).headers;
+				if (headers && typeof headers.authorization === 'string') {
+					headers.authorization = '**********';
+				}
+				if (runExecutionData.executionData) {
+					(runExecutionData.executionData as { runtimeData?: unknown }).runtimeData = {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'webhook',
+					};
+				}
+			});
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		addSpy = jest
+			.spyOn(activeExecutions, 'add')
+			.mockImplementation(async (data: IWorkflowExecutionDataProcess) => {
+				capturedAddData = data;
+				callOrder.push('activeExecutions.add');
+				throw new Error('short-circuit for test');
+			});
+	});
+
+	afterEach(() => {
+		establishSpy.mockRestore();
+		addSpy.mockRestore();
+	});
+
+	it('calls establishExecutionContext before activeExecutions.add', async () => {
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(callOrder).toEqual(['establishExecutionContext', 'activeExecutions.add']);
+	});
+
+	it('passes masked executionData to activeExecutions.add', async () => {
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(capturedAddData).toBeDefined();
+		const stack = capturedAddData!.executionData!.executionData!.nodeExecutionStack;
+		expect(stack[0].data.main[0]![0].json).toMatchObject({
+			headers: { authorization: '**********' },
+		});
+		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
+	});
+
+	it('skips establishExecutionContext when data.executionData is undefined', async () => {
+		const data = buildRunData(undefined);
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).not.toHaveBeenCalled();
+		expect(callOrder).toEqual(['activeExecutions.add']);
+	});
+
+	it('skips establishExecutionContext when nodeExecutionStack has not been populated yet', async () => {
+		// Queue mode with OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true creates
+		// the outer IRunExecutionData with `executionData: null`, which
+		// `createRunExecutionData` normalises to an object whose inner
+		// `.executionData` is undefined. The worker establishes context
+		// later, once it populates the trigger-item stack.
+		const data = buildRunData(createRunExecutionData({ executionData: null }), 'manual');
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).not.toHaveBeenCalled();
+		expect(callOrder).toEqual(['activeExecutions.add']);
+	});
+
+	describe('when establishExecutionContext throws', () => {
+		const lifecycleRunHook = jest.fn().mockResolvedValue(undefined);
+		const responseReject = jest.fn();
+
+		beforeEach(() => {
+			establishSpy.mockReset();
+			establishSpy.mockImplementation(async () => {
+				callOrder.push('establishExecutionContext');
+				throw new Error('hook augmentation failed');
+			});
+
+			addSpy.mockReset();
+			addSpy.mockImplementation(async (data: IWorkflowExecutionDataProcess) => {
+				capturedAddData = data;
+				callOrder.push('activeExecutions.add');
+				return 'exec-1';
+			});
+
+			lifecycleRunHook.mockClear();
+			responseReject.mockClear();
+			jest
+				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+				.mockReturnValue(mock<core.ExecutionLifecycleHooks>({ runHook: lifecycleRunHook }));
+			jest.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+		});
+
+		it('clears the trigger-item stack so raw headers do not get persisted', async () => {
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			await runner.run(data, undefined, undefined, undefined, {
+				reject: responseReject,
+				resolve: jest.fn(),
+				promise: Promise.resolve() as never,
+			} as never);
+
+			expect(capturedAddData).toBeDefined();
+			expect(capturedAddData!.executionData!.executionData!.nodeExecutionStack).toEqual([]);
+		});
+
+		it('creates a failed-execution record and rejects the responsePromise', async () => {
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			const executionId = await runner.run(data, undefined, undefined, undefined, {
+				reject: responseReject,
+				resolve: jest.fn(),
+				promise: Promise.resolve() as never,
+			} as never);
+
+			expect(executionId).toBe('exec-1');
+			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
+			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteAfter', [expect.any(Object)]);
+			expect(responseReject).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'hook augmentation failed' }),
+			);
+		});
 	});
 });
 

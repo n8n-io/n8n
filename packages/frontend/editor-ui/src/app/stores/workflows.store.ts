@@ -1,7 +1,6 @@
 import {
 	AI_NODES_PACKAGE_NAME,
 	DUPLICATE_POSTFFIX,
-	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -18,15 +17,11 @@ import { defineStore } from 'pinia';
 import type {
 	IDataObject,
 	ExecutionSummary,
-	INode,
 	INodeCredentials,
-	INodeCredentialsDetails,
-	INodeTypes,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
-	INodeType,
 	ITaskStartedData,
 } from 'n8n-workflow';
 import { deepCopy, TelemetryHelpers } from 'n8n-workflow';
@@ -37,24 +32,20 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
-	findTriggerNodeToAutoSelect,
 	openFormPopupWindow,
 } from '@/features/execution/executions/executions.utils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { i18n } from '@n8n/i18n';
 
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import { isChatNode } from '@/app/utils/aiUtils';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasRole } from '@/app/utils/rbac/checks';
@@ -64,6 +55,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
 	id: '',
@@ -89,9 +81,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
-	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsListStore = useWorkflowsListStore();
 
@@ -136,17 +126,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	});
 
-	const workflowTriggerNodes = computed(() =>
-		workflow.value.nodes.filter((node: INodeUi) => {
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			return nodeType && nodeType.group.includes('trigger');
-		}),
-	);
-
-	const currentWorkflowHasWebhookNode = computed(
-		() => !!workflow.value.nodes.find((node: INodeUi) => !!node.webhookId),
-	);
-
 	const getWorkflowRunData = computed<IRunData | null>(() => {
 		if (!workflowExecutionData.value?.data?.resultData) {
 			return null;
@@ -181,25 +160,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const getWorkflowExecution = computed(() => workflowExecutionData.value);
 
 	const getPastChatMessages = computed(() => chatMessages.value);
-
-	const selectableTriggerNodes = computed(() =>
-		workflowTriggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
-	);
-
-	const workflowExecutionTriggerNodeName = computed(() => {
-		if (!isWorkflowRunning.value) {
-			return undefined;
-		}
-
-		if (workflowExecutionData.value?.triggerNode) {
-			return workflowExecutionData.value.triggerNode;
-		}
-
-		// In case of partial execution, triggerNode is not set, so I'm trying to find from runData
-		return Object.keys(workflowExecutionData.value?.data?.resultData.runData ?? {}).find((name) =>
-			workflowTriggerNodes.value.some((node) => node.name === name),
-		);
-	});
 
 	const canViewWorkflows = computed(
 		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
@@ -245,36 +205,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getExecutionDataById(id: string): ExecutionSummary | undefined {
 		return currentWorkflowExecutions.value.find((execution) => execution.id === id);
-	}
-
-	function getNodeTypes(): INodeTypes {
-		const nodeTypes: INodeTypes = {
-			nodeTypes: {},
-			init: async (): Promise<void> => {},
-			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-				const nodeTypeDescription =
-					nodeTypesStore.getNodeType(nodeType, version) ??
-					nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
-					null;
-				if (nodeTypeDescription === null) {
-					return undefined;
-				}
-
-				return {
-					description: nodeTypeDescription,
-					// As we do not have the trigger/poll functions available in the frontend
-					// we use the information available to figure out what are trigger nodes
-					// @ts-ignore
-					trigger:
-						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
-							nodeTypeDescription.inputs.length === 0 &&
-							!nodeTypeDescription.webhooks) ||
-						undefined,
-				};
-			},
-		} as unknown as INodeTypes;
-
-		return nodeTypes;
 	}
 
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
@@ -364,90 +294,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	// replace invalid credentials in workflow
-	function replaceInvalidWorkflowCredentials(data: {
-		credentials: INodeCredentialsDetails;
-		invalid: INodeCredentialsDetails;
-		type: string;
-	}) {
-		workflow.value.nodes.forEach((node: INodeUi) => {
-			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
-			if (!nodeCredentials?.[data.type]) {
-				return;
-			}
-
-			const nodeCredentialDetails: INodeCredentialsDetails | string = nodeCredentials[data.type];
-
-			if (
-				typeof nodeCredentialDetails === 'string' &&
-				nodeCredentialDetails === data.invalid.name
-			) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				return;
-			}
-
-			if (nodeCredentialDetails.id === null) {
-				if (nodeCredentialDetails.name === data.invalid.name) {
-					(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				}
-				return;
-			}
-
-			if (nodeCredentialDetails.id === data.invalid.id) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-			}
-		});
-	}
-
-	// Assign credential to all nodes that support it but don't have it set
-	function assignCredentialToMatchingNodes(data: {
-		credentials: INodeCredentialsDetails;
-		type: string;
-		currentNodeName: string;
-	}): number {
-		let updatedNodesCount = 0;
-
-		workflow.value.nodes.forEach((node: INodeUi) => {
-			// Skip the current node (it was just set)
-			if (node.name === data.currentNodeName) {
-				return;
-			}
-
-			// Skip if node already has credential set
-			if (node.credentials && Object.keys(node.credentials).length > 0) {
-				return;
-			}
-
-			// Get node type to check if it supports this credential
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeType?.credentials) {
-				return;
-			}
-
-			// Check if this node type supports the credential type
-			// and if the credential is actually active given the node's current parameters
-			const credentialDescription = nodeType.credentials.find((cred) => cred.name === data.type);
-			if (!credentialDescription) {
-				return;
-			}
-
-			if (
-				credentialDescription.displayOptions &&
-				!nodeHelpers.displayParameter(node.parameters, credentialDescription, '', node)
-			) {
-				return;
-			}
-
-			// Assign the same credential to the node
-			node.credentials ??= {} satisfies INodeCredentials;
-			node.credentials[data.type] = data.credentials;
-
-			updatedNodesCount++;
-		});
-
-		return updatedNodesCount;
-	}
-
 	async function archiveWorkflow(id: string, expectedChecksum?: string) {
 		const updatedWorkflow = await workflowsListStore.archiveWorkflowInList(id, expectedChecksum);
 		setWorkflowInactive(id);
@@ -522,6 +368,46 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 			workflowExecutionStartedData.value = undefined;
 		}
+	}
+
+	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
+		if (execution?.data?.waitTill) {
+			delete execution.data.resultData.runData[
+				execution.data.resultData.lastNodeExecuted as string
+			];
+		}
+		workflowExecutionData.value = execution;
+		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(execution);
+		workflowExecutionResultDataLastUpdate.value = Date.now();
+		workflowExecutionStartedData.value = undefined;
+	}
+
+	function clearExecutionStartedData(): void {
+		workflowExecutionStartedData.value = undefined;
+	}
+
+	function setExecutionWaitingForWebhook(value: boolean): void {
+		executionWaitingForWebhook.value = value;
+	}
+
+	function setIsInDebugMode(value: boolean): void {
+		isInDebugMode.value = value;
+	}
+
+	function setChatPartialExecutionDestinationNode(value: string | null): void {
+		chatPartialExecutionDestinationNode.value = value;
+	}
+
+	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
+		lastSuccessfulExecution.value = execution;
+	}
+
+	function clearCurrentWorkflowExecutions(): void {
+		currentWorkflowExecutions.value = [];
+	}
+
+	function setCurrentWorkflowExecutions(executions: ExecutionSummary[]): void {
+		currentWorkflowExecutions.value = executions;
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
@@ -1008,42 +894,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		chatMessages.value.push(message);
 	}
 
-	function setSelectedTriggerNodeName(value: string) {
+	function setSelectedTriggerNodeName(value: string | undefined) {
 		selectedTriggerNodeName.value = value;
 	}
 
-	watch(
-		[selectableTriggerNodes, workflowExecutionTriggerNodeName],
-		([newSelectable, currentTrigger], [oldSelectable]) => {
-			if (currentTrigger !== undefined) {
-				selectedTriggerNodeName.value = currentTrigger;
-				return;
-			}
-
-			if (
-				selectedTriggerNodeName.value === undefined ||
-				newSelectable.every((node) => node.name !== selectedTriggerNodeName.value)
-			) {
-				selectedTriggerNodeName.value = findTriggerNodeToAutoSelect(
-					selectableTriggerNodes.value,
-					nodeTypesStore.getNodeType,
-				)?.name;
-				return;
-			}
-
-			const newTrigger = newSelectable?.find((node) =>
-				oldSelectable?.every((old) => old.name !== node.name),
-			);
-
-			if (newTrigger !== undefined) {
-				// Select newly added node
-				selectedTriggerNodeName.value = newTrigger.name;
-			}
-		},
-		{ immediate: true },
-	);
-
 	return {
+		/**
+		 * @deprecated use granular methods or getSnapshot() in workflow document store.
+		 */
 		workflow,
 		currentWorkflowExecutions,
 		workflowExecutionData,
@@ -1059,8 +917,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,
-		workflowTriggerNodes,
-		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
 		isWorkflowRunning,
@@ -1069,9 +925,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowExecution,
 		getPastChatMessages,
 		selectedTriggerNodeName: computed(() => selectedTriggerNodeName.value),
-		workflowExecutionTriggerNodeName,
 		getExecutionDataById,
-		getNodeTypes,
 		convertTemplateNodeToNodeUi,
 		getWorkflowFromUrl,
 		getActivationError,
@@ -1079,14 +933,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		setWorkflowActiveVersion,
-		replaceInvalidWorkflowCredentials,
-		assignCredentialToMatchingNodes,
 		archiveWorkflow,
 		unarchiveWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
+		setWorkflowExecutionData,
+		clearExecutionStartedData,
+		setExecutionWaitingForWebhook,
+		setIsInDebugMode,
+		setChatPartialExecutionDestinationNode,
+		setLastSuccessfulExecution,
+		clearCurrentWorkflowExecutions,
+		setCurrentWorkflowExecutions,
 		renameNodeSelectedAndExecution,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
