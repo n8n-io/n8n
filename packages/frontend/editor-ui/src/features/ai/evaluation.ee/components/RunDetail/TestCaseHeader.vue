@@ -111,7 +111,7 @@ const hasMetadata = computed(() => props.tokens !== undefined || props.durationM
 	background: none;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
-	transition: color 0.1s ease-in-out;
+	transition: color var(--animation--duration) var(--animation--easing);
 
 	&:hover {
 		color: var(--color--text);

@@ -36,7 +36,7 @@ const icon = computed(() => (tone.value === 'negative' ? 'trending-down' : 'tren
 	align-self: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: 9999px; // pill — no design-system token for fully rounded
+	border-radius: var(--radius--full);
 	line-height: 1;
 }
 
