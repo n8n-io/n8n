@@ -146,7 +146,7 @@ describe('OAuth2 API', () => {
 			.expect(200);
 
 		expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
-			error: { message: 'Unauthorized' },
+			error: { message: 'Unauthorized', reason: '' },
 		});
 	});
 
