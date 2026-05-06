@@ -51,16 +51,23 @@ const persistentLabel = computed(() =>
 		: i18n.baseText('instanceAi.domainAccess.allowDomain'),
 );
 
+// Web search's persistent option approves every future search in the thread,
+// which is much broader than fetch-url's per-domain scope — default to
+// allow-once so users opt into thread-wide approval explicitly.
+const primaryIsAllowOnce = computed(() => isDestructive.value || isWebSearch.value);
+
 const primaryAction = computed<DomainAction>(() =>
-	isDestructive.value ? 'allow_once' : 'allow_domain',
+	primaryIsAllowOnce.value ? 'allow_once' : 'allow_domain',
 );
 
 const primaryLabel = computed(() =>
-	isDestructive.value ? i18n.baseText('instanceAi.domainAccess.allowOnce') : persistentLabel.value,
+	primaryIsAllowOnce.value
+		? i18n.baseText('instanceAi.domainAccess.allowOnce')
+		: persistentLabel.value,
 );
 
 const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
-	isDestructive.value
+	primaryIsAllowOnce.value
 		? [{ id: 'allow_domain' as const, label: persistentLabel.value }]
 		: [
 				{
