@@ -208,4 +208,37 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
 		});
 	});
+
+	describe('trigger URL patterns', () => {
+		const webhookBaseUrl = 'http://localhost:5678/webhook';
+		const formBaseUrl = 'http://localhost:5678/form';
+
+		it('serves Form Trigger URLs under the /form base, not /webhook', () => {
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Form Trigger**: http://localhost:5678/form/{path}');
+			expect(prompt).toContain('http://localhost:5678/form/{webhookId}');
+			expect(prompt).not.toContain('**Form Trigger**: http://localhost:5678/webhook/');
+		});
+
+		it('keeps Webhook Trigger and Chat Trigger on the webhook base URL', () => {
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Webhook Trigger**: http://localhost:5678/webhook/{path}');
+			expect(prompt).toContain('**Chat Trigger**: http://localhost:5678/webhook/{webhookId}/chat');
+		});
+
+		it('explicitly warns that /form and /webhook are distinct prefixes', () => {
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toMatch(/Form Trigger lives under \/form\/, NOT \/webhook\//);
+			expect(prompt).toContain('Do NOT use the Webhook base URL for Form Triggers');
+		});
+
+		it('omits the Instance Info section when base URLs are not provided', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).not.toContain('## Instance Info');
+		});
+	});
 });
