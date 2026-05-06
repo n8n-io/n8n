@@ -88,7 +88,7 @@ execution path below.
 | --- | --- | --- | --- |
 | Foreground orchestrator | `createInstanceAgent()` -> `streamAgentRun()` | `Agent.stream()` | Child agent activation under `message_turn` or `orchestrator_resume` root |
 | Context compaction | `generateCompactionSummary()` | `Agent.generate()` with no tools | Root-level child under `message_turn` or `orchestrator_resume`, before `agent.orchestrator`; internal root only when run out of band |
-| Thread title | `generateTitleForRun()` | `generateTitleFromMessage()` | Internal OTel operation; export to LangSmith only when `include_internal=true` or on error |
+| Thread title | `generateTitleForRun()` | `generateTitleFromMessage()` | Internal OTel operation behind the internal-tracing gate; when enabled, native LLM telemetry attaches to the internal root |
 | Inline planner | `plan` tool / `createPlanWithAgentTool()` | `Agent.stream()` with planner tools | Child `agent.planner` activation under the current orchestrator activation |
 | Inline delegate | `delegate` tool / `createDelegateTool()` | `createSubAgent().stream()` | Child `agent.<role>` activation under the current orchestrator activation |
 | Browser credential setup | `browser-credential-setup` tool | `Agent.stream()` plus resume/nudge loops | Quick credential checks stay inline; browser/user-wait flows use detached `background_subagent` plus `orchestrator_resume` |
@@ -159,7 +159,8 @@ flowchart TD
 
 - Used for optional internal LLM calls that are not part of a user-visible
   agent activation, such as title generation.
-- Hidden from normal debugging views by tags/metadata unless explicitly enabled.
+- Intentionally gated from normal LangSmith export unless internal tracing is
+  enabled. This keeps background utility calls from adding default thread steps.
 
 ### Agent Activation Spans
 
@@ -536,8 +537,11 @@ Context compaction should be a root-level child under the current
 Compaction prepares the orchestrator input; it is not part of the orchestrator
 agent activation duration.
 
-Title generation should use an internal OTel span. It is exported to LangSmith
-only when `include_internal=true` or when title generation fails.
+Title generation should use an internal OTel span when internal tracing is
+enabled. In the default path it is intentionally gated rather than accidentally
+exported as an orphan LLM trace. Instance AI currently treats
+`N8N_INSTANCE_AI_TRACE_INTERNAL=true` or
+`N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL=true` as the `include_internal` gate.
 
 ### 5. Rely on native AI SDK LLM/tool spans
 
@@ -667,9 +671,12 @@ Live validation:
 
 ## Settled Design Decisions
 
-- Title generation is always instrumented as an internal OTel operation, but it
-  is exported to LangSmith only when `include_internal=true` or when the title
-  operation fails.
+- Title generation is an internal OTel operation behind the internal-tracing
+  gate. When `N8N_INSTANCE_AI_TRACE_INTERNAL=true` or
+  `N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL=true`, Instance AI creates an
+  `internal_operation` root and attaches native title-generation LLM telemetry.
+  When the gate is off, the title call remains deliberately untraced to avoid
+  accidental orphan roots and default thread noise.
 - Context compaction is a root-level preparation span under the current
   `message_turn` or `orchestrator_resume` root. It runs before
   `agent.orchestrator` and is not counted as orchestrator activation time.
