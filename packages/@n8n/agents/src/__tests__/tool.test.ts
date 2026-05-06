@@ -124,6 +124,37 @@ describe('Tool builder — without approval', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Tool builder — .systemInstruction()
+// ---------------------------------------------------------------------------
+
+describe('Tool builder — .systemInstruction()', () => {
+	it('build() carries the systemInstruction onto the BuiltTool', () => {
+		const tool = new Tool('fetch')
+			.description('Fetch data')
+			.systemInstruction('Always fetch with the cache disabled.')
+			.input(z.object({ id: z.string() }))
+			.handler(async ({ id }) => {
+				return await Promise.resolve({ data: id });
+			})
+			.build();
+
+		expect(tool.systemInstruction).toBe('Always fetch with the cache disabled.');
+	});
+
+	it('build() leaves systemInstruction undefined when not set', () => {
+		const tool = new Tool('fetch')
+			.description('Fetch data')
+			.input(z.object({ id: z.string() }))
+			.handler(async ({ id }) => {
+				return await Promise.resolve({ data: id });
+			})
+			.build();
+
+		expect(tool.systemInstruction).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // wrapToolForApproval — requireApproval: true
 // ---------------------------------------------------------------------------
 
