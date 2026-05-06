@@ -16,6 +16,7 @@ const {
 	__testClearPlannedTaskGraph,
 	__testFormatMessagesForBriefing,
 	__testGetRecentMessages,
+	__testGetPriorToolObservations,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../plan-with-agent.tool') as typeof import('../plan-with-agent.tool');
@@ -209,6 +210,172 @@ describe('buildPlannerBriefingContext', () => {
 		expect(context.discoveredResources).toEqual([
 			'Credentials available: Slack account (slackApi), Anthropic account (anthropicApi)',
 		]);
+	});
+
+	it('ignores unanswered and skipped ask-user answers', () => {
+		const context = __testBuildPlannerBriefingContext([
+			{
+				toolName: 'ask-user',
+				args: {
+					questions: [{ id: 'purpose', question: 'What should this do?', type: 'text' }],
+				},
+				result: {
+					answered: false,
+					answers: [
+						{
+							questionId: 'purpose',
+							customText: 'This should not be used',
+						},
+					],
+				},
+			},
+			{
+				toolName: 'ask-user',
+				args: {
+					questions: [
+						{ id: 'schedule', question: 'How often should it run?', type: 'single' },
+						{ id: 'model', question: 'Which model should it use?', type: 'single' },
+					],
+				},
+				result: {
+					answered: true,
+					answers: [
+						{
+							questionId: 'schedule',
+							selectedOptions: ['Every morning'],
+							skipped: true,
+						},
+						{
+							questionId: 'model',
+							selectedOptions: ['Anthropic'],
+						},
+					],
+				},
+			},
+		]);
+
+		expect(context.collectedAnswers).toEqual(['Which model should it use?: Anthropic']);
+		expect(context.discoveredResources).toEqual([]);
+	});
+});
+
+describe('getPriorToolObservations', () => {
+	it('reads tool results across the current message group when available', () => {
+		const askUserCall = {
+			questions: [{ id: 'purpose', question: 'What should this do?', type: 'text' }],
+		};
+		const askUserResult = {
+			answered: true,
+			answers: [
+				{ questionId: 'purpose', question: 'What should this do?', customText: 'Email me' },
+			],
+		};
+		const getEventsForRun = jest.fn().mockReturnValue([]);
+		const getEventsForRuns = jest.fn().mockReturnValue([
+			{
+				type: 'tool-call',
+				runId: 'run-prior',
+				agentId: 'orchestrator',
+				payload: {
+					toolCallId: 'tool-1',
+					toolName: 'ask-user',
+					args: askUserCall,
+				},
+			},
+			{
+				type: 'tool-result',
+				runId: 'run-prior',
+				agentId: 'orchestrator',
+				payload: {
+					toolCallId: 'tool-1',
+					result: askUserResult,
+				},
+			},
+		]);
+		const context = {
+			threadId: 'thread-1',
+			runId: 'run-current',
+			messageGroupId: 'message-group-1',
+			eventBus: {
+				getEventsAfter: jest.fn().mockReturnValue([
+					{
+						id: 1,
+						event: {
+							type: 'run-start',
+							runId: 'run-prior',
+							agentId: 'orchestrator',
+							payload: { messageId: 'message-1', messageGroupId: 'message-group-1' },
+						},
+					},
+					{
+						id: 2,
+						event: {
+							type: 'run-start',
+							runId: 'run-other',
+							agentId: 'orchestrator',
+							payload: { messageId: 'message-2', messageGroupId: 'message-group-2' },
+						},
+					},
+				]),
+				getEventsForRuns,
+				getEventsForRun,
+			},
+		} as unknown as OrchestrationContext;
+
+		const observations = __testGetPriorToolObservations(context);
+
+		expect(getEventsForRuns).toHaveBeenCalledWith('thread-1', ['run-prior', 'run-current']);
+		expect(getEventsForRun).not.toHaveBeenCalled();
+		expect(observations).toEqual([
+			{
+				toolName: 'ask-user',
+				args: askUserCall,
+				result: askUserResult,
+			},
+		]);
+	});
+
+	it('pairs out-of-order tool results with their later tool calls', () => {
+		const args = { action: 'list' };
+		const result = { credentials: [{ id: 'cred-1', name: 'Slack', type: 'slackApi' }] };
+		const context = {
+			threadId: 'thread-1',
+			runId: 'run-current',
+			eventBus: {
+				getEventsForRun: jest.fn().mockReturnValue([
+					{
+						type: 'tool-result',
+						runId: 'run-current',
+						agentId: 'orchestrator',
+						payload: { toolCallId: 'tool-1', result },
+					},
+					{
+						type: 'tool-call',
+						runId: 'run-current',
+						agentId: 'orchestrator',
+						payload: { toolCallId: 'tool-1', toolName: 'credentials', args },
+					},
+				]),
+			},
+		} as unknown as OrchestrationContext;
+
+		expect(__testGetPriorToolObservations(context)).toEqual([
+			{ toolName: 'credentials', args, result },
+		]);
+	});
+
+	it('returns no observations when event lookup fails', () => {
+		const context = {
+			threadId: 'thread-1',
+			runId: 'run-current',
+			eventBus: {
+				getEventsForRun: jest.fn(() => {
+					throw new Error('storage unavailable');
+				}),
+			},
+		} as unknown as OrchestrationContext;
+
+		expect(__testGetPriorToolObservations(context)).toEqual([]);
 	});
 });
 

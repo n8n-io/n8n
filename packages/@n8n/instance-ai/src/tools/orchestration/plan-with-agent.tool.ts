@@ -38,6 +38,9 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
+import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
+import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
+import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
 import { createTemplatesTool } from '../templates.tool';
 
 /** Number of recent thread messages to include as planner context. */
@@ -48,6 +51,12 @@ const PLANNER_DOMAIN_TOOL_NAMES = ['nodes', 'credentials', 'data-tables', 'workf
 
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
+
+const RELEVANT_PRIOR_TOOL_NAMES = new Set([
+	ASK_USER_TOOL_ID,
+	CREDENTIALS_TOOL_ID,
+	DATA_TABLES_TOOL_ID,
+]);
 
 // ---------------------------------------------------------------------------
 // Message history retrieval
@@ -194,13 +203,6 @@ function shouldAppendCurrentUserMessage(
 }
 
 function getPriorToolObservations(context: OrchestrationContext): ToolObservation[] {
-	let events: InstanceAiEvent[];
-	try {
-		events = context.eventBus.getEventsForRun(context.threadId, context.runId);
-	} catch {
-		return [];
-	}
-
 	type MutableToolObservation = Omit<ToolObservation, 'result'> & {
 		result: unknown;
 		hasResult: boolean;
@@ -208,12 +210,11 @@ function getPriorToolObservations(context: OrchestrationContext): ToolObservatio
 
 	const toolCalls = new Map<string, MutableToolObservation>();
 	const pendingResults = new Map<string, unknown>();
-	const relevantTools = new Set(['ask-user', 'credentials', 'data-tables']);
 
-	for (const event of events) {
+	for (const event of getPriorToolEvents(context)) {
 		if (event.type === 'tool-call') {
 			const { toolCallId, toolName, args } = event.payload;
-			if (!relevantTools.has(toolName)) continue;
+			if (!RELEVANT_PRIOR_TOOL_NAMES.has(toolName)) continue;
 
 			const pendingResult = pendingResults.get(toolCallId);
 			toolCalls.set(toolCallId, {
@@ -242,6 +243,44 @@ function getPriorToolObservations(context: OrchestrationContext): ToolObservatio
 		.map(({ toolName, args, result }) => ({ toolName, args, result }));
 }
 
+function getPriorToolEvents(context: OrchestrationContext): InstanceAiEvent[] {
+	if (context.messageGroupId) {
+		const runIds = getMessageGroupRunIds(context);
+		if (runIds.length > 0) {
+			try {
+				return context.eventBus.getEventsForRuns(context.threadId, runIds);
+			} catch {
+				// Fall back to the current run below.
+			}
+		}
+	}
+
+	try {
+		return context.eventBus.getEventsForRun(context.threadId, context.runId);
+	} catch {
+		return [];
+	}
+}
+
+function getMessageGroupRunIds(context: OrchestrationContext): string[] {
+	const messageGroupId = context.messageGroupId;
+	if (!messageGroupId) return [];
+
+	const runIds = new Set<string>();
+	try {
+		for (const { event } of context.eventBus.getEventsAfter(context.threadId, 0)) {
+			if (event.type === 'run-start' && event.payload.messageGroupId === messageGroupId) {
+				runIds.add(event.runId);
+			}
+		}
+	} catch {
+		return [context.runId];
+	}
+	runIds.add(context.runId);
+
+	return [...runIds];
+}
+
 function buildPlannerBriefingContext(observations: ToolObservation[]): PlannerBriefingContext {
 	const collectedAnswers: string[] = [];
 	const discoveredResources: string[] = [];
@@ -250,14 +289,14 @@ function buildPlannerBriefingContext(observations: ToolObservation[]): PlannerBr
 	const credentialsById = buildCredentialLookup(observations);
 
 	for (const observation of observations) {
-		if (observation.toolName === 'ask-user') {
+		if (observation.toolName === ASK_USER_TOOL_ID) {
 			for (const answer of extractAskUserAnswerLines(observation)) {
 				addUnique(collectedAnswers, seenAnswers, answer);
 			}
 			continue;
 		}
 
-		if (observation.toolName === 'credentials') {
+		if (observation.toolName === CREDENTIALS_TOOL_ID) {
 			const action = readString(observation.args.action);
 			if (action === 'list') {
 				addUnique(discoveredResources, seenResources, summarizeCredentials(observation.result));
@@ -270,7 +309,10 @@ function buildPlannerBriefingContext(observations: ToolObservation[]): PlannerBr
 			continue;
 		}
 
-		if (observation.toolName === 'data-tables' && readString(observation.args.action) === 'list') {
+		if (
+			observation.toolName === DATA_TABLES_TOOL_ID &&
+			readString(observation.args.action) === 'list'
+		) {
 			addUnique(discoveredResources, seenResources, summarizeDataTables(observation.result));
 		}
 	}
@@ -282,7 +324,7 @@ function buildCredentialLookup(observations: ToolObservation[]): Map<string, Cre
 	const credentialsById = new Map<string, CredentialBrief>();
 
 	for (const observation of observations) {
-		if (observation.toolName !== 'credentials') continue;
+		if (observation.toolName !== CREDENTIALS_TOOL_ID) continue;
 		for (const credential of extractCredentials(observation.result)) {
 			if (credential.id) credentialsById.set(credential.id, credential);
 		}
@@ -459,6 +501,7 @@ function formatMessagesForBriefing(
 
 export const __testFormatMessagesForBriefing = formatMessagesForBriefing;
 export const __testGetRecentMessages = getRecentMessages;
+export const __testGetPriorToolObservations = getPriorToolObservations;
 export const __testBuildPlannerBriefingContext = buildPlannerBriefingContext;
 
 // ---------------------------------------------------------------------------
