@@ -1665,6 +1665,7 @@
 	"logs.overview.body.toggleRow": "Toggle row",
 	"logs.details.header.actions.input": "Input",
 	"logs.details.header.actions.output": "Output",
+	"logs.details.header.actions.viewAgentSession": "View session",
 	"logs.details.body.itemCount": "{count} item | {count} items",
 	"logs.details.body.multipleInputs": "Multiple inputs. View them by {button}",
 	"logs.details.body.multipleInputs.openingTheNode": "opening the node",
