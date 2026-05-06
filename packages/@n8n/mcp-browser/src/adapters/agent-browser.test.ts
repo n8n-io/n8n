@@ -27,8 +27,7 @@ jest.mock('node:child_process', () => {
 	const execFileFn = jest.fn();
 	execFileAsyncMock = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
 	// Attach the custom promisify so promisify(execFile) === execFileAsyncMock
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	(execFileFn as any)[util.promisify.custom] = execFileAsyncMock;
+	(execFileFn as unknown as Record<symbol, unknown>)[util.promisify.custom] = execFileAsyncMock;
 	return { execFile: execFileFn };
 });
 
@@ -200,8 +199,10 @@ describe('AgentBrowserAdapter', () => {
 		});
 
 		it('rethrows stderr from a failed execFile invocation', async () => {
-			const err = Object.assign(new Error('exec failed'), { stderr: 'agent-browser: not found' });
-			execFileAsyncMock.mockRejectedValueOnce(err);
+			const execError = Object.assign(new Error('exec failed'), {
+				stderr: 'agent-browser: not found',
+			});
+			execFileAsyncMock.mockRejectedValueOnce(execError);
 			await expect(adapter.click('t1', { selector: '#btn' })).rejects.toThrow(
 				'agent-browser: not found',
 			);
