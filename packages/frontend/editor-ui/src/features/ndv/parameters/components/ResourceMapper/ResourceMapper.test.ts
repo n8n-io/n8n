@@ -353,18 +353,31 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
-	it('should refresh fields in the background when a cached schema exists', async () => {
-		renderComponent({
-			props: {
-				node: createTestNode({
-					parameters: {
-						columns: {
-							schema: UPDATED_SCHEMA,
+	it('should refresh the cached schema in the background when refreshSchemaOnOpen is set', async () => {
+		renderComponent(
+			{
+				props: {
+					node: createTestNode({
+						parameters: {
+							columns: {
+								schema: UPDATED_SCHEMA,
+							},
 						},
-					},
-				}),
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+								resourceMapperMethod: 'getMappingColumns',
+								refreshSchemaOnOpen: true,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
 	});

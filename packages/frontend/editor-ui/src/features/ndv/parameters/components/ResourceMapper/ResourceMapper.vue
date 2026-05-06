@@ -202,11 +202,15 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
-	} else {
-		// Refresh the schema in the background so cached schemas (e.g. from
-		// MCP-generated workflows) are reconciled with the actual source on open
-		// instead of leaving the user to spot the stale warning and click refresh.
+	} else if (props.parameter.typeOptions?.resourceMapper?.refreshSchemaOnOpen) {
+		// Opt-in: reconcile the cached schema with the live source on open
+		// instead of just flagging it as stale. Used by sources whose columns
+		// can drift between the workflow definition and the actual table —
+		// e.g. n8n Data Tables, where MCP-generated workflows often ship a
+		// schema inferred from a preceding Set node rather than the real one.
 		await initFetching(true);
+	} else {
+		await checkStaleFields();
 	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
