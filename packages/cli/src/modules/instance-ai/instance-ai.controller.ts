@@ -171,6 +171,11 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
+		}
 
 		// When the thread didn't exist at connect time, another user could create
 		// and own it before events start flowing. We re-check once on the first
@@ -547,6 +552,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
