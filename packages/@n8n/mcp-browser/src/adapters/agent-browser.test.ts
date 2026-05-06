@@ -307,6 +307,41 @@ describe('AgentBrowserAdapter', () => {
 			expect(getRunArgs(0)).toEqual(['type', '@e1', 'hello']);
 			expect(getRunArgs(1)).toEqual(['press', 'Enter']);
 		});
+
+		it('splits a single leading dash into a separate type call', async () => {
+			stubRun({ success: true }); // type '-'
+			stubRun({ success: true }); // type '5'
+			await adapter.type('t1', { ref: 'e1' }, '-5');
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '-']);
+			expect(getRunArgs(1)).toEqual(['type', '@e1', '5']);
+		});
+
+		it('peels each leading dash individually for multi-dash text', async () => {
+			stubRun({ success: true }); // type '-'
+			stubRun({ success: true }); // type '-'
+			stubRun({ success: true }); // type 'help'
+			await adapter.type('t1', { ref: 'e1' }, '--help');
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '-']);
+			expect(getRunArgs(1)).toEqual(['type', '@e1', '-']);
+			expect(getRunArgs(2)).toEqual(['type', '@e1', 'help']);
+		});
+
+		it('uses fill for the first chunk when clear is true and text starts with -', async () => {
+			stubRun({ success: true }); // fill '-'
+			stubRun({ success: true }); // type '5'
+			await adapter.type('t1', { ref: 'e1' }, '-5', { clear: true });
+			expect(getRunArgs(0)).toEqual(['fill', '@e1', '-']);
+			expect(getRunArgs(1)).toEqual(['type', '@e1', '5']);
+		});
+
+		it('handles text that is only dashes', async () => {
+			stubRun({ success: true }); // type '-'
+			stubRun({ success: true }); // type '-'
+			await adapter.type('t1', { ref: 'e1' }, '--');
+			expect(execFileAsyncMock).toHaveBeenCalledTimes(2);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '-']);
+			expect(getRunArgs(1)).toEqual(['type', '@e1', '-']);
+		});
 	});
 
 	// =========================================================================
@@ -463,6 +498,39 @@ describe('AgentBrowserAdapter', () => {
 	});
 
 	// =========================================================================
+	// getText
+	// =========================================================================
+
+	describe('getText', () => {
+		beforeEach(async () => {
+			await withActiveTab();
+		});
+
+		it('uses document.body when no target is given', async () => {
+			stubRun({ success: true, data: 'hello' });
+			await adapter.getText('t1');
+			expect(getRunArgs(0)).toEqual(['eval', "document.body?.innerText??''"]);
+		});
+
+		it('queries by aria-ref attribute for a ref target', async () => {
+			stubRun({ success: true, data: 'hello' });
+			await adapter.getText('t1', { ref: 'e7' });
+			const script = getRunArgs(0)[1];
+			expect(script).toBe("document.querySelector('[aria-ref=\"@e7\"]')?.innerText??''");
+		});
+
+		it('embeds double quotes in the selector safely via JSON.stringify', async () => {
+			const selector = '[data-attr="value"]';
+			stubRun({ success: true, data: 'inner text' });
+			await adapter.getText('t1', { selector });
+			const script = getRunArgs(0)[1];
+			expect(script).toBe(
+				`document.querySelector('[aria-ref=${JSON.stringify(selector)}]')?.innerText??''`,
+			);
+		});
+	});
+
+	// =========================================================================
 	// navigate
 	// =========================================================================
 
@@ -484,6 +552,112 @@ describe('AgentBrowserAdapter', () => {
 
 			expect(getRunArgs(1)).toEqual(['open', 'https://target.com']);
 			expect(result.url).toBe('https://target.com');
+		});
+	});
+
+	// =========================================================================
+	// evaluate
+	// =========================================================================
+
+	describe('evaluate', () => {
+		beforeEach(async () => {
+			await withActiveTab();
+		});
+
+		it('sends script via eval -b (base64) to prevent flag injection', async () => {
+			const script = '1 + 1';
+			stubRun({ success: true, data: 2 });
+			await adapter.evaluate('t1', script);
+			const args = getRunArgs(0);
+			expect(args[0]).toBe('eval');
+			expect(args[1]).toBe('-b');
+			expect(Buffer.from(args[2], 'base64').toString()).toBe(script);
+		});
+
+		it('safely encodes scripts starting with -- via base64', async () => {
+			const script = '--help';
+			stubRun({ success: true, data: null });
+			await adapter.evaluate('t1', script);
+			const args = getRunArgs(0);
+			expect(args[1]).toBe('-b');
+			expect(Buffer.from(args[2], 'base64').toString()).toBe(script);
+		});
+
+		it('safely encodes scripts with negative numbers via base64', async () => {
+			const script = '-1 * 2';
+			stubRun({ success: true, data: -2 });
+			await adapter.evaluate('t1', script);
+			const args = getRunArgs(0);
+			expect(args[1]).toBe('-b');
+			expect(Buffer.from(args[2], 'base64').toString()).toBe(script);
+		});
+	});
+
+	// =========================================================================
+	// Flag injection prevention
+	// =========================================================================
+
+	describe('flag injection prevention', () => {
+		beforeEach(async () => {
+			await withActiveTab();
+		});
+
+		it('navigate rejects URL starting with --', async () => {
+			await expect(adapter.navigate('t1', '--help')).rejects.toThrow(
+				"Invalid URL: argument cannot start with '-'",
+			);
+		});
+
+		it('navigate rejects multi-char value starting with -', async () => {
+			await expect(adapter.navigate('t1', '-evil')).rejects.toThrow(
+				"Invalid URL: argument cannot start with '-'",
+			);
+		});
+
+		it('newPage rejects URL starting with --', async () => {
+			await expect(adapter.newPage('--help')).rejects.toThrow(
+				"Invalid URL: argument cannot start with '-'",
+			);
+		});
+
+		it('click rejects selector starting with -', async () => {
+			await expect(adapter.click('t1', { selector: '--evil' })).rejects.toThrow(
+				'Invalid element target',
+			);
+		});
+
+		it('press rejects key starting with --', async () => {
+			await expect(adapter.press('t1', '--help')).rejects.toThrow(
+				"Invalid key: argument cannot start with '-'",
+			);
+		});
+
+		it('press accepts single - (minus key)', async () => {
+			stubRun({ success: true });
+			await expect(adapter.press('t1', '-')).resolves.not.toThrow();
+			expect(getRunArgs(0)).toEqual(['press', '-']);
+		});
+
+		it('wait rejects selector starting with -', async () => {
+			await expect(adapter.wait('t1', { selector: '--help' })).rejects.toThrow(
+				"Invalid selector: argument cannot start with '-'",
+			);
+		});
+
+		it('navigate accepts valid URLs', async () => {
+			stubRun({ success: true }); // open
+			stubRun({
+				success: true,
+				data: { tabs: [{ tabId: 't1', title: 'T', url: 'https://example.com', active: true }] },
+			});
+			await expect(adapter.navigate('t1', 'https://example.com')).resolves.not.toThrow();
+		});
+
+		it('type passes normal text as a single call', async () => {
+			stubRun({ success: true });
+			await adapter.type('t1', { ref: 'e1' }, 'hello');
+			expect(execFileAsyncMock).toHaveBeenCalledTimes(1);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', 'hello']);
 		});
 	});
 

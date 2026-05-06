@@ -125,11 +125,22 @@ export class AgentBrowserAdapter implements Adapter {
 	}
 
 	private resolveTarget(target: ElementTarget): string {
-		if ('ref' in target) {
-			const { ref } = target;
-			return ref.startsWith('@') ? ref : `@${ref}`;
+		const value =
+			'ref' in target
+				? target.ref.startsWith('@')
+					? target.ref
+					: `@${target.ref}`
+				: target.selector;
+		return AgentBrowserAdapter.assertSafeArg(value, 'element target');
+	}
+
+	private static assertSafeArg(value: string, role: string): string {
+		if (value.length > 1 && value.startsWith('-')) {
+			throw new Error(
+				`Invalid ${role}: argument cannot start with '-' (got: ${JSON.stringify(value.slice(0, 20))})`,
+			);
 		}
-		return target.selector;
+		return value;
 	}
 
 	private async runAction(args: string[]): Promise<void> {
@@ -240,6 +251,7 @@ export class AgentBrowserAdapter implements Adapter {
 	}
 
 	async newPage(url?: string): Promise<PageInfo> {
+		if (url) AgentBrowserAdapter.assertSafeArg(url, 'URL');
 		await this.run(['tab', 'new', ...(url ? [url] : [])]);
 		const tabs = await this.refreshTabs();
 		const active = tabs.find((t) => t.active) ?? tabs[tabs.length - 1];
@@ -267,6 +279,7 @@ export class AgentBrowserAdapter implements Adapter {
 		url: string,
 		_waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
 	): Promise<NavigateResult> {
+		AgentBrowserAdapter.assertSafeArg(url, 'URL');
 		await this.switchToTab(pageId);
 		await this.run(['open', url]);
 		const tabs = await this.refreshTabs();
@@ -316,7 +329,23 @@ export class AgentBrowserAdapter implements Adapter {
 		options?: TypeOptions,
 	): Promise<void> {
 		await this.switchToTab(pageId);
-		await this.runAction([options?.clear ? 'fill' : 'type', this.resolveTarget(target), text]);
+		const ref = this.resolveTarget(target);
+		const baseCmd = options?.clear ? 'fill' : 'type';
+
+		// agent-browser's CLI scans all raw args for "--help"/"-h" before parsing,
+		// so any arg starting with "-" would be misinterpreted as a flag.
+		// Peel each leading "-" into a separate type call so no single arg starts with "-".
+		let remaining = text;
+		let firstChunk = true;
+		while (remaining.startsWith('-')) {
+			await this.runAction([firstChunk ? baseCmd : 'type', ref, '-']);
+			remaining = remaining.slice(1);
+			firstChunk = false;
+		}
+		if (remaining.length > 0 || firstChunk) {
+			await this.runAction([firstChunk ? baseCmd : 'type', ref, remaining]);
+		}
+
 		if (options?.submit) await this.runAction(['press', 'Enter']);
 	}
 
@@ -344,6 +373,7 @@ export class AgentBrowserAdapter implements Adapter {
 	}
 
 	async press(pageId: string, keys: string): Promise<void> {
+		AgentBrowserAdapter.assertSafeArg(keys, 'key');
 		await this.switchToTab(pageId);
 		await this.runAction(['press', keys]);
 	}
@@ -417,7 +447,7 @@ export class AgentBrowserAdapter implements Adapter {
 	async getText(pageId: string, target?: ElementTarget): Promise<string> {
 		await this.switchToTab(pageId);
 		const script = target
-			? `document.querySelector('[aria-ref="${this.resolveTarget(target)}"]')?.innerText??''`
+			? `document.querySelector('[aria-ref=${JSON.stringify(this.resolveTarget(target))}]')?.innerText??''`
 			: "document.body?.innerText??''";
 		const resp = await this.run(['eval', script]);
 		return typeof resp.data === 'string' ? resp.data : '';
@@ -436,7 +466,8 @@ export class AgentBrowserAdapter implements Adapter {
 
 	async evaluate(pageId: string, script: string): Promise<unknown> {
 		await this.switchToTab(pageId);
-		return (await this.run(['eval', script])).data;
+		const encoded = Buffer.from(script).toString('base64');
+		return (await this.run(['eval', '-b', encoded])).data;
 	}
 
 	async getConsole(_pageId: string, _level?: string, _clear?: boolean): Promise<ConsoleEntry[]> {
@@ -474,6 +505,7 @@ export class AgentBrowserAdapter implements Adapter {
 		const timeout = options.timeoutMs ?? 30_000;
 		const start = Date.now();
 		if (options.selector) {
+			AgentBrowserAdapter.assertSafeArg(options.selector, 'selector');
 			await this.run(['wait', options.selector], timeout + 5_000);
 		} else if (options.text) {
 			await this.run(['wait', 'text=' + options.text], timeout + 5_000);
