@@ -229,6 +229,12 @@ export abstract class ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined>;
 
+	abstract runPreAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
+
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
@@ -1057,6 +1063,10 @@ export type CredentialCheckProxyFunctions = {
 		workflowId: string,
 		executionContext: IExecutionContext,
 	): Promise<CredentialCheckResult>;
+};
+
+export type OauthJweProxyProvider = {
+	decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
@@ -2719,6 +2729,25 @@ export interface LoadedClass<T> {
 type LoadedData<T> = Record<string, LoadedClass<T>>;
 export type ICredentialTypeData = LoadedData<ICredentialType>;
 export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
+
+/**
+ * Contract that the runtime consumes from each node source. Implemented by the
+ * filesystem-backed `DirectoryLoader` in `n8n-core` and in modules
+ */
+export interface NodeLoader {
+	packageName: string;
+
+	known: KnownNodesAndCredentials;
+	types: { nodes: INodeTypeDescription[]; credentials: ICredentialType[] };
+
+	loadAll(): Promise<void>;
+	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType>;
+	getCredential(credentialType: string): LoadedClass<ICredentialType>;
+	reset(): void;
+	releaseTypes(): void;
+	ensureTypesLoaded(): Promise<void>;
+	resolveSourcePath(sourcePath: string): string;
+}
 
 export interface IRun {
 	data: IRunExecutionData;

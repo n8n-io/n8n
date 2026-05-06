@@ -9,16 +9,17 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
-	N8nButton,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useLocalStorage, useScroll, useWindowSize } from '@vueuse/core';
+import { useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
 import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -53,7 +54,7 @@ import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/Cr
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
-import { TabsContent, TabsRoot } from 'reka-ui';
+import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
 	threadId?: string;
@@ -90,24 +91,26 @@ const displayedMessages = computed(() => store.messages.filter(messageHasVisible
 const executionTracking = useExecutionPushEvents();
 
 // --- Header title ---
-const currentThreadTitle = computed(() => {
+// Returns the resolved title once we have one, or undefined while we're still
+// figuring out which thread to show. Rendering only on a defined value avoids
+// the "New conversation" \u2192 real title flash when resuming a recent thread.
+const currentThreadTitle = computed<string | undefined>(() => {
 	const thread = store.threads.find((t) => t.id === store.currentThreadId);
-	if (!thread || thread.title === NEW_CONVERSATION_TITLE) {
-		const firstUserMsg = store.messages.find((m) => m.role === 'user');
-		if (firstUserMsg?.content) {
-			const text = firstUserMsg.content.trim();
-			return text.length > 60 ? text.slice(0, 60) + '\u2026' : text;
-		}
-		return NEW_CONVERSATION_TITLE;
+	if (thread && thread.title && thread.title !== NEW_CONVERSATION_TITLE) {
+		return thread.title;
 	}
-	return thread.title;
+	const firstUserMsg = store.messages.find((m) => m.role === 'user');
+	if (firstUserMsg?.content) {
+		const text = firstUserMsg.content.trim();
+		return text.length > 60 ? text.slice(0, 60) + '\u2026' : text;
+	}
+	return undefined;
 });
 
 // --- Canvas / data table preview ---
 const preview = useCanvasPreview({
 	store,
 	route,
-	workflowExecutions: executionTracking.workflowExecutions,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
@@ -132,7 +135,8 @@ const showEmptyStateLayout = computed(() => !props.threadId);
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	void store.loadThreads().then((loaded) => {
-		if (!loaded || !props.threadId) return;
+		if (!loaded) return;
+		if (!props.threadId) return;
 		// After threads load, validate deep-link: redirect if thread doesn't exist
 		if (!store.threads.some((t) => t.id === props.threadId)) {
 			void router.replace({ name: INSTANCE_AI_VIEW });
@@ -179,12 +183,25 @@ const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
 // --- Sidebar collapse & resize ---
-const sidebarCollapsed = useLocalStorage('instanceAi.sidebarCollapsed', false);
+// Session-scoped: survives page refresh, resets when the user navigates away
+// from the AI chat view (see onBeforeRouteLeave below).
+const sidebarCollapsed = useSessionStorage('instanceAi.sidebarCollapsed', true);
 const sidebarWidth = ref(260);
 
 function toggleSidebarCollapse() {
 	sidebarCollapsed.value = !sidebarCollapsed.value;
 }
+
+// Reset to collapsed when leaving the AI chat namespace, so the next entry
+// starts collapsed by default. Refreshes (which don't trigger the guard) keep
+// the user's current open/closed state.
+const CHAT_ROUTE_NAMES = new Set<string>([INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW]);
+onBeforeRouteLeave((to) => {
+	const name = typeof to.name === 'string' ? to.name : undefined;
+	if (!name || !CHAT_ROUTE_NAMES.has(name)) {
+		sidebarCollapsed.value = true;
+	}
+});
 
 function handleSidebarResize({ width }: { width: number }) {
 	// Drag below min-width threshold → auto-collapse
@@ -334,10 +351,10 @@ watch(
 	() => props.threadId,
 	(threadId) => {
 		if (!threadId) {
-			// /instance-ai base route (no :threadId) — reset to a clean empty
-			// state. Without this, `currentThreadId` keeps pointing at the
-			// last thread and the sidebar highlights it alongside the empty
-			// main view (AI-2408). A new thread is created on the first
+			// /instance-ai base route (no :threadId): always show the empty
+			// state. Without this, `currentThreadId` keeps pointing at the last
+			// thread and the sidebar highlights it alongside the empty main
+			// view (AI-2408). A new thread is created on the first
 			// `sendMessage` via `syncThread`.
 			store.clearCurrentThread();
 			return;
@@ -403,37 +420,46 @@ function handleStop() {
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-container">
 		<!-- Resizable sidebar -->
-		<N8nResizeWrapper
-			v-if="!sidebarCollapsed"
-			:class="$style.sidebar"
-			:width="sidebarWidth"
-			:style="{ width: `${sidebarWidth}px` }"
-			:supported-directions="['right']"
-			:is-resizing-enabled="true"
-			:min-width="200"
-			:max-width="400"
-			@resize="handleSidebarResize"
-		>
-			<InstanceAiThreadList />
-		</N8nResizeWrapper>
+		<Transition name="sidebar-slide">
+			<N8nResizeWrapper
+				v-if="!sidebarCollapsed"
+				:class="$style.sidebar"
+				:width="sidebarWidth"
+				:style="{ width: `${sidebarWidth}px` }"
+				:supported-directions="['right']"
+				:is-resizing-enabled="true"
+				:min-width="200"
+				:max-width="400"
+				@resize="handleSidebarResize"
+			>
+				<InstanceAiThreadList @collapse="toggleSidebarCollapse" />
+			</N8nResizeWrapper>
+		</Transition>
 
 		<!-- Main chat area -->
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
-				<N8nButton
-					:icon="sidebarCollapsed ? 'list' : 'panel-left'"
-					variant="ghost"
-					size="medium"
-					data-test-id="instance-ai-sidebar-toggle"
-					:icon-only="!sidebarCollapsed"
-					@click="toggleSidebarCollapse"
-				>
-					<template v-if="sidebarCollapsed">{{
-						i18n.baseText('instanceAi.sidebar.threads')
-					}}</template>
-				</N8nButton>
-				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
+				<Transition name="sidebar-toggle-fade">
+					<span v-if="sidebarCollapsed" :class="$style.sidebarToggle">
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<N8nIconButton
+								icon="history"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								data-test-id="instance-ai-sidebar-toggle"
+								:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+								@click="toggleSidebarCollapse"
+							/>
+						</N8nTooltip>
+					</span>
+				</Transition>
+				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
 				</N8nHeading>
 				<N8nText
@@ -455,8 +481,8 @@ function handleStop() {
 					<N8nIconButton
 						icon="cog"
 						variant="ghost"
-						size="medium"
-						:class="$style.settingsButton"
+						size="small"
+						icon-size="large"
 						data-test-id="instance-ai-settings-button"
 						@click="goToSettings"
 					/>
@@ -464,7 +490,8 @@ function handleStop() {
 						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
-						size="medium"
+						size="small"
+						icon-size="large"
 						:class="{ [$style.activeButton]: showDebugPanel }"
 						@click="
 							showDebugPanel = !showDebugPanel;
@@ -475,7 +502,8 @@ function handleStop() {
 						v-if="!preview.isPreviewVisible.value"
 						icon="panel-right"
 						variant="ghost"
-						size="medium"
+						size="small"
+						icon-size="large"
 						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 				</div>
@@ -625,27 +653,28 @@ function handleStop() {
 					:active-tab-id="preview.activeTabId.value"
 					@close="preview.closePreview()"
 				/>
-				<TabsContent
-					v-for="tab in preview.allArtifactTabs.value"
-					:key="tab.id"
-					:value="tab.id"
-					:class="$style.previewContent"
-				>
+				<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
+				     workflows via openWorkflow postMessage instead of remounting. -->
+				<div :class="$style.previewContent">
 					<InstanceAiWorkflowPreview
-						v-if="preview.activeWorkflowId.value"
 						ref="workflowPreview"
+						:class="[
+							$style.previewSlot,
+							{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
+						]"
 						:workflow-id="preview.activeWorkflowId.value"
-						:execution-id="preview.activeExecutionId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
 						@iframe-ready="eventRelay.handleIframeReady"
+						@workflow-loaded="eventRelay.handleWorkflowLoaded"
 					/>
 					<InstanceAiDataTablePreview
-						v-else-if="preview.activeDataTableId.value"
+						v-if="preview.activeDataTableId.value"
+						:class="$style.previewSlot"
 						:data-table-id="preview.activeDataTableId.value"
 						:project-id="preview.activeDataTableProjectId.value"
 						:refresh-key="preview.dataTableRefreshKey.value"
 					/>
-				</TabsContent>
+				</div>
 			</TabsRoot>
 		</N8nResizeWrapper>
 	</div>
@@ -660,6 +689,12 @@ function handleStop() {
 	overflow: hidden;
 	position: relative;
 	z-index: 0;
+
+	// Drop the stacking context while the workflow preview iframe NDV is
+	// fullscreen so its `z-index` can escape and paint above the sidebar.
+	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
+		z-index: auto;
+	}
 }
 
 .sidebar {
@@ -717,11 +752,11 @@ function handleStop() {
 }
 
 .header {
-	padding: var(--spacing--sm) var(--spacing--lg);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
 }
 
@@ -740,8 +775,8 @@ function handleStop() {
 	gap: var(--spacing--4xs);
 }
 
-.settingsButton {
-	padding: var(--spacing--xs);
+.sidebarToggle {
+	display: inline-flex;
 }
 
 .activeButton {
@@ -855,6 +890,17 @@ function handleStop() {
 .previewContent {
 	flex: 1;
 	min-height: 0;
+	position: relative;
+}
+
+.previewSlot {
+	position: absolute;
+	inset: 0;
+}
+
+.previewSlotHidden {
+	visibility: hidden;
+	pointer-events: none;
 }
 </style>
 
@@ -876,5 +922,37 @@ function handleStop() {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.sidebar-slide-enter-active,
+.sidebar-slide-leave-active {
+	transition:
+		width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		min-width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		opacity 0.2s ease;
+	overflow: hidden;
+}
+
+.sidebar-slide-enter-from,
+.sidebar-slide-leave-to {
+	width: 0 !important;
+	min-width: 0 !important;
+	opacity: 0;
+}
+
+// Entry-point icon button: fade in slightly after the sidebar has begun
+// collapsing, fade out quickly when the sidebar starts opening — so the
+// crossover feels intentional rather than abrupt.
+.sidebar-toggle-fade-enter-from,
+.sidebar-toggle-fade-leave-to {
+	opacity: 0;
+}
+
+.sidebar-toggle-fade-enter-active {
+	transition: opacity 0.15s ease;
+}
+
+.sidebar-toggle-fade-leave-active {
+	transition: opacity 0.1s ease;
 }
 </style>

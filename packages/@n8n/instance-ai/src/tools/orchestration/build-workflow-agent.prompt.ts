@@ -7,15 +7,6 @@
  */
 
 import {
-	IF_NODE_GUIDE,
-	SWITCH_NODE_GUIDE,
-	SET_NODE_GUIDE,
-	HTTP_REQUEST_GUIDE,
-	TOOL_NODES_GUIDE,
-	EMBEDDING_NODES_GUIDE,
-	RESOURCE_LOCATOR_GUIDE,
-} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
-import {
 	AI_TOOL_PATTERNS,
 	CONNECTION_CHANGING_PARAMETERS,
 	BASELINE_FLOW_CONTROL,
@@ -61,9 +52,13 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
-- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
-- **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
-- **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
+- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.`;
+
+const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
+
+- Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
+- Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
+- If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
 // The AI Agent subnode example below differs by mode:
 //   tool mode  → `newCredential('OpenAI')`
@@ -249,10 +244,6 @@ export default workflow('id', 'name')
   .add(scheduleTrigger).to(processNode);
 \`\`\`
 
-### Web App (SPA served from a webhook)
-
-When the workflow serves HTML from a webhook (dashboards, admin UIs, custom forms), call \`templates(action="best-practices", technique="web_app")\` for the full file-based HTML pattern, data-injection recipe, multi-route architecture, and a complete multi-route dashboard example. Embedding large HTML inline in Code nodes breaks at ~20KB — always use the file-based pattern from the guide.
-
 ### Google Sheets — documentId and sheetName (RLC fields)
 
 These are Resource Locator fields that require the \`__rl\` object format:
@@ -337,14 +328,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
-		'## Node-Specific Configuration Guides',
-		IF_NODE_GUIDE.content,
-		SWITCH_NODE_GUIDE.content,
-		SET_NODE_GUIDE.content,
-		HTTP_REQUEST_GUIDE.content,
-		TOOL_NODES_GUIDE.content,
-		EMBEDDING_NODES_GUIDE.content,
-		RESOURCE_LOCATOR_GUIDE.content,
+		NODE_CONFIGURATION_SAFETY_RULES,
 		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
 	].join('\n\n');
 }
@@ -592,6 +576,8 @@ credentials: {
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
+
+The credential-selection guidance above applies to outbound service calls. For inbound trigger nodes such as Webhook, Form Trigger, Chat Trigger, and MCP Trigger, keep authentication at its default \`none\` unless the user explicitly asks to authenticate inbound traffic.
 
 ## Data Tables
 

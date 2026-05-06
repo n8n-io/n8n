@@ -1,6 +1,5 @@
 import pytest
 import json
-import types
 from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
@@ -209,7 +208,70 @@ class TestFilterBuiltins:
             runner_env_deny=False,
         )
 
-    def test_returns_mapping_proxy(self):
+    def test_supports_item_access(self):
         result = TaskExecutor._filter_builtins(self._make_security_config())
 
-        assert isinstance(result, types.MappingProxyType)
+        assert result["__import__"] is not None
+        assert result["len"] is len
+        assert "len" in result
+
+    def test_supports_attribute_access(self):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        assert result.__import__ is not None
+        assert result.len is len
+
+    def test_is_not_a_dict(self):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        assert not isinstance(result, dict)
+
+    @pytest.mark.parametrize(
+        "name,mutate,expected",
+        [
+            (
+                "item_assignment",
+                lambda r: r.__setitem__("len", None),
+                (TypeError, AttributeError),
+            ),
+            (
+                "attribute_assignment",
+                lambda r: setattr(r, "__import__", None),
+                AttributeError,
+            ),
+            (
+                "dict_class_setitem",
+                lambda r: dict.__setitem__(r, "len", None),
+                TypeError,
+            ),
+            ("dict_class_init", lambda r: dict.__init__(r, {"pwned": True}), TypeError),
+            ("dict_class_update", lambda r: dict.update(r, {"len": None}), TypeError),
+            ("dict_class_clear", lambda r: dict.clear(r), TypeError),
+            ("class_swap", lambda r: setattr(r, "__class__", dict), AttributeError),
+            ("vars_injection", lambda r: vars(r), TypeError),
+            (
+                "object_setattr",
+                lambda r: object.__setattr__(r, "_x", {"pwned": True}),
+                AttributeError,
+            ),
+        ],
+    )
+    def test_rejects_mutation(self, name, mutate, expected):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        with pytest.raises(expected):
+            mutate(result)
+
+    def test_applies_builtins_deny(self):
+        config = SecurityConfig(
+            stdlib_allow=set(),
+            external_allow=set(),
+            builtins_deny={"open", "eval"},
+            runner_env_deny=False,
+        )
+        result = TaskExecutor._filter_builtins(config)
+
+        assert "open" not in result
+        assert "eval" not in result
+        assert "len" in result
+        assert result["__import__"] is not None

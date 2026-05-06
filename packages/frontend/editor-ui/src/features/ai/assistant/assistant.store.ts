@@ -388,9 +388,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? await assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
-						excludeParameterValues: !allowSendingParameterValues.value,
-					})
+				? await assistantHelpers.simplifyWorkflowForAssistant(
+						workflowDocumentStore.value.getSnapshot(),
+						{
+							excludeParameterValues: !allowSendingParameterValues.value,
+						},
+					)
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
