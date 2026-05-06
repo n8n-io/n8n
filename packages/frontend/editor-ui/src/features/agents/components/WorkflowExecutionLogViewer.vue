@@ -8,6 +8,7 @@ import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
@@ -30,6 +31,7 @@ const i18n = useI18n();
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = useWorkflowState();
+const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
 // `RunData` (rendered inside `LogsViewRunData`) reads the workflow id via
@@ -57,7 +59,7 @@ const workflow = computed<Workflow | null>(() => {
 	try {
 		return new Workflow({
 			...execution.value.workflowData,
-			nodeTypes: workflowsStore.getNodeTypes(),
+			nodeTypes: workflowHelpers.getNodeTypes(),
 		});
 	} catch {
 		return null;

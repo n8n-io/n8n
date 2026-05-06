@@ -8,6 +8,7 @@ import type { Chat } from '@n8n/chat/types';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -43,6 +44,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowState = useWorkflowState();
+const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
 const SYNTHETIC_ID = '__tool_io__';
@@ -182,7 +184,7 @@ const synthWorkflow = computed<WorkflowObjectAccessors>(
 	() =>
 		new Workflow({
 			...synthExecution.value.workflowData,
-			nodeTypes: workflowsStore.getNodeTypes(),
+			nodeTypes: workflowHelpers.getNodeTypes(),
 		}) as unknown as WorkflowObjectAccessors,
 );
 
