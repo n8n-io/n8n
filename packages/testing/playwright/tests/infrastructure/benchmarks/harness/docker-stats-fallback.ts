@@ -1,21 +1,10 @@
 /**
- * Periodic `docker stats` sampler for container metrics when cAdvisor isn't
- * reporting.
+ * Periodic `docker stats` sampler — fallback for environments where cAdvisor
+ * can't see sibling containers (notably Docker Desktop on macOS, where its
+ * docker factory fails to register against the daemon socket).
  *
- * cAdvisor on Docker Desktop (macOS) cannot reach the Docker daemon socket
- * — its container factory registration fails with "Cannot connect to the Docker
- * daemon at unix:///var/run/docker.sock", and only the host-level cgroup is
- * scraped. CI runs on Linux where cAdvisor works fine, so we keep cAdvisor as
- * primary; this sampler runs in parallel as a fallback so local benchmarks
- * still capture per-service CPU/memory/IO over the measurement window.
- *
- * Sampling cadence: 3s by default. CPU% from each sample is treated as an
- * instantaneous rate (docker computes it that way). Memory is the current
- * working set. IO/Net are cumulative-since-container-start, so we compute
- * per-second rates from the delta between the first and last sample within
- * the measurement window — a single end-of-run snapshot would conflate idle
- * post-run state with the run itself, which is what made the previous version
- * useless.
+ * IO/Net are cumulative-since-container-start in `docker stats`; rates are
+ * computed from first-vs-last sample inside the measurement window.
  */
 import { exec as execCb } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -24,9 +13,7 @@ import type { ContainerStat } from '../../../../utils/benchmark';
 
 const exec = promisify(execCb);
 
-// `docker stats --format '{{json .}}'` field names are PascalCase. Disable the
-// naming-convention rule for this interface so the runtime keys match the
-// source format without an extra rename step.
+// `docker stats --format '{{json .}}'` emits PascalCase keys.
 /* eslint-disable @typescript-eslint/naming-convention */
 interface DockerStatsRow {
 	Container: string;
@@ -50,7 +37,6 @@ interface ContainerSample {
 
 const PROJECT_NAME_PREFIX = process.env.PLAYWRIGHT_PROJECT_NAME_PREFIX ?? 'n8n-stack-';
 
-/** Parses sizes like `1.234GiB`, `345MiB`, `12kB` into bytes. */
 function parseBytes(input: string): number {
 	const match = input.trim().match(/^([\d.]+)\s*([kMG]i?B)?$/);
 	if (!match) return 0;
@@ -73,7 +59,6 @@ function parseDualBytes(input: string): [number, number] {
 	return [a ?? 0, b ?? 0];
 }
 
-/** Strips `{projectName}-` prefix to get the docker-compose service name. */
 function extractServiceName(containerName: string): string {
 	if (containerName.startsWith('/')) containerName = containerName.slice(1);
 	const idx = containerName.indexOf(PROJECT_NAME_PREFIX);
@@ -89,7 +74,6 @@ function extractServiceName(containerName: string): string {
 async function sampleOnce(): Promise<Map<string, ContainerSample>> {
 	const result = new Map<string, ContainerSample>();
 	try {
-		// One process: list compose-managed containers; pipe ids to docker stats.
 		const { stdout } = await exec(
 			"docker ps --filter 'label=com.docker.compose.project' --format '{{.Names}}' | xargs -r docker stats --no-stream --format '{{json .}}'",
 			{ timeout: 8000, shell: '/bin/sh' },
@@ -112,14 +96,12 @@ async function sampleOnce(): Promise<Map<string, ContainerSample>> {
 			});
 		}
 	} catch {
-		// Docker may briefly fail (e.g., a container restart) — skip the sample,
-		// keep the sampler running.
+		// Skip the sample on transient docker failures.
 	}
 	return result;
 }
 
 export class DockerStatsSampler {
-	/** All samples per container name, in chronological order. */
 	private readonly samples = new Map<string, ContainerSample[]>();
 
 	private timer?: NodeJS.Timeout;
@@ -130,22 +112,18 @@ export class DockerStatsSampler {
 
 	constructor(private readonly intervalMs = 3000) {}
 
-	/** Starts background sampling. First sample is captured immediately. */
 	start(): void {
 		if (this.timer || this.isStopped) return;
-		// Fire-and-forget the first sample to seed baselines.
 		void this.tick();
 		this.timer = setInterval(() => {
 			void this.tick();
 		}, this.intervalMs);
-		// Don't keep the Node event loop alive on test teardown.
 		this.timer.unref?.();
 	}
 
 	private async tick(): Promise<void> {
 		if (this.isStopped) return;
-		// Skip if a previous sample is still in-flight (slow docker), so we
-		// don't pile up overlapping execs on a saturated host.
+		// Skip overlapping execs on a saturated host.
 		if (this.inFlightSample) return;
 		const promise = (async () => {
 			const snapshot = await sampleOnce();
@@ -161,12 +139,10 @@ export class DockerStatsSampler {
 		await promise;
 	}
 
-	/** Stops sampling and aggregates samples grouped by docker-compose service. */
 	async stop(): Promise<ContainerStat[]> {
 		this.isStopped = true;
 		if (this.timer) clearInterval(this.timer);
 		this.timer = undefined;
-		// Drain any in-flight sample so its data is included.
 		if (this.inFlightSample) {
 			try {
 				await this.inFlightSample;
@@ -175,8 +151,6 @@ export class DockerStatsSampler {
 			}
 		}
 
-		// Group containers by docker-compose service so multi-instance services
-		// (n8n-main, n8n-worker) report as one row summing across replicas.
 		const byService = new Map<
 			string,
 			{
@@ -220,9 +194,8 @@ export class DockerStatsSampler {
 				if (s.memBytes > entry.memBytesPeak) entry.memBytesPeak = s.memBytes;
 			}
 
-			// Per-container IO/Net deltas: subtract first sample from last, divide
-			// by elapsed for a per-second rate. Sum across containers in the
-			// same service.
+			// IO/Net are cumulative-since-container-start. Compute per-second
+			// rates from first-vs-last delta inside the measurement window.
 			const first = samples[0];
 			const last = samples[samples.length - 1];
 			const elapsedSec = Math.max(0.001, (last.timestampMs - first.timestampMs) / 1000);
@@ -230,7 +203,6 @@ export class DockerStatsSampler {
 			entry.blkWriteDelta += Math.max(0, last.blkWrite - first.blkWrite);
 			entry.netRxDelta += Math.max(0, last.netRx - first.netRx);
 			entry.netTxDelta += Math.max(0, last.netTx - first.netTx);
-			// Use the longest elapsed window across replicas as the divisor.
 			if (elapsedSec > entry.elapsedSec) entry.elapsedSec = elapsedSec;
 
 			byService.set(service, entry);
@@ -254,7 +226,6 @@ export class DockerStatsSampler {
 		return results.sort((a, b) => (b.cpuPctPeak ?? 0) - (a.cpuPctPeak ?? 0));
 	}
 
-	/** Number of samples captured for a container — useful for tests / debug. */
 	sampleCount(): number {
 		let total = 0;
 		for (const arr of this.samples.values()) total += arr.length;

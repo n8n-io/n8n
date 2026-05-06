@@ -30,6 +30,7 @@ import type {
 	ThroughputInfo,
 	TopQuery,
 } from '../../../../utils/benchmark';
+import { attachMetric } from '../../../../utils/performance-helper';
 
 /**
  * Minimal handle shape used by setup. Both `TriggerHandle` (Kafka) and the
@@ -163,12 +164,6 @@ export interface ReportDiagnosticsContext {
 	dimensions: BenchmarkDimensions;
 }
 
-/**
- * Collects diagnostics from VictoriaMetrics and attaches them to the test for
- * BigQuery aggregation. Pure data-collection — console rendering happens in
- * `renderRunReport` so the printed output stays a deterministic projection of
- * the structured `RunReport`.
- */
 export async function reportDiagnostics(ctx: ReportDiagnosticsContext) {
 	const obs = ctx.services.observability;
 	const diagnostics = await collectDiagnostics(obs.metrics, ctx.durationMs);
@@ -177,14 +172,10 @@ export async function reportDiagnostics(ctx: ReportDiagnosticsContext) {
 }
 
 /**
- * Returns the top-N queries from `pg_stat_statements`, ranked by total ms/s
- * of work (calls/s × avg ms) rather than raw call count. Pure data — console
- * rendering happens in `renderRunReport`.
- *
- * Ranking by total ms/s avoids the trap where a 0.00ms statement at 12k/s
- * (e.g. `SET search_path`) tops a call-count ranking despite consuming
- * effectively zero PG capacity. `setupBenchmarkRun` resets the stat counters
- * post-warm-up so this reflects measured load only.
+ * Top-N queries from `pg_stat_statements`, ranked by total ms/s of work
+ * (calls/s × avg ms) rather than raw call count. A 0.00ms statement at 12k/s
+ * (e.g. `SET search_path`) consumes effectively zero capacity but would top a
+ * call-count ranking — cost ranking surfaces the queries that move throughput.
  */
 export async function reportPgQueryBreakdown(ctx: {
 	services: ServiceHelpers;
@@ -197,9 +188,7 @@ export async function reportPgQueryBreakdown(ctx: {
 
 	let rows;
 	try {
-		// Fetch a wider window than `limit` so the cost-based re-ranking has room
-		// to surface heavy-but-rarely-called queries that the call-count ordering
-		// would otherwise drop.
+		// Wider fetch so the cost re-rank can surface heavy-but-rare queries.
 		rows = await services.postgres.topStatements(limit * 2);
 	} catch (error) {
 		console.warn(
@@ -222,14 +211,9 @@ export async function reportPgQueryBreakdown(ctx: {
 }
 
 /**
- * Returns PG saturation signals the per-query reporter misses: total query CPU
- * across ALL statements (not just top-N), `pg_stat_io` per-backend totals, and
- * cumulative `pg_stat_wal` counters. Pure data — console rendering happens in
- * `renderRunReport`.
- *
- * Without this slice, low avg-ms numbers in the per-query list would make PG
- * look idle even when it is at 300%+ CPU due to planning, autovacuum, and
- * tail queries.
+ * PG saturation signals the per-query reporter misses: total query CPU across
+ * ALL statements (planning + the long tail of statements below the top-N cap),
+ * `pg_stat_io` per-backend totals, and cumulative `pg_stat_wal` counters.
  */
 export async function reportPgSaturation(ctx: {
 	services: ServiceHelpers;
@@ -261,14 +245,8 @@ export async function reportPgSaturation(ctx: {
 }
 
 /**
- * Returns per-container CPU/memory/IO. Primary source is cAdvisor (time-series
- * via VictoriaMetrics); fallback is the docker-stats sampler for environments
- * where cAdvisor can't reach the Docker daemon (notably Docker Desktop on
- * macOS, where cAdvisor only reports the host-level cgroup). Pure data —
- * console rendering happens in `renderRunReport`.
- *
- * The returned array carries an extra `__source` shape via attached metadata?
- * Not exposed here — callers tag the source separately via the report.
+ * Per-container CPU/memory/IO. Primary source is cAdvisor; falls back to the
+ * docker-stats sampler when cAdvisor can't reach the daemon (Docker Desktop).
  */
 export async function reportContainerStats(
 	diagnostics: DiagnosticsResult,
@@ -278,10 +256,6 @@ export async function reportContainerStats(
 	let source = 'cAdvisor (time-series)';
 
 	if (!containerStats || containerStats.length === 0) {
-		// cAdvisor returned nothing — drain the periodic docker-stats sampler.
-		// Per-second rates here are computed from delta of first vs last sample
-		// during the measurement window, so they reflect actual run activity
-		// (not post-run idle state).
 		if (sampler) {
 			const sampled = await sampler.stop();
 			if (sampled.length > 0) {
@@ -290,7 +264,7 @@ export async function reportContainerStats(
 			}
 		}
 	} else if (sampler) {
-		// cAdvisor data won — still stop the sampler so it doesn't keep ticking.
+		// Stop the sampler so it doesn't keep ticking after cAdvisor wins.
 		await sampler.stop();
 	}
 
@@ -298,11 +272,9 @@ export async function reportContainerStats(
 }
 
 /**
- * Fetches OTEL traces from Jaeger for the test's active window and attaches
- * them as a JSON artifact (`jaeger-traces.json`). No-op if the tracing
- * service isn't enabled for this spec — callers can invoke unconditionally.
- *
- * Re-import locally with `scripts/import-jaeger-traces.mjs`.
+ * Attaches Jaeger traces from the active window as `jaeger-traces.json`. No-op
+ * when the tracing service isn't part of the spec's stack. Re-import locally
+ * with `scripts/import-jaeger-traces.mjs`.
  */
 export async function reportJaegerTraces(ctx: {
 	testInfo: TestInfo;
@@ -342,17 +314,9 @@ export async function reportJaegerTraces(ctx: {
 }
 
 /**
- * Assembles the structured `RunReport` from the slices each reporter returned
- * and attaches it as a `run-report.json` test artifact.
- *
- * The report is the single source of truth for the run — console output and
- * BigQuery summary metrics are projections of it. Designed to be LLM-feedable:
- * paste a single run-report.json into Claude (or any LLM) and ask "what's the
- * bottleneck?" gets a meaningful answer because every dimension is in one
- * self-describing blob.
- *
- * Schema is versioned (see `RunReport.schemaVersion`); new service kinds are
- * additive and don't bump the version.
+ * Assembles the structured `RunReport` from each reporter's slice and attaches
+ * it as `run-report.json`. The report is the source of truth — console output
+ * and BigQuery metrics are projections of it.
  */
 export async function buildAndAttachRunReport(ctx: {
 	testInfo: TestInfo;
@@ -392,8 +356,6 @@ export async function buildAndAttachRunReport(ctx: {
 	const builder = new RunReportBuilder(scenario, duration, throughput);
 	builder.setContainers(containers, containersSource);
 
-	// Postgres service entry — built from the saturation slice + top-N query
-	// breakdown + diagnostics fields that originated from postgres-exporter.
 	if (pgSaturation || pgQueries.length > 0) {
 		const totals = pgSaturation?.totals;
 		const wal = pgSaturation?.wal ?? null;
@@ -412,7 +374,6 @@ export async function buildAndAttachRunReport(ctx: {
 				totalCpu: {
 					execMsPerSec: totals ? totals.totalExecMs / elapsedSec : 0,
 					planMsPerSec: totals ? totals.totalPlanMs / elapsedSec : 0,
-					planTimeTracked: totals ? totals.totalPlanMs > 0 : false,
 				},
 				statementCount: totals?.statementCount ?? 0,
 			},
@@ -438,8 +399,6 @@ export async function buildAndAttachRunReport(ctx: {
 		builder.addService(postgres);
 	}
 
-	// n8n-main + n8n-worker entries from the legacy DiagnosticsResult kitchen
-	// sink. Per-replica detail still lives in `containers[]`.
 	for (const entry of diagnosticsToServiceEntries(diagnostics)) {
 		builder.addService(entry);
 	}
@@ -452,13 +411,7 @@ export async function buildAndAttachRunReport(ctx: {
 	return report;
 }
 
-/**
- * Renders all forensic console blocks from a `RunReport`. The JSON is the
- * source of truth; this function is purely a deterministic projection of it.
- *
- * Layout: [DIAG] → [CONTAINERS] → [PG QUERIES] → [PG SATURATION] →
- * [WEBHOOK RESULT] (when reqPerSec is set) or [LOAD RESULT] (otherwise).
- */
+/** Renders forensic console blocks from a `RunReport`. */
 export function renderRunReport(report: RunReport): void {
 	renderDiagBlock(report);
 	renderContainersBlock(report);
@@ -553,12 +506,9 @@ function renderPgSaturationBlock(report: RunReport): void {
 
 	const cpu = pg.queries.totalCpu;
 	const cpuPerSec = cpu.execMsPerSec + cpu.planMsPerSec;
-	const planNote = !cpu.planTimeTracked
-		? ' (plan time NOT tracked — set BENCH_DEEP_DIAGNOSTICS=true to enable)'
-		: '';
 	lines.push(
 		`  Total query CPU:   ${cpuPerSec.toFixed(0)} ms/s ` +
-			`(exec ${cpu.execMsPerSec.toFixed(0)} + plan ${cpu.planMsPerSec.toFixed(0)}) across ${pg.queries.statementCount} distinct statements${planNote}`,
+			`(exec ${cpu.execMsPerSec.toFixed(0)} + plan ${cpu.planMsPerSec.toFixed(0)}) across ${pg.queries.statementCount} distinct statements`,
 	);
 
 	const sat = pg.saturation;
@@ -633,6 +583,51 @@ function renderResultBlock(report: RunReport): void {
 				`  Duration: ${(report.duration.totalMs / 1000).toFixed(1)}s`,
 		);
 	}
-	// Load scenarios already log via `logLoadResult` in load-harness; not
-	// duplicating here keeps the output identical to what specs expect.
+	// Load scenarios print their own [LOAD RESULT] via `logLoadResult` in load-harness.
+}
+
+/**
+ * Pushes saturation metrics from the report into the cross-run summary table
+ * via `attachMetric`. Full report stays in `run-report.json`.
+ */
+export async function attachReportMetrics(
+	testInfo: TestInfo,
+	report: RunReport,
+	dimensions: BenchmarkDimensions,
+): Promise<void> {
+	const pg = report.services.find((s): s is PostgresMetrics => s.kind === 'postgres');
+	const containerByName = new Map(report.containers.map((c) => [c.name, c]));
+
+	if (pg) {
+		const cpu = pg.queries.totalCpu;
+		const totalQueryCpu = cpu.execMsPerSec + cpu.planMsPerSec;
+		const planPct = totalQueryCpu > 0 ? (cpu.planMsPerSec / totalQueryCpu) * 100 : 0;
+		await attachMetric(testInfo, 'pg-query-cpu', totalQueryCpu, 'ms/s', dimensions);
+		await attachMetric(testInfo, 'pg-plan-pct', planPct, '%', dimensions);
+		if (pg.saturation.walMbPerSec !== undefined) {
+			await attachMetric(testInfo, 'wal-mb-per-sec', pg.saturation.walMbPerSec, 'MB/s', dimensions);
+		}
+	}
+
+	const pgContainer = containerByName.get('postgres');
+	if (pgContainer) {
+		await attachMetric(testInfo, 'pg-cpu-avg', pgContainer.cpuPct ?? 0, '%', dimensions);
+		await attachMetric(testInfo, 'pg-cpu-peak', pgContainer.cpuPctPeak ?? 0, '%', dimensions);
+	}
+
+	// Average across replicas (n8n-main-1, -2, …) for the summary column.
+	const avgCpuFor = (prefix: string): number | undefined => {
+		const matches = report.containers.filter((c) => c.name.startsWith(prefix));
+		if (matches.length === 0) return undefined;
+		const sum = matches.reduce((acc, c) => acc + (c.cpuPct ?? 0), 0);
+		return sum / matches.length;
+	};
+	const mainCpu = avgCpuFor('n8n-main');
+	if (mainCpu !== undefined) {
+		await attachMetric(testInfo, 'main-cpu-avg', mainCpu, '%', dimensions);
+	}
+	const workerCpu = avgCpuFor('n8n-worker');
+	if (workerCpu !== undefined) {
+		await attachMetric(testInfo, 'worker-cpu-avg', workerCpu, '%', dimensions);
+	}
 }

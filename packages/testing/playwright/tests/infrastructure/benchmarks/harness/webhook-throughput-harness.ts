@@ -4,6 +4,7 @@ import autocannon from 'autocannon';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import {
+	attachReportMetrics,
 	buildAndAttachRunReport,
 	renderRunReport,
 	reportContainerStats,
@@ -198,6 +199,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		pgSaturation,
 		walBaseline: setup.walBaseline,
 	});
+	await attachReportMetrics(testInfo, report, dimensions);
 	renderRunReport(report);
 
 	expect(throughputResult.totalCompleted).toBeGreaterThan(0);

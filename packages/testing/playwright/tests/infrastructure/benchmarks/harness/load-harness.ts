@@ -3,6 +3,7 @@ import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import {
+	attachReportMetrics,
 	buildAndAttachRunReport,
 	renderRunReport,
 	reportContainerStats,
@@ -164,6 +165,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		pgSaturation,
 		walBaseline: setup.walBaseline,
 	});
+	await attachReportMetrics(testInfo, report, diagnosticsDimensions);
 	renderRunReport(report);
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);

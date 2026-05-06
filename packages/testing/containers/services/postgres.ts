@@ -21,44 +21,6 @@ export const postgres: Service<PostgresResult> = {
 
 	async start(network: StartedNetwork, projectName: string): Promise<PostgresResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
-		// Deep diagnostics (track_planning + track_io_timing) add noticeable PG
-		// overhead — observed ~50% throughput drop on a webhook benchmark — so
-		// they're off by default to keep sizing numbers representative. Opt in
-		// with `BENCH_DEEP_DIAGNOSTICS=true` only when investigating bottlenecks.
-		const deepDiagnostics = process.env.BENCH_DEEP_DIAGNOSTICS === 'true';
-
-		const command = [
-			'postgres',
-			'-c',
-			'fsync=off',
-			'-c',
-			'synchronous_commit=off',
-			'-c',
-			'full_page_writes=off',
-			'-c',
-			'max_connections=200',
-			// pg_stat_statements lets benchmarks attribute tx/s to specific queries
-			// (n8n vs autovacuum vs postgres-exporter). Adds <1% overhead in normal use.
-			'-c',
-			'shared_preload_libraries=pg_stat_statements',
-			'-c',
-			'pg_stat_statements.track=all',
-			'-c',
-			'pg_stat_statements.max=10000',
-		];
-
-		if (deepDiagnostics) {
-			command.push(
-				// Surfaces planner CPU per query — only fair to measure when we're
-				// specifically diagnosing whether plan time dominates execution time.
-				'-c',
-				'pg_stat_statements.track_planning=on',
-				// Populates blk_read_time / blk_write_time. Each block I/O incurs a
-				// `clock_gettime` syscall pair, so this distorts throughput numbers.
-				'-c',
-				'track_io_timing=on',
-			);
-		}
 
 		const builder = new PostgreSqlContainer(TEST_CONTAINER_IMAGES.postgres)
 			.withNetwork(network)
@@ -74,16 +36,37 @@ export const postgres: Service<PostgresResult> = {
 			.withName(`${projectName}-${HOSTNAME}`)
 			.withAddedCapabilities('NET_ADMIN') // Allows us to drop IP tables and block traffic
 			.withTmpFs({ '/var/lib/postgresql': 'rw' })
-			.withCommand(command)
+			.withCommand([
+				'postgres',
+				'-c',
+				'fsync=off',
+				'-c',
+				'synchronous_commit=off',
+				'-c',
+				'full_page_writes=off',
+				'-c',
+				'max_connections=200',
+				'-c',
+				'shared_preload_libraries=pg_stat_statements',
+				'-c',
+				'pg_stat_statements.track=all',
+				'-c',
+				'pg_stat_statements.max=10000',
+				// Track plan time so query CPU includes planner overhead (often >50%
+				// for TypeORM's parameterized-but-not-prepared statements).
+				'-c',
+				'pg_stat_statements.track_planning=on',
+				'-c',
+				'track_io_timing=on',
+			])
 			.withReuse()
 			.withLogConsumer(consumer);
 
 		try {
 			const container = await builder.start();
 
-			// Create pg_stat_statements extension in the n8n database. shared_preload_libraries
-			// loads the C library, but CREATE EXTENSION is what makes the view queryable.
-			// Idempotent — safe across container reuse.
+			// shared_preload_libraries loads the C library; CREATE EXTENSION makes
+			// the view queryable. Idempotent — safe across container reuse.
 			await container.exec([
 				'psql',
 				'-U',
@@ -119,11 +102,7 @@ export const postgres: Service<PostgresResult> = {
 	},
 };
 
-/**
- * Lets benchmarks introspect Postgres state during/after a run via `psql`
- * inside the container. Useful for `pg_stat_statements` query attribution,
- * autovacuum visibility, and active-connection breakdowns.
- */
+/** Runs introspection SQL via `psql` inside the container. */
 export class PostgresHelper {
 	constructor(
 		private readonly container: StartedTestContainer,
@@ -153,12 +132,7 @@ export class PostgresHelper {
 		await this.exec('SELECT pg_stat_statements_reset();');
 	}
 
-	/**
-	 * Query the top N most-called statements since the last reset.
-	 * Returns rows ordered by call count descending. `totalPlanMs` and
-	 * `totalExecMs` are populated when `pg_stat_statements.track_planning` is
-	 * on; older Postgres or older pg_stat_statements versions return 0 for plan.
-	 */
+	/** Top N statements ordered by call count descending. */
 	async topStatements(limit = 15): Promise<
 		Array<{
 			calls: number;
@@ -198,12 +172,7 @@ export class PostgresHelper {
 			});
 	}
 
-	/**
-	 * Sum of plan + exec time across ALL statements since the last reset.
-	 * The top-N list captures the heavy hitters; this captures the long tail
-	 * (auth checks, settings reads, autovacuum work) so total PG CPU is
-	 * answerable. Returns ms — divide by elapsed seconds for ms/s of work.
-	 */
+	/** Plan + exec time summed across ALL statements since the last reset. */
 	async totalStatementsCost(): Promise<{
 		totalCalls: number;
 		totalExecMs: number;
@@ -226,11 +195,7 @@ export class PostgresHelper {
 		};
 	}
 
-	/**
-	 * Snapshot of `pg_stat_wal` (PG 14+). Returns cumulative WAL bytes/records
-	 * since stats reset — caller computes deltas if needed. WAL pressure is a
-	 * leading indicator of disk-bound write workloads.
-	 */
+	/** Cumulative `pg_stat_wal` counters (PG 14+). Caller computes deltas. */
 	async pgStatWal(): Promise<{ walRecords: number; walBytes: number; walFpi: number } | null> {
 		try {
 			const output = await this.exec(`
@@ -250,11 +215,7 @@ export class PostgresHelper {
 		}
 	}
 
-	/**
-	 * Snapshot of `pg_stat_io` aggregated by backend type. Available on PG 16+;
-	 * returns an empty array on older versions. Use to attribute disk reads/writes
-	 * to client backends vs autovacuum vs background writer.
-	 */
+	/** `pg_stat_io` aggregated by backend type (PG 16+; empty on older). */
 	async pgStatIo(): Promise<
 		Array<{ backendType: string; reads: number; writes: number; extends: number }>
 	> {
