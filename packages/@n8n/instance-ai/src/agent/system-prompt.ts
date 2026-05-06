@@ -1,16 +1,14 @@
 import { DateTime } from 'luxon';
 
+import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
-const BROWSER_USE_EXTENSION_URL =
-	'https://chromewebstore.google.com/detail/n8n-browser-use/cegmdpndekdfpnafgacidejijecomlhh';
-
 interface SystemPromptOptions {
 	researchMode?: boolean;
 	webhookBaseUrl?: string;
-	filesystemAccess?: boolean;
+	formBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
@@ -33,117 +31,20 @@ The user's current local date and time is: ${isoTime}${tzLabel}.
 When you need to reference "now", use this date and time.`;
 }
 
-function getInstanceInfoSection(webhookBaseUrl: string): string {
+function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
 	return `
 ## Instance Info
 
 Webhook base URL: ${webhookBaseUrl}
+Form base URL: ${formBaseUrl}
 
 Some trigger nodes expose HTTP endpoints. Always share the full production URL with the user after building a workflow that uses one of these triggers. Each type has a distinct URL pattern:
 
 - **Webhook Trigger**: ${webhookBaseUrl}/{path} (where {path} is the node's webhook path parameter).
-- **Form Trigger**: ${webhookBaseUrl}/{path} (or ${webhookBaseUrl}/{webhookId} if no custom path is set). Same pattern as Webhook — no /chat suffix.
+- **Form Trigger**: ${formBaseUrl}/{path} (or ${formBaseUrl}/{webhookId} if no custom path is set). The Form Trigger lives under /form/, NOT /webhook/ — they are separate URL prefixes. Do NOT use the Webhook base URL for Form Triggers.
 - **Chat Trigger**: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The /chat suffix is unique to Chat Trigger — do NOT append it to Form Trigger or Webhook URLs. The public chat UI is only accessible to end users when the node's "public" parameter is true and the workflow has been published. (This applies only to end-user HTTP access — your own testing via \`executions(action="run")\` and \`verify-built-workflow\` works regardless of publish state.) Do NOT guess the webhookId — read the workflow to find it.
 
 **These URLs are for sharing with the user only.** Do NOT include them in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch these URLs.`;
-}
-
-function getFilesystemSection(
-	filesystemAccess: boolean | undefined,
-	localGateway: LocalGatewayStatus | undefined,
-	webhookBaseUrl?: string,
-): string {
-	// When gateway status is explicitly provided, use multi-way logic
-	if (localGateway?.status === 'disconnected') {
-		const capabilityLines: string[] = [];
-		if (localGateway.capabilities.includes('filesystem')) {
-			capabilityLines.push('- **Filesystem access** — browse, read, and search project files');
-		}
-		if (localGateway.capabilities.includes('browser')) {
-			capabilityLines.push(
-				"- **Browser control** — automate browser interactions on the user's machine",
-			);
-		}
-		const capList =
-			capabilityLines.length > 0
-				? capabilityLines.join('\n')
-				: '- Local machine access capabilities';
-		const instanceUrl = webhookBaseUrl ? new URL(webhookBaseUrl).origin : '<your-instance-url>';
-		return `
-## Computer Use (Not Connected)
-
-A **Computer Use** can connect this n8n instance to the user's local machine, providing:
-${capList}
-
-The gateway is not currently connected. When the user asks for something that requires local machine access (reading files, browsing, etc.), let them know they can connect by either:
-
-1. **Run via CLI:** \`npx @n8n/computer-use ${instanceUrl}\`
-
-Do NOT attempt to use Computer Use tools — they are not available until the gateway connects.`;
-	}
-
-	if (filesystemAccess) {
-		return `
-## Project Filesystem Access
-
-You have read-only access to the user's project files via the \`filesystem\` tool with actions: \`tree\`, \`search\`, \`read\`, \`list\`. Explore the project before building workflows that depend on user data shapes.
-
-Keep exploration shallow — start at depth 1-2, prefer \`search\` over browsing, read specific files not whole directories.`;
-	}
-
-	return `
-## No Filesystem Access
-
-You do NOT have access to the user's project files. The filesystem tool is not available. Do not attempt to use it or claim you can browse the user's codebase.`;
-}
-
-function getBrowserSection(
-	browserAvailable: boolean | undefined,
-	localGateway: LocalGatewayStatus | undefined,
-): string {
-	if (!browserAvailable) {
-		if (localGateway?.status === 'disconnected') {
-			return `
-
-## Browser Automation (Unavailable)
-
-Browser tools require both the Computer Use daemon (see above) **and** the n8n Browser Use Chrome extension. If the user asks for browser automation, tell them to start the daemon and install the extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
-		}
-
-		if (localGateway?.status === 'connected') {
-			return `
-
-## Browser Automation (Disabled in Computer Use)
-
-Browser tools are not enabled in the user's Computer Use configuration. If the user asks for browser automation, tell them to (1) enable browser tools in their Computer Use config, and (2) install the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
-		}
-
-		return '';
-	}
-	return `
-
-## Browser Automation
-
-You can control the user's browser using the browser_* tools. Since this is their real browser, you share it with them.
-
-### Handing control to the user
-
-When the user needs to act in the browser, **end your turn** with a clear message explaining what they should do. Resume after they reply. Hand off when:
-- **Authentication** — login pages, OAuth, SSO, 2FA/MFA prompts
-- **CAPTCHAs or visual challenges** — you cannot solve these
-- **Accessing downloads** — you can click download buttons, but you cannot open or read downloaded files; ask the user to open the file and share the content you need
-- **Sensitive content on screen** — passwords, tokens, secrets visible in the browser
-- **User requests manual control** — they explicitly want to do something themselves
-
-After the user confirms they're done, take a snapshot to verify before continuing.
-
-### Secrets and sensitive data
-
-**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.
-
-### When browser tools fail at runtime
-
-If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
 }
 
 function getReadOnlySection(branchReadOnly?: boolean): string {
@@ -172,7 +73,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
 		researchMode,
 		webhookBaseUrl,
-		filesystemAccess,
+		formBaseUrl,
 		localGateway,
 		toolSearchEnabled,
 		licenseHints,
@@ -183,7 +84,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${getDateTimeSection(timeZone)}
-${webhookBaseUrl ? getInstanceInfoSection(webhookBaseUrl) : ''}
+${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow builder. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 
@@ -283,8 +184,7 @@ You have the \`research\` tool with \`web-search\` and \`fetch-url\` actions. Us
 }
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
-${getFilesystemSection(filesystemAccess, localGateway, webhookBaseUrl)}
-${getBrowserSection(browserAvailable, localGateway)}
+${getComputerUsePrompt({ browserAvailable, localGateway })}
 
 ${
 	licenseHints && licenseHints.length > 0
