@@ -281,11 +281,16 @@ export async function reportJaegerTraces(ctx: {
 	services: ServiceHelpers;
 	since: Date | number;
 }): Promise<void> {
+	// `services` is a Proxy that throws when accessing a helper for a service
+	// that wasn't enabled in this spec's stack. Tracing is opt-in per spec, so
+	// callers invoke unconditionally and we no-op when it's absent.
 	let tracing;
 	try {
 		tracing = ctx.services.tracing;
-	} catch {
-		return; // tracing service not part of this spec's stack
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+		if (msg.includes('Tracing service not found') || msg.includes('No helper factory')) return;
+		throw error;
 	}
 	if (!tracing) return;
 
@@ -565,7 +570,7 @@ function renderResultBlock(report: RunReport): void {
 
 	if (t.reqPerSec !== undefined) {
 		// Webhook scenario.
-		const errorBreakdown = t.errorBreakdown ?? { timeouts: 0, non2xx: 0 };
+		const errorBreakdown = t.errorBreakdown ?? { transportErrors: 0, non2xx: 0 };
 		const ratio = t.ingestionVsExecutionRatio?.toFixed(2) ?? 'N/A';
 		const backlog = t.backlogGrowthPerSec ?? 0;
 		console.log(
@@ -575,7 +580,7 @@ function renderResultBlock(report: RunReport): void {
 				`  Backlog growth:    ${backlog >= 0 ? '+' : ''}${backlog.toFixed(1)} msg/sec` +
 				` (ingestion is ${ratio}× execution)\n` +
 				`  Errors:            ${t.errors ?? 0}/${t.totalRequests ?? 0} (${(t.errorRatePct ?? 0).toFixed(2)}%)` +
-				` | ${errorBreakdown.timeouts} timeouts, ${errorBreakdown.non2xx} non-2xx\n` +
+				` | ${errorBreakdown.transportErrors} transport errors, ${errorBreakdown.non2xx} non-2xx\n` +
 				`  Verdict:           ${t.verdict ?? 'N/A'}\n` +
 				`  PG active conns:   ${pg?.saturation.activeConnections ?? 'N/A'}` +
 				` | PG tx/s: ${pg?.saturation.txPerSec?.toFixed(0) ?? 'N/A'}` +

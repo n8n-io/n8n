@@ -168,7 +168,7 @@ const LOCAL_ONLY_BENCHMARK_PROFILES: BenchmarkProfile[] = [
 				...BENCHMARK_CONFIG.env,
 				// Instance-AI module & model config
 				N8N_ENABLED_MODULES: 'instance-ai',
-				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.4-nano',
+				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-4o-mini',
 				// Forward API keys to the container
 				...(process.env.N8N_AI_OPENAI_API_KEY && {
 					N8N_AI_OPENAI_API_KEY: process.env.N8N_AI_OPENAI_API_KEY,

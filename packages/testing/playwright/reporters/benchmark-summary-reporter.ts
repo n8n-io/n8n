@@ -261,7 +261,9 @@ class BenchmarkSummaryReporter implements Reporter {
 			lines.push('');
 		}
 
-		appendFileSync(summaryPath, lines.join('\n'));
+		// Leading newline so we don't concatenate against whatever a previous
+		// reporter wrote earlier in the same job.
+		appendFileSync(summaryPath, `\n${lines.join('\n')}`);
 	}
 }
 

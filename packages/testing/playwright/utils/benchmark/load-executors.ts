@@ -49,6 +49,10 @@ async function runPreloaded(load: PreloadedLoad, ctx: ExecutorContext): Promise<
 	console.log(
 		`[LOAD] Waiting for ${result.totalPublished} workflow completions (timeout: ${ctx.timeoutMs}ms)`,
 	);
+	// Anchor the measurement window to when we start consuming, not to
+	// activation: preload time would otherwise inflate totalDurationMs and
+	// undercount exec/s for preloaded scenarios.
+	const publishStart = Date.now();
 	const throughputResult = await waitForThroughput(ctx.metrics, {
 		expectedCount: result.totalPublished,
 		nodeCount: ctx.nodeCount,
@@ -60,6 +64,7 @@ async function runPreloaded(load: PreloadedLoad, ctx: ExecutorContext): Promise<
 	return {
 		throughputResult,
 		expectedExecutions: result.totalPublished,
+		publishStart,
 	};
 }
 

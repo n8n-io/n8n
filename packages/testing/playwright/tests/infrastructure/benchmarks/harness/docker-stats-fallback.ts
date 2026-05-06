@@ -74,9 +74,23 @@ function extractServiceName(containerName: string): string {
 async function sampleOnce(): Promise<Map<string, ContainerSample>> {
 	const result = new Map<string, ContainerSample>();
 	try {
+		// Two-step rather than a piped one-liner with `xargs -r`: BSD/macOS
+		// xargs lacks `-r`, and BSD xargs would invoke `docker stats` with no
+		// args on an empty pipe, hanging until timeout. Handling the empty
+		// case in JS is portable across Linux and Darwin.
+		const { stdout: names } = await exec(
+			"docker ps --filter 'label=com.docker.compose.project' --format '{{.Names}}'",
+			{ timeout: 4000 },
+		);
+		const containerNames = names
+			.trim()
+			.split('\n')
+			.filter((n) => n.length > 0);
+		if (containerNames.length === 0) return result;
+
 		const { stdout } = await exec(
-			"docker ps --filter 'label=com.docker.compose.project' --format '{{.Names}}' | xargs -r docker stats --no-stream --format '{{json .}}'",
-			{ timeout: 8000, shell: '/bin/sh' },
+			`docker stats --no-stream --format '{{json .}}' ${containerNames.map((n) => `'${n}'`).join(' ')}`,
+			{ timeout: 8000 },
 		);
 		const now = Date.now();
 		for (const line of stdout.trim().split('\n')) {

@@ -40,7 +40,11 @@ export interface ThroughputInfo {
 	totalRequests?: number;
 	totalCompleted?: number;
 	errors?: number;
-	errorBreakdown?: { timeouts: number; non2xx: number };
+	/**
+	 * `transportErrors` covers all transport-level failures from autocannon
+	 * (ECONNRESET, ECONNREFUSED, ETIMEDOUT, …); it is not just timeouts.
+	 */
+	errorBreakdown?: { transportErrors: number; non2xx: number };
 	errorRatePct?: number;
 	/** Positive = backlog growing. */
 	backlogGrowthPerSec?: number;

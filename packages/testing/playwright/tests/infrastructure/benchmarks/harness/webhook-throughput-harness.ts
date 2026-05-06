@@ -121,19 +121,16 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	const backlogGrowthPerSec = httpReqPerSec - n8nExecPerSec;
 	const ingestionVsExecutionRatio = n8nExecPerSec > 0 ? httpReqPerSec / n8nExecPerSec : 0;
 	const totalErrors = cannonResult.errors + cannonResult.non2xx;
-	const errorRatePct =
-		cannonResult.requests.total > 0 ? (totalErrors / cannonResult.requests.total) * 100 : 0;
+	// Denominator must be `sent` (initiated requests), not `total` (completed
+	// responses): a fully failing run completes zero responses and would
+	// otherwise report 0% error rate.
+	const requestsSent = cannonResult.requests.sent;
+	const errorRatePct = requestsSent > 0 ? (totalErrors / requestsSent) * 100 : 0;
 
 	await attachThroughputResults(testInfo, dimensions, throughputResult);
 	await attachMetric(testInfo, 'http-latency-p50', cannonResult.latency.p50, 'ms', dimensions);
 	await attachMetric(testInfo, 'http-latency-p99', cannonResult.latency.p99, 'ms', dimensions);
-	await attachMetric(
-		testInfo,
-		'http-requests-total',
-		cannonResult.requests.total,
-		'count',
-		dimensions,
-	);
+	await attachMetric(testInfo, 'http-requests-sent', requestsSent, 'count', dimensions);
 	await attachMetric(testInfo, 'http-requests-avg', httpReqPerSec, 'req/s', dimensions);
 	await attachMetric(testInfo, 'http-errors', totalErrors, 'count', dimensions);
 	await attachMetric(testInfo, 'http-error-rate-pct', errorRatePct, '%', dimensions);
@@ -173,20 +170,24 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 				? `INGESTION > EXECUTION — backlog growing at ${backlogGrowthPerSec.toFixed(1)}/sec`
 				: 'BALANCED — ingestion and execution keeping pace';
 
+	// totalMs is the active measurement window (publish+drain); wallClockMs
+	// includes activation/warm-up so cross-run comparisons can spot a slow
+	// startup that wouldn't show in totalMs.
+	const wallClockMs = Date.now() - setup.activationStart;
 	const report = await buildAndAttachRunReport({
 		testInfo,
 		scenario: { spec: testInfo.title, dimensions },
-		duration: { totalMs: throughputResult.durationMs, wallClockMs: throughputResult.durationMs },
+		duration: { totalMs: throughputResult.durationMs, wallClockMs },
 		throughput: {
 			reqPerSec: httpReqPerSec,
 			execPerSec: throughputResult.avgExecPerSec,
 			tailExecPerSec: throughputResult.tailExecPerSec,
 			p50Ms: cannonResult.latency.p50,
 			p99Ms: cannonResult.latency.p99,
-			totalRequests: cannonResult.requests.total,
+			totalRequests: requestsSent,
 			totalCompleted: throughputResult.totalCompleted,
 			errors: totalErrors,
-			errorBreakdown: { timeouts: cannonResult.errors, non2xx: cannonResult.non2xx },
+			errorBreakdown: { transportErrors: cannonResult.errors, non2xx: cannonResult.non2xx },
 			errorRatePct,
 			backlogGrowthPerSec,
 			ingestionVsExecutionRatio,
