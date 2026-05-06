@@ -1091,6 +1091,7 @@ export function useNodeHelpers() {
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
+		getNodeCredentialIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,

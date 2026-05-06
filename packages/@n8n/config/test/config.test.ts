@@ -545,6 +545,10 @@ describe('GlobalConfig', () => {
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
 		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+			modules: [],
+		},
 	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {
