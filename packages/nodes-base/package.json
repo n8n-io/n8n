@@ -231,6 +231,7 @@
       "dist/credentials/MauticOAuth2Api.credentials.js",
       "dist/credentials/MediumApi.credentials.js",
       "dist/credentials/MediumOAuth2Api.credentials.js",
+      "dist/credentials/MetaOAuth2Api.credentials.js",
       "dist/credentials/MetabaseApi.credentials.js",
       "dist/credentials/MessageBirdApi.credentials.js",
       "dist/credentials/MetabaseApi.credentials.js",
