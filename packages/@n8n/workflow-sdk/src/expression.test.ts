@@ -1,4 +1,4 @@
-import { parseExpression, expr, createFromAIExpression } from './expression';
+import { parseExpression, expr, nodeJson, createFromAIExpression } from './expression';
 
 describe('Expression System', () => {
 	describe('expr() helper for expressions', () => {
@@ -48,6 +48,32 @@ describe('Expression System', () => {
 			expect(() => expr(123 as unknown as string)).toThrow(
 				'expr() requires a string argument, but received number.',
 			);
+		});
+	});
+
+	describe('nodeJson() helper for explicit node references', () => {
+		it('should build expression from a node instance and dot path', () => {
+			const node = { name: 'Telegram Trigger' };
+
+			const result = nodeJson(node as never, 'message.chat.id');
+
+			expect(result).toBe("={{ $('Telegram Trigger').item.json.message.chat.id }}");
+		});
+
+		it('should build expression from a node name and array path', () => {
+			const result = nodeJson('Set User', ['profile', 'user-id']);
+
+			expect(result).toBe('={{ $(\'Set User\').item.json.profile["user-id"] }}');
+		});
+
+		it('should escape node names', () => {
+			const result = nodeJson("Bob's Trigger", 'message.text');
+
+			expect(result).toBe("={{ $('Bob\\'s Trigger').item.json.message.text }}");
+		});
+
+		it('should throw for an empty path', () => {
+			expect(() => nodeJson('Set', '')).toThrow('nodeJson() requires a non-empty JSON path.');
 		});
 	});
 

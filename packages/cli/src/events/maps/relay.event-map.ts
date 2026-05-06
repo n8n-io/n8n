@@ -949,4 +949,12 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region Instance AI
+
+	'instance-ai-settings-updated': {
+		mcpSettingsChanged: boolean;
+	};
+
+	// #endregion
 } & AiEventMap;

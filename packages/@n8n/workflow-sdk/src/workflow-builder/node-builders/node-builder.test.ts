@@ -445,6 +445,84 @@ describe('Node Builder', () => {
 		});
 	});
 
+	describe('placeholder() inside credentials slot', () => {
+		it('normalizes placeholder() to a __newCredential marker carrying the hint as name', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			const stored = n.config.credentials?.slackApi;
+			expect(stored).toBeDefined();
+			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((stored as { name?: string }).name).toBe('Slack Bot');
+			expect((stored as { id?: string }).id).toBeUndefined();
+			// The original __placeholder marker is gone — credentials maps never carry it.
+			expect((stored as { __placeholder?: boolean }).__placeholder).toBeUndefined();
+		});
+
+		it('serializes a placeholder() credential to undefined (omitted from JSON)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			// Same shape as newCredential() without id: toJSON returns undefined
+			// so JSON.stringify drops the slot entirely.
+			expect(JSON.stringify(n.config.credentials)).toBe('{}');
+		});
+
+		it('does not leak the <__PLACEHOLDER_VALUE__*> string into serialized credentials', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			expect(JSON.stringify(n.config.credentials)).not.toContain('__PLACEHOLDER_VALUE__');
+		});
+
+		it('normalizes only the placeholder slot, leaving other credentials untouched', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					credentials: {
+						httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+						httpHeaderAuth: placeholder('Header Auth'),
+					},
+				},
+			});
+
+			const creds = n.config.credentials!;
+			expect(creds.httpBasicAuth).toEqual({ id: 'existing-123', name: 'Existing Auth' });
+			expect((creds.httpHeaderAuth as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((creds.httpHeaderAuth as { name?: string }).name).toBe('Header Auth');
+		});
+
+		it('also normalizes when credentials are supplied via update()', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { parameters: { channel: '#general' } },
+			});
+
+			const updated = n.update({ credentials: { slackApi: placeholder('Slack Bot') } });
+			const stored = updated.config.credentials?.slackApi;
+			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((stored as { name?: string }).name).toBe('Slack Bot');
+		});
+	});
+
 	describe('then() with multiple targets (fan-out)', () => {
 		it('should connect a node to multiple targets with array syntax', () => {
 			const source = node({

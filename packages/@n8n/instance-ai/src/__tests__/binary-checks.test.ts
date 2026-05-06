@@ -95,6 +95,45 @@ describe('binary checks', () => {
 		expect(check?.score).toBe(0);
 	});
 
+	it('fails inbound_trigger_auth_defaults when webhook auth is enabled without user intent', async () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				{
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					parameters: { authentication: 'basicAuth' },
+				},
+				{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {} },
+			],
+		});
+
+		const feedback = await runBinaryChecks(workflow, ctx);
+		const check = feedback.find((f) => f.metric === 'inbound_trigger_auth_defaults');
+
+		expect(check?.score).toBe(0);
+		expect(check?.comment).toContain('"Webhook" sets authentication to "basicAuth"');
+	});
+
+	it('passes inbound_trigger_auth_defaults when user asks for authenticated inbound traffic', async () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				{
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					parameters: { authentication: 'headerAuth' },
+				},
+				{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {} },
+			],
+		});
+
+		const feedback = await runBinaryChecks(workflow, {
+			prompt: 'Create a workflow with a webhook and require header auth for inbound requests',
+		});
+		const check = feedback.find((f) => f.metric === 'inbound_trigger_auth_defaults');
+
+		expect(check?.score).toBe(1);
+	});
+
 	it('supports --only filter', async () => {
 		const feedback = await runBinaryChecks(makeWorkflow(), ctx, { only: ['has_nodes'] });
 		const metrics = feedback.filter((f) => f.kind === 'metric');

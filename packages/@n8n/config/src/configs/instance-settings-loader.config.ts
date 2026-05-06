@@ -112,4 +112,11 @@ export class InstanceSettingsLoaderConfig {
 	 */
 	@Env('N8N_LOG_STREAMING_DESTINATIONS')
 	logStreamingDestinations: string = '';
+
+	// --- MCP ---
+	@Env('N8N_MCP_MANAGED_BY_ENV')
+	mcpManagedByEnv: boolean = false;
+
+	@Env('N8N_MCP_ACCESS_ENABLED')
+	mcpAccessEnabled: boolean = false;
 }

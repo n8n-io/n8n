@@ -139,7 +139,15 @@ async function handleRun(
 		};
 	}
 
-	const needsApproval = context.permissions?.runWorkflow !== 'always_allow';
+	// `always_allow` is only honored for the workflow IDs the caller pre-authorized
+	// (e.g. checkpoint follow-ups scope the override to the workflows the checkpoint
+	// is verifying). When the allow-list is unset, `always_allow` applies broadly,
+	// matching the legacy behavior.
+	const allowList = context.allowedRunWorkflowIds;
+	const allowedByScope =
+		context.permissions?.runWorkflow === 'always_allow' &&
+		(allowList === undefined || allowList.has(input.workflowId));
+	const needsApproval = !allowedByScope;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
