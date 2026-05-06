@@ -5,6 +5,7 @@ import {
 	MCP_ONBOARDING_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
+import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
@@ -60,6 +61,14 @@ export const MCPModule: FrontendModuleDescription = {
 					surface: 'tile',
 				},
 			},
+		},
+		{
+			key: SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
+			component: async () =>
+				await import(
+					'@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpFirstOpenIntroModal.vue'
+				),
+			initialState: { open: false },
 		},
 	],
 };

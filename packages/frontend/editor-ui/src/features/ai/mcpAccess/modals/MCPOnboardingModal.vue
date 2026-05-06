@@ -9,11 +9,12 @@ import { MCP_ENDPOINT, MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { N8nIcon, N8nNotice, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-type MCPOnboardingClient = 'claude_code' | 'codex';
+type MCPOnboardingClient = 'claude_code' | 'cursor' | 'codex';
 type MCPOnboardingSurface = 'tile' | 'first_open_modal';
 
 const props = defineProps<{
@@ -42,6 +43,10 @@ const clientOptions = computed(() => [
 	{
 		value: 'claude_code',
 		label: i18n.baseText('settings.mcp.onboarding.client.claudeCode'),
+	},
+	{
+		value: 'cursor',
+		label: i18n.baseText('settings.mcp.onboarding.client.cursor' as BaseTextKey),
 	},
 	{
 		value: 'codex',

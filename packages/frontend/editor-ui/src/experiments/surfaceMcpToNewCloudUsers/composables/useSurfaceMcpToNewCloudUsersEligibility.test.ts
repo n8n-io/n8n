@@ -66,4 +66,26 @@ describe('useSurfaceMcpToNewCloudUsersEligibility', () => {
 
 		expect(isEligible.value).toBe(false);
 	});
+
+	it('returns ineligible outside cloud deployments', () => {
+		mockIsCloudDeployment = false;
+		mockUserIsTrialing = true;
+		mockIsAdminOrOwner = true;
+		mockIsTrulyEmpty.mockReturnValue(true);
+
+		const { isEligible } = useSurfaceMcpToNewCloudUsersEligibility();
+
+		expect(isEligible.value).toBe(false);
+	});
+
+	it('returns ineligible for non-trial users', () => {
+		mockIsCloudDeployment = true;
+		mockUserIsTrialing = false;
+		mockIsAdminOrOwner = true;
+		mockIsTrulyEmpty.mockReturnValue(true);
+
+		const { isEligible } = useSurfaceMcpToNewCloudUsersEligibility();
+
+		expect(isEligible.value).toBe(false);
+	});
 });

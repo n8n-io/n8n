@@ -44,7 +44,7 @@ import RecommendedTemplatesSection from '@/features/workflows/templates/recommen
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
-import { MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersEligibility } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
@@ -491,10 +491,7 @@ const maybeOpenSurfaceMcpModal = () => {
 	surfaceMcpStore.markFirstEligibleOpenSeen();
 	surfaceMcpStore.trackSurfaced('first_open_modal');
 	surfaceMcpStore.trackOpened('first_open_modal');
-	uiStore.openModalWithData({
-		name: MCP_ONBOARDING_MODAL_KEY,
-		data: { surface: 'first_open_modal' },
-	});
+	uiStore.openModal(SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY);
 };
 
 const hasActiveCallouts = computed(() => {

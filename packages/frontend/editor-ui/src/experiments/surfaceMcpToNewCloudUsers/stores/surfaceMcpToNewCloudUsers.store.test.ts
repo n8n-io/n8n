@@ -38,6 +38,10 @@ vi.mock('@/app/stores/posthog.store', () => ({
 
 import { useSurfaceMcpToNewCloudUsersStore } from './surfaceMcpToNewCloudUsers.store';
 
+type CopiedParameter = Parameters<
+	ReturnType<typeof useSurfaceMcpToNewCloudUsersStore>['trackCopiedParameter']
+>[2];
+
 describe('surfaceMcpToNewCloudUsers store', () => {
 	let store: ReturnType<typeof useSurfaceMcpToNewCloudUsersStore>;
 
@@ -88,13 +92,14 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 
 	it('tracks copied parameter payload with the current variant', () => {
 		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal);
+		expectTypeOf<CopiedParameter>().toEqualTypeOf<'agent-prompt'>();
 
-		store.trackCopiedParameter('first_open_modal', 'codex', 'setup-config');
+		store.trackCopiedParameter('first_open_modal', 'cursor', 'agent-prompt');
 
 		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding copied parameter', {
 			surface: 'first_open_modal',
-			client: 'codex',
-			parameter: 'setup-config',
+			client: 'cursor',
+			parameter: 'agent-prompt',
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal,
 		});
 	});

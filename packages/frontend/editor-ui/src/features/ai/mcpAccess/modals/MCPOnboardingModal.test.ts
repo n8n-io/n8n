@@ -280,6 +280,20 @@ describe('MCPOnboardingModal', () => {
 		expect(container.textContent).toContain('[mcp_servers.n8n]');
 	});
 
+	it('switches to Cursor setup instructions', async () => {
+		const user = userEvent.setup();
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.currentUserMCPKey = { apiKey: 'n8n-test-token' };
+
+		const { getByText, container } = renderComponent();
+
+		await user.click(getByText('Cursor'));
+
+		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('cursor');
+		expect(container.textContent).toContain('~/.cursor/mcp.json');
+		expect(container.textContent).toContain('Bearer ${env:N8N_MCP_TOKEN}');
+	});
+
 	it('forwards prompt copy telemetry with the selected client', async () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
@@ -287,12 +301,12 @@ describe('MCPOnboardingModal', () => {
 
 		const { getByText, getByTestId } = renderComponent();
 
-		await user.click(getByText('Codex'));
+		await user.click(getByText('Cursor'));
 		await user.click(getByTestId('mcp-onboarding-copy-prompt-button'));
 
 		expect(mockExperimentStore.trackCopiedParameter).toHaveBeenCalledWith(
 			'first_open_modal',
-			'codex',
+			'cursor',
 			'agent-prompt',
 		);
 	});

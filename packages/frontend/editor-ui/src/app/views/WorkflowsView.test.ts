@@ -21,6 +21,7 @@ import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { ref } from 'vue';
 
@@ -641,7 +642,7 @@ describe('Simplified Layout', () => {
 		expect(lastCall[0]).toHaveProperty('params'); // route object
 	});
 
-	it('auto-opens the MCP onboarding modal once for the first-open variant', async () => {
+	it('auto-opens the MCP intro modal once for the first-open variant', async () => {
 		const readyToRunStore = mockedStore(useReadyToRunStore);
 		const projectsStore = mockedStore(useProjectsStore);
 		const surfaceMcpStore = mockedStore(useSurfaceMcpToNewCloudUsersStore);
@@ -657,10 +658,9 @@ describe('Simplified Layout', () => {
 		await waitAllPromises();
 
 		expect(surfaceMcpStore.markFirstEligibleOpenSeen).toHaveBeenCalled();
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: 'mcpOnboardingModal',
-			data: { surface: 'first_open_modal' },
-		});
+		expect(surfaceMcpStore.trackSurfaced).toHaveBeenCalledWith('first_open_modal');
+		expect(surfaceMcpStore.trackOpened).toHaveBeenCalledWith('first_open_modal');
+		expect(uiStore.openModal).toHaveBeenCalledWith(SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY);
 	});
 
 	it('does not auto-open the modal for the tile variant', async () => {
@@ -678,6 +678,7 @@ describe('Simplified Layout', () => {
 		renderComponent({ pinia });
 		await waitAllPromises();
 
+		expect(uiStore.openModal).not.toHaveBeenCalled();
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 
@@ -696,6 +697,7 @@ describe('Simplified Layout', () => {
 		renderComponent({ pinia });
 		await waitAllPromises();
 
+		expect(uiStore.openModal).not.toHaveBeenCalled();
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 });

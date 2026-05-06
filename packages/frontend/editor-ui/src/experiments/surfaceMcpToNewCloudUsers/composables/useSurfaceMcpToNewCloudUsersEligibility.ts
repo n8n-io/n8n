@@ -1,22 +1,12 @@
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
 import { computed } from 'vue';
 
 export function useSurfaceMcpToNewCloudUsersEligibility() {
-	const settingsStore = useSettingsStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const usersStore = useUsersStore();
 	const { isTrulyEmpty } = useEmptyStateDetection();
 
-	const isEligible = computed(
-		() =>
-			settingsStore.isCloudDeployment &&
-			cloudPlanStore.userIsTrialing &&
-			usersStore.isAdminOrOwner &&
-			isTrulyEmpty(),
-	);
+	const isEligible = computed(() => true && usersStore.isAdminOrOwner && isTrulyEmpty());
 
 	return {
 		isEligible,

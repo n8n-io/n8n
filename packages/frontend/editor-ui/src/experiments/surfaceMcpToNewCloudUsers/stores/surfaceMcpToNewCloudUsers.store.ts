@@ -10,8 +10,8 @@ const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OP
 const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
 
 type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
-type SurfaceMcpOnboardingClient = 'claude_code' | 'codex';
-type SurfaceMcpOnboardingParameter = 'server-url' | 'access-token' | 'setup-config';
+type SurfaceMcpOnboardingClient = 'claude_code' | 'cursor' | 'codex';
+type SurfaceMcpOnboardingParameter = 'agent-prompt';
 
 export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 	STORES.EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS,

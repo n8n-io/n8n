@@ -2,9 +2,10 @@
 import { useClipboard } from '@/app/composables/useClipboard';
 import { N8nIconButton, N8nMarkdown, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-type MCPOnboardingClient = 'claude_code' | 'codex';
+type MCPOnboardingClient = 'claude_code' | 'cursor' | 'codex';
 
 const props = defineProps<{
 	client: MCPOnboardingClient;
@@ -22,30 +23,33 @@ const { copy } = useClipboard();
 
 const tokenValue = computed(() => (props.isTokenReady ? props.accessToken : '<your-access-token>'));
 
-const promptKey = computed(() =>
-	props.client === 'claude_code'
-		? 'settings.mcp.onboarding.prompt.claudeCode'
-		: 'settings.mcp.onboarding.prompt.codex',
-);
+const promptKeys: Record<MCPOnboardingClient, BaseTextKey> = {
+	claude_code: 'settings.mcp.onboarding.prompt.claudeCode',
+	cursor: 'settings.mcp.onboarding.prompt.cursor' as BaseTextKey,
+	codex: 'settings.mcp.onboarding.prompt.codex',
+};
+
+const clientLabelKeys: Record<MCPOnboardingClient, BaseTextKey> = {
+	claude_code: 'settings.mcp.onboarding.client.claudeCode',
+	cursor: 'settings.mcp.onboarding.client.cursor' as BaseTextKey,
+	codex: 'settings.mcp.onboarding.client.codex',
+};
+
+const promptKey = computed(() => promptKeys[props.client]);
 
 const promptBody = computed(() =>
 	i18n.baseText(promptKey.value, {
 		interpolate: {
 			token: tokenValue.value,
 			serverUrl: props.serverUrl,
+			cursorTokenReference: '${env:N8N_MCP_TOKEN}',
 		},
 	}),
 );
 
 const promptMarkdown = computed(() => `\`\`\`\n${promptBody.value}\n\`\`\``);
 
-const clientLabel = computed(() =>
-	i18n.baseText(
-		props.client === 'claude_code'
-			? 'settings.mcp.onboarding.client.claudeCode'
-			: 'settings.mcp.onboarding.client.codex',
-	),
-);
+const clientLabel = computed(() => i18n.baseText(clientLabelKeys[props.client]));
 
 const description = computed(() =>
 	i18n.baseText('settings.mcp.onboarding.prompt.description', {

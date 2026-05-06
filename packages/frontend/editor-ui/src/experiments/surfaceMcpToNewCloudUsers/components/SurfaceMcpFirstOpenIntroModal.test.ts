@@ -47,10 +47,10 @@ describe('SurfaceMcpFirstOpenIntroModal', () => {
 	it('renders the intro copy and both actions', () => {
 		const { getByText, getByTestId } = renderComponent({ pinia });
 
-		expect(getByText('Try MCP with Claude Code or Codex')).toBeInTheDocument();
+		expect(getByText('Try MCP with Claude Code, Cursor, or Codex')).toBeInTheDocument();
 		expect(
 			getByText(
-				'Use MCP to connect Claude Code or Codex to this n8n instance. You can set it up now, or turn it on later in Settings > MCP.',
+				'Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance',
 			),
 		).toBeInTheDocument();
 		expect(getByTestId('surface-mcp-intro-skip-button')).toBeInTheDocument();
