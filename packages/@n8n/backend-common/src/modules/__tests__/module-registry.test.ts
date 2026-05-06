@@ -43,6 +43,7 @@ describe('eligibleModules', () => {
 			'token-exchange',
 			'instance-version-history',
 			'encryption-key-manager',
+			'oauth-jwe',
 		]);
 	});
 
@@ -72,6 +73,7 @@ describe('eligibleModules', () => {
 			'token-exchange',
 			'instance-version-history',
 			'encryption-key-manager',
+			'oauth-jwe',
 			'instance-ai',
 		]);
 	});
@@ -337,12 +339,12 @@ describe('initModules', () => {
 	});
 });
 
-describe('loadDir', () => {
-	it('should load dirs defined by modules', async () => {
-		const TEST_LOAD_DIR = '/path/to/module/load/dir';
+describe('nodeLoaders', () => {
+	it('should collect node loaders defined by modules', async () => {
+		const TEST_LOADER = { packageName: 'test-loader' };
 		const ModuleClass = {
 			entities: jest.fn().mockReturnValue([]),
-			loadDir: jest.fn().mockReturnValue(TEST_LOAD_DIR),
+			nodeLoaders: jest.fn().mockResolvedValue([TEST_LOADER]),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
 			getClasses: jest.fn().mockReturnValue([ModuleClass]),
@@ -352,6 +354,6 @@ describe('loadDir', () => {
 
 		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
 
-		expect(moduleRegistry.loadDirs).toEqual([TEST_LOAD_DIR]);
+		expect(moduleRegistry.nodeLoaders).toEqual([TEST_LOADER]);
 	});
 });

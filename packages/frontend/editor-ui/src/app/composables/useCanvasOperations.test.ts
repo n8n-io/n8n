@@ -7,6 +7,7 @@ import type {
 	IWebhookDescription,
 	INodeConnections,
 	WorkflowExecuteMode,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
@@ -19,7 +20,7 @@ import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/hi
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
 	createTestNodeProperties,
@@ -87,6 +88,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
@@ -178,7 +180,7 @@ describe('useCanvasOperations', () => {
 	function createInitialState() {
 		return {
 			[STORES.NODE_TYPES]: {},
-			[STORES.NDV]: {},
+			[getNDVStoreId(createWorkflowDocumentId('default'))]: {},
 			[STORES.WORKFLOWS]: {
 				workflowId,
 				workflow: mock<IWorkflowDb>({
@@ -220,7 +222,7 @@ describe('useCanvasOperations', () => {
 		// Tests that need custom behavior can override via vi.spyOn.
 		vi.mocked(workflowDocumentStoreInstance.getParentNodesByDepth).mockReturnValue([]);
 		vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
-		vi.mocked(workflowDocumentStoreInstance.getSnapshot).mockReturnValue({
+		vi.mocked(workflowDocumentStoreInstance.getWorkflowObjectAccessorSnapshot).mockReturnValue({
 			id: workflowDocumentStoreInstance.workflowId,
 			connectionsBySourceNode: workflowDocumentStoreInstance.connectionsBySourceNode,
 			pinData: workflowDocumentStoreInstance.pinData as IPinData,
@@ -1395,7 +1397,7 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: true });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(id);
+			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
@@ -1421,7 +1423,7 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: false });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(id);
+			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).not.toHaveBeenCalled();
 		});
 
@@ -1488,7 +1490,7 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(nodes[1].id);
+			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 
@@ -1562,7 +1564,7 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(nodes[1].id);
+			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 	});
@@ -1588,14 +1590,13 @@ describe('useCanvasOperations', () => {
 
 	describe('renameNode', () => {
 		it('should rename node and return the actual new name on success', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
 			const newName = 'New Node';
 
 			const workflowObject = createTestWorkflowObject();
 			workflowObject.renameNode = vi.fn();
-			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.cloneWorkflowObject).mockReturnValue(workflowObject);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
 			} as INodeUi);
@@ -1628,7 +1629,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should show error toast and return false when renameNode throws an error', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const toast = useToast();
 			const oldName = 'Old Node';
@@ -1641,7 +1641,7 @@ describe('useCanvasOperations', () => {
 				const error = new UserError(errorMessage, { description: errorDescription });
 				throw error;
 			});
-			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.cloneWorkflowObject).mockReturnValue(workflowObject);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
 			} as INodeUi);
@@ -1660,7 +1660,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not show error toast when showErrorToast is false', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const toast = useToast();
 			const oldName = 'Old Node';
@@ -1671,7 +1670,7 @@ describe('useCanvasOperations', () => {
 			workflowObject.renameNode = vi.fn().mockImplementation(() => {
 				throw new UserError(errorMessage);
 			});
-			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.cloneWorkflowObject).mockReturnValue(workflowObject);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
 			} as INodeUi);
@@ -1687,14 +1686,13 @@ describe('useCanvasOperations', () => {
 
 	describe('revertRenameNode', () => {
 		it('should revert node renaming', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
 			const currentName = 'New Node';
 
 			const workflowObject = createTestWorkflowObject();
 			workflowObject.renameNode = vi.fn();
-			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.cloneWorkflowObject).mockReturnValue(workflowObject);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: currentName,
 			} as INodeUi);
@@ -3754,7 +3752,7 @@ describe('useCanvasOperations', () => {
 			const newWorkflowId = 'new-workflow-id';
 			const workflow = createTestWorkflow({
 				id: newWorkflowId,
-				nodes: [createTestNode()],
+				nodes: [createTestNode({ name: 'Node 1' }), createTestNode({ name: 'Node 2' })],
 				connections: testConnections,
 			});
 
@@ -3768,6 +3766,56 @@ describe('useCanvasOperations', () => {
 				createWorkflowDocumentId(newWorkflowId),
 			);
 			expect(workflowDocumentStore.setConnections).toHaveBeenCalledWith(testConnections);
+		});
+
+		it('should default position to [0, 0] for nodes with missing position', async () => {
+			const { position: _, ...nodeWithoutPosition } = createTestNode({ name: 'Start' });
+
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [nodeWithoutPosition as INodeUi],
+				connections: {},
+			});
+
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
+			const { initializeWorkspace } = useCanvasOperations();
+			await initializeWorkspace(workflow);
+
+			expect(setNodesSpy).toHaveBeenCalledWith([
+				expect.objectContaining({ name: 'Start', position: [0, 0] }),
+			]);
+		});
+
+		it('should remove connections for nodes filtered out during initialization', async () => {
+			const validNode = createTestNode({ name: 'Start' });
+			const invalidNode = createTestNode({ name: 'Missing', type: '' });
+			const targetNode = createTestNode({ name: 'End' });
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [validNode, invalidNode, targetNode],
+				connections: {
+					Start: {
+						main: [
+							[
+								{ node: 'End', type: 'main', index: 0 },
+								{ node: 'Missing', type: 'main', index: 0 },
+							],
+						],
+					},
+					Missing: {
+						main: [[{ node: 'End', type: 'main', index: 0 }]],
+					},
+				},
+			});
+
+			const { initializeWorkspace } = useCanvasOperations();
+			await initializeWorkspace(workflow);
+
+			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalledWith({
+				Start: {
+					main: [[{ node: 'End', type: 'main', index: 0 }]],
+				},
+			});
 		});
 
 		it('should initialize node data from node type description', async () => {
@@ -3790,14 +3838,18 @@ describe('useCanvasOperations', () => {
 			nodeTypesStore.nodeTypes = { [type]: { [version]: expectedDescription } };
 
 			const workflow = createTestWorkflow({
+				id: workflowId,
 				nodes: [createTestNode()],
 				connections: {},
 			});
 
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
 			const { initializeWorkspace } = useCanvasOperations();
 			await initializeWorkspace(workflow);
 
-			expect(workflow.nodes[0].parameters).toEqual({ value: true });
+			expect(setNodesSpy).toHaveBeenCalledWith([
+				expect.objectContaining({ parameters: { value: true } }),
+			]);
 		});
 	});
 
@@ -3926,6 +3978,12 @@ describe('useCanvasOperations', () => {
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
+			workflowsStore.clearCurrentWorkflowExecutions = vi.fn(() => {
+				workflowsStore.currentWorkflowExecutions = [];
+			});
+			workflowsStore.setLastSuccessfulExecution = vi.fn((value) => {
+				workflowsStore.lastSuccessfulExecution = value;
+			});
 			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
@@ -4534,15 +4592,13 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should set workflow name when importing with name', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-
 			// This mock is needed for addImportedNodesToWorkflow to work
-			workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 				nodes: {},
 				connections: {},
 				connectionsBySourceNode: {},
 				renameNode: vi.fn(),
-			});
+			} as unknown as Workflow);
 
 			const setNameSpy = vi.spyOn(workflowDocumentStoreInstance, 'setName');
 
@@ -4560,7 +4616,6 @@ describe('useCanvasOperations', () => {
 
 		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
 			const toast = useToast();
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = useNodeTypesStore();
 
 			// Create a node type with maxNodes: 1
@@ -4604,7 +4659,7 @@ describe('useCanvasOperations', () => {
 
 			// Mock createWorkflowObject to return a workflow with no nodes (since none can be created due to maxNodes limit)
 			const workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
-			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(workflowObject);
 
 			const canvasOperations = useCanvasOperations();
 
@@ -4615,18 +4670,56 @@ describe('useCanvasOperations', () => {
 			expect(toast.showError).not.toHaveBeenCalled();
 		});
 
+		it('should remove connections for nodes filtered out during import', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const workflowDataToImport = {
+				nodes: [
+					createTestNode({ id: 'start-id', name: 'Start' }),
+					createTestNode({ id: 'missing-id', name: 'Missing', type: '' }),
+					createTestNode({ id: 'end-id', name: 'End' }),
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{ node: 'End', type: 'main' as const, index: 0 },
+								{ node: 'Missing', type: 'main' as const, index: 0 },
+							],
+						],
+					},
+					Missing: {
+						main: [[{ node: 'End', type: 'main' as const, index: 0 }]],
+					},
+				},
+			};
+
+			const canvasOperations = useCanvasOperations();
+			const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+			expect(workflow.connections).toEqual({
+				Start: {
+					main: [[{ node: 'End', type: 'main', index: 0 }]],
+				},
+			});
+		});
+
 		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
 			'should regenerate webhook ids for node type "%s" on pasting into canvas',
 			async (type) => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-
 				// This mock is needed for addImportedNodesToWorkflow to work
-				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
 					connections: {},
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
-				});
+				} as unknown as Workflow);
 
 				const nodesToImport = [
 					{
@@ -4684,15 +4777,13 @@ describe('useCanvasOperations', () => {
 		it.each([WEBHOOK_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
 			'should not regenerate webhook ids for node type "%s" on pasting into canvas',
 			async (type) => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-
 				// This mock is needed for addImportedNodesToWorkflow to work
-				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
 					connections: {},
 					connectionsBySourceNode: {},
 					renameNode: vi.fn(),
-				});
+				} as unknown as Workflow);
 
 				const nodesToImport = [
 					{
@@ -4762,7 +4853,7 @@ describe('useCanvasOperations', () => {
 			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 
 			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(workflowObject);
 
 			const canvasOperations = useCanvasOperations();
 			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
@@ -4788,7 +4879,7 @@ describe('useCanvasOperations', () => {
 			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 
 			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(workflowObject);
 
 			// Mock TelemetryHelpers.generateNodesGraph to throw an error for this test
 			vi.mocked(TelemetryHelpers.generateNodesGraph).mockImplementationOnce(() => {
@@ -6310,6 +6401,133 @@ describe('useCanvasOperations', () => {
 			// And delete the original connection from Agent to Tool
 			expect(addConnectionSpy).toHaveBeenCalledTimes(2);
 			expect(removeConnectionSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('tryToOpenSubworkflowInNewTab', () => {
+		let windowOpenSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+		});
+
+		it('should open sub-workflow with static ID', async () => {
+			const node = createTestNode({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: {
+					workflowId: {
+						__rl: true,
+						mode: 'id',
+						value: 'workflow-123',
+					},
+				},
+			});
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
+
+			const result = await tryToOpenSubworkflowInNewTab(node.id);
+
+			expect(result).toBe(true);
+			expect(windowOpenSpy).toHaveBeenCalledWith(
+				expect.stringContaining('workflow/workflow-123'),
+				'_blank',
+			);
+		});
+
+		it('should resolve expression before opening sub-workflow', async () => {
+			const mockResolveExpression = vi.fn().mockResolvedValue('resolved-workflow-id');
+			vi.spyOn(workflowHelpersModule, 'useWorkflowHelpers').mockReturnValue({
+				resolveExpression: mockResolveExpression,
+			} as unknown as ReturnType<typeof workflowHelpersModule.useWorkflowHelpers>);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: {
+					workflowId: {
+						__rl: true,
+						mode: 'id',
+						value: '={{ $workflow.id }}',
+					},
+				},
+			});
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
+
+			const result = await tryToOpenSubworkflowInNewTab(node.id);
+
+			expect(result).toBe(true);
+			expect(mockResolveExpression).toHaveBeenCalledWith(
+				'={{ $workflow.id }}',
+				{},
+				{ contextNodeName: node.name },
+			);
+			expect(windowOpenSpy).toHaveBeenCalledWith(
+				expect.stringContaining('workflow/resolved-workflow-id'),
+				'_blank',
+			);
+		});
+
+		it('should return false when expression resolves to non-string', async () => {
+			const mockResolveExpression = vi.fn().mockResolvedValue(null);
+			vi.spyOn(workflowHelpersModule, 'useWorkflowHelpers').mockReturnValue({
+				resolveExpression: mockResolveExpression,
+			} as unknown as ReturnType<typeof workflowHelpersModule.useWorkflowHelpers>);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: {
+					workflowId: {
+						__rl: true,
+						mode: 'id',
+						value: '={{ $workflow.id }}',
+					},
+				},
+			});
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
+
+			const result = await tryToOpenSubworkflowInNewTab(node.id);
+
+			expect(result).toBe(false);
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return false when expression resolution throws', async () => {
+			const mockResolveExpression = vi.fn().mockRejectedValue(new Error('Invalid expression'));
+			vi.spyOn(workflowHelpersModule, 'useWorkflowHelpers').mockReturnValue({
+				resolveExpression: mockResolveExpression,
+			} as unknown as ReturnType<typeof workflowHelpersModule.useWorkflowHelpers>);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: {
+					workflowId: {
+						__rl: true,
+						mode: 'id',
+						value: '={{ $invalid.expression }}',
+					},
+				},
+			});
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
+
+			const result = await tryToOpenSubworkflowInNewTab(node.id);
+
+			expect(result).toBe(false);
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return false when node does not exist', async () => {
+			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
+
+			const result = await tryToOpenSubworkflowInNewTab('non-existent-id');
+
+			expect(result).toBe(false);
+			expect(windowOpenSpy).not.toHaveBeenCalled();
 		});
 	});
 });

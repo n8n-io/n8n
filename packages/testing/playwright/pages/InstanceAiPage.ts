@@ -15,14 +15,28 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
-	// ── Container & Header ────────────────────────────────────────────
-
 	getContainer(): Locator {
 		return this.page.getByTestId('instance-ai-container');
 	}
 
-	getSettingsButton(): Locator {
-		return this.page.getByTestId('instance-ai-settings-button');
+	getSidebarToggle(): Locator {
+		return this.getContainer().getByTestId('instance-ai-sidebar-toggle');
+	}
+
+	/**
+	 * Expand the chat-history sidebar if it isn't already open. The sidebar
+	 * starts collapsed by default, so any test that needs to query thread
+	 * items must open it first. Idempotent — does nothing if already open.
+	 *
+	 * Waits for the thread-list to become visible so callers can immediately
+	 * query thread items without racing the 200ms slide-in transition.
+	 */
+	async openSidebar(): Promise<void> {
+		const toggle = this.getSidebarToggle();
+		if (await toggle.isVisible()) {
+			await toggle.click();
+		}
+		await this.getContainer().getByTestId('instance-ai-thread-list').waitFor({ state: 'visible' });
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
@@ -47,6 +61,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-assistant-message');
 	}
 
+	getAssistantMessageText(text: string): Locator {
+		return this.getAssistantMessages().getByText(text);
+	}
+
+	getToolCallsButton(label: string): Locator {
+		return this.page.getByRole('button', { name: label });
+	}
+
 	getStatusBar(): Locator {
 		return this.page.getByTestId('instance-ai-status-bar');
 	}
@@ -60,17 +82,7 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-empty-state');
 	}
 
-	// ── Timeline & Tool Calls ─────────────────────────────────────────
-
-	getToolCalls(): Locator {
-		return this.page.getByTestId('instance-ai-tool-call');
-	}
-
 	// ── Confirmations ─────────────────────────────────────────────────
-
-	getConfirmationPanel(): Locator {
-		return this.page.getByTestId('instance-ai-confirmation-panel');
-	}
 
 	getConfirmApproveButton(): Locator {
 		return this.page.getByTestId('instance-ai-panel-confirm-approve');
@@ -88,18 +100,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-credential-continue-button');
 	}
 
-	// ── Plan Review ───────────────────────────────────────────────────
-
-	getPlanReviewPanel(): Locator {
-		return this.page.getByTestId('instance-ai-plan-review');
+	getConfirmationText(text: string): Locator {
+		return this.page.getByText(text, { exact: false });
 	}
+
+	// ── Plan Review ───────────────────────────────────────────────────
 
 	getPlanApproveButton(): Locator {
 		return this.page.getByTestId('instance-ai-plan-approve');
-	}
-
-	getPlanRequestChangesButton(): Locator {
-		return this.page.getByTestId('instance-ai-plan-request-changes');
 	}
 
 	/**
@@ -113,34 +121,6 @@ export class InstanceAiPage extends BasePage {
 			.or(this.getPlanApproveButton())
 			.or(this.getCredentialContinue())
 			.or(this.getWorkflowSetupSkip());
-	}
-
-	// ── Questions ─────────────────────────────────────────────────────
-
-	getQuestionsPanel(): Locator {
-		return this.page.getByTestId('instance-ai-questions');
-	}
-
-	getQuestionOptions(): Locator {
-		return this.getQuestionsPanel().getByRole('button');
-	}
-
-	getQuestionsNextButton(): Locator {
-		return this.page.getByTestId('instance-ai-questions-next');
-	}
-
-	getQuestionsSkipButton(): Locator {
-		return this.page.getByTestId('instance-ai-questions-skip');
-	}
-
-	// ── Feedback ──────────────────────────────────────────────────────
-
-	getMessageRating(): Locator {
-		return this.page.getByTestId('instance-ai-message-rating');
-	}
-
-	getFeedbackSuccess(): Locator {
-		return this.page.getByTestId('instance-ai-feedback-success');
 	}
 
 	// ── Preview ───────────────────────────────────────────────────────
@@ -221,40 +201,8 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-workflow-setup-apply-button');
 	}
 
-	getWorkflowSetupTestTriggerButton(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-test-trigger');
-	}
-
-	getWorkflowSetupCredentialButton(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-credential-button');
-	}
-
-	getWorkflowSetupCredCheck(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-cred-check');
-	}
-
 	getWorkflowSetupStepCheck(): Locator {
 		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-check');
-	}
-
-	getWorkflowSetupNodesHint(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-nodes-hint');
-	}
-
-	getWorkflowSetupListeningCallout(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-listening-callout');
-	}
-
-	getWorkflowSetupErrorBanner(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-error-banner');
-	}
-
-	getWorkflowSetupApplyingState(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-applying');
-	}
-
-	getWorkflowSetupPartialState(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-partial');
 	}
 
 	getWorkflowSetupParameterIssues(): Locator {
@@ -280,24 +228,6 @@ export class InstanceAiPage extends BasePage {
 		return this.page.locator('.card').filter({ has: this.page.getByTestId('card-content') });
 	}
 
-	getArtifactsPanelToggle(): Locator {
-		return this.page.getByRole('button', { name: /artifacts/i });
-	}
-
-	getArtifactsPanelRows(): Locator {
-		return this.page.locator('[class*="artifactRow"]');
-	}
-
-	// ── Timeline Details ──────────────────────────────────────────────
-
-	getToolCallTrigger(toolCall: Locator): Locator {
-		return toolCall.getByRole('button').first();
-	}
-
-	getToolCallExpandedContent(toolCall: Locator): Locator {
-		return toolCall.locator('[data-state="open"]');
-	}
-
 	// ── Convenience Actions ───────────────────────────────────────────
 
 	async sendMessage(text: string): Promise<void> {
@@ -321,5 +251,15 @@ export class InstanceAiPage extends BasePage {
 
 	async waitForRunComplete(timeoutMs = 180_000): Promise<void> {
 		await this.getStopButton().waitFor({ state: 'hidden', timeout: timeoutMs });
+	}
+
+	/**
+	 * Wait for the plan-review panel to appear and approve it. New workflow
+	 * builds now route through the planner and pause at `awaiting_approval`
+	 * until the user approves — without this step the build never starts.
+	 */
+	async approveBuildPlan(timeout = 120_000): Promise<void> {
+		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
+		await this.getPlanApproveButton().click();
 	}
 }

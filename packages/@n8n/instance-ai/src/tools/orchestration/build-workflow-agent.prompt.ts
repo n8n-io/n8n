@@ -7,15 +7,6 @@
  */
 
 import {
-	IF_NODE_GUIDE,
-	SWITCH_NODE_GUIDE,
-	SET_NODE_GUIDE,
-	HTTP_REQUEST_GUIDE,
-	TOOL_NODES_GUIDE,
-	EMBEDDING_NODES_GUIDE,
-	RESOURCE_LOCATOR_GUIDE,
-} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
-import {
 	AI_TOOL_PATTERNS,
 	CONNECTION_CHANGING_PARAMETERS,
 	BASELINE_FLOW_CONTROL,
@@ -61,9 +52,13 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
-- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
-- **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
-- **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
+- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.`;
+
+const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
+
+- Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
+- Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
+- If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
 // The AI Agent subnode example below differs by mode:
 //   tool mode  → `newCredential('OpenAI')`
@@ -86,6 +81,16 @@ After writing any workflow with IF, Switch, or Filter nodes, verify:
 
 ### AI Agent with Subnodes — use factory functions in subnodes config
 \`\`\`javascript
+const chatTrigger = trigger({
+  type: '@n8n/n8n-nodes-langchain.chatTrigger',
+  version: 1.3,
+  config: {
+    name: 'Chat Trigger',
+    parameters: { public: false },
+    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
+  }
+});
+
 const model = languageModel({
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
   version: 1.3,
@@ -108,6 +113,19 @@ const parser = outputParser({
   }
 });
 
+const memoryNode = memory({
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {
+    name: 'Conversation Memory',
+    parameters: {
+      sessionIdType: 'customKey',
+      sessionKey: nodeJson(chatTrigger, 'sessionId'),
+      contextWindowLength: 10
+    }
+  }
+});
+
 const agent = node({
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
@@ -119,11 +137,12 @@ const agent = node({
       hasOutputParser: true,
       options: { systemMessage: 'You are an expert...' }
     },
-    subnodes: { model: model, outputParser: parser }
+    subnodes: { model: model, memory: memoryNode, outputParser: parser }
   }
 });
 \`\`\`
 WRONG: \`.to(agent, { connectionType: 'ai_languageModel' })\` — subnodes MUST be in the config object.
+For values inside AI subnodes, use explicit references such as \`nodeJson(triggerNode, 'sessionId')\` instead of \`$json.sessionId\`. For Chat Trigger memory specifically, \`sessionIdType: 'fromInput'\` is also valid.
 
 ### Code Node
 \`\`\`javascript
@@ -225,10 +244,6 @@ export default workflow('id', 'name')
   .add(scheduleTrigger).to(processNode);
 \`\`\`
 
-### Web App (SPA served from a webhook)
-
-When the workflow serves HTML from a webhook (dashboards, admin UIs, custom forms), call \`templates(action="best-practices", technique="web_app")\` for the full file-based HTML pattern, data-injection recipe, multi-route architecture, and a complete multi-route dashboard example. Embedding large HTML inline in Code nodes breaks at ~20KB — always use the file-based pattern from the guide.
-
 ### Google Sheets — documentId and sheetName (RLC fields)
 
 These are Resource Locator fields that require the \`__rl\` object format:
@@ -274,17 +289,24 @@ const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating work
    - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
    - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
 
-2. **Handle empty outputs with \`alwaysOutputData: true\`**
-   - Nodes that query data (Data Table get, Google Sheets lookup, HTTP Request, etc.) may return 0 items
-   - When a node returns 0 items, all downstream nodes are SKIPPED — the workflow chain breaks silently
-   - Set \`alwaysOutputData: true\` on any node whose output feeds downstream nodes and might return empty results
-   - Common cases: fresh/empty Data Tables, filtered queries, conditional lookups, API searches with no matches
-   - Example: \`config: { ..., alwaysOutputData: true }\`
+2. **Trust empty item lists — don't synthesize fake items**
+   - When a query returns 0 items, downstream nodes simply don't run for that execution. For scheduled or polling triggers this is the correct "nothing to do this round" signal — the next run will execute normally when data appears.
+   - DO NOT add \`alwaysOutputData: true\` just to "keep the chain alive." Forcing an empty \`{}\` item downstream is what causes \`undefined\` reads, failed HTTP calls to \`GET undefined\`, and Code-node crashes on missing fields.
+   - DO NOT add an IF gate before a loop to check "has items?" — loops (\`splitInBatches\`, per-item nodes, \`filter\`) already no-op on empty input. The gate is redundant and adds a failure surface.
+   - \`alwaysOutputData: true\` is only correct when you specifically need a downstream branch to run on the "empty" case — e.g. a dedicated "no matches found" notification path. In that case, pair it with an \`IF\` that explicitly checks for the empty case and routes accordingly. Never use it as a default.
+   - To drop invalid items mid-pipeline, use a \`filter\` node. A \`filter\` that rejects everything emits 0 items and the chain correctly stops — no \`IF\` + \`splitInBatches\` composition needed.
 
 3. **Use \`executeOnce: true\` for single-execution nodes**
    - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
    - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
-   - Example: \`config: { ..., executeOnce: true }\``;
+   - Example: \`config: { ..., executeOnce: true }\`
+
+4. **Pick the right control-flow primitive**
+   - **Per-item loop with side effects (fetch, embed, write)** → \`splitInBatches\` with \`batchSize: 1\` feeding the per-item work, loop back via \`nextBatch\`. No \`IF\` gate before it.
+   - **Drop items that don't match a predicate** → \`filter\`. It emits 0 items when nothing matches, and the chain stops cleanly.
+   - **Two mutually exclusive paths that both do real work** → \`IF\` (\`onTrue\` / \`onFalse\`).
+   - **Many mutually exclusive paths keyed off a value** → \`switch\` (\`onCase\`).
+   - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.`;
 
 function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	// Shared WORKFLOW_SDK_PATTERNS uses `newCredential('X')` throughout. That
@@ -306,14 +328,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
-		'## Node-Specific Configuration Guides',
-		IF_NODE_GUIDE.content,
-		SWITCH_NODE_GUIDE.content,
-		SET_NODE_GUIDE.content,
-		HTTP_REQUEST_GUIDE.content,
-		TOOL_NODES_GUIDE.content,
-		EMBEDDING_NODES_GUIDE.content,
-		RESOURCE_LOCATOR_GUIDE.content,
+		NODE_CONFIGURATION_SAFETY_RULES,
 		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
 	].join('\n\n');
 }
@@ -561,6 +576,8 @@ credentials: {
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
+
+The credential-selection guidance above applies to outbound service calls. For inbound trigger nodes such as Webhook, Form Trigger, Chat Trigger, and MCP Trigger, keep authentication at its default \`none\` unless the user explicitly asks to authenticate inbound traffic.
 
 ## Data Tables
 

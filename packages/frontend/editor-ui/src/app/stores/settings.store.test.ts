@@ -20,6 +20,7 @@ const mockRootStore = {
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
+	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
 	setDefaultLocale: vi.fn(),
 	setBinaryDataMode: vi.fn(),
@@ -81,6 +82,44 @@ describe('settings.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('isAutosaveEnabled', () => {
+		it('should return true when workflowsAutosaveDisabled is false', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: false,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+
+		it('should return false when workflowsAutosaveDisabled is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(false);
+		});
+
+		it('should return true when workflowsAutosaveDisabled is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
 	});
 
 	describe('getSettings', () => {

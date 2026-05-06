@@ -382,14 +382,21 @@ The processor is configurable via `disableDeferredTools` flag.
 
 ## MCP Integration
 
-External MCP servers are connected via `McpClientManager`. Their tools are:
+External MCP servers are owned by `McpClientManager` (`mcp/mcp-client-manager.ts`).
+The cli's `InstanceAiService` holds one manager instance and passes it to
+`createInstanceAgent` via options; the agent factory calls
+`mcpManager.getRegularTools(mcpServers)` and
+`mcpManager.getBrowserTools(orchestrationContext?.browserMcpConfig)`. Tool
+descriptions are:
 
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
    shadowing of tools like `run-workflow`)
 3. **Separated** from domain tools in the orchestrator's tool set
-4. **Cached** by config hash across agent instances
+4. **Cached** by config hash inside the manager — the underlying `MCPClient`
+   instances are tracked so `mcpManager.disconnect()` (called during service
+   shutdown) closes SSE / stdio connections cleanly.
 
 Browser MCP tools (Chrome DevTools) are excluded from the orchestrator to avoid
 context bloat from screenshots. They're available to `browser-credential-setup`

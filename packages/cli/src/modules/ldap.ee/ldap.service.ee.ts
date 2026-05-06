@@ -96,7 +96,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			ldapConfig.enforceEmailUniqueness = true;
 		}
 
-		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
+		ldapConfig.bindingAdminPassword = await this.cipher.decryptV2(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
 
@@ -113,7 +113,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 
 		this.setConfig({ ...ldapConfig });
 
-		ldapConfig.bindingAdminPassword = this.cipher.encrypt(ldapConfig.bindingAdminPassword);
+		ldapConfig.bindingAdminPassword = await this.cipher.encryptV2(ldapConfig.bindingAdminPassword);
 
 		if (!ldapConfig.loginEnabled) {
 			ldapConfig.synchronizationEnabled = false;

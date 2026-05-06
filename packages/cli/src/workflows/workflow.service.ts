@@ -374,6 +374,10 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
+		WorkflowHelpers.validateWorkflowStructure({
+			nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			connections: workflowUpdateData.connections ?? workflow.connections,
+		});
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (

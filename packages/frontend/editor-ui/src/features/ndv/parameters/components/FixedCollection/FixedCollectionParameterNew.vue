@@ -3,7 +3,7 @@ import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectio
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import {
@@ -31,7 +31,7 @@ import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
 
 const locale = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);

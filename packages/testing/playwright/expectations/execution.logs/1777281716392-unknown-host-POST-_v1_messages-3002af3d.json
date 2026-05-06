@@ -8,7 +8,8 @@
       "json": {
         "model": "claude-sonnet-4-5-20250929",
         "stream": true,
-        "max_tokens": 8192,
+        "max_tokens": 16384,
+        "tools": [],
         "thinking": {
           "type": "disabled"
         },
@@ -18,8 +19,7 @@
             "content": "Hi!"
           }
         ]
-      },
-      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5Iiwic3RyZWFtIjp0cnVlLCJtYXhfdG9rZW5zIjo4MTkyLCJ0aGlua2luZyI6eyJ0eXBlIjoiZGlzYWJsZWQifSwibWVzc2FnZXMiOlt7InJvbGUiOiJ1c2VyIiwiY29udGVudCI6IkhpISJ9XX0="
+      }
     }
   },
   "httpResponse": {

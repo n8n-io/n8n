@@ -7,7 +7,12 @@ export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
-export { DeploymentKeyRepository } from './deployment-key.repository';
+export {
+	DeploymentKeyRepository,
+	type DeploymentKeySortField,
+	type DeploymentKeySortDirection,
+	type ListDeploymentKeysOptions,
+} from './deployment-key.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';

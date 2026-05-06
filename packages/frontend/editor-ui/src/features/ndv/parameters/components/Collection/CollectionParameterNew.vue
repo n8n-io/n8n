@@ -14,7 +14,7 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 
 import get from 'lodash/get';
 
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -51,7 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isNested: false,
 	isNewlyAdded: false,
 });
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 

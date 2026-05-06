@@ -84,6 +84,7 @@ const mockWorkflowDocumentStore = reactive({
 	get allNodes() {
 		return mockWorkflowsStore.workflow.nodes;
 	},
+	getSnapshot: vi.fn().mockReturnValue({}),
 });
 
 vi.mock('@/features/ai/assistant/builder.store', () => ({
