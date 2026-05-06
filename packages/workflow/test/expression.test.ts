@@ -11,7 +11,7 @@ import { ExpressionError } from '../src/errors/expression.error';
 import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import { createRunExecutionData } from '../src';
-import type { INodeExecutionData } from '../src/interfaces';
+import type { IDataObject, INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -43,8 +43,17 @@ describe('Expression', () => {
 			await expression.releaseIsolate();
 		});
 
-		const evaluate = (value: string) =>
-			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
+		const evaluate = (value: string, values?: IDataObject[]) =>
+			expression.getParameterValue(
+				value,
+				null,
+				0,
+				0,
+				'node',
+				values?.map((json) => ({ json })) ?? [],
+				'manual',
+				{},
+			);
 
 		it('should not be able to use global built-ins from denylist', () => {
 			expect(evaluate('={{document}}')).toEqual({});
@@ -181,6 +190,46 @@ describe('Expression', () => {
 
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
+		});
+
+		it('should evaluate object literal expressions with nested braces', () => {
+			const expressionWithNestedBraces = evaluate('={{ {values:{}} }}');
+
+			expect(expressionWithNestedBraces).toEqual({ values: {} });
+			expect(expressionWithNestedBraces).toEqual(evaluate('={{ {values:{} } }}'));
+		});
+
+		it('should evaluate object literal expressions with multiple internal closing pairs', () => {
+			expect(evaluate('={{ {a:{c:{}}, b:{}} }}')).toEqual({ a: { c: {} }, b: {} });
+		});
+
+		it('should evaluate bare object literal expressions that end at the closing marker', () => {
+			const expressionWithBareObjectLiteral = evaluate('={{ {a:1}}}');
+
+			expect(expressionWithBareObjectLiteral).toEqual({ a: 1 });
+			expect(expressionWithBareObjectLiteral).toEqual(evaluate('={{ {a:1} }}'));
+		});
+
+		it('should evaluate mixed templates with string literals containing left braces', () => {
+			expect(evaluate('={{ "{foo" }} and {{ $json.n }}', [{ n: 2 }])).toEqual('{foo and 2');
+		});
+
+		it('should evaluate mixed templates with string literals containing closing braces', () => {
+			expect(evaluate('={{ "{{foo}}" }} and {{ $json.n }}', [{ n: 2 }])).toEqual('{{foo}} and 2');
+		});
+
+		it('should evaluate mixed templates with regex literals containing left braces', () => {
+			expect(evaluate('={{ /{/.test($json.s) }} and {{ $json.n }}', [{ s: '{', n: 2 }])).toEqual(
+				'true and 2',
+			);
+		});
+
+		it('should evaluate mixed templates with comments containing left braces', () => {
+			expect(evaluate('={{ /* { */ 1 }} and {{ $json.n }}', [{ n: 2 }])).toEqual('1 and 2');
+		});
+
+		it('should evaluate mixed templates with line comments containing closing braces', () => {
+			expect(evaluate('={{ // }}\n1 }} and {{ $json.n }}', [{ n: 2 }])).toEqual('1 and 2');
 		});
 
 		it('should expose correct process properties in sandbox', () => {

@@ -5,6 +5,7 @@
 import { evaluate } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 import { extendTransform, extend } from '../../src/extensions';
+import { extendSyntax } from '../../src/extensions/expression-extension';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
 describe('Expression Extension Transforms', () => {
@@ -23,6 +24,31 @@ describe('Expression Extension Transforms', () => {
 			expect(extendTransform('"aaa ".toSnakeCase().trim().toSentenceCase(2)')!.code).toEqual(
 				'extend(extend("aaa ", "toSnakeCase", []).trim(), "toSentenceCase", [2])',
 			);
+		});
+	});
+
+	describe('extendSyntax()', () => {
+		test('does not rewrite concise methods to function expressions', () => {
+			const extended = extendSyntax(
+				'={{ { __proto__: base, foo(){ return super.x } }.toJsonString() }}',
+			);
+
+			expect(extended).not.toMatch(/foo:\s*function/);
+			expect(extended).toMatch(/foo\(\)\s*\{\s*return super\.x\s*\}/);
+		});
+
+		test('keeps forceExtend=false and forceExtend=true cache entries separate after a no-op result', () => {
+			const expression = '={{ { "data": $json.body.choices } }}';
+
+			expect(extendSyntax(expression, false)).toBe(expression);
+			expect(extendSyntax(expression, true)).toBe('={{( { "data": $json.body.choices } )}}');
+		});
+
+		test('keeps forceExtend=true and forceExtend=false cache entries separate after a transform result', () => {
+			const expression = '={{ { "items": $json.body.choices } }}';
+
+			expect(extendSyntax(expression, true)).toBe('={{( { "items": $json.body.choices } )}}');
+			expect(extendSyntax(expression, false)).toBe(expression);
 		});
 	});
 });
@@ -46,6 +72,120 @@ describe('Expression Parser', () => {
 					{ type: 'text', text: '.' },
 				],
 			);
+		});
+
+		test('Expression containing object literals', () => {
+			expect(splitExpression('{{ {values:{}} }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {values:{}} ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Expression containing nested object literals', () => {
+			expect(splitExpression('{{ {values:{ nested: {} }} }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {values:{ nested: {} }} ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Expression containing nested object literals with multiple internal closing pairs', () => {
+			expect(splitExpression('{{ {a:{c:{}}, b:{}} }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {a:{c:{}}, b:{}} ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Expression containing bare object literals that end at the closing marker', () => {
+			expect(splitExpression('{{ {a:1}}}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {a:1}', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Expression containing bare object literals with classic function bodies', () => {
+			expect(splitExpression('{{ {foo:function(){return 1}}}}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {foo:function(){return 1}}', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Expression containing bare object literals with method bodies', () => {
+			expect(splitExpression('{{ {foo(){return 1}}}}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {foo(){return 1}}', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Multiple expression regression', () => {
+			expect(splitExpression('{{ 1 }} text {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' 1 ', hasClosingBrackets: true },
+				{ type: 'text', text: ' text ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Regex literals do not swallow following expressions', () => {
+			expect(splitExpression('{{ /[/*]/.test($json.s) }} and {{ $json.n }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' /[/*]/.test($json.s) ', hasClosingBrackets: true },
+				{ type: 'text', text: ' and ' },
+				{ type: 'code', text: ' $json.n ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('String literals containing left braces do not swallow following expressions', () => {
+			expect(splitExpression('{{ "{foo" }} and {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' "{foo" ', hasClosingBrackets: true },
+				{ type: 'text', text: ' and ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Regex literals containing left braces do not swallow following expressions', () => {
+			expect(splitExpression('{{ /{/.test(x) }} and {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' /{/.test(x) ', hasClosingBrackets: true },
+				{ type: 'text', text: ' and ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Comments containing left braces do not swallow following expressions', () => {
+			expect(splitExpression('{{ /* { */ 1 }} and {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' /* { */ 1 ', hasClosingBrackets: true },
+				{ type: 'text', text: ' and ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Line comments containing closing braces do not swallow following expressions', () => {
+			expect(splitExpression('{{ // }}\n1 }} and {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' // }}\n1 ', hasClosingBrackets: true },
+				{ type: 'text', text: ' and ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('String literals containing closing braces do not swallow following expressions', () => {
+			expect(splitExpression('{{ "{{foo}}" }} and {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' "{{foo}}" ', hasClosingBrackets: true },
+				{ type: 'text', text: ' and ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Bare object literals do not swallow following expressions', () => {
+			expect(splitExpression('{{ {a:1}}} tail {{ 2 }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' {a:1}', hasClosingBrackets: true },
+				{ type: 'text', text: ' tail ' },
+				{ type: 'code', text: ' 2 ', hasClosingBrackets: true },
+			]);
 		});
 
 		test('Unclosed expression', () => {
@@ -104,6 +244,12 @@ describe('Expression Parser', () => {
 	});
 
 	describe('Edge cases', () => {
+		test('Regex literals in mixed templates still evaluate', () => {
+			expect(
+				evaluate('={{ /[/*]/.test($json.s) }} and {{ $json.n }}', [{ s: '/*', n: 2 }]),
+			).toEqual('true and 2');
+		});
+
 		test("Nested member access with name of function inside a function doesn't result in function call", () => {
 			expect(evaluate('={{ Math.floor([1, 2, 3, 4].length + 10) }}')).toEqual(14);
 

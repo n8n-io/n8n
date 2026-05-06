@@ -158,6 +158,110 @@ Program(Resolvable)
 
 Program(Resolvable)
 
+# Resolvable containing object literal with nested braces
+
+{{ {values:{}} }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing bare object literal ending at the closing marker
+
+{{ {a:1}}}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing nested object literals
+
+{{ {values:{ nested: {} }} }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing nested object literals with multiple internal closing pairs
+
+{{ {a:{c:{}}, b:{}} }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable containing regex literal followed by plaintext
+
+{{ /[/*]/.test(x) }} tail
+
+==>
+
+Program(Resolvable,Plaintext)
+
+# Resolvable containing string literal with left brace followed by another expression
+
+{{ "{foo" }} and {{ 2 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
+# Resolvable containing regex literal with left brace followed by another expression
+
+{{ /{/.test(x) }} and {{ 2 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
+# Resolvable containing comment with left brace followed by another expression
+
+{{ /* { */ 1 }} and {{ 2 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
+# Resolvable containing string literal with closing braces followed by another expression
+
+{{ "{{foo}}" }} and {{ 2 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
+# Resolvable containing bare object literal followed by plaintext
+
+{{ {a:1}}} tail
+
+==>
+
+Program(Resolvable,Plaintext)
+
+# Resolvable containing bare object literal followed by plaintext and another expression
+
+{{ {a:1}}} tail {{ $json.n }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
+# Resolvable containing bare object literal with classic function body followed by plaintext
+
+{{ {foo:function(){return 1}}}} tail
+
+==>
+
+Program(Resolvable,Plaintext)
+
+# Resolvable containing bare object literal with method body followed by plaintext and another expression
+
+{{ {foo(){return 1}}}} tail {{ 2 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
+
 # Resolvable containing double-brace-wrapped text with escaping
 
 {{ he {{ abc \}} llo }}
@@ -324,3 +428,11 @@ Program(Resolvable)
 ==>
 
 Program(Resolvable)
+
+# Line comments containing closing braces do not swallow following expressions
+{{ // }}
+1 }} and {{ 2 }}
+
+==>
+
+Program(Resolvable,Plaintext,Resolvable)
