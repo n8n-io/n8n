@@ -4,6 +4,8 @@ import autocannon from 'autocannon';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import {
+	buildAndAttachRunReport,
+	renderRunReport,
 	reportContainerStats,
 	reportDiagnostics,
 	reportJaegerTraces,
@@ -149,13 +151,17 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		durationMs: throughputResult.durationMs,
 		dimensions,
 	});
-	await reportContainerStats(diagnostics, setup.dockerStatsSampler);
-	await reportPgQueryBreakdown({ services, durationMs: throughputResult.durationMs });
-	await reportPgSaturation({
+	const { containers, source: containersSource } = await reportContainerStats(
+		diagnostics,
+		setup.dockerStatsSampler,
+	);
+	const pgQueries = await reportPgQueryBreakdown({
 		services,
 		durationMs: throughputResult.durationMs,
-		diagnostics,
-		walBaseline: setup.walBaseline,
+	});
+	const pgSaturation = await reportPgSaturation({
+		services,
+		durationMs: throughputResult.durationMs,
 	});
 	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
 
@@ -166,20 +172,33 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 				? `INGESTION > EXECUTION — backlog growing at ${backlogGrowthPerSec.toFixed(1)}/sec`
 				: 'BALANCED — ingestion and execution keeping pace';
 
-	console.log(
-		`[WEBHOOK RESULT] ${testInfo.title}\n` +
-			`  HTTP ingestion:    ${httpReqPerSec.toFixed(1)} req/s | p50: ${cannonResult.latency.p50}ms | p99: ${cannonResult.latency.p99}ms\n` +
-			`  n8n execution:     ${n8nExecPerSec.toFixed(1)} exec/s (tail 60s)\n` +
-			`  Backlog growth:    ${backlogGrowthPerSec >= 0 ? '+' : ''}${backlogGrowthPerSec.toFixed(1)} msg/sec` +
-			` (ingestion is ${ingestionVsExecutionRatio.toFixed(2)}× execution)\n` +
-			`  Errors:            ${totalErrors}/${cannonResult.requests.total} (${errorRatePct.toFixed(2)}%)` +
-			` | ${cannonResult.errors} timeouts, ${cannonResult.non2xx} non-2xx\n` +
-			`  Verdict:           ${verdict}\n` +
-			`  PG active conns:   ${diagnostics.pgActiveConnections ?? 'N/A'}` +
-			` | PG tx/s: ${diagnostics.pgTxRate?.toFixed(0) ?? 'N/A'}` +
-			` | Event loop lag: ${diagnostics.eventLoopLag !== undefined && diagnostics.eventLoopLag !== null ? (diagnostics.eventLoopLag * 1000).toFixed(0) + 'ms' : 'N/A'}\n` +
-			`  Duration: ${(throughputResult.durationMs / 1000).toFixed(1)}s`,
-	);
+	const report = await buildAndAttachRunReport({
+		testInfo,
+		scenario: { spec: testInfo.title, dimensions },
+		duration: { totalMs: throughputResult.durationMs, wallClockMs: throughputResult.durationMs },
+		throughput: {
+			reqPerSec: httpReqPerSec,
+			execPerSec: throughputResult.avgExecPerSec,
+			tailExecPerSec: throughputResult.tailExecPerSec,
+			p50Ms: cannonResult.latency.p50,
+			p99Ms: cannonResult.latency.p99,
+			totalRequests: cannonResult.requests.total,
+			totalCompleted: throughputResult.totalCompleted,
+			errors: totalErrors,
+			errorBreakdown: { timeouts: cannonResult.errors, non2xx: cannonResult.non2xx },
+			errorRatePct,
+			backlogGrowthPerSec,
+			ingestionVsExecutionRatio,
+			verdict,
+		},
+		containers,
+		containersSource,
+		diagnostics,
+		pgQueries,
+		pgSaturation,
+		walBaseline: setup.walBaseline,
+	});
+	renderRunReport(report);
 
 	expect(throughputResult.totalCompleted).toBeGreaterThan(0);
 }

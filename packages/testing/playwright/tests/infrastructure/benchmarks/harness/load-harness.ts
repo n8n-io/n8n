@@ -3,6 +3,8 @@ import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import {
+	buildAndAttachRunReport,
+	renderRunReport,
 	reportContainerStats,
 	reportDiagnostics,
 	reportJaegerTraces,
@@ -135,15 +137,34 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		durationMs: totalDurationMs,
 		dimensions: diagnosticsDimensions,
 	});
-	await reportContainerStats(diagnostics, setup.dockerStatsSampler);
-	await reportPgQueryBreakdown({ services, durationMs: totalDurationMs });
-	await reportPgSaturation({
-		services,
-		durationMs: totalDurationMs,
+	const { containers, source: containersSource } = await reportContainerStats(
 		diagnostics,
+		setup.dockerStatsSampler,
+	);
+	const pgQueries = await reportPgQueryBreakdown({ services, durationMs: totalDurationMs });
+	const pgSaturation = await reportPgSaturation({ services, durationMs: totalDurationMs });
+	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
+
+	const report = await buildAndAttachRunReport({
+		testInfo,
+		scenario: { spec: testInfo.title, dimensions: diagnosticsDimensions },
+		duration: { totalMs: totalDurationMs, wallClockMs },
+		throughput: {
+			execPerSec: metrics.throughputPerSecond,
+			tailExecPerSec: exec.throughputResult.tailExecPerSec,
+			p50Ms: metrics.p50DurationMs,
+			p99Ms: metrics.p99DurationMs,
+			totalCompleted: metrics.totalCompleted,
+			errors: metrics.totalErrors,
+		},
+		containers,
+		containersSource,
+		diagnostics,
+		pgQueries,
+		pgSaturation,
 		walBaseline: setup.walBaseline,
 	});
-	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
+	renderRunReport(report);
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);
 

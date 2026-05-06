@@ -14,11 +14,22 @@ import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	attachDiagnostics,
 	collectDiagnostics,
+	diagnosticsToServiceEntries,
 	formatDiagnosticValue,
 	getBaselineCounter,
 	resolveMetricQuery,
+	RunReportBuilder,
 } from '../../../../utils/benchmark';
-import type { BenchmarkDimensions, DiagnosticsResult } from '../../../../utils/benchmark';
+import type {
+	BenchmarkDimensions,
+	ContainerStat,
+	DiagnosticsResult,
+	PostgresMetrics,
+	RunReport,
+	ScenarioInfo,
+	ThroughputInfo,
+	TopQuery,
+} from '../../../../utils/benchmark';
 
 /**
  * Minimal handle shape used by setup. Both `TriggerHandle` (Kafka) and the
@@ -153,47 +164,36 @@ export interface ReportDiagnosticsContext {
 }
 
 /**
- * Collects + attaches + logs the standard diagnostics block. Returns the
- * collected diagnostics so callers can include any field in their own summary.
+ * Collects diagnostics from VictoriaMetrics and attaches them to the test for
+ * BigQuery aggregation. Pure data-collection — console rendering happens in
+ * `renderRunReport` so the printed output stays a deterministic projection of
+ * the structured `RunReport`.
  */
 export async function reportDiagnostics(ctx: ReportDiagnosticsContext) {
 	const obs = ctx.services.observability;
 	const diagnostics = await collectDiagnostics(obs.metrics, ctx.durationMs);
 	await attachDiagnostics(ctx.testInfo, ctx.dimensions, diagnostics);
-
-	const fmt = formatDiagnosticValue;
-	console.log(
-		`[DIAG] ${ctx.testInfo.title}\n` +
-			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
-			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
-			`  PG Active Connections: ${fmt(diagnostics.pgActiveConnections)}\n` +
-			`  Queue Waiting: ${fmt(diagnostics.queueWaiting)}`,
-	);
-
 	return diagnostics;
 }
 
 /**
- * Logs the top-N queries from `pg_stat_statements`, ranked by total ms/s of
- * work (calls/s × avg ms) rather than raw call count. Lets benchmarks attribute
- * actual capacity consumption to specific queries — a 0.00ms statement at
- * 12k/s consumes effectively zero PG capacity and would otherwise crowd out
- * the queries that actually move throughput. `setupBenchmarkRun` resets the
- * stat counters post-warm-up, so the breakdown reflects measured load only.
+ * Returns the top-N queries from `pg_stat_statements`, ranked by total ms/s
+ * of work (calls/s × avg ms) rather than raw call count. Pure data — console
+ * rendering happens in `renderRunReport`.
  *
- * NOTE: this view captures only the top N statements by exec+plan time. It
- * misses the long tail (auth, settings reads, etc.) and excludes work that
- * never appears in pg_stat_statements (autovacuum, WAL, lock manager). Pair
- * with `reportPgSaturation` for the full PG CPU picture.
+ * Ranking by total ms/s avoids the trap where a 0.00ms statement at 12k/s
+ * (e.g. `SET search_path`) tops a call-count ranking despite consuming
+ * effectively zero PG capacity. `setupBenchmarkRun` resets the stat counters
+ * post-warm-up so this reflects measured load only.
  */
 export async function reportPgQueryBreakdown(ctx: {
 	services: ServiceHelpers;
 	durationMs: number;
 	limit?: number;
-}): Promise<void> {
+}): Promise<TopQuery[]> {
 	const { services, durationMs, limit = 12 } = ctx;
 	const elapsedSec = durationMs / 1000;
-	if (elapsedSec <= 0) return;
+	if (elapsedSec <= 0) return [];
 
 	let rows;
 	try {
@@ -205,53 +205,43 @@ export async function reportPgQueryBreakdown(ctx: {
 		console.warn(
 			`[PG QUERIES] Could not fetch pg_stat_statements: ${error instanceof Error ? error.message : String(error)}`,
 		);
-		return;
+		return [];
 	}
 
-	if (rows.length === 0) {
-		console.log('[PG QUERIES] No statements recorded — pg_stat_statements may be empty.');
-		return;
-	}
+	if (rows.length === 0) return [];
 
-	const ranked = rows
+	return rows
 		.map((r) => ({
-			...r,
 			callsPerSec: r.calls / elapsedSec,
 			totalMsPerSec: r.totalMs / elapsedSec,
+			avgMs: r.meanMs,
+			query: r.query,
 		}))
 		.sort((a, b) => b.totalMsPerSec - a.totalMsPerSec)
 		.slice(0, limit);
-
-	const lines = ranked.map(
-		(r) =>
-			`    ${r.totalMsPerSec.toFixed(1).padStart(7)} ms/s` +
-			` | ${r.callsPerSec.toFixed(1).padStart(7)} calls/s` +
-			` | ${r.meanMs.toFixed(2).padStart(6)} ms avg` +
-			` | ${r.query}`,
-	);
-
-	console.log(
-		`[PG QUERIES] Top ${ranked.length} by total ms/s (calls/s × avg ms, over ${elapsedSec.toFixed(1)}s):`,
-	);
-	for (const line of lines) console.log(line);
 }
 
 /**
- * Logs PG saturation signals the per-query reporter misses: total query CPU
- * across ALL statements (not just top-N), background-writer / WAL pressure,
- * buffer hit ratio, and per-backend-type IO from `pg_stat_io`. Without this
- * block, low avg-ms numbers in `[PG QUERIES]` make PG look idle even when it
- * is at 300%+ CPU due to planning, autovacuum, and tail queries.
+ * Returns PG saturation signals the per-query reporter misses: total query CPU
+ * across ALL statements (not just top-N), `pg_stat_io` per-backend totals, and
+ * cumulative `pg_stat_wal` counters. Pure data — console rendering happens in
+ * `renderRunReport`.
+ *
+ * Without this slice, low avg-ms numbers in the per-query list would make PG
+ * look idle even when it is at 300%+ CPU due to planning, autovacuum, and
+ * tail queries.
  */
 export async function reportPgSaturation(ctx: {
 	services: ServiceHelpers;
 	durationMs: number;
-	diagnostics?: DiagnosticsResult;
-	walBaseline?: { walRecords: number; walBytes: number; walFpi: number } | null;
-}): Promise<void> {
-	const { services, durationMs, diagnostics, walBaseline } = ctx;
+}): Promise<{
+	totals?: Awaited<ReturnType<typeof ctx.services.postgres.totalStatementsCost>>;
+	io: Awaited<ReturnType<typeof ctx.services.postgres.pgStatIo>>;
+	wal: Awaited<ReturnType<typeof ctx.services.postgres.pgStatWal>>;
+} | null> {
+	const { services, durationMs } = ctx;
 	const elapsedSec = durationMs / 1000;
-	if (elapsedSec <= 0) return;
+	if (elapsedSec <= 0) return null;
 
 	let totals: Awaited<ReturnType<typeof services.postgres.totalStatementsCost>> | undefined;
 	let io: Awaited<ReturnType<typeof services.postgres.pgStatIo>> = [];
@@ -264,91 +254,26 @@ export async function reportPgSaturation(ctx: {
 		console.warn(
 			`[PG SATURATION] Could not collect saturation stats: ${error instanceof Error ? error.message : String(error)}`,
 		);
-		return;
+		return null;
 	}
 
-	const lines: string[] = [`[PG SATURATION] over ${elapsedSec.toFixed(1)}s`];
-	if (totals) {
-		const execPerSec = totals.totalExecMs / elapsedSec;
-		const planPerSec = totals.totalPlanMs / elapsedSec;
-		const cpuPerSec = execPerSec + planPerSec;
-		const planNote =
-			totals.totalPlanMs === 0
-				? ' (plan time NOT tracked — set BENCH_DEEP_DIAGNOSTICS=true to enable)'
-				: '';
-		lines.push(
-			`  Total query CPU:   ${cpuPerSec.toFixed(0)} ms/s ` +
-				`(exec ${execPerSec.toFixed(0)} + plan ${planPerSec.toFixed(0)}) across ${totals.statementCount} distinct statements${planNote}`,
-		);
-	}
-
-	if (diagnostics) {
-		if (diagnostics.pgBufferHitRatio !== undefined) {
-			lines.push(`  Buffer hit ratio:  ${(diagnostics.pgBufferHitRatio * 100).toFixed(2)}%`);
-		}
-		if (diagnostics.pgBlocksReadRate !== undefined) {
-			lines.push(`  Block reads:       ${diagnostics.pgBlocksReadRate.toFixed(1)}/s`);
-		}
-		if (
-			diagnostics.pgBgwriterCheckpointsTimedRate !== undefined ||
-			diagnostics.pgBgwriterCheckpointsReqRate !== undefined
-		) {
-			const timed = diagnostics.pgBgwriterCheckpointsTimedRate ?? 0;
-			const req = diagnostics.pgBgwriterCheckpointsReqRate ?? 0;
-			lines.push(
-				`  Checkpoints:       ${(timed + req).toFixed(2)}/s (${timed.toFixed(2)} timed, ${req.toFixed(2)} requested)`,
-			);
-		}
-		if (diagnostics.pgBgwriterBuffersBackendRate !== undefined) {
-			lines.push(
-				`  Backend flushes:   ${diagnostics.pgBgwriterBuffersBackendRate.toFixed(1)} buffers/s`,
-			);
-		}
-	}
-
-	if (wal && walBaseline) {
-		const recordsDelta = Math.max(0, wal.walRecords - walBaseline.walRecords);
-		const bytesDelta = Math.max(0, wal.walBytes - walBaseline.walBytes);
-		const fpiDelta = Math.max(0, wal.walFpi - walBaseline.walFpi);
-		lines.push(
-			`  WAL writes:        ${(bytesDelta / 1024 / 1024 / elapsedSec).toFixed(2)} MB/s ` +
-				`(${(recordsDelta / elapsedSec).toFixed(0)} records/s, ${(fpiDelta / elapsedSec).toFixed(1)} FPI/s)`,
-		);
-	}
-
-	if (io.length > 0) {
-		lines.push('  pg_stat_io (totals over run):');
-		for (const row of io) {
-			const total = row.reads + row.writes + row.extends;
-			if (total === 0) continue;
-			lines.push(
-				`    ${row.backendType.padEnd(20)} reads ${row.reads
-					.toString()
-					.padStart(7)} | writes ${row.writes
-					.toString()
-					.padStart(7)} | extends ${row.extends.toString().padStart(5)}`,
-			);
-		}
-	}
-
-	for (const line of lines) console.log(line);
+	return { totals, io, wal };
 }
 
 /**
- * Logs per-container CPU/memory/IO. Primary source is cAdvisor (time-series
- * via VictoriaMetrics); fallback is `docker stats` end-of-run snapshot for
- * environments where cAdvisor can't reach the Docker daemon (notably Docker
- * Desktop on macOS, where cAdvisor only reports the host-level cgroup).
+ * Returns per-container CPU/memory/IO. Primary source is cAdvisor (time-series
+ * via VictoriaMetrics); fallback is the docker-stats sampler for environments
+ * where cAdvisor can't reach the Docker daemon (notably Docker Desktop on
+ * macOS, where cAdvisor only reports the host-level cgroup). Pure data —
+ * console rendering happens in `renderRunReport`.
  *
- * Without this block, hitting the OS-level PG CPU ceiling (e.g. 350% locally)
- * is invisible to the harness — the per-query reporter happily reports low
- * avg-ms numbers because PG spends much of its CPU on planning, autovacuum,
- * and lock manager work that never appears in pg_stat_statements.
+ * The returned array carries an extra `__source` shape via attached metadata?
+ * Not exposed here — callers tag the source separately via the report.
  */
 export async function reportContainerStats(
 	diagnostics: DiagnosticsResult,
 	sampler?: DockerStatsSampler,
-): Promise<void> {
+): Promise<{ containers: ContainerStat[]; source: string }> {
 	let { containerStats } = diagnostics;
 	let source = 'cAdvisor (time-series)';
 
@@ -369,29 +294,7 @@ export async function reportContainerStats(
 		await sampler.stop();
 	}
 
-	if (!containerStats || containerStats.length === 0) {
-		console.log(
-			'[CONTAINERS] No data — cAdvisor reported nothing AND `docker stats` sampler captured no samples. ' +
-				'On Docker Desktop, cAdvisor often cannot reach the daemon socket; CI runs on Linux where it works.',
-		);
-		return;
-	}
-
-	const fmtMb = (bytes?: number) =>
-		bytes !== undefined ? `${(bytes / 1024 / 1024).toFixed(0)} MB` : 'N/A';
-	const fmtMbPerSec = (bytes?: number) =>
-		bytes !== undefined ? `${(bytes / 1024 / 1024).toFixed(2)} MB/s` : 'N/A';
-	const fmtPct = (pct?: number) => (pct !== undefined ? `${pct.toFixed(0)}%` : 'N/A');
-
-	const lines = [`[CONTAINERS] source: ${source}`];
-	for (const c of containerStats) {
-		const cpu = `CPU avg ${fmtPct(c.cpuPct).padStart(5)} peak ${fmtPct(c.cpuPctPeak).padStart(5)}`;
-		const mem = `Mem avg ${fmtMb(c.memBytes).padStart(7)} peak ${fmtMb(c.memBytesPeak).padStart(7)}`;
-		const io = `IO ${fmtMbPerSec(c.fsReadsBytesRate)} read / ${fmtMbPerSec(c.fsWritesBytesRate)} write`;
-		const net = `Net ${fmtMbPerSec(c.netRxBytesRate)} rx / ${fmtMbPerSec(c.netTxBytesRate)} tx`;
-		lines.push(`  ${c.name.padEnd(12)} ${cpu} | ${mem} | ${io} | ${net}`);
-	}
-	for (const line of lines) console.log(line);
+	return { containers: containerStats ?? [], source };
 }
 
 /**
@@ -436,4 +339,300 @@ export async function reportJaegerTraces(ctx: {
 			`[OTEL] Failed to fetch traces from Jaeger: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
+}
+
+/**
+ * Assembles the structured `RunReport` from the slices each reporter returned
+ * and attaches it as a `run-report.json` test artifact.
+ *
+ * The report is the single source of truth for the run — console output and
+ * BigQuery summary metrics are projections of it. Designed to be LLM-feedable:
+ * paste a single run-report.json into Claude (or any LLM) and ask "what's the
+ * bottleneck?" gets a meaningful answer because every dimension is in one
+ * self-describing blob.
+ *
+ * Schema is versioned (see `RunReport.schemaVersion`); new service kinds are
+ * additive and don't bump the version.
+ */
+export async function buildAndAttachRunReport(ctx: {
+	testInfo: TestInfo;
+	scenario: ScenarioInfo;
+	duration: { totalMs: number; wallClockMs: number };
+	throughput: ThroughputInfo;
+	containers: ContainerStat[];
+	containersSource?: string;
+	diagnostics: DiagnosticsResult;
+	pgQueries: TopQuery[];
+	pgSaturation: {
+		totals?: {
+			totalCalls: number;
+			totalExecMs: number;
+			totalPlanMs: number;
+			statementCount: number;
+		};
+		io: Array<{ backendType: string; reads: number; writes: number; extends: number }>;
+		wal: { walRecords: number; walBytes: number; walFpi: number } | null;
+	} | null;
+	walBaseline?: { walRecords: number; walBytes: number; walFpi: number } | null;
+}): Promise<RunReport> {
+	const {
+		testInfo,
+		scenario,
+		duration,
+		throughput,
+		containers,
+		containersSource,
+		diagnostics,
+		pgQueries,
+		pgSaturation,
+		walBaseline,
+	} = ctx;
+	const elapsedSec = Math.max(0.001, duration.totalMs / 1000);
+
+	const builder = new RunReportBuilder(scenario, duration, throughput);
+	builder.setContainers(containers, containersSource);
+
+	// Postgres service entry — built from the saturation slice + top-N query
+	// breakdown + diagnostics fields that originated from postgres-exporter.
+	if (pgSaturation || pgQueries.length > 0) {
+		const totals = pgSaturation?.totals;
+		const wal = pgSaturation?.wal ?? null;
+		const walRecordsDelta =
+			wal && walBaseline ? Math.max(0, wal.walRecords - walBaseline.walRecords) : undefined;
+		const walBytesDelta =
+			wal && walBaseline ? Math.max(0, wal.walBytes - walBaseline.walBytes) : undefined;
+		const walFpiDelta =
+			wal && walBaseline ? Math.max(0, wal.walFpi - walBaseline.walFpi) : undefined;
+
+		const postgres: PostgresMetrics = {
+			kind: 'postgres',
+			name: 'postgres',
+			queries: {
+				topByCost: pgQueries,
+				totalCpu: {
+					execMsPerSec: totals ? totals.totalExecMs / elapsedSec : 0,
+					planMsPerSec: totals ? totals.totalPlanMs / elapsedSec : 0,
+					planTimeTracked: totals ? totals.totalPlanMs > 0 : false,
+				},
+				statementCount: totals?.statementCount ?? 0,
+			},
+			saturation: {
+				txPerSec: diagnostics.pgTxRate,
+				activeConnections: diagnostics.pgActiveConnections,
+				bufferHitRatio: diagnostics.pgBufferHitRatio,
+				blocksReadPerSec: diagnostics.pgBlocksReadRate,
+				walMbPerSec:
+					walBytesDelta !== undefined ? walBytesDelta / 1024 / 1024 / elapsedSec : undefined,
+				walRecordsPerSec: walRecordsDelta !== undefined ? walRecordsDelta / elapsedSec : undefined,
+				walFpiPerSec: walFpiDelta !== undefined ? walFpiDelta / elapsedSec : undefined,
+				bgwriterCheckpointsTimedRate: diagnostics.pgBgwriterCheckpointsTimedRate,
+				bgwriterCheckpointsReqRate: diagnostics.pgBgwriterCheckpointsReqRate,
+				bgwriterBuffersBackendRate: diagnostics.pgBgwriterBuffersBackendRate,
+			},
+			io: pgSaturation?.io ?? [],
+			writes:
+				diagnostics.pgInsertRate !== undefined
+					? { insertsPerSec: diagnostics.pgInsertRate }
+					: undefined,
+		};
+		builder.addService(postgres);
+	}
+
+	// n8n-main + n8n-worker entries from the legacy DiagnosticsResult kitchen
+	// sink. Per-replica detail still lives in `containers[]`.
+	for (const entry of diagnosticsToServiceEntries(diagnostics)) {
+		builder.addService(entry);
+	}
+
+	const report = builder.build();
+	await testInfo.attach('run-report.json', {
+		body: JSON.stringify(report, null, 2),
+		contentType: 'application/json',
+	});
+	return report;
+}
+
+/**
+ * Renders all forensic console blocks from a `RunReport`. The JSON is the
+ * source of truth; this function is purely a deterministic projection of it.
+ *
+ * Layout: [DIAG] → [CONTAINERS] → [PG QUERIES] → [PG SATURATION] →
+ * [WEBHOOK RESULT] (when reqPerSec is set) or [LOAD RESULT] (otherwise).
+ */
+export function renderRunReport(report: RunReport): void {
+	renderDiagBlock(report);
+	renderContainersBlock(report);
+	renderPgQueriesBlock(report);
+	renderPgSaturationBlock(report);
+	renderResultBlock(report);
+	console.log(
+		`[RUN REPORT] Attached run-report.json (${report.services.length} services, ${report.containers.length} containers).`,
+	);
+}
+
+function getPostgresService(report: RunReport): PostgresMetrics | undefined {
+	return report.services.find((s): s is PostgresMetrics => s.kind === 'postgres');
+}
+
+function getN8nMainService(report: RunReport) {
+	return report.services.find((s) => s.kind === 'n8n-main');
+}
+
+function getN8nWorkerService(report: RunReport) {
+	return report.services.find((s) => s.kind === 'n8n-worker');
+}
+
+function renderDiagBlock(report: RunReport): void {
+	const fmt = formatDiagnosticValue;
+	const main = getN8nMainService(report);
+	const pg = getPostgresService(report);
+	const worker = getN8nWorkerService(report);
+	const eventLoopLag = main && main.kind === 'n8n-main' ? main.eventLoopLagSec : undefined;
+	const queueWaiting = worker && worker.kind === 'n8n-worker' ? worker.queueWaiting : undefined;
+
+	console.log(
+		`[DIAG] ${report.scenario.spec}\n` +
+			`  Event Loop Lag: ${fmt(eventLoopLag, 's')}\n` +
+			`  PG Transactions/s: ${fmt(pg?.saturation.txPerSec, ' tx/s')}\n` +
+			`  PG Active Connections: ${fmt(pg?.saturation.activeConnections)}\n` +
+			`  Queue Waiting: ${fmt(queueWaiting)}`,
+	);
+}
+
+function renderContainersBlock(report: RunReport): void {
+	if (!report.containers || report.containers.length === 0) {
+		console.log(
+			'[CONTAINERS] No data — cAdvisor reported nothing AND `docker stats` sampler captured no samples. ' +
+				'On Docker Desktop, cAdvisor often cannot reach the daemon socket; CI runs on Linux where it works.',
+		);
+		return;
+	}
+
+	const fmtMb = (bytes?: number) =>
+		bytes !== undefined ? `${(bytes / 1024 / 1024).toFixed(0)} MB` : 'N/A';
+	const fmtMbPerSec = (bytes?: number) =>
+		bytes !== undefined ? `${(bytes / 1024 / 1024).toFixed(2)} MB/s` : 'N/A';
+	const fmtPct = (pct?: number) => (pct !== undefined ? `${pct.toFixed(0)}%` : 'N/A');
+
+	console.log(`[CONTAINERS] source: ${report.containersSource ?? 'unknown'}`);
+	for (const c of report.containers) {
+		const cpu = `CPU avg ${fmtPct(c.cpuPct).padStart(5)} peak ${fmtPct(c.cpuPctPeak).padStart(5)}`;
+		const mem = `Mem avg ${fmtMb(c.memBytes).padStart(7)} peak ${fmtMb(c.memBytesPeak).padStart(7)}`;
+		const io = `IO ${fmtMbPerSec(c.fsReadsBytesRate)} read / ${fmtMbPerSec(c.fsWritesBytesRate)} write`;
+		const net = `Net ${fmtMbPerSec(c.netRxBytesRate)} rx / ${fmtMbPerSec(c.netTxBytesRate)} tx`;
+		console.log(`  ${c.name.padEnd(12)} ${cpu} | ${mem} | ${io} | ${net}`);
+	}
+}
+
+function renderPgQueriesBlock(report: RunReport): void {
+	const pg = getPostgresService(report);
+	const ranked = pg?.queries.topByCost ?? [];
+	if (ranked.length === 0) {
+		console.log('[PG QUERIES] No statements recorded — pg_stat_statements may be empty.');
+		return;
+	}
+	const elapsedSec = report.duration.totalMs / 1000;
+	console.log(
+		`[PG QUERIES] Top ${ranked.length} by total ms/s (calls/s × avg ms, over ${elapsedSec.toFixed(1)}s):`,
+	);
+	for (const r of ranked) {
+		console.log(
+			`    ${r.totalMsPerSec.toFixed(1).padStart(7)} ms/s` +
+				` | ${r.callsPerSec.toFixed(1).padStart(7)} calls/s` +
+				` | ${r.avgMs.toFixed(2).padStart(6)} ms avg` +
+				` | ${r.query}`,
+		);
+	}
+}
+
+function renderPgSaturationBlock(report: RunReport): void {
+	const pg = getPostgresService(report);
+	if (!pg) return;
+	const elapsedSec = report.duration.totalMs / 1000;
+	const lines: string[] = [`[PG SATURATION] over ${elapsedSec.toFixed(1)}s`];
+
+	const cpu = pg.queries.totalCpu;
+	const cpuPerSec = cpu.execMsPerSec + cpu.planMsPerSec;
+	const planNote = !cpu.planTimeTracked
+		? ' (plan time NOT tracked — set BENCH_DEEP_DIAGNOSTICS=true to enable)'
+		: '';
+	lines.push(
+		`  Total query CPU:   ${cpuPerSec.toFixed(0)} ms/s ` +
+			`(exec ${cpu.execMsPerSec.toFixed(0)} + plan ${cpu.planMsPerSec.toFixed(0)}) across ${pg.queries.statementCount} distinct statements${planNote}`,
+	);
+
+	const sat = pg.saturation;
+	if (sat.bufferHitRatio !== undefined) {
+		lines.push(`  Buffer hit ratio:  ${(sat.bufferHitRatio * 100).toFixed(2)}%`);
+	}
+	if (sat.blocksReadPerSec !== undefined) {
+		lines.push(`  Block reads:       ${sat.blocksReadPerSec.toFixed(1)}/s`);
+	}
+	if (
+		sat.bgwriterCheckpointsTimedRate !== undefined ||
+		sat.bgwriterCheckpointsReqRate !== undefined
+	) {
+		const timed = sat.bgwriterCheckpointsTimedRate ?? 0;
+		const req = sat.bgwriterCheckpointsReqRate ?? 0;
+		lines.push(
+			`  Checkpoints:       ${(timed + req).toFixed(2)}/s (${timed.toFixed(2)} timed, ${req.toFixed(2)} requested)`,
+		);
+	}
+	if (sat.bgwriterBuffersBackendRate !== undefined) {
+		lines.push(`  Backend flushes:   ${sat.bgwriterBuffersBackendRate.toFixed(1)} buffers/s`);
+	}
+	if (sat.walMbPerSec !== undefined && sat.walRecordsPerSec !== undefined) {
+		lines.push(
+			`  WAL writes:        ${sat.walMbPerSec.toFixed(2)} MB/s ` +
+				`(${sat.walRecordsPerSec.toFixed(0)} records/s, ${(sat.walFpiPerSec ?? 0).toFixed(1)} FPI/s)`,
+		);
+	}
+
+	if (pg.io.length > 0) {
+		lines.push('  pg_stat_io (totals over run):');
+		for (const row of pg.io) {
+			const total = row.reads + row.writes + row.extends;
+			if (total === 0) continue;
+			lines.push(
+				`    ${row.backendType.padEnd(20)} reads ${row.reads
+					.toString()
+					.padStart(7)} | writes ${row.writes
+					.toString()
+					.padStart(7)} | extends ${row.extends.toString().padStart(5)}`,
+			);
+		}
+	}
+
+	for (const line of lines) console.log(line);
+}
+
+function renderResultBlock(report: RunReport): void {
+	const t = report.throughput;
+	const main = getN8nMainService(report);
+	const pg = getPostgresService(report);
+	const eventLoopLag = main && main.kind === 'n8n-main' ? main.eventLoopLagSec : undefined;
+	const evLagMs = eventLoopLag !== undefined ? `${(eventLoopLag * 1000).toFixed(0)}ms` : 'N/A';
+
+	if (t.reqPerSec !== undefined) {
+		// Webhook scenario.
+		const errorBreakdown = t.errorBreakdown ?? { timeouts: 0, non2xx: 0 };
+		const ratio = t.ingestionVsExecutionRatio?.toFixed(2) ?? 'N/A';
+		const backlog = t.backlogGrowthPerSec ?? 0;
+		console.log(
+			`[WEBHOOK RESULT] ${report.scenario.spec}\n` +
+				`  HTTP ingestion:    ${t.reqPerSec.toFixed(1)} req/s | p50: ${t.p50Ms ?? 'N/A'}ms | p99: ${t.p99Ms ?? 'N/A'}ms\n` +
+				`  n8n execution:     ${(t.tailExecPerSec ?? t.execPerSec ?? 0).toFixed(1)} exec/s (tail 60s)\n` +
+				`  Backlog growth:    ${backlog >= 0 ? '+' : ''}${backlog.toFixed(1)} msg/sec` +
+				` (ingestion is ${ratio}× execution)\n` +
+				`  Errors:            ${t.errors ?? 0}/${t.totalRequests ?? 0} (${(t.errorRatePct ?? 0).toFixed(2)}%)` +
+				` | ${errorBreakdown.timeouts} timeouts, ${errorBreakdown.non2xx} non-2xx\n` +
+				`  Verdict:           ${t.verdict ?? 'N/A'}\n` +
+				`  PG active conns:   ${pg?.saturation.activeConnections ?? 'N/A'}` +
+				` | PG tx/s: ${pg?.saturation.txPerSec?.toFixed(0) ?? 'N/A'}` +
+				` | Event loop lag: ${evLagMs}\n` +
+				`  Duration: ${(report.duration.totalMs / 1000).toFixed(1)}s`,
+		);
+	}
+	// Load scenarios already log via `logLoadResult` in load-harness; not
+	// duplicating here keeps the output identical to what specs expect.
 }
