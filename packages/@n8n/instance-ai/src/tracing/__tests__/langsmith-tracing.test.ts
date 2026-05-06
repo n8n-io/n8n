@@ -950,14 +950,14 @@ describe('createInstanceAiTraceContext', () => {
 
 		const spans = agentsMock.getSpans();
 		const spanNames = spans.map((span) => span.name);
-		expect(spanNames).toContain('instance-ai.tool.ask-user');
 		expect(spanNames).toContain('instance-ai.hitl.suspend');
 		expect(
-			spans.find((span) => span.name === 'instance-ai.tool.ask-user')?.attributes.tool_call_id,
+			spans.find((span) => span.name === 'instance-ai.hitl.suspend')?.attributes.tool_call_id,
 		).toBe('toolu-ask');
+		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
-	it('does not wrap ordinary local tools for product-level LangSmith spans', async () => {
+	it('does not wrap local tools for duplicate product-level LangSmith spans', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
 			messageId: 'message-1',
@@ -985,7 +985,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(wrappedTools.templates).toBe(regularTool);
-		expect(wrappedTools.workspace_execute_command).not.toBe(workspaceTool);
+		expect(wrappedTools.workspace_execute_command).toBe(workspaceTool);
 	});
 
 	it('keeps ad-hoc child spans rooted under the active sub-agent run', async () => {
@@ -1086,9 +1086,9 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		const spanNames = agentsMock.getSpans().map((span) => span.name);
-		expect(spanNames).toContain('instance-ai.tool.ask-user');
 		expect(spanNames).toContain('instance-ai.hitl.resume');
 		expect(spanNames).not.toContain('instance-ai.hitl.suspend');
+		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
 	it('creates ad-hoc child spans under the current run tree', async () => {
@@ -1223,22 +1223,39 @@ describe('createInstanceAiTraceContext', () => {
 			};
 			type NativeTracer = {
 				startSpan(name: string, options?: { attributes?: Record<string, unknown> }): NativeSpan;
+				startActiveSpan<T>(
+					name: string,
+					options: { attributes?: Record<string, unknown> },
+					fn: (span: NativeSpan) => Promise<T>,
+				): Promise<T>;
 			};
+			const tracer = telemetryOrBuilder.tracer as NativeTracer;
 
-			const providerSpan = (telemetryOrBuilder.tracer as NativeTracer).startSpan(
-				'ai.streamText.doStream',
-				{
-					attributes: {
-						'ai.operationId': 'ai.streamText.doStream',
-						'langsmith.span.kind': 'llm',
-					},
+			const providerSpan = tracer.startSpan('ai.streamText.doStream', {
+				attributes: {
+					'ai.operationId': 'ai.streamText.doStream',
+					'langsmith.span.kind': 'llm',
 				},
-			);
+			});
 			providerSpan.end();
 
-			await workspaceWriteFile.handler(
-				{ path: 'workflow.json', content: '{}' },
-				{ toolCallId: 'toolu-write-file' },
+			await tracer.startActiveSpan(
+				'ai.toolCall',
+				{
+					attributes: {
+						'ai.operationId': 'ai.toolCall',
+						'langsmith.span.kind': 'tool',
+						'ai.toolCall.name': 'workspace_write_file',
+						'ai.toolCall.id': 'toolu-write-file',
+					},
+				},
+				async (span) => {
+					await workspaceWriteFile.handler(
+						{ path: 'workflow.json', content: '{}' },
+						{ toolCallId: 'toolu-write-file' },
+					);
+					span.end();
+				},
 			);
 		});
 
@@ -1249,7 +1266,7 @@ describe('createInstanceAiTraceContext', () => {
 		const rootSpan = spans.find((span) => span.name === 'instance-ai.message_turn');
 		const orchestratorSpan = spans.find((span) => span.name === 'instance-ai.orchestrator.stream');
 		const providerSpan = spans.find((span) => span.name === 'ai.streamText.doStream');
-		const localToolSpan = spans.find((span) => span.name === 'instance-ai.tool.workspace_edit');
+		const localToolSpan = spans.find((span) => span.name === 'ai.toolCall');
 
 		expect(rootSpan).toBeDefined();
 		expect(orchestratorSpan).toBeDefined();
@@ -1263,7 +1280,9 @@ describe('createInstanceAiTraceContext', () => {
 		expect(orchestratorSpan?.parentSpanId).toBe(rootSpan?.id);
 		expect(providerSpan?.parentSpanId).toBe(orchestratorSpan?.id);
 		expect(localToolSpan?.parentSpanId).toBe(orchestratorSpan?.id);
-		expect(localToolSpan?.attributes.tool_call_id).toBe('toolu-write-file');
+		expect(localToolSpan?.attributes['ai.toolCall.id']).toBe('toolu-write-file');
+		expect(localToolSpan?.attributes['ai.toolCall.name']).toBe('workspace_write_file');
+		expect(spans.some((span) => span.name.startsWith('instance-ai.tool.'))).toBe(false);
 		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
 	});
 

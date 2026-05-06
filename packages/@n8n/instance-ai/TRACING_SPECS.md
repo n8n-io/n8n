@@ -11,9 +11,9 @@ model.
 
 We will stop mixing LangSmith `RunTree` spans with OTel spans for normal
 execution. Product concepts such as message turns, orchestrator work,
-sub-agent work, HITL, background jobs, and selected local tool executions must
-be represented as OTel spans. Native AI SDK spans for model calls, provider
-requests, messages, tool calls, and token usage stay in the same OTel tree.
+sub-agent work, HITL, and background jobs must be represented as OTel spans.
+Native AI SDK spans for model calls, provider requests, messages, tool calls,
+and token usage stay in the same OTel tree.
 
 `RunTree` should not be used as a live trace hierarchy once this migration is
 complete. If LangSmith feedback or legacy replay needs a compatibility path,
@@ -86,6 +86,9 @@ Implemented so far:
   product actor span already represents the agent loop; native provider and
   `ai.toolCall` spans remain enabled and are parented directly under the
   product actor span.
+- Normal tool execution no longer emits duplicate `instance-ai.tool.*` product
+  spans. The native `ai.toolCall` span is the canonical tool execution span;
+  Instance AI only adds product spans for HITL suspend/resume lifecycle events.
 - Live LangSmith validation has proved feedback against an OTel-only product
   root and full provider-span visibility with a real model turn.
 - Detached sub-agent linking captures spawning trace/span metadata and model
@@ -341,15 +344,10 @@ Product chain spans:
 - `instance-ai.subagent.<role>.generate`
 - `instance-ai.background.<kind>`
 
-Product tool or side-effect spans:
+Product side-effect spans:
 
 - `instance-ai.hitl.suspend`
 - `instance-ai.hitl.resume`
-- `instance-ai.tool.workspace_edit`
-- `instance-ai.tool.workflow_validation`
-- `instance-ai.tool.workflow_submit`
-- `instance-ai.tool.daytona`
-- `instance-ai.tool.background_task`
 
 Native AI SDK spans:
 
@@ -432,9 +430,9 @@ Default local tool execution should use `ai.toolCall` spans with:
 - `ai.toolCall.result`, when output recording is enabled
 - `ai.telemetry.metadata.*`
 
-Add additional product side-effect spans only when a normal `ai.toolCall` span
-is not enough. Workspace edits, Daytona operations, workflow submission,
-workflow validation, and HITL are valid examples.
+Do not emit duplicate `instance-ai.tool.*` product spans for normal tool
+execution. Add product side-effect spans only for lifecycle events that a normal
+`ai.toolCall` span does not represent, currently HITL suspend/resume.
 
 ## Service Proxy Support
 
@@ -510,7 +508,7 @@ must not require LangSmith to be available.
 - product OTel trace context creation
 - thread metadata construction
 - product span helpers for message turns, context compaction, prompt building,
-  HITL, background tasks, workflow build loops, and selected side-effect tools
+  HITL, background tasks, and workflow build loops
 - feedback snapshot persistence
 - service proxy request metadata and headers
 - detached sub-agent linking metadata
@@ -558,7 +556,9 @@ must not require LangSmith to be available.
      OTel spans.
    - [x] Convert inline `subagent:*` spans to OTel spans under active context.
    - [x] Convert HITL suspend/resume spans to OTel spans.
-   - [x] Convert selected side-effect-heavy tools to OTel product spans.
+   - [x] ~~Convert selected side-effect-heavy tools to OTel product spans.~~
+     Replaced by native `ai.toolCall` spans only; duplicate `instance-ai.tool.*`
+     spans are intentionally not emitted.
 
 5. Preserve detached/background sub-agent linking
 

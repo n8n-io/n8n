@@ -41,19 +41,6 @@ const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
 const SENSITIVE_TELEMETRY_KEY_PATTERN =
 	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
-const LOCAL_TOOL_TRACE_NAMES = new Set([
-	'ask-user',
-	'pause-for-user',
-	'workspace',
-	'write-file',
-	'build-workflow',
-	'submit-workflow',
-	'apply-workflow-credentials',
-	'verify-built-workflow',
-	'report-verification-verdict',
-	'task-control',
-	'complete-checkpoint',
-]);
 const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | null }>();
 const productTraceStorage = new AsyncLocalStorage<{
 	runtime: ProductOtelTraceRuntime;
@@ -455,11 +442,6 @@ interface AgentTraceInputOptions {
 
 type NativeToolContext = ToolContext | InterruptibleToolContext;
 type TraceableNativeTool = BuiltTool & { handler: NonNullable<BuiltTool['handler']> };
-
-interface NormalizedModelMetadata {
-	provider?: string;
-	modelName?: string;
-}
 
 function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 	const tracingFlag =
@@ -895,21 +877,6 @@ function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 	return { value: sanitizeTraceValue(value) };
 }
 
-function normalizeModelMetadata(modelId: unknown): NormalizedModelMetadata {
-	if (typeof modelId === 'string' && modelId.length > 0) {
-		const [provider, ...modelParts] = modelId.split('/');
-		return modelParts.length > 0
-			? { provider, modelName: modelParts.join('/') }
-			: { modelName: modelId };
-	}
-
-	if (isRecord(modelId) && typeof modelId.id === 'string') {
-		return normalizeModelMetadata(modelId.id);
-	}
-
-	return {};
-}
-
 export function serializeModelIdForTrace(modelId: unknown): unknown {
 	if (typeof modelId === 'string' && modelId.length > 0) {
 		return truncateString(modelId);
@@ -1270,25 +1237,6 @@ function getToolCallId(context: NativeToolContext): string | undefined {
 		: undefined;
 }
 
-function getProductToolSpanName(toolName: string): string {
-	if (toolName.startsWith('workspace_') || toolName === 'workspace' || toolName === 'write-file') {
-		return 'instance-ai.tool.workspace_edit';
-	}
-	if (toolName === 'submit-workflow') {
-		return 'instance-ai.tool.workflow_submit';
-	}
-	if (toolName === 'verify-built-workflow' || toolName === 'report-verification-verdict') {
-		return 'instance-ai.tool.workflow_validation';
-	}
-	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') {
-		return 'instance-ai.tool.workflow_build';
-	}
-	if (toolName === 'complete-checkpoint' || toolName === 'task-control') {
-		return 'instance-ai.tool.background_task';
-	}
-	return `instance-ai.tool.${toolName.replace(/[^a-zA-Z0-9._-]+/g, '-')}`;
-}
-
 async function startAndFinishProductChildSpan(
 	currentTrace: { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun },
 	options: {
@@ -1321,44 +1269,15 @@ async function startAndFinishProductChildSpan(
 	});
 }
 
-async function traceProductToolExecute(
+async function traceProductSuspendableToolExecute(
 	tool: TraceableNativeTool,
-	options: InstanceAiToolTraceOptions | undefined,
 	input: unknown,
 	context: NativeToolContext,
 	currentTrace: { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun },
 ): Promise<unknown> {
 	const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 	const isResume = resumeData !== undefined && resumeData !== null;
-	const activeParentContext = getActiveOtelContextWithSpan();
 	const toolCallId = getToolCallId(context);
-	const toolRun = startProductSpan(currentTrace.runtime, {
-		projectName: currentTrace.currentRun.projectName,
-		name: getProductToolSpanName(tool.name),
-		runType: 'tool',
-		tags: normalizeTags(['tool'], options?.tags),
-		metadata: mergeMetadata(options?.metadata, {
-			tool_name: tool.name,
-			...(toolCallId ? { tool_call_id: toolCallId } : {}),
-			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
-			phase: isResume ? 'resume' : 'initial',
-			...(isResume
-				? mergeMetadata(buildSuspendMetadata(tool.name, resumeData), {
-						approved: isRecord(resumeData) ? resumeData.approved : undefined,
-					})
-				: {}),
-		}),
-		inputs: { input },
-		parentRun: currentTrace.currentRun,
-		...(activeParentContext ? { parentContext: activeParentContext } : {}),
-	});
-
-	let toolRunFinished = false;
-	const finishToolRun = async (finishOptions?: InstanceAiTraceRunFinishOptions) => {
-		if (toolRunFinished) return;
-		toolRunFinished = true;
-		await finishProductSpan(currentTrace.runtime, toolRun, finishOptions);
-	};
 
 	const originalSuspend = isInterruptibleToolContext(context) ? context.suspend : undefined;
 	const wrappedContext: NativeToolContext =
@@ -1366,64 +1285,38 @@ async function traceProductToolExecute(
 			? {
 					...context,
 					suspend: async (suspendPayload: unknown) => {
-						await startAndFinishProductChildSpan(
-							{ runtime: currentTrace.runtime, currentRun: toolRun },
-							{
-								name: 'instance-ai.hitl.suspend',
-								runType: 'chain',
-								tags: ['hitl'],
-								metadata: buildSuspendMetadata(tool.name, suspendPayload),
-								inputs: suspendPayload,
-								outputs: suspendPayload,
-							},
-						);
-						await finishToolRun({
-							outputs: {
-								status: 'suspended',
-								suspendPayload,
-							},
+						await startAndFinishProductChildSpan(currentTrace, {
+							name: 'instance-ai.hitl.suspend',
+							runType: 'chain',
+							tags: ['hitl'],
 							metadata: mergeMetadata(buildSuspendMetadata(tool.name, suspendPayload), {
-								final_status: 'suspended',
+								...(toolCallId ? { tool_call_id: toolCallId } : {}),
 							}),
+							inputs: suspendPayload,
+							outputs: suspendPayload,
 						});
 						return await originalSuspend(suspendPayload);
 					},
 				}
 			: context;
 
-	try {
-		const result = await withProductSpanContext(currentTrace.runtime, toolRun, async () => {
-			if (isResume) {
-				await startAndFinishProductChildSpan(
-					{ runtime: currentTrace.runtime, currentRun: toolRun },
-					{
-						name: 'instance-ai.hitl.resume',
-						runType: 'chain',
-						tags: ['hitl', 'resume'],
-						metadata: mergeMetadata(buildSuspendMetadata(tool.name, resumeData), {
-							approved: isRecord(resumeData) ? resumeData.approved : undefined,
-						}),
-						inputs: resumeData,
-						outputs: {
-							status: 'resumed',
-						},
-					},
-				);
-			}
-			return await tool.handler(input, wrappedContext);
+	if (isResume) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: 'instance-ai.hitl.resume',
+			runType: 'chain',
+			tags: ['hitl', 'resume'],
+			metadata: mergeMetadata(buildSuspendMetadata(tool.name, resumeData), {
+				approved: isRecord(resumeData) ? resumeData.approved : undefined,
+				...(toolCallId ? { tool_call_id: toolCallId } : {}),
+			}),
+			inputs: resumeData,
+			outputs: {
+				status: 'resumed',
+			},
 		});
-		await finishToolRun({
-			outputs: result,
-			metadata: { final_status: 'completed' },
-		});
-		return result;
-	} catch (error) {
-		await finishToolRun({
-			error: normalizeErrorMessage(error),
-			metadata: { final_status: 'error' },
-		});
-		throw error;
 	}
+
+	return await tool.handler(input, wrappedContext);
 }
 
 async function traceSuspendableToolExecute(
@@ -1434,7 +1327,7 @@ async function traceSuspendableToolExecute(
 ): Promise<unknown> {
 	const currentProductTrace = getCurrentProductTrace();
 	if (currentProductTrace) {
-		return await traceProductToolExecute(tool, options, input, context, currentProductTrace);
+		return await traceProductSuspendableToolExecute(tool, input, context, currentProductTrace);
 	}
 
 	const parentRun = getTraceParentRun();
@@ -1507,53 +1400,6 @@ async function traceSuspendableToolExecute(
 		return result;
 	} catch (error) {
 		await finishToolRun({
-			error: normalizeErrorMessage(error),
-			metadata: { final_status: 'error' },
-		});
-		throw error;
-	}
-}
-
-async function traceToolExecute(
-	tool: TraceableNativeTool,
-	options: InstanceAiToolTraceOptions | undefined,
-	input: unknown,
-	context: NativeToolContext,
-): Promise<unknown> {
-	const currentProductTrace = getCurrentProductTrace();
-	if (currentProductTrace) {
-		return await traceProductToolExecute(tool, options, input, context, currentProductTrace);
-	}
-
-	const parentRun = getTraceParentRun();
-	if (!parentRun) {
-		return await tool.handler(input, context);
-	}
-
-	const toolRun = await postChildRun(parentRun, {
-		name: `tool:${tool.name}`,
-		runType: 'tool',
-		tags: normalizeTags(['tool'], options?.tags),
-		metadata: mergeMetadata(options?.metadata, {
-			tool_name: tool.name,
-			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
-			...normalizeModelMetadata(options?.metadata?.model_id),
-		}),
-		inputs: { input },
-	});
-
-	try {
-		const result = await withLangSmithRunTree(
-			toolRun,
-			async () => await tool.handler(input, context),
-		);
-		await finishRunTree(toolRun, {
-			outputs: result,
-			metadata: { final_status: 'completed' },
-		});
-		return result;
-	} catch (error) {
-		await finishRunTree(toolRun, {
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
@@ -1737,27 +1583,15 @@ function wrapToolHandler(
 	tool: TraceableNativeTool,
 	options: InstanceAiToolTraceOptions | undefined,
 ): TraceableNativeTool {
-	if (tool.suspendSchema !== undefined || tool.resumeSchema !== undefined) {
-		return {
-			...tool,
-			handler: async (input, context) =>
-				await traceSuspendableToolExecute(tool, options, input, context),
-		};
-	}
-
 	return {
 		...tool,
-		handler: async (input, context) => await traceToolExecute(tool, options, input, context),
+		handler: async (input, context) =>
+			await traceSuspendableToolExecute(tool, options, input, context),
 	};
 }
 
 function shouldTraceLocalToolExecution(tool: TraceableNativeTool): boolean {
-	return (
-		tool.suspendSchema !== undefined ||
-		tool.resumeSchema !== undefined ||
-		LOCAL_TOOL_TRACE_NAMES.has(tool.name) ||
-		tool.name.startsWith('workspace_')
-	);
+	return tool.suspendSchema !== undefined || tool.resumeSchema !== undefined;
 }
 
 function wrapTools(
