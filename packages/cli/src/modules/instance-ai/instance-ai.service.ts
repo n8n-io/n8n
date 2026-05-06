@@ -3278,6 +3278,25 @@ export class InstanceAiService {
 	): Promise<boolean> {
 		const data = toConfirmationData(request);
 
+		// Revalidate the requesting user before resolving any confirmation. The
+		// captured user snapshot may have gone stale since the run was started or
+		// suspended; if the user has been disabled or lost the
+		// `instanceAi:message` scope, both inline/sub-agent approvals and
+		// suspended-run resumes must be denied.
+		const revalidated = await this.revalidateActiveUser(requestingUserId);
+		if (!revalidated) {
+			this.logger.warn('Rejecting confirmation: user no longer authorized for AI Assistant', {
+				userId: requestingUserId,
+				requestId,
+			});
+			this.runState.rejectPendingConfirmation(requestId);
+			const suspended = this.runState.findSuspendedByRequestId(requestId);
+			if (suspended && suspended.user.id === requestingUserId) {
+				this.cancelRun(suspended.threadId);
+			}
+			return false;
+		}
+
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,

@@ -644,6 +644,104 @@ describe('InstanceAiService — revalidateActiveUser', () => {
 	});
 });
 
+type ResolveConfirmationServiceInternals = {
+	resolveConfirmation: (
+		requestingUserId: string,
+		requestId: string,
+		request: { kind: 'approval'; approved: boolean; userInput?: string },
+	) => Promise<boolean>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock<void, [string]>;
+	runState: {
+		resolvePendingConfirmation: jest.Mock;
+		findSuspendedByRequestId: jest.Mock;
+		rejectPendingConfirmation: jest.Mock;
+	};
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ResolveConfirmationServiceInternals;
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.runState = {
+		resolvePendingConfirmation: jest.fn(),
+		findSuspendedByRequestId: jest.fn(),
+		rejectPendingConfirmation: jest.fn(),
+	};
+	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — resolveConfirmation', () => {
+	const approval = { kind: 'approval' as const, approved: true };
+
+	it('rejects sub-agent confirmations when the user is no longer authorized', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue(undefined);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Rejecting confirmation: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', requestId: 'req-1' }),
+		);
+	});
+
+	it('cancels the suspended run owned by the requesting user when revalidation fails', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			threadId: 'thread-1',
+			user: { id: 'user-1' },
+		});
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('does not cancel a suspended run owned by a different user when revalidation fails', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			threadId: 'thread-1',
+			user: { id: 'someone-else' },
+		});
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+
+	it('resolves the pending sub-agent confirmation when the user is still authorized', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(true);
+		expect(service.runState.resolvePendingConfirmation).toHaveBeenCalledWith(
+			'user-1',
+			'req-1',
+			expect.objectContaining({ approved: true }),
+		);
+		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+});
+
 describe('InstanceAiService — terminal outcome replay', () => {
 	it('replays undelivered background outcomes into the persisted agent tree', async () => {
 		const outcome = makeTerminalOutcome();
