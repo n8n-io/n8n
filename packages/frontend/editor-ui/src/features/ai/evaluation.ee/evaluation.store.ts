@@ -125,8 +125,15 @@ export const useEvaluationStore = defineStore(
 			return run;
 		};
 
-		const startTestRun = async (workflowId: string) => {
-			const result = await evaluationsApi.startTestRun(rootStore.restApiContext, workflowId);
+		const startTestRun = async (
+			workflowId: string,
+			options?: evaluationsApi.StartTestRunOptions,
+		) => {
+			const result = await evaluationsApi.startTestRun(
+				rootStore.restApiContext,
+				workflowId,
+				options,
+			);
 			return result;
 		};
 

@@ -68,7 +68,7 @@ const nodesWithValidationIssues = computed(
 	() => workflowDocumentStore.value.nodesWithValidationIssues,
 );
 
-const hasNodeIssues = computed(() => workflowDocumentStore.value.hasNodeValidationIssues);
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
 const inputsDisabled = computed(() => {
 	return (

@@ -207,6 +207,10 @@ export async function fetchExecutionData(
 	executionId: string,
 ): Promise<SimplifiedExecution | undefined> {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+
 	try {
 		const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
 		if (!executionResponse?.data) {
@@ -216,7 +220,7 @@ export async function fetchExecutionData(
 		return {
 			id: executionId,
 			workflowId: executionResponse.workflowId,
-			workflowData: workflowsStore.workflow,
+			workflowData: workflowDocumentStore.getSnapshot(),
 			data: executionResponse.data,
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,

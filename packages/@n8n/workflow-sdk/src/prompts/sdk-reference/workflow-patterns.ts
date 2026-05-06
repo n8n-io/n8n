@@ -35,7 +35,18 @@ const fetchData = node({
 const processData = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Data', parameters: {} }
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'processed-title', name: 'processedTitle', value: expr('{{ $json.title }}'), type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 // 2. Compose workflow
@@ -67,15 +78,16 @@ const sourceB = node({ ..., config: { ..., executeOnce: true } });
 startTrigger.to(sourceA.to(sourceB.to(processResults)));
 
 // FIX 2 - parallel branches + Merge (combine by position)
+// .input(n) is 0-based: .input(0) = first input, .input(1) = second input.
 const combineResults = merge({
   version: 3.2,
   config: { name: 'Combine Results', parameters: { mode: 'combine', combineBy: 'combineByPosition' } }
 });
 export default workflow('id', 'name')
   .add(startTrigger)
-  .to(sourceA.to(combineResults.input(0)))
+  .to(sourceA.to(combineResults.input(0))) // first input (index 0)
   .add(startTrigger)
-  .to(sourceB.to(combineResults.input(1)))
+  .to(sourceB.to(combineResults.input(1))) // second input (index 1)
   .add(combineResults)
   .to(processResults);
 
@@ -86,9 +98,9 @@ const allResults = merge({
 });
 export default workflow('id', 'name')
   .add(startTrigger)
-  .to(sourceA.to(allResults.input(0)))
+  .to(sourceA.to(allResults.input(0))) // first input (index 0)
   .add(startTrigger)
-  .to(sourceB.to(allResults.input(1)))
+  .to(sourceB.to(allResults.input(1))) // second input (index 1)
   .add(allResults)
   .to(processResults);
 \`\`\`
@@ -226,12 +238,13 @@ const branch1 = node({ type: 'n8n-nodes-base.httpRequest', ... });
 const branch2 = node({ type: 'n8n-nodes-base.httpRequest', ... });
 const processResults = node({ type: 'n8n-nodes-base.set', ... });
 
-// Connect branches to specific merge inputs using .input(n)
+// Connect branches to specific merge inputs using .input(n).
+// Indices are 0-based: .input(0) is the FIRST input, .input(1) is the SECOND.
 export default workflow('id', 'name')
   .add(trigger({ ... }))
-  .to(branch1.to(combineResults.input(0)))  // Connect to input 0
+  .to(branch1.to(combineResults.input(0)))  // first input (index 0)
   .add(trigger({ ... }))
-  .to(branch2.to(combineResults.input(1)))  // Connect to input 1
+  .to(branch2.to(combineResults.input(1)))  // second input (index 1)
   .add(combineResults)
   .to(processResults);  // Process merged results
 \`\`\`
@@ -255,7 +268,18 @@ const fetchRecords = node({
 const finalizeResults = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Finalize', parameters: {} }
+  config: {
+    name: 'Finalize',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'processed-at', name: 'processedAt', value: expr('{{ $now.toISO() }}'), type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 const processRecord = node({
@@ -288,7 +312,18 @@ const webhookTrigger = trigger({
 const processWebhook = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Webhook', parameters: {} }
+  config: {
+    name: 'Process Webhook',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'source', name: 'source', value: 'webhook', type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 const scheduleTrigger = trigger({
@@ -300,7 +335,18 @@ const scheduleTrigger = trigger({
 const processSchedule = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Schedule', parameters: {} }
+  config: {
+    name: 'Process Schedule',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'source', name: 'source', value: 'schedule', type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 export default workflow('id', 'name')
@@ -333,7 +379,18 @@ const scheduleTrigger = trigger({
 const processData = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Data', parameters: {} }
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'received-at', name: 'receivedAt', value: expr('{{ $now.toISO() }}'), type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 const sendNotification = node({

@@ -622,6 +622,42 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 			});
 
+			it("should use the My Domain URL as JWT audience and token endpoint when set (Spring '26)", async () => {
+				const mockCredentials = {
+					clientId: 'test-client-id',
+					username: 'test@example.com',
+					privateKey: 'mock-private-key',
+					environment: 'sandbox',
+					myDomainUrl: 'https://acme--sandbox.sandbox.my.salesforce.com',
+				};
+				const mockResponse = {
+					access_token: 'my-domain-access-token',
+					instance_url: 'https://acme--sandbox.sandbox.my.salesforce.com',
+				};
+
+				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.logger = {
+					debug: jest.fn(),
+				} as any;
+
+				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+
+				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						aud: 'https://acme--sandbox.sandbox.my.salesforce.com',
+					}),
+					'mock-private-key',
+					expect.any(Object),
+				);
+
+				expect(mockRequest).toHaveBeenCalledWith(
+					expect.objectContaining({
+						uri: 'https://acme--sandbox.sandbox.my.salesforce.com/services/oauth2/token',
+					}),
+				);
+			});
+
 			it('should handle JWT token exchange with body and query parameters', async () => {
 				const mockCredentials = {
 					clientId: 'test-client-id',
