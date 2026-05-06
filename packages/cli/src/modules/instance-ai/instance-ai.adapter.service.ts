@@ -381,6 +381,7 @@ export class InstanceAiAdapterService {
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
 						thread_id: threadId,
+						workflow_id: workflowId,
 						executed_by: 'ai',
 					});
 				}
@@ -807,6 +808,19 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+						status,
+					});
+				};
+
 				const executionId = await workflowRunner.run(runData);
 
 				// Wait for completion with timeout protection
@@ -838,30 +852,25 @@ export class InstanceAiAdapterService {
 							} catch {
 								// Execution may have completed between timeout and cancel
 							}
-							return {
+							const result = {
 								executionId,
 								status: 'error',
 								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 							} satisfies ExecutionResult;
+							trackBuilderExecutedWorkflow(result.status);
+							return result;
 						}
 						throw error;
 					}
 				}
 
-				if (threadId) {
-					telemetry.track('Builder executed workflow', {
-						thread_id: threadId,
-						executed_by: 'ai',
-						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
-						exec_type: runData.executionMode,
-					});
-				}
-
-				return await extractExecutionResult(
+				const result = await extractExecutionResult(
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
 				);
+				trackBuilderExecutedWorkflow(result.status);
+				return result;
 			},
 
 			async getStatus(executionId: string) {
