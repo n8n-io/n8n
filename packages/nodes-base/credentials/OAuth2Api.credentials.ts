@@ -228,7 +228,6 @@ export class OAuth2Api implements ICredentialType {
 					jweEnabled: [true],
 				},
 			},
-			doNotInherit: true,
 		},
 	];
 }
