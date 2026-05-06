@@ -276,6 +276,7 @@ export {
 	toolResultPayloadSchema,
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
+	confirmationInputTypeSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
@@ -284,6 +285,7 @@ export {
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
 	getRenderHint,
+	isDisplayableConfirmationRequest,
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
@@ -317,6 +319,8 @@ export type {
 	InstanceAiEventType,
 	InstanceAiRunStatus,
 	InstanceAiConfirmation,
+	InstanceAiConfirmationInputType,
+	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,
@@ -389,6 +393,13 @@ export {
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+
+export {
+	EVAL_PARALLEL_EXECUTION_FLAG,
+	startTestRunPayloadSchema,
+	StartTestRunRequestDto,
+	type StartTestRunPayload,
+} from './schemas/evaluations.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 

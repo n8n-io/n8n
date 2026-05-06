@@ -7,15 +7,6 @@
  */
 
 import {
-	IF_NODE_GUIDE,
-	SWITCH_NODE_GUIDE,
-	SET_NODE_GUIDE,
-	HTTP_REQUEST_GUIDE,
-	TOOL_NODES_GUIDE,
-	EMBEDDING_NODES_GUIDE,
-	RESOURCE_LOCATOR_GUIDE,
-} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
-import {
 	AI_TOOL_PATTERNS,
 	CONNECTION_CHANGING_PARAMETERS,
 	BASELINE_FLOW_CONTROL,
@@ -61,9 +52,13 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
-- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
-- **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
-- **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
+- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.`;
+
+const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
+
+- Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
+- Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
+- If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
 // The AI Agent subnode example below differs by mode:
 //   tool mode  → `newCredential('OpenAI')`
@@ -333,14 +328,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
-		'## Node-Specific Configuration Guides',
-		IF_NODE_GUIDE.content,
-		SWITCH_NODE_GUIDE.content,
-		SET_NODE_GUIDE.content,
-		HTTP_REQUEST_GUIDE.content,
-		TOOL_NODES_GUIDE.content,
-		EMBEDDING_NODES_GUIDE.content,
-		RESOURCE_LOCATOR_GUIDE.content,
+		NODE_CONFIGURATION_SAFETY_RULES,
 		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
 	].join('\n\n');
 }

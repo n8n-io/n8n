@@ -11,6 +11,12 @@ import type {
 	Feedback,
 } from '../../harness/harness-types';
 
+// Re-exports so downstream consumers (e.g. instance-ai evals) can pull the
+// evaluator and its input/output types from a single module surface.
+export type { SimpleWorkflow };
+export type { EvaluationContext, Evaluator, Feedback };
+export { PAIRWISE_METRICS };
+
 /**
  * Options for creating a pairwise evaluator.
  */
