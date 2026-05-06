@@ -19,22 +19,15 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import {
-	isSamlLicensedAndEnabled,
-	isLdapCurrentAuthenticationMethod,
-	isOidcCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
+import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { badPasswords } from '@test/test-data';
 
 jest.mock('@/sso.ee/sso-helpers', () => ({
-	isSamlLicensedAndEnabled: jest.fn(),
-	isLdapCurrentAuthenticationMethod: jest.fn(),
-	isOidcCurrentAuthenticationMethod: jest.fn(),
+	...jest.requireActual('@/sso.ee/sso-helpers'),
+	getCurrentAuthenticationMethod: jest.fn(),
 }));
 
-const isSamlLicensedAndEnabledMock = isSamlLicensedAndEnabled as jest.Mock;
-const isLdapCurrentAuthenticationMethodMock = isLdapCurrentAuthenticationMethod as jest.Mock;
-const isOidcCurrentAuthenticationMethodMock = isOidcCurrentAuthenticationMethod as jest.Mock;
+const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as jest.Mock;
 
 const browserId = 'test-browser-id';
 
@@ -50,9 +43,7 @@ describe('MeController', () => {
 
 	beforeEach(() => {
 		userService.findSsoIdentity.mockResolvedValue(undefined);
-		isSamlLicensedAndEnabledMock.mockReturnValue(false);
-		isLdapCurrentAuthenticationMethodMock.mockReturnValue(false);
-		isOidcCurrentAuthenticationMethodMock.mockReturnValue(false);
+		getCurrentAuthenticationMethodMock.mockReturnValue('email');
 	});
 
 	describe('updateCurrentUser', () => {
@@ -150,7 +141,7 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'ldap',
 				} as unknown as AuthIdentity);
-				isLdapCurrentAuthenticationMethodMock.mockReturnValue(true);
+				getCurrentAuthenticationMethodMock.mockReturnValue('ldap');
 
 				await expect(
 					controller.updateCurrentUser(
@@ -183,7 +174,7 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'oidc',
 				} as unknown as AuthIdentity);
-				isOidcCurrentAuthenticationMethodMock.mockReturnValue(true);
+				getCurrentAuthenticationMethodMock.mockReturnValue('oidc');
 
 				await expect(
 					controller.updateCurrentUser(
@@ -244,7 +235,7 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'ldap',
 				} as unknown as AuthIdentity);
-				isLdapCurrentAuthenticationMethodMock.mockReturnValue(true);
+				getCurrentAuthenticationMethodMock.mockReturnValue('ldap');
 
 				await expect(
 					controller.updateCurrentUser(
@@ -288,7 +279,7 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'saml',
 				} as unknown as AuthIdentity);
-				isSamlLicensedAndEnabledMock.mockReturnValue(true);
+				getCurrentAuthenticationMethodMock.mockReturnValue('saml');
 
 				await expect(
 					controller.updateCurrentUser(
@@ -327,7 +318,6 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'saml',
 				} as unknown as AuthIdentity);
-				isSamlLicensedAndEnabledMock.mockReturnValue(false);
 				setUpdateMocks(user);
 
 				await controller.updateCurrentUser(req, res, payload);
@@ -365,7 +355,6 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'ldap',
 				} as unknown as AuthIdentity);
-				isLdapCurrentAuthenticationMethodMock.mockReturnValue(false);
 				setUpdateMocks(user);
 
 				await controller.updateCurrentUser(req, res, payload);
@@ -395,7 +384,6 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'oidc',
 				} as unknown as AuthIdentity);
-				isOidcCurrentAuthenticationMethodMock.mockReturnValue(false);
 				setUpdateMocks(user);
 
 				await controller.updateCurrentUser(req, res, payload);
@@ -420,7 +408,6 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'saml',
 				} as unknown as AuthIdentity);
-				isSamlLicensedAndEnabledMock.mockReturnValue(false);
 				setUpdateMocks(user);
 
 				await controller.updateCurrentUser(
@@ -487,7 +474,7 @@ describe('MeController', () => {
 				userService.findSsoIdentity.mockResolvedValue({
 					providerType: 'saml',
 				} as unknown as AuthIdentity);
-				isSamlLicensedAndEnabledMock.mockReturnValue(true);
+				getCurrentAuthenticationMethodMock.mockReturnValue('saml');
 				setUpdateMocks(user);
 
 				await controller.updateCurrentUser(

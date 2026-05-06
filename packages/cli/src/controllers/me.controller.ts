@@ -24,6 +24,7 @@ import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import {
+	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	isSamlLicensedAndEnabled,
@@ -185,15 +186,7 @@ export class MeController {
 	}
 
 	private isAuthIdentityActive(authIdentity: AuthIdentity) {
-		switch (authIdentity.providerType) {
-			case 'saml':
-				return isSamlLicensedAndEnabled();
-			case 'oidc':
-				return isOidcCurrentAuthenticationMethod();
-			case 'ldap':
-				return isLdapCurrentAuthenticationMethod();
-		}
-		return false;
+		return authIdentity.providerType === getCurrentAuthenticationMethod();
 	}
 
 	/**
