@@ -23,7 +23,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * production to preserve.
  */
 export class CreateAgentExecutionTables1783000000001 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column }, escape }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		// ── Create new agent execution threads and execution recording tables ──
 
 		await createTable('agent_execution_threads')
