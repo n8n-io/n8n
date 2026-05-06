@@ -228,8 +228,12 @@ function previewArgs(args: Record<string, unknown>): string {
 function formatDuration(ms: number): string {
 	if (ms < 1_000) return `${ms}ms`;
 	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-	const m = Math.floor(ms / 60_000);
-	const s = Math.round((ms % 60_000) / 1000);
+	// Round the whole duration to seconds first, then split. Splitting before
+	// rounding (e.g. `Math.round((ms % 60_000) / 1000)`) can carry the seconds
+	// component up to 60 and emit invalid `Xm60s` values for inputs like 119_500.
+	const totalSeconds = Math.round(ms / 1000);
+	const m = Math.floor(totalSeconds / 60);
+	const s = totalSeconds % 60;
 	return `${m}m${s}s`;
 }
 

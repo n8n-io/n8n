@@ -19,7 +19,9 @@
 			"maxSingleToolResultTokensEst": 10000
 		},
 		{ "type": "fs.fileExists", "glob": "*/client_briefing.md" },
-		{ "type": "fs.fileExists", "glob": "*/workflow_diagram.png" }
+		{ "type": "fs.fileExists", "glob": "*/workflow_diagram.png" },
+		{ "type": "fs.fileNotExists", "glob": "client_briefing.md" },
+		{ "type": "fs.fileNotExists", "glob": "workflow_diagram.png" }
 	],
 	"tags": ["filesystem-write", "shell", "regression"]
 }

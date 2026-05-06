@@ -6,10 +6,15 @@
 // ---------------------------------------------------------------------------
 
 import fg from 'fast-glob';
-import { readFile, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile, realpath, stat } from 'node:fs/promises';
+import { relative, resolve, sep } from 'node:path';
 
-import type { FsFileExistsGrader, FsFileMatchesGrader, GraderResult } from '../types';
+import type {
+	FsFileExistsGrader,
+	FsFileMatchesGrader,
+	FsFileNotExistsGrader,
+	GraderResult,
+} from '../types';
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -25,6 +30,21 @@ export async function gradeFileExists(
 		reason: pass
 			? `found ${String(matches.length)} file(s) matching "${grader.glob}": ${matches.slice(0, 3).join(', ')}`
 			: `no file matching "${grader.glob}" exists under sandbox`,
+	};
+}
+
+export async function gradeFileNotExists(
+	sandboxDir: string,
+	grader: FsFileNotExistsGrader,
+): Promise<GraderResult> {
+	const matches = await findFiles(sandboxDir, grader.glob);
+	const pass = matches.length === 0;
+	return {
+		grader,
+		pass,
+		reason: pass
+			? `no file matches "${grader.glob}" (as expected)`
+			: `expected no match for "${grader.glob}" but found ${String(matches.length)}: ${matches.slice(0, 3).join(', ')}`,
 	};
 }
 
@@ -45,7 +65,8 @@ export async function gradeFileMatches(
 	const allOf = (grader.allOf ?? []).map((p) => new RegExp(p, 'i'));
 
 	for (const relPath of matches) {
-		const absPath = join(sandboxDir, relPath);
+		const absPath = await resolveInsideSandbox(sandboxDir, relPath);
+		if (!absPath) continue;
 		let content: string;
 		try {
 			const stats = await stat(absPath);
@@ -78,8 +99,43 @@ export async function gradeFileMatches(
 // Glob: thin wrapper around fast-glob, returning POSIX-style paths relative
 // to `rootDir`. Supports `*`, `**`, `?`, character classes, and brace
 // expansion — anything fast-glob handles.
+//
+// Containment: matches whose realpath resolves outside `rootDir` (via `..`,
+// absolute glob patterns, or symlinks the agent created) are dropped. The
+// harness ships sandboxed-FS as a hard contract; graders inherit it.
 // ---------------------------------------------------------------------------
 
 export async function findFiles(rootDir: string, glob: string): Promise<string[]> {
-	return await fg(glob, { cwd: rootDir, onlyFiles: true });
+	const matches = await fg(glob, {
+		cwd: rootDir,
+		onlyFiles: true,
+		followSymbolicLinks: false,
+	});
+	const filtered: string[] = [];
+	for (const rel of matches) {
+		const abs = await resolveInsideSandbox(rootDir, rel);
+		if (abs) filtered.push(rel);
+	}
+	return filtered;
+}
+
+/**
+ * Returns the canonical absolute path of `relPath` if and only if it stays
+ * inside `rootDir`'s realpath. Returns `null` for paths that escape via
+ * `..`, absolute components, or symlinks pointing out of the sandbox.
+ */
+async function resolveInsideSandbox(rootDir: string, relPath: string): Promise<string | null> {
+	let rootReal: string;
+	let absReal: string;
+	try {
+		rootReal = await realpath(rootDir);
+		absReal = await realpath(resolve(rootDir, relPath));
+	} catch {
+		return null;
+	}
+	const r = relative(rootReal, absReal);
+	if (r === '' || r.startsWith(`..${sep}`) || r === '..' || r.startsWith(sep)) {
+		return null;
+	}
+	return absReal;
 }

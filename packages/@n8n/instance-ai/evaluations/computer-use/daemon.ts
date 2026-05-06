@@ -17,7 +17,7 @@
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, open } from 'node:fs/promises';
+import { appendFile, mkdir, open } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -96,6 +96,7 @@ export async function ensureDaemon(opts: EnsureDaemonOptions): Promise<DaemonInf
 		sandboxDir,
 		logPath,
 		usePublished,
+		logger,
 	});
 	logger.info(`Daemon spawned (pid ${pid}, log: ${logPath})`);
 	logger.info('Daemon will keep running after the eval exits — re-runs will reuse it.');
@@ -156,6 +157,7 @@ interface SpawnArgs {
 	sandboxDir: string;
 	logPath: string;
 	usePublished: boolean;
+	logger: EvalLogger;
 }
 
 async function spawnDaemonDetached(args: SpawnArgs): Promise<number> {
@@ -195,8 +197,25 @@ async function spawnDaemonDetached(args: SpawnArgs): Promise<number> {
 			// of a credential-setup orchestration run.
 			env: { ...process.env, FORCE_COLOR: '0', N8N_EVAL_AUTO_BROWSER_CONNECT: '1' },
 		});
+
+		// `spawn` reports failures asynchronously via 'error' (e.g. ENOENT when the
+		// command isn't on PATH). With a detached/unref'd child, an unhandled
+		// 'error' event would crash the parent. Surface the failure in both the
+		// daemon log and the eval logger so the pairing-poll timeout that follows
+		// has a real cause attached, rather than just timing out silently.
+		child.once('error', (error: Error) => {
+			const message = `[daemon] spawn failed (${command}): ${error.message}\n`;
+			args.logger.error(`Failed to spawn daemon (${command}): ${error.message}`);
+			void appendFile(args.logPath, message).catch(() => {});
+		});
+
+		if (child.pid === undefined) {
+			throw new Error(
+				`Failed to spawn daemon: \`${command}\` did not start. See ${args.logPath} for details.`,
+			);
+		}
 		child.unref();
-		return child.pid ?? -1;
+		return child.pid;
 	} finally {
 		await logFile.close();
 	}

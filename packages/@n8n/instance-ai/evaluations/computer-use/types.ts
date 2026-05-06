@@ -143,6 +143,17 @@ export interface FsFileExistsGrader {
 	glob: string;
 }
 
+/**
+ * Inverse of `fs.fileExists`. Pass when no file matches the glob inside the
+ * sandbox. Useful for asserting that a "move" actually deleted the source
+ * file rather than copying it.
+ */
+export interface FsFileNotExistsGrader {
+	type: 'fs.fileNotExists';
+	/** Glob relative to the sandbox dir. */
+	glob: string;
+}
+
 export interface FsFileMatchesGrader {
 	type: 'fs.fileMatches';
 	/** Glob relative to the sandbox dir. */
@@ -178,6 +189,7 @@ export type Grader =
 	| TraceMustReachUrlGrader
 	| TraceToolsMustNotErrorGrader
 	| FsFileExistsGrader
+	| FsFileNotExistsGrader
 	| FsFileMatchesGrader
 	| SecurityNoSecretLeakGrader;
 
