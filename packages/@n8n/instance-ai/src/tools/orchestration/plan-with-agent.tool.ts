@@ -31,7 +31,6 @@ import {
 } from './tracing-utils';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createTemplatesTool } from '../templates.tool';
 
@@ -324,31 +323,28 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				}
 
 				const resultText = await withTraceRun(context, traceRun, async () => {
-					const traceParent = getTraceParentRun();
-					return await withTraceParentContext(traceParent, async () => {
-						const stream = await subAgent.stream(briefing, {
-							maxIterations: MAX_STEPS.PLANNER,
-							abortSignal: context.abortSignal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-						});
-
-						const result = await consumeStreamWithHitl({
-							agent: subAgent,
-							stream,
-							runId: context.runId,
-							agentId: subAgentId,
-							eventBus: context.eventBus,
-							logger: context.logger,
-							threadId: context.threadId,
-							abortSignal: context.abortSignal,
-							waitForConfirmation: context.waitForConfirmation,
-							maxIterations: MAX_STEPS.PLANNER,
-						});
-
-						return await result.text;
+					const stream = await subAgent.stream(briefing, {
+						maxIterations: MAX_STEPS.PLANNER,
+						abortSignal: context.abortSignal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
 					});
+
+					const result = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream,
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						logger: context.logger,
+						threadId: context.threadId,
+						abortSignal: context.abortSignal,
+						waitForConfirmation: context.waitForConfirmation,
+						maxIterations: MAX_STEPS.PLANNER,
+					});
+
+					return await result.text;
 				});
 
 				await finishTraceRun(context, traceRun, {

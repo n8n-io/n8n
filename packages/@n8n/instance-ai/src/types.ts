@@ -842,13 +842,13 @@ export type TraceReplayMode = 'record' | 'replay' | 'off';
 export interface InstanceAiTelemetryOptions {
 	agentRole: string;
 	functionId?: string;
-	executionMode?: 'foreground' | 'background' | 'detached_subagent' | 'resume';
+	executionMode?: 'foreground' | 'background' | 'background_subagent' | 'resume';
 	metadata?: Record<string, AttributeValue | undefined>;
 }
 
 export interface InstanceAiTraceContext {
 	projectName: string;
-	traceKind: 'message_turn' | 'detached_subagent';
+	traceKind: 'message_turn' | 'orchestrator_resume' | 'background_subagent' | 'internal_operation';
 	rootRun: InstanceAiTraceRun;
 	actorRun: InstanceAiTraceRun;
 	/** Compatibility alias for existing foreground-trace call sites. */
@@ -859,14 +859,13 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
-	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
+	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	finishRun: (run: InstanceAiTraceRun, options?: InstanceAiTraceRunFinishOptions) => Promise<void>;
 	failRun: (
 		run: InstanceAiTraceRun,
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	) => Promise<void>;
-	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
 	wrapTools: (
 		tools: InstanceAiToolRegistry,
 		options?: InstanceAiToolTraceOptions,

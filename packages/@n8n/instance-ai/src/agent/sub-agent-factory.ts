@@ -84,7 +84,7 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		agentRole: role,
 		functionId: `instance-ai.subagent.${role.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
 		executionMode:
-			options.tracing.traceKind === 'detached_subagent' ? 'detached_subagent' : 'background',
+			options.tracing.traceKind === 'background_subagent' ? 'background_subagent' : 'background',
 		metadata: { agent_id: options.agentId },
 	});
 	if (telemetry) {

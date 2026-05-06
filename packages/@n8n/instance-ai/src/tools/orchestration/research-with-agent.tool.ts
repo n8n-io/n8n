@@ -19,12 +19,7 @@ import {
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 export interface StartResearchAgentInput {
@@ -106,7 +101,7 @@ export async function startResearchAgentTask(
 				const telemetry = traceContext?.getTelemetry?.({
 					agentRole: 'web-researcher',
 					functionId: 'instance-ai.subagent.web-researcher',
-					executionMode: 'detached_subagent',
+					executionMode: 'background_subagent',
 					metadata: { agent_id: subAgentId, task_id: taskId },
 				});
 				if (telemetry) {
@@ -121,33 +116,30 @@ export async function startResearchAgentTask(
 					}),
 				);
 
-				const traceParent = getTraceParentRun();
-				return await withTraceParentContext(traceParent, async () => {
-					const stream = await subAgent.stream(briefing, {
-						maxIterations: MAX_STEPS.RESEARCH,
-						abortSignal: signal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-					});
-
-					const { text } = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream,
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-						drainCorrections,
-						waitForCorrection,
-						maxIterations: MAX_STEPS.RESEARCH,
-					});
-
-					return await text;
+				const stream = await subAgent.stream(briefing, {
+					maxIterations: MAX_STEPS.RESEARCH,
+					abortSignal: signal,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
 				});
+
+				const { text } = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream,
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+					waitForCorrection,
+					maxIterations: MAX_STEPS.RESEARCH,
+				});
+
+				return await text;
 			});
 		},
 	});

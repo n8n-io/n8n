@@ -179,7 +179,7 @@ jest.mock('@n8n/agents', () => {
 
 jest.mock('langsmith', () => {
 	let runCounter = 0;
-	const createdRunTrees: Array<{
+	const createdLegacyLegacyRunTrees: Array<{
 		id: string;
 		dotted_order: string;
 		name: string;
@@ -188,14 +188,14 @@ jest.mock('langsmith', () => {
 		client?: unknown;
 	}> = [];
 
-	class MockRunTree {
+	class MockLegacyRunTree {
 		id: string;
 		name: string;
 		run_type: string;
 		project_name: string;
-		parent_run?: MockRunTree;
+		parent_run?: MockLegacyRunTree;
 		parent_run_id?: string;
-		child_runs: MockRunTree[];
+		child_runs: MockLegacyRunTree[];
 		start_time: number;
 		end_time?: number;
 		extra: { metadata?: Record<string, unknown> };
@@ -216,7 +216,7 @@ jest.mock('langsmith', () => {
 			name: string;
 			run_type?: string;
 			project_name?: string;
-			parent_run?: MockRunTree;
+			parent_run?: MockLegacyRunTree;
 			parent_run_id?: string;
 			start_time?: number;
 			end_time?: number;
@@ -257,7 +257,7 @@ jest.mock('langsmith', () => {
 				(this.parent_run ? `${this.parent_run.dotted_order}.${this.id}` : this.id);
 			this.client = config.client;
 
-			createdRunTrees.push({
+			createdLegacyLegacyRunTrees.push({
 				id: this.id,
 				dotted_order: this.dotted_order,
 				name: this.name,
@@ -281,9 +281,9 @@ jest.mock('langsmith', () => {
 			tags?: string[];
 			metadata?: Record<string, unknown>;
 			inputs?: Record<string, unknown>;
-		}): MockRunTree {
+		}): MockLegacyRunTree {
 			const childExecutionOrder = this.child_execution_order + 1;
-			const child = new MockRunTree({
+			const child = new MockLegacyRunTree({
 				...config,
 				parent_run: this,
 				parent_run_id: this.id,
@@ -370,32 +370,32 @@ jest.mock('langsmith', () => {
 
 	return {
 		Client: MockClient,
-		RunTree: MockRunTree,
+		LegacyRunTree: MockLegacyRunTree,
 		__mock: {
 			reset: () => {
 				runCounter = 0;
-				createdRunTrees.length = 0;
+				createdLegacyLegacyRunTrees.length = 0;
 				createFeedbackCalls.length = 0;
 			},
-			getCreatedRunTrees: () => createdRunTrees,
+			getCreatedLegacyLegacyRunTrees: () => createdLegacyLegacyRunTrees,
 			getCreateFeedbackCalls: () => createFeedbackCalls,
 		},
 	};
 });
 
 jest.mock('langsmith/traceable', () => {
-	let currentRunTree: unknown;
+	let currentLegacyRunTree: unknown;
 
 	return {
 		traceable: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
-		getCurrentRunTree: () => currentRunTree,
-		withRunTree: async <T>(runTree: unknown, fn: () => Promise<T>): Promise<T> => {
-			const previous = currentRunTree;
-			currentRunTree = runTree;
+		getCurrentLegacyRunTree: () => currentLegacyRunTree,
+		withActiveSpan: async <T>(legacyRunTree: unknown, fn: () => Promise<T>): Promise<T> => {
+			const previous = currentLegacyRunTree;
+			currentLegacyRunTree = legacyRunTree;
 			try {
 				return await fn();
 			} finally {
-				currentRunTree = previous;
+				currentLegacyRunTree = previous;
 			}
 		},
 	};
@@ -404,7 +404,7 @@ jest.mock('langsmith/traceable', () => {
 type LangSmithMockModule = {
 	__mock: {
 		reset: () => void;
-		getCreatedRunTrees: () => Array<{
+		getCreatedLegacyLegacyRunTrees: () => Array<{
 			id: string;
 			dotted_order: string;
 			name: string;
@@ -685,7 +685,7 @@ describe('createInstanceAiTraceContext', () => {
 		);
 	});
 
-	it('reuses the same message root when continuing a trace for the same message group', async () => {
+	it('creates a new orchestrator resume root when continuing a trace', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
 			messageId: 'message-1',
@@ -706,10 +706,21 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'follow-up turn' },
 		});
 
-		expect(continuedTracing.messageRun).toBe(tracing?.messageRun);
-		expect(continuedTracing.messageRun.id).toBe(tracing?.messageRun.id);
+		expect(continuedTracing.traceKind).toBe('orchestrator_resume');
+		expect(continuedTracing.rootRun.id).not.toBe(tracing?.rootRun.id);
+		expect(continuedTracing.rootRun.parentRunId).toBeUndefined();
+		expect(continuedTracing.rootRun.name).toBe('instance-ai.orchestrator_resume');
+		expect(continuedTracing.rootRun.metadata).toEqual(
+			expect.objectContaining({
+				trace_kind: 'orchestrator_resume',
+				execution_mode: 'resume',
+				continued_from_run_id: tracing?.rootRun.id,
+				continued_from_trace_id: tracing?.rootRun.otelTraceId,
+			}),
+		);
 		expect(continuedTracing.orchestratorRun.id).not.toBe(tracing?.orchestratorRun.id);
-		expect(continuedTracing.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
+		expect(continuedTracing.orchestratorRun.parentRunId).toBe(continuedTracing.rootRun.id);
+		expect(continuedTracing.orchestratorRun.name).toBe('instance-ai.agent.orchestrator');
 	});
 
 	it('creates detached sub-agent traces as separate root traces', async () => {
@@ -734,10 +745,12 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
-		expect(tracing?.traceKind).toBe('detached_subagent');
-		expect(tracing?.rootRun.id).toBe(tracing?.actorRun.id);
+		expect(tracing?.traceKind).toBe('background_subagent');
+		expect(tracing?.rootRun.id).not.toBe(tracing?.actorRun.id);
 		expect(tracing?.rootRun.parentRunId).toBeUndefined();
-		expect(tracing?.rootRun.name).toBe('instance-ai.subagent.workflow-builder');
+		expect(tracing?.rootRun.name).toBe('instance-ai.background_subagent');
+		expect(tracing?.actorRun.name).toBe('instance-ai.agent.workflow-builder');
+		expect(tracing?.actorRun.parentRunId).toBe(tracing?.rootRun.id);
 		expect(tracing?.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				thread_id: 'thread-1',
@@ -745,6 +758,8 @@ describe('createInstanceAiTraceContext', () => {
 				task_id: 'build-1',
 				task_kind: 'builder',
 				agent_id: 'agent-builder-1',
+				trace_kind: 'background_subagent',
+				execution_mode: 'background_subagent',
 				spawned_by_trace_id: 'trace-parent-1',
 				spawned_by_span_id: 'span-parent-1',
 				spawned_by_run_id: 'run-parent-1',
@@ -757,7 +772,7 @@ describe('createInstanceAiTraceContext', () => {
 		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'workflow-builder',
 			functionId: 'instance-ai.subagent.workflow-builder',
-			executionMode: 'detached_subagent',
+			executionMode: 'background_subagent',
 		});
 		const telemetry =
 			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
@@ -832,7 +847,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 
-		await tracing?.withRunTree(tracing.actorRun, async () => {
+		await tracing?.withActiveSpan(tracing.actorRun, async () => {
 			mergeTraceRunInputs(
 				tracing?.actorRun,
 				buildAgentTraceInputs({
@@ -932,7 +947,7 @@ describe('createInstanceAiTraceContext', () => {
 			throw new Error('Wrapped ask-user tool is not executable');
 		}
 
-		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
 			await wrappedAskUser.handler(
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
@@ -1006,7 +1021,7 @@ describe('createInstanceAiTraceContext', () => {
 			inputs: { task: 'Build a workflow' },
 		});
 
-		await tracing!.withRunTree(subAgentRun, async () => {
+		await tracing!.withActiveSpan(subAgentRun, async () => {
 			await withCurrentTraceSpan(
 				{
 					name: 'llm:anthropic/claude-sonnet-4-6',
@@ -1046,7 +1061,7 @@ describe('createInstanceAiTraceContext', () => {
 			throw new Error('Wrapped ask-user tool is not executable');
 		}
 
-		const result = await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
 			return await executeTool(
 				wrappedAskUser,
 				{
@@ -1100,7 +1115,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'hello' },
 		});
 
-		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
 			const result = await withCurrentTraceSpan(
 				{
 					name: 'prepare_context',
@@ -1162,11 +1177,11 @@ describe('createInstanceAiTraceContext', () => {
 
 		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
 		expect(rootSpan).toBeDefined();
-		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
+		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
 
-	it('does not create RunTree spans without proxyConfig', async () => {
-		// Regression: normal tracing must not mix RunTree product spans with OTel
+	it('does not create LegacyRunTree spans without proxyConfig', async () => {
+		// Regression: normal tracing must not mix LegacyRunTree product spans with OTel
 		// native spans, because LangSmith treats those ingestion paths as separate
 		// trace hierarchies.
 		await createInstanceAiTraceContext({
@@ -1179,7 +1194,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
 		expect(rootSpan).toBeDefined();
-		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
+		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
 
 	it('keeps product, native provider, and local tool spans in one foreground OTel trace', async () => {
@@ -1208,7 +1223,7 @@ describe('createInstanceAiTraceContext', () => {
 			throw new Error('Wrapped workspace_write_file tool is not executable');
 		}
 
-		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
 			const telemetryOrBuilder = tracing!.getTelemetry!({
 				agentRole: 'orchestrator',
 				functionId: 'instance-ai.orchestrator',
@@ -1264,7 +1279,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		const spans = agentsMock.getSpans();
 		const rootSpan = spans.find((span) => span.name === 'instance-ai.message_turn');
-		const orchestratorSpan = spans.find((span) => span.name === 'instance-ai.orchestrator.stream');
+		const orchestratorSpan = spans.find((span) => span.name === 'instance-ai.agent.orchestrator');
 		const providerSpan = spans.find((span) => span.name === 'ai.streamText.doStream');
 		const localToolSpan = spans.find((span) => span.name === 'ai.toolCall');
 
@@ -1283,7 +1298,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(localToolSpan?.attributes['ai.toolCall.id']).toBe('toolu-write-file');
 		expect(localToolSpan?.attributes['ai.toolCall.name']).toBe('workspace_write_file');
 		expect(spans.some((span) => span.name.startsWith('instance-ai.tool.'))).toBe(false);
-		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
+		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
 
 	it('returns undefined when tracing is explicitly disabled even with proxy', async () => {

@@ -2281,7 +2281,7 @@ export class InstanceAiService {
 			}
 
 			const result = tracing
-				? await tracing.withRunTree(tracing.actorRun, async () => {
+				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(
 							agent as StreamableAgent,
 							streamInput,
@@ -2774,7 +2774,7 @@ export class InstanceAiService {
 
 		try {
 			const result = opts.tracing
-				? await opts.tracing.withRunTree(opts.tracing.actorRun, async () => {
+				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
 						return await resumeAgentRun(
 							agent,
 							resumeData,

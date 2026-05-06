@@ -30,12 +30,7 @@ import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type {
 	BackgroundTaskResult,
 	InstanceAiContext,
@@ -863,7 +858,7 @@ export async function startBuildWorkflowAgentTask(
 							const telemetry = traceContext?.getTelemetry?.({
 								agentRole: 'workflow-builder',
 								functionId: 'instance-ai.subagent.workflow-builder',
-								executionMode: 'detached_subagent',
+								executionMode: 'background_subagent',
 								metadata: { agent_id: subAgentId, task_id: taskId },
 							});
 							if (telemetry) {
@@ -878,38 +873,35 @@ export async function startBuildWorkflowAgentTask(
 								}),
 							);
 
-							const traceParent = getTraceParentRun();
 							let finalText: string;
 							try {
-								const hitlResult = await withTraceParentContext(traceParent, async () => {
-									const resumeOptions: Record<string, unknown> = {
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
-									};
-									const stream = await subAgent.stream(briefing, {
-										maxIterations: MAX_STEPS.BUILDER,
-										abortSignal: signal,
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
-									});
+								const resumeOptions: Record<string, unknown> = {
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+								};
+								const stream = await subAgent.stream(briefing, {
+									maxIterations: MAX_STEPS.BUILDER,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+								});
 
-									return await consumeStreamWithHitl({
-										agent: subAgent,
-										stream,
-										runId: context.runId,
-										agentId: subAgentId,
-										eventBus: context.eventBus,
-										logger: context.logger,
-										threadId: context.threadId,
-										abortSignal: signal,
-										waitForConfirmation: context.waitForConfirmation,
-										drainCorrections,
-										waitForCorrection,
-										maxIterations: MAX_STEPS.BUILDER,
-										resumeOptions,
-									});
+								const hitlResult = await consumeStreamWithHitl({
+									agent: subAgent,
+									stream,
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									logger: context.logger,
+									threadId: context.threadId,
+									abortSignal: signal,
+									waitForConfirmation: context.waitForConfirmation,
+									drainCorrections,
+									waitForCorrection,
+									maxIterations: MAX_STEPS.BUILDER,
+									resumeOptions,
 								});
 
 								finalText = await hitlResult.text;
@@ -1123,7 +1115,7 @@ export async function startBuildWorkflowAgentTask(
 						const telemetry = traceContext?.getTelemetry?.({
 							agentRole: 'workflow-builder',
 							functionId: 'instance-ai.subagent.workflow-builder',
-							executionMode: 'detached_subagent',
+							executionMode: 'background_subagent',
 							metadata: { agent_id: subAgentId, task_id: taskId },
 						});
 						if (telemetry) {
@@ -1138,36 +1130,33 @@ export async function startBuildWorkflowAgentTask(
 							}),
 						);
 
-						const traceParent = getTraceParentRun();
-						const hitlResult = await withTraceParentContext(traceParent, async () => {
-							const resumeOptions: Record<string, unknown> = {
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-							};
-							const stream = await subAgent.stream(briefing, {
-								maxIterations: MAX_STEPS.BUILDER,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-							});
+						const resumeOptions: Record<string, unknown> = {
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						};
+						const stream = await subAgent.stream(briefing, {
+							maxIterations: MAX_STEPS.BUILDER,
+							abortSignal: signal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						});
 
-							return await consumeStreamWithHitl({
-								agent: subAgent,
-								stream,
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								logger: context.logger,
-								threadId: context.threadId,
-								abortSignal: signal,
-								waitForConfirmation: context.waitForConfirmation,
-								drainCorrections,
-								waitForCorrection,
-								maxIterations: MAX_STEPS.BUILDER,
-								resumeOptions,
-							});
+						const hitlResult = await consumeStreamWithHitl({
+							agent: subAgent,
+							stream,
+							runId: context.runId,
+							agentId: subAgentId,
+							eventBus: context.eventBus,
+							logger: context.logger,
+							threadId: context.threadId,
+							abortSignal: signal,
+							waitForConfirmation: context.waitForConfirmation,
+							drainCorrections,
+							waitForCorrection,
+							maxIterations: MAX_STEPS.BUILDER,
+							resumeOptions,
 						});
 
 						const toolFinalText = await hitlResult.text;

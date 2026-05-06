@@ -20,12 +20,7 @@ import {
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 const DATA_TABLE_TOOL_NAME = 'data-tables';
@@ -105,7 +100,7 @@ export async function startDataTableAgentTask(
 				const telemetry = traceContext?.getTelemetry?.({
 					agentRole: 'data-table-manager',
 					functionId: 'instance-ai.subagent.data-table-manager',
-					executionMode: 'detached_subagent',
+					executionMode: 'background_subagent',
 					metadata: { agent_id: subAgentId, task_id: taskId },
 				});
 				if (telemetry) {
@@ -126,31 +121,28 @@ export async function startDataTableAgentTask(
 					runningTasks: context.getRunningTaskSummaries?.(),
 				});
 
-				const traceParent = getTraceParentRun();
-				return await withTraceParentContext(traceParent, async () => {
-					const stream = await subAgent.stream(briefing, {
-						maxIterations: MAX_STEPS.DATA_TABLE,
-						abortSignal: signal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-					});
-
-					const hitlResult = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream,
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-						maxIterations: MAX_STEPS.DATA_TABLE,
-					});
-
-					return await hitlResult.text;
+				const stream = await subAgent.stream(briefing, {
+					maxIterations: MAX_STEPS.DATA_TABLE,
+					abortSignal: signal,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
 				});
+
+				const hitlResult = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream,
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					maxIterations: MAX_STEPS.DATA_TABLE,
+				});
+
+				return await hitlResult.text;
 			});
 		},
 	});

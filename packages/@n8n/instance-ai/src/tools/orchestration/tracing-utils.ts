@@ -133,7 +133,7 @@ export async function withTraceRun<T>(
 		return await fn();
 	}
 
-	return await context.tracing.withRunTree(traceRun, fn);
+	return await context.tracing.withActiveSpan(traceRun, fn);
 }
 
 export async function withTraceContextActor<T>(
@@ -144,7 +144,7 @@ export async function withTraceContextActor<T>(
 		return await fn();
 	}
 
-	return await tracing.withRunTree(tracing.actorRun, fn);
+	return await tracing.withActiveSpan(tracing.actorRun, fn);
 }
 
 export async function finishTraceRun(

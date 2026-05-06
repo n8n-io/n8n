@@ -16,12 +16,7 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../runtime/resumable-stream-executor';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 import { createResearchTool } from '../research.tool';
@@ -266,86 +261,82 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						.filter(Boolean)
 						.join('\n');
 
-					const traceParent = getTraceParentRun();
-					return await withTraceParentContext(traceParent, async () => {
-						// Stream the sub-agent
-						const stream = await subAgent.stream(briefing, {
-							maxIterations: MAX_STEPS.BROWSER,
-							abortSignal: context.abortSignal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
+					const stream = await subAgent.stream(briefing, {
+						maxIterations: MAX_STEPS.BROWSER,
+						abortSignal: context.abortSignal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+					});
+
+					let activeStream = normalizeStreamSource(stream);
+					let activeAgentRunId = typeof activeStream.runId === 'string' ? activeStream.runId : '';
+					let lastSuspendedToolName = '';
+					const MAX_NUDGES = 3;
+					let nudgeCount = 0;
+
+					while (true) {
+						const result = await executeResumableStream({
+							agent: subAgent,
+							stream: activeStream,
+							initialAgentRunId: activeAgentRunId,
+							context: {
+								threadId: context.threadId,
+								runId: context.runId,
+								agentId: subAgentId,
+								eventBus: context.eventBus,
+								signal: context.abortSignal,
+								logger: context.logger,
+							},
+							control: {
+								mode: 'auto',
+								buildResumeOptions: ({ agentRunId, suspension }) => ({
+									runId: agentRunId,
+									toolCallId: suspension.toolCallId,
+									maxIterations: MAX_STEPS.BROWSER,
+								}),
+								waitForConfirmation: async (requestId) => {
+									if (!context.waitForConfirmation) {
+										throw new Error(
+											'Browser agent requires user interaction but no HITL handler is available',
+										);
+									}
+									return await context.waitForConfirmation(requestId);
+								},
+								onSuspension: (suspension) => {
+									lastSuspendedToolName = suspension.toolName ?? '';
+								},
 							},
 						});
 
-						let activeStream = normalizeStreamSource(stream);
-						let activeAgentRunId = typeof activeStream.runId === 'string' ? activeStream.runId : '';
-						let lastSuspendedToolName = '';
-						const MAX_NUDGES = 3;
-						let nudgeCount = 0;
-
-						while (true) {
-							const result = await executeResumableStream({
-								agent: subAgent,
-								stream: activeStream,
-								initialAgentRunId: activeAgentRunId,
-								context: {
-									threadId: context.threadId,
-									runId: context.runId,
-									agentId: subAgentId,
-									eventBus: context.eventBus,
-									signal: context.abortSignal,
-									logger: context.logger,
-								},
-								control: {
-									mode: 'auto',
-									buildResumeOptions: ({ agentRunId, suspension }) => ({
-										runId: agentRunId,
-										toolCallId: suspension.toolCallId,
-										maxIterations: MAX_STEPS.BROWSER,
-									}),
-									waitForConfirmation: async (requestId) => {
-										if (!context.waitForConfirmation) {
-											throw new Error(
-												'Browser agent requires user interaction but no HITL handler is available',
-											);
-										}
-										return await context.waitForConfirmation(requestId);
-									},
-									onSuspension: (suspension) => {
-										lastSuspendedToolName = suspension.toolName ?? '';
-									},
-								},
-							});
-
-							if (result.status === 'cancelled') {
-								throw new Error('Run cancelled while waiting for confirmation');
-							}
-
-							if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
-								// Agent ended without a final pause-for-user confirmation.
-								// Re-invoke with a nudge to call pause-for-user.
-								nudgeCount++;
-								const nudge = await subAgent.stream(
-									'You stopped without confirming with the user. Call pause-for-user NOW to tell the user where the credential values live and to enter them privately in the n8n credential form.',
-									{
-										maxIterations: MAX_STEPS.BROWSER,
-										abortSignal: context.abortSignal,
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
-									},
-								);
-								activeStream = normalizeStreamSource(nudge);
-								activeAgentRunId =
-									(typeof activeStream.runId === 'string' && activeStream.runId) ||
-									result.agentRunId ||
-									activeAgentRunId;
-								continue;
-							}
-
-							return await (result.text ?? activeStream.text ?? Promise.resolve(''));
+						if (result.status === 'cancelled') {
+							throw new Error('Run cancelled while waiting for confirmation');
 						}
-					});
+
+						if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
+							// Agent ended without a final pause-for-user confirmation.
+							// Re-invoke with a nudge to call pause-for-user.
+							nudgeCount++;
+							const nudge = await subAgent.stream(
+								'You stopped without confirming with the user. Call pause-for-user NOW to tell the user where the credential values live and to enter them privately in the n8n credential form.',
+								{
+									maxIterations: MAX_STEPS.BROWSER,
+									abortSignal: context.abortSignal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+								},
+							);
+							activeStream = normalizeStreamSource(nudge);
+							activeAgentRunId =
+								(typeof activeStream.runId === 'string' && activeStream.runId) ||
+								result.agentRunId ||
+								activeAgentRunId;
+							continue;
+						}
+
+						return await (result.text ?? activeStream.text ?? Promise.resolve(''));
+					}
 				});
 				await finishTraceRun(context, traceRun, {
 					outputs: {

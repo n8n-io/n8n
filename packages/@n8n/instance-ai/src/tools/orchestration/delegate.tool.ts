@@ -17,7 +17,6 @@ import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
@@ -173,34 +172,31 @@ export async function startDetachedDelegateTask(
 					checkpointStore: context.checkpointStore,
 				});
 
-				const traceParent = getTraceParentRun();
-				return await withTraceParentContext(traceParent, async () => {
-					const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
-					const stream = await subAgent.stream(briefingMessage, {
-						maxIterations,
-						abortSignal: signal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-					});
-
-					const result = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream,
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-						drainCorrections,
-						waitForCorrection,
-						maxIterations,
-					});
-
-					return await result.text;
+				const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
+				const stream = await subAgent.stream(briefingMessage, {
+					maxIterations,
+					abortSignal: signal,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
 				});
+
+				const result = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream,
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+					waitForCorrection,
+					maxIterations,
+				});
+
+				return await result.text;
 			});
 		},
 	});
@@ -322,29 +318,26 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 				// 4. Stream sub-agent with HITL support
 				const consumeResult = await withTraceRun(context, traceRun, async () => {
-					const traceParent = getTraceParentRun();
-					return await withTraceParentContext(traceParent, async () => {
-						const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
-						const stream = await subAgent.stream(briefingMessage, {
-							maxIterations,
-							abortSignal: context.abortSignal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-						});
+					const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
+					const stream = await subAgent.stream(briefingMessage, {
+						maxIterations,
+						abortSignal: context.abortSignal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+					});
 
-						return await consumeStreamWithHitl({
-							agent: subAgent,
-							stream,
-							runId: context.runId,
-							agentId: subAgentId,
-							eventBus: context.eventBus,
-							logger: context.logger,
-							threadId: context.threadId,
-							abortSignal: context.abortSignal,
-							waitForConfirmation: context.waitForConfirmation,
-							maxIterations,
-						});
+					return await consumeStreamWithHitl({
+						agent: subAgent,
+						stream,
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						logger: context.logger,
+						threadId: context.threadId,
+						abortSignal: context.abortSignal,
+						waitForConfirmation: context.waitForConfirmation,
+						maxIterations,
 					});
 				});
 
