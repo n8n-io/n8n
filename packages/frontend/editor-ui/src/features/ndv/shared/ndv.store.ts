@@ -26,9 +26,8 @@ import {
 	createWorkflowDocumentId,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { computed, inject, ref, shallowRef } from 'vue';
+import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
-import { NDVStoreKey } from '@/app/constants/injectionKeys';
 
 export type NDVStoreId = WorkflowDocumentId;
 
@@ -491,6 +490,5 @@ export function disposeNDVStore(store: NDVStore) {
 }
 
 export function injectNDVStore(): ReturnType<typeof useNDVStore> {
-	const ndvStoreRef = inject(NDVStoreKey, null) ?? shallowRef(useNDVStore());
-	return ndvStoreRef.value ?? useNDVStore();
+	return useNDVStore();
 }
