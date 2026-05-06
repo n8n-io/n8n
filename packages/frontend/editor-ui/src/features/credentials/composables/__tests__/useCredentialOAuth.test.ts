@@ -79,6 +79,26 @@ const slackOAuth2Api: ICredentialType = {
 	],
 };
 
+const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
+	name: 'mcpOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'MCP OAuth2 API',
+	properties: [
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: true,
+		},
+		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'hidden',
+			default: 'https://mcp.example.com/mcp',
+		},
+	],
+};
+
 const nonOAuthApi: ICredentialType = {
 	name: 'openAiApi',
 	displayName: 'OpenAI API',
@@ -291,6 +311,14 @@ describe('useCredentialOAuth', () => {
 
 			const { hasManagedOAuthCredentials } = useCredentialOAuth();
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
+		});
+
+		it('should return when there are no visible properties even if there are no overwritten properties', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('mcpOAuth2Api')).toBe(true);
 		});
 	});
 
