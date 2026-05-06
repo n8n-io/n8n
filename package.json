@@ -166,7 +166,7 @@
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
       "hono": "4.12.16",
-      "axios": "1.15.1",
+      "axios": "1.15.2",
       "fast-xml-parser": "5.7.2"
     },
     "patchedDependencies": {
