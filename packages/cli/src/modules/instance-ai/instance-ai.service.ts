@@ -2270,7 +2270,8 @@ export class InstanceAiService {
 			});
 			const contextCompactionRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
-						name: 'instance-ai.context_compaction',
+						name: 'prepare: context',
+						canonicalName: 'instance-ai.context_compaction',
 						tags: ['context'],
 						metadata: { agent_role: 'context_compaction' },
 						inputs: {
@@ -2320,7 +2321,8 @@ export class InstanceAiService {
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
-						name: 'instance-ai.prompt_build',
+						name: 'prepare: prompt',
+						canonicalName: 'instance-ai.prompt_build',
 						tags: ['prompt'],
 						metadata: { agent_role: 'prompt_build' },
 						inputs: {
@@ -2389,7 +2391,8 @@ export class InstanceAiService {
 
 			if (tracing && tracing.actorRun.id === tracing.rootRun.id) {
 				const actorRun = await tracing.startChildRun(tracing.rootRun, {
-					name: 'instance-ai.agent.orchestrator',
+					name: 'agent: orchestrator',
+					canonicalName: 'instance-ai.agent.orchestrator',
 					tags: ['orchestrator'],
 					metadata: {
 						agent_role: 'orchestrator',

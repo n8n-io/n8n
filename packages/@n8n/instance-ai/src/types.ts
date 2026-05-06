@@ -819,6 +819,7 @@ export interface InstanceAiTraceRun {
 
 export interface InstanceAiTraceRunInit {
 	name: string;
+	canonicalName?: string;
 	runType?: string;
 	tags?: string[];
 	metadata?: Record<string, unknown>;

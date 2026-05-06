@@ -31,6 +31,7 @@ import {
 } from './tracing-utils';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createTemplatesTool } from '../templates.tool';
 
@@ -321,6 +322,14 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				if (telemetry) {
 					subAgent.telemetry(telemetry);
 				}
+				mergeTraceRunInputs(
+					traceRun,
+					buildAgentTraceInputs({
+						systemPrompt: PLANNER_AGENT_PROMPT,
+						tools: tracedPlannerTools,
+						modelId: context.modelId,
+					}),
+				);
 
 				const resultText = await withTraceRun(context, traceRun, async () => {
 					const stream = await subAgent.stream(briefing, {

@@ -59,6 +59,16 @@ interface BuilderMemoryBinding {
 	thread: string;
 }
 
+function toToolRegistry(
+	tools: ReadonlyArray<InstanceAiToolRegistry[string]>,
+): InstanceAiToolRegistry {
+	const registry: InstanceAiToolRegistry = {};
+	for (const tool of tools) {
+		registry[tool.name] = tool;
+	}
+	return registry;
+}
+
 function createBuilderResourceId(userId: string): string {
 	return `${userId}:workflow-builder`;
 }
@@ -850,6 +860,7 @@ export async function startBuildWorkflowAgentTask(
 								builderTools,
 								'workflow-builder',
 							);
+							const runtimeWorkspaceTools = toToolRegistry(workspace.getTools());
 							const shouldUseBuilderMemory = false;
 
 							const subAgent = new Agent('Workflow Builder Agent')
@@ -876,6 +887,7 @@ export async function startBuildWorkflowAgentTask(
 								buildAgentTraceInputs({
 									systemPrompt: prompt,
 									tools: tracedBuilderTools,
+									runtimeTools: runtimeWorkspaceTools,
 									modelId: context.modelId,
 								}),
 							);

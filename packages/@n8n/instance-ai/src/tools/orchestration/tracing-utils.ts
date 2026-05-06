@@ -31,7 +31,8 @@ export async function startSubAgentTrace(
 	if (!context.tracing) return undefined;
 
 	return await context.tracing.startChildRun(context.tracing.actorRun, {
-		name: `instance-ai.subagent.${options.role}.stream`,
+		name: `agent: ${options.role}`,
+		canonicalName: `instance-ai.subagent.${options.role}.stream`,
 		tags: ['sub-agent'],
 		metadata: {
 			agent_role: options.role,

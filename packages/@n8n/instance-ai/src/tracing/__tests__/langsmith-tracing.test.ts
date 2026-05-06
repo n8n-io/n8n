@@ -469,7 +469,8 @@ async function startForegroundActor(
 	tracing: NonNullable<Awaited<ReturnType<typeof createInstanceAiTraceContext>>>,
 ) {
 	const actorRun = await tracing.startChildRun(tracing.rootRun, {
-		name: 'instance-ai.agent.orchestrator',
+		name: 'agent: orchestrator',
+		canonicalName: 'instance-ai.agent.orchestrator',
 		tags: ['orchestrator'],
 		metadata: {
 			agent_role: 'orchestrator',
@@ -536,6 +537,15 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		expect(tracing?.rootRun.name).toBe('turn');
+		expect(tracing?.rootRun.metadata).toEqual(
+			expect.objectContaining({
+				display_name: 'turn',
+				display_kind: 'turn',
+				display_group: 'message-turn',
+				'instance_ai.canonical_name': 'instance-ai.message_turn',
+			}),
+		);
 		await startForegroundActor(tracing!);
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
 	});
@@ -737,6 +747,28 @@ describe('createInstanceAiTraceContext', () => {
 		});
 	});
 
+	it('renames native LLM spans for LangSmith display while keeping SDK operation metadata', () => {
+		const span = {
+			name: 'ai.streamText.doStream',
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.telemetry.metadata.agent_role': 'workflow-builder',
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			name: string;
+			attributes: Record<string, unknown>;
+		};
+
+		expect(redacted.name).toBe('llm: workflow-builder');
+		expect(redacted.attributes['langsmith.trace.name']).toBe('llm: workflow-builder');
+		expect(redacted.attributes['ai_sdk.operation']).toBe('ai.streamText.doStream');
+		expect(redacted.attributes['instance_ai.canonical_name']).toBe('ai.streamText.doStream');
+		expect(redacted.attributes.display_kind).toBe('llm');
+		expect(redacted.attributes.display_group).toBe('workflow-builder');
+	});
+
 	it('normalizes AI SDK tool messages for LangSmith chat rendering', () => {
 		const span = {
 			attributes: {
@@ -881,7 +913,12 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.traceKind).toBe('orchestrator_resume');
 		expect(continuedTracing.rootRun.id).not.toBe(tracing?.rootRun.id);
 		expect(continuedTracing.rootRun.parentRunId).toBeUndefined();
-		expect(continuedTracing.rootRun.name).toBe('instance-ai.orchestrator_resume');
+		expect(continuedTracing.rootRun.name).toBe('resume: background task completed');
+		expect(continuedTracing.rootRun.metadata).toEqual(
+			expect.objectContaining({
+				'instance_ai.canonical_name': 'instance-ai.orchestrator_resume',
+			}),
+		);
 		expect(continuedTracing.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				trace_kind: 'orchestrator_resume',
@@ -895,7 +932,12 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(continuedTracing.orchestratorRun.id).not.toBe(tracing?.orchestratorRun.id);
 		expect(continuedTracing.orchestratorRun.parentRunId).toBe(continuedTracing.rootRun.id);
-		expect(continuedTracing.orchestratorRun.name).toBe('instance-ai.agent.orchestrator');
+		expect(continuedTracing.orchestratorRun.name).toBe('agent: orchestrator');
+		expect(continuedTracing.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({
+				'instance_ai.canonical_name': 'instance-ai.agent.orchestrator',
+			}),
+		);
 	});
 
 	it('creates an orchestrator resume root without a previous trace when tracing is enabled', async () => {
@@ -911,7 +953,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 		expect(tracing?.traceKind).toBe('orchestrator_resume');
-		expect(tracing?.rootRun.name).toBe('instance-ai.orchestrator_resume');
+		expect(tracing?.rootRun.name).toBe('resume: planned checkpoint');
 		expect(tracing?.rootRun.parentRunId).toBeUndefined();
 		expect(tracing?.rootRun.metadata).toEqual(
 			expect.objectContaining({
@@ -949,7 +991,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 		expect(tracing?.traceKind).toBe('internal_operation');
-		expect(tracing?.rootRun.name).toBe('instance-ai.internal.thread_title');
+		expect(tracing?.rootRun.name).toBe('internal: thread-title');
 		expect(tracing?.rootRun.parentRunId).toBeUndefined();
 		expect(tracing?.rootRun.metadata).toEqual(
 			expect.objectContaining({
@@ -958,6 +1000,7 @@ describe('createInstanceAiTraceContext', () => {
 				operation_name: 'thread_title',
 				agent_role: 'thread_title',
 				thread_id: 'thread-1',
+				'instance_ai.canonical_name': 'instance-ai.internal.thread_title',
 			}),
 		);
 
@@ -1003,8 +1046,8 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing?.traceKind).toBe('background_subagent');
 		expect(tracing?.rootRun.id).not.toBe(tracing?.actorRun.id);
 		expect(tracing?.rootRun.parentRunId).toBeUndefined();
-		expect(tracing?.rootRun.name).toBe('instance-ai.background_subagent');
-		expect(tracing?.actorRun.name).toBe('instance-ai.agent.workflow-builder');
+		expect(tracing?.rootRun.name).toBe('background task: workflow-builder');
+		expect(tracing?.actorRun.name).toBe('agent: workflow-builder');
 		expect(tracing?.actorRun.parentRunId).toBe(tracing?.rootRun.id);
 		expect(tracing?.rootRun.metadata).toEqual(
 			expect.objectContaining({
@@ -1021,6 +1064,12 @@ describe('createInstanceAiTraceContext', () => {
 				spawned_by_agent_id: 'agent-001',
 				spawned_by_agent_role: 'orchestrator',
 				spawned_by_tool_call_id: 'toolu-1',
+				'instance_ai.canonical_name': 'instance-ai.background_subagent',
+			}),
+		);
+		expect(tracing?.actorRun.metadata).toEqual(
+			expect.objectContaining({
+				'instance_ai.canonical_name': 'instance-ai.agent.workflow-builder',
 			}),
 		);
 
@@ -1071,6 +1120,12 @@ describe('createInstanceAiTraceContext', () => {
 						description: 'Submit a workflow to n8n.',
 					},
 				} as never,
+				runtimeTools: {
+					workspace_read_file: {
+						name: 'workspace_read_file',
+						description: 'Read a file from the workspace.',
+					},
+				} as never,
 				modelId: 'anthropic/claude-sonnet-4-6',
 			}),
 		);
@@ -1086,7 +1141,19 @@ describe('createInstanceAiTraceContext', () => {
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
 		expect(actorInputs.loaded_tool_count).toBe(2);
 		expect(actorInputs.loaded_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.assigned_tool_count).toBe(2);
+		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.runtime_tool_count).toBe(1);
+		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
 		expect(actorInputs.loaded_tool_schema_hash).toEqual(expect.any(String));
+		const actorSpan = agentsMock
+			.getSpans()
+			.find((span) => span.id === tracing?.actorRun.otelSpanId);
+		const spanInputs = jsonParse<Record<string, unknown>>(
+			actorSpan?.attributes['gen_ai.prompt'] as string,
+		);
+		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
 		expect(loadedTools).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -1262,10 +1329,10 @@ describe('createInstanceAiTraceContext', () => {
 
 		const spans = agentsMock.getSpans();
 		const spanNames = spans.map((span) => span.name);
-		expect(spanNames).toContain('instance-ai.hitl.suspend');
-		expect(
-			spans.find((span) => span.name === 'instance-ai.hitl.suspend')?.attributes.tool_call_id,
-		).toBe('toolu-ask');
+		expect(spanNames).toContain('hitl: suspend');
+		expect(spans.find((span) => span.name === 'hitl: suspend')?.attributes.tool_call_id).toBe(
+			'toolu-ask',
+		);
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
@@ -1312,7 +1379,8 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const subAgentRun = await tracing!.startChildRun(tracing!.orchestratorRun, {
-			name: 'instance-ai.subagent.workflow-builder.stream',
+			name: 'agent: workflow-builder',
+			canonicalName: 'instance-ai.subagent.workflow-builder.stream',
 			tags: ['sub-agent'],
 			metadata: { agent_role: 'workflow-builder' },
 			inputs: { task: 'Build a workflow' },
@@ -1399,8 +1467,8 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		const spanNames = agentsMock.getSpans().map((span) => span.name);
-		expect(spanNames).toContain('instance-ai.hitl.resume');
-		expect(spanNames).not.toContain('instance-ai.hitl.suspend');
+		expect(spanNames).toContain('hitl: resume');
+		expect(spanNames).not.toContain('hitl: suspend');
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
@@ -1473,7 +1541,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 
-		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
+		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'turn');
 		expect(rootSpan).toBeDefined();
 		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
@@ -1490,7 +1558,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'no proxy test' },
 		});
 
-		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
+		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'turn');
 		expect(rootSpan).toBeDefined();
 		expect(langsmithMock.getCreatedLegacyLegacyRunTrees()).toHaveLength(0);
 	});
@@ -1577,8 +1645,8 @@ describe('createInstanceAiTraceContext', () => {
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
 
 		const spans = agentsMock.getSpans();
-		const rootSpan = spans.find((span) => span.name === 'instance-ai.message_turn');
-		const orchestratorSpan = spans.find((span) => span.name === 'instance-ai.agent.orchestrator');
+		const rootSpan = spans.find((span) => span.name === 'turn');
+		const orchestratorSpan = spans.find((span) => span.name === 'agent: orchestrator');
 		const providerSpan = spans.find((span) => span.name === 'ai.streamText.doStream');
 		const localToolSpan = spans.find((span) => span.name === 'ai.toolCall');
 

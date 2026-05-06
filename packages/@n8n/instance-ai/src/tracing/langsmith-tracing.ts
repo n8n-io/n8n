@@ -84,6 +84,12 @@ const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
 const LANGSMITH_SPAN_TAGS = 'langsmith.span.tags';
 const GEN_AI_PROMPT = 'gen_ai.prompt';
 const GEN_AI_COMPLETION = 'gen_ai.completion';
+const LLM_AI_SDK_OPERATION_IDS = new Set([
+	'ai.generateText.doGenerate',
+	'ai.streamText.doStream',
+	'ai.generateObject.doGenerate',
+	'ai.streamObject.doStream',
+]);
 
 interface ProductOtelTraceRuntime {
 	telemetry: BuiltTelemetry;
@@ -123,8 +129,101 @@ function stableDottedOrder(parentRun: InstanceAiTraceRun | undefined, runId: str
 	return parentRun?.dottedOrder ? `${parentRun.dottedOrder}.${runId}` : runId;
 }
 
+function formatTraceLabel(value: string): string {
+	return value
+		.trim()
+		.replace(/[._\s]+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
+function formatAgentRoleLabel(role: string): string {
+	return formatTraceLabel(role.replace(/^instance-ai[._-]?/, ''));
+}
+
+function formatResumeReasonLabel(reason: unknown): string {
+	if (typeof reason !== 'string' || reason.trim().length === 0) {
+		return 'checkpoint';
+	}
+
+	return reason
+		.trim()
+		.replace(/[._-]+/g, ' ')
+		.replace(/\s+/g, ' ');
+}
+
+function formatInternalOperationLabel(operationName: string): string {
+	return formatAgentRoleLabel(operationName);
+}
+
+function inferDisplayKind(name: string): string {
+	if (name === 'turn') return 'turn';
+	if (name.startsWith('agent:')) return 'agent';
+	if (name.startsWith('llm:')) return 'llm';
+	if (name.startsWith('tool:')) return 'tool';
+	if (name.startsWith('prepare:')) return 'prepare';
+	if (name.startsWith('resume:')) return 'resume';
+	if (name.startsWith('background task:')) return 'background_task';
+	if (name.startsWith('hitl:')) return 'hitl';
+	if (name.startsWith('internal:')) return 'internal';
+	return 'operation';
+}
+
+function inferDisplayGroup(
+	metadata: Record<string, unknown> | undefined,
+	name: string,
+): string | undefined {
+	const role =
+		typeof metadata?.agent_role === 'string'
+			? metadata.agent_role
+			: typeof metadata?.subagent_role === 'string'
+				? metadata.subagent_role
+				: undefined;
+	if (role) {
+		return formatAgentRoleLabel(role);
+	}
+
+	if (name.startsWith('prepare:')) return 'preparation';
+	if (name.startsWith('hitl:')) return 'human-in-the-loop';
+	if (name === 'turn') return 'conversation';
+	return undefined;
+}
+
+function inferDisplayPhase(metadata: Record<string, unknown> | undefined): string | undefined {
+	return typeof metadata?.execution_mode === 'string'
+		? formatTraceLabel(metadata.execution_mode)
+		: undefined;
+}
+
+function buildProductSpanMetadata(options: {
+	name: string;
+	canonicalName?: string;
+	metadata?: Record<string, unknown>;
+}): Record<string, unknown> {
+	const canonicalName = options.canonicalName ?? options.name;
+	const displayGroup = inferDisplayGroup(options.metadata, options.name);
+	const displayPhase = inferDisplayPhase(options.metadata);
+	const displayDefaults = {
+		trace_version: OTEL_TRACE_VERSION,
+		'instance_ai.trace_version': OTEL_TRACE_VERSION,
+		display_kind: inferDisplayKind(options.name),
+		...(displayGroup ? { display_group: displayGroup } : {}),
+		...(displayPhase ? { display_phase: displayPhase } : {}),
+	};
+
+	return (
+		mergeMetadata(displayDefaults, options.metadata, {
+			display_name: options.name,
+			'instance_ai.display_name': options.name,
+			'instance_ai.canonical_name': canonicalName,
+			'instance_ai.run_name': canonicalName,
+		}) ?? {}
+	);
+}
+
 function buildProductSpanAttributes(options: {
 	name: string;
+	canonicalName?: string;
 	runType?: string;
 	tags?: string[];
 	metadata?: Record<string, unknown>;
@@ -142,10 +241,7 @@ function buildProductSpanAttributes(options: {
 		attributes[LANGSMITH_SPAN_TAGS] = tags;
 	}
 
-	const metadata = mergeMetadata(options.metadata, {
-		trace_version: OTEL_TRACE_VERSION,
-		'instance_ai.trace_version': OTEL_TRACE_VERSION,
-	});
+	const metadata = buildProductSpanMetadata(options);
 	for (const [key, value] of Object.entries(metadata ?? {})) {
 		const attributeValue = toTelemetryAttributeValue(value);
 		if (attributeValue === undefined) continue;
@@ -176,6 +272,7 @@ function startProductSpan(
 	options: {
 		projectName: string;
 		name: string;
+		canonicalName?: string;
 		runType?: string;
 		tags?: string[];
 		metadata?: Record<string, unknown>;
@@ -189,6 +286,7 @@ function startProductSpan(
 		throw new Error('Instance AI tracing requires an OpenTelemetry tracer');
 	}
 
+	const spanMetadata = buildProductSpanMetadata(options);
 	const parentContext = options.root
 		? ROOT_CONTEXT
 		: (options.parentContext ??
@@ -205,8 +303,8 @@ function startProductSpan(
 	const traceId = langsmithTraceIdFromOtelTraceId(spanContext.traceId);
 	const runId = langsmithRunIdFromOtelSpanId(spanContext.spanId);
 	const spanContextWithSpan = otelTrace.setSpan(parentContext ?? otelContext.active(), span);
-
 	const parentRun = options.parentRun;
+	const runMetadata = mergeMetadata(parentRun?.metadata, spanMetadata);
 	const run: InstanceAiTraceRun = {
 		id: runId,
 		name: options.name,
@@ -221,7 +319,7 @@ function startProductSpan(
 		childExecutionOrder: 0,
 		...(parentRun ? { parentRunId: parentRun.id } : {}),
 		...(options.tags ? { tags: normalizeTags(DEFAULT_TAGS, parentRun?.tags, options.tags) } : {}),
-		...(options.metadata ? { metadata: mergeMetadata(parentRun?.metadata, options.metadata) } : {}),
+		...(runMetadata ? { metadata: runMetadata } : {}),
 		...(options.inputs !== undefined ? { inputs: sanitizeTracePayload(options.inputs) } : {}),
 	};
 
@@ -423,6 +521,7 @@ interface CreateInternalOperationTraceContextOptions
 
 interface CurrentTraceSpanOptions<T = unknown> {
 	name: string;
+	canonicalName?: string;
 	runType?: string;
 	tags?: string[];
 	metadata?: Record<string, unknown>;
@@ -434,6 +533,7 @@ interface AgentTraceInputOptions {
 	systemPrompt?: string;
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
+	runtimeTools?: InstanceAiToolRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -1023,6 +1123,94 @@ function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>
 	});
 }
 
+function readStringAttribute(
+	attributes: Record<string, unknown>,
+	keys: string[],
+): string | undefined {
+	for (const key of keys) {
+		const value = attributes[key];
+		if (typeof value === 'string' && value.length > 0) {
+			return value;
+		}
+	}
+	return undefined;
+}
+
+function inferNativeLlmRole(attributes: Record<string, unknown>): string | undefined {
+	return readStringAttribute(attributes, [
+		'ai.telemetry.metadata.agent_role',
+		'langsmith.metadata.agent_role',
+		'agent_role',
+	]);
+}
+
+function displayNameForNativeLlmSpan(attributes: Record<string, unknown>): string {
+	const role = inferNativeLlmRole(attributes);
+	if (role === 'thread_title') {
+		return 'llm: title';
+	}
+
+	if (role) {
+		return `llm: ${formatAgentRoleLabel(role)}`;
+	}
+
+	const functionId = readStringAttribute(attributes, [
+		'ai.telemetry.functionId',
+		'resource.name',
+		'operation.name',
+	]);
+	if (functionId) {
+		return `llm: ${formatAgentRoleLabel(functionId.replace(/^instance-ai[._-]?/, ''))}`;
+	}
+
+	return 'llm';
+}
+
+function setLangSmithMetadataAttribute(
+	attributes: Record<string, unknown>,
+	key: string,
+	value: unknown,
+): void {
+	attributes[key] = value;
+	if (!key.startsWith('langsmith.metadata.')) {
+		attributes[`langsmith.metadata.${key}`] = value;
+	}
+}
+
+function renameNativeLlmSpanForLangSmith(
+	span: Record<string, unknown>,
+	attributes: Record<string, unknown>,
+): void {
+	const operationId = readStringAttribute(attributes, ['ai.operationId']);
+	if (!operationId || !LLM_AI_SDK_OPERATION_IDS.has(operationId)) {
+		return;
+	}
+
+	const displayName = displayNameForNativeLlmSpan(attributes);
+	span.name = displayName;
+	attributes[LANGSMITH_TRACE_NAME] = displayName;
+	const displayGroup = inferNativeLlmRole(attributes);
+	setLangSmithMetadataAttribute(attributes, 'display_name', displayName);
+	setLangSmithMetadataAttribute(attributes, 'display_kind', 'llm');
+	setLangSmithMetadataAttribute(
+		attributes,
+		'display_group',
+		displayGroup ? formatAgentRoleLabel(displayGroup) : 'llm',
+	);
+	const executionMode = readStringAttribute(attributes, [
+		'ai.telemetry.metadata.execution_mode',
+		'langsmith.metadata.execution_mode',
+		'execution_mode',
+	]);
+	if (executionMode) {
+		setLangSmithMetadataAttribute(attributes, 'display_phase', formatTraceLabel(executionMode));
+	}
+	setLangSmithMetadataAttribute(attributes, 'ai_sdk.operation', operationId);
+	setLangSmithMetadataAttribute(attributes, 'instance_ai.display_name', displayName);
+	setLangSmithMetadataAttribute(attributes, 'instance_ai.canonical_name', operationId);
+	setLangSmithMetadataAttribute(attributes, 'instance_ai.run_name', operationId);
+}
+
 export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	if (!isRecord(span) || !isRecord(span.attributes)) {
 		return span;
@@ -1034,6 +1222,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeAnthropicUsageForLangSmith(attributes);
+	renameNativeLlmSpanForLangSmith(span, attributes);
 	span.attributes = attributes;
 	return span;
 }
@@ -1221,7 +1410,7 @@ function summarizeToolForManifest(name: string, tool: unknown): Record<string, u
 }
 
 function summarizeToolSet(
-	fieldPrefix: 'loaded' | 'deferred',
+	fieldPrefix: 'loaded' | 'deferred' | 'runtime',
 	tools: InstanceAiToolRegistry | undefined,
 ): Record<string, unknown> {
 	if (!tools || Object.keys(tools).length === 0) {
@@ -1241,8 +1430,18 @@ function summarizeToolSet(
 	const toolNames = summaries
 		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
 		.filter((name): name is string => name !== undefined);
+	const aliases: Record<string, unknown> = {};
+	if (fieldPrefix === 'loaded') {
+		aliases.assigned_tool_count = summaries.length;
+		aliases.assigned_tool_names = toolNames;
+	}
+	if (fieldPrefix === 'runtime') {
+		aliases.runtime_tool_count = summaries.length;
+		aliases.runtime_tool_names = toolNames;
+	}
 
 	return {
+		...aliases,
 		[`${fieldPrefix}_tool_count`]: summaries.length,
 		[`${fieldPrefix}_tool_names`]: toolNames,
 		[`${fieldPrefix}_tool_manifest`]: serializeTraceText(JSON.stringify(summaries)),
@@ -1479,13 +1678,13 @@ export function mergeTraceRunInputs(
 		return;
 	}
 
-	const mergedInputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
-	run.inputs = mergedInputs;
-
-	const currentProductTrace = getCurrentProductTrace();
-	if (currentProductTrace) {
-		updateProductRunInputs(currentProductTrace.runtime, run, inputs);
+	const runtime = getCurrentProductTrace()?.runtime ?? otelTraceRuntimes.get(run.traceId);
+	if (runtime) {
+		updateProductRunInputs(runtime, run, inputs);
+		return;
 	}
+
+	run.inputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
 }
 
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
@@ -1499,6 +1698,7 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeMemoryBinding(options.memory),
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
+		...summarizeToolSet('runtime', options.runtimeTools),
 	});
 }
 
@@ -1515,6 +1715,7 @@ export async function withCurrentTraceSpan<T>(
 	const spanRun = startProductSpan(currentProductTrace.runtime, {
 		projectName: currentProductTrace.currentRun.projectName,
 		name: options.name,
+		canonicalName: options.canonicalName,
 		runType: options.runType ?? 'chain',
 		tags: options.tags,
 		metadata: options.metadata,
@@ -1575,6 +1776,7 @@ async function startAndFinishProductChildSpan(
 	currentTrace: { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun },
 	options: {
 		name: string;
+		canonicalName?: string;
 		runType?: string;
 		tags?: string[];
 		metadata?: Record<string, unknown>;
@@ -1587,6 +1789,7 @@ async function startAndFinishProductChildSpan(
 	const childRun = startProductSpan(currentTrace.runtime, {
 		projectName: currentTrace.currentRun.projectName,
 		name: options.name,
+		canonicalName: options.canonicalName,
 		runType: options.runType ?? 'chain',
 		tags: options.tags,
 		metadata: options.metadata,
@@ -1620,7 +1823,8 @@ async function traceProductSuspendableToolExecute(
 					...context,
 					suspend: async (suspendPayload: unknown) => {
 						await startAndFinishProductChildSpan(currentTrace, {
-							name: 'instance-ai.hitl.suspend',
+							name: 'hitl: suspend',
+							canonicalName: 'instance-ai.hitl.suspend',
 							runType: 'chain',
 							tags: ['hitl'],
 							metadata: mergeMetadata(buildSuspendMetadata(tool.name, suspendPayload), {
@@ -1636,7 +1840,8 @@ async function traceProductSuspendableToolExecute(
 
 	if (isResume) {
 		await startAndFinishProductChildSpan(currentTrace, {
-			name: 'instance-ai.hitl.resume',
+			name: 'hitl: resume',
+			canonicalName: 'instance-ai.hitl.resume',
 			runType: 'chain',
 			tags: ['hitl', 'resume'],
 			metadata: mergeMetadata(buildSuspendMetadata(tool.name, resumeData), {
@@ -1693,6 +1898,7 @@ function createTraceContext(
 			return startProductSpan(otelRuntime, {
 				projectName,
 				name: init.name,
+				canonicalName: init.canonicalName,
 				runType: init.runType,
 				tags: init.tags,
 				metadata: mergeMetadata(parentRun.metadata, init.metadata),
@@ -2101,7 +2307,8 @@ export async function createInstanceAiTraceContext(
 		const traceContextRef: { current?: InstanceAiTraceContext } = {};
 		const messageRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: 'instance-ai.message_turn',
+			name: 'turn',
+			canonicalName: 'instance-ai.message_turn',
 			runType: 'chain',
 			tags: ['message-turn'],
 			metadata: mergeMetadata(baseMetadata, {
@@ -2184,7 +2391,8 @@ export async function continueInstanceAiTraceContext(
 		const otelRuntime = await createProductOtelRuntime(projectName, proxyConfig);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: 'instance-ai.orchestrator_resume',
+			name: `resume: ${formatResumeReasonLabel(options.metadata?.resume_reason)}`,
+			canonicalName: 'instance-ai.orchestrator_resume',
 			runType: 'chain',
 			tags: ['orchestrator-resume'],
 			metadata: mergeMetadata(baseMetadata, {
@@ -2198,7 +2406,8 @@ export async function continueInstanceAiTraceContext(
 		});
 		const orchestratorRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: 'instance-ai.agent.orchestrator',
+			name: 'agent: orchestrator',
+			canonicalName: 'instance-ai.agent.orchestrator',
 			runType: 'chain',
 			tags: ['orchestrator', 'resume'],
 			metadata: mergeMetadata(baseMetadata, {
@@ -2253,7 +2462,8 @@ export async function createDetachedSubAgentTraceContext(
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: 'instance-ai.background_subagent',
+			name: `background task: ${formatAgentRoleLabel(options.role)}`,
+			canonicalName: 'instance-ai.background_subagent',
 			runType: 'chain',
 			tags: normalizeTags(
 				['sub-agent', 'background'],
@@ -2285,7 +2495,8 @@ export async function createDetachedSubAgentTraceContext(
 		});
 		const actorRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: `instance-ai.agent.${options.role}`,
+			name: `agent: ${formatAgentRoleLabel(options.role)}`,
+			canonicalName: `instance-ai.agent.${options.role}`,
 			runType: 'chain',
 			tags: normalizeTags(
 				['sub-agent', 'background'],
@@ -2375,7 +2586,8 @@ export async function createInternalOperationTraceContext(
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: `instance-ai.internal.${options.operationName}`,
+			name: `internal: ${formatInternalOperationLabel(options.operationName)}`,
+			canonicalName: `instance-ai.internal.${options.operationName}`,
 			runType: 'chain',
 			tags: ['internal-operation'],
 			metadata: mergeMetadata(baseMetadata, {
