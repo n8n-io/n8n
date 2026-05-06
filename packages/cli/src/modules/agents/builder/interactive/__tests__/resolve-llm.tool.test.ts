@@ -55,22 +55,17 @@ describe('resolve_llm tool', () => {
 	});
 
 	it('uses the requested model for the requested provider', async () => {
-		const credentialProvider = makeProvider([
-			{ id: 'c1', name: 'My OpenRouter', type: 'openRouterApi' },
-		]);
+		const credentialProvider = makeProvider([{ id: 'c1', name: 'My xAI', type: 'xAiApi' }]);
 		const modelLookup = makeModelLookup();
 		const tool = buildResolveLlmTool({ credentialProvider, modelLookup });
-		const result = await tool.handler!(
-			{ provider: 'openrouter', model: 'meta-llama/llama-3.1-70b-instruct' },
-			{},
-		);
+		const result = await tool.handler!({ provider: 'xai', model: 'grok-4-fast' }, {});
 
 		expect(result).toEqual({
 			ok: true,
-			provider: 'openrouter',
-			model: 'meta-llama/llama-3.1-70b-instruct',
+			provider: 'xai',
+			model: 'grok-4-fast',
 			credentialId: 'c1',
-			credentialName: 'My OpenRouter',
+			credentialName: 'My xAI',
 		});
 	});
 

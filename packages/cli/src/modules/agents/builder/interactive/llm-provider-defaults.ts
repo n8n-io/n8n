@@ -82,5 +82,14 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	deepSeekApi: { provider: 'deepseek', defaultModel: 'deepseek-chat' },
 	cohereApi: { provider: 'cohere', defaultModel: 'command-r-plus' },
-	openRouterApi: { provider: 'openrouter', defaultModel: 'anthropic/claude-sonnet-4.6' },
+	openRouterApi: {
+		provider: 'openrouter',
+		defaultModel: 'anthropic/claude-sonnet-4.6',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
 };
