@@ -27,6 +27,8 @@ export interface ConsumeWithHitlOptions {
 	llmStepTraceHooks?: LlmStepTraceHooks;
 	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
 	maxSteps?: number;
+	/** Additional options to preserve when resuming a suspended stream. */
+	resumeOptions?: Record<string, unknown>;
 }
 
 export interface ConsumeWithHitlResult {
@@ -73,6 +75,7 @@ export async function consumeStreamWithHitl(
 							runId: mastraRunId,
 							toolCallId: suspension.toolCallId,
 							maxSteps: options.maxSteps,
+							...(options.resumeOptions ?? {}),
 						}),
 					}
 				: {}),

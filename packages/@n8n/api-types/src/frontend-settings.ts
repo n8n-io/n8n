@@ -316,6 +316,19 @@ export type FrontendModuleSettings = {
 		/** Whether system roles (admin, editor) have external secrets scopes. */
 		systemRolesEnabled: boolean;
 	};
+
+	/**
+	 * Client settings for the agents module.
+	 */
+	agents?: {
+		/**
+		 * Enabled agent sub-feature modules. Each token unlocks a specific
+		 * capability inside the agents module (see the backend's
+		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
+		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 */
+		modules: string[];
+	};
 };
 
 export type N8nEnvFeatFlagValue = boolean | string | number | undefined;

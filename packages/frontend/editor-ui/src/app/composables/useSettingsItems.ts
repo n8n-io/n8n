@@ -146,16 +146,6 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
 			},
 			{
-				id: 'settings-instance-registry',
-				icon: 'server',
-				label: i18n.baseText('settings.instanceRegistry'),
-				position: 'top',
-				available:
-					envFeatureFlagCheck.value('INSTANCE_REGISTRY') &&
-					canUserAccessRouteByName(VIEWS.INSTANCE_REGISTRY),
-				route: { to: { name: VIEWS.INSTANCE_REGISTRY } },
-			},
-			{
 				id: 'settings-workersview',
 				icon: 'waypoints',
 				label: i18n.baseText('mainSidebar.workersView'),

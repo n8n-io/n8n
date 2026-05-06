@@ -6,20 +6,17 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
-import type { RoleService } from '@/services/role.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
-	const roleService = mock<RoleService>();
 
 	const executionsController = new ExecutionsController(
 		executionService,
 		mock(),
 		workflowSharingService,
 		mock(),
-		roleService,
 	);
 
 	beforeEach(() => {
@@ -90,7 +87,10 @@ describe('ExecutionsController', () => {
 			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
-					roleService.rolesWithScope.mockResolvedValue([]);
+					executionService.buildSharingOptions.mockResolvedValue({
+						workflowRoles: [],
+						projectRoles: [],
+					});
 					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
@@ -108,7 +108,10 @@ describe('ExecutionsController', () => {
 			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
-					roleService.rolesWithScope.mockResolvedValue([]);
+					executionService.buildSharingOptions.mockResolvedValue({
+						workflowRoles: [],
+						projectRoles: [],
+					});
 					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
@@ -124,7 +127,10 @@ describe('ExecutionsController', () => {
 
 		describe('if both status and range provided', () => {
 			it('should fetch executions per query', async () => {
-				roleService.rolesWithScope.mockResolvedValue([]);
+				executionService.buildSharingOptions.mockResolvedValue({
+					workflowRoles: [],
+					projectRoles: [],
+				});
 				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 				const rangeQuery: ExecutionSummaries.RangeQuery = {

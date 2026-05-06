@@ -121,6 +121,8 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .bar {
 	display: flex;
 	align-items: center;
@@ -146,23 +148,14 @@ onUnmounted(() => {
 }
 
 .dot {
+	--animation--opacity-pulse--duration: 1.5s;
+
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
 	background: var(--color--primary);
-	animation: pulse 1.5s ease-in-out infinite;
+	@include motion.opacity-pulse;
 	flex-shrink: 0;
-}
-
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-
-	50% {
-		opacity: 0.4;
-	}
 }
 
 .label {

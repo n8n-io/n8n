@@ -99,7 +99,7 @@ export const databaseFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				placeholder:
-					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+					'https://www.notion.com/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
 				validation: [
 					{
 						type: 'regex',
@@ -133,7 +133,7 @@ export const databaseFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {

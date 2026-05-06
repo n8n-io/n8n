@@ -4,10 +4,10 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
+import type { NodeCatalogService } from '@/node-catalog';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
-import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const inputSchema = {
 	queries: z
@@ -30,7 +30,7 @@ const outputSchema = {
  */
 export const createSearchWorkflowNodesTool = (
 	user: User,
-	workflowBuilderToolsService: WorkflowBuilderToolsService,
+	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
@@ -55,7 +55,7 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const result = await workflowBuilderToolsService.searchNodes(queries);
+			const result = await nodeCatalogService.searchNodes(queries);
 
 			telemetryPayload.results = { success: true, data: { queryCount: queries.length } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

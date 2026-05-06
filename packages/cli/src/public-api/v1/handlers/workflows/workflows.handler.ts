@@ -5,7 +5,6 @@ import { Container } from '@n8n/di';
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
-import type express from 'express';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -18,16 +17,44 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-export = {
+
+const handleError = (error: unknown) => {
+	if (error instanceof NotFoundError) {
+		throw error;
+	}
+	if (error instanceof Error) {
+		throw new BadRequestError(error.message);
+	}
+	throw error;
+};
+
+type WorkflowHandlers = {
+	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
+	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
+	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
+	getWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
+	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
+	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
+	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
+	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
+	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
+	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
+	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
+	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
+	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
+};
+
+const workflowHandlers: WorkflowHandlers = {
 	createWorkflow: [
 		publicApiScope('workflow:create'),
-		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const createdWorkflow = await createWorkflow(req.user, req.body);
 			return res.json(createdWorkflow);
 		},
@@ -35,7 +62,7 @@ export = {
 	transferWorkflow: [
 		publicApiScope('workflow:move'),
 		projectScope('workflow:move', 'workflow'),
-		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+		async (req, res) => {
 			const { id: workflowId } = req.params;
 
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
@@ -46,20 +73,20 @@ export = {
 				body.destinationProjectId,
 			);
 
-			res.status(204).send();
+			return res.status(204).send();
 		},
 	],
 	deleteWorkflow: [
 		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
-		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id: workflowId } = req.params;
 
 			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId, true);
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			return res.json(workflow);
@@ -68,7 +95,7 @@ export = {
 	getWorkflow: [
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
-		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const { excludePinnedData = false } = req.query;
 
@@ -86,7 +113,7 @@ export = {
 				// user trying to access a workflow they do not own
 				// and was not shared to them
 				// Or does not exist.
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			if (excludePinnedData) {
@@ -104,7 +131,7 @@ export = {
 	getWorkflowVersion: [
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
-		async (req: WorkflowRequest.GetVersion, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id: workflowId, versionId } = req.params;
 
 			try {
@@ -123,15 +150,15 @@ export = {
 				const { autosaved, ...versionWithoutInternalFields } = version;
 
 				return res.json(versionWithoutInternalFields);
-			} catch (error) {
-				return res.status(404).json({ message: 'Version not found' });
+			} catch {
+				throw new NotFoundError('Version not found');
 			}
 		},
 	],
 	getWorkflows: [
 		publicApiScope('workflow:list'),
 		validCursor,
-		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const {
 				offset = 0,
 				limit = 100,
@@ -268,7 +295,7 @@ export = {
 	updateWorkflow: [
 		publicApiScope('workflow:update'),
 		projectScope('workflow:update', 'workflow'),
-		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
@@ -288,20 +315,14 @@ export = {
 
 				return res.json(updatedWorkflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Not Found' });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
 	activateWorkflow: [
 		publicApiScope('workflow:activate'),
 		projectScope('workflow:publish', 'workflow'),
-		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const { versionId, name, description } = req.body;
 
@@ -315,20 +336,14 @@ export = {
 
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Not Found' });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
 	deactivateWorkflow: [
 		publicApiScope('workflow:deactivate'),
 		projectScope('workflow:unpublish', 'workflow'),
-		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 
 			try {
@@ -338,24 +353,18 @@ export = {
 
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Not Found' });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
 	getWorkflowTags: [
 		publicApiScope('workflowTags:list'),
 		projectScope('workflow:read', 'workflow'),
-		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 
 			if (Container.get(GlobalConfig).tags.disabled) {
-				return res.status(400).json({ message: 'Workflow Tags Disabled' });
+				throw new BadRequestError('Workflow Tags Disabled');
 			}
 
 			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
@@ -367,7 +376,7 @@ export = {
 			if (!workflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const tags = await getWorkflowTags(id);
@@ -378,12 +387,12 @@ export = {
 	updateWorkflowTags: [
 		publicApiScope('workflowTags:update'),
 		projectScope('workflow:update', 'workflow'),
-		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const newTags = req.body.map((newTag) => newTag.id);
 
 			if (Container.get(GlobalConfig).tags.disabled) {
-				return res.status(400).json({ message: 'Workflow Tags Disabled' });
+				throw new BadRequestError('Workflow Tags Disabled');
 			}
 
 			const sharedWorkflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
@@ -395,7 +404,7 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			let tags;
@@ -405,10 +414,10 @@ export = {
 			} catch (error) {
 				// TODO: add a `ConstraintFailureError` in typeorm to handle when tags are missing here
 				if (error instanceof QueryFailedError) {
-					return res.status(404).json({ message: 'Some tags not found' });
-				} else {
-					throw error;
+					throw new NotFoundError('Some tags not found');
 				}
+
+				return handleError(error);
 			}
 
 			return res.json(tags);
@@ -417,7 +426,7 @@ export = {
 	archiveWorkflow: [
 		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
-		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			try {
 				const workflow = await Container.get(WorkflowService).archiveForPublicApi(req.user, id);
@@ -426,17 +435,14 @@ export = {
 				}
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Workflow Not Found' });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
 	unarchiveWorkflow: [
 		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
-		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			try {
 				const workflow = await Container.get(WorkflowService).unarchiveForPublicApi(req.user, id);
@@ -445,14 +451,10 @@ export = {
 				}
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Workflow Not Found' });
-				}
-				if (error instanceof BadRequestError) {
-					return res.status(error.httpStatusCode).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
 };
+
+export = workflowHandlers;
