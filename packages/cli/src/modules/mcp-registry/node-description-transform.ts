@@ -1,5 +1,11 @@
 import { camelCase } from 'change-case';
-import type { ICredentialType, INodeProperties, INodeTypeDescription, Themed } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INodeCredentialDescription,
+	INodeProperties,
+	INodeTypeDescription,
+	Themed,
+} from 'n8n-workflow';
 
 import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types';
 
@@ -8,11 +14,11 @@ export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
 
-function getMcpRegistryNodeTypeName(server: Pick<McpRegistryServer, 'slug'>): string {
+function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 	return camelCase(server.slug);
 }
 
-function getMcpRegistryCredentialTypeName(server: Pick<McpRegistryServer, 'slug'>): string {
+function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
@@ -48,9 +54,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 	};
 }
 
-function getNodeDescriptionCredentials(
-	server: Pick<McpRegistryServer, 'authType' | 'slug'>,
-): INodeTypeDescription['credentials'] {
+function getNodeDescriptionCredentials(server: McpRegistryServer): INodeCredentialDescription[] {
 	switch (server.authType) {
 		case 'oauth2':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];

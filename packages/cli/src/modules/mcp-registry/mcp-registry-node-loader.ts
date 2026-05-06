@@ -15,7 +15,6 @@ import {
 	type NodeLoader,
 } from 'n8n-workflow';
 
-
 import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
@@ -43,7 +42,6 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	private nodeTypes: INodeTypeData = {};
 
-	// TODO: remove this?
 	private credentialTypes: ICredentialTypeData = {};
 
 	private typesReleased = true;
@@ -72,9 +70,9 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			const bareName = camelCase(server.slug);
 
 			this.types.nodes.push(nodeDescription);
-			const syntheticNode: INodeType = Object.create(baseNode, {
+			const syntheticNode = Object.create(baseNode, {
 				description: { value: nodeDescription, enumerable: true },
-			});
+			}) as INodeType;
 			this.nodeTypes[bareName] = { type: syntheticNode, sourcePath };
 			this.known.nodes[bareName] = {
 				className: 'McpRegistryClientTool',
