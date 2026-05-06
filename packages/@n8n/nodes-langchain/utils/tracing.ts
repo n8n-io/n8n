@@ -1,6 +1,9 @@
-import type { BaseCallbackConfig } from '@langchain/core/callbacks/manager';
+import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
+import { trace } from '@opentelemetry/api';
 import type { FieldType, IExecuteFunctions, ISupplyDataFunctions, Logger } from 'n8n-workflow';
 import { jsonParse, validateFieldType } from 'n8n-workflow';
+
+import { OtelAiCallbackHandler } from './otel-ai-callback-handler';
 
 interface TracingConfig {
 	additionalMetadata?: Record<string, unknown>;
@@ -89,6 +92,16 @@ export function getTracingConfig(
 			? context.getParentCallbackManager()
 			: undefined;
 
+	// Build callbacks array, including OTEL handler when an active span exists
+	// (indicating OTEL is enabled and the node is being traced).
+	// When OTEL is not configured, trace.getActiveSpan() returns undefined and no handler is added.
+	let callbacks: Callbacks | undefined = parentRunManager;
+	const activeSpan = trace.getActiveSpan();
+	if (activeSpan) {
+		const otelHandler = new OtelAiCallbackHandler(activeSpan);
+		callbacks = parentRunManager ? [parentRunManager, otelHandler] : [otelHandler];
+	}
+
 	return {
 		runName: `[${context.getWorkflow().name}] ${context.getNode().name}`,
 		metadata: {
@@ -97,6 +110,6 @@ export function getTracingConfig(
 			node: context.getNode().name,
 			...(config.additionalMetadata ?? {}),
 		},
-		callbacks: parentRunManager,
+		callbacks,
 	};
 }

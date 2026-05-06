@@ -2064,6 +2064,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@pinecone-database/pinecone':
         specifier: ^5.0.2
         version: 5.1.2

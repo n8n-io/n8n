@@ -264,6 +264,7 @@
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n/typescript-config": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
     "vm2": "catalog:",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",

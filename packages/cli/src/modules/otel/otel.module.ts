@@ -29,6 +29,7 @@ export class OtelModule implements ModuleInterface {
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
+			includeAiSpans: config.includeAiSpans,
 		};
 	}
 
