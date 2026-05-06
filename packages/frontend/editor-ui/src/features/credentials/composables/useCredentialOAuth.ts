@@ -91,7 +91,6 @@ export function useCredentialOAuth() {
 				!overwrittenProperties.includes(prop.name),
 		);
 
-		// TODO: extract this case out of this func?
 		if (visibleProperties.length === 0) {
 			return true;
 		}
