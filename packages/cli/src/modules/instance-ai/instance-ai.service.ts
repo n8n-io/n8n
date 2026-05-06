@@ -901,6 +901,22 @@ export class InstanceAiService {
 		if (!traceContext) return;
 
 		try {
+			if (
+				traceContext.actorRun.id !== traceContext.rootRun.id &&
+				traceContext.actorRun.endTime === undefined
+			) {
+				await traceContext.finishRun(traceContext.actorRun, {
+					outputs: {
+						status: options.status,
+						...options.outputs,
+					},
+					metadata: {
+						final_status: options.status,
+						...options.metadata,
+					},
+					...(options.error ? { error: options.error } : {}),
+				});
+			}
 			await traceContext.finishRun(traceContext.rootRun, {
 				outputs: {
 					status: options.status,
