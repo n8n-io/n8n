@@ -12,7 +12,14 @@ import {
 	randomValidPassword,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
+import {
+	AuthIdentity,
+	AuthIdentityRepository,
+	type User,
+	UserRepository,
+	RoleRepository,
+	RoleMappingRuleRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
@@ -43,11 +50,17 @@ import * as utils from '../shared/utils/';
 
 let someUser: User;
 let owner: User;
+let samlUser: User;
 let authMemberAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
+let authSamlUserAgent: SuperAgentTest;
 
 async function enableSaml(enable: boolean) {
 	await setSamlLoginEnabled(enable);
+}
+
+async function attachSamlIdentity(user: User, providerId: string) {
+	await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, providerId, 'saml'));
 }
 
 const testServer = utils.setupTestServer({
@@ -56,12 +69,16 @@ const testServer = utils.setupTestServer({
 });
 
 const memberPassword = randomValidPassword();
+const samlUserPassword = randomValidPassword();
 
 beforeAll(async () => {
 	owner = await createOwner();
 	someUser = await createUser({ password: memberPassword });
+	samlUser = await createUser({ password: samlUserPassword });
+	await attachSamlIdentity(samlUser, `saml-${samlUser.id}`);
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(someUser);
+	authSamlUserAgent = testServer.authAgentFor(samlUser);
 	Container.get(GlobalConfig).sso.saml.loginEnabled = true;
 });
 
@@ -91,6 +108,63 @@ describe('Instance owner', () => {
 					lastName: randomName(),
 				})
 				.expect(400, { code: 400, message: 'SAML user may not change their email' });
+		});
+	});
+
+	describe('PATCH /me for a user with a SAML auth_identity', () => {
+		test('should reject profile update while SAML is enabled', async () => {
+			await enableSaml(true);
+			await authSamlUserAgent
+				.patch('/me')
+				.send({
+					email: samlUser.email,
+					firstName: 'NewFirst',
+					lastName: samlUser.lastName,
+				})
+				.expect(400, {
+					code: 400,
+					message: 'SAML user may not change their profile information',
+				});
+		});
+
+		test('should allow profile update once SAML is disabled', async () => {
+			await enableSaml(false);
+			const newFirstName = randomName();
+			const newLastName = randomName();
+
+			await authSamlUserAgent
+				.patch('/me')
+				.send({
+					email: samlUser.email,
+					firstName: newFirstName,
+					lastName: newLastName,
+				})
+				.expect(200);
+
+			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
+			expect(refreshed.firstName).toBe(newFirstName);
+			expect(refreshed.lastName).toBe(newLastName);
+			samlUser.firstName = newFirstName;
+			samlUser.lastName = newLastName;
+		});
+
+		test('should allow email change once SAML is disabled', async () => {
+			await enableSaml(false);
+			const newEmail = randomEmail();
+
+			await authSamlUserAgent
+				.patch('/me')
+				.send({
+					email: newEmail,
+					firstName: samlUser.firstName,
+					lastName: samlUser.lastName,
+					currentPassword: samlUserPassword,
+				})
+				.expect(200);
+
+			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
+			expect(refreshed.email).toBe(newEmail);
+			samlUser.email = newEmail;
 		});
 	});
 

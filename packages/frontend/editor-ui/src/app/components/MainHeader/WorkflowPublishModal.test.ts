@@ -11,12 +11,10 @@ import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { WEBHOOK_NODE_TYPE, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();

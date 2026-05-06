@@ -336,6 +336,8 @@ export class InstanceAiService {
 
 	private readonly webhookBaseUrl: string;
 
+	private readonly formBaseUrl: string;
+
 	private readonly runState = new RunStateRegistry<User>();
 
 	private readonly backgroundTasks = new BackgroundTaskManager(
@@ -434,6 +436,7 @@ export class InstanceAiService {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
+		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
 		this.mcpClientManager = new McpClientManager(
 			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
@@ -2090,6 +2093,7 @@ export class InstanceAiService {
 			localMcpServer: context.localMcpServer,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
+			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
