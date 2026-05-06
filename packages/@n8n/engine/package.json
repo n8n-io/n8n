@@ -12,6 +12,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
     "test:dev": "vitest --watch",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
   "main": "dist/index.js",
@@ -19,10 +20,15 @@
   "files": [
     "dist/**/*"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "express": "5.1.0"
+  },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.1",
     "vitest": "catalog:"
   }
 }

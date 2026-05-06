@@ -1,5 +1,5 @@
 import { createVitestConfig } from '@n8n/vitest-config/node';
 
 export default createVitestConfig({
-	exclude: ['**/node_modules/**', '**/dist/**', '**/*.e2e.test.ts'],
+	include: ['**/*.e2e.test.ts'],
 });
