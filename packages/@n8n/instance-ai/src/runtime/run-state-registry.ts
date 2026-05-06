@@ -1,13 +1,14 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext } from '../types';
+import type { InstanceAiTraceContext, ModelConfig } from '../types';
 
 export interface ActiveRunState {
 	runId: string;
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -230,6 +231,7 @@ export class RunStateRegistry<TUser = unknown> {
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
+			modelId: suspended.modelId,
 		});
 		return suspended;
 	}

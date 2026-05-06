@@ -699,7 +699,7 @@ function enrichLangSmithToolAttributes(attributes: Record<string, unknown>): unk
 		0,
 		MAX_PROMPT_SCHEMA_TRACE_DEPTH,
 	);
-	const normalizedTools = Array.isArray(redactedTools) ? redactedTools : tools;
+	const normalizedTools: unknown[] = Array.isArray(redactedTools) ? redactedTools : tools;
 	const toolNames = normalizedTools
 		.map(toolNameFromDefinition)
 		.filter((name): name is string => name !== undefined);
@@ -926,13 +926,11 @@ function getToolInputSchema(tool: unknown): unknown {
 		return undefined;
 	}
 
-	if (
-		isRecord(inputSchema) &&
-		typeof inputSchema.toJSONSchema === 'function' &&
-		inputSchema.toJSONSchema.length === 0
-	) {
+	const toJSONSchema = isRecord(inputSchema) ? inputSchema.toJSONSchema : undefined;
+	if (typeof toJSONSchema === 'function' && toJSONSchema.length === 0) {
 		try {
-			return inputSchema.toJSONSchema();
+			const schema: unknown = Reflect.apply(toJSONSchema, inputSchema, []);
+			return schema;
 		} catch {
 			return { type: 'zod', conversion: 'failed' };
 		}
@@ -989,9 +987,10 @@ function summarizeToolSet(
 		summarizeToolForManifest(name, tool),
 	);
 	const catalogText = summaries
-		.map((tool) =>
-			typeof tool.description === 'string' ? `${tool.name}: ${tool.description}` : tool.name,
-		)
+		.map((tool) => {
+			const name = typeof tool.name === 'string' ? tool.name : 'unknown';
+			return typeof tool.description === 'string' ? `${name}: ${tool.description}` : name;
+		})
 		.join('\n');
 	const manifestHash = stableHash(summaries);
 	const toolNames = summaries
@@ -1416,11 +1415,7 @@ async function traceSuspendableToolExecute(
 		return await tool.handler(input, context);
 	}
 
-	try {
-		return await traceProductSuspendableToolExecute(tool, input, context, currentProductTrace);
-	} catch (error) {
-		throw error;
-	}
+	return await traceProductSuspendableToolExecute(tool, input, context, currentProductTrace);
 }
 
 function createTraceContext(
@@ -1429,12 +1424,13 @@ function createTraceContext(
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
 	otelRuntime: ProductOtelTraceRuntime,
-	getProxyHeaders?: () => Promise<Record<string, string>>,
+	proxyConfig?: ServiceProxyConfig,
 	telemetryFactory?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry,
 ): InstanceAiTraceContext {
 	otelTraceRuntimes.set(rootRun.traceId, otelRuntime);
 
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
+	const getProxyHeaders = proxyConfig?.getAuthHeaders;
+	const withProxy = async <T>(fn: () => T | Promise<T>): Promise<T> => {
 		if (!getProxyHeaders) return await fn();
 		const headers = await getProxyHeaders();
 		return await proxyHeaderStore.run(headers, fn);
@@ -1444,7 +1440,7 @@ function createTraceContext(
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
 	): Promise<InstanceAiTraceRun> =>
-		await withProxy(async () => {
+		await withProxy(() => {
 			const activeParentContext = getActiveOtelContextWithSpan();
 			return startProductSpan(otelRuntime, {
 				projectName,
@@ -1491,6 +1487,7 @@ function createTraceContext(
 	const ctx: InstanceAiTraceContext = {
 		projectName,
 		traceKind,
+		...(proxyConfig ? { proxyConfig } : {}),
 		rootRun,
 		actorRun,
 		messageRun: rootRun,
@@ -1748,6 +1745,7 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		message_group_id: options.messageGroupId,
 		message_id: options.messageId,
 		run_id: options.runId,
+		activation_id: options.runId,
 		user_id: options.userId,
 		'instance_ai.trace_version': OTEL_TRACE_VERSION,
 		...(options.modelId !== undefined
@@ -1869,7 +1867,7 @@ export async function createInstanceAiTraceContext(
 			messageRun,
 			messageRun,
 			otelRuntime,
-			options.proxyConfig?.getAuthHeaders,
+			options.proxyConfig,
 			createTelemetryFactory({
 				projectName,
 				traceKind: 'message_turn',
@@ -1892,16 +1890,46 @@ export async function createInstanceAiTraceContext(
 export async function continueInstanceAiTraceContext(
 	existingContext: InstanceAiTraceContext,
 	options: CreateInstanceAiTraceContextOptions,
-): Promise<InstanceAiTraceContext> {
+): Promise<InstanceAiTraceContext>;
+export async function continueInstanceAiTraceContext(
+	existingContext: InstanceAiTraceContext | undefined,
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined>;
+export async function continueInstanceAiTraceContext(
+	existingContext: InstanceAiTraceContext | undefined,
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	const proxyConfig = options.proxyConfig ?? existingContext?.proxyConfig;
+	if (!existingContext && !isLangSmithTracingEnabled(!!proxyConfig)) {
+		return undefined;
+	}
+	if (existingContext?.rootRun.traceId === 'stub' && !isLangSmithTracingEnabled(!!proxyConfig)) {
+		return existingContext;
+	}
+
+	ensureLangSmithTracingEnv();
+
 	const baseMetadata = buildBaseMetadata(options);
+	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
+	const continuedMetadata =
+		existingContext && existingContext.rootRun.traceId !== 'stub'
+			? {
+					continued_from_trace_id:
+						existingContext.rootRun.otelTraceId ?? existingContext.rootRun.traceId,
+					continued_from_run_id: existingContext.rootRun.id,
+					resumed_from_trace_id:
+						existingContext.rootRun.otelTraceId ?? existingContext.rootRun.traceId,
+					...(existingContext.actorRun.otelSpanId
+						? { resumed_from_span_id: existingContext.actorRun.otelSpanId }
+						: {}),
+					resumed_from_activation_id: existingContext.actorRun.id,
+				}
+			: {};
 
 	const createContinuation = async () => {
-		const otelRuntime = await createProductOtelRuntime(
-			existingContext.projectName,
-			options.proxyConfig,
-		);
+		const otelRuntime = await createProductOtelRuntime(projectName, proxyConfig);
 		const rootRun = startProductSpan(otelRuntime, {
-			projectName: existingContext.projectName,
+			projectName,
 			name: 'instance-ai.orchestrator_resume',
 			runType: 'chain',
 			tags: ['orchestrator-resume'],
@@ -1909,15 +1937,13 @@ export async function continueInstanceAiTraceContext(
 				agent_role: 'orchestrator_resume',
 				execution_mode: 'resume',
 				trace_kind: 'orchestrator_resume',
-				continued_from_trace_id:
-					existingContext.rootRun.otelTraceId ?? existingContext.rootRun.traceId,
-				continued_from_run_id: existingContext.rootRun.id,
+				...continuedMetadata,
 			}),
 			inputs: options.input,
 			root: true,
 		});
 		const orchestratorRun = startProductSpan(otelRuntime, {
-			projectName: existingContext.projectName,
+			projectName,
 			name: 'instance-ai.agent.orchestrator',
 			runType: 'chain',
 			tags: ['orchestrator', 'resume'],
@@ -1925,35 +1951,33 @@ export async function continueInstanceAiTraceContext(
 				agent_role: 'orchestrator',
 				execution_mode: 'resume',
 				trace_kind: 'orchestrator_resume',
-				continued_from_trace_id:
-					existingContext.rootRun.otelTraceId ?? existingContext.rootRun.traceId,
-				continued_from_run_id: existingContext.rootRun.id,
+				...continuedMetadata,
 			}),
 			inputs: options.input,
 			parentRun: rootRun,
 		});
 
 		return createTraceContext(
-			existingContext.projectName,
+			projectName,
 			'orchestrator_resume',
 			rootRun,
 			orchestratorRun,
 			otelRuntime,
-			options.proxyConfig?.getAuthHeaders,
+			proxyConfig,
 			createTelemetryFactory({
-				projectName: existingContext.projectName,
+				projectName,
 				traceKind: 'orchestrator_resume',
 				rootRun,
 				actorRun: orchestratorRun,
 				baseMetadata,
 				baseTelemetry: otelRuntime.telemetry,
-				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+				...(proxyConfig ? { proxyConfig } : {}),
 			}),
 		);
 	};
 
-	if (options.proxyConfig) {
-		const headers = await options.proxyConfig.getAuthHeaders();
+	if (proxyConfig) {
+		const headers = await proxyConfig.getAuthHeaders();
 		return await proxyHeaderStore.run(headers, createContinuation);
 	}
 	return await createContinuation();
@@ -2034,7 +2058,7 @@ export async function createDetachedSubAgentTraceContext(
 			rootRun,
 			actorRun,
 			otelRuntime,
-			options.proxyConfig?.getAuthHeaders,
+			options.proxyConfig,
 			createTelemetryFactory({
 				projectName,
 				traceKind: 'background_subagent',

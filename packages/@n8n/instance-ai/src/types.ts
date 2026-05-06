@@ -849,6 +849,7 @@ export interface InstanceAiTelemetryOptions {
 export interface InstanceAiTraceContext {
 	projectName: string;
 	traceKind: 'message_turn' | 'orchestrator_resume' | 'background_subagent' | 'internal_operation';
+	proxyConfig?: ServiceProxyConfig;
 	rootRun: InstanceAiTraceRun;
 	actorRun: InstanceAiTraceRun;
 	/** Compatibility alias for existing foreground-trace call sites. */

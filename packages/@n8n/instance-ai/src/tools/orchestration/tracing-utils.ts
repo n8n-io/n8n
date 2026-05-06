@@ -57,7 +57,7 @@ export function createDetachedSubAgentTraceFactory(
 	context: OrchestrationContext,
 	options: StartSubAgentTraceOptions,
 ): () => Promise<InstanceAiTraceContext | undefined> {
-	if (!context.tracing) return async () => undefined;
+	if (!context.tracing) return async () => await Promise.resolve(undefined);
 
 	const messageId =
 		typeof context.tracing.actorRun.metadata?.message_id === 'string'

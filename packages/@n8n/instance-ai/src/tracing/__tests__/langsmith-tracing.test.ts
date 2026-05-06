@@ -688,11 +688,11 @@ describe('createInstanceAiTraceContext', () => {
 		expect(redacted.attributes['llm.available_tool_names']).toEqual(['lookup']);
 		expect(redacted.attributes['llm.available_tool_count']).toBe(1);
 		expect(redacted.attributes['llm.tool_schema_hash']).toEqual(expect.any(String));
-		expect(JSON.parse(redacted.attributes['tools'] as string)).toEqual(prompt.tools);
-		expect(JSON.parse(redacted.attributes['invocation_params.tools'] as string)).toEqual(
+		expect(jsonParse(redacted.attributes['tools'] as string)).toEqual(prompt.tools);
+		expect(jsonParse(redacted.attributes['invocation_params.tools'] as string)).toEqual(
 			prompt.tools,
 		);
-		expect(JSON.parse(redacted.attributes['invocation_params.tool_choice'] as string)).toEqual({
+		expect(jsonParse(redacted.attributes['invocation_params.tool_choice'] as string)).toEqual({
 			type: 'auto',
 		});
 	});
@@ -743,6 +743,7 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-2',
 			userId: 'user-1',
 			input: { message: 'follow-up turn' },
+			metadata: { resume_reason: 'background_task_completed' },
 		});
 
 		expect(continuedTracing.traceKind).toBe('orchestrator_resume');
@@ -753,13 +754,41 @@ describe('createInstanceAiTraceContext', () => {
 			expect.objectContaining({
 				trace_kind: 'orchestrator_resume',
 				execution_mode: 'resume',
+				resume_reason: 'background_task_completed',
 				continued_from_run_id: tracing?.rootRun.id,
 				continued_from_trace_id: tracing?.rootRun.otelTraceId,
+				resumed_from_activation_id: tracing?.actorRun.id,
+				resumed_from_trace_id: tracing?.rootRun.otelTraceId,
 			}),
 		);
 		expect(continuedTracing.orchestratorRun.id).not.toBe(tracing?.orchestratorRun.id);
 		expect(continuedTracing.orchestratorRun.parentRunId).toBe(continuedTracing.rootRun.id);
 		expect(continuedTracing.orchestratorRun.name).toBe('instance-ai.agent.orchestrator');
+	});
+
+	it('creates an orchestrator resume root without a previous trace when tracing is enabled', async () => {
+		const tracing = await continueInstanceAiTraceContext(undefined, {
+			threadId: 'thread-1',
+			messageId: 'message-2',
+			messageGroupId: 'group-1',
+			runId: 'run-2',
+			userId: 'user-1',
+			input: { message: 'orphaned resume' },
+			metadata: { resume_reason: 'planned_checkpoint', checkpoint_task_id: 'cp-1' },
+		});
+
+		expect(tracing).toBeDefined();
+		expect(tracing?.traceKind).toBe('orchestrator_resume');
+		expect(tracing?.rootRun.name).toBe('instance-ai.orchestrator_resume');
+		expect(tracing?.rootRun.parentRunId).toBeUndefined();
+		expect(tracing?.rootRun.metadata).toEqual(
+			expect.objectContaining({
+				trace_kind: 'orchestrator_resume',
+				resume_reason: 'planned_checkpoint',
+				checkpoint_task_id: 'cp-1',
+			}),
+		);
+		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.rootRun.id);
 	});
 
 	it('creates detached sub-agent traces as separate root traces', async () => {
@@ -861,9 +890,9 @@ describe('createInstanceAiTraceContext', () => {
 
 		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
 		const loadedTools = actorInputs.loaded_tools as Array<Record<string, unknown>>;
-		const loadedToolManifest = JSON.parse(actorInputs.loaded_tool_manifest as string) as Array<
-			Record<string, unknown>
-		>;
+		const loadedToolManifest = jsonParse<Array<Record<string, unknown>>>(
+			actorInputs.loaded_tool_manifest as string,
+		);
 		const systemPrompt = actorInputs.system_prompt as Record<string, unknown>;
 
 		expect(actorInputs.task).toBe('Build a workflow');
@@ -877,18 +906,19 @@ describe('createInstanceAiTraceContext', () => {
 				expect.objectContaining({ name: 'submit-workflow', kind: 'local' }),
 			]),
 		);
-		expect(loadedToolManifest).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					name: 'build-workflow',
-					input_schema: expect.objectContaining({ type: 'object' }),
-					approval: {
-						default_approval: false,
-						suspend: false,
-						resume: false,
-					},
-				}),
-			]),
+		const buildWorkflowManifest = loadedToolManifest.find((tool) => tool.name === 'build-workflow');
+		expect(buildWorkflowManifest).toEqual(
+			expect.objectContaining({
+				name: 'build-workflow',
+				approval: {
+					default_approval: false,
+					suspend: false,
+					resume: false,
+				},
+			}),
+		);
+		expect(buildWorkflowManifest?.input_schema).toEqual(
+			expect.objectContaining({ type: 'object' }),
 		);
 		expect(systemPrompt.part_01).toEqual(expect.any(String));
 		expect(systemPrompt.part_02).toEqual(expect.any(String));

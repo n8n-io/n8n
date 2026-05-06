@@ -39,10 +39,10 @@ export interface StartedBackgroundAgentTask {
 	agentId: string;
 }
 
-export async function startDataTableAgentTask(
+export function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentInput,
-): Promise<StartedBackgroundAgentTask> {
+): StartedBackgroundAgentTask {
 	// Grab the consolidated data-tables tool (and parse-file if available) from domain tools
 	const dataTableTools: InstanceAiToolRegistry = {};
 	if (DATA_TABLE_TOOL_NAME in context.domainTools) {
@@ -218,7 +218,7 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			}),
 		)
 		.handler(async (input: z.infer<typeof dataTableAgentInputSchema>) => {
-			const result = await startDataTableAgentTask(context, input);
+			const result = startDataTableAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		})
 		.build();

@@ -26,6 +26,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
+	continueInstanceAiTraceContext,
 	McpClientManager,
 	BuilderSandboxFactory,
 	SnapshotManager,
@@ -100,6 +101,17 @@ import { TraceReplayState } from './trace-replay-state';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
 }
 
 function createInertAbortSignal(): AbortSignal {
@@ -198,7 +210,7 @@ function getProxyFetch(): typeof globalThis.fetch | undefined {
 }
 
 interface MessageTraceFinalization {
-	status: 'completed' | 'cancelled' | 'error';
+	status: 'completed' | 'cancelled' | 'error' | 'suspended';
 	outputText?: string;
 	reason?: string;
 	modelId?: ModelConfig;
@@ -206,6 +218,12 @@ interface MessageTraceFinalization {
 	metadata?: Record<string, unknown>;
 	error?: string;
 }
+
+type OrchestratorResumeReason =
+	| 'approval'
+	| 'background_task_completed'
+	| 'planned_checkpoint'
+	| 'replan';
 
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
@@ -730,6 +748,61 @@ export class InstanceAiService {
 		return this.traceContextsByRunId.get(runId)?.tracing;
 	}
 
+	private getTraceContextForContinuation(
+		threadId: string,
+		messageGroupId?: string,
+	): InstanceAiTraceContext | undefined {
+		const entries = [...this.traceContextsByRunId.values()].reverse();
+		const sameGroup =
+			messageGroupId === undefined
+				? undefined
+				: entries.find(
+						(entry) => entry.threadId === threadId && entry.messageGroupId === messageGroupId,
+					)?.tracing;
+		return sameGroup ?? entries.find((entry) => entry.threadId === threadId)?.tracing;
+	}
+
+	private async createOrchestratorResumeTraceContext(options: {
+		baseTracing?: InstanceAiTraceContext;
+		threadId: string;
+		messageId: string;
+		messageGroupId?: string;
+		runId: string;
+		userId: string;
+		modelId?: ModelConfig;
+		input: Record<string, unknown>;
+		proxyConfig?: ServiceProxyConfig;
+		resumeReason: OrchestratorResumeReason;
+		metadata?: Record<string, unknown>;
+	}): Promise<InstanceAiTraceContext | undefined> {
+		const baseTracing =
+			options.baseTracing ??
+			this.getTraceContextForContinuation(options.threadId, options.messageGroupId);
+		const tracing = await continueInstanceAiTraceContext(baseTracing, {
+			threadId: options.threadId,
+			messageId: options.messageId,
+			messageGroupId: options.messageGroupId,
+			runId: options.runId,
+			userId: options.userId,
+			modelId: options.modelId,
+			input: options.input,
+			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
+			metadata: {
+				resume_reason: options.resumeReason,
+				agent_id: ORCHESTRATOR_AGENT_ID,
+				...options.metadata,
+			},
+		});
+
+		if (tracing) {
+			await this.configureTraceReplayMode(tracing);
+			this.storeTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
+			this.runState.attachTracing(options.threadId, tracing);
+		}
+
+		return tracing;
+	}
+
 	private async configureTraceReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
 		await this.traceReplay.configureReplayMode(tracing);
 	}
@@ -856,8 +929,9 @@ export class InstanceAiService {
 		options: MessageTraceFinalization,
 	): Promise<void> {
 		if (!tracing) return;
+		if (tracing.actorRun.endTime) return;
 
-		const outputs = {
+		const outputs = options.outputs ?? {
 			status: options.status,
 			runId,
 			...(options.outputText ? { response: options.outputText } : {}),
@@ -867,6 +941,7 @@ export class InstanceAiService {
 		const metadata = {
 			final_status: options.status,
 			...(options.modelId !== undefined ? { model_id: options.modelId } : {}),
+			...options.metadata,
 		};
 
 		try {
@@ -1670,7 +1745,7 @@ export class InstanceAiService {
 				});
 				break;
 			case 'manage-data-tables':
-				started = await startDataTableAgentTask(taskContext, {
+				started = startDataTableAgentTask(taskContext, {
 					task: task.spec,
 					plannedTaskId: task.id,
 					conversationContext,
@@ -1829,6 +1904,11 @@ export class InstanceAiService {
 		// runs (checkpoint / replan / synthesize) used to drop this context, which made
 		// the planner emit "instance default timezone" for user-local schedules.
 		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
+		const resumeReason: OrchestratorResumeReason = checkpoint
+			? 'planned_checkpoint'
+			: isReplanFollowUp
+				? 'replan'
+				: 'background_task_completed';
 
 		void this.executeRun(
 			user,
@@ -1842,6 +1922,7 @@ export class InstanceAiService {
 			timeZone,
 			isReplanFollowUp,
 			checkpoint,
+			resumeReason,
 		);
 
 		return runId;
@@ -1990,6 +2071,7 @@ export class InstanceAiService {
 		timeZone?: string,
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+		resumeReason?: OrchestratorResumeReason,
 	): Promise<void> {
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -2075,16 +2157,33 @@ export class InstanceAiService {
 				...(researchMode !== undefined ? { researchMode } : {}),
 				...(messageGroupId ? { messageGroupId } : {}),
 			};
-			tracing = await createInstanceAiTraceContext({
-				threadId,
-				messageId,
-				messageGroupId,
-				runId,
-				userId: user.id,
-				modelId,
-				input: traceInput,
-				proxyConfig: orchestrationContext.tracingProxyConfig,
-			});
+			tracing = resumeReason
+				? await this.createOrchestratorResumeTraceContext({
+						threadId,
+						messageId,
+						messageGroupId,
+						runId,
+						userId: user.id,
+						modelId,
+						input: traceInput,
+						proxyConfig: orchestrationContext.tracingProxyConfig,
+						resumeReason,
+						metadata: {
+							...(checkpoint?.isCheckpointFollowUp
+								? { checkpoint_task_id: checkpoint.checkpointTaskId }
+								: {}),
+						},
+					})
+				: await createInstanceAiTraceContext({
+						threadId,
+						messageId,
+						messageGroupId,
+						runId,
+						userId: user.id,
+						modelId,
+						input: traceInput,
+						proxyConfig: orchestrationContext.tracingProxyConfig,
+					});
 
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
@@ -2094,10 +2193,12 @@ export class InstanceAiService {
 			}
 
 			if (tracing) {
-				await this.configureTraceReplayMode(tracing);
 				orchestrationContext.tracing = tracing;
-				this.runState.attachTracing(threadId, tracing);
-				this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+				if (this.getTraceContext(runId) !== tracing) {
+					await this.configureTraceReplayMode(tracing);
+					this.runState.attachTracing(threadId, tracing);
+					this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+				}
 			}
 
 			// Set heuristic title before agent starts — thread always has a title
@@ -2275,6 +2376,7 @@ export class InstanceAiService {
 					tags: ['orchestrator'],
 					metadata: {
 						agent_role: 'orchestrator',
+						agent_id: ORCHESTRATOR_AGENT_ID,
 						execution_mode: 'foreground',
 						trace_kind: tracing.traceKind,
 					},
@@ -2358,6 +2460,7 @@ export class InstanceAiService {
 						messageGroupId,
 						createdAt: Date.now(),
 						tracing,
+						modelId,
 						checkpoint,
 					});
 				}
@@ -2381,6 +2484,43 @@ export class InstanceAiService {
 				// The tree is rebuilt from in-memory events and includes the
 				// confirmation-request data that the frontend needs.
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+				const suspensionOutputs = {
+					status: 'suspended',
+					runId,
+					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
+					...(result.suspension?.toolCallId
+						? { pendingToolCallId: result.suspension.toolCallId }
+						: {}),
+					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
+				};
+				await this.finalizeRunTracing(runId, tracing, {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				});
+				messageTraceFinalization = {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				};
 				return;
 			}
 
@@ -2733,6 +2873,8 @@ export class InstanceAiService {
 			toolCallId,
 			abortController,
 			tracing,
+			modelId,
+			messageGroupId,
 			checkpoint,
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
@@ -2754,6 +2896,31 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
+		const resumeTracing = await this.createOrchestratorResumeTraceContext({
+			baseTracing: tracing,
+			threadId,
+			messageId: nanoid(),
+			messageGroupId,
+			runId,
+			userId: user.id,
+			modelId,
+			input: {
+				requestId,
+				toolCallId,
+				approved: data.approved,
+				resumeFields: Object.keys(resumeData),
+			},
+			resumeReason: 'approval',
+			metadata: {
+				request_id: requestId,
+				pending_tool_call_id: toolCallId,
+				approved: data.approved,
+				...(checkpoint?.isCheckpointFollowUp
+					? { checkpoint_task_id: checkpoint.checkpointTaskId }
+					: {}),
+			},
+		});
+
 		void this.processResumedStream(agent, resumeData, {
 			runId,
 			agentRunId,
@@ -2763,7 +2930,8 @@ export class InstanceAiService {
 			signal: abortController.signal,
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
-			tracing,
+			tracing: resumeTracing ?? tracing,
+			modelId,
 			checkpoint,
 		});
 		return true;
@@ -2782,6 +2950,7 @@ export class InstanceAiService {
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
+			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 		},
 	): Promise<void> {
@@ -2842,6 +3011,7 @@ export class InstanceAiService {
 						messageGroupId: this.traceContextsByRunId.get(opts.runId)?.messageGroupId,
 						createdAt: Date.now(),
 						tracing: opts.tracing,
+						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
 					});
 				}
@@ -2864,6 +3034,43 @@ export class InstanceAiService {
 				// Persist the refreshed agent tree so repeated HITL waits
 				// survive page refresh after a resume as well.
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
+				const suspensionOutputs = {
+					status: 'suspended',
+					runId: opts.runId,
+					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
+					...(result.suspension?.toolCallId
+						? { pendingToolCallId: result.suspension.toolCallId }
+						: {}),
+					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
+				};
+				await this.finalizeRunTracing(opts.runId, opts.tracing, {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				});
+				messageTraceFinalization = {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				};
 
 				return;
 			}
@@ -3480,18 +3687,7 @@ export class InstanceAiService {
 	private extractStoredMessageText(content: unknown): string {
 		if (typeof content === 'string') return content;
 		if (Array.isArray(content)) {
-			return content
-				.flatMap((part) =>
-					typeof part === 'object' &&
-					part !== null &&
-					'type' in part &&
-					part.type === 'text' &&
-					'text' in part &&
-					typeof part.text === 'string'
-						? [part.text]
-						: [],
-				)
-				.join('\n');
+			return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
 		}
 		return JSON.stringify(content);
 	}

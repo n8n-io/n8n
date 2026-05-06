@@ -131,18 +131,20 @@ function extractText(messages: unknown[]): string {
 			if (typeof message !== 'object' || message === null || !('content' in message)) return [];
 			const content = message.content;
 			if (!Array.isArray(content)) return [];
-			return content.flatMap((part) =>
-				typeof part === 'object' &&
-				part !== null &&
-				'type' in part &&
-				part.type === 'text' &&
-				'text' in part &&
-				typeof part.text === 'string'
-					? [part.text]
-					: [],
-			);
+			return content.flatMap((part) => (isTextPart(part) ? [part.text] : []));
 		})
 		.join('');
+}
+
+function isTextPart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
 }
 
 function serializeToolCalls(raw: unknown[]): InstanceAiEvalToolCall[] {
