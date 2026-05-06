@@ -1,6 +1,5 @@
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 
-import { DisallowedModuleError } from '../errors/disallowed-module.error';
 import { createRequireResolver, type RequireResolverOpts } from '../require-resolver';
 
 describe('require resolver', () => {
