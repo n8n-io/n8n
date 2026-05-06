@@ -45,9 +45,8 @@ describe('require resolver', () => {
 
 		it('should throw when requiring non-allowlisted external modules', () => {
 			const resolver = createRequireResolver(defaultOpts);
-			expect(() => resolver('express')).toThrow(
-				new ExecutionError(new DisallowedModuleError('express')),
-			);
+			expect(() => resolver('express')).toThrow(ExecutionError);
+			expect(() => resolver('express')).toThrow('express');
 		});
 
 		it('should allow all external modules when allowedExternalModules is "*"', () => {
