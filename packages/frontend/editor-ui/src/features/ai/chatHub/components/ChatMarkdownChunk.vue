@@ -94,6 +94,10 @@ defineExpose({
 	</button>
 </template>
 
+<style lang="scss">
+@use '@n8n/design-system/css/markdown.scss';
+</style>
+
 <style lang="scss" module>
 .container {
 	display: flex;

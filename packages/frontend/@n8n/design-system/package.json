@@ -54,6 +54,7 @@
     "@tanstack/vue-table": "^8.21.2",
     "@tiptap/core": "catalog:",
     "@tiptap/extension-link": "catalog:",
+    "@tiptap/extension-placeholder": "catalog:",
     "@tiptap/extension-strike": "catalog:",
     "@tiptap/extension-table": "catalog:",
     "@tiptap/extension-table-cell": "catalog:",

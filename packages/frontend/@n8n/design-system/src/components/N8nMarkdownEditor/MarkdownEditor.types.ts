@@ -1,6 +1,7 @@
 import type { Editor, Extension, EditorOptions } from '@tiptap/core';
 
 export type MarkdownEditorVariant = 'default' | 'textbox';
+export type MarkdownEditorToolbarMode = 'never' | 'hover' | 'always';
 
 export type N8nMarkdownEditorProps = {
 	modelValue: string;
@@ -8,7 +9,7 @@ export type N8nMarkdownEditorProps = {
 	placeholder?: string;
 	disabled?: boolean;
 	readonly?: boolean;
-	showToolbar?: boolean;
+	showToolbar?: MarkdownEditorToolbarMode;
 	maxHeight?: string | number;
 	extensions?: Extension[];
 	editorProps?: EditorOptions['editorProps'];
@@ -18,7 +19,8 @@ export type N8nMarkdownEditorProps = {
 export type N8nMarkdownEditorEmits = {
 	'update:modelValue': [value: string];
 	input: [value: string];
+	change: [value: string];
 	focus: [event: FocusEvent];
-	blur: [event: FocusEvent];
+	blur: [value: string, event: FocusEvent];
 	ready: [editor: Editor];
 };

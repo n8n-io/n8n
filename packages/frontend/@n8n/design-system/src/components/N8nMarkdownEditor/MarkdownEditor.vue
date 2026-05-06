@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type { Editor, EditorOptions, Extension } from '@tiptap/core';
+import type { Content, Editor } from '@tiptap/core';
+import type { EditorView } from '@tiptap/pm/view';
 /** These probably should be lazy loaded */
 import Link from '@tiptap/extension-link';
+import Placeholder from '@tiptap/extension-placeholder';
 import Strike from '@tiptap/extension-strike';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -13,51 +15,20 @@ import { Markdown } from '@tiptap/markdown';
 import StarterKit from '@tiptap/starter-kit';
 
 import { EditorContent, useEditor } from '@tiptap/vue-3';
-import { computed, watch, type PropType } from 'vue';
+import { computed, watch } from 'vue';
 
-import type { MarkdownEditorVariant } from './MarkdownEditor.types';
+import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
+import type { N8nMarkdownEditorProps } from './MarkdownEditor.types';
 
-const props = defineProps({
-	modelValue: {
-		type: String,
-		default: '',
-	},
-	variant: {
-		type: String as PropType<MarkdownEditorVariant>,
-		default: 'default',
-	},
-	placeholder: {
-		type: String,
-		default: '',
-	},
-	disabled: {
-		type: Boolean,
-		default: false,
-	},
-	readonly: {
-		type: Boolean,
-		default: false,
-	},
-	showToolbar: {
-		type: Boolean,
-		default: true,
-	},
-	maxHeight: {
-		type: [String, Number] as PropType<string | number>,
-		default: '480px',
-	},
-	extensions: {
-		type: Array as PropType<Extension[]>,
-		default: undefined,
-	},
-	editorProps: {
-		type: Object as PropType<EditorOptions['editorProps']>,
-		default: undefined,
-	},
-	containerClass: {
-		type: String,
-		default: '',
-	},
+const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
+	modelValue: '',
+	variant: 'default',
+	placeholder: '',
+	disabled: false,
+	readonly: false,
+	showToolbar: 'hover',
+	maxHeight: '480px',
+	containerClass: '',
 });
 
 const emit = defineEmits<{
@@ -74,11 +45,41 @@ const maxHeightStyle = computed(() => ({
 		typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
 }));
 
+const emptyEditorContent: Content = {
+	type: 'doc',
+	content: [{ type: 'paragraph' }],
+};
+
+const getEditorContent = (markdown: string): Content => markdown || emptyEditorContent;
+
+const setEditorContent = (editor: Editor, markdown: string) => {
+	if (markdown) {
+		editor.commands.setContent(markdown, {
+			contentType: 'markdown',
+			emitUpdate: false,
+		});
+
+		return;
+	}
+
+	editor.commands.setContent(emptyEditorContent, {
+		emitUpdate: false,
+	});
+};
+
+const shouldShowToolbar = computed(() => props.showToolbar !== 'never');
+const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
+const shouldPadContent = computed(() => props.showToolbar === 'always');
+
 const baseExtensions = [
 	StarterKit,
 	Strike,
 	Link.configure({
 		openOnClick: false,
+	}),
+	Placeholder.configure({
+		placeholder: () => props.placeholder,
+		showOnlyCurrent: false,
 	}),
 	Table.configure({
 		resizable: true,
@@ -98,15 +99,59 @@ const baseExtensions = [
 	}),
 ];
 
+function copyMarkdown(event: ClipboardEvent) {
+	if (!editor.value || !event.clipboardData) return false;
+
+	event.clipboardData.setData('text/plain', editor.value.getMarkdown());
+	event.preventDefault();
+
+	return true;
+}
+
+function pasteMarkdown(event: ClipboardEvent) {
+	if (!editor.value || !event.clipboardData) return false;
+
+	const plainText = event.clipboardData.getData('text/plain');
+
+	if (!plainText) return false;
+
+	const command =
+		editor.value.getMarkdown().trim() === ''
+			? editor.value.commands.setContent
+			: editor.value.commands.insertContent;
+
+	command(plainText, {
+		contentType: 'markdown',
+	});
+	event.preventDefault();
+
+	return true;
+}
+
+function handleCopy(view: EditorView, event: ClipboardEvent) {
+	return props.editorProps?.handleDOMEvents?.copy?.(view, event) || copyMarkdown(event);
+}
+
+function handlePaste(view: EditorView, event: ClipboardEvent) {
+	return props.editorProps?.handleDOMEvents?.paste?.(view, event) || pasteMarkdown(event);
+}
+
 const editor = useEditor({
-	content: props.modelValue,
-	contentType: 'markdown',
+	content: getEditorContent(props.modelValue),
+	contentType: props.modelValue ? 'markdown' : undefined,
 	extensions: [...baseExtensions, ...(props.extensions ?? [])],
 	editable: !props.disabled && !props.readonly,
 	editorProps: {
+		...props.editorProps,
 		attributes: {
 			class: 'n8n-markdown',
-			'data-testid': 'n8n-markdown-editor-content',
+			'data-test-id': 'n8n-markdown-editor-content',
+			...props.editorProps?.attributes,
+		},
+		handleDOMEvents: {
+			...props.editorProps?.handleDOMEvents,
+			copy: handleCopy,
+			paste: handlePaste,
 		},
 	},
 	onCreate: ({ editor }) => {
@@ -136,10 +181,7 @@ watch(
 
 		if (currentMarkdown === value) return;
 
-		editor.value.commands.setContent(value ?? '', {
-			contentType: 'markdown',
-			emitUpdate: false,
-		});
+		setEditorContent(editor.value, value ?? '');
 	},
 );
 
@@ -177,21 +219,25 @@ defineExpose({
 <template>
 	<div
 		:class="[
+			'n8n-markdown-editor-container',
 			$style.container,
 			props.variant === 'default' ? $style.default : $style.textbox,
 			props.containerClass,
 			props.disabled ? $style.disabled : '',
 		]"
 		:style="maxHeightStyle"
-		data-testid="n8n-markdown-editor"
+		data-test-id="n8n-markdown-editor"
 	>
-		<div v-if="showToolbar && editor" :class="$style.toolbar">
-			<p>Toolbar Goes Here</p>
-		</div>
-
 		<EditorContent
 			:editor="editor"
-			:class="[$style.content, props.showToolbar ? $style.padTop : '']"
+			:class="[$style.content, shouldPadContent ? $style.padBottom : '']"
+		/>
+		<MarkdownEditorToolbar
+			v-if="shouldShowToolbar && editor"
+			:editor="editor"
+			:disabled="props.disabled || props.readonly"
+			:mode="toolbarMode"
+			:variant="props.variant"
 		/>
 	</div>
 </template>
@@ -258,22 +304,14 @@ defineExpose({
 			inset var(--input--border--shadow--focus);
 	}
 }
-.toolbar {
-	position: absolute;
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
-	top: 1px;
-	inset-inline: 1px;
-	z-index: 1;
-}
-
 .content {
 	height: 100%;
 	max-height: var(--markdown-editor-max-height);
 	overflow: hidden;
 
-	&.padTop {
-		padding-top: 32px;
+	/** NOTE (@heymynameisrob): Adds clearing for Toolbar **/
+	&.padBottom :global(.n8n-markdown > *:first-child) {
+		scroll-padding-bottom: var(--height--lg);
 	}
 
 	:global(.n8n-markdown) {
@@ -288,6 +326,14 @@ defineExpose({
 		padding: var(--spacing--xs);
 		font-family: inherit;
 		font-size: var(--input--font-size, inherit);
+	}
+
+	:global(.n8n-markdown .is-empty::before) {
+		content: attr(data-placeholder);
+		float: left;
+		height: 0;
+		color: var(--text-color--subtler);
+		pointer-events: none;
 	}
 
 	:global(.n8n-markdown > *:first-child) {

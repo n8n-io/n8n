@@ -33,21 +33,17 @@ A reusable rich-text Markdown editor for editing Markdown-backed content in the 
 - `placeholder?: string` - Placeholder text displayed when the editor is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the editor. Default: `false`
 - `readonly?: boolean` - When `true`, content can be selected but not edited. Default: `false`
-- `showToolbar?: boolean` - When `true`, shows the built-in formatting toolbar. Default: `true`
-- `enabledExtensions?: MarkdownEditorExtensionName[]` - Design-system managed extensions to enable. Default: all V1 extensions.
+- `showToolbar?: MarkdownEditorToolbarMode` - Controls toolbar visibility. Values: `'never' | 'hover' | 'always'`. Default: `'hover'`
+- `maxHeight?: string | number` - Maximum editor content height. Number values are treated as pixels. Default: `'480px'`
+- `extensions?: Extension[]` - Optional TipTap extension escape hatch for concrete callsite needs. Default extensions remain design-system managed.
+- `editorProps?: EditorOptions['editorProps']` - Optional TipTap editor props escape hatch.
+- `containerClass?: string` - Optional class to apply to the editor container.
 
 **Types**
 
 ```ts
 type MarkdownEditorVariant = 'default' | 'textbox';
-
-type MarkdownEditorExtensionName =
-	| 'starterKit'
-	| 'markdown'
-	| 'link'
-	| 'table'
-	| 'taskList'
-	| 'strike';
+type MarkdownEditorToolbarMode = 'never' | 'hover' | 'always';
 ```
 
 **Default extensions**
@@ -81,7 +77,7 @@ const defaultEnabledExtensions: MarkdownEditorExtensionName[] = [
 
 ## Extension Registry
 
-Extensions should be assembled from a design-system owned registry instead of exposing raw TipTap extension setup as the primary API.
+Extensions are assembled from a design-system owned registry. The `extensions` prop is an escape hatch for concrete callsite needs and appends to the design-system defaults.
 
 ```ts
 const markdownEditorExtensions = {
@@ -100,7 +96,7 @@ const markdownEditorExtensions = {
 };
 ```
 
-This keeps extension behavior consistent, testable, and owned by `@n8n/design-system`. If a future callsite needs truly custom extensions, add a controlled escape hatch after there is a concrete use case.
+This keeps default extension behavior consistent, testable, and owned by `@n8n/design-system`.
 
 ## Markdown and GFM Support
 
@@ -134,7 +130,7 @@ Known limitations:
 
 ## Toolbar
 
-The toolbar is owned by the design system and can be hidden with `showToolbar={false}`.
+The toolbar is owned by the design system and can be hidden with `showToolbar="never"`.
 
 Initial toolbar controls:
 
@@ -230,11 +226,11 @@ const markdown = ref('Use markdown shortcuts like **bold** and - lists.');
 </script>
 
 <template>
-	<N8nMarkdownEditor v-model="markdown" :show-toolbar="false" />
+	<N8nMarkdownEditor v-model="markdown" show-toolbar="never" />
 </template>
 ```
 
-**Limit enabled extensions:**
+**Append custom extensions:**
 
 ```vue
 <script setup lang="ts">
@@ -242,13 +238,11 @@ import { ref } from 'vue';
 import { N8nMarkdownEditor } from '@n8n/design-system';
 
 const markdown = ref('A lightweight editor without tables.');
+const extensions = [];
 </script>
 
 <template>
-	<N8nMarkdownEditor
-		v-model="markdown"
-		:enabled-extensions="['starterKit', 'markdown', 'link', 'strike']"
-	/>
+	<N8nMarkdownEditor v-model="markdown" :extensions="extensions" />
 </template>
 ```
 
@@ -277,7 +271,7 @@ Add unit tests for:
 - Emitting `update:modelValue`, `input`, and `change` on edits.
 - Emitting the current Markdown value on blur.
 - Emitting the TipTap editor instance through `ready`.
-- Hiding the toolbar with `showToolbar=false`.
+- Hiding the toolbar with `showToolbar="never"`.
 - Applying `default` and `textbox` variants.
 - Respecting `disabled`.
 - Respecting `readonly`.

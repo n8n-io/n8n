@@ -81,7 +81,8 @@ export default {
 			options: ['default', 'textbox'],
 		},
 		showToolbar: {
-			control: 'boolean',
+			control: 'select',
+			options: ['never', 'hover', 'always'],
 		},
 		maxHeight: {
 			control: 'text',
@@ -147,7 +148,7 @@ Default.args = {
 	modelValue: defaultMarkdown,
 	variant: 'default',
 	placeholder: 'Write Markdown...',
-	showToolbar: true,
+	showToolbar: 'hover',
 	maxHeight: '480px',
 	disabled: false,
 	readonly: false,
@@ -162,7 +163,13 @@ Textbox.args = {
 export const WithoutToolbar = Template.bind({});
 WithoutToolbar.args = {
 	...Default.args,
-	showToolbar: false,
+	showToolbar: 'never',
+};
+
+export const AlwaysVisibleToolbar = Template.bind({});
+AlwaysVisibleToolbar.args = {
+	...Default.args,
+	showToolbar: 'always',
 };
 
 export const GfmContent = Template.bind({});
@@ -197,6 +204,7 @@ export const Empty = Template.bind({});
 Empty.args = {
 	...Default.args,
 	modelValue: '',
+	showToolbar: 'never',
 	variant: 'textbox',
 	placeholder: 'Write instructions...',
 };

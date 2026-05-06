@@ -53,6 +53,7 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
+import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
 import IconLucideBot from '~icons/lucide/bot';
@@ -145,6 +146,7 @@ import IconLucideHouse from '~icons/lucide/house';
 import IconLucideImage from '~icons/lucide/image';
 import IconLucideInbox from '~icons/lucide/inbox';
 import IconLucideInfo from '~icons/lucide/info';
+import IconLucideItalic from '~icons/lucide/italic';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLayers from '~icons/lucide/layers';
@@ -189,6 +191,7 @@ import IconLucidePlugZap from '~icons/lucide/plug-zap';
 import IconLucidePlus from '~icons/lucide/plus';
 import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
 import IconLucidePower from '~icons/lucide/power';
+import IconLucideQuote from '~icons/lucide/quote';
 import IconLucideRedo2 from '~icons/lucide/redo-2';
 import IconLucideRefreshCw from '~icons/lucide/refresh-cw';
 import IconLucideRemoveFormatting from '~icons/lucide/remove-formatting';
@@ -219,6 +222,7 @@ import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
 import IconLucideStar from '~icons/lucide/star';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
+import IconLucideStrikethrough from '~icons/lucide/strikethrough';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
 import IconLucideTags from '~icons/lucide/tags';
@@ -416,6 +420,7 @@ export const deprecatedIconSet = {
 	'project-diagram': IconLucideWaypoints,
 	question: IconLucideCircleHelp,
 	'question-circle': IconLucideCircleHelp,
+	quote: IconLucideQuote,
 	redo: IconLucideRedo2,
 	'remove-format': IconLucideRemoveFormatting,
 	robot: IconLucideBot,
@@ -526,6 +531,7 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
+	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
 	bot: IconLucideBot,
@@ -615,6 +621,7 @@ export const updatedIconSet = {
 	image: IconLucideImage,
 	inbox: IconLucideInbox,
 	info: IconLucideInfo,
+	italic: IconLucideItalic,
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
 	layers: IconLucideLayers,
@@ -688,6 +695,7 @@ export const updatedIconSet = {
 	'square-plus': IconLucideSquarePlus,
 	star: IconLucideStar,
 	'sticky-note': IconLucideStickyNote,
+	strikethrough: IconLucideStrikethrough,
 	sun: IconLucideSun,
 	table: IconLucideTable,
 	tags: IconLucideTags,
@@ -723,6 +731,7 @@ export const updatedIconSet = {
 	'zoom-out': IconLucideZoomOut,
 	loader: IconLucideLoader2,
 	'loader-circle': IconLucideLoaderCircle,
+	quote: IconLucideQuote,
 	'quick-connect': IconLucideFlame,
 } as const;
 

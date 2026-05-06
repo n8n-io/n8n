@@ -47,6 +47,7 @@ catalog:
   '@testcontainers/redis': ^11.13.0
   '@tiptap/core': 3.22.5
   '@tiptap/extension-link': 3.22.5
+  '@tiptap/extension-placeholder': 3.22.5
   '@tiptap/extension-strike': 3.22.5
   '@tiptap/extension-table': 3.22.5
   '@tiptap/extension-table-cell': 3.22.5
