@@ -1857,11 +1857,13 @@ function createTelemetryFactory(options: {
 	traceKind: InstanceAiTraceContext['traceKind'];
 	rootRun: InstanceAiTraceRun;
 	actorRun: InstanceAiTraceRun;
+	getActorRun?: () => InstanceAiTraceRun;
 	baseMetadata: Record<string, unknown>;
 	proxyConfig?: ServiceProxyConfig;
 	baseTelemetry?: BuiltTelemetry;
 }): (telemetryOptions: InstanceAiTelemetryOptions) => BuiltTelemetry | Telemetry {
 	return (telemetryOptions) => {
+		const actorRun = options.getActorRun?.() ?? options.actorRun;
 		const agentRole = telemetryOptions.agentRole;
 		const executionMode =
 			telemetryOptions.executionMode ??
@@ -1872,7 +1874,7 @@ function createTelemetryFactory(options: {
 			trace_kind: options.traceKind,
 			langsmith_trace_id: options.rootRun.traceId,
 			langsmith_root_run_id: options.rootRun.id,
-			langsmith_actor_run_id: options.actorRun.id,
+			langsmith_actor_run_id: actorRun.id,
 		});
 		const functionId = telemetryOptions.functionId ?? formatTelemetryFunctionId(agentRole);
 
@@ -1945,6 +1947,7 @@ export async function createInstanceAiTraceContext(
 
 	const createTraceRuns = async () => {
 		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const traceContextRef: { current?: InstanceAiTraceContext } = {};
 		const messageRun = startProductSpan(otelRuntime, {
 			projectName,
 			name: 'instance-ai.message_turn',
@@ -1958,7 +1961,7 @@ export async function createInstanceAiTraceContext(
 			inputs: options.input,
 			root: true,
 		});
-		return createTraceContext(
+		const tracing = createTraceContext(
 			projectName,
 			'message_turn',
 			messageRun,
@@ -1970,11 +1973,14 @@ export async function createInstanceAiTraceContext(
 				traceKind: 'message_turn',
 				rootRun: messageRun,
 				actorRun: messageRun,
+				getActorRun: () => traceContextRef.current?.actorRun ?? messageRun,
 				baseMetadata,
 				baseTelemetry: otelRuntime.telemetry,
 				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
 			}),
 		);
+		traceContextRef.current = tracing;
+		return tracing;
 	};
 
 	if (options.proxyConfig) {

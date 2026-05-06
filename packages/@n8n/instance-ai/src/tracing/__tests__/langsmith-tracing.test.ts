@@ -587,6 +587,35 @@ describe('createInstanceAiTraceContext', () => {
 		await telemetry.provider?.shutdown();
 	});
 
+	it('uses the current foreground actor run in native telemetry metadata', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+		const actorRun = await startForegroundActor(tracing!);
+
+		const telemetryOrBuilder = tracing!.getTelemetry!({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+		});
+		const telemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
+
+		expect(telemetry.metadata).toEqual(
+			expect.objectContaining({
+				langsmith_root_run_id: tracing?.rootRun.id,
+				langsmith_actor_run_id: actorRun.id,
+			}),
+		);
+
+		await telemetry.provider?.shutdown();
+	});
+
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {
 			attributes: {
