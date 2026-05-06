@@ -101,6 +101,7 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		);
 
 		if (Date.now() - config.startTime > config.timeoutMs) {
+			await config.client.cancelRun(config.threadId).catch(() => {});
 			throw new Error(`Run timed out after ${String(config.timeoutMs)}ms`);
 		}
 	}

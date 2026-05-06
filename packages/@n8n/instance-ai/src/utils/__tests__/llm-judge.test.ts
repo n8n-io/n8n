@@ -82,6 +82,14 @@ describe('parseJudgeVerdict', () => {
 			const text = '**Verdict:** FAIL\n\n```json\n{"reasoning":"r","pass":true}\n```';
 			expect(parseJudgeVerdict(text)?.pass).toBe(true);
 		});
+
+		it('uses the verdict near the end, not an earlier mention of the same words', () => {
+			const text =
+				'Reasoning: I expected **Verdict:** PASS but got something odd.\n\n**Verdict:** FAIL';
+			const v = parseJudgeVerdict(text);
+			expect(v?.pass).toBe(false);
+			expect(v?.reasoning).toContain('expected **Verdict:** PASS but got something odd');
+		});
 	});
 
 	describe('unparseable input', () => {
