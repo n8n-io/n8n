@@ -222,6 +222,7 @@ describe('InstanceAiController', () => {
 				runId: 'run-1',
 				messageGroupId: 'mg-1',
 				runIds: ['run-1'],
+				createdAt: new Date('2026-05-06T11:00:00Z'),
 				tree: {
 					agentId: 'agent-root',
 					role: 'orchestrator',

@@ -264,7 +264,7 @@ describe('parseStoredMessages', () => {
 			};
 
 			// Snapshot array — positionally matched to the assistant message
-			const snapshots = [{ tree: snapshotTree, runId: 'run_abc123' }];
+			const snapshots = [{ tree: snapshotTree, runId: 'run_abc123', createdAt: makeDate(1) }];
 
 			const result = parseStoredMessages(messages, snapshots);
 
@@ -527,6 +527,188 @@ describe('parseStoredMessages', () => {
 
 			expect(result[1].agentTree?.toolCalls).toHaveLength(1);
 			expect(result[1].agentTree?.toolCalls[0].toolCallId).toBe('tc-parts');
+		});
+	});
+
+	describe('orphan snapshots (interrupted runs)', () => {
+		it('surfaces a snapshot with no paired Mastra assistant as a synthetic message', () => {
+			// User sent a message, run was interrupted before Mastra persisted
+			// the assistant message — only the snapshot exists.
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build a workflow',
+					createdAt: new Date('2026-05-06T11:30:00Z'),
+				},
+			];
+			const orphanTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'cancelled',
+				textContent: 'Partial response before interruption',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: orphanTree,
+					runId: 'run_orphan',
+					messageGroupId: 'mg-orphan',
+					createdAt: new Date('2026-05-06T11:30:30Z'),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].role).toBe('user');
+			expect(result[1].role).toBe('assistant');
+			expect(result[1].id).toBe('run_orphan');
+			expect(result[1].runId).toBe('run_orphan');
+			expect(result[1].messageGroupId).toBe('mg-orphan');
+			expect(result[1].agentTree).toBe(orphanTree);
+			expect(result[1].content).toBe('Partial response before interruption');
+		});
+
+		it('places orphan messages chronologically among Mastra-paired messages', () => {
+			// First completed run (paired), then an interrupted run (orphan trailing).
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u1',
+					role: 'user',
+					content: 'First request',
+					createdAt: new Date('2026-05-06T11:00:00Z'),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: { format: 2, content: 'First response' },
+					createdAt: new Date('2026-05-06T11:00:30Z'),
+				},
+				{
+					id: 'msg-u2',
+					role: 'user',
+					content: 'Second request',
+					createdAt: new Date('2026-05-06T11:30:00Z'),
+				},
+			];
+			const completedTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'First response',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const orphanTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'cancelled',
+				textContent: 'Second response (interrupted)',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{ tree: completedTree, runId: 'run-1', createdAt: new Date('2026-05-06T11:00:30Z') },
+				{ tree: orphanTree, runId: 'run-2', createdAt: new Date('2026-05-06T11:30:30Z') },
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			expect(result.map((m) => m.id)).toEqual(['msg-u1', 'msg-a1', 'msg-u2', 'run-2']);
+			expect(result[1].agentTree).toBe(completedTree);
+			expect(result[3].agentTree).toBe(orphanTree);
+		});
+
+		it('dedup collapses Mastra-paired and synthetic-orphan messages sharing a messageGroupId to the latest one', () => {
+			// Same conversation turn with multiple snapshots (e.g. mid-run save +
+			// post-resume save). messageGroupId is shared; dedup keeps the latest.
+			const earlierTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: 'partial',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const laterTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'final',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build',
+					createdAt: new Date('2026-05-06T11:00:00Z'),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: { format: 2, content: 'final response' },
+					createdAt: new Date('2026-05-06T11:00:30Z'),
+				},
+			];
+			const snapshots = [
+				{
+					tree: earlierTree,
+					runId: 'run-1',
+					messageGroupId: 'mg-shared',
+					createdAt: new Date('2026-05-06T11:00:30Z'),
+				},
+				{
+					tree: laterTree,
+					runId: 'run-2',
+					messageGroupId: 'mg-shared',
+					createdAt: new Date('2026-05-06T11:01:00Z'),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			// Dedup keeps a single assistant message reflecting the latest tree.
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			expect(assistants[0].agentTree).toBe(laterTree);
+			expect(assistants[0].messageGroupId).toBe('mg-shared');
+		});
+
+		it('still produces flat trees when no snapshots exist at all (legacy data tolerance)', () => {
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'hi',
+					createdAt: new Date('2026-05-06T11:00:00Z'),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: { format: 2, content: 'hello' },
+					createdAt: new Date('2026-05-06T11:00:30Z'),
+				},
+			];
+
+			const result = parseStoredMessages(messages, []);
+
+			expect(result).toHaveLength(2);
+			expect(result[1].agentTree?.role).toBe('orchestrator');
+			expect(result[1].agentTree?.textContent).toBe('hello');
 		});
 	});
 });
