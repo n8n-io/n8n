@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
@@ -45,7 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 

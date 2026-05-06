@@ -1,6 +1,9 @@
 import { computed } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type {
+	INode,
+	INodeCredentials,
+	INodeCredentialsDetails,
 	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeParameters,
@@ -13,7 +16,6 @@ import type {
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { isObject } from '@/app/utils/objectUtils';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
@@ -24,6 +26,8 @@ import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
+import { useWorkflowsStore } from '../workflows.store';
+import { useNodeTypesStore } from '../nodeTypes.store';
 
 // --- Event types ---
 
@@ -56,6 +60,7 @@ export interface WorkflowDocumentNodesDeps {
 // Once that happens, the direct import (and the import-cycle warning it causes)
 // will go away.
 export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
+	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 
 	const onNodesChange = createEventHook<NodesChangeEvent>();
@@ -180,13 +185,20 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	const allNodes = computed<INodeUi[]>(() => workflowsStore.workflow.nodes);
 
 	const nodesByName = computed(() => {
-		return workflowsStore.workflow.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
+		return allNodes.value.reduce<Record<string, INodeUi>>((acc, node) => {
 			acc[node.name] = node;
 			return acc;
 		}, {});
 	});
 
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
+
+	const workflowTriggerNodes = computed(() =>
+		allNodes.value.filter((node: INodeUi) => {
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			return nodeType && nodeType.group.includes('trigger');
+		}),
+	);
 
 	function getNodeById(id: string): INodeUi | undefined {
 		return workflowsStore.workflow.nodes.find((node) => node.id === id);
@@ -379,11 +391,102 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		return true;
 	}
 
+	// replace invalid credentials in workflow
+	function replaceInvalidWorkflowCredentials(data: {
+		credentials: INodeCredentialsDetails;
+		invalid: INodeCredentialsDetails;
+		type: string;
+	}) {
+		workflowsStore.workflow.nodes.forEach((node: INodeUi) => {
+			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
+			if (!nodeCredentials?.[data.type]) {
+				return;
+			}
+
+			const nodeCredentialDetails: INodeCredentialsDetails | string = nodeCredentials[data.type];
+
+			if (
+				typeof nodeCredentialDetails === 'string' &&
+				nodeCredentialDetails === data.invalid.name
+			) {
+				(node.credentials as INodeCredentials)[data.type] = data.credentials;
+				return;
+			}
+
+			if (nodeCredentialDetails.id === null) {
+				if (nodeCredentialDetails.name === data.invalid.name) {
+					(node.credentials as INodeCredentials)[data.type] = data.credentials;
+				}
+				return;
+			}
+
+			if (nodeCredentialDetails.id === data.invalid.id) {
+				(node.credentials as INodeCredentials)[data.type] = data.credentials;
+			}
+		});
+	}
+
+	// Assign credential to all nodes that support it but don't have it set
+	function assignCredentialToMatchingNodes(data: {
+		credentials: INodeCredentialsDetails;
+		type: string;
+		currentNodeName: string;
+	}): number {
+		let updatedNodesCount = 0;
+
+		workflowsStore.workflow.nodes.forEach((node: INodeUi) => {
+			// Skip the current node (it was just set)
+			if (node.name === data.currentNodeName) {
+				return;
+			}
+
+			// Skip if node already has credential set
+			if (node.credentials && Object.keys(node.credentials).length > 0) {
+				return;
+			}
+
+			// Get node type to check if it supports this credential
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Check if this node type supports the credential type
+			// and if the credential is actually active given the node's current parameters
+			const credentialDescription = nodeType.credentials.find((cred) => cred.name === data.type);
+			if (!credentialDescription) {
+				return;
+			}
+
+			if (
+				credentialDescription.displayOptions &&
+				!NodeHelpers.displayParameterPath(
+					node.parameters,
+					credentialDescription,
+					'',
+					node,
+					node?.type ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null,
+				)
+			) {
+				return;
+			}
+
+			// Assign the same credential to the node
+			node.credentials ??= {} satisfies INodeCredentials;
+			node.credentials[data.type] = data.credentials;
+
+			updatedNodesCount++;
+		});
+
+		return updatedNodesCount;
+	}
+
 	return {
 		// Read
 		allNodes,
 		nodesByName,
 		canvasNames,
+		workflowTriggerNodes,
 		getNodeById,
 		getNodeByName,
 		findNodeByPartialId,
@@ -403,6 +506,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		removeAllNodes,
 		resetAllNodesIssues,
 		setLastNodeParameters,
+		replaceInvalidWorkflowCredentials,
+		assignCredentialToMatchingNodes,
 
 		// Events
 		onNodesChange: onNodesChange.on,

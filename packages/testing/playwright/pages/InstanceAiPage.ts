@@ -61,6 +61,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-assistant-message');
 	}
 
+	getAssistantMessageText(text: string): Locator {
+		return this.getAssistantMessages().getByText(text);
+	}
+
+	getToolCallsButton(label: string): Locator {
+		return this.page.getByRole('button', { name: label });
+	}
+
 	getStatusBar(): Locator {
 		return this.page.getByTestId('instance-ai-status-bar');
 	}
@@ -90,6 +98,10 @@ export class InstanceAiPage extends BasePage {
 
 	getCredentialContinue(): Locator {
 		return this.page.getByTestId('instance-ai-credential-continue-button');
+	}
+
+	getConfirmationText(text: string): Locator {
+		return this.page.getByText(text, { exact: false });
 	}
 
 	// ── Plan Review ───────────────────────────────────────────────────
