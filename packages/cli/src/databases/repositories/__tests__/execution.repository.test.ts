@@ -5,7 +5,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { Not, LessThanOrEqual } from '@n8n/typeorm';
+import { In, LessThanOrEqual } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
@@ -31,7 +31,7 @@ describe('ExecutionRepository', () => {
 
 	describe('getWaitingExecutions()', () => {
 		test.each(['sqlite', 'postgresdb'] as const)(
-			'on %s, should be called with expected args',
+			'on %s, should only return executions with status=waiting',
 			async (dbType) => {
 				globalConfig.database.type = dbType;
 				entityManager.find.mockResolvedValueOnce([]);
@@ -42,7 +42,7 @@ describe('ExecutionRepository', () => {
 					order: { waitTill: 'ASC' },
 					select: ['id', 'waitTill'],
 					where: {
-						status: Not('crashed'),
+						status: 'waiting',
 						waitTill: LessThanOrEqual(
 							dbType === 'sqlite'
 								? '2023-12-28 12:36:06.789'
@@ -75,6 +75,36 @@ describe('ExecutionRepository', () => {
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
 				{ type: 'execution', executionId: '1', workflowId },
 			]);
+		});
+	});
+
+	describe('cancelMany()', () => {
+		test('should clear waitTill when canceling executions', async () => {
+			const executionIds = ['1', '2', '3'];
+			entityManager.update.mockResolvedValue({ affected: 3, raw: [], generatedMaps: [] });
+
+			await executionRepository.cancelMany(executionIds);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: In(executionIds) },
+				expect.objectContaining({ status: 'canceled', waitTill: null }),
+			);
+		});
+	});
+
+	describe('markAsCrashed()', () => {
+		test('should clear waitTill when marking executions as crashed', async () => {
+			const executionIds = ['1', '2'];
+			entityManager.update.mockResolvedValue({ affected: 2, raw: [], generatedMaps: [] });
+
+			await executionRepository.markAsCrashed(executionIds);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: In(executionIds) },
+				expect.objectContaining({ status: 'crashed', waitTill: null }),
+			);
 		});
 	});
 
