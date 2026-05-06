@@ -23,6 +23,15 @@ import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
 import { N8nClient } from '../clients/n8n-client';
+import {
+	compareBuckets,
+	type ComparisonOutcome,
+	type ComparisonResult,
+	type ExperimentBucket,
+	type ScenarioCounts,
+} from '../comparison/compare';
+import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
+import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
@@ -43,6 +52,7 @@ import type {
 	MultiRunEvaluation,
 	ScenarioResult,
 	TestScenario,
+	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
 
@@ -160,21 +170,40 @@ async function main(): Promise<void> {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
 		let evaluation: MultiRunEvaluation;
+		let experimentName: string | undefined;
+		let outcome: ComparisonOutcome | undefined;
+		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			evaluation = await runWithLangSmith({ args, lanes, logger });
+			const langsmithRun = await runWithLangSmith({ args, lanes, logger });
+			evaluation = langsmithRun.evaluation;
+			experimentName = langsmithRun.experimentName;
+			outcome = langsmithRun.outcome;
+			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
 			evaluation = await runDirectLoop({ args, lanes, logger });
 		}
 
 		const totalDuration = Date.now() - startTime;
-		const outputPath = writeEvalResults(evaluation, totalDuration, args.outputDir);
-		console.log(`Results: ${outputPath}`);
+		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+		const { jsonPath, prCommentPath } = writeEvalResults(
+			evaluation,
+			totalDuration,
+			args.outputDir,
+			experimentName,
+			outcome,
+			commitSha,
+			slugByTestCase,
+		);
+		console.log(`Results:    ${jsonPath}`);
+		console.log(`PR comment: ${prCommentPath}`);
 		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
-		console.log(`Report:  ${htmlPath}`);
-		printSummary(evaluation);
+		console.log(`Report:     ${htmlPath}`);
+		console.log(
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
+		);
 	} finally {
 		await Promise.all(
 			lanes.map(async (lane) => {
@@ -188,7 +217,12 @@ async function main(): Promise<void> {
 // LangSmith mode: evaluate() with dataset sync, tracing, experiments
 // ---------------------------------------------------------------------------
 
-async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> {
+async function runWithLangSmith(config: RunConfig): Promise<{
+	evaluation: MultiRunEvaluation;
+	experimentName: string;
+	outcome: ComparisonOutcome;
+	slugByTestCase: Map<WorkflowTestCase, string>;
+}> {
 	const { args, lanes, logger } = config;
 
 	const lsClient = new Client();
@@ -466,7 +500,24 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			logger,
 		});
 
-		return evaluation;
+		const outcome = await tryRunComparison({
+			lsClient,
+			prExperimentName: experimentResults.experimentName,
+			evaluation,
+			testCasesWithFiles,
+			logger,
+		});
+
+		const slugByTestCase = new Map<WorkflowTestCase, string>(
+			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+		);
+
+		return {
+			evaluation,
+			experimentName: experimentResults.experimentName,
+			outcome,
+			slugByTestCase,
+		};
 	} finally {
 		if (!args.keepWorkflows) {
 			await Promise.all(
@@ -826,15 +877,22 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
-	outputDir?: string,
-): string {
+	outputDir: string | undefined,
+	experimentName: string | undefined,
+	outcome: ComparisonOutcome | undefined,
+	commitSha: string | undefined,
+	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
+): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
+
+	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
 		totalRuns,
+		experimentName,
 		summary: {
 			testCases: testCases.length,
 			built: metrics.built,
@@ -843,6 +901,19 @@ function writeEvalResults(
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
 		},
+		// Structured comparison payload only — the rendered markdown lives in
+		// the sibling `eval-pr-comment.md` file so consumers can pick the format
+		// they want without re-running the eval. `comparisonStatus` records why
+		// the comparison was skipped when applicable, so JSON consumers can
+		// distinguish "no baseline yet" from "regression detection broke".
+		comparison: result
+			? {
+					baseline: result.baseline.experimentName,
+					result: serializeComparison(result),
+				}
+			: undefined,
+		comparisonStatus: outcome?.kind ?? 'not_attempted',
+		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.prompt.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
@@ -868,74 +939,137 @@ function writeEvalResults(
 
 	const targetDir = outputDir ?? process.cwd();
 	mkdirSync(targetDir, { recursive: true });
-	const outputPath = join(targetDir, 'eval-results.json');
-	writeFileSync(outputPath, JSON.stringify(report, null, 2));
-	return outputPath;
+	const jsonPath = join(targetDir, 'eval-results.json');
+	writeFileSync(jsonPath, JSON.stringify(report, null, 2));
+
+	// Always write the rendered PR comment — the markdown formatter handles
+	// both with-comparison and no-baseline cases. CI consumes this file
+	// directly; local users get a copy-pasteable artifact.
+	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
+	writeFileSync(
+		prCommentPath,
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase }),
+	);
+
+	return { jsonPath, prCommentPath };
+}
+
+/**
+ * Convert ComparisonResult into a JSON-serializable shape (Maps don't survive
+ * JSON.stringify by default).
+ */
+function serializeComparison(result: ComparisonResult): {
+	pr: { experimentName: string };
+	baseline: { experimentName: string };
+	aggregate: ComparisonResult['aggregate'];
+	scenarios: ComparisonResult['scenarios'];
+	prOnly: ComparisonResult['prOnly'];
+	baselineOnly: ComparisonResult['baselineOnly'];
+	failureCategories: ComparisonResult['failureCategories'];
+} {
+	return {
+		pr: result.pr,
+		baseline: result.baseline,
+		aggregate: result.aggregate,
+		scenarios: result.scenarios,
+		prOnly: result.prOnly,
+		baselineOnly: result.baselineOnly,
+		failureCategories: result.failureCategories,
+	};
 }
 
 // ---------------------------------------------------------------------------
-// Console summary
+// Comparison vs the pinned baseline experiment
 // ---------------------------------------------------------------------------
 
-function printSummary(evaluation: MultiRunEvaluation): void {
-	const { totalRuns, testCases } = evaluation;
-	const multiRun = totalRuns > 1;
-	const metrics = computeAggregateMetrics(evaluation);
+/**
+ * Best-effort comparison. Returns a tagged outcome so the PR comment can
+ * distinguish "no baseline yet" / "this run IS the baseline" from a real
+ * regression-detection outage (LangSmith down, fetch failure). Never throws
+ * — the eval run is not gated on the comparison.
+ */
+async function tryRunComparison(config: {
+	lsClient: Client;
+	prExperimentName: string;
+	evaluation: MultiRunEvaluation;
+	testCasesWithFiles: WorkflowTestCaseWithFile[];
+	logger: EvalLogger;
+}): Promise<ComparisonOutcome> {
+	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
 
-	console.log('\n=== Workflow Eval Results ===\n');
-	for (const tc of testCases) {
-		console.log(`${tc.testCase.prompt.slice(0, 70)}...`);
-
-		if (multiRun) {
-			console.log(`  Build: ${String(tc.buildSuccessCount)}/${String(totalRuns)} runs`);
-		} else {
-			const r = tc.runs[0];
-			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
-			console.log(`  Workflow: ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (r.buildError) {
-				console.log(`  Error: ${r.buildError.slice(0, 200)}`);
-			}
+	try {
+		const baselineName = await findLatestBaseline(lsClient);
+		if (!baselineName) {
+			logger.verbose(
+				'No baseline experiment found — skipping comparison. ' +
+					'Run with --experiment-name instance-ai-baseline to create one.',
+			);
+			return { kind: 'no_baseline' };
+		}
+		if (baselineName === prExperimentName) {
+			logger.verbose('Current run is the baseline — skipping comparison.');
+			return { kind: 'self_baseline', experimentName: baselineName };
 		}
 
+		logger.info(`Comparing against baseline: ${baselineName}`);
+		const baseline = await fetchBaselineBucket(lsClient, baselineName);
+		const pr = bucketFromEvaluation(evaluation, testCasesWithFiles, prExperimentName);
+		return { kind: 'ok', result: compareBuckets(pr, baseline) };
+	} catch (error: unknown) {
+		const msg = error instanceof Error ? error.message : String(error);
+		logger.warn(`Comparison vs baseline failed: ${msg}`);
+		return { kind: 'fetch_failed', error: msg };
+	}
+}
+
+/**
+ * Project the in-memory MultiRunEvaluation onto the bucket shape used by
+ * fetchBaselineBucket, keyed by `${fileSlug}/${scenarioName}`.
+ *
+ * Looks up `fileSlug` by test case reference rather than array index — the
+ * comparison key depends on getting the right slug, and zipping by index
+ * silently miscompares if anything ever reorders the aggregate.
+ */
+function bucketFromEvaluation(
+	evaluation: MultiRunEvaluation,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
+	experimentName: string,
+): ExperimentBucket {
+	const slugByTestCase = new Map(
+		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+	);
+	const scenarios = new Map<string, ScenarioCounts>();
+	const failureCategoryTotals: Record<string, number> = {};
+	let trialTotal = 0;
+	for (const tc of evaluation.testCases) {
+		const fileSlug = slugByTestCase.get(tc.testCase);
+		if (!fileSlug) {
+			throw new Error(
+				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.prompt.slice(0, 60)}"`,
+			);
+		}
+		const total = tc.runs.length;
 		for (const sa of tc.scenarios) {
-			if (multiRun) {
-				const passAtK = Math.round((sa.passAtK[metrics.kIndex] ?? 0) * 100);
-				const passHatK = Math.round((sa.passHatK[metrics.kIndex] ?? 0) * 100);
-				console.log(
-					`  ${sa.scenario.name}: ${String(sa.passCount)}/${String(totalRuns)} passed` +
-						` | pass@${String(totalRuns)}: ${String(passAtK)}% | pass^${String(totalRuns)}: ${String(passHatK)}%`,
-				);
-			} else {
-				const sr = sa.runs[0];
-				const icon = sr.success ? '✓' : '✗';
-				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
-				console.log(
-					`  ${icon} ${sr.scenario.name}: ${sr.success ? 'PASS' : 'FAIL'}${category} (${String(sr.score * 100)}%)`,
-				);
-				if (!sr.success) {
-					const execErrors = sr.evalResult?.errors ?? [];
-					if (execErrors.length > 0) {
-						console.log(`    Error: ${execErrors.join('; ').slice(0, 200)}`);
-					}
-					console.log(`    Diagnosis: ${sr.reasoning.slice(0, 200)}`);
+			const key = `${fileSlug}/${sa.scenario.name}`;
+			const failureCategories: Record<string, number> = {};
+			for (const sr of sa.runs) {
+				trialTotal++;
+				if (!sr.success && sr.failureCategory) {
+					failureCategories[sr.failureCategory] = (failureCategories[sr.failureCategory] ?? 0) + 1;
+					failureCategoryTotals[sr.failureCategory] =
+						(failureCategoryTotals[sr.failureCategory] ?? 0) + 1;
 				}
 			}
+			scenarios.set(key, {
+				testCaseFile: fileSlug,
+				scenarioName: sa.scenario.name,
+				passed: sa.passCount,
+				total,
+				failureCategories,
+			});
 		}
-		console.log('');
 	}
-
-	if (multiRun) {
-		console.log(
-			`${String(metrics.built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(Math.round(metrics.passAtK * 100))}% | pass^${String(totalRuns)}: ${String(Math.round(metrics.passHatK * 100))}% | iterations: ${metrics.passRatePerIter}`,
-		);
-	} else {
-		const allScenarios = testCases.flatMap((tc) => tc.scenarios);
-		const passed = allScenarios.filter((s) => s.runs[0]?.success).length;
-		const total = metrics.scenariosTotal;
-		console.log(
-			`${String(metrics.built)}/${String(testCases.length)} built | ${String(passed)}/${String(total)} passed (${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%)`,
-		);
-	}
+	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
 }
 
 main().catch((error) => {
