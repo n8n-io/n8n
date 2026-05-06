@@ -349,5 +349,31 @@ describe('promptUtils', () => {
 
 			await expect(parser(steps)).rejects.toThrow('Failed to parse agent steps');
 		});
+
+		it('should parse plain object via outputParser (regression for #29903)', async () => {
+			const parser = getAgentStepsParser(mockOutputParser);
+			const plainObject = { output: { isValid: false, message: 'error' } };
+
+			const parsedResult = { isValid: false, message: 'error' };
+			mockOutputParser.parse.mockResolvedValue(parsedResult);
+
+			const result = await parser(plainObject as unknown as AgentFinish);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(JSON.stringify(plainObject));
+			expect(result).toEqual(parsedResult);
+		});
+
+		it('should parse plain object with arbitrary shape via outputParser', async () => {
+			const parser = getAgentStepsParser(mockOutputParser);
+			const plainObject = { foo: 'bar', count: 42 };
+
+			const parsedResult = { foo: 'bar', count: 42 };
+			mockOutputParser.parse.mockResolvedValue(parsedResult);
+
+			const result = await parser(plainObject as unknown as AgentFinish);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(JSON.stringify(plainObject));
+			expect(result).toEqual(parsedResult);
+		});
 	});
 });
