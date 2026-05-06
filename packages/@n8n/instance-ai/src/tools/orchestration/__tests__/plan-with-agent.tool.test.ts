@@ -11,7 +11,12 @@ jest.mock('@mastra/core/tools', () => ({
 
 import type { OrchestrationContext, PlannedTaskGraph, PlannedTaskService } from '../../../types';
 
-const { __testClearPlannedTaskGraph, __testFormatMessagesForBriefing } =
+const {
+	__testBuildPlannerBriefingContext,
+	__testClearPlannedTaskGraph,
+	__testFormatMessagesForBriefing,
+	__testGetRecentMessages,
+} =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../plan-with-agent.tool') as typeof import('../plan-with-agent.tool');
 
@@ -129,5 +134,98 @@ describe('formatMessagesForBriefing', () => {
 
 		expect(briefing).toMatch(/<current-datetime>[^<]+<\/current-datetime>/);
 		expect(briefing).not.toContain('<user-timezone>');
+	});
+
+	it('renders already-collected answers and discovered resources as dedicated sections', () => {
+		const briefing = __testFormatMessagesForBriefing(
+			[{ role: 'user', content: 'Build a Slack to-do agent' }],
+			undefined,
+			'America/New_York',
+			{
+				collectedAnswers: [
+					'How often should the agent run?: Every morning',
+					'Credential selected for slackApi: Slack account (slackApi)',
+				],
+				discoveredResources: ['Credentials available: Slack account (slackApi)'],
+			},
+		);
+
+		expect(briefing).toContain('## Already-collected answers');
+		expect(briefing).toContain('- How often should the agent run?: Every morning');
+		expect(briefing).toContain('- Credential selected for slackApi: Slack account (slackApi)');
+		expect(briefing).toContain('## Already-discovered resources');
+		expect(briefing).toContain('- Credentials available: Slack account (slackApi)');
+	});
+});
+
+describe('buildPlannerBriefingContext', () => {
+	it('extracts ask-user answers and credential selections from prior tool results', () => {
+		const context = __testBuildPlannerBriefingContext([
+			{
+				toolName: 'credentials',
+				args: { action: 'list' },
+				result: {
+					credentials: [
+						{ id: 'cred-slack', name: 'Slack account', type: 'slackApi' },
+						{ id: 'cred-anthropic', name: 'Anthropic account', type: 'anthropicApi' },
+					],
+				},
+			},
+			{
+				toolName: 'ask-user',
+				args: {
+					questions: [
+						{
+							id: 'schedule',
+							question: 'How often should the agent run?',
+							type: 'single',
+						},
+					],
+				},
+				result: {
+					answered: true,
+					answers: [
+						{
+							questionId: 'schedule',
+							selectedOptions: ['Every morning'],
+						},
+					],
+				},
+			},
+			{
+				toolName: 'credentials',
+				args: { action: 'setup' },
+				result: {
+					success: true,
+					credentials: { slackApi: 'cred-slack' },
+				},
+			},
+		]);
+
+		expect(context.collectedAnswers).toEqual([
+			'How often should the agent run?: Every morning',
+			'Credential selected for slackApi: Slack account (slackApi)',
+		]);
+		expect(context.discoveredResources).toEqual([
+			'Credentials available: Slack account (slackApi), Anthropic account (anthropicApi)',
+		]);
+	});
+});
+
+describe('getRecentMessages', () => {
+	it('does not append the current user message when memory already returned it', async () => {
+		const context = {
+			threadId: 't-1',
+			currentUserMessage: 'Build a Slack to-do agent',
+			memory: {
+				recall: jest.fn().mockResolvedValue({
+					messages: [{ role: 'user', content: 'Build a Slack to-do agent' }],
+				}),
+			},
+		} as unknown as OrchestrationContext;
+
+		const messages = await __testGetRecentMessages(context, 5);
+
+		expect(messages).toEqual([{ role: 'user', content: 'Build a Slack to-do agent' }]);
 	});
 });

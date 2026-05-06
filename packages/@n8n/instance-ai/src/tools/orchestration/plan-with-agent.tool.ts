@@ -15,6 +15,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -53,8 +54,30 @@ const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
 // ---------------------------------------------------------------------------
 
 interface FormattedMessage {
-	role: string;
+	role: 'user' | 'assistant';
 	content: string;
+}
+
+interface PlannerBriefingContext {
+	collectedAnswers: string[];
+	discoveredResources: string[];
+}
+
+interface ToolObservation {
+	toolName: string;
+	args: Record<string, unknown>;
+	result: unknown;
+}
+
+interface CredentialBrief {
+	id?: string;
+	name: string;
+	type: string;
+}
+
+interface DataTableBrief {
+	id?: string;
+	name: string;
 }
 
 /** Extract plain text from Mastra memory content (string, array of parts, or {format, parts}). */
@@ -93,6 +116,38 @@ function extractTextParts(parts: unknown[]): string {
 		.join('\n');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+	return isRecord(value) ? value : undefined;
+}
+
+function readArray(value: unknown): unknown[] {
+	return Array.isArray(value) ? value : [];
+}
+
+function readStringArray(value: unknown): string[] {
+	return readArray(value).filter((item): item is string => typeof item === 'string');
+}
+
+function addUnique(target: string[], seen: Set<string>, value: string | undefined): void {
+	if (!value || seen.has(value)) return;
+	seen.add(value);
+	target.push(value);
+}
+
+function summarizeList(values: string[], limit = 10): string {
+	const visible = values.slice(0, limit).join(', ');
+	const remaining = values.length - limit;
+	return remaining > 0 ? `${visible}, and ${remaining} more` : visible;
+}
+
 async function getRecentMessages(
 	context: OrchestrationContext,
 	count: number,
@@ -120,17 +175,245 @@ async function getRecentMessages(
 	}
 
 	// Always append the current in-flight user message (not yet saved to memory)
-	if (context.currentUserMessage) {
+	if (shouldAppendCurrentUserMessage(messages, context.currentUserMessage)) {
 		messages.push({ role: 'user', content: context.currentUserMessage });
 	}
 
 	return messages;
 }
 
+function shouldAppendCurrentUserMessage(
+	messages: FormattedMessage[],
+	currentUserMessage?: string,
+): currentUserMessage is string {
+	const current = currentUserMessage?.trim();
+	if (!current) return false;
+
+	const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+	return lastUserMessage?.content.trim() !== current;
+}
+
+function getPriorToolObservations(context: OrchestrationContext): ToolObservation[] {
+	let events: InstanceAiEvent[];
+	try {
+		events = context.eventBus.getEventsForRun(context.threadId, context.runId);
+	} catch {
+		return [];
+	}
+
+	type MutableToolObservation = Omit<ToolObservation, 'result'> & {
+		result: unknown;
+		hasResult: boolean;
+	};
+
+	const toolCalls = new Map<string, MutableToolObservation>();
+	const pendingResults = new Map<string, unknown>();
+	const relevantTools = new Set(['ask-user', 'credentials', 'data-tables']);
+
+	for (const event of events) {
+		if (event.type === 'tool-call') {
+			const { toolCallId, toolName, args } = event.payload;
+			if (!relevantTools.has(toolName)) continue;
+
+			const pendingResult = pendingResults.get(toolCallId);
+			toolCalls.set(toolCallId, {
+				toolName,
+				args,
+				result: pendingResult,
+				hasResult: pendingResults.has(toolCallId),
+			});
+			continue;
+		}
+
+		if (event.type === 'tool-result') {
+			const { toolCallId, result } = event.payload;
+			const existing = toolCalls.get(toolCallId);
+			if (existing) {
+				existing.result = result;
+				existing.hasResult = true;
+			} else {
+				pendingResults.set(toolCallId, result);
+			}
+		}
+	}
+
+	return [...toolCalls.values()]
+		.filter((observation) => observation.hasResult)
+		.map(({ toolName, args, result }) => ({ toolName, args, result }));
+}
+
+function buildPlannerBriefingContext(observations: ToolObservation[]): PlannerBriefingContext {
+	const collectedAnswers: string[] = [];
+	const discoveredResources: string[] = [];
+	const seenAnswers = new Set<string>();
+	const seenResources = new Set<string>();
+	const credentialsById = buildCredentialLookup(observations);
+
+	for (const observation of observations) {
+		if (observation.toolName === 'ask-user') {
+			for (const answer of extractAskUserAnswerLines(observation)) {
+				addUnique(collectedAnswers, seenAnswers, answer);
+			}
+			continue;
+		}
+
+		if (observation.toolName === 'credentials') {
+			const action = readString(observation.args.action);
+			if (action === 'list') {
+				addUnique(discoveredResources, seenResources, summarizeCredentials(observation.result));
+			}
+			if (action === 'setup') {
+				for (const selection of extractCredentialSelectionLines(observation, credentialsById)) {
+					addUnique(collectedAnswers, seenAnswers, selection);
+				}
+			}
+			continue;
+		}
+
+		if (observation.toolName === 'data-tables' && readString(observation.args.action) === 'list') {
+			addUnique(discoveredResources, seenResources, summarizeDataTables(observation.result));
+		}
+	}
+
+	return { collectedAnswers, discoveredResources };
+}
+
+function buildCredentialLookup(observations: ToolObservation[]): Map<string, CredentialBrief> {
+	const credentialsById = new Map<string, CredentialBrief>();
+
+	for (const observation of observations) {
+		if (observation.toolName !== 'credentials') continue;
+		for (const credential of extractCredentials(observation.result)) {
+			if (credential.id) credentialsById.set(credential.id, credential);
+		}
+	}
+
+	return credentialsById;
+}
+
+function extractAskUserAnswerLines(observation: ToolObservation): string[] {
+	const result = readRecord(observation.result);
+	if (!result || result.answered === false) return [];
+
+	const questionsById = extractQuestionTextById(observation.args);
+	const answers = readArray(result.answers);
+	const lines: string[] = [];
+
+	for (const answerValue of answers) {
+		const answer = readRecord(answerValue);
+		if (!answer || answer.skipped === true) continue;
+
+		const questionId = readString(answer.questionId);
+		const question =
+			readString(answer.question) ?? (questionId ? questionsById.get(questionId) : undefined);
+		const selectedOptions = readStringArray(answer.selectedOptions);
+		const customText = readString(answer.customText);
+		const values = [...selectedOptions, ...(customText ? [customText] : [])];
+
+		if (!question || values.length === 0) continue;
+		lines.push(`${question}: ${values.join(', ')}`);
+	}
+
+	return lines;
+}
+
+function extractQuestionTextById(args: Record<string, unknown>): Map<string, string> {
+	const questionsById = new Map<string, string>();
+
+	for (const questionValue of readArray(args.questions)) {
+		const question = readRecord(questionValue);
+		const id = readString(question?.id);
+		const text = readString(question?.question);
+		if (id && text) questionsById.set(id, text);
+	}
+
+	return questionsById;
+}
+
+function extractCredentialSelectionLines(
+	observation: ToolObservation,
+	credentialsById: Map<string, CredentialBrief>,
+): string[] {
+	const result = readRecord(observation.result);
+	const credentials = readRecord(result?.credentials);
+	if (!credentials) return [];
+
+	const lines: string[] = [];
+	for (const [credentialType, credentialIdValue] of Object.entries(credentials)) {
+		const credentialId = readString(credentialIdValue);
+		if (!credentialId) continue;
+
+		const credential = credentialsById.get(credentialId);
+		const label = credential
+			? `${credential.name} (${credential.type})`
+			: `credential ID ${credentialId}`;
+		lines.push(`Credential selected for ${credentialType}: ${label}`);
+	}
+
+	return lines;
+}
+
+function summarizeCredentials(result: unknown): string | undefined {
+	const credentials = extractCredentials(result);
+	if (credentials.length === 0) return undefined;
+
+	return `Credentials available: ${summarizeList(
+		credentials.map((credential) => `${credential.name} (${credential.type})`),
+	)}`;
+}
+
+function extractCredentials(result: unknown): CredentialBrief[] {
+	const record = readRecord(result);
+	return readArray(record?.credentials)
+		.map(readCredentialBrief)
+		.filter((credential): credential is CredentialBrief => credential !== undefined);
+}
+
+function readCredentialBrief(value: unknown): CredentialBrief | undefined {
+	const record = readRecord(value);
+	const name = readString(record?.name);
+	const type = readString(record?.type);
+	if (!name || !type) return undefined;
+	const id = readString(record?.id);
+
+	return {
+		name,
+		type,
+		...(id ? { id } : {}),
+	};
+}
+
+function summarizeDataTables(result: unknown): string | undefined {
+	const tables = extractDataTables(result);
+	if (tables.length === 0) return undefined;
+
+	return `Data tables available: ${summarizeList(tables.map((table) => table.name))}`;
+}
+
+function extractDataTables(result: unknown): DataTableBrief[] {
+	const record = readRecord(result);
+	return readArray(record?.tables)
+		.map(readDataTableBrief)
+		.filter((table): table is DataTableBrief => table !== undefined);
+}
+
+function readDataTableBrief(value: unknown): DataTableBrief | undefined {
+	const record = readRecord(value);
+	const name = readString(record?.name);
+	if (!name) return undefined;
+	const id = readString(record?.id);
+
+	return {
+		name,
+		...(id ? { id } : {}),
+	};
+}
+
 function formatMessagesForBriefing(
 	messages: FormattedMessage[],
 	guidance?: string,
 	timeZone?: string,
+	briefingContext?: PlannerBriefingContext,
 ): string {
 	const parts: string[] = [];
 
@@ -151,6 +434,20 @@ function formatMessagesForBriefing(
 		}
 	}
 
+	if (briefingContext?.collectedAnswers.length) {
+		parts.push('## Already-collected answers');
+		for (const answer of briefingContext.collectedAnswers) {
+			parts.push(`- ${answer}`);
+		}
+	}
+
+	if (briefingContext?.discoveredResources.length) {
+		parts.push('## Already-discovered resources');
+		for (const resource of briefingContext.discoveredResources) {
+			parts.push(`- ${resource}`);
+		}
+	}
+
 	if (guidance) {
 		parts.push(`\n## Orchestrator guidance\n${guidance}`);
 	}
@@ -161,6 +458,8 @@ function formatMessagesForBriefing(
 }
 
 export const __testFormatMessagesForBriefing = formatMessagesForBriefing;
+export const __testGetRecentMessages = getRecentMessages;
+export const __testBuildPlannerBriefingContext = buildPlannerBriefingContext;
 
 // ---------------------------------------------------------------------------
 // Helper: clear draft checklist from taskStorage
@@ -268,7 +567,13 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
-			const briefing = formatMessagesForBriefing(messages, input.guidance, context.timeZone);
+			const briefingContext = buildPlannerBriefingContext(getPriorToolObservations(context));
+			const briefing = formatMessagesForBriefing(
+				messages,
+				input.guidance,
+				context.timeZone,
+				briefingContext,
+			);
 
 			// ── IDs & events ──────────────────────────────────────────────
 			const subAgentId = `agent-planner-${nanoid(6)}`;
