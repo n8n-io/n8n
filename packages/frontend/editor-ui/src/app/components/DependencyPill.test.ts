@@ -42,35 +42,40 @@ let capturedOpenHandler: ((open: boolean) => void) | undefined;
 let capturedItems: unknown[] = [];
 let capturedSearchable: boolean | undefined;
 
-vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
-	N8nDropdownMenu: {
-		name: 'N8nDropdownMenu',
-		props: [
-			'items',
-			'trigger',
-			'placement',
-			'loading',
-			'searchable',
-			'searchPlaceholder',
-			'emptyText',
-			'maxHeight',
-			'dataTestId',
-			'extraPopperClass',
-		],
-		emits: ['select', 'search', 'update:modelValue'],
-		setup(
-			props: { items: unknown[]; searchable: boolean },
-			{ emit }: { emit: (e: string, v: unknown) => void },
-		) {
-			capturedItems = props.items;
-			capturedSearchable = props.searchable;
-			capturedSelectHandler = (value: string) => emit('select', value);
-			capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+
+	return {
+		...actual,
+		N8nDropdownMenu: {
+			name: 'N8nDropdownMenu',
+			props: [
+				'items',
+				'trigger',
+				'placement',
+				'loading',
+				'searchable',
+				'searchPlaceholder',
+				'emptyText',
+				'maxHeight',
+				'dataTestId',
+				'extraPopperClass',
+			],
+			emits: ['select', 'search', 'update:modelValue'],
+			setup(
+				props: { items: unknown[]; searchable: boolean },
+				{ emit }: { emit: (e: string, v: unknown) => void },
+			) {
+				capturedItems = props.items;
+				capturedSearchable = props.searchable;
+				capturedSelectHandler = (value: string) => emit('select', value);
+				capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
+			},
+			template:
+				'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
 		},
-		template:
-			'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
-	},
-}));
+	};
+});
 
 const renderComponent = createComponentRenderer(DependencyPill, {
 	pinia: createTestingPinia(),
@@ -174,7 +179,7 @@ describe('DependencyPill', () => {
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
-			params: { name: 'wf-1' },
+			params: { workflowId: 'wf-1' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});
@@ -190,7 +195,7 @@ describe('DependencyPill', () => {
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
-			params: { name: 'wf-2' },
+			params: { workflowId: 'wf-2' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});
@@ -315,5 +320,60 @@ describe('DependencyPill', () => {
 		const { queryByText } = renderComponent({ props: defaultProps });
 
 		expect(queryByText(/not accessible to you/)).not.toBeInTheDocument();
+	});
+
+	it('should open error workflow in new tab on select', () => {
+		mockDepsResult = {
+			dependencies: [{ type: 'errorWorkflow', id: 'err-wf-1', name: 'Error Handler' }],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		capturedSelectHandler?.('errorWorkflow:err-wf-1');
+
+		expect(router.resolve).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'err-wf-1' },
+		});
+		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
+	});
+
+	it('should open error workflow parent in new tab on select', () => {
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'errorWorkflowParent', id: 'parent-wf-1', name: 'Parent Using Error Handler' },
+			],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		capturedSelectHandler?.('errorWorkflowParent:parent-wf-1');
+
+		expect(router.resolve).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'parent-wf-1' },
+		});
+		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
+	});
+
+	it('should group error workflow dependencies in menu items', () => {
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'errorWorkflow', id: 'err-wf-1', name: 'Error Handler' },
+				{ type: 'errorWorkflowParent', id: 'parent-wf-1', name: 'Parent WF' },
+			],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
+
+		// Should have 2 headers + 2 items = 4 total
+		expect(items).toHaveLength(4);
+		expect(items[0].id).toBe('header-errorWorkflow');
+		expect(items[0].disabled).toBe(true);
+		expect(items[1].id).toBe('errorWorkflow:err-wf-1');
+		expect(items[2].id).toBe('header-errorWorkflowParent');
+		expect(items[3].id).toBe('errorWorkflowParent:parent-wf-1');
 	});
 });

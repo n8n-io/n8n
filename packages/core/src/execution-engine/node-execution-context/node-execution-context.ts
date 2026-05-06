@@ -16,6 +16,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
 	NodeFeatures,
 	NodeInputConnections,
@@ -44,6 +45,7 @@ import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
@@ -66,6 +68,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new ApplicationError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
 	}
 
 	getExecutionContext() {
@@ -244,6 +259,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.instanceBaseUrl;
 	}
 
+	async listAgents(): Promise<Array<{ id: string; name: string }>> {
+		if (!this.additionalData.listAgents || !this.additionalData.userId) {
+			return [];
+		}
+		return await this.additionalData.listAgents(this.additionalData.userId);
+	}
+
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
 	}
@@ -289,6 +311,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		itemIndex?: number,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+
+		// Eval-mode bypass: only mock when the node is fully unconfigured, so
+		// nodes that probe multiple auth types still get production's throw.
+		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
+			if (!hasOtherCreds) {
+				const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
+				return buildEvalMockCredentials(
+					additionalData.credentialsHelper.getCredentialsProperties(type),
+				) as T;
+			}
+		}
+
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 

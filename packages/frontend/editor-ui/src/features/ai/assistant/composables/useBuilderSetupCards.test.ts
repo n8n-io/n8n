@@ -34,11 +34,11 @@ vi.mock('@/features/ai/assistant/builder.store', () => ({
 }));
 
 const mockUnpinNodeData = vi.fn();
+const mockTouchPinnedDataLastRemovedAt = vi.fn();
 const mockAllNodes = ref<INodeUi[]>([]);
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		workflowId: 'test-workflow-id',
-		nodeMetadata: {} as Record<string, { pinnedDataLastRemovedAt?: number }>,
 		get allNodes() {
 			return mockAllNodes.value;
 		},
@@ -49,6 +49,11 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => ({
 		pinData: {},
 		unpinNodeData: mockUnpinNodeData,
+		touchPinnedDataLastRemovedAt: mockTouchPinnedDataLastRemovedAt,
+		allNodes: [],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
 	}),
 	createWorkflowDocumentId: (id: string) => id,
 }));
@@ -131,7 +136,7 @@ describe('useBuilderSetupCards', () => {
 
 		const { cards } = getComposable();
 		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].state.node.name).toBe('HTTP Request');
+		expect(cards.value[0].state!.node.name).toBe('HTTP Request');
 	});
 
 	it('returns correct navigation state', async () => {
@@ -158,7 +163,7 @@ describe('useBuilderSetupCards', () => {
 
 		expect(totalCards.value).toBe(3);
 		expect(currentStepIndex.value).toBe(0);
-		expect(currentCard.value?.state.node.name).toBe('Node 1');
+		expect(currentCard.value?.state?.node.name).toBe('Node 1');
 
 		goToNext();
 		await nextTick();
@@ -308,8 +313,8 @@ describe('useBuilderSetupCards', () => {
 
 		const { cards } = getComposable();
 		expect(cards.value).toHaveLength(2);
-		expect(cards.value[0].state.node.name).toBe('Webhook');
-		expect(cards.value[1].state.node.name).toBe('HTTP Request');
+		expect(cards.value[0].state!.node.name).toBe('Webhook');
+		expect(cards.value[1].state!.node.name).toBe('HTTP Request');
 	});
 
 	it('treats incomplete cards as genuinely incomplete', () => {

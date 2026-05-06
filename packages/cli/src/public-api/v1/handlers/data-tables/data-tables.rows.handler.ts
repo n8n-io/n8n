@@ -5,31 +5,31 @@ import {
 	UpsertDataTableRowDto,
 	DeleteDataTableRowsDto,
 } from '@n8n/api-types';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
-import type express from 'express';
 
-import type { DataTableRequest } from '../../../types';
-import {
-	apiKeyHasScope,
-	projectScope,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 
-const handleError = (error: unknown, res: express.Response): express.Response => {
+import type { DataTableRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import {
+	publicApiScope,
+	projectScope,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
+
+const handleError = (error: unknown) => {
 	if (error instanceof DataTableNotFoundError) {
-		return res.status(404).json({ message: error.message });
+		throw new NotFoundError(error.message);
 	}
 	if (error instanceof DataTableValidationError) {
-		return res.status(400).json({ message: error.message });
+		throw new BadRequestError(error.message);
 	}
-	if (error instanceof Error) {
-		return res.status(400).json({ message: error.message });
-	}
+
 	throw error;
 };
 
@@ -47,42 +47,32 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
-/**
- * Gets the project ID for a data table.
- * Called AFTER projectScope middleware has validated access.
- */
-const getProjectIdForDataTable = async (dataTableId: string): Promise<string> => {
-	const dataTable = await Container.get(DataTableRepository).findOne({
-		where: { id: dataTableId },
-		relations: ['project'],
-	});
-
-	if (!dataTable) {
-		throw new DataTableNotFoundError(dataTableId);
-	}
-
-	return dataTable.project.id;
+type DataTableRowsHandlers = {
+	getDataTableRows: PublicAPIEndpoint<DataTableRequest.GetRows>;
+	insertDataTableRows: PublicAPIEndpoint<DataTableRequest.InsertRows>;
+	updateDataTableRows: PublicAPIEndpoint<DataTableRequest.UpdateRows>;
+	upsertDataTableRow: PublicAPIEndpoint<DataTableRequest.UpsertRow>;
+	deleteDataTableRows: PublicAPIEndpoint<DataTableRequest.DeleteRows>;
 };
 
-export = {
+const dataTableRowsHandlers: DataTableRowsHandlers = {
 	getDataTableRows: [
-		apiKeyHasScope('dataTableRow:read'),
+		publicApiScope('dataTableRow:read'),
 		projectScope('dataTable:readRow', 'dataTable'),
 		validCursor,
-		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = PublicApiListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
 				}
 
 				const { offset, limit, filter, sortBy, search } = payload.data;
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
 				const result = await Container.get(DataTableService).getManyRowsAndCount(
 					dataTableId,
@@ -105,26 +95,25 @@ export = {
 					}),
 				});
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	insertDataTableRows: [
-		apiKeyHasScope('dataTableRow:create'),
+		publicApiScope('dataTableRow:create'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req: DataTableRequest.InsertRows, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = AddDataTableRowsDto.safeParse(req.body);
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
 				const result = await Container.get(DataTableService).insertRows(
 					dataTableId,
@@ -135,26 +124,25 @@ export = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	updateDataTableRows: [
-		apiKeyHasScope('dataTableRow:update'),
+		publicApiScope('dataTableRow:update'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req: DataTableRequest.UpdateRows, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = UpdateDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 				const service = Container.get(DataTableService);
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
@@ -167,26 +155,25 @@ export = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	upsertDataTableRow: [
-		apiKeyHasScope('dataTableRow:upsert'),
+		publicApiScope('dataTableRow:upsert'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req: DataTableRequest.UpsertRow, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = UpsertDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 				const service = Container.get(DataTableService);
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
@@ -199,26 +186,25 @@ export = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 
 	deleteDataTableRows: [
-		apiKeyHasScope('dataTableRow:delete'),
+		publicApiScope('dataTableRow:delete'),
 		projectScope('dataTable:writeRow', 'dataTable'),
-		async (req: DataTableRequest.DeleteRows, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
 				const payload = DeleteDataTableRowsDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 				const service = Container.get(DataTableService);
 				const { filter, returnData = false, dryRun = false } = payload.data;
 				const params = { filter };
@@ -231,8 +217,10 @@ export = {
 
 				return res.json(result);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
 };
+
+export = dataTableRowsHandlers;

@@ -1,0 +1,111 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*\\[\\{\"type\":\"text\",\"text\":\"You are the n8n Instance Agent — an AI assistant embedde[\\s\\S]*\"type\"\\s*:\\s*\"tool_use\"[\\s\\S]{0,300}\"name\"\\s*:\\s*\"build-workflow-with-agent\"[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "1159"
+      ],
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=ZJvK.M6Ua6oygvCl9P8EruuDeI93LQDmGhx1dOtZ.Xg-1777465164.7675164-1.0.1.1-nRPNSCV6Bao8V5EbDiuTSBjfuUjtGZwznt39Dir9Ni4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "server-timing": [
+        "x-originResponse;dur=1166"
+      ],
+      "request-id": [
+        "req_011CaY3tX63WHwvLRW2iE2fi"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-04-29T12:19:24Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26974000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-04-29T12:19:24Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-04-29T12:19:24Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-04-29T12:19:24Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22474000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 29 Apr 2026 12:19:26 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "9f3e413fcd143ed8-BCN"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "ZJvK.M6Ua6oygvCl9P8EruuDeI93LQDmGhx1dOtZ.Xg-1777465164.7675164-1.0.1.1-nRPNSCV6Bao8V5EbDiuTSBjfuUjtGZwznt39Dir9Ni4"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01F6TKqiKoN2Kcsi6LmAK7kG\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":490,\"cache_creation_input_tokens\":448,\"cache_read_input_tokens\":14097,\"cache_creation\":{\"ephemeral_5m_input_tokens\":448,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":2,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}          }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"} }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Updating\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the \\\"Status Marker\\\" Set node in your workflow now.\"}       }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0     }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01TqZyyidsdQR1MSbtJfWgHk\",\"name\":\"workflows\",\"input\":{},\"caller\":{\"type\":\"direct\"}}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"actio\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"n\\\": \\\"\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"get\\\"\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\", \\\"workflo\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"wId\\\": \"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"rEgIvtl\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"K6Nlrhh\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"6t\\\"}\"}      }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1     }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":490,\"cache_creation_input_tokens\":448,\"cache_read_input_tokens\":14097,\"output_tokens\":101}          }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"       }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxRjZUS3FpS29OMktjc2k2TG1BSzdrRyIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjQ5MCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjo0NDgsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxNDA5NywiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6NDQ4LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19ICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidGV4dCIsInRleHQiOiIifSB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IlVwZGF0aW5nIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB0aGUgXCJTdGF0dXMgTWFya2VyXCIgU2V0IG5vZGUgaW4geW91ciB3b3JrZmxvdyBub3cuIn0gICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RhcnQKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdGFydCIsImluZGV4IjoxLCJjb250ZW50X2Jsb2NrIjp7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFUcVp5eWlkc2RRUjFNU2J0SmZXZ0hrIiwibmFtZSI6IndvcmtmbG93cyIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX19CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJ7XCJhY3RpbyJ9ICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiblwiOiBcIiJ9ICAgICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoxLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6ImdldFwiIn0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiIsIFwid29ya2ZsbyJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoid0lkXCI6ICJ9ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCJyRWdJdnRsIn0gICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJLNk5scmhoIn0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiI2dFwifSJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MSAgICAgfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGx9LCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjQ5MCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjo0NDgsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxNDA5Nywib3V0cHV0X3Rva2VucyI6MTAxfSAgICAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICAgICAgfQoK",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "1777465170426-unknown-host-POST-_v1_messages-4d84ab6b.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

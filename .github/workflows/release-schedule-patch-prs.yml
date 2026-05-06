@@ -3,7 +3,7 @@ name: 'Release: Schedule Patch Release PRs'
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * 2-5' # 9am CET (UTC+1), Tuesday–Friday
+    - cron: '0 8 * * 3-5,1' # 9am CET (UTC+1), Wednesday - Friday and Monday. (Minor release on tuesday)
 
 jobs:
   create-patch-prs:

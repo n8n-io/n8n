@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
-		displayName: 'Limit',
+		displayName: 'Limit Per Input Row',
 		name: 'limit',
 		type: 'number',
 		displayOptions: {

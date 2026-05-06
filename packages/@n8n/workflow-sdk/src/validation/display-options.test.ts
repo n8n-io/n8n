@@ -91,6 +91,15 @@ describe('checkConditions', () => {
 			expect(checkConditions([{ _cnd: { regex: '^test\\d+$' } }], ['abc'])).toBe(false);
 		});
 
+		it('returns false (no throw) when string operators see a non-string actualValue', () => {
+			expect(checkConditions([{ _cnd: { includes: 'foo' } }], [undefined])).toBe(false);
+			expect(checkConditions([{ _cnd: { startsWith: 'foo' } }], [undefined])).toBe(false);
+			expect(checkConditions([{ _cnd: { endsWith: 'foo' } }], [undefined])).toBe(false);
+			expect(checkConditions([{ _cnd: { regex: '.*' } }], [undefined])).toBe(false);
+			expect(checkConditions([{ _cnd: { includes: 'foo' } }], [42])).toBe(false);
+			expect(checkConditions([{ _cnd: { startsWith: 'foo' } }], [{ nested: true }])).toBe(false);
+		});
+
 		it('handles _cnd.exists operator', () => {
 			expect(checkConditions([{ _cnd: { exists: true } }], ['value'])).toBe(true);
 			expect(checkConditions([{ _cnd: { exists: true } }], [0])).toBe(true);

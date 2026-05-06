@@ -37,18 +37,23 @@ export class ResolverConfigExpressionService {
 		const additionalData = await getBase();
 		const additionalKeys = getNonWorkflowAdditionalKeys(additionalData);
 
-		return workflow.expression.getComplexParameterValue(
-			// Use a mock node (mandatory) to resolve expressions in the config
-			{
-				id: '1',
-				name: 'Mock Node',
-			} as INode,
-			config,
-			'manual',
-			additionalKeys,
-			undefined,
-			undefined,
-			config,
-		) as INodeParameters;
+		await workflow.expression.acquireIsolate();
+		try {
+			return workflow.expression.getComplexParameterValue(
+				// Use a mock node (mandatory) to resolve expressions in the config
+				{
+					id: '1',
+					name: 'Mock Node',
+				} as INode,
+				config,
+				'manual',
+				additionalKeys,
+				undefined,
+				undefined,
+				config,
+			) as INodeParameters;
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 }

@@ -28,13 +28,14 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
+export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc' | 'token-exchange';
 
 export interface IUserManagementSettings {
 	quota: number;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
 }
 
 export interface IEnterpriseSettings {
@@ -64,6 +65,7 @@ export interface IEnterpriseSettings {
 	};
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
 }
 
 export interface FrontendSettings {
@@ -91,6 +93,7 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
@@ -130,6 +133,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -144,6 +148,9 @@ export interface FrontendSettings {
 			loginEnabled: boolean;
 		};
 	};
+	logStreaming: {
+		managedByEnv: boolean;
+	};
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -153,6 +160,7 @@ export interface FrontendSettings {
 		};
 	};
 	workflowTagsDisabled: boolean;
+	workflowsAutosaveDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -214,6 +222,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		budget: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -224,6 +236,9 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
@@ -256,6 +271,8 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+		/** Whether MCP settings are managed via environment variables. */
+		mcpManagedByEnv: boolean;
 	};
 
 	/**
@@ -266,6 +283,17 @@ export type FrontendModuleSettings = {
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 		semanticSearch: ChatHubSemanticSearchSettings;
 		agentUploadMaxSizeMb: number;
+	};
+
+	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		localGatewayDisabled: boolean;
+		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**
@@ -287,6 +315,19 @@ export type FrontendModuleSettings = {
 		roleBasedAccess: boolean;
 		/** Whether system roles (admin, editor) have external secrets scopes. */
 		systemRolesEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the agents module.
+	 */
+	agents?: {
+		/**
+		 * Enabled agent sub-feature modules. Each token unlocks a specific
+		 * capability inside the agents module (see the backend's
+		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
+		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 */
+		modules: string[];
 	};
 };
 

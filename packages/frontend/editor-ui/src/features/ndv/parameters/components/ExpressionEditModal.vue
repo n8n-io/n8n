@@ -4,7 +4,7 @@ import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
@@ -33,6 +33,10 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -56,8 +60,11 @@ const emit = defineEmits<{
 	closeDialog: [];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -78,7 +85,7 @@ const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
+	const nodes = workflowDocumentStore?.value?.getParentNodesByDepth(node.name) ?? [];
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -86,12 +93,12 @@ const parentNodes = computed(() => {
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowDocumentStore?.value?.getParentNodesByDepth(rootNode.value) ?? [];
 });
 
 watch(

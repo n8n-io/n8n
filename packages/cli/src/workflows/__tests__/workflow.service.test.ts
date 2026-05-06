@@ -1,8 +1,10 @@
+import type { LicenseState } from '@n8n/backend-common';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
@@ -165,6 +167,7 @@ describe('WorkflowService', () => {
 		const userHasScopesMock = jest.mocked(userHasScopes);
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let licenseStateMock: MockProxy<LicenseState>;
 		let workflowRepositoryMock: MockProxy<{
 			update: jest.Mock;
 			findOne: jest.Mock;
@@ -173,6 +176,8 @@ describe('WorkflowService', () => {
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowRepositoryMock = mock();
+			licenseStateMock = mock<LicenseState>();
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 
 			const ownershipServiceMock = mock<OwnershipService>();
 			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
@@ -202,7 +207,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
-				mock(), // licenseState
+				licenseStateMock, // licenseState
 				mock(), // projectRepository
 			);
 
@@ -231,6 +236,26 @@ describe('WorkflowService', () => {
 		function createUpdateData(settings: Record<string, unknown>) {
 			return { settings } as unknown as WorkflowEntity;
 		}
+
+		test('should throw BadRequestError for invalid workflow structure', async () => {
+			setupExistingWorkflow();
+			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
+				throw new BadRequestError('Workflow structure is invalid. nodes[0].position: Required');
+			});
+
+			const user = mock<User>();
+
+			await expect(
+				workflowService.update(
+					user,
+					{
+						nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
+					} as unknown as WorkflowEntity,
+					'workflow-1',
+					{ forceSave: true },
+				),
+			).rejects.toThrow('Workflow structure is invalid.');
+		});
 
 		test('should strip redactionPolicy when user lacks scope and value is changing', async () => {
 			setupExistingWorkflow({ redactionPolicy: 'none' });
@@ -307,6 +332,47 @@ describe('WorkflowService', () => {
 			});
 
 			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+
+		test('should strip redactionPolicy when instance lacks data-redaction license', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
+		});
+
+		test('should not strip redactionPolicy when instance has data-redaction license', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
+			userHasScopesMock.mockResolvedValue(true);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
 		});
 	});
 });
