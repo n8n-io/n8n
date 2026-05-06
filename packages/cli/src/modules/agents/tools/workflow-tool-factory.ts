@@ -30,6 +30,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { sanitizeToolName } from '../json-config/agent-config-composition';
 import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 
 // ---------------------------------------------------------------------------
@@ -549,7 +550,12 @@ async function buildWorkflowTool(
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
 
-	const toolName = descriptor.name ?? toToolName(workflowName);
+	// Always run through `toToolName` even when the user supplied `descriptor.name`.
+	// Anthropic and OpenAI both require tool names to match `^[a-zA-Z0-9_-]{1,128}$`,
+	// so a workflow display name like "D&D Invite" must be sanitized before reaching
+	// the model. Schema validation rejects invalid names on save (see
+	// `agent-json-config.ts`); this is the runtime safety net for legacy configs.
+	const toolName = toToolName(descriptor.name ?? workflowName);
 	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
 	const inputSchema = inferInputSchema(triggerNode, triggerType);
 	const allOutputs = descriptor.allOutputs ?? false;
@@ -631,10 +637,9 @@ async function buildWorkflowTool(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Convert a workflow name to a valid tool name (lowercase, hyphens, no spaces). */
-function toToolName(name: string): string {
-	return name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '');
-}
+/**
+ * Re-export the shared sanitiser under the local name used in this file.
+ * Lives in `agent-config-composition` so save-time healing and runtime
+ * fallback share a single source of truth.
+ */
+const toToolName = sanitizeToolName;
