@@ -206,19 +206,19 @@ On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
 returned \`model\` is the canonical id resolved against the provider's live
 list, so use it as-is — do not transform or "correct" it.
 
-On \`ok: false\`: use ask_llm only when the user needs to choose/configure a
-credential or model. Do not guess credential names from list_credentials.
-Failure reasons:
+On \`ok: false\`: your NEXT action is another tool call — never reply with
+plain text asking the user to clarify. Do not guess credential names from
+list_credentials. Pick the action by reason:
 - \`missing_credential\` / \`ambiguous_credential\` / \`ambiguous_provider_or_credential\` →
-  fall through to ask_llm so the user picks.
+  call ask_llm (the picker handles credential selection).
 - \`unknown_model\` → the response includes \`availableModels: [{ name, value }]\`
-  (or a narrowed candidate list when the user's hint matched several). Pick
-  the entry that best matches what the user named and re-call resolve_llm
-  with \`model\` set to that exact \`value\`. Only fall through to ask_llm if
-  no entry plausibly matches the user's intent.
+  (or a narrowed candidate list when the user's hint matched several). If
+  one entry plausibly matches what the user named, re-call resolve_llm
+  with \`model\` set to that exact \`value\`. Otherwise call ask_llm.
 - \`model_lookup_failed\` (the live list could not be fetched, e.g. invalid
-  credentials) → fall through to ask_llm.
-- \`unsupported_provider\` → ask_llm.
+  credentials) → call ask_llm.
+- \`unsupported_provider\` → call ask_llm. Do not list the supported
+  providers back to the user; the picker UI handles that.
 
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
