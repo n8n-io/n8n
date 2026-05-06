@@ -6,6 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -64,7 +65,11 @@ describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 
 	beforeEach(() => {
-		const pinia = createTestingPinia({ stubActions: false });
+		// Default `stubActions: true` — every store action becomes a no-op spy.
+		// Necessary because the store's actions delegate internally to the
+		// thread runtime (e.g. `switchThread` calls `runtime.connectSSE`),
+		// which would try to construct a real `EventSource` in jsdom.
+		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
 		store = mockedStore(useInstanceAiStore);
@@ -77,10 +82,14 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
-		store.loadThreads.mockResolvedValue(true);
 		store.loadHistoricalMessages.mockResolvedValue('applied');
-		store.connectSSE.mockResolvedValue(undefined);
-		store.closeSSE.mockReturnValue(undefined);
+
+		// `useExecutionPushEvents` (consumed by ThreadView) registers a push
+		// listener and stores the returned removeListener; it gets invoked on
+		// component unmount. Auto-stubbed actions return undefined by default,
+		// so return a no-op function to keep cleanup well-typed.
+		const pushStore = mockedStore(usePushConnectionStore);
+		pushStore.addEventListener.mockReturnValue(() => {});
 	});
 
 	afterEach(() => {

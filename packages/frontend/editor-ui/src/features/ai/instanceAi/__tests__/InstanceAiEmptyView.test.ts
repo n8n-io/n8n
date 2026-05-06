@@ -49,7 +49,10 @@ describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 
 	beforeEach(() => {
-		const pinia = createTestingPinia({ stubActions: false });
+		// Default `stubActions: true` — every store action becomes a no-op spy.
+		// We only need to assert the call happened; the bodies of store actions
+		// touch the thread runtime (SSE etc.) which we don't exercise here.
+		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
 		store = mockedStore(useInstanceAiStore);
