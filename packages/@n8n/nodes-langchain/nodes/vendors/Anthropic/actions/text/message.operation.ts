@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -343,6 +343,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		enableAnthropicBetas: { codeExecution: options.codeExecution },
 	})) as MessagesResponse;
 
+	const captureUsage = () => {
+		const usage = (response as unknown as Record<string, unknown>).usage as
+			| { input_tokens: number; output_tokens: number }
+			| undefined;
+		if (usage) {
+			accumulateTokenUsage(this, usage.input_tokens, usage.output_tokens);
+		}
+	};
+
+	captureUsage();
+
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
 	let currentIteration = 0;
@@ -382,6 +393,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			body,
 			enableAnthropicBetas: { codeExecution: options.codeExecution },
 		})) as MessagesResponse;
+
+		captureUsage();
 	}
 
 	const mergedResponse = options.includeMergedResponse

@@ -30,6 +30,7 @@ const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		getAllNodeTypes: vi.fn().mockReturnValue([]),
 	})),
 }));
 
@@ -178,6 +179,11 @@ describe('usePinnedData', () => {
 	});
 
 	describe('canPinData()', () => {
+		beforeEach(() => {
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
+		});
+
 		afterEach(() => {
 			vi.clearAllMocks();
 		});

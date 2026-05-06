@@ -1,7 +1,6 @@
 import { ref } from 'vue';
-import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowCommands } from './useWorkflowCommands';
-import * as useCanvasOperations from '@/app/composables/useCanvasOperations';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -16,24 +15,23 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { shallowRef, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-vi.mock('@/app/composables/useCanvasOperations');
 vi.mock('@/app/composables/useWorkflowHelpers');
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
-vi.mock('@/app/composables/useTelemetry');
 vi.mock('@/app/composables/useWorkflowSaving');
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
 vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
-		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.name}` })),
+		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.workflowId}` })),
 	}),
 	useRoute: () => ({}),
 	RouterLink: vi.fn(),
@@ -44,21 +42,21 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => key,
 	}),
 }));
-vi.mock('file-saver', () => ({
-	saveAs: vi.fn(),
+const { saveAsMock, mockTelemetryTrack } = vi.hoisted(() => ({
+	saveAsMock: vi.fn(),
+	mockTelemetryTrack: vi.fn(),
 }));
-const mockTelemetryTrack = vi.fn();
+vi.mock('file-saver', () => ({
+	saveAs: saveAsMock,
+}));
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
-const getWorkflowDataToSaveMock = vi.fn();
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
-	useWorkflowHelpers: () => ({
-		getWorkflowDataToSave: getWorkflowDataToSaveMock,
-	}),
+	useWorkflowHelpers: () => ({}),
 }));
 
 const saveCurrentWorkflowMock = vi.fn();
@@ -79,6 +77,7 @@ describe('useWorkflowCommands', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.clearAllMocks();
 
 		mockWorkflow = ref(
 			createTestWorkflow({
@@ -98,7 +97,6 @@ describe('useWorkflowCommands', () => {
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockSourceControlStore = useSourceControlStore();
 
-		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
@@ -109,6 +107,12 @@ describe('useWorkflowCommands', () => {
 			createWorkflowDocumentId(mockWorkflow.value.id),
 		);
 		mockWorkflowDocumentStore.setScopes(mockWorkflow.value.scopes ?? []);
+		mockWorkflowDocumentStore.setName(mockWorkflow.value.name);
+		mockWorkflowDocumentStore.setTags(mockWorkflow.value.tags ?? []);
+		mockWorkflowDocumentStore.setNodes(mockWorkflow.value.nodes);
+		vi.spyOn(mockWorkflowDocumentStore, 'serialize').mockReturnValue(
+			mockWorkflow.value as unknown as WorkflowData,
+		);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(mockWorkflowDocumentStore));
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
@@ -130,9 +134,6 @@ describe('useWorkflowCommands', () => {
 
 		mockSourceControlStore.preferences.branchReadOnly = false;
 
-		const canvasOperationsMock: MockInstance = vi.spyOn(useCanvasOperations, 'useCanvasOperations');
-		canvasOperationsMock.mockReturnValue({ editableWorkflow: mockWorkflow });
-
 		canvasEventBus.emit = vi.fn();
 		nodeViewEventBus.emit = vi.fn();
 	});
@@ -146,7 +147,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should return credential commands when credentials exist', () => {
-			mockWorkflow.value.nodes = [
+			const nodes = [
 				{
 					id: 'node1',
 					name: 'node1',
@@ -158,6 +159,8 @@ describe('useWorkflowCommands', () => {
 					},
 				} as unknown as INodeUi,
 			];
+			mockWorkflow.value.nodes = nodes;
+			mockWorkflowDocumentStore.setNodes(nodes);
 
 			const { commands } = useWorkflowCommands();
 			const credentialCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
@@ -168,7 +171,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle credential click', async () => {
-			mockWorkflow.value.nodes = [
+			const nodes = [
 				{
 					id: 'node1',
 					name: 'node1',
@@ -180,6 +183,8 @@ describe('useWorkflowCommands', () => {
 					},
 				} as unknown as INodeUi,
 			];
+			mockWorkflow.value.nodes = nodes;
+			mockWorkflowDocumentStore.setNodes(nodes);
 
 			const { commands } = useWorkflowCommands();
 			const credentialCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
@@ -256,6 +261,7 @@ describe('useWorkflowCommands', () => {
 
 		it('should handle duplicate workflow', async () => {
 			mockWorkflow.value.tags = ['tag1'];
+			mockWorkflowDocumentStore.setTags(['tag1']);
 
 			const { commands } = useWorkflowCommands();
 			const duplicateCommand = commands.value.find((cmd) => cmd.id === 'duplicate-workflow');
@@ -320,8 +326,6 @@ describe('useWorkflowCommands', () => {
 
 	describe('subworkflow commands', () => {
 		it('should return empty array when no subworkflows exist', () => {
-			mockWorkflow.value.nodes = [];
-
 			const { commands } = useWorkflowCommands();
 			const subworkflowCommand = commands.value.find((cmd) => cmd.id === 'open-sub-workflow');
 
@@ -329,7 +333,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should return subworkflow commands when Execute Workflow nodes exist', () => {
-			mockWorkflow.value.nodes = [
+			const nodes = [
 				{
 					id: 'node1',
 					name: 'node1',
@@ -345,6 +349,8 @@ describe('useWorkflowCommands', () => {
 					},
 				} as unknown as INodeUi,
 			];
+			mockWorkflow.value.nodes = nodes;
+			mockWorkflowDocumentStore.setNodes(nodes);
 
 			const { commands } = useWorkflowCommands();
 			const subworkflowCommand = commands.value.find((cmd) => cmd.id === 'open-sub-workflow');
@@ -357,18 +363,16 @@ describe('useWorkflowCommands', () => {
 
 	describe('export commands', () => {
 		it('should handle download workflow', async () => {
-			const { saveAs } = await import('file-saver');
-
 			const { commands } = useWorkflowCommands();
 			const downloadCommand = commands.value.find((cmd) => cmd.id === 'download-workflow');
 
 			await downloadCommand?.handler?.();
 
-			expect(getWorkflowDataToSaveMock).toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.serialize).toHaveBeenCalled();
 			expect(mockTelemetryTrack).toHaveBeenCalledWith('User exported workflow', {
 				workflow_id: 'workflow-123',
 			});
-			expect(saveAs).toHaveBeenCalled();
+			expect(saveAsMock).toHaveBeenCalled();
 		});
 	});
 

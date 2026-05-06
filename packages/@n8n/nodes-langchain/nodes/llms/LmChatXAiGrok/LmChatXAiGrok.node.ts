@@ -117,6 +117,10 @@ export class LmChatXAiGrok implements INodeType {
 					},
 				},
 				default: 'grok-2-vision-1212',
+				builderHint: {
+					message:
+						'Default to the latest flagship Grok (grok-4.20-0309-reasoning, or grok-4.20-multi-agent-0309 for agent workloads). Avoid grok-4, grok-2, and grok-1 variants.',
+				},
 			},
 			{
 				displayName: 'Options',

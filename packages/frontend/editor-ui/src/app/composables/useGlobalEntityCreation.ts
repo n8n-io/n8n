@@ -73,12 +73,16 @@ export const useGlobalEntityCreation = () => {
 		!getResourcePermissions(scopes).credential.create;
 
 	const menu = computed<Item[]>(() => {
+		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
+		const credentialTitle = i18n.baseText('projects.menu.create.credential');
+		const projectTitle = i18n.baseText('projects.menu.create.project');
+
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return [
 				{
 					id: 'workflow',
-					title: 'Workflow',
+					title: workflowTitle,
 					route: {
 						name: VIEWS.NEW_WORKFLOW,
 						query: {
@@ -88,7 +92,7 @@ export const useGlobalEntityCreation = () => {
 				},
 				{
 					id: 'credential',
-					title: 'Credential',
+					title: credentialTitle,
 					route: {
 						name: VIEWS.CREDENTIALS,
 						params: {
@@ -99,17 +103,51 @@ export const useGlobalEntityCreation = () => {
 				},
 				{
 					id: CREATE_PROJECT_ID,
-					title: 'Project',
+					title: projectTitle,
 					disabled: true,
 				},
 			];
+		}
+
+		// Team feature enabled but no team projects: skip submenus
+		if (displayProjects.value.length === 0) {
+			return [
+				{
+					id: WORKFLOWS_MENU_ID,
+					title: workflowTitle,
+					disabled:
+						sourceControlStore.preferences.branchReadOnly ||
+						disabledWorkflow(projectsStore.personalProject?.scopes),
+					route: {
+						name: VIEWS.NEW_WORKFLOW,
+						query: { projectId: projectsStore.personalProject?.id },
+					},
+				},
+				{
+					id: CREDENTIALS_MENU_ID,
+					title: credentialTitle,
+					disabled:
+						sourceControlStore.preferences.branchReadOnly ||
+						disabledCredential(projectsStore.personalProject?.scopes),
+					route: {
+						name: VIEWS.PROJECTS_CREDENTIALS,
+						params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
+					},
+				},
+				{
+					id: CREATE_PROJECT_ID,
+					title: projectTitle,
+					disabled:
+						!projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
+				},
+			] satisfies Item[];
 		}
 
 		// global
 		return [
 			{
 				id: WORKFLOWS_MENU_ID,
-				title: 'Workflow',
+				title: workflowTitle,
 				disabled: sourceControlStore.preferences.branchReadOnly,
 
 				...(!sourceControlStore.preferences.branchReadOnly && {
@@ -144,7 +182,7 @@ export const useGlobalEntityCreation = () => {
 			},
 			{
 				id: CREDENTIALS_MENU_ID,
-				title: 'Credential',
+				title: credentialTitle,
 				disabled: sourceControlStore.preferences.branchReadOnly,
 				...(!sourceControlStore.preferences.branchReadOnly && {
 					submenu: [
@@ -178,7 +216,7 @@ export const useGlobalEntityCreation = () => {
 			},
 			{
 				id: CREATE_PROJECT_ID,
-				title: 'Project',
+				title: projectTitle,
 				disabled: !projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
 			},
 		] satisfies Item[];

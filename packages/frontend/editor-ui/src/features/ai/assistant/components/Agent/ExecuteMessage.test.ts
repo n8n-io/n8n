@@ -17,10 +17,9 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
 
-const workflowValidationIssuesRef = ref<
+const builderWorkflowTodosRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
 >([]);
-const workflowTodosRef = ref<Array<{ node: string; type: string; value: string | string[] }>>([]);
 const executionWaitingForWebhookRef = ref(false);
 const selectedTriggerNodeNameRef = ref<string | undefined>(undefined);
 const hasNoCreditsRemainingRef = ref(false);
@@ -101,8 +100,7 @@ describe('ExecuteMessage', () => {
 		vi.clearAllMocks();
 		runWorkflowMock.mockReset();
 		showMessageMock.mockReset();
-		workflowValidationIssuesRef.value = [];
-		workflowTodosRef.value = [];
+		builderWorkflowTodosRef.value = [];
 		executionWaitingForWebhookRef.value = false;
 		selectedTriggerNodeNameRef.value = undefined;
 		hasNoCreditsRemainingRef.value = false;
@@ -129,12 +127,6 @@ describe('ExecuteMessage', () => {
 
 		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
 		workflowsStore.workflow.connections = {} as never;
-		Object.defineProperty(workflowsStore, 'workflowValidationIssues', {
-			get: () => workflowValidationIssuesRef.value,
-		});
-		workflowsStore.formatIssueMessage = vi.fn((value: string | string[]) =>
-			Array.isArray(value) ? value.join(', ') : String(value),
-		);
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});
@@ -158,7 +150,7 @@ describe('ExecuteMessage', () => {
 			get: () => hasNoCreditsRemainingRef.value,
 		});
 		Object.defineProperty(builderStore, 'workflowTodos', {
-			get: () => workflowTodosRef.value,
+			get: () => builderWorkflowTodosRef.value,
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
@@ -167,8 +159,7 @@ describe('ExecuteMessage', () => {
 
 	it('disables execution when validation issues exist', () => {
 		const issue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
-		workflowValidationIssuesRef.value = [issue];
-		workflowTodosRef.value = [issue];
+		builderWorkflowTodosRef.value = [issue];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -181,7 +172,7 @@ describe('ExecuteMessage', () => {
 		workflowNodes[0].parameters = {
 			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
 		};
-		workflowTodosRef.value = [
+		builderWorkflowTodosRef.value = [
 			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
 		];
 
@@ -304,7 +295,7 @@ describe('ExecuteMessage', () => {
 
 	it('disables execution when no credits remaining and validation issues exist', () => {
 		hasNoCreditsRemainingRef.value = true;
-		workflowValidationIssuesRef.value = [
+		builderWorkflowTodosRef.value = [
 			{ node: 'Start Trigger', type: 'parameters', value: 'Missing field' },
 		];
 
@@ -352,7 +343,7 @@ describe('ExecuteMessage', () => {
 				url: ['Some other validation error'],
 			},
 		};
-		workflowTodosRef.value = [
+		builderWorkflowTodosRef.value = [
 			{ node: 'Start Trigger', type: 'parameters', value: 'Some other validation error' },
 			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
 		];
@@ -369,7 +360,7 @@ describe('ExecuteMessage', () => {
 
 	it('tracks user_clicked_todo when clicking on an issue item', async () => {
 		const todoIssue = { node: 'HTTP Request', type: 'parameters', value: 'Missing URL' };
-		workflowTodosRef.value = [todoIssue];
+		builderWorkflowTodosRef.value = [todoIssue];
 		workflowNodes.push({
 			id: '2',
 			name: 'HTTP Request',
@@ -397,7 +388,7 @@ describe('ExecuteMessage', () => {
 			type: 'credentials',
 			value: "Credentials for 'OpenAI' are not set",
 		};
-		workflowTodosRef.value = [credentialIssue];
+		builderWorkflowTodosRef.value = [credentialIssue];
 		workflowNodes.push({
 			id: '2',
 			name: 'OpenAI Model',
@@ -426,12 +417,12 @@ describe('ExecuteMessage', () => {
 
 	it('tracks no_placeholder_values_left when all todos are resolved', async () => {
 		const todoIssue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
-		workflowTodosRef.value = [todoIssue];
+		builderWorkflowTodosRef.value = [todoIssue];
 
 		renderExecuteMessage();
 
 		// Simulate resolving all todos
-		workflowTodosRef.value = [];
+		builderWorkflowTodosRef.value = [];
 		await nextTick();
 		await flushPromises();
 
@@ -441,7 +432,7 @@ describe('ExecuteMessage', () => {
 	});
 
 	it('does not track no_placeholder_values_left when component mounts without issues', async () => {
-		workflowTodosRef.value = [];
+		builderWorkflowTodosRef.value = [];
 
 		renderExecuteMessage();
 		await nextTick();
@@ -449,5 +440,86 @@ describe('ExecuteMessage', () => {
 		expect(builderStore.trackWorkflowBuilderJourney).not.toHaveBeenCalledWith(
 			'no_placeholder_values_left',
 		);
+	});
+
+	describe('follow-up actions', () => {
+		it('shows pre-execution follow-ups when deferred pin data exists', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('follow-up-execute-with-mock-data')).toBeInTheDocument();
+		});
+
+		it('does not show follow-ups when no deferred pin data exists', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('follow-up-execute-with-mock-data')).not.toBeInTheDocument();
+		});
+
+		it('hides execute button when pre-execution follow-ups are shown', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('shows execute button when no follow-ups are present', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+
+		it('emits executeWithMockData when follow-up is clicked', async () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { getByTestId, emitted } = renderExecuteMessage();
+
+			await fireEvent.click(getByTestId('follow-up-execute-with-mock-data'));
+
+			expect(emitted('executeWithMockData')).toHaveLength(1);
+			expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+				'user_clicked_run_with_test_data',
+			);
+		});
+
+		it('shows post-execution follow-ups when pin data has been applied', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('follow-up-toggle-pin-data')).toBeInTheDocument();
+			expect(getByTestId('follow-up-execute-and-refine')).toBeInTheDocument();
+		});
+
+		it('does not show post-execution follow-ups when pinDataApplied is false', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => false });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('follow-up-toggle-pin-data')).not.toBeInTheDocument();
+			expect(queryByTestId('follow-up-execute-and-refine')).not.toBeInTheDocument();
+		});
+
+		it('hides old unpin section and execute button when post-execution follow-ups show', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
+			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
+			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
+
+			const { queryByTestId, queryByText } = renderExecuteMessage();
+
+			// Old unpin button and execute button should be hidden
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+			expect(queryByText('aiAssistant.builder.executeMessage.unpinAll')).not.toBeInTheDocument();
+		});
 	});
 });

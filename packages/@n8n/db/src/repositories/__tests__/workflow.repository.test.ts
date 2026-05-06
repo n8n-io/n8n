@@ -6,6 +6,7 @@ import { WorkflowEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
+import { SharedWorkflowRepository } from '../shared-workflow.repository';
 import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
@@ -15,11 +16,13 @@ describe('WorkflowRepository', () => {
 		database: { type: 'postgresdb' },
 	});
 	const folderRepository = mockInstance(FolderRepository);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
+		sharedWorkflowRepository,
 		workflowHistoryRepository,
 	);
 
@@ -29,6 +32,7 @@ describe('WorkflowRepository', () => {
 		jest.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<WorkflowEntity>>();
+
 		queryBuilder.where.mockReturnThis();
 		queryBuilder.andWhere.mockReturnThis();
 		queryBuilder.orWhere.mockReturnThis();
@@ -144,6 +148,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -364,6 +369,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -392,6 +398,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -591,6 +598,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -651,6 +659,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);

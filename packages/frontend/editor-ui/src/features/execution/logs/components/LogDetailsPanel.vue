@@ -19,7 +19,7 @@ import {
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
@@ -61,7 +61,7 @@ defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();

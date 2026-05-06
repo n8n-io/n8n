@@ -6,6 +6,10 @@ import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
@@ -118,10 +122,14 @@ describe('useResolvedExpression', () => {
 
 	it('should re-resolve when workflow name changes', async () => {
 		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-workflow';
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
 		const resolveExpressionSpy = mockResolveExpression();
-		resolveExpressionSpy.mockImplementation(async () => workflowsStore.workflow.name);
+		resolveExpressionSpy.mockImplementation(async () => workflowDocumentStore.name);
 
-		workflowState.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+		workflowDocumentStore.setName('Old Name');
 
 		const { resolvedExpressionString } = await renderTestComponent({
 			expression: '={{ $workflow.name }}',
@@ -135,7 +143,7 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe('Old Name');
 
 		// Update name and expect re-resolution
-		workflowState.setWorkflowName({ newName: 'New Name', setStateDirty: false });
+		workflowDocumentStore.setName('New Name');
 		await nextTick();
 		vi.advanceTimersByTime(200);
 		await nextTick();
