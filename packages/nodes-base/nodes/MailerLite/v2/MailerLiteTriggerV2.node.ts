@@ -123,6 +123,8 @@ export class MailerLiteTriggerV2 implements INodeType {
 						webhookData.webhookId = webhook.id as string;
 						if (typeof webhook.secret === 'string') {
 							webhookData.webhookSecret = webhook.secret;
+						} else {
+							delete webhookData.webhookSecret;
 						}
 						return true;
 					}
@@ -151,6 +153,8 @@ export class MailerLiteTriggerV2 implements INodeType {
 				webhookData.webhookId = data.id as string;
 				if (typeof data.secret === 'string') {
 					webhookData.webhookSecret = data.secret;
+				} else {
+					delete webhookData.webhookSecret;
 				}
 				return true;
 			},
