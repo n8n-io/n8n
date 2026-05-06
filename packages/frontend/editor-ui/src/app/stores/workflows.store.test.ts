@@ -1409,11 +1409,17 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not fetch when workflow is read-only', async () => {
-			workflowsStore.setWorkflowId('workflow-123');
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			workflowsListStore.addWorkflow(testWorkflow);
+
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId('workflow-123'),
 			);
-			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 			// Set currentView to a read-only view (not WORKFLOW, NEW_WORKFLOW, or EXECUTION_DEBUG)
 			uiStore.currentView = 'execution';
 
@@ -1441,11 +1447,17 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not fetch when user does not have update permissions', async () => {
-			workflowsStore.setWorkflowId('workflow-123');
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:read'],
+			});
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			workflowsListStore.addWorkflow(testWorkflow);
+
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId('workflow-123'),
 			);
-			workflowDocumentStore.setScopes(['workflow:read']);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
 
@@ -1463,12 +1475,19 @@ describe('useWorkflowsStore', () => {
 			// Create a fresh Pinia instance and reinitialize the workflows store to pick up the new mock
 			setActivePinia(createPinia());
 			workflowsStore = useWorkflowsStore();
+			workflowsListStore = useWorkflowsListStore();
 
-			workflowsStore.setWorkflowId('workflow-123');
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			workflowsListStore.addWorkflow(testWorkflow);
+
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId('workflow-123'),
 			);
-			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
 
