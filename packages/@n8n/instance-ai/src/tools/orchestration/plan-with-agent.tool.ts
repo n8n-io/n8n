@@ -202,6 +202,13 @@ function shouldAppendCurrentUserMessage(
 	return lastUserMessage?.content.trim() !== current;
 }
 
+/**
+ * Reconstructs prior planner-relevant tool calls from the event stream.
+ *
+ * Tool-call and tool-result events are correlated by `toolCallId` so the
+ * planner can receive structured context that is not preserved in text-only
+ * memory recall, such as ask-user answers and credential selections.
+ */
 function getPriorToolObservations(context: OrchestrationContext): ToolObservation[] {
 	type MutableToolObservation = Omit<ToolObservation, 'result'> & {
 		result: unknown;
@@ -243,6 +250,13 @@ function getPriorToolObservations(context: OrchestrationContext): ToolObservatio
 		.map(({ toolName, args, result }) => ({ toolName, args, result }));
 }
 
+/**
+ * Returns the events that may contain prior tool context for this planner run.
+ *
+ * When the run belongs to a message group, all runs in that group are searched
+ * so follow-up runs can see choices collected earlier in the same assistant
+ * turn. If grouped lookup is unavailable, this falls back to the current run.
+ */
 function getPriorToolEvents(context: OrchestrationContext): InstanceAiEvent[] {
 	if (context.messageGroupId) {
 		const runIds = getMessageGroupRunIds(context);
@@ -262,6 +276,13 @@ function getPriorToolEvents(context: OrchestrationContext): InstanceAiEvent[] {
 	}
 }
 
+/**
+ * Finds run IDs that belong to the current message group from run-start events.
+ *
+ * The event bus can fetch events for many run IDs, but the orchestration
+ * context only carries the current run ID and message group ID. This bridges
+ * those two concepts while keeping the current run as a defensive fallback.
+ */
 function getMessageGroupRunIds(context: OrchestrationContext): string[] {
 	const messageGroupId = context.messageGroupId;
 	if (!messageGroupId) return [];
@@ -281,6 +302,12 @@ function getMessageGroupRunIds(context: OrchestrationContext): string[] {
 	return [...runIds];
 }
 
+/**
+ * Converts raw prior tool observations into planner briefing sections.
+ *
+ * The resulting strings are intentionally short and human-readable because
+ * they are embedded directly into the planner prompt under dedicated headings.
+ */
 function buildPlannerBriefingContext(observations: ToolObservation[]): PlannerBriefingContext {
 	const collectedAnswers: string[] = [];
 	const discoveredResources: string[] = [];
@@ -320,6 +347,13 @@ function buildPlannerBriefingContext(observations: ToolObservation[]): PlannerBr
 	return { collectedAnswers, discoveredResources };
 }
 
+/**
+ * Builds an ID lookup from prior credential list results.
+ *
+ * Credential setup results contain selected IDs, so this lets the briefing
+ * render stable user-facing names and credential types when a prior list result
+ * is available.
+ */
 function buildCredentialLookup(observations: ToolObservation[]): Map<string, CredentialBrief> {
 	const credentialsById = new Map<string, CredentialBrief>();
 
@@ -333,6 +367,12 @@ function buildCredentialLookup(observations: ToolObservation[]): Map<string, Cre
 	return credentialsById;
 }
 
+/**
+ * Extracts answered ask-user responses as `question: answer` briefing lines.
+ *
+ * Skipped or unanswered prompts are ignored, and question text is recovered
+ * from tool args when the tool result only includes a question ID.
+ */
 function extractAskUserAnswerLines(observation: ToolObservation): string[] {
 	const result = readRecord(observation.result);
 	if (!result || result.answered === false) return [];
@@ -359,6 +399,9 @@ function extractAskUserAnswerLines(observation: ToolObservation): string[] {
 	return lines;
 }
 
+/**
+ * Maps ask-user question IDs to display text from the original tool args.
+ */
 function extractQuestionTextById(args: Record<string, unknown>): Map<string, string> {
 	const questionsById = new Map<string, string>();
 
@@ -372,6 +415,13 @@ function extractQuestionTextById(args: Record<string, unknown>): Map<string, str
 	return questionsById;
 }
 
+/**
+ * Renders credential setup selections as briefing lines.
+ *
+ * The setup tool returns a `{ credentialType: credentialId }` map. The optional
+ * credential lookup turns those IDs back into names so the planner can avoid
+ * asking the user to choose the same credential again.
+ */
 function extractCredentialSelectionLines(
 	observation: ToolObservation,
 	credentialsById: Map<string, CredentialBrief>,
@@ -395,6 +445,9 @@ function extractCredentialSelectionLines(
 	return lines;
 }
 
+/**
+ * Summarizes a credentials list result for the briefing.
+ */
 function summarizeCredentials(result: unknown): string | undefined {
 	const credentials = extractCredentials(result);
 	if (credentials.length === 0) return undefined;
@@ -404,6 +457,9 @@ function summarizeCredentials(result: unknown): string | undefined {
 	)}`;
 }
 
+/**
+ * Reads the minimal credential metadata needed by the planner briefing.
+ */
 function extractCredentials(result: unknown): CredentialBrief[] {
 	const record = readRecord(result);
 	return readArray(record?.credentials)
@@ -425,6 +481,9 @@ function readCredentialBrief(value: unknown): CredentialBrief | undefined {
 	};
 }
 
+/**
+ * Summarizes a data-tables list result for the briefing.
+ */
 function summarizeDataTables(result: unknown): string | undefined {
 	const tables = extractDataTables(result);
 	if (tables.length === 0) return undefined;
@@ -432,6 +491,9 @@ function summarizeDataTables(result: unknown): string | undefined {
 	return `Data tables available: ${summarizeList(tables.map((table) => table.name))}`;
 }
 
+/**
+ * Reads the minimal data-table metadata needed by the planner briefing.
+ */
 function extractDataTables(result: unknown): DataTableBrief[] {
 	const record = readRecord(result);
 	return readArray(record?.tables)
@@ -451,6 +513,9 @@ function readDataTableBrief(value: unknown): DataTableBrief | undefined {
 	};
 }
 
+/**
+ * Formats conversation, time, and already-collected context into the planner goal.
+ */
 function formatMessagesForBriefing(
 	messages: FormattedMessage[],
 	guidance?: string,
