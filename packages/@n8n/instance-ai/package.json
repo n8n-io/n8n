@@ -11,6 +11,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
+    "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",

@@ -194,11 +194,13 @@ The harness leaves prebuilt workflows alone after the run (no auto-delete), so t
 
 ### Producing a manifest
 
-`evaluations/scripts/build-instance-mcp-workflows.sh` drives `claude -p` against an MCP server (defaults to n8n's instance MCP) and writes a manifest in the schema this flag expects, plus a `manifest-stats.json` sidecar with per-cohort cost / turn / duration aggregates. See [`evaluations/scripts/README.md`](./scripts/README.md) for prerequisites and full usage.
+`pnpm eval:build-mcp-manifest` (`evaluations/cli/build-mcp-manifest.ts`) drives `claude -p` against an MCP server — defaults to n8n's instance MCP — and writes a manifest in the schema this flag expects, plus a `manifest-stats.json` sidecar with per-cohort cost / turn / duration aggregates. The output is validated against the same Zod schema the loader uses, so shape regressions surface here rather than at eval time.
+
+**Prerequisites**: `claude` CLI installed; `~/.claude.json` has the MCP server block configured (project-scoped under `.projects[<repo-root>].mcpServers[<name>]` or globally under `.mcpServers[<name>]`); n8n instance reachable at the URL the MCP block points at. Default MCP server name is `"n8n-mcp (instance)"` — override with `--mcp-server`.
 
 ```bash
 # Build N=5 per test case, 4 in parallel
-./scripts/build-instance-mcp-workflows.sh -n 5 -j 4 --output-dir ./mcp-cohort
+pnpm eval:build-mcp-manifest -n 5 -j 4 --output-dir ./mcp-cohort
 
 # Then score the cohort
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
@@ -206,6 +208,8 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
   --iterations 5 \
   --experiment-name mcp-cohort
 ```
+
+Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
 ## Pairwise evals
 

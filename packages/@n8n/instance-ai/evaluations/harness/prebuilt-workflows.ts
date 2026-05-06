@@ -26,7 +26,7 @@ import type { N8nClient } from '../clients/n8n-client';
 
 const SUPPORTED_MANIFEST_VERSION = 1;
 
-const prebuiltManifestSchema = z.object({
+export const prebuiltManifestSchema = z.object({
 	version: z
 		.number()
 		.int()
