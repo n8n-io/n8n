@@ -158,6 +158,7 @@ export async function buildSetupRequests(
 	node: NodeJSON,
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
 	cache?: CredentialCache,
+	workflowId?: string,
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -292,11 +293,13 @@ export async function buildSetupRequests(
 			: undefined;
 
 		if (credentialType) {
-			// Use cache to avoid duplicate fetches for the same credential type across nodes
+			// Use cache to avoid duplicate fetches for the same credential type across nodes.
+			// Scope to the workflow so we list only credentials the save path will accept —
+			// the editor's credential picker uses the same scoping.
 			let listPromise = cache?.lists.get(credentialType);
 			if (!listPromise) {
 				listPromise = context.credentialService
-					.list({ type: credentialType })
+					.list({ type: credentialType, ...(workflowId ? { workflowId } : {}) })
 					.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
 				cache?.lists.set(credentialType, listPromise);
 			}
@@ -762,7 +765,13 @@ export async function analyzeWorkflow(
 	const cache = createCredentialCache();
 	const allRequestArrays = await Promise.all(
 		workflowJson.nodes.map(async (node) => {
-			return await buildSetupRequests(context, node, triggerResults?.[node.name ?? ''], cache);
+			return await buildSetupRequests(
+				context,
+				node,
+				triggerResults?.[node.name ?? ''],
+				cache,
+				workflowId,
+			);
 		}),
 	);
 
