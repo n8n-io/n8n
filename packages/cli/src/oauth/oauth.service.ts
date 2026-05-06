@@ -13,6 +13,7 @@ import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
+import { escapeHtml } from '@/utils/escape-html';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -339,7 +340,9 @@ export class OauthService {
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
-		res.render('oauth-error-callback', { error: { message, reason } });
+		res.render('oauth-error-callback', {
+			error: { message: escapeHtml(message), reason: escapeHtml(reason) },
+		});
 	}
 
 	async getOAuthCredentials<T>(credential: CredentialsEntity): Promise<T> {

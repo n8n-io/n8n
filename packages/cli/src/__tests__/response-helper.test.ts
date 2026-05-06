@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { sendErrorResponse } from '@/response-helper';
 
@@ -11,6 +12,8 @@ describe('sendErrorResponse', () => {
 		mockResponse = mock<Response>({
 			status: jest.fn().mockReturnThis(),
 			json: jest.fn().mockReturnThis(),
+			render: jest.fn().mockReturnThis(),
+			req: { originalUrl: '' } as any,
 		});
 	});
 
@@ -49,5 +52,27 @@ describe('sendErrorResponse', () => {
 				meta: expect.anything(),
 			}),
 		);
+	});
+
+	it('should escape HTML in message when rendering form-trigger-409', () => {
+		mockResponse.req.originalUrl = '/form-waiting/abc123';
+		const error = new ConflictError('<img src=x onerror=alert(1)>');
+
+		sendErrorResponse(mockResponse, error);
+
+		expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-409', {
+			message: '&lt;img src=x onerror=alert(1)&gt;',
+		});
+	});
+
+	it('should escape template syntax in message when rendering form-trigger-409', () => {
+		mockResponse.req.originalUrl = '/form-waiting/abc123';
+		const error = new ConflictError('{{constructor.constructor("return this")()}}');
+
+		sendErrorResponse(mockResponse, error);
+
+		expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-409', {
+			message: '{{constructor.constructor(&quot;return this&quot;)()}}',
+		});
 	});
 });

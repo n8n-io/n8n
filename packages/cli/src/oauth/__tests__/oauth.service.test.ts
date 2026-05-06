@@ -1057,7 +1057,7 @@ describe('OauthService', () => {
 			service.renderCallbackError(res, message);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
-				error: { message },
+				error: { message, reason: '' },
 			});
 		});
 
@@ -2780,6 +2780,32 @@ describe('OauthService', () => {
 			expect(
 				OauthService.extractAccountIdentifier({ email: 'direct@example.com', id_token: idToken }),
 			).toBe('direct@example.com');
+		});
+	});
+
+	describe('renderCallbackError', () => {
+		it('should escape HTML in message before rendering', () => {
+			const res = mock<Response>();
+			service.renderCallbackError(res, '<img src=x onerror=alert(1)>');
+
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: '&lt;img src=x onerror=alert(1)&gt;',
+					reason: '',
+				},
+			});
+		});
+
+		it('should escape HTML in reason before rendering', () => {
+			const res = mock<Response>();
+			service.renderCallbackError(res, 'error', '<script>alert(1)</script>');
+
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'error',
+					reason: '&lt;script&gt;alert(1)&lt;/script&gt;',
+				},
+			});
 		});
 	});
 });

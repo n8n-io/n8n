@@ -1,3 +1,5 @@
+import { escapeHtml as escapeHtmlBase } from '@/utils/escape-html';
+
 const PAGE_STYLES = `
 body { background: rgb(251,252,254); font-family: 'Open Sans', sans-serif; padding: 10px; margin: auto; width: 500px; top: 40%; position: relative; }
 h1 { font-size: 16px; font-weight: 400; margin: 0 0 10px 0; }
@@ -8,11 +10,7 @@ li { list-style: none; margin: 0; color: rgb(125, 125, 125); font-size: 12px; }
 `;
 
 function escapeHtml(value: unknown): string {
-	return String(value ?? '(n/a)')
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;');
+	return escapeHtmlBase(value) || '(n/a)';
 }
 
 export function renderOidcTestSuccess({

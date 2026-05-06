@@ -1,5 +1,6 @@
 import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
+import sanitizeHtml from 'sanitize-html';
 
 import { useI18n } from '../../../composables/useI18n';
 
@@ -7,6 +8,7 @@ export function useMarkdown() {
 	const { t } = useI18n();
 
 	const md = new Markdown({
+		html: false,
 		breaks: true,
 	});
 
@@ -19,7 +21,8 @@ export function useMarkdown() {
 
 	function renderMarkdown(content: string) {
 		try {
-			return md.render(content);
+			const rendered = md.render(content);
+			return sanitizeHtml(rendered);
 		} catch (e) {
 			console.error(`Error parsing markdown content ${content}`);
 			return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
