@@ -53,6 +53,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
+import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -264,7 +265,7 @@ const isWaitNodeWaiting = computed(() => {
 	);
 });
 
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 const nodeType = computed(() => {
 	if (!node.value) return null;
 

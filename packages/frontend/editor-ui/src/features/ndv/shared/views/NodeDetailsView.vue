@@ -34,6 +34,7 @@ import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
+import { storeToRefs } from 'pinia';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -65,7 +66,7 @@ const props = withDefaults(
 const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();

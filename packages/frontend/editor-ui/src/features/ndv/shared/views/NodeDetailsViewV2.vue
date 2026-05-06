@@ -28,6 +28,7 @@ import {
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '../ndv.eventBus';
+import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -66,7 +67,7 @@ const props = withDefaults(
 const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();

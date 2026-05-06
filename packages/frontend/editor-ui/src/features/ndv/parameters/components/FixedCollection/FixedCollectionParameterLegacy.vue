@@ -18,6 +18,7 @@ import ParameterInputList from '../ParameterInputList.vue';
 import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
@@ -63,7 +64,7 @@ const emit = defineEmits<{
 const workflowsStore = useWorkflowsStore();
 const ndvStore = injectNDVStore();
 
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const selectedOption = ref<string | null | undefined>(null);

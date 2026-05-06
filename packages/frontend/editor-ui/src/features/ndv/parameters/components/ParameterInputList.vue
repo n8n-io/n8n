@@ -29,6 +29,7 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
@@ -120,7 +121,7 @@ const aiGateway = useAiGateway();
 
 const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
 
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 
 onErrorCaptured((e, component) => {
 	if (

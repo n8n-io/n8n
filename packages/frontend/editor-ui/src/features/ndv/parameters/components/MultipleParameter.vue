@@ -9,6 +9,7 @@ import type { IUpdateInformation } from '@/Interface';
 import CollectionParameter from './Collection/CollectionParameter.vue';
 import ParameterInputFull from './ParameterInputFull.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nIcon, N8nInputLabel, N8nText } from '@n8n/design-system';
 defineOptions({ name: 'MultipleParameter' });
@@ -34,7 +35,7 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
 
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 
 const mutableValues = ref<INodeParameters[]>(deepCopy(props.values));
 

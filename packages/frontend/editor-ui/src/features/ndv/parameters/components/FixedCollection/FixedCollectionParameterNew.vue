@@ -25,6 +25,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
+import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
@@ -33,7 +34,7 @@ const locale = useI18n();
 const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 
 export type Props = {
 	nodeValues: INodeParameters;

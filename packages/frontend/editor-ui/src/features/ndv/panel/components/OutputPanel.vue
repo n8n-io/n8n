@@ -4,6 +4,7 @@ import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -84,7 +85,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 const { dirtinessByName } = useNodeDirtiness();
 const uiStore = useUIStore();
 

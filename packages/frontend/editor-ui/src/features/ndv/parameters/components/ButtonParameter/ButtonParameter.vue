@@ -32,7 +32,7 @@ export type Props = {
 const props = defineProps<Props>();
 
 const ndvStore = injectNDVStore();
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const activeNode = computed(() => ndvStore.activeNode);
 
 const i18n = useI18n();
 

@@ -58,7 +58,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
 
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));

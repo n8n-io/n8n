@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
+import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -84,9 +85,11 @@ const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
-const hoveringItem = computed(() => ndvStore.hoveringItem);
-const focusedMappableInput = computed(() => ndvStore.focusedMappableInput);
-const highlight = computed(() => ndvStore.highlightDraggables);
+const {
+	hoveringItem,
+	focusedMappableInput,
+	highlightDraggables: highlight,
+} = storeToRefs(ndvStore);
 
 const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);

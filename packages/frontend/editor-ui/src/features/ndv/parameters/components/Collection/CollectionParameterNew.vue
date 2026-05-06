@@ -17,6 +17,7 @@ import get from 'lodash/get';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
+import { storeToRefs } from 'pinia';
 
 import {
 	N8nButton,
@@ -54,7 +55,7 @@ const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 
-const activeNode = computed(() => ndvStore.activeNode ?? null);
+const { activeNode } = storeToRefs(ndvStore);
 
 const storageKey = computed(() => {
 	return `n8n-collection-parameter-expanded-${activeNode.value?.id ?? 'unknown'}-${props.path}`;
