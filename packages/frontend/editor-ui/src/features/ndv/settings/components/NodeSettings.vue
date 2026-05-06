@@ -764,6 +764,7 @@ function handleSelectAction(params: INodeParameters) {
 					<QuickConnectBanner
 						v-if="showQuickConnectBanner"
 						:text="quickConnect?.text ?? ''"
+						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
 					<NodeCredentials

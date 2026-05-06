@@ -23,9 +23,83 @@ describe('QuickConnectBanner', () => {
 		expect(wrapper.getByText(text)).toBeInTheDocument();
 	});
 
-	it('should not render callout when text is empty', () => {
+	it('should not render when text is empty and no disclaimer is provided', () => {
 		const wrapper = renderComponent({ pinia, props: { text: '' } });
 
 		expect(wrapper.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
+	});
+
+	it('should render the disclaimer text and link with provided linkUrl and linkLabel', () => {
+		const wrapper = renderComponent({
+			pinia,
+			props: {
+				disclaimer: {
+					text: 'Subject to terms (available {link}).',
+					linkUrl: 'https://example.com/terms',
+					linkLabel: 'over here',
+				},
+			},
+		});
+
+		const disclaimer = wrapper.getByTestId('quick-connect-banner-disclaimer');
+		expect(disclaimer).toBeInTheDocument();
+		expect(disclaimer).toHaveTextContent('Subject to terms (available over here).');
+		const link = disclaimer.querySelector('a');
+		expect(link).not.toBeNull();
+		expect(link).toHaveAttribute('href', 'https://example.com/terms');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link).toHaveTextContent('over here');
+	});
+
+	it('should default linkLabel to "here" when omitted', () => {
+		const wrapper = renderComponent({
+			pinia,
+			props: {
+				disclaimer: {
+					text: 'Subject to terms (available {link}).',
+					linkUrl: 'https://example.com/terms',
+				},
+			},
+		});
+
+		const disclaimer = wrapper.getByTestId('quick-connect-banner-disclaimer');
+		expect(disclaimer.querySelector('a')).toHaveTextContent('here');
+	});
+
+	it('should render disclaimer alongside callout text', () => {
+		const wrapper = renderComponent({
+			pinia,
+			props: {
+				text: 'Offer text',
+				disclaimer: {
+					text: 'Subject to terms (available {link}).',
+					linkUrl: 'https://example.com/terms',
+				},
+			},
+		});
+
+		expect(wrapper.getByText('Offer text')).toBeInTheDocument();
+		expect(wrapper.getByTestId('quick-connect-banner-disclaimer')).toBeInTheDocument();
+	});
+
+	it('should not render the disclaimer paragraph when disclaimer prop is omitted', () => {
+		const wrapper = renderComponent({ pinia, props: { text: 'Offer text' } });
+
+		expect(wrapper.queryByTestId('quick-connect-banner-disclaimer')).not.toBeInTheDocument();
+	});
+
+	it('should render only the disclaimer when text is empty but disclaimer is provided', () => {
+		const wrapper = renderComponent({
+			pinia,
+			props: {
+				disclaimer: {
+					text: 'Subject to terms (available {link}).',
+					linkUrl: 'https://example.com/terms',
+				},
+			},
+		});
+
+		expect(wrapper.getByTestId('quick-connect-banner')).toBeInTheDocument();
+		expect(wrapper.getByTestId('quick-connect-banner-disclaimer')).toBeInTheDocument();
 	});
 });
