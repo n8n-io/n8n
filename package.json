@@ -73,7 +73,7 @@
     "jest-mock-extended": "^3.0.4",
     "lefthook": "^1.7.15",
     "license-checker": "^25.0.1",
-    "nock": "^14.0.13",
+    "nock": "^14.0.14",
     "nodemon": "^3.0.1",
     "npm-run-all2": "^7.0.2",
     "p-limit": "^3.1.0",
@@ -166,7 +166,7 @@
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
       "hono": "4.12.16",
-      "axios": "1.15.2",
+      "axios": "1.16.0",
       "fast-xml-parser": "5.7.2"
     },
     "patchedDependencies": {
