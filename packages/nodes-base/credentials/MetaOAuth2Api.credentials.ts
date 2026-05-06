@@ -66,10 +66,13 @@ export class MetaOAuth2Api implements ICredentialType {
 	 * decode the JWT payload, pull out the configured claim, and overwrite
 	 * access_token in-memory so the OAuth2 signer sends the inner bearer.
 	 */
-	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
+	async preAuthentication(
+		this: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+	): Promise<IDataObject> {
 		const tokenData = credentials.oauthTokenData as OAuthTokenData | undefined;
 		if (!tokenData?.access_token) {
-			return undefined;
+			return {};
 		}
 
 		const claimName = (credentials.bearerClaim as string) || 'internal_oauth_token';
