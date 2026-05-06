@@ -303,3 +303,174 @@ describe('evalsTool — delegates to eval-setup-agent', () => {
 		expect(task).not.toContain('Metric B');
 	});
 });
+
+describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	it('returns eligible:false with reason no-ai-nodes and never suspends for a non-AI workflow', async () => {
+		const wf = {
+			name: 'Plain',
+			nodes: [
+				{
+					id: '1',
+					name: 'T',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(wf);
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ eligible: false, reason: 'no-ai-nodes' });
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('returns eligible:false with reason already-configured when EvaluationTrigger is present', async () => {
+		const wf = {
+			name: 'Already',
+			nodes: [
+				{
+					id: '2',
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'EvalT',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					position: [0, -200],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(wf);
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ eligible: false, reason: 'already-configured' });
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('returns eligible:false with reason root-agent-reads-other-node and never suspends', async () => {
+		const wf = {
+			name: 'Reads Trigger',
+			nodes: [
+				{
+					id: '1',
+					name: 'Telegram Trigger',
+					type: 'n8n-nodes-base.telegramTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { text: "={{ $('Telegram Trigger').item.json.message.text }}" },
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(wf);
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ eligible: false, reason: 'root-agent-reads-other-node' });
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('suspends with the strict approve/deny widget on the first call when eligible', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+
+		expect(suspend).toHaveBeenCalledTimes(1);
+		const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).toMatchObject({
+			severity: 'info',
+			message: expect.stringMatching(/Generate an eval suite/i) as unknown,
+		});
+		expect(payload).toHaveProperty('requestId');
+		expect(payload).not.toHaveProperty('inputType');
+		expect(payload).not.toHaveProperty('questions');
+		expect(payload).not.toHaveProperty('options');
+	});
+
+	it('builds a singular message when there is exactly one AI node', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+
+		expect(suspend.mock.calls[0][0].message).toBe('Generate an eval suite for AI node `Agent`?');
+	});
+
+	it('returns approved:true with aiNodeNames when the user approves', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: true } },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ eligible: true, approved: true, aiNodeNames: ['Agent'] });
+	});
+
+	it('returns approved:false when the user denies', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: false } },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ eligible: true, approved: false });
+	});
+
+	it('does NOT invoke inferEvalShape — offer is a precheck, not a builder', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: true } },
+		} as never);
+
+		expect(mockInfer).not.toHaveBeenCalled();
+	});
+});

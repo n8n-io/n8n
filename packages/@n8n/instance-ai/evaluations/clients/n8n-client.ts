@@ -582,6 +582,25 @@ export class N8nClient {
 	}
 
 	/**
+	 * Insert rows into a data table.
+	 * POST /rest/projects/:projectId/data-tables/:dataTableId/insert
+	 */
+	async insertDataTableRows(
+		projectId: string,
+		dataTableId: string,
+		rows: Array<Record<string, unknown>>,
+	): Promise<unknown> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/data-tables/${dataTableId}/insert`,
+			{
+				method: 'POST',
+				body: { data: rows },
+			},
+		)) as { data: unknown };
+		return result.data;
+	}
+
+	/**
 	 * Delete a data table by ID.
 	 * DELETE /rest/projects/:projectId/data-tables/:dataTableId
 	 */
