@@ -761,6 +761,7 @@
       "dist/nodes/Segment/Segment.node.js",
       "dist/nodes/SendGrid/SendGrid.node.js",
       "dist/nodes/Sendy/Sendy.node.js",
+      "dist/nodes/SensitiveDataMasker/SensitiveDataMasker.node.js",
       "dist/nodes/SentryIo/SentryIo.node.js",
       "dist/nodes/ServiceNow/ServiceNow.node.js",
       "dist/nodes/Set/Set.node.js",
