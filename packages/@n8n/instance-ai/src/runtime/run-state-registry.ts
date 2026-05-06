@@ -10,6 +10,11 @@ export interface ActiveRunState {
 	tracing?: InstanceAiTraceContext;
 }
 
+/** Snapshot of a run that has suspended for HITL confirmation. The CLI layer
+ *  persists this to the durable side index (`instance_ai_pending_confirmation`)
+ *  and reads it back when a confirmation arrives — the registry no longer
+ *  holds an in-memory copy. Kept as a coherent shape passed to the persist
+ *  helper. */
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	mastraRunId: string;
 	agent: unknown;
@@ -82,10 +87,14 @@ export interface StartedRunState extends ActiveRunState {
 	messageGroupId?: string;
 }
 
+/**
+ * Process-local registry of *active* run state plus inline (sub-agent)
+ * pending-confirmation Promise callbacks. Suspended-run truth lives in the DB
+ * (`instance_ai_pending_confirmation` table); the CLI layer queries it
+ * directly via the repository.
+ */
 export class RunStateRegistry<TUser = unknown> {
 	private readonly activeRuns = new Map<string, ActiveRunState>();
-
-	private readonly suspendedRuns = new Map<string, SuspendedRunState<TUser>>();
 
 	private readonly pendingConfirmations = new Map<string, PendingConfirmation>();
 
@@ -130,48 +139,23 @@ export class RunStateRegistry<TUser = unknown> {
 		return { runId, abortController, messageGroupId };
 	}
 
-	getThreadStatus(
-		threadId: string,
-		backgroundTasks: BackgroundTaskStatusSnapshot[],
-	): InstanceAiThreadStatusResponse {
-		return {
-			hasActiveRun: this.activeRuns.has(threadId),
-			isSuspended: this.suspendedRuns.has(threadId),
-			backgroundTasks: backgroundTasks
-				.filter((task) => task.threadId === threadId)
-				.map((task) => ({
-					taskId: task.taskId,
-					role: task.role,
-					agentId: task.agentId,
-					status: task.status,
-					startedAt: task.startedAt,
-					runId: task.runId,
-					messageGroupId: task.messageGroupId,
-				})),
-		};
-	}
-
-	hasLiveRun(threadId: string): boolean {
-		return this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId);
-	}
-
 	hasActiveRun(threadId: string): boolean {
 		return this.activeRuns.has(threadId);
-	}
-
-	hasSuspendedRun(threadId: string): boolean {
-		return this.suspendedRuns.has(threadId);
 	}
 
 	getMessageGroupId(threadId: string): string | undefined {
 		return this.threadMessageGroupId.get(threadId);
 	}
 
+	/** Returns the message group for a thread that may currently have a live
+	 *  run (active here, or a still-running background task). Suspended-run
+	 *  message group is intentionally not consulted — the suspended-run side
+	 *  index lives in the DB; callers that need it should query directly. */
 	getLiveMessageGroupId(
 		threadId: string,
 		backgroundTasks: BackgroundTaskStatusSnapshot[],
 	): string | undefined {
-		if (this.hasLiveRun(threadId)) {
+		if (this.activeRuns.has(threadId)) {
 			return this.threadMessageGroupId.get(threadId);
 		}
 
@@ -194,10 +178,6 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId);
 	}
 
-	getSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
-		return this.suspendedRuns.get(threadId);
-	}
-
 	attachTracing(threadId: string, tracing: InstanceAiTraceContext): void {
 		const activeRun = this.activeRuns.get(threadId);
 		if (!activeRun) return;
@@ -210,39 +190,6 @@ export class RunStateRegistry<TUser = unknown> {
 
 	clearActiveRun(threadId: string): void {
 		this.activeRuns.delete(threadId);
-	}
-
-	suspendRun(threadId: string, state: SuspendedRunState<TUser>): void {
-		this.activeRuns.delete(threadId);
-		this.suspendedRuns.set(threadId, state);
-	}
-
-	/** Drop a stale suspended-run entry without promoting it to active. Used when
-	 *  a confirmation resumed the run via the durable side index — the in-memory
-	 *  state for this thread on this instance is no longer authoritative. */
-	clearSuspendedRun(threadId: string): void {
-		this.suspendedRuns.delete(threadId);
-	}
-
-	findSuspendedByRequestId(requestId: string): SuspendedRunState<TUser> | undefined {
-		for (const run of this.suspendedRuns.values()) {
-			if (run.requestId === requestId) return run;
-		}
-		return undefined;
-	}
-
-	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
-		const suspended = this.suspendedRuns.get(threadId);
-		if (!suspended) return undefined;
-
-		this.suspendedRuns.delete(threadId);
-		this.activeRuns.set(threadId, {
-			runId: suspended.runId,
-			abortController: suspended.abortController,
-			messageGroupId: suspended.messageGroupId,
-			tracing: suspended.tracing,
-		});
-		return suspended;
 	}
 
 	registerPendingConfirmation(requestId: string, pending: PendingConfirmation): void {
@@ -265,10 +212,7 @@ export class RunStateRegistry<TUser = unknown> {
 	cancelThread(
 		threadId: string,
 		cancelledConfirmation: ConfirmationData = { approved: false },
-	): {
-		active?: ActiveRunState;
-		suspended?: SuspendedRunState<TUser>;
-	} {
+	): { active?: ActiveRunState } {
 		for (const [requestId, pending] of this.pendingConfirmations) {
 			if (pending.threadId !== threadId) continue;
 			pending.resolve(cancelledConfirmation);
@@ -276,12 +220,7 @@ export class RunStateRegistry<TUser = unknown> {
 		}
 
 		const active = this.activeRuns.get(threadId);
-		const suspended = this.suspendedRuns.get(threadId);
-		if (suspended) {
-			this.suspendedRuns.delete(threadId);
-		}
-
-		return { ...(active ? { active } : {}), ...(suspended ? { suspended } : {}) };
+		return active ? { active } : {};
 	}
 
 	getThreadUser(threadId: string): TUser | undefined {
@@ -301,28 +240,20 @@ export class RunStateRegistry<TUser = unknown> {
 	}
 
 	/**
-	 * Find suspended runs and pending confirmations older than `maxAgeMs`.
-	 * Returns thread IDs and request IDs that should be cancelled/rejected.
-	 * Does NOT mutate state — the caller is responsible for cancelling.
+	 * Find pending (inline / sub-agent) confirmations older than `maxAgeMs`.
+	 * Returns request IDs that should be auto-rejected. Does NOT mutate state —
+	 * the caller is responsible for rejecting. Suspended-run timeout sweeping
+	 * lives in the DB sweeper (`PendingConfirmationPruningService`).
 	 */
-	sweepTimedOut(maxAgeMs: number): {
-		suspendedThreadIds: string[];
-		confirmationRequestIds: string[];
-	} {
+	sweepTimedOut(maxAgeMs: number): { confirmationRequestIds: string[] } {
 		const now = Date.now();
-		const suspendedThreadIds: string[] = [];
-		for (const [threadId, run] of this.suspendedRuns) {
-			if (now - run.createdAt >= maxAgeMs) {
-				suspendedThreadIds.push(threadId);
-			}
-		}
 		const confirmationRequestIds: string[] = [];
 		for (const [reqId, pending] of this.pendingConfirmations) {
 			if (now - pending.createdAt >= maxAgeMs) {
 				confirmationRequestIds.push(reqId);
 			}
 		}
-		return { suspendedThreadIds, confirmationRequestIds };
+		return { confirmationRequestIds };
 	}
 
 	/**
@@ -343,20 +274,17 @@ export class RunStateRegistry<TUser = unknown> {
 	}
 
 	/**
-	 * Remove all per-thread state: active/suspended runs, confirmations,
-	 * user, research mode, and message-group mappings.
-	 * Returns the cancelled active/suspended runs so the caller can abort them.
+	 * Remove all per-thread state: active runs, pending confirmations, user,
+	 * research mode, and message-group mappings.
+	 * Returns the cancelled active run so the caller can abort it.
 	 */
 	clearThread(
 		threadId: string,
 		cancelledConfirmation: ConfirmationData = { approved: false },
-	): {
-		active?: ActiveRunState;
-		suspended?: SuspendedRunState<TUser>;
-	} {
-		const { active, suspended } = this.cancelThread(threadId, cancelledConfirmation);
+	): { active?: ActiveRunState } {
+		const result = this.cancelThread(threadId, cancelledConfirmation);
 
-		if (active) this.activeRuns.delete(threadId);
+		if (result.active) this.activeRuns.delete(threadId);
 
 		this.threadUsers.delete(threadId);
 		this.threadResearchMode.delete(threadId);
@@ -366,22 +294,19 @@ export class RunStateRegistry<TUser = unknown> {
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
 		this.threadMessageGroupId.delete(threadId);
 
-		return { ...(active ? { active } : {}), ...(suspended ? { suspended } : {}) };
+		return result;
 	}
 
 	shutdown(cancelledConfirmation: ConfirmationData = { approved: false }): {
 		activeRuns: ActiveRunState[];
-		suspendedRuns: Array<SuspendedRunState<TUser>>;
 	} {
 		const activeRuns = [...this.activeRuns.values()];
-		const suspendedRuns = [...this.suspendedRuns.values()];
 
 		for (const pending of this.pendingConfirmations.values()) {
 			pending.resolve(cancelledConfirmation);
 		}
 
 		this.activeRuns.clear();
-		this.suspendedRuns.clear();
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadResearchMode.clear();
@@ -389,6 +314,11 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 
-		return { activeRuns, suspendedRuns };
+		return { activeRuns };
 	}
 }
+
+// `InstanceAiThreadStatusResponse` is re-exported here because the registry
+// used to construct it; the type is used by callers that build the status
+// payload from DB + active-run state directly.
+export type { InstanceAiThreadStatusResponse };

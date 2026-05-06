@@ -41,7 +41,7 @@ type ServiceInternals = {
 	queuePendingCheckpointReentry: (threadId: string, checkpointTaskId: string) => void;
 	drainPendingCheckpointReentries: (user: User, threadId: string) => Promise<void>;
 	reenterCheckpointById: jest.Mock<Promise<boolean>, [User, string, string, string?]>;
-	isThreadSuspendedInDb: jest.MockedFunction<(threadId: string) => Promise<boolean>>;
+	isThreadSuspended: jest.MockedFunction<(threadId: string) => Promise<boolean>>;
 	backgroundTasks: {
 		getRunningTasksByParentCheckpoint: jest.Mock;
 	};
@@ -88,7 +88,7 @@ function createCheckpointService(): ServiceInternals {
 	service.reenterCheckpointById = jest.fn(
 		async (_user: User, _threadId: string, _checkpointTaskId: string, _mgid?: string) => true,
 	);
-	service.isThreadSuspendedInDb = jest.fn(async (_threadId: string) => false);
+	service.isThreadSuspended = jest.fn(async (_threadId: string) => false);
 	service.backgroundTasks = {
 		getRunningTasksByParentCheckpoint: jest.fn(() => []),
 	};
@@ -233,7 +233,7 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 		it('returns early when a suspended run is present', async () => {
 			const service = createCheckpointService();
 			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.isThreadSuspendedInDb.mockResolvedValueOnce(true);
+			service.isThreadSuspended.mockResolvedValueOnce(true);
 
 			await service.drainPendingCheckpointReentries(fakeUser, 'thread-a');
 
@@ -475,7 +475,6 @@ type RestoreServiceInternals = {
 	runState: {
 		startRun: jest.Mock;
 		clearActiveRun: jest.Mock;
-		clearSuspendedRun: jest.Mock;
 	};
 	instanceAiConfig: { mcpServers: string };
 	dbSnapshotStorage: object;
@@ -516,7 +515,6 @@ function createRestoreService(): RestoreServiceInternals {
 			messageGroupId: options.messageGroupId ?? 'mg-1',
 		})),
 		clearActiveRun: jest.fn(),
-		clearSuspendedRun: jest.fn(),
 	};
 	service.createExecutionEnvironment = jest.fn(async () => ({
 		modelId: { type: 'anthropic', model: 'claude' },
@@ -583,7 +581,6 @@ describe('InstanceAiService — restoreSuspendedRunFromDb', () => {
 				runId: 'run-original',
 			}),
 		);
-		expect(service.runState.clearSuspendedRun).toHaveBeenCalledWith('thread-1');
 	});
 
 	it("returns 'not-found' when claim loses the race (concurrent confirm or sweeper won)", async () => {

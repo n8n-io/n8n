@@ -84,15 +84,23 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			builderSandboxSessions: { cleanupThread: jest.Mock };
 			destroySandbox: jest.Mock;
 			reapAiTemporaryForThreadCleanup: jest.Mock;
+			pendingConfirmationRepository: { findByThread: jest.Mock };
+			deletePersistedConfirmationsForThread: jest.Mock;
+			cleanupMastraSnapshots: jest.Mock;
+			logger: { warn: jest.Mock };
 			clearThreadState: (threadId: string) => Promise<void>;
 		};
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
 		service.runState = {
-			clearThread: jest.fn(() => ({ active: undefined, suspended: undefined })),
+			clearThread: jest.fn(() => ({ active: undefined })),
 		};
 		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
+		service.pendingConfirmationRepository = { findByThread: jest.fn(async () => []) };
+		service.deletePersistedConfirmationsForThread = jest.fn(async () => undefined);
+		service.cleanupMastraSnapshots = jest.fn(async () => undefined);
+		service.logger = { warn: jest.fn() };
 		service.creditedThreads = new Map();
 		service.schedulerLocks = new Map();
 		service.domainAccessTrackersByThread = new Map();

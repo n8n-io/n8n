@@ -450,7 +450,7 @@ export class InstanceAiService {
 	 *  fleet?" Used by cross-instance flow guards. Degrades safely on DB
 	 *  errors (returns false) — better to allow a duplicate run start than
 	 *  block forever on a transient DB hiccup. */
-	private async isThreadSuspendedInDb(threadId: string): Promise<boolean> {
+	private async isThreadSuspended(threadId: string): Promise<boolean> {
 		try {
 			return await this.pendingConfirmationRepository.existsSuspendedForThread(threadId);
 		} catch (error) {
@@ -467,12 +467,11 @@ export class InstanceAiService {
 		if (timeoutMs <= 0) return;
 
 		this.confirmationTimeoutInterval = setInterval(() => {
-			const { suspendedThreadIds, confirmationRequestIds } = this.runState.sweepTimedOut(timeoutMs);
-
-			for (const threadId of suspendedThreadIds) {
-				this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-				void this.cancelRun(threadId);
-			}
+			// Suspended-run timeout sweeping lives in the DB sweeper
+			// (`PendingConfirmationPruningService`) — it deletes rows past their
+			// `expiresAt`. Here we only catch in-memory inline (sub-agent)
+			// confirmations whose Promise callbacks need explicit rejection.
+			const { confirmationRequestIds } = this.runState.sweepTimedOut(timeoutMs);
 
 			for (const reqId of confirmationRequestIds) {
 				this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
@@ -822,11 +821,11 @@ export class InstanceAiService {
 	 *  controller uses this to gate run-start (409 conflict). */
 	async hasActiveRun(threadId: string): Promise<boolean> {
 		if (this.runState.hasActiveRun(threadId)) return true;
-		return await this.isThreadSuspendedInDb(threadId);
+		return await this.isThreadSuspended(threadId);
 	}
 
 	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
-		const isSuspended = await this.isThreadSuspendedInDb(threadId);
+		const isSuspended = await this.isThreadSuspended(threadId);
 		return {
 			hasActiveRun: this.runState.hasActiveRun(threadId),
 			isSuspended,
@@ -1220,24 +1219,17 @@ export class InstanceAiService {
 		// background-task cancellations above.
 		void this.cancelAwaitingApprovalPlan(threadId);
 
-		const { active, suspended } = this.runState.cancelThread(threadId);
+		const { active } = this.runState.cancelThread(threadId);
 		void this.deletePersistedConfirmationsForThread(threadId);
 		if (active) {
 			active.abortController.abort();
 			return;
 		}
 
-		if (suspended) {
-			// Local suspended state present (this instance is the holder) —
-			// fast path uses the in-scope SuspendedRunState directly.
-			suspended.abortController.abort();
-			void this.finalizeCancelledSuspendedRun(suspended);
-			return;
-		}
-
-		// Cross-instance cancel: no local state, drive cleanup off the DB rows
-		// captured above. This finalizes Mastra snapshots for suspensions held
-		// by another instance — pre-2.5 those leaked until the 24h pruner.
+		// No local active run — every suspension lives in the DB. Drive Mastra
+		// snapshot cleanup and trace finalization off the rows we captured
+		// above (works whether the suspension originated on this instance or
+		// another).
 		for (const row of persistedRows) {
 			if (row.kind !== 'suspended') continue;
 			void this.finalizeCancelledSuspendedRunFromDb(row);
@@ -1407,9 +1399,10 @@ export class InstanceAiService {
 				return [];
 			});
 
-		// Clear run-state registry entries (active/suspended runs, confirmations,
-		// user, research mode, and message-group mappings).
-		const { active, suspended } = this.runState.clearThread(threadId);
+		// Clear run-state registry entries (active runs, pending confirmations,
+		// user, research mode, message-group mappings). Suspended-run truth
+		// lives in the DB, captured above as `persistedRows`.
+		const { active } = this.runState.clearThread(threadId);
 		await this.deletePersistedConfirmationsForThread(threadId);
 		if (active) {
 			active.abortController.abort();
@@ -1418,22 +1411,11 @@ export class InstanceAiService {
 				reason: 'thread_cleared',
 			});
 		}
-		if (suspended) {
-			suspended.abortController.abort();
-			await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
-				status: 'cancelled',
-				reason: 'thread_cleared',
-			});
-			if (suspended.mastraRunId) {
-				void this.cleanupMastraSnapshots(suspended.mastraRunId);
-			}
-		} else {
-			// Cross-instance: no local state, but Mastra snapshots from rows
-			// that originated elsewhere still need cleanup.
-			for (const row of persistedRows) {
-				if (row.kind === 'suspended' && row.mastraRunId) {
-					void this.cleanupMastraSnapshots(row.mastraRunId);
-				}
+		// Mastra snapshots for suspended rows on this thread — clean them up
+		// regardless of which instance originally suspended.
+		for (const row of persistedRows) {
+			if (row.kind === 'suspended' && row.mastraRunId) {
+				void this.cleanupMastraSnapshots(row.mastraRunId);
 			}
 		}
 
@@ -1465,7 +1447,7 @@ export class InstanceAiService {
 			this.confirmationTimeoutInterval = undefined;
 		}
 
-		const { activeRuns, suspendedRuns } = this.runState.shutdown();
+		const { activeRuns } = this.runState.shutdown();
 		for (const run of activeRuns) {
 			run.abortController.abort();
 			await this.finalizeRunTracing(run.runId, run.tracing, {
@@ -1473,13 +1455,10 @@ export class InstanceAiService {
 				reason: 'service_shutdown',
 			});
 		}
-		for (const run of suspendedRuns) {
-			run.abortController.abort();
-			await this.finalizeRunTracing(run.runId, run.tracing, {
-				status: 'cancelled',
-				reason: 'service_shutdown',
-			});
-		}
+		// Suspended runs live in the DB now — they're durable across restart
+		// and another instance (or the next start of this one) can pick them
+		// up. No abort needed: a suspended Mastra workflow is paused, not
+		// streaming, so there's nothing to interrupt.
 		for (const task of this.backgroundTasks.cancelAll()) {
 			task.abortController.abort();
 			await this.finalizeBackgroundTaskTracing(task, 'cancelled');
@@ -2009,7 +1988,7 @@ export class InstanceAiService {
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 	): Promise<string> {
-		if (this.runState.hasActiveRun(threadId) || (await this.isThreadSuspendedInDb(threadId))) {
+		if (this.runState.hasActiveRun(threadId) || (await this.isThreadSuspended(threadId))) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
 			return '';
 		}
@@ -2111,7 +2090,7 @@ export class InstanceAiService {
 		if (action.type === 'orchestrate-checkpoint') {
 			// Defer if a run is already active or suspended. The currently-live
 			// run's post-finally reschedule hook will pick this checkpoint up.
-			if (this.runState.hasActiveRun(threadId) || (await this.isThreadSuspendedInDb(threadId))) {
+			if (this.runState.hasActiveRun(threadId) || (await this.isThreadSuspended(threadId))) {
 				return;
 			}
 
@@ -2738,7 +2717,7 @@ export class InstanceAiService {
 		for (const checkpointTaskId of snapshot) {
 			// If a new run started while we were draining, stop — the next run's
 			// cleanup will pick up the remaining markers.
-			if (this.runState.getActiveRunId(threadId) || (await this.isThreadSuspendedInDb(threadId))) {
+			if (this.runState.getActiveRunId(threadId) || (await this.isThreadSuspended(threadId))) {
 				return;
 			}
 			// A new parent-tagged child is running — let its settlement drive the
@@ -2830,7 +2809,7 @@ export class InstanceAiService {
 
 		// If a run is live, defer — startInternalFollowUpRun would be rejected
 		// and we must not fall through to the shell path.
-		if (this.runState.getActiveRunId(threadId) || (await this.isThreadSuspendedInDb(threadId))) {
+		if (this.runState.getActiveRunId(threadId) || (await this.isThreadSuspended(threadId))) {
 			return false;
 		}
 
@@ -2946,11 +2925,6 @@ export class InstanceAiService {
 			return false;
 		});
 		if (!won) return 'not-found';
-
-		// Drop any stale local suspended-run entry for this thread on this
-		// instance. The original suspension may have been on this process — its
-		// in-memory state is no longer authoritative now that we own the resume.
-		this.runState.clearSuspendedRun(row.threadId);
 
 		const user = await this.userRepository
 			.findOne({ where: { id: row.userId }, relations: ['role'] })
@@ -3433,7 +3407,7 @@ export class InstanceAiService {
 
 				const remaining = this.backgroundTasks.getRunningTasks(opts.threadId);
 				const hasActiveRun = !!this.runState.getActiveRunId(opts.threadId);
-				const hasSuspendedRun = await this.isThreadSuspendedInDb(opts.threadId);
+				const hasSuspendedRun = await this.isThreadSuspended(opts.threadId);
 				if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
 					const user = this.runState.getThreadUser(opts.threadId);
 					if (user) {
@@ -3630,48 +3604,12 @@ export class InstanceAiService {
 		return archived;
 	}
 
-	private async finalizeCancelledSuspendedRun(suspended: SuspendedRunState<User>): Promise<void> {
-		await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
-			status: 'cancelled',
-			reason: 'user_cancelled',
-		});
-
-		const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
-			suspended.threadId,
-			suspended.user,
-			undefined,
-		);
-		this.publishRunFinish(
-			suspended.threadId,
-			suspended.runId,
-			'cancelled',
-			'user_cancelled',
-			archivedWorkflowIds,
-		);
-
-		// Persist the snapshot so the run-finish event (which clears
-		// in-flight tool calls) is reflected in the stored tree.
-		await this.saveAgentTreeSnapshot(
-			suspended.threadId,
-			suspended.runId,
-			this.dbSnapshotStorage,
-			true,
-		);
-		if (suspended.mastraRunId) {
-			void this.cleanupMastraSnapshots(suspended.mastraRunId);
-		}
-		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
-			status: 'cancelled',
-			reason: 'user_cancelled',
-			metadata: { completion_source: 'orchestrator' },
-		});
-	}
-
-	/** DB-driven finalizer: drives the same cleanup as
-	 *  `finalizeCancelledSuspendedRun` from a DB row, so cancel/clear can
-	 *  finalize a suspension that originated on a different instance. The
-	 *  trace context is recovered if it lives in this process; cross-instance
-	 *  cancel proceeds without trace continuity (acknowledged limitation). */
+	/** Finalize a cancelled suspended run from its durable DB row. Drives
+	 *  trace finalization, agent-tree snapshot persistence, Mastra-snapshot
+	 *  cleanup, and run-finish publication. Trace continuity is recovered
+	 *  for same-process suspensions; cross-instance cancel proceeds without
+	 *  it (accepted limitation — would require persisting LangSmith
+	 *  correlation IDs to the row). */
 	private async finalizeCancelledSuspendedRunFromDb(
 		row: InstanceAiPendingConfirmation,
 	): Promise<void> {

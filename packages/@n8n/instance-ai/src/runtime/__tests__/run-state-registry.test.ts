@@ -5,7 +5,6 @@ import type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
 	PendingConfirmation,
-	SuspendedRunState,
 } from '../run-state-registry';
 import { RunStateRegistry } from '../run-state-registry';
 
@@ -18,23 +17,6 @@ const mockedNanoid = jest.mocked(nanoid);
 interface TestUser {
 	id: string;
 	name: string;
-}
-
-function createSuspendedRunState(
-	overrides: Partial<SuspendedRunState<TestUser>> = {},
-): SuspendedRunState<TestUser> {
-	return {
-		runId: 'run_abc',
-		abortController: new AbortController(),
-		mastraRunId: 'mastra-1',
-		agent: {},
-		threadId: 'thread-1',
-		user: { id: 'user-1', name: 'Alice' },
-		toolCallId: 'tool-call-1',
-		requestId: 'request-1',
-		createdAt: Date.now(),
-		...overrides,
-	};
 }
 
 function createBackgroundTask(
@@ -69,7 +51,7 @@ describe('RunStateRegistry', () => {
 		it('creates run with generated runId and messageGroupId', () => {
 			const result = registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
+				user: { id: 'u1', name: 'A' },
 			});
 
 			expect(result.runId).toBe('run_id-1');
@@ -77,19 +59,29 @@ describe('RunStateRegistry', () => {
 			expect(result.abortController).toBeInstanceOf(AbortController);
 		});
 
+		it('reuses provided runId (used by restoreSuspendedRunFromDb to keep correlation key stable)', () => {
+			const result = registry.startRun({
+				threadId: 'thread-1',
+				user: { id: 'u1', name: 'A' },
+				runId: 'run_original',
+			});
+
+			expect(result.runId).toBe('run_original');
+		});
+
 		it('stores user for the thread', () => {
 			registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
+				user: { id: 'u1', name: 'Alice' },
 			});
 
-			expect(registry.getThreadUser('thread-1')).toEqual({ id: 'user-1', name: 'Alice' });
+			expect(registry.getThreadUser('thread-1')).toEqual({ id: 'u1', name: 'Alice' });
 		});
 
 		it('stores research mode when provided', () => {
 			registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
+				user: { id: 'u1', name: 'A' },
 				researchMode: true,
 			});
 
@@ -97,10 +89,7 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('does not store research mode when not provided', () => {
-			registry.startRun({
-				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
-			});
+			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
 			expect(registry.getThreadResearchMode('thread-1')).toBeUndefined();
 		});
@@ -108,70 +97,59 @@ describe('RunStateRegistry', () => {
 		it('reuses provided messageGroupId instead of generating one', () => {
 			const result = registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
-				messageGroupId: 'mg_existing',
+				user: { id: 'u1', name: 'A' },
+				messageGroupId: 'mg_provided',
 			});
 
-			// Only one nanoid call for runId, not for messageGroupId
-			expect(result.messageGroupId).toBe('mg_existing');
-			expect(result.runId).toBe('run_id-1');
-			expect(mockedNanoid).toHaveBeenCalledTimes(1);
+			expect(result.messageGroupId).toBe('mg_provided');
 		});
 
 		it('cleans up previous message group mapping when no messageGroupId is provided', () => {
-			// Start first run - generates mg_id-2
-			registry.startRun({
+			const first = registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
+				user: { id: 'u1', name: 'A' },
 			});
-			expect(registry.getRunIdsForMessageGroup('mg_id-2')).toEqual(['run_id-1']);
+			expect(registry.getRunIdsForMessageGroup(first.messageGroupId!)).toEqual([first.runId]);
 
-			// Start second run on same thread without messageGroupId - should clean up old group
-			const secondResult = registry.startRun({
+			const second = registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
+				user: { id: 'u1', name: 'A' },
 			});
 
-			// Old message group should be cleaned up
-			expect(registry.getRunIdsForMessageGroup('mg_id-2')).toEqual([]);
-			// New message group should have the new run
-			expect(registry.getRunIdsForMessageGroup(secondResult.messageGroupId!)).toEqual(['run_id-3']);
+			// Previous group's runIds should be cleared
+			expect(registry.getRunIdsForMessageGroup(first.messageGroupId!)).toEqual([]);
+			// New group has the new runId
+			expect(registry.getRunIdsForMessageGroup(second.messageGroupId!)).toEqual([second.runId]);
 		});
 
 		it('does not clean up previous group when messageGroupId is provided (reuse)', () => {
-			// Start first run - generates mg_id-2
-			registry.startRun({
+			const first = registry.startRun({
 				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
+				user: { id: 'u1', name: 'A' },
+				messageGroupId: 'mg_shared',
+			});
+			const second = registry.startRun({
+				threadId: 'thread-1',
+				user: { id: 'u1', name: 'A' },
+				messageGroupId: 'mg_shared',
 			});
 
-			// Start second run reusing the same group
-			registry.startRun({
-				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
-				messageGroupId: 'mg_id-2',
-			});
-
-			// Both runs should be tracked under the same group
-			expect(registry.getRunIdsForMessageGroup('mg_id-2')).toEqual(['run_id-1', 'run_id-3']);
+			expect(registry.getRunIdsForMessageGroup('mg_shared')).toEqual([first.runId, second.runId]);
 		});
 
 		it('tracks multiple runIds per message group', () => {
-			const sharedGroupId = 'mg_shared';
-
 			registry.startRun({
-				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
-				messageGroupId: sharedGroupId,
+				threadId: 'thread-a',
+				user: { id: 'u1', name: 'A' },
+				messageGroupId: 'mg_x',
+			});
+			registry.startRun({
+				threadId: 'thread-b',
+				user: { id: 'u2', name: 'B' },
+				messageGroupId: 'mg_x',
 			});
 
-			registry.startRun({
-				threadId: 'thread-2',
-				user: { id: 'user-2', name: 'Bob' },
-				messageGroupId: sharedGroupId,
-			});
-
-			expect(registry.getRunIdsForMessageGroup(sharedGroupId)).toEqual(['run_id-1', 'run_id-2']);
+			expect(registry.getRunIdsForMessageGroup('mg_x')).toEqual(['run_id-1', 'run_id-2']);
 		});
 	});
 
@@ -189,49 +167,11 @@ describe('RunStateRegistry', () => {
 				expect(registry.hasActiveRun('thread-1')).toBe(false);
 			});
 
-			it('returns false when thread only has a suspended run', () => {
+			it('returns false after the active run is cleared', () => {
 				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
+				registry.clearActiveRun('thread-1');
 
 				expect(registry.hasActiveRun('thread-1')).toBe(false);
-			});
-		});
-
-		describe('hasSuspendedRun', () => {
-			it('returns true when thread has a suspended run', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
-
-				expect(registry.hasSuspendedRun('thread-1')).toBe(true);
-			});
-
-			it('returns false when thread has no suspended run', () => {
-				expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-			});
-
-			it('returns false when thread only has an active run', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-
-				expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-			});
-		});
-
-		describe('hasLiveRun', () => {
-			it('returns true when thread has an active run', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-
-				expect(registry.hasLiveRun('thread-1')).toBe(true);
-			});
-
-			it('returns true when thread has a suspended run', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
-
-				expect(registry.hasLiveRun('thread-1')).toBe(true);
-			});
-
-			it('returns false when thread has no runs', () => {
-				expect(registry.hasLiveRun('thread-1')).toBe(false);
 			});
 		});
 
@@ -265,21 +205,6 @@ describe('RunStateRegistry', () => {
 
 			it('returns undefined when no active run', () => {
 				expect(registry.getActiveRunId('nonexistent')).toBeUndefined();
-			});
-		});
-
-		describe('getSuspendedRun', () => {
-			it('returns the suspended run state when present', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
-				registry.suspendRun('thread-1', suspendedState);
-
-				const result = registry.getSuspendedRun('thread-1');
-				expect(result).toBe(suspendedState);
-			});
-
-			it('returns undefined when no suspended run', () => {
-				expect(registry.getSuspendedRun('thread-1')).toBeUndefined();
 			});
 		});
 
@@ -330,78 +255,6 @@ describe('RunStateRegistry', () => {
 		});
 	});
 
-	// ── getThreadStatus ───────────────────────────────────────────────────────
-
-	describe('getThreadStatus', () => {
-		it('reflects active run state', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-
-			const status = registry.getThreadStatus('thread-1', []);
-
-			expect(status.hasActiveRun).toBe(true);
-			expect(status.isSuspended).toBe(false);
-			expect(status.backgroundTasks).toEqual([]);
-		});
-
-		it('reflects suspended run state', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
-
-			const status = registry.getThreadStatus('thread-1', []);
-
-			expect(status.hasActiveRun).toBe(false);
-			expect(status.isSuspended).toBe(true);
-		});
-
-		it('reflects idle state with no runs', () => {
-			const status = registry.getThreadStatus('thread-1', []);
-
-			expect(status.hasActiveRun).toBe(false);
-			expect(status.isSuspended).toBe(false);
-			expect(status.backgroundTasks).toEqual([]);
-		});
-
-		it('filters background tasks by threadId', () => {
-			const tasks: BackgroundTaskStatusSnapshot[] = [
-				createBackgroundTask({ taskId: 'task-1', threadId: 'thread-1' }),
-				createBackgroundTask({ taskId: 'task-2', threadId: 'thread-2' }),
-				createBackgroundTask({ taskId: 'task-3', threadId: 'thread-1' }),
-			];
-
-			const status = registry.getThreadStatus('thread-1', tasks);
-
-			expect(status.backgroundTasks).toHaveLength(2);
-			expect(status.backgroundTasks.map((t) => t.taskId)).toEqual(['task-1', 'task-3']);
-		});
-
-		it('maps background task fields correctly, stripping threadId', () => {
-			const task = createBackgroundTask({
-				taskId: 'task-1',
-				role: 'builder',
-				agentId: 'agent-1',
-				status: 'running',
-				startedAt: 1000,
-				runId: 'run_x',
-				messageGroupId: 'mg_y',
-				threadId: 'thread-1',
-			});
-
-			const status = registry.getThreadStatus('thread-1', [task]);
-
-			expect(status.backgroundTasks[0]).toEqual({
-				taskId: 'task-1',
-				role: 'builder',
-				agentId: 'agent-1',
-				status: 'running',
-				startedAt: 1000,
-				runId: 'run_x',
-				messageGroupId: 'mg_y',
-			});
-			// threadId should not be in the mapped output
-			expect(status.backgroundTasks[0]).not.toHaveProperty('threadId');
-		});
-	});
-
 	// ── Message group tracking ────────────────────────────────────────────────
 
 	describe('message group tracking', () => {
@@ -426,17 +279,7 @@ describe('RunStateRegistry', () => {
 				expect(result).toBe('mg_id-2');
 			});
 
-			it('returns thread message group when there is a suspended run', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
-
-				const result = registry.getLiveMessageGroupId('thread-1', []);
-
-				expect(result).toBe('mg_id-2');
-			});
-
 			it('falls back to the most recent running background task messageGroupId', () => {
-				// No live run
 				const tasks = [
 					createBackgroundTask({
 						threadId: 'thread-1',
@@ -458,7 +301,6 @@ describe('RunStateRegistry', () => {
 			});
 
 			it('falls back to stored threadMessageGroupId when no running background tasks match', () => {
-				// Start and then clear the active run, but threadMessageGroupId remains
 				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 				registry.clearActiveRun('thread-1');
 
@@ -472,7 +314,6 @@ describe('RunStateRegistry', () => {
 
 				const result = registry.getLiveMessageGroupId('thread-1', completedTasks);
 
-				// No live run, no running background tasks, falls through to threadMessageGroupId
 				expect(result).toBe('mg_id-2');
 			});
 
@@ -547,7 +388,6 @@ describe('RunStateRegistry', () => {
 					projectName: 'test',
 				} as unknown as InstanceAiTraceContext;
 
-				// Should not throw
 				expect(() => registry.attachTracing('nonexistent', tracing)).not.toThrow();
 			});
 
@@ -581,97 +421,6 @@ describe('RunStateRegistry', () => {
 
 			it('does nothing when no active run exists', () => {
 				expect(() => registry.clearActiveRun('nonexistent')).not.toThrow();
-			});
-		});
-
-		describe('suspendRun', () => {
-			it('moves run from active to suspended', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
-
-				registry.suspendRun('thread-1', suspendedState);
-
-				expect(registry.hasActiveRun('thread-1')).toBe(false);
-				expect(registry.hasSuspendedRun('thread-1')).toBe(true);
-				expect(registry.getSuspendedRun('thread-1')).toBe(suspendedState);
-			});
-		});
-
-		describe('activateSuspendedRun', () => {
-			it('moves run from suspended to active and returns suspended state', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				const suspendedState = createSuspendedRunState({
-					threadId: 'thread-1',
-					runId: 'run_suspended',
-					messageGroupId: 'mg_suspended',
-				});
-				registry.suspendRun('thread-1', suspendedState);
-
-				const result = registry.activateSuspendedRun('thread-1');
-
-				expect(result).toBe(suspendedState);
-				expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-				expect(registry.hasActiveRun('thread-1')).toBe(true);
-
-				const activeRun = registry.getActiveRun('thread-1');
-				expect(activeRun!.runId).toBe('run_suspended');
-				expect(activeRun!.messageGroupId).toBe('mg_suspended');
-			});
-
-			it('copies tracing from the suspended state into the active run', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				const tracing = {
-					projectName: 'test',
-				} as unknown as InstanceAiTraceContext;
-				const suspendedState = createSuspendedRunState({
-					threadId: 'thread-1',
-					tracing,
-				});
-				registry.suspendRun('thread-1', suspendedState);
-
-				registry.activateSuspendedRun('thread-1');
-
-				const activeRun = registry.getActiveRun('thread-1');
-				expect(activeRun!.tracing).toBe(tracing);
-			});
-
-			it('returns undefined when no suspended run exists', () => {
-				const result = registry.activateSuspendedRun('nonexistent');
-
-				expect(result).toBeUndefined();
-			});
-		});
-
-		describe('findSuspendedByRequestId', () => {
-			it('finds a suspended run by its requestId', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				const suspendedState = createSuspendedRunState({
-					threadId: 'thread-1',
-					requestId: 'req-123',
-				});
-				registry.suspendRun('thread-1', suspendedState);
-
-				const result = registry.findSuspendedByRequestId('req-123');
-
-				expect(result).toBe(suspendedState);
-			});
-
-			it('searches across multiple suspended runs', () => {
-				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-				registry.suspendRun(
-					'thread-1',
-					createSuspendedRunState({ threadId: 'thread-1', requestId: 'req-1' }),
-				);
-
-				registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });
-				const target = createSuspendedRunState({ threadId: 'thread-2', requestId: 'req-2' });
-				registry.suspendRun('thread-2', target);
-
-				expect(registry.findSuspendedByRequestId('req-2')).toBe(target);
-			});
-
-			it('returns undefined when no match', () => {
-				expect(registry.findSuspendedByRequestId('nonexistent')).toBeUndefined();
 			});
 		});
 	});
@@ -710,7 +459,6 @@ describe('RunStateRegistry', () => {
 				registry.registerPendingConfirmation('req-1', pending);
 				registry.resolvePendingConfirmation('user-1', 'req-1', { approved: true });
 
-				// Second resolve should fail - confirmation already consumed
 				const secondResult = registry.resolvePendingConfirmation('user-1', 'req-1', {
 					approved: true,
 				});
@@ -774,7 +522,6 @@ describe('RunStateRegistry', () => {
 
 				registry.rejectPendingConfirmation('req-1');
 
-				// Second reject should return false
 				expect(registry.rejectPendingConfirmation('req-1')).toBe(false);
 			});
 
@@ -787,12 +534,7 @@ describe('RunStateRegistry', () => {
 	// ── Cancellation ──────────────────────────────────────────────────────────
 
 	describe('cancelThread', () => {
-		it('resolves pending confirmations for the thread and returns active/suspended runs', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
-			registry.suspendRun('thread-1', suspendedState);
-
-			// Re-add an active run (to test both active and suspended)
+		it('resolves pending confirmations for the thread and returns the active run', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
 			const resolve = jest.fn();
@@ -807,7 +549,6 @@ describe('RunStateRegistry', () => {
 
 			expect(resolve).toHaveBeenCalledWith({ approved: false });
 			expect(result.active).toBeDefined();
-			expect(result.suspended).toBeDefined();
 		});
 
 		it('uses custom cancellation data when provided', () => {
@@ -825,20 +566,10 @@ describe('RunStateRegistry', () => {
 			expect(resolve).toHaveBeenCalledWith(customData);
 		});
 
-		it('removes suspended run from the registry', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
-
-			registry.cancelThread('thread-1');
-
-			expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-		});
-
 		it('returns empty object when no runs exist for the thread', () => {
 			const result = registry.cancelThread('nonexistent');
 
 			expect(result.active).toBeUndefined();
-			expect(result.suspended).toBeUndefined();
 		});
 
 		it('only resolves confirmations belonging to the target thread', () => {
@@ -901,43 +632,21 @@ describe('RunStateRegistry', () => {
 			expect(registry.getRunIdsForMessageGroup('mg_id-2')).toEqual([]);
 		});
 
-		it('clears both active and suspended runs', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
-			// Re-add active
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-
-			const result = registry.clearThread('thread-1');
-
-			expect(result.active).toBeDefined();
-			expect(result.suspended).toBeDefined();
-			expect(registry.hasActiveRun('thread-1')).toBe(false);
-			expect(registry.hasSuspendedRun('thread-1')).toBe(false);
-		});
-
 		it('returns empty when thread has no state', () => {
 			const result = registry.clearThread('nonexistent');
 
 			expect(result.active).toBeUndefined();
-			expect(result.suspended).toBeUndefined();
 		});
 	});
 
 	describe('shutdown', () => {
-		it('clears everything and returns all active and suspended runs', () => {
+		it('clears everything and returns active runs', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 			registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });
-			registry.suspendRun(
-				'thread-2',
-				createSuspendedRunState({ threadId: 'thread-2', runId: 'run_suspended' }),
-			);
 
 			const result = registry.shutdown();
 
-			expect(result.activeRuns).toHaveLength(1);
-			expect(result.activeRuns[0].runId).toBe('run_id-1');
-			expect(result.suspendedRuns).toHaveLength(1);
-			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
+			expect(result.activeRuns).toHaveLength(2);
 		});
 
 		it('resolves all pending confirmations', () => {
@@ -994,7 +703,6 @@ describe('RunStateRegistry', () => {
 			registry.shutdown();
 
 			expect(registry.hasActiveRun('thread-1')).toBe(false);
-			expect(registry.hasSuspendedRun('thread-1')).toBe(false);
 			expect(registry.getThreadUser('thread-1')).toBeUndefined();
 			expect(registry.getThreadResearchMode('thread-1')).toBeUndefined();
 			expect(registry.getMessageGroupId('thread-1')).toBeUndefined();
@@ -1005,25 +713,6 @@ describe('RunStateRegistry', () => {
 	// ── sweepTimedOut ─────────────────────────────────────────────────────────
 
 	describe('sweepTimedOut', () => {
-		it('identifies suspended runs older than maxAgeMs', () => {
-			const now = Date.now();
-			registry.startRun({ threadId: 'thread-old', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun(
-				'thread-old',
-				createSuspendedRunState({ threadId: 'thread-old', createdAt: now - 60_000 }),
-			);
-
-			registry.startRun({ threadId: 'thread-new', user: { id: 'u2', name: 'B' } });
-			registry.suspendRun(
-				'thread-new',
-				createSuspendedRunState({ threadId: 'thread-new', createdAt: now - 10_000 }),
-			);
-
-			const result = registry.sweepTimedOut(30_000);
-
-			expect(result.suspendedThreadIds).toEqual(['thread-old']);
-		});
-
 		it('identifies pending confirmations older than maxAgeMs', () => {
 			const now = Date.now();
 
@@ -1048,12 +737,6 @@ describe('RunStateRegistry', () => {
 
 		it('does NOT mutate state', () => {
 			const now = Date.now();
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun(
-				'thread-1',
-				createSuspendedRunState({ threadId: 'thread-1', createdAt: now - 60_000 }),
-			);
-
 			registry.registerPendingConfirmation('req-1', {
 				resolve: jest.fn(),
 				threadId: 'thread-1',
@@ -1063,38 +746,36 @@ describe('RunStateRegistry', () => {
 
 			registry.sweepTimedOut(30_000);
 
-			// State should still be intact
-			expect(registry.hasSuspendedRun('thread-1')).toBe(true);
 			// The confirmation should still be resolvable
 			expect(registry.rejectPendingConfirmation('req-1')).toBe(true);
 		});
 
-		it('returns empty arrays when nothing is timed out', () => {
+		it('returns empty array when nothing is timed out', () => {
 			const now = Date.now();
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun(
-				'thread-1',
-				createSuspendedRunState({ threadId: 'thread-1', createdAt: now }),
-			);
+			registry.registerPendingConfirmation('req-1', {
+				resolve: jest.fn(),
+				threadId: 'thread-1',
+				userId: 'user-1',
+				createdAt: now,
+			});
 
 			const result = registry.sweepTimedOut(30_000);
 
-			expect(result.suspendedThreadIds).toEqual([]);
 			expect(result.confirmationRequestIds).toEqual([]);
 		});
 
 		it('includes items exactly at the maxAge boundary', () => {
 			const now = Date.now();
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun(
-				'thread-1',
-				createSuspendedRunState({ threadId: 'thread-1', createdAt: now - 30_000 }),
-			);
+			registry.registerPendingConfirmation('req-1', {
+				resolve: jest.fn(),
+				threadId: 'thread-1',
+				userId: 'user-1',
+				createdAt: now - 30_000,
+			});
 
 			const result = registry.sweepTimedOut(30_000);
 
-			// now - createdAt === maxAgeMs, so >= matches
-			expect(result.suspendedThreadIds).toEqual(['thread-1']);
+			expect(result.confirmationRequestIds).toEqual(['req-1']);
 		});
 	});
 });
