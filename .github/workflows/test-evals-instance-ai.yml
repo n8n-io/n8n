@@ -79,6 +79,8 @@ jobs:
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
+              -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
+              -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=local \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
