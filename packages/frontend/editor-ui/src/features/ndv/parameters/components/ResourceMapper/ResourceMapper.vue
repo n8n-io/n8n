@@ -203,7 +203,10 @@ onMounted(async () => {
 		// Only fetch a schema if it's not already set
 		await initFetching();
 	} else {
-		await checkStaleFields();
+		// Refresh the schema in the background so cached schemas (e.g. from
+		// MCP-generated workflows) are reconciled with the actual source on open
+		// instead of leaving the user to spot the stale warning and click refresh.
+		await initFetching(true);
 	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
