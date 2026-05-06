@@ -218,7 +218,7 @@ export function useCanvasOperations() {
 	);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
-		return workflowsStore.workflowTriggerNodes;
+		return workflowDocumentStore.value.workflowTriggerNodes;
 	});
 
 	/**

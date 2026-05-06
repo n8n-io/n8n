@@ -7,6 +7,7 @@ import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
+import { N8nObjectValidationRule } from './n8n-object-validation.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
@@ -55,6 +56,7 @@ export const rules = {
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
 	'missing-paired-item': MissingPairedItemRule,
+	'n8n-object-validation': N8nObjectValidationRule,
 	'require-community-node-keyword': RequireCommunityNodeKeywordRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
 	'require-node-api-error': RequireNodeApiErrorRule,

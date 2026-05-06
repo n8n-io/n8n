@@ -52,6 +52,11 @@ function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 function getNodeTypesStateMock(): Partial<ReturnType<typeof useNodeTypesStore>> {
 	return {
 		allNodeTypes: [],
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	};
 }
 
@@ -159,6 +164,11 @@ describe('ParameterInput.vue', () => {
 		mockNodeTypesState = {
 			allNodeTypes: [],
 			getNodeType: vi.fn().mockReturnValue(null),
+			getAllNodeTypes: vi.fn().mockReturnValue({
+				nodeTypes: {},
+				init: async () => {},
+				getByNameAndVersion: () => undefined,
+			}),
 		};
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
 	});
