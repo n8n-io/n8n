@@ -192,6 +192,21 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
 
 The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs.
 
+### Producing a manifest
+
+`evaluations/scripts/build-instance-mcp-workflows.sh` drives `claude -p` against an MCP server (defaults to n8n's instance MCP) and writes a manifest in the schema this flag expects, plus a `manifest-stats.json` sidecar with per-cohort cost / turn / duration aggregates. See [`evaluations/scripts/README.md`](./scripts/README.md) for prerequisites and full usage.
+
+```bash
+# Build N=5 per test case, 4 in parallel
+./scripts/build-instance-mcp-workflows.sh -n 5 -j 4 --output-dir ./mcp-cohort
+
+# Then score the cohort
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --prebuilt-workflows ./mcp-cohort/manifest.json \
+  --iterations 5 \
+  --experiment-name mcp-cohort
+```
+
 ## Pairwise evals
 
 Pairwise evals score a built workflow against the dataset's `dos` / `donts`
