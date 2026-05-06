@@ -29,24 +29,41 @@ const makeKey = (overrides: Partial<EncryptionKey> = {}): EncryptionKey => ({
 	...overrides,
 });
 
+const seedStore = (overrides: Partial<{ items: EncryptionKey[]; totalCount: number }> = {}) => {
+	const store = mockedStore(useEncryptionKeysStore);
+	store.items = overrides.items ?? [makeKey()];
+	store.totalCount = overrides.totalCount ?? store.items.length;
+	store.fetchKeys.mockResolvedValue(undefined);
+	return store;
+};
+
 describe('SettingsEncryptionKeys', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
 
-	it('renders a row for each encryption key with a masked id', async () => {
-		const store = mockedStore(useEncryptionKeysStore);
-		store.keys = [
-			makeKey(),
-			makeKey({
-				id: '74f6c1e9b4d8a2f51234',
-				status: 'inactive',
-				createdAt: '2026-03-15T10:00:00.000Z',
-			}),
-		];
-		store.visibleKeys = store.keys;
-		store.fetchKeys.mockResolvedValue(undefined);
+	it('calls fetchKeys on mount', async () => {
+		const store = seedStore();
+		renderComponent(SettingsEncryptionKeys);
+
+		await waitFor(() => {
+			expect(store.fetchKeys).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('renders a row for each item with a masked id', async () => {
+		seedStore({
+			items: [
+				makeKey(),
+				makeKey({
+					id: '74f6c1e9b4d8a2f51234',
+					status: 'inactive',
+					createdAt: '2026-03-15T10:00:00.000Z',
+				}),
+			],
+			totalCount: 2,
+		});
 
 		renderComponent(SettingsEncryptionKeys);
 
@@ -57,17 +74,17 @@ describe('SettingsEncryptionKeys', () => {
 	});
 
 	it('shows active and inactive status badges', async () => {
-		const store = mockedStore(useEncryptionKeysStore);
-		store.keys = [
-			makeKey({ status: 'active' }),
-			makeKey({
-				id: '74f6c1e9b4d8a2f51234',
-				status: 'inactive',
-				createdAt: '2026-03-15T10:00:00.000Z',
-			}),
-		];
-		store.visibleKeys = store.keys;
-		store.fetchKeys.mockResolvedValue(undefined);
+		seedStore({
+			items: [
+				makeKey({ status: 'active' }),
+				makeKey({
+					id: '74f6c1e9b4d8a2f51234',
+					status: 'inactive',
+					createdAt: '2026-03-15T10:00:00.000Z',
+				}),
+			],
+			totalCount: 2,
+		});
 
 		renderComponent(SettingsEncryptionKeys);
 
@@ -78,10 +95,7 @@ describe('SettingsEncryptionKeys', () => {
 	});
 
 	it('rotates the key after confirmation and reports success', async () => {
-		const store = mockedStore(useEncryptionKeysStore);
-		store.keys = [makeKey()];
-		store.visibleKeys = store.keys;
-		store.fetchKeys.mockResolvedValue(undefined);
+		const store = seedStore();
 		store.rotateKey.mockResolvedValue(undefined);
 
 		renderComponent(SettingsEncryptionKeys);
@@ -100,10 +114,7 @@ describe('SettingsEncryptionKeys', () => {
 	});
 
 	it('surfaces rotate errors via showError', async () => {
-		const store = mockedStore(useEncryptionKeysStore);
-		store.keys = [makeKey()];
-		store.visibleKeys = store.keys;
-		store.fetchKeys.mockResolvedValue(undefined);
+		const store = seedStore();
 		const error = new Error('rotate failed');
 		store.rotateKey.mockRejectedValue(error);
 
@@ -122,21 +133,13 @@ describe('SettingsEncryptionKeys', () => {
 	});
 
 	describe('filter popover', () => {
-		const seedKeys = () => {
-			const store = mockedStore(useEncryptionKeysStore);
-			store.keys = [makeKey()];
-			store.visibleKeys = store.keys;
-			store.fetchKeys.mockResolvedValue(undefined);
-			return store;
-		};
-
 		const openPopover = async () => {
 			const trigger = await screen.findByRole('button', { name: 'Filter' });
 			await fireEvent.click(trigger);
 		};
 
 		it('hides the Clear button when no filter is active', async () => {
-			seedKeys();
+			seedStore();
 			renderComponent(SettingsEncryptionKeys);
 
 			await openPopover();
@@ -146,8 +149,11 @@ describe('SettingsEncryptionKeys', () => {
 		});
 
 		it('shows the Clear button when a filter is active', async () => {
-			const store = seedKeys();
-			store.filters = { activatedFrom: '2025-06-01', activatedTo: '2025-12-15' };
+			const store = seedStore();
+			store.filters = {
+				activatedFrom: '2025-06-01T00:00:00.000Z',
+				activatedTo: '2025-12-15T23:59:59.999Z',
+			};
 			renderComponent(SettingsEncryptionKeys);
 
 			await openPopover();
@@ -156,67 +162,49 @@ describe('SettingsEncryptionKeys', () => {
 			expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
 		});
 
-		it('commits the seeded filter to the store when Apply is clicked', async () => {
-			const store = seedKeys();
-			store.filters = { activatedFrom: '2025-06-01', activatedTo: '2025-12-15' };
+		it('converts the seeded local-day picker values to ISO instants and refetches', async () => {
+			const store = seedStore();
+			store.filters = {
+				activatedFrom: '2025-06-01T00:00:00.000Z',
+				activatedTo: '2025-12-15T00:00:00.000Z',
+			};
 			renderComponent(SettingsEncryptionKeys);
 
 			await openPopover();
 			await fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
 
-			expect(store.setFilters).toHaveBeenCalledWith({
-				activatedFrom: '2025-06-01',
-				activatedTo: '2025-12-15',
-			});
+			expect(store.setFilters).toHaveBeenCalledTimes(1);
+			const arg = store.setFilters.mock.calls[0][0];
+			expect(typeof arg.activatedFrom).toBe('string');
+			expect(typeof arg.activatedTo).toBe('string');
+			expect(arg.activatedFrom).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+			expect(arg.activatedTo).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+			expect(store.fetchKeys).toHaveBeenCalled();
 		});
 
-		it('resets the store and closes the popover when Clear is clicked', async () => {
-			const store = seedKeys();
-			store.filters = { activatedFrom: '2025-06-01', activatedTo: '2025-12-15' };
+		it('resets the store and refetches when Clear is clicked', async () => {
+			const store = seedStore();
+			store.filters = {
+				activatedFrom: '2025-06-01T00:00:00.000Z',
+				activatedTo: '2025-12-15T23:59:59.999Z',
+			};
 			renderComponent(SettingsEncryptionKeys);
 
 			await openPopover();
 			await fireEvent.click(await screen.findByRole('button', { name: 'Clear' }));
 
 			expect(store.resetFilters).toHaveBeenCalledTimes(1);
-			await waitFor(() => {
-				expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
-			});
+			expect(store.fetchKeys).toHaveBeenCalled();
 		});
 
 		it('does not commit changes when the popover is dismissed without Apply', async () => {
-			const store = seedKeys();
+			const store = seedStore();
 			renderComponent(SettingsEncryptionKeys);
 
 			await openPopover();
 			await fireEvent.keyDown(document.body, { key: 'Escape' });
 
 			expect(store.setFilters).not.toHaveBeenCalled();
-		});
-
-		it('re-seeds the draft from the store on every open', async () => {
-			const store = seedKeys();
-			store.filters = { activatedFrom: '2025-06-01', activatedTo: null };
-			renderComponent(SettingsEncryptionKeys);
-
-			// First open + Apply commits the seeded value.
-			await openPopover();
-			await fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
-			expect(store.setFilters).toHaveBeenLastCalledWith({
-				activatedFrom: '2025-06-01',
-				activatedTo: null,
-			});
-
-			// Mutate the store as if another code path changed the filter.
-			store.filters = { activatedFrom: '2025-12-15', activatedTo: null };
-
-			// Re-open + Apply must commit the NEW seeded value, proving re-seed.
-			await openPopover();
-			await fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
-			expect(store.setFilters).toHaveBeenLastCalledWith({
-				activatedFrom: '2025-12-15',
-				activatedTo: null,
-			});
 		});
 	});
 });

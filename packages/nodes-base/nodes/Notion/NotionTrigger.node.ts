@@ -189,7 +189,7 @@ export class NotionTrigger implements INodeType {
 			: moment().set({ second: 0, millisecond: 0 }); // Notion timestamp accuracy is only down to the minute
 
 		// update lastTimeChecked to now
-		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 });
+		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 }).utc().format();
 
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
 		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) ?? [];
