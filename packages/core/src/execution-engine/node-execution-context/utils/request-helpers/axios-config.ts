@@ -1,7 +1,7 @@
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { InternalAxiosRequestConfig } from 'axios';
 import axios from 'axios';
+import type { InternalAxiosRequestConfig } from 'axios';
 import { stringify } from 'qs';
 
 import { setAxiosAgents } from './axios-utils';
