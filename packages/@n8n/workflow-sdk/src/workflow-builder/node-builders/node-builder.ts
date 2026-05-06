@@ -233,6 +233,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	/**
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
+	 *
+	 * Index is **0-based**: `.input(0)` is the FIRST input, `.input(1)` is the SECOND.
 	 */
 	input(index: number): InputTarget {
 		return {
@@ -245,6 +247,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	/**
 	 * Create an output selector for connecting from a specific output index.
 	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
+	 *
+	 * Index is **0-based**: `.output(0)` is the FIRST output, `.output(1)` is the SECOND.
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput> {
 		return new OutputSelectorImpl(this, index) as unknown as OutputSelector<
@@ -881,14 +885,18 @@ export interface MergeFactoryConfig {
  * Create a Merge node for combining data from multiple branches.
  * Use .input(n) method to connect sources to specific input indices.
  *
+ * Input indices are **0-based**: `.input(0)` is the FIRST input, `.input(1)` is
+ * the SECOND. When wiring N sources, use indices `0, 1, ..., N-1` — never start
+ * at 1.
+ *
  * @param input - Config with version (required) and config object
  * @returns A Merge NodeInstance with .input(n) method for branch connections
  *
  * @example
  * ```typescript
  * const mergeNode = merge({ version: 3, config: { name: 'Combine Data' } });
- * source1.to(mergeNode.input(0));
- * source2.to(mergeNode.input(1));
+ * source1.to(mergeNode.input(0)); // first input
+ * source2.to(mergeNode.input(1)); // second input
  * mergeNode.to(downstream);
  * ```
  */
