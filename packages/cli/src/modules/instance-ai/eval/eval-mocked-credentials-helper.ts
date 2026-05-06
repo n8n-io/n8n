@@ -38,7 +38,7 @@ const MOCK_MARKER = '__evalMockedCredential' as const;
  * throw on missing data.
  */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
-	public readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
+	readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
 
 	constructor(private readonly inner: ICredentialsHelper) {
 		super();
