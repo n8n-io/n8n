@@ -682,6 +682,33 @@ export async function getBase({
 		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
 	}
 
+	if (workflowSettings?.langsmithCredentialId) {
+		try {
+			const credentialData = await additionalData.credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: workflowSettings.langsmithCredentialId, name: '' },
+				'langSmithApi',
+				'internal',
+			);
+			additionalData.langsmithConfig = {
+				apiKey: credentialData.apiKey as string,
+				project: workflowSettings.langsmithProject,
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			Container.get(Logger).warn('Failed to load LangSmith credential', {
+				credentialId: workflowSettings.langsmithCredentialId,
+				error: errorMessage,
+			});
+			additionalData.langsmithConfigError = errorMessage;
+		}
+	} else if (workflowSettings?.langsmithProject) {
+		additionalData.langsmithConfig = {
+			apiKey: '',
+			project: workflowSettings.langsmithProject,
+		};
+	}
+
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`
 		// to `IWorkflowExecuteAdditionalData` triggers complex type errors for derived types.

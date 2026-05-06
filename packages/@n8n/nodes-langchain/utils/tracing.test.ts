@@ -1,8 +1,18 @@
 import type { CallbackManager } from '@langchain/core/callbacks/manager';
+import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import { Client } from 'langsmith';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { buildTracingMetadata, getTracingConfig } from './tracing';
+
+vi.mock('@langchain/core/tracers/tracer_langchain', () => ({
+	LangChainTracer: vi.fn().mockImplementation(() => ({ mocked: true })),
+}));
+
+vi.mock('langsmith', () => ({
+	Client: vi.fn().mockImplementation(() => ({ mockedClient: true })),
+}));
 
 describe('getTracingConfig', () => {
 	const mockWorkflow = {
@@ -125,6 +135,196 @@ describe('getTracingConfig', () => {
 				node: 'AI Agent',
 			});
 			expect(result.callbacks).toBeUndefined();
+		});
+	});
+
+	describe('LangSmith tracer integration', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should create LangChainTracer when langsmithConfig has apiKey', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			// Attach langsmithConfig via additionalData (duck-typing)
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: 'ls-test-key-123',
+						project: 'my-project',
+					},
+				};
+
+			const result = getTracingConfig(mockContext);
+
+			expect(Client).toHaveBeenCalledWith({
+				apiKey: 'ls-test-key-123',
+				apiUrl: undefined,
+			});
+			expect(LangChainTracer).toHaveBeenCalledWith({
+				client: { mockedClient: true },
+				projectName: 'my-project',
+			});
+			expect(result.callbacks).toEqual([{ mocked: true }]);
+		});
+
+		it('should use "default" project name when project is not specified', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: 'ls-test-key-123',
+					},
+				};
+
+			getTracingConfig(mockContext);
+
+			expect(Client).toHaveBeenCalledWith({
+				apiKey: 'ls-test-key-123',
+				apiUrl: undefined,
+			});
+			expect(LangChainTracer).toHaveBeenCalledWith({
+				client: { mockedClient: true },
+				projectName: 'default',
+			});
+		});
+
+		it('should include both parent callback manager and tracer when both exist', () => {
+			const mockCallbackManager = mock<CallbackManager>();
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(mockCallbackManager);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: 'ls-test-key-123',
+						project: 'my-project',
+					},
+				};
+
+			const result = getTracingConfig(mockContext);
+
+			expect(Client).toHaveBeenCalledWith({
+				apiKey: 'ls-test-key-123',
+				apiUrl: undefined,
+			});
+			expect(result.callbacks).toEqual([mockCallbackManager, { mocked: true }]);
+		});
+
+		it('should not create tracer when apiKey is empty string', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: '',
+						project: 'my-project',
+					},
+				};
+
+			const result = getTracingConfig(mockContext);
+
+			expect(LangChainTracer).not.toHaveBeenCalled();
+			expect(result.callbacks).toBeUndefined();
+		});
+
+		it('should not create tracer when langsmithConfig is undefined', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig?: unknown } }).additionalData =
+				{
+					langsmithConfig: undefined,
+				};
+
+			const result = getTracingConfig(mockContext);
+
+			expect(LangChainTracer).not.toHaveBeenCalled();
+			expect(result.callbacks).toBeUndefined();
+		});
+
+		it('should not create tracer when additionalData is missing', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			const result = getTracingConfig(mockContext);
+
+			expect(LangChainTracer).not.toHaveBeenCalled();
+			expect(result.callbacks).toBeUndefined();
+		});
+
+		it('should emit execution hint when langsmithConfigError is set', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(
+				mockContext as unknown as {
+					additionalData: { langsmithConfigError: string };
+				}
+			).additionalData = {
+				langsmithConfigError: 'Credential not found',
+			};
+
+			getTracingConfig(mockContext);
+
+			expect(mockContext.addExecutionHints).toHaveBeenCalledWith({
+				message: 'LangSmith tracing is configured but failed to initialize: Credential not found',
+				type: 'warning',
+				location: 'outputPane',
+			});
+		});
+
+		it('should use LANGCHAIN_ENDPOINT env var for apiUrl', () => {
+			const original = process.env.LANGCHAIN_ENDPOINT;
+			process.env.LANGCHAIN_ENDPOINT = 'https://langsmith.example.com';
+
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: 'ls-test-key-123',
+						project: 'my-project',
+					},
+				};
+
+			getTracingConfig(mockContext);
+
+			expect(Client).toHaveBeenCalledWith({
+				apiKey: 'ls-test-key-123',
+				apiUrl: 'https://langsmith.example.com',
+			});
+
+			process.env.LANGCHAIN_ENDPOINT = original;
 		});
 	});
 

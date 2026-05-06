@@ -62,6 +62,7 @@ import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -97,6 +98,7 @@ const projectsStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const credentialsStore = useCredentialsStore();
 const posthogStore = usePostHog();
 const isLoading = ref(true);
 const hasCustomTelemetryTagErrors = ref(false);
@@ -216,6 +218,7 @@ const executionLogic = computed(() => {
 const isMCPEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
+const langsmithCredentials = computed(() => credentialsStore.getCredentialsByType('langSmithApi'));
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
@@ -850,7 +853,7 @@ onMounted(async () => {
 			);
 		}
 
-		await Promise.all(promises);
+		await Promise.all([...promises, credentialsStore.fetchAllCredentials()]);
 	} catch (error) {
 		toast.showError(error, 'Problem loading settings', {
 			message: 'The following error occurred loading the data:',
@@ -1590,6 +1593,55 @@ onBeforeUnmount(() => {
 								></ElSwitch>
 							</N8nTooltip>
 						</div>
+					</ElCol>
+				</ElRow>
+				<ElRow data-test-id="workflow-settings-langsmith-credential">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.langsmithCredential') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.langsmithCredential.tooltip') }}
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="workflowSettings.langsmithCredentialId"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:placeholder="i18n.baseText('workflowSettings.langsmithCredential.placeholder')"
+							filterable
+							clearable
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-langsmith-credential-select"
+						>
+							<N8nOption
+								v-for="cred in langsmithCredentials"
+								:key="cred.id"
+								:label="cred.name"
+								:value="cred.id"
+							/>
+						</N8nSelect>
+					</ElCol>
+				</ElRow>
+				<ElRow data-test-id="workflow-settings-langsmith-project">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.langsmithProject') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.langsmithProject.tooltip') }}
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14">
+						<N8nInput
+							v-model="workflowSettings.langsmithProject"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:placeholder="i18n.baseText('workflowSettings.langsmithProject.placeholder')"
+							type="text"
+							data-test-id="workflow-settings-langsmith-project-input"
+						/>
 					</ElCol>
 				</ElRow>
 				<ElRow>
