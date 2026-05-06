@@ -2388,6 +2388,11 @@ export class InstanceAiService {
 			return;
 		}
 
+		// Use the revalidated user from here on so downstream permission checks
+		// see current scopes, not the (possibly stale) snapshot captured when the
+		// run was started.
+		const activeUser = revalidated;
+
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -2405,7 +2410,7 @@ export class InstanceAiService {
 		if (action.type === 'replan') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
 					failedTask: action.failedTask,
@@ -2428,7 +2433,7 @@ export class InstanceAiService {
 		if (action.type === 'synthesize') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
 				this.runState.getThreadResearchMode(threadId),
@@ -2466,7 +2471,7 @@ export class InstanceAiService {
 				graphAfterMark.tasks.find((t) => t.id === checkpoint.id) ?? checkpoint;
 
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
 					checkpoint: checkpointRecord,
@@ -2494,7 +2499,7 @@ export class InstanceAiService {
 		}
 
 		const environment = await this.createExecutionEnvironment(
-			user,
+			activeUser,
 			threadId,
 			action.graph.planRunId,
 			createInertAbortSignal(),
@@ -2511,7 +2516,7 @@ export class InstanceAiService {
 			await this.dispatchPlannedTask(task, environment.orchestrationContext, action.graph);
 		}
 
-		await this.doSchedulePlannedTasks(user, threadId);
+		await this.doSchedulePlannedTasks(activeUser, threadId);
 	}
 
 	private async executeRun(
@@ -3368,11 +3373,13 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
+		// Pass the freshly revalidated user forward so downstream permission
+		// checks see current scopes, not the snapshot captured at suspend time.
 		void this.processResumedStream(agent, resumeData, {
 			runId,
 			mastraRunId,
 			threadId,
-			user,
+			user: revalidated,
 			toolCallId,
 			signal: abortController.signal,
 			abortController,
