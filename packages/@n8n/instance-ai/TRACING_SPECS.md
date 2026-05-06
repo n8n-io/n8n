@@ -1,658 +1,681 @@
 # Instance AI Tracing Specs
 
-Status: planning OTel-canonical rewrite
+Status: planning clean Instance AI tracing rewrite
 
-Last updated: 2026-05-05
+Last updated: 2026-05-06
 
 ## Decision
 
-Instance AI live tracing will use OpenTelemetry as the single canonical trace
-model.
+Instance AI tracing will be rebuilt around a clean, activation-scoped
+OpenTelemetry model owned by `@n8n/instance-ai`.
 
-We will stop mixing LangSmith `RunTree` spans with OTel spans for normal
-execution. Product concepts such as message turns, orchestrator work,
-sub-agent work, HITL, and background jobs must be represented as OTel spans.
-Native AI SDK spans for model calls, provider requests, messages, tool calls,
-and token usage stay in the same OTel tree.
+LangSmith is an export target for Instance AI traces, not the internal tracing
+model. LangSmith-specific attribute names, token workarounds, thread grouping
+policy, and trace-shaping rules must stay in `packages/@n8n/instance-ai`.
+`packages/@n8n/agents` must remain provider/platform neutral, except for
+generic telemetry primitives that any product can use.
 
-`RunTree` should not be used as a live trace hierarchy once this migration is
-complete. If LangSmith feedback or legacy replay needs a compatibility path,
-that path must be isolated and must not parent or reshape OTel spans.
+The target live trace hierarchy has no LangSmith `RunTree` spans. Native AI SDK
+model/tool telemetry and Instance AI product spans must share the same OTel
+context tree.
 
-## Why
+## Design Principles
 
-The hybrid implementation proved useful but has the wrong shape:
+1. **Activation duration, not logical task lifetime**
 
-- RunTree spans show Instance AI product semantics.
-- OTel spans show the real AI SDK and provider semantics.
-- LangSmith does not reliably roll up token usage or child spans across those
-  two ingestion models.
-- Attempts to force-parent native OTel spans under RunTree spans caused native
-  LLM spans to disappear.
+   A span measures active work. It must not stay open while the orchestrator is
+   waiting for user approval, a background task, or a future scheduler tick.
 
-The correct model is to make product tracing use the same OTel tracer and
-context as native LLM telemetry.
+2. **One thread, multiple root operations**
 
-## Goals
+   A LangSmith thread is a chronological group of root traces linked by
+   `thread_id`. A complex Instance AI request can therefore contain:
 
-1. A foreground message turn has one canonical OTel trace tree.
-2. Inline work, including orchestrator LLM calls and inline planner calls, is
-   parented by OTel context propagation.
-3. Detached/background sub-agents may remain separate OTel trace roots, but
-   they must carry thread and spawning metadata.
-4. LangSmith shows real AI SDK LLM/provider spans with messages, tool schemas,
-   tool choice, tool calls, response summaries, timings, cost, and token usage.
-5. Product spans remain visible for Instance AI concepts that providers do not
-   know about: message turns, context compaction, prompt building, HITL,
-   workflow build orchestration, workspace edits, validation, replay
-   boundaries, and background jobs.
-6. Feedback remains attachable to a stable persisted trace/run identifier.
-7. Direct LangSmith credentials and AI service proxy routing both keep working.
-8. Trace replay remains deterministic and independent from LangSmith run shape.
-9. Redaction and input/output recording controls are explicit and enforced
-   before detailed payloads are exported.
+   - a user message activation,
+   - one or more detached background task activations,
+   - one or more orchestrator resume/checkpoint activations.
+
+3. **Inline sub-agents are children, detached sub-agents are roots**
+
+   A planner or delegate that runs synchronously inside the current orchestrator
+   activation is a child span. A builder, data-table, research, or delegate task
+   that runs after the orchestrator returns is a separate root trace linked back
+   with spawning metadata.
+
+4. **Leaf LLM spans own token usage**
+
+   Product spans must not carry prompt/completion usage that duplicates child LLM
+   spans. Token and cost rollups should come from native AI SDK provider spans,
+   with Instance AI applying LangSmith export fixes only in the Instance AI
+   LangSmith adapter.
+
+5. **Tool definitions are both agent and LLM request metadata**
+
+   We need to know which tools were assigned to which agent. That belongs on the
+   agent activation span as a compact tool manifest. We also need to know which
+   exact tools were available to each model call. That belongs on every LLM span
+   that sends tools to the provider, using the provider-facing tool definitions
+   from that request. Individual tool executions remain native `ai.toolCall`
+   spans.
+
+6. **Trace replay is separate from observability**
+
+   Replay records deterministic Instance AI events and tool I/O. It must not
+   depend on LangSmith IDs, OTel span IDs, or the shape of the LangSmith UI.
+
+7. **Do not hide provider semantics**
+
+   The LangSmith trace should show native LLM inputs, messages, available tools,
+   tool calls, provider metadata, finish reasons, token usage, and cache usage
+   whenever recording policy allows it.
 
 ## Non-Goals
 
-- Preserve the Mastra-era LangSmith tree shape.
-- Preserve the temporary hybrid RunTree plus OTel shape.
-- Rebuild provider-level LLM traces manually.
-- Roll product analytics or audit logging into LangSmith tracing.
-- Store full workflow JSON, file contents, credentials, or decrypted node
-  parameters in tracing payloads by default.
+- Preserve the Mastra-era trace tree.
+- Preserve the current hybrid `RunTree` plus OTel implementation.
+- Keep a compatibility layer that manually reconstructs LLM steps in LangSmith.
+- Make `@n8n/agents` aware of Instance AI thread IDs, agent roles, task IDs, or
+  LangSmith-specific token correction.
+- Use LangSmith trace shape as product state.
+- Keep orchestration spans open during background waits.
 
-## Current State
+## Current Instance AI Execution Inventory
 
-Implemented so far:
+The tracing rewrite must cover every current model operation and non-model
+execution path below.
 
-- `@n8n/agents` can build LangSmith OTel telemetry.
-- Native AI SDK spans are visible in LangSmith when not forced into RunTree
-  parentage.
-- `@n8n/agents` creates runtime root spans around generate/stream loops.
-- `@n8n/agents` emits AI-SDK-compatible `ai.toolCall` spans for local tool
-  execution.
-- Instance AI can create native telemetry with thread metadata and service
-  proxy headers.
-- Normal Instance AI execution no longer disables AI SDK telemetry.
-- The LangSmith OTel processor filters noisy AI SDK wrapper spans so provider
-  request spans such as `ai.streamText.doStream` can appear directly under the
-  agent root.
-- Instance AI product roots and child spans now use the same OTel
-  tracer/provider as native agent telemetry in normal execution.
-- Normal foreground and detached trace creation no longer creates RunTree spans.
-- Agent tree snapshots persist OTel trace/span IDs alongside derived LangSmith
-  IDs for feedback anchoring.
-- Instance AI disables the generic `@n8n/agents` runtime root span because the
-  product actor span already represents the agent loop; native provider and
-  `ai.toolCall` spans remain enabled and are parented directly under the
-  product actor span.
-- Normal tool execution no longer emits duplicate `instance-ai.tool.*` product
-  spans. The native `ai.toolCall` span is the canonical tool execution span;
-  Instance AI only adds product spans for HITL suspend/resume lifecycle events.
-- Live LangSmith validation has proved feedback against an OTel-only product
-  root and full provider-span visibility with a real model turn.
-- Detached sub-agent linking captures spawning trace/span metadata and model
-  tool-call IDs when a detached task is spawned from a local tool handler.
+| Area | Current code path | Model operation | Target trace shape |
+| --- | --- | --- | --- |
+| Foreground orchestrator | `createInstanceAgent()` -> `streamAgentRun()` | `Agent.stream()` | Child agent activation under `message_turn` or `orchestrator_resume` root |
+| Context compaction | `generateCompactionSummary()` | `Agent.generate()` with no tools | Root-level child under `message_turn` or `orchestrator_resume`, before `agent.orchestrator`; internal root only when run out of band |
+| Thread title | `generateTitleForRun()` | `generateTitleFromMessage()` | Internal OTel operation; export to LangSmith only when `include_internal=true` or on error |
+| Inline planner | `plan` tool / `createPlanWithAgentTool()` | `Agent.stream()` with planner tools | Child `agent.planner` activation under the current orchestrator activation |
+| Inline delegate | `delegate` tool / `createDelegateTool()` | `createSubAgent().stream()` | Child `agent.<role>` activation under the current orchestrator activation |
+| Browser credential setup | `browser-credential-setup` tool | `Agent.stream()` plus resume/nudge loops | Quick credential checks stay inline; browser/user-wait flows use detached `background_subagent` plus `orchestrator_resume` |
+| Detached builder | `build-workflow-with-agent` / planned build task | `Agent.stream()` in sandbox or tool mode | Separate `background_subagent` root linked to the spawn tool call |
+| Detached data-table agent | `manage-data-tables-with-agent` / planned task | `Agent.stream()` | Separate `background_subagent` root |
+| Detached research agent | `research-with-agent` / planned task | `Agent.stream()` | Separate `background_subagent` root |
+| Detached custom delegate | planned delegate task | `createSubAgent().stream()` | Separate `background_subagent` root |
+| Planned checkpoint | service-created follow-up turn | Orchestrator `Agent.stream()` | Separate `orchestrator_resume` root with `resume_reason=planned_checkpoint` |
+| Background completion handoff | service-created follow-up turn | Orchestrator `Agent.stream()` | Separate `orchestrator_resume` root with `resume_reason=background_task_completed` |
+| Workflow loop | `WorkflowLoopRuntime`, `verify-built-workflow`, `report-verification-verdict` | Mostly deterministic tools | Tool spans and product state spans only, no LLM span unless orchestrator chooses one |
+| Builder memory compaction | `compactBuilderMemoryThread()` | Currently deterministic storage compaction | Product span only if useful; if it later calls an LLM, trace as an internal child of builder root |
 
-Remaining follow-up:
-
-- Some fallback RunTree compatibility code remains for legacy/manual stream
-  trace debugging only. It is disabled by default behind
-  `N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING=true` and should be removed in the
-  post-rollout cleanup once no legacy stream-hook consumers remain.
-
-## Hybrid Reference Notes
-
-The last working hybrid traces showed RunTree product nodes such as
-`message_turn`, `orchestrator`, `context_compaction`, `prompt_build`, and
-`subagent:planner` beside native OTel nodes such as `ai.streamText.doStream`.
-This proved product semantics and native AI SDK telemetry could both be
-exported, but LangSmith displayed them as split turn/root groups and did not
-roll token usage up to the product roots.
-
-The failure mode to avoid is forcing native OTel spans under RunTree IDs. In
-that shape, LangSmith can lose or separate provider spans, and the trace no
-longer shows the complete system/user/tool/provider turn under a single OTel
-context. Regression coverage now asserts normal Instance AI trace creation does
-not create RunTree spans.
-
-## Live Validation Notes
-
-Live validation with explicit credentials has covered two cases:
-
-- `instance-ai-tracing-validation` thread
-  `otel-validation-f97e5f00-589a-49fb-a536-d54d417c30eb` proved foreground
-  and detached roots are queryable by the same thread ID. The thread contained
-  `instance-ai.message_turn`, native `ai.generateText.doGenerate` spans with
-  tool definitions and token usage, a local tool span, and detached
-  `instance-ai.subagent.workflow-builder` metadata with spawning trace/span
-  IDs.
-- `instance-ai-tracing-validation` thread
-  `otel-runtime-root-validation-4c6d9b3c-ae3f-454a-bf97-d984be36a2be` proved
-  the generic `@n8n/agents` runtime root span can be suppressed for Instance
-  AI. The resulting foreground tree was
-  `instance-ai.message_turn -> instance-ai.orchestrator.stream ->
-  ai.generateText.doGenerate/add_numbers`, with no duplicate
-  `instance-ai.orchestrator.stream` wrapper.
-
-User-provided fresh run `81b3a657-c452-484f-ac3c-122836016094` confirmed the
-pre-suppression implementation had correct native provider/tool visibility,
-token usage, detached sub-agent roots, and spawning metadata, but still showed
-duplicate same-named agent wrapper spans. The runtime-root suppression is the
-follow-up fix for that shape issue.
-
-## Target Architecture
+## Target Trace Model
 
 ```mermaid
 flowchart TD
-	A[HTTP or stream request] --> B[OTel product root: instance-ai.message_turn]
-	B --> C[context_compaction]
-	B --> D[prompt_build]
-	B --> E[instance-ai.orchestrator.stream]
-	E --> F[ai.streamText.doStream]
-	E --> G[ai.toolCall: credentials]
-	E --> H[ai.toolCall: plan]
-	H --> I[instance-ai.subagent.planner.stream]
-	I --> J[ai.streamText.doStream]
-	I --> K[ai.toolCall: submit-plan]
-	K --> L[hitl.suspend]
-	B --> M[message_turn persisted snapshot]
-	E --> N[detached workflow-builder spawn]
-	N --> O[separate OTel root: instance-ai.subagent.workflow-builder]
+    Thread[LangSmith thread_id]
+
+    Thread --> A[Root: instance-ai.message_turn]
+    A --> A2[context_compaction]
+    A --> A3[prompt_build]
+    A --> A1[agent.orchestrator]
+    A1 --> A4[LLM provider span]
+    A1 --> A5[tool: plan]
+    A5 --> A6[agent.planner]
+    A6 --> A7[LLM provider spans]
+    A6 --> A8[tool: submit-plan]
+    A1 --> A9[background spawn metadata]
+
+    Thread --> B[Root: instance-ai.background_subagent]
+    B --> B1[agent.workflow-builder]
+    B1 --> B2[LLM provider spans]
+    B1 --> B3[workspace and workflow tools]
+
+    Thread --> C[Root: instance-ai.orchestrator_resume]
+    C --> C1[agent.orchestrator]
+    C1 --> C2[tool: verify-built-workflow]
+    C1 --> C3[tool: complete-checkpoint]
 ```
 
-The foreground trace is rooted by `instance-ai.message_turn`. The root span is
-created before context compaction, prompt building, and the first LLM call.
+### Root Trace Kinds
 
-Inline sub-agents inherit the active OTel context and remain inside the
-foreground trace.
+`message_turn`
 
-Detached/background sub-agents can be separate OTel trace roots. They are not
-children in the live OTel tree if they run outside the request lifecycle, but
-they must be queryable by the same thread ID and linked to the spawning span via
-metadata.
+- Triggered by a user chat message.
+- Contains active foreground orchestrator work for that message.
+- Ends as `completed`, `failed`, `cancelled`, or `suspended`.
+- If it schedules background tasks and returns, it ends immediately after the
+  scheduling result is persisted and emitted.
 
-## Canonical Trace Shapes
+`orchestrator_resume`
 
-Foreground message turn:
+- Triggered by a tool approval, plan approval, background-task completion,
+  planned checkpoint, replan, or correction handoff.
+- Contains only active continuation work.
+- Does not inherit the duration of the suspended or background operation that
+  caused it.
 
-```text
-instance-ai.message_turn                 chain
-  instance-ai.context_compaction         chain
-  instance-ai.prompt_build               chain
-  instance-ai.orchestrator.stream        chain
-    ai.streamText.doStream               llm
-    ai.toolCall                          tool  credentials
-    ai.streamText.doStream               llm
-    ai.toolCall                          tool  plan
-      instance-ai.subagent.planner.stream chain
-        ai.streamText.doStream           llm
-        ai.toolCall                      tool  templates
-        ai.toolCall                      tool  credentials
-        ai.streamText.doStream           llm
-        ai.toolCall                      tool  submit-plan
-          instance-ai.hitl.suspend       chain/tool
-```
+`background_subagent`
 
-Resume after HITL, same process:
+- Triggered when a background task actually starts executing, not when the
+  orchestrator merely requests it.
+- Used by workflow builder, data-table manager, researcher, and detached
+  delegate workers.
+- Linked to the spawning activation by metadata, not by OTel parentage.
 
-```text
-instance-ai.message_turn
-  instance-ai.orchestrator.resume
-    ai.toolCall                          tool  submit-plan:resume
-    ai.streamText.doStream               llm
-```
+`internal_operation`
 
-Resume after HITL, different process:
+- Used for optional internal LLM calls that are not part of a user-visible
+  agent activation, such as title generation.
+- Hidden from normal debugging views by tags/metadata unless explicitly enabled.
 
-```text
-instance-ai.message_turn.resume          chain
-  instance-ai.orchestrator.resume        chain
-    ai.toolCall                          tool  submit-plan:resume
-    ai.streamText.doStream               llm
-```
+### Agent Activation Spans
 
-The resumed root must include `resumed_from_trace_id`,
-`resumed_from_span_id`, `message_group_id`, and `pending_tool_call_id`.
+Agent activation spans describe the Instance AI actor that is running. They are
+product spans, not model spans.
 
-Detached workflow builder:
+Recommended names:
 
-```text
-instance-ai.subagent.workflow-builder    chain
-  ai.streamText.doStream                 llm
-  ai.toolCall                            tool  credentials
-  ai.toolCall                            tool  workspace_write_file
-  ai.toolCall                            tool  workspace_execute_command
-  ai.toolCall                            tool  workspace_str_replace_file
-  ai.toolCall                            tool  submit-workflow
-  ai.toolCall                            tool  executions
-```
+- `instance-ai.agent.orchestrator`
+- `instance-ai.agent.planner`
+- `instance-ai.agent.workflow-builder`
+- `instance-ai.agent.data-table-manager`
+- `instance-ai.agent.web-researcher`
+- `instance-ai.agent.delegate`
+- `instance-ai.agent.credential-setup-browser-agent`
 
-## RunTree Policy
+Each agent activation span must include:
 
-RunTree is not part of the target live trace hierarchy.
+- agent role and agent id,
+- model id,
+- execution mode,
+- max iteration budget,
+- assigned tool manifest,
+- memory/checkpoint summary,
+- prompt section summary.
 
-Rules:
+The full system prompt can be recorded only when recording policy allows it.
+The compact tool manifest should always be safe to record after schema
+redaction.
 
-- Do not create RunTree spans for `message_turn`, `orchestrator`,
-  `subagent:*`, `tool:*`, or `hitl:*` in normal execution.
-- Do not set OTel span parents to RunTree run IDs.
-- Do not set RunTree trace IDs on native OTel spans to merge two ingestion
-  models.
-- Do not use RunTree ordering as replay input.
-- Do not wrap local tools in RunTree just to make them visible in LangSmith.
+### Native AI SDK Spans
 
-Allowed compatibility uses:
-
-- A temporary feedback adapter may query or derive the OTel product root run ID
-  for `Client.createFeedback`.
-- A temporary migration flag may emit both systems for comparison, but the
-  dual-emission mode must be disabled by default and must not be the production
-  target.
-
-## Feedback Anchoring
-
-Instance AI still needs stable IDs for feedback and persisted snapshots.
-
-Target snapshot fields:
-
-- `traceId`: OTel trace ID
-- `spanId`: OTel span ID for `instance-ai.message_turn`
-- `langsmithTraceId`: LangSmith trace UUID, if known or derivable
-- `langsmithRunId`: LangSmith run UUID for the product root, if known or
-  derivable
-- `threadId`
-- `messageId`
-- `messageGroupId`
-- `agentRunId`
-
-Implementation options, in preferred order:
-
-1. Create the OTel product root with explicit LangSmith IDs using supported
-   LangSmith OTel attributes, then persist those IDs.
-2. Persist the OTel trace/span IDs and derive the LangSmith IDs using the same
-   conversion LangSmith applies during OTel ingestion.
-3. Persist OTel IDs and resolve the LangSmith run by metadata lookup before
-   creating feedback.
-
-The migration must prove feedback against a live OTel-only trace before RunTree
-feedback anchoring is removed.
-
-## Metadata Contract
-
-Every Instance AI OTel root and child span must include the stable thread
-metadata needed for LangSmith thread views and debugging.
-
-Required metadata attributes:
-
-- `langsmith.metadata.thread_id`
-- `thread_id`
-- `conversation_id`
-- `message_id`
-- `message_group_id`
-- `run_id`
-- `agent_role`
-- `execution_mode`
-- `instance_ai.trace_version = otel-v2`
-
-Optional metadata attributes:
-
-- `workflow_id`
-- `project_id`
-- `user_id`, when safe to store
-- `agent_id`
-- `task_id`
-- `planned_task_id`
-- `work_item_id`
-
-Detached sub-agent metadata:
-
-- `spawned_by_trace_id`
-- `spawned_by_span_id`
-- `spawned_by_run_id`, if available
-- `spawned_by_agent_role`
-- `spawned_by_tool_call_id`
-- `subagent_role`
-- `subagent_task_id`
-
-Resume metadata:
-
-- `resumed_from_trace_id`
-- `resumed_from_span_id`
-- `resumed_from_run_id`, if available
-- `pending_tool_call_id`
-- `resume_action`
-
-The metadata builder belongs in Instance AI. The generic attribute conversion
-and redaction helpers can move to `@n8n/ai-utilities` if they are not
-LangSmith-specific.
-
-## Span Naming
-
-Use stable, searchable names.
-
-Product chain spans:
-
-- `instance-ai.message_turn`
-- `instance-ai.message_turn.resume`
-- `instance-ai.context_compaction`
-- `instance-ai.prompt_build`
-- `instance-ai.orchestrator.stream`
-- `instance-ai.orchestrator.generate`
-- `instance-ai.orchestrator.resume`
-- `instance-ai.subagent.<role>.stream`
-- `instance-ai.subagent.<role>.generate`
-- `instance-ai.background.<kind>`
-
-Product side-effect spans:
-
-- `instance-ai.hitl.suspend`
-- `instance-ai.hitl.resume`
-
-Native AI SDK spans:
+Native model and tool spans should be kept as close as possible to what
+`@n8n/agents` and AI SDK produce:
 
 - `ai.streamText.doStream`
 - `ai.generateText.doGenerate`
 - `ai.toolCall`
 
-The noisy AI SDK wrapper spans such as `ai.streamText` may be filtered from
-LangSmith export as long as provider request spans, tool spans, and product
-root spans remain correctly parented.
+Every LLM request span must include the exact tool definitions sent to the
+model for that request when tools are present. This must not rely on the parent
+agent activation span alone, because LangSmith renders available tool specs from
+the LLM run itself.
 
-For Instance AI, the generic `@n8n/agents` runtime root span around
-generate/stream loops is disabled. Generic agents may still use that span, but
-Instance AI already has explicit product actor spans such as
-`instance-ai.orchestrator.stream` and `instance-ai.subagent.<role>.stream`.
-Disabling the generic wrapper avoids duplicate same-named agent spans while
-preserving native provider and tool telemetry.
+Required on LLM request spans when tools are present:
 
-## Span Kinds and Inputs
+- tool name,
+- tool description,
+- JSON input schema after redaction and size limiting,
+- provider tool kind when applicable, for example custom tool, server tool, or
+  hosted tool,
+- tool choice and parallel-tool-use settings when available,
+- stable manifest reference or schema hash linking back to the agent activation
+  manifest.
 
-Use LangSmith-compatible span attributes:
+Required on all LLM request spans when recording policy allows it:
 
-- Product orchestration spans: `langsmith.span.kind = chain`
-- Local execution spans: `langsmith.span.kind = tool`
-- Native provider spans: emitted by AI SDK and translated as `llm`
-- Root or named spans: `langsmith.trace.name`
-- Thread grouping: `langsmith.metadata.thread_id`
+- system and conversation messages sent to the provider,
+- model/provider identifiers,
+- tool calls emitted by the model,
+- tool results observed by the following turn,
+- finish reason,
+- raw provider response metadata,
+- token/cache usage.
 
-Product span inputs and outputs must be summaries, not raw large payloads.
+The noisy wrapper spans, for example `ai.streamText`, may be filtered in the
+Instance AI LangSmith exporter only if doing so does not hide messages, tool
+definitions, tool calls, response metadata, or token usage.
 
-Examples:
+## Activation and Waiting Semantics
 
-- Context compaction input: message counts, token estimates, compaction mode.
-- Prompt build output: prompt section names and total estimated tokens.
-- Workspace edit output: file path, operation type, replacements, diff summary.
-- Workflow submission output: workflow ID, node count, validation summary.
-- HITL output: pending tool call ID, tool name, safe user decision summary.
+The orchestrator must not look like it ran for 10 minutes because it waited for
+a background builder.
 
-## Native LLM Telemetry
+Expected flow for complex build:
 
-All normal Instance AI model calls must use native `@n8n/agents` telemetry.
+```text
+Root A: instance-ai.message_turn
+  agent.orchestrator
+    LLM calls plan/build-workflow-with-agent
+    tool call schedules builder task
+  status=suspended_or_waiting_for_background
 
-Required behavior:
+Root B: instance-ai.background_subagent
+  agent.workflow-builder
+    LLM calls
+    workspace/file/submit/verify tools
+  status=completed
 
-- `AgentRuntime` passes `experimental_telemetry` to AI SDK calls.
-- `functionId` is stable and role-specific, for example
-  `instance-ai.orchestrator` or `instance-ai.subagent.planner`.
-- Runtime root spans are created with the same active OTel context as the
-  product span that invoked them.
-- Provider spans show messages, tool schemas, tool choice, finish reason,
-  timing, response metadata, cost, and token usage when recording policy allows
-  it.
-- Local tools executed by `@n8n/agents` emit AI-SDK-compatible `ai.toolCall`
-  spans.
-- The telemetry provider is flushed at turn end, before suspension persistence,
-  and after detached task completion.
+Root C: instance-ai.orchestrator_resume
+  agent.orchestrator
+    consumes <background-task-completed>
+    verifies, checkpoints, or summarizes
+  status=completed
+```
 
-Normal execution must never set
-`experimental_telemetry: { isEnabled: false }` when LangSmith tracing is
-enabled.
+The wait itself lives in task storage and event history, not in an open span.
 
-## Tool Tracing
+Long user waits follow the same rule. A trace can end with
+`status=suspended` and metadata describing the pending tool call. The resumed
+activation starts a new root trace with resume metadata.
 
-Tool tracing has two layers in OTel:
+Browser credential setup follows the detached/resume rule when it opens a
+browser, waits for user action, or can run long. Fast credential discovery and
+validation can remain inline tool work under the orchestrator activation.
 
-1. Model-facing tool calls
+Planned checkpoint follow-ups use `trace_kind=orchestrator_resume` with
+`resume_reason=planned_checkpoint`. A separate root kind is not needed. The
+LangSmith display name may be specialized, for example
+`instance-ai.orchestrator_resume.checkpoint`, as long as the trace kind remains
+`orchestrator_resume`.
 
-   These come from AI SDK telemetry. They describe what the model saw and chose.
+## Thread and Link Metadata
 
-2. n8n-side tool execution
+Every root and child span exported to LangSmith must carry thread metadata so
+filtering, token counting, and cost aggregation include the full thread.
 
-   These are local handler spans. They describe what n8n did.
+Required on every span:
 
-Default local tool execution should use `ai.toolCall` spans with:
+- `thread_id`
+- `conversation_id`
+- `message_group_id`
+- `run_id`
+- `trace_kind`
+- `activation_id`
+- `instance_ai.trace_version`
 
-- `ai.operationId = ai.toolCall`
-- `ai.toolCall.name`
-- `ai.toolCall.id`
-- `ai.toolCall.args`, when input recording is enabled
-- `ai.toolCall.result`, when output recording is enabled
-- `ai.telemetry.metadata.*`
+Required on agent activation spans:
 
-Do not emit duplicate `instance-ai.tool.*` product spans for normal tool
-execution. Add product side-effect spans only for lifecycle events that a normal
-`ai.toolCall` span does not represent, currently HITL suspend/resume.
+- `agent_role`
+- `agent_id`
+- `execution_mode`
+- `model_id`
+- `available_tools`
+- `tool_count`
 
-## Service Proxy Support
+Required on LLM request spans with tools:
 
-Instance AI must support two LangSmith routing modes:
+- `llm.available_tools`: the provider-facing tool definitions sent in this
+  request,
+- `llm.available_tool_names`: compact ordered names for scanning/filtering,
+- `llm.tool_manifest_ref`: reference to the parent agent activation manifest,
+- `llm.tool_schema_hash`: hash of the redacted provider-facing tool definition
+  set.
 
-1. Direct LangSmith credentials.
-2. AI service proxy routing with per-request auth headers.
+Required on detached background roots:
 
-`@n8n/agents` owns generic LangSmith OTLP exporter construction. Instance AI
-owns request-scoped proxy header creation and safe routing decisions.
+- `task_id`
+- `task_kind`
+- `planned_task_id`, when applicable
+- `work_item_id`, when applicable
+- `parent_checkpoint_id`, when applicable
+- `spawned_by_trace_id`
+- `spawned_by_span_id`
+- `spawned_by_activation_id`
+- `spawned_by_agent_role`
+- `spawned_by_tool_call_id`, when available
+- `originating_message_group_id`
 
-Security requirement: if a LangSmith API key is resolved by the engine, user
-controlled endpoint overrides must not be able to redirect that key.
+Required on resume roots:
 
-## Redaction and Recording Policy
+- `resume_reason`
+- `resumed_from_trace_id`, when available
+- `resumed_from_span_id`, when available
+- `resumed_from_activation_id`, when available
+- `pending_tool_call_id`, when applicable
+- `completed_task_id`, when applicable
+- `checkpoint_task_id`, when applicable
 
-Native telemetry can expose system prompts, messages, tool schemas, tool
-arguments, and outputs. This is useful for debugging and risky in production.
+LangSmith-specific copies, for example `langsmith.metadata.thread_id`, are
+created only in the Instance AI LangSmith adapter.
 
-Required policy:
+## Tool Manifest Contract
 
-- Self-hosted deployments remain opt-in for LangSmith tracing.
-- Production recording defaults must be explicitly reviewed.
-- Credentials, API keys, bearer tokens, cookies, decrypted node parameters, and
-  auth headers must never be exported.
-- Workflow JSON and workspace file contents should be summarized by default.
-- Tool schemas may be exported.
-- Tool arguments and tool outputs must pass through redaction before export.
-- Redaction must preserve token usage attributes.
+Every agent activation span should expose a compact assigned-tool manifest.
+This is the primary answer to "which tools were assigned to which agent?"
 
-Recommended defaults:
+Manifest fields:
 
-| Environment | Tracing | Record inputs | Record outputs |
-| --- | --- | --- | --- |
-| Local development | opt-in | true | true |
-| Internal dogfood | enabled by config | true with redaction | true with redaction |
-| Cloud production | controlled rollout | to be decided | to be decided |
-| Self-hosted | opt-in | false by default | false by default |
+- `name`
+- `description`
+- `source`: `domain`, `orchestration`, `mcp`, `local-mcp`, `workspace`,
+  `provider`
+- `category`: `workflow`, `execution`, `credential`, `node`, `data-table`,
+  `workspace`, `research`, `planning`, `browser`, `filesystem`, `other`
+- `input_schema`, redacted and size limited
+- `approval`: whether the tool can suspend
+- `side_effect`: `none`, `read`, `write`, `execute`, `network`, `browser`
 
-## Trace Replay
+The manifest is recorded once per agent activation. LLM provider spans must also
+show the request-specific tool schemas that were actually sent to the provider.
+This makes the LLM run self-describing in LangSmith while keeping the agent
+activation as the stable debugging surface for assigned tools.
 
-Replay must be independent from LangSmith and independent from OTel span IDs.
+The two copies serve different purposes:
 
-Replay records stable Instance AI events:
+- agent activation manifest: compact inventory of tools assigned to the agent;
+- LLM request tools: exact provider-facing definitions available to that model
+  invocation.
 
-- message turn start/end
-- model request summary
-- model response summary
-- tool call request
-- local tool execution result
-- HITL suspend/resume
-- detached task lifecycle
-- workflow submission and validation summary
+The LLM request tool set can be smaller than the agent manifest if the runtime
+uses dynamic tool filtering. It must never be larger without also updating the
+agent activation manifest or recording a clear reason, for example provider
+hosted tools injected after agent construction.
 
-Replay may emit replay-tagged OTel traces for debugging, but replay correctness
-must not require LangSmith to be available.
+Schema redaction and size limiting must happen before exporting either copy.
+The redacted schema hash should be stable across the agent manifest and all LLM
+request spans using the same effective tool definitions.
 
-## Package Responsibilities
+## Token and Cost Policy
 
-`@n8n/agents` owns:
+### Source of Truth
 
-- generic telemetry builder APIs
-- LangSmith OTLP tracer/provider construction
-- LangSmith OTel span filtering
-- mapping telemetry into AI SDK `experimental_telemetry`
-- optional runtime root spans around generate/stream loops
-- AI-SDK-compatible local `ai.toolCall` spans
-- provider flush and shutdown hooks
-- generic telemetry integration hooks
+For LangSmith display, leaf LLM spans are the source of token and cost usage.
+Product spans do not duplicate child token counts.
+
+For internal billing/debugging, provider raw usage is preferred when available.
+For Anthropic, raw billing buckets are:
+
+- `usage.input_tokens`
+- `usage.output_tokens`
+- `usage.cache_creation_input_tokens`
+- `usage.cache_read_input_tokens`
+
+### LangSmith Adapter Correction
+
+The current inflation pattern happens when LangSmith sees an AI SDK Anthropic
+span where `ai.usage.promptTokens` already includes repeated iteration/cache
+accounting, then LangSmith adds Anthropic cache details from provider metadata.
+
+Instance AI should correct this only in its LangSmith export transform:
+
+- for Anthropic spans with raw provider usage, set `ai.usage.promptTokens` and
+  `ai.usage.inputTokens` to raw non-cache `usage.input_tokens`;
+- set `ai.usage.completionTokens` and `ai.usage.outputTokens` to raw
+  `usage.output_tokens`;
+- preserve `ai.response.providerMetadata` so LangSmith can derive cache details
+  once;
+- do not set product-span usage fields;
+- do not change `@n8n/agents` usage normalization for generic consumers.
+
+If raw provider metadata is missing, the adapter should not guess. It should
+leave AI SDK usage intact and mark the span with
+`instance_ai.usage_source=ai_sdk`.
+
+## Package Boundaries
+
+`@n8n/agents` owns generic primitives only:
+
+- accepting a built telemetry provider/tracer,
+- passing telemetry to AI SDK,
+- native `ai.toolCall` spans for local tool execution,
+- provider flush/shutdown hooks,
+- optional generic runtime spans for non-Instance-AI consumers,
+- generic model/tool metadata that is not LangSmith or Instance AI specific.
+
+`@n8n/agents` must not own:
+
+- Instance AI trace kinds,
+- LangSmith thread metadata,
+- Anthropic billing corrections for LangSmith,
+- Instance AI agent role naming,
+- background task linking,
+- Instance AI redaction policy.
 
 `@n8n/instance-ai` owns:
 
-- product OTel trace context creation
-- thread metadata construction
-- product span helpers for message turns, context compaction, prompt building,
-  HITL, background tasks, and workflow build loops
-- feedback snapshot persistence
-- service proxy request metadata and headers
-- detached sub-agent linking metadata
-- disabling generic runtime root spans when product actor spans are already
-  present
-- trace replay events
+- activation/root trace creation,
+- OTel context propagation across orchestrator, sub-agents, tools, and
+  resumptions,
+- LangSmith exporter configuration and transform,
+- thread metadata and root naming,
+- detached task linking,
+- tool manifest construction,
+- recording/redaction policy,
+- feedback/snapshot IDs,
+- trace replay integration.
 
-`@n8n/ai-utilities` may own:
+`@n8n/ai-utilities` may own shared helpers only if they are not LangSmith
+specific:
 
-- shared redaction helpers
-- JSON-safe telemetry value conversion
-- safe payload summary helpers
-- LangSmith-independent metadata utilities
+- safe JSON serialization,
+- schema summarization,
+- redaction primitives,
+- payload size limiting,
+- generic tool manifest helpers.
 
-## Migration Plan
+## Refactor Plan
 
-1. Document and freeze the current hybrid behavior
+### 1. Split tracing into explicit modules
 
-   - [x] Keep examples of a working hybrid trace with native LLM spans.
-   - [x] Keep examples of the failure mode when OTel spans are forced under
-     RunTree parent IDs.
-   - [x] Add a short note in tests or fixtures explaining why RunTree/OTel
-     parent mixing is forbidden.
+Replace the current single large tracing module with focused pieces:
 
-2. Add an OTel product tracing adapter
+- `tracing/trace-context.ts`
+  - Instance AI trace context types.
+  - Activation context AsyncLocalStorage.
+  - No LangSmith imports.
 
-   - [x] Create an Instance AI adapter that starts active OTel spans using the
-     same tracer/provider as native agent telemetry.
-   - [x] Support `withSpan`, `startSpan`, `finishSpan`, `failSpan`, and
-     metadata merging.
-   - [x] Ensure active context propagates into `@n8n/agents` runtime calls.
-   - [x] Ensure spans flush before response close, suspension persistence, and
-     detached task completion.
+- `tracing/product-spans.ts`
+  - Start/finish/fail product OTel spans.
+  - Context propagation helpers.
+  - Snapshot ID derivation.
 
-3. Replace RunTree message turn roots
+- `tracing/tool-manifest.ts`
+  - Tool assignment summarization and schema redaction.
 
-   - [x] Create `instance-ai.message_turn` as an OTel root span.
-   - [x] Persist OTel trace/span IDs in the agent tree snapshot.
-   - [x] Add metadata required by LangSmith thread view.
-   - [x] Remove RunTree creation from the normal foreground path.
+- `tracing/langsmith-adapter.ts`
+  - LangSmith telemetry/exporter construction.
+  - LangSmith attribute mapping.
+  - Anthropic usage normalization for LangSmith.
+  - Wrapper span filtering.
 
-4. Replace RunTree product child spans
+- `tracing/tool-replay.ts`
+  - Trace replay tool recording and replay hooks.
+  - No LangSmith dependencies.
 
-   - [x] Convert `orchestrator`, `context_compaction`, and `prompt_build` to
-     OTel spans.
-   - [x] Convert inline `subagent:*` spans to OTel spans under active context.
-   - [x] Convert HITL suspend/resume spans to OTel spans.
-   - [x] ~~Convert selected side-effect-heavy tools to OTel product spans.~~
-     Replaced by native `ai.toolCall` spans only; duplicate `instance-ai.tool.*`
-     spans are intentionally not emitted.
+### 2. Remove live RunTree tracing
 
-5. Preserve detached/background sub-agent linking
+Delete normal-path `RunTree` usage from Instance AI:
 
-   - [x] Create detached sub-agent roots as separate OTel traces when they run
-     outside the foreground context.
-   - [x] Add spawning metadata: trace ID, span ID, tool call ID, task ID, and
-     agent role.
-   - [x] Confirm thread queries show detached roots alongside foreground turns.
-     Live validation in `instance-ai-tracing-validation` for thread
-     `otel-validation-f97e5f00-589a-49fb-a536-d54d417c30eb` returned 9 runs
-     across 2 traces, including `instance-ai.message_turn` and
-     `instance-ai.subagent.workflow-builder`.
+- no `RunTree` imports in live tracing/runtime files,
+- no `withRunTree` compatibility API,
+- no manual LLM-step RunTree reconstruction,
+- no synthetic LangSmith tool runs,
+- no RunTree parent overrides.
 
-6. Rework feedback anchoring
+Feedback should use OTel-derived LangSmith run IDs or metadata lookup.
 
-   - [x] Choose explicit LangSmith IDs, derived OTel IDs, or metadata lookup.
-   - [x] Prove `Client.createFeedback` works against an OTel-only product root.
-   - [x] Persist the chosen IDs in the snapshot.
-   - [x] Remove RunTree as a feedback dependency.
+### 3. Rework root creation around activations
 
-7. Remove RunTree live tracing
+Foreground:
 
-   - [x] Remove normal-path `RunTree` root creation.
-   - [x] Remove normal-path manual RunTree tool wrappers.
-   - [x] Keep only temporary compatibility code behind an explicit flag, if
-     needed for rollout.
-     The flag is `N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING=true`; it is disabled
-     by default.
-   - [x] ~~Delete compatibility code after validation.~~ Deferred to
-     post-rollout cleanup after legacy manual stream-hook consumers are proven
-     unused.
+- create `message_turn` root at the start of the user-message activation;
+- create `agent.orchestrator` as a child;
+- end the root before returning from the activation, including when waiting for
+  background work.
 
-8. Decouple replay from tracing
+Resume:
 
-   - [x] Ensure replay records stable Instance AI events, not span IDs.
-   - [x] Ensure replay tests pass with LangSmith disabled.
-   - [x] ~~Optionally emit replay-tagged OTel spans for debugging only.~~ Not
-     implemented; replay remains LangSmith-independent and does not emit debug
-     traces by default.
+- create `orchestrator_resume` root for approvals, checkpoint follow-ups,
+  background completions, and replans;
+- link to the cause via metadata.
+- for checkpoint follow-ups, set `resume_reason=planned_checkpoint` instead of
+  introducing a dedicated trace kind.
 
-9. Add regression coverage
+Background:
 
-   - [x] Unit test metadata construction.
-   - [x] Unit test OTel product span parentage.
-   - [x] Unit test feedback ID persistence.
-   - [x] Unit test redaction preserving token usage.
-   - [x] Local exporter test proving one foreground message turn contains
-     product spans, native provider spans, and local tool spans.
-   - [x] Live LangSmith validation behind explicit credentials.
-     The validation showed native `ai.generateText.doGenerate` spans under the
-     foreground product trace with system/user messages, tool definitions,
-     tool choice, token usage, and a local tool span.
+- do not create a background root before `spawnBackgroundTask()` has accepted
+  the task;
+- create the root inside the background task's execution function when the task
+  starts running;
+- update the managed task/snapshot with trace IDs after root creation;
+- never create phantom roots for duplicate or limit-reached spawn attempts.
+- use the same background root model for long browser credential setup flows.
+
+### 4. Make agent activation wrapping consistent
+
+All model operations should run under an explicit Instance AI agent activation
+span:
+
+- orchestrator foreground/resume/checkpoint,
+- planner,
+- inline delegate,
+- quick inline browser credential checks,
+- detached builder,
+- detached data-table manager,
+- detached researcher,
+- detached delegate,
+- detached browser credential setup flows that open a browser or wait for user
+  action.
+
+Context compaction should be a root-level child under the current
+`message_turn` or `orchestrator_resume` root, before `agent.orchestrator`.
+Compaction prepares the orchestrator input; it is not part of the orchestrator
+agent activation duration.
+
+Title generation should use an internal OTel span. It is exported to LangSmith
+only when `include_internal=true` or when title generation fails.
+
+### 5. Rely on native AI SDK LLM/tool spans
+
+Remove manual LLM step hooks from `resumable-stream-executor` once native spans
+cover the same information.
+
+The stream consumer should still produce Instance AI SSE events and work
+summaries, but it should not be responsible for reconstructing LangSmith LLM
+runs.
+
+### 6. Preserve HITL visibility without long spans
+
+HITL suspensions and resumptions need product side-effect spans:
+
+- `instance-ai.hitl.suspend`
+- `instance-ai.hitl.resume`
+
+They should include:
+
+- pending tool call ID,
+- tool name,
+- approval/input kind,
+- request ID,
+- sanitized decision summary.
+
+The suspended activation root ends after the suspension is persisted. The
+resume activation is a new root linked by metadata.
+
+### 7. Normalize LangSmith usage in Instance AI only
+
+Implement the Anthropic token correction in `tracing/langsmith-adapter.ts`.
+Regression tests should validate that a span with raw Anthropic usage exports
+non-cache input as `promptTokens/inputTokens` and lets cache details remain
+provider-derived.
+
+### 8. Redaction and payload policy
+
+Keep detailed traces useful locally and safe by default:
+
+- credentials, bearer tokens, cookies, API keys, decrypted node parameters, and
+  auth headers are always redacted;
+- workflow JSON, execution data, and workspace file contents are summarized by
+  default;
+- tool schemas are allowed after size limiting;
+- tool inputs/outputs are recorded only according to environment policy;
+- token usage and provider metadata needed for billing must not be removed by
+  redaction.
+
+### 9. Validate against real LangSmith threads
+
+Before committing the implementation, validate with live LangSmith traces:
+
+- one simple foreground message,
+- one inline planner run with plan approval,
+- one detached workflow builder with orchestrator handoff,
+- one checkpoint follow-up,
+- one HITL suspend/resume,
+- one browser credential setup flow if browser tools are enabled.
+
+Each validation run must inspect at least one LLM span directly and confirm
+LangSmith shows the available tool definitions on that LLM run, not only on the
+parent agent activation span.
 
 ## Acceptance Criteria
 
-- Foreground message turns are visible as OTel root spans named
-  `instance-ai.message_turn`.
-- Orchestrator LLM calls are children of the foreground message turn in the OTel
-  tree.
-- Inline planner work is inside the foreground OTel tree.
-- Detached workflow-builder work is queryable by the same thread ID and linked
-  by spawning metadata.
-- LangSmith shows native provider spans without the noisy `ai.streamText`
-  wrapper span.
-- LangSmith shows system/user/assistant/tool messages, available tools, tool
-  choice, timing, cost, and token usage when recording policy allows it.
-- Product root spans and native spans include `langsmith.metadata.thread_id`.
-- Product root spans can receive feedback without RunTree.
-- HITL suspend/resume remains visible and resumable across process boundaries.
+- `packages/@n8n/instance-ai` live tracing has no `RunTree` dependency.
+- `@n8n/agents` contains no Instance AI-specific LangSmith mapping or Anthropic
+  billing workaround.
+- A simple user message creates one `message_turn` root trace.
+- Inline planner/delegate/browser agents appear as child agent activation spans,
+  not separate thread steps.
+- Detached builder/data-table/research/delegate tasks appear as
+  `background_subagent` root traces with clear linking metadata.
+- The orchestrator activation duration excludes background wait time.
+- Background roots are created only for tasks that actually start.
+- Orchestrator resume/checkpoint work appears as `orchestrator_resume` roots.
+- Each agent activation shows the assigned tool manifest.
+- Native LLM spans show messages, request-specific tool definitions, tool
+  choice, tool calls, finish reason, and provider usage when recording policy
+  allows it.
+- Tool definitions on LLM spans include name, description, redacted JSON input
+  schema, provider tool kind, and a stable manifest/schema hash.
+- LangSmith renders available tools on the LLM node for orchestrator, planner,
+  and workflow-builder model calls.
+- LangSmith token totals for Anthropic threads are in line with Anthropic
+  billing buckets: non-cache input, cache creation, cache read, and output are
+  not double counted.
+- Product spans do not duplicate child LLM token usage.
 - Trace replay works with LangSmith disabled.
-- No normal execution path creates RunTree spans after the migration flag is
-  removed.
+- Feedback can be attached to OTel-only product roots.
 
-## Open Questions
+## Test Plan
 
-1. Which feedback anchoring strategy should we use: explicit LangSmith span IDs,
-   derived OTel IDs, or metadata lookup?
-2. Should inline sub-agent root spans be named as independent
-   `instance-ai.subagent.<role>.stream` spans, or should they stay nested under
-   the parent `ai.toolCall` span only?
-3. What is the production default for recording prompt messages and tool
-   arguments after redaction?
-4. How long do we keep a dual-emission migration flag, if at all?
-5. Should the product OTel span helper live in Instance AI only, or become a
-   generic helper in `@n8n/agents`?
+Unit coverage:
 
-## Implementation Notes
+- trace kind/root metadata construction;
+- OTel parentage for foreground and inline sub-agent spans;
+- detached task root creation only after accepted task start;
+- resume root metadata for approval, background completion, checkpoint, and
+  replan causes;
+- tool manifest generation and schema redaction;
+- LLM request tool metadata generation from the provider-facing tool set;
+- LangSmith adapter mapping for LLM request tools so definitions render on the
+  LLM run, not only as opaque metadata;
+- LangSmith adapter Anthropic usage normalization;
+- redaction preserves token/provider usage fields;
+- trace replay does not import or require LangSmith.
 
-- Prefer OTel active context propagation over explicit parent ID attributes.
-- Do not cross-parent OTel spans to RunTree run IDs.
-- Do not force OTel spans into an existing RunTree trace ID.
-- Keep span names stable and searchable.
-- Keep telemetry flush best-effort and non-blocking for user responses where
-  possible.
-- Keep product span payloads small and redacted.
-- Use tags for coarse filtering: `instance-ai`, `foreground`, `background`,
-  `hitl`, `detached-subagent`, `replay`.
+Integration coverage:
+
+- local OTel exporter test for a foreground orchestrator run;
+- local OTel exporter test for inline planner;
+- local OTel exporter test for detached builder root and handoff resume;
+- stream/HITL test proving spans close before wait and resume starts a new
+  root;
+- background task duplicate/limit test proving no phantom LangSmith roots.
+
+Live validation:
+
+- run a real Anthropic thread and compare LangSmith token/cost display against
+  Anthropic usage buckets;
+- verify LangSmith thread view contains roots with `trace_kind` values that
+  distinguish user turns from background and resume activations;
+- verify agent activation spans expose tool manifests;
+- verify LLM spans expose the exact available tool definitions for at least the
+  orchestrator, planner, and workflow-builder.
+
+## Settled Design Decisions
+
+- Title generation is always instrumented as an internal OTel operation, but it
+  is exported to LangSmith only when `include_internal=true` or when the title
+  operation fails.
+- Context compaction is a root-level preparation span under the current
+  `message_turn` or `orchestrator_resume` root. It runs before
+  `agent.orchestrator` and is not counted as orchestrator activation time.
+- Browser credential setup stays inline only for quick credential checks.
+  Browser flows that open a browser, wait for user action, or can run long use
+  the detached `background_subagent` plus `orchestrator_resume` model.
+- Planned checkpoint follow-ups use `trace_kind=orchestrator_resume` with
+  `resume_reason=planned_checkpoint`. We do not add a dedicated
+  `planned_checkpoint` root kind.
