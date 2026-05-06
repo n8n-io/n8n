@@ -1,6 +1,7 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { agentSkillSchema } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
@@ -17,12 +18,14 @@ import {
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { BuilderModelLookupService } from './builder-model-lookup.service';
 import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
 	buildResolveLlmTool,
 } from './interactive';
+import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { BUILDER_TOOLS } from './builder-tool-names';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
@@ -103,15 +106,17 @@ export class AgentsBuilderToolsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
+		private readonly builderModelLookupService: BuilderModelLookupService,
 	) {}
 
 	getTools(
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider),
+			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider),
 		};
 	}
@@ -120,6 +125,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): BuiltTool[] {
 		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
 			.description(
@@ -328,12 +334,17 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const modelLookup: ModelLookup = {
+			list: async (credentialId, credentialType, lookup) =>
+				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+		};
+
 		return [
 			readConfigTool,
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
-			buildResolveLlmTool({ credentialProvider }),
+			buildResolveLlmTool({ credentialProvider, modelLookup }),
 			buildAskCredentialTool({ credentialProvider }),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
