@@ -141,18 +141,15 @@ async function main(): Promise<void> {
 		? loadPrebuiltManifest(args.prebuiltWorkflows)
 		: undefined;
 	if (prebuiltManifest) {
-		const slugCount = Object.keys(prebuiltManifest.workflows).length;
-		const builderTag = prebuiltManifest.builder ? ` (builder: ${prebuiltManifest.builder})` : '';
-		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)${builderTag}`);
+		const slugCount = Object.keys(prebuiltManifest).length;
+		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)`);
 
 		// Warn on slugs that don't match a local test-case file. Common cause
 		// is typos in the manifest — without this check, the typo silently
 		// falls through to an orchestrator build (or no run at all), and the
 		// user thinks the prebuilt path ran when it didn't.
 		const localSlugs = new Set(loadWorkflowTestCasesWithFiles().map((tc) => tc.fileSlug));
-		const orphanSlugs = Object.keys(prebuiltManifest.workflows).filter(
-			(slug) => !localSlugs.has(slug),
-		);
+		const orphanSlugs = Object.keys(prebuiltManifest).filter((slug) => !localSlugs.has(slug));
 		if (orphanSlugs.length > 0) {
 			logger.warn(
 				`Prebuilt manifest references ${String(orphanSlugs.length)} slug(s) with no matching local test case (will be ignored): ${orphanSlugs.join(', ')}`,
@@ -494,7 +491,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			metadata: {
 				filter: args.filter ?? 'all',
 				exclude: args.exclude ?? null,
-				prebuilt: prebuiltManifest ? (prebuiltManifest.builder ?? 'unknown') : null,
+				prebuilt: prebuiltManifest !== undefined,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,

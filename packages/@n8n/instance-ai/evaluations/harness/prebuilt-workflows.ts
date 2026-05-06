@@ -24,21 +24,9 @@ import type { EvalLogger } from './logger';
 import type { BuildResult } from './runner';
 import type { N8nClient } from '../clients/n8n-client';
 
-const SUPPORTED_MANIFEST_VERSION = 1;
-
-export const prebuiltManifestSchema = z.object({
-	version: z
-		.number()
-		.int()
-		.refine((v) => v === SUPPORTED_MANIFEST_VERSION, {
-			message: `Only manifest version ${SUPPORTED_MANIFEST_VERSION} is supported. Re-export the manifest with the current builder, or upgrade @n8n/instance-ai if a newer format exists.`,
-		}),
-	/** Free-form label that surfaces in logs and experiment metadata. */
-	builder: z.string().optional(),
-	workflows: z
-		.record(z.string().min(1), z.array(z.string().min(1)).min(1))
-		.refine((v) => Object.keys(v).length > 0, { message: 'workflows must not be empty' }),
-});
+export const prebuiltManifestSchema = z
+	.record(z.string().min(1), z.array(z.string().min(1)).min(1))
+	.refine((v) => Object.keys(v).length > 0, { message: 'manifest must not be empty' });
 
 export type PrebuiltManifest = z.infer<typeof prebuiltManifestSchema>;
 
@@ -76,7 +64,7 @@ export function pickPrebuiltWorkflowId(
 	iteration: number,
 ): string | undefined {
 	if (!manifest) return undefined;
-	const ids = manifest.workflows[fileSlug];
+	const ids = manifest[fileSlug];
 	if (!ids || ids.length === 0) return undefined;
 	return ids[iteration % ids.length];
 }

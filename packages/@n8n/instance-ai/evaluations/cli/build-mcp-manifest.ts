@@ -57,7 +57,7 @@ Flags:
   --manifest PATH         Override manifest path (default: <output-dir>/manifest.json).
   --log-dir DIR           Override log dir (default: <output-dir>/logs).
   --mcp-server NAME       MCP server name in ~/.claude.json (default: "n8n-mcp (instance)").
-  --builder LABEL         Free-form label written into manifest.builder
+  --builder LABEL         Free-form label written into manifest-stats.json
                           (default: "instance-mcp").
   --model MODEL           Anthropic model id passed to claude -p
                           (default: claude-sonnet-4-6).
@@ -403,8 +403,8 @@ where <id> is the workflowId returned by create_workflow_from_code. Emit it verb
 function readExistingWorkflows(manifestPath: string): Record<string, string[]> {
 	if (!existsSync(manifestPath)) return {};
 	try {
-		const existing = prebuiltManifestSchema.parse(JSON.parse(readFileSync(manifestPath, 'utf-8')));
-		return { ...existing.workflows };
+		const existing = prebuiltManifestSchema.parse(readJson(manifestPath, 'existing manifest'));
+		return { ...existing };
 	} catch {
 		return {};
 	}
@@ -427,11 +427,7 @@ function writeManifest(args: CliArgs, results: BuildOutcome[]): void {
 		workflows[r.slug].push(r.workflowId);
 	}
 
-	const manifest: PrebuiltManifest = prebuiltManifestSchema.parse({
-		version: 1,
-		builder: args.builder,
-		workflows,
-	});
+	const manifest: PrebuiltManifest = prebuiltManifestSchema.parse(workflows);
 
 	writeFileSync(args.manifestPath, JSON.stringify(manifest, null, 2));
 }

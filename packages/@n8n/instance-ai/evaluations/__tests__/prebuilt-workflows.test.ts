@@ -30,46 +30,21 @@ describe('loadPrebuiltManifest', () => {
 
 	it('parses a valid manifest', () => {
 		const path = writeManifest({
-			version: 1,
-			builder: 'instance-mcp',
-			workflows: {
-				'contact-form-automation': ['W1', 'W2', 'W3'],
-				'deduplication-trigger': ['W4'],
-			},
+			'contact-form-automation': ['W1', 'W2', 'W3'],
+			'deduplication-trigger': ['W4'],
 		});
 		const manifest = loadPrebuiltManifest(path);
-		expect(manifest.version).toBe(1);
-		expect(manifest.builder).toBe('instance-mcp');
-		expect(manifest.workflows['contact-form-automation']).toEqual(['W1', 'W2', 'W3']);
+		expect(manifest['contact-form-automation']).toEqual(['W1', 'W2', 'W3']);
+		expect(manifest['deduplication-trigger']).toEqual(['W4']);
 	});
 
-	it('accepts a manifest without a builder label', () => {
-		const path = writeManifest({
-			version: 1,
-			workflows: { 'contact-form-automation': ['W1'] },
-		});
-		const manifest = loadPrebuiltManifest(path);
-		expect(manifest.builder).toBeUndefined();
-	});
-
-	it('rejects a manifest with the wrong version', () => {
-		const path = writeManifest({
-			version: 2,
-			workflows: { 'contact-form-automation': ['W1'] },
-		});
-		expect(() => loadPrebuiltManifest(path)).toThrow(/Invalid prebuilt-workflows manifest/);
-	});
-
-	it('rejects a manifest with no workflows', () => {
-		const path = writeManifest({ version: 1, workflows: {} });
+	it('rejects a manifest with no entries', () => {
+		const path = writeManifest({});
 		expect(() => loadPrebuiltManifest(path)).toThrow(/Invalid prebuilt-workflows manifest/);
 	});
 
 	it('rejects a manifest with empty ID arrays', () => {
-		const path = writeManifest({
-			version: 1,
-			workflows: { 'contact-form-automation': [] },
-		});
+		const path = writeManifest({ 'contact-form-automation': [] });
 		expect(() => loadPrebuiltManifest(path)).toThrow(/Invalid prebuilt-workflows manifest/);
 	});
 
@@ -89,11 +64,8 @@ describe('loadPrebuiltManifest', () => {
 
 describe('pickPrebuiltWorkflowId', () => {
 	const manifest: PrebuiltManifest = {
-		version: 1,
-		workflows: {
-			'contact-form-automation': ['W1', 'W2', 'W3'],
-			'deduplication-trigger': ['Wsingle'],
-		},
+		'contact-form-automation': ['W1', 'W2', 'W3'],
+		'deduplication-trigger': ['Wsingle'],
 	};
 
 	it('returns the iteration-th ID for a known slug', () => {

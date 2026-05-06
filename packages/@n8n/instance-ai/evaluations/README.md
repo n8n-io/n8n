@@ -166,18 +166,13 @@ The manifest is a JSON file mapping test-case file slugs to workflow IDs:
 
 ```json
 {
-  "version": 1,
-  "builder": "instance-mcp",
-  "workflows": {
-    "contact-form-automation": ["W1abc", "W2def", "W3ghi"],
-    "deduplication-trigger": ["W4jkl"]
-  }
+  "contact-form-automation": ["W1abc", "W2def", "W3ghi"],
+  "deduplication-trigger": ["W4jkl"]
 }
 ```
 
 - **Keys** are test-case file slugs — the JSON filename without `.json` (e.g. `contact-form-automation` for `evaluations/data/workflows/contact-form-automation.json`). The `--filter` flag uses the same identifier.
 - **Values** are arrays of workflow IDs that already exist in the target n8n instance. Multiple iterations rotate through the list with `iteration % ids.length`, so an `--iterations 5` run with 5 IDs gets 5 distinct builds.
-- **`builder`** is a free-form label that surfaces in run logs.
 
 Test cases not present in the manifest fall back to the regular Instance AI build path. To run *only* the prebuilt set, pair with `--exclude` to skip the rest, or `--filter` to narrow the run.
 
