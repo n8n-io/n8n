@@ -15,6 +15,7 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,

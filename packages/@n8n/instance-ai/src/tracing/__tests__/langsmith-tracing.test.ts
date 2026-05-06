@@ -455,6 +455,7 @@ const {
 	buildAgentTraceInputs,
 	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
 	continueInstanceAiTraceContext,
 	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
@@ -495,6 +496,7 @@ describe('createInstanceAiTraceContext', () => {
 	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
 	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+	const originalTraceInternal = process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 
 	beforeEach(() => {
 		langsmithMock.reset();
@@ -502,6 +504,7 @@ describe('createInstanceAiTraceContext', () => {
 		process.env.LANGSMITH_API_KEY = 'test-key';
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
+		delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 	});
 
 	afterAll(() => {
@@ -515,6 +518,11 @@ describe('createInstanceAiTraceContext', () => {
 			delete process.env.LANGCHAIN_TRACING_V2;
 		} else {
 			process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+		}
+		if (originalTraceInternal === undefined) {
+			delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
+		} else {
+			process.env.N8N_INSTANCE_AI_TRACE_INTERNAL = originalTraceInternal;
 		}
 	});
 
@@ -789,6 +797,61 @@ describe('createInstanceAiTraceContext', () => {
 			}),
 		);
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.rootRun.id);
+	});
+
+	it('gates internal operation roots unless internal tracing is enabled', async () => {
+		await expect(
+			createInternalOperationTraceContext({
+				threadId: 'thread-1',
+				messageId: 'message-1',
+				runId: 'title-1',
+				userId: 'user-1',
+				modelId: 'anthropic/claude-sonnet-4-6',
+				operationName: 'thread_title',
+				input: { source: 'title' },
+			}),
+		).resolves.toBeUndefined();
+
+		process.env.N8N_INSTANCE_AI_TRACE_INTERNAL = 'true';
+		const tracing = await createInternalOperationTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'title-1',
+			userId: 'user-1',
+			modelId: 'anthropic/claude-sonnet-4-6',
+			operationName: 'thread_title',
+			input: { source: 'title' },
+		});
+
+		expect(tracing).toBeDefined();
+		expect(tracing?.traceKind).toBe('internal_operation');
+		expect(tracing?.rootRun.name).toBe('instance-ai.internal.thread_title');
+		expect(tracing?.rootRun.parentRunId).toBeUndefined();
+		expect(tracing?.rootRun.metadata).toEqual(
+			expect.objectContaining({
+				trace_kind: 'internal_operation',
+				execution_mode: 'internal',
+				operation_name: 'thread_title',
+				agent_role: 'thread_title',
+				thread_id: 'thread-1',
+			}),
+		);
+
+		const telemetryOrBuilder = tracing!.getTelemetry!({
+			agentRole: 'thread_title',
+			functionId: 'instance-ai.thread_title',
+			executionMode: 'internal',
+		});
+		const telemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
+		expect(telemetry.functionId).toBe('instance-ai.thread_title');
+		expect(telemetry.metadata).toEqual(
+			expect.objectContaining({
+				trace_kind: 'internal_operation',
+				execution_mode: 'internal',
+				operation_name: 'thread_title',
+			}),
+		);
 	});
 
 	it('creates detached sub-agent traces as separate root traces', async () => {

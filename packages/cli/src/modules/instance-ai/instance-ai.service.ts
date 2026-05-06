@@ -26,6 +26,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
 	continueInstanceAiTraceContext,
 	McpClientManager,
 	BuilderSandboxFactory,
@@ -3651,7 +3652,7 @@ export class InstanceAiService {
 	 */
 	private async refineTitleIfNeeded(
 		threadId: string,
-		_userId: string,
+		userId: string,
 		modelId: ModelConfig,
 	): Promise<void> {
 		try {
@@ -3673,7 +3674,59 @@ export class InstanceAiService {
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 
-			const llmTitle = await generateTitleForRun(modelId, userText);
+			const baseTracing = this.getTraceContextForContinuation(threadId);
+			const titleTracing = await createInternalOperationTraceContext({
+				threadId,
+				conversationId: threadId,
+				messageId: `internal:title:${threadId}`,
+				runId: `title-${nanoid()}`,
+				userId,
+				modelId,
+				operationName: 'thread_title',
+				input: {
+					message_count: userTexts.length,
+					source: 'thread_title_refinement',
+				},
+				proxyConfig: baseTracing?.proxyConfig,
+				metadata: {
+					operation_name: 'thread_title',
+					trigger: 'run_completed',
+				},
+			});
+			const titleTelemetry = titleTracing?.getTelemetry?.({
+				agentRole: 'thread_title',
+				functionId: 'instance-ai.thread_title',
+				executionMode: 'internal',
+				metadata: {
+					operation_name: 'thread_title',
+				},
+			});
+			let llmTitle: string | null;
+			if (titleTracing) {
+				try {
+					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
+						const title = await generateTitleForRun(modelId, userText, {
+							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
+						});
+						if (title) {
+							await titleTracing.finishRun(titleTracing.rootRun, {
+								outputs: { title },
+								metadata: { final_status: 'completed' },
+							});
+						} else {
+							await titleTracing.finishRun(titleTracing.rootRun, {
+								outputs: { title: null },
+								metadata: { final_status: 'skipped' },
+							});
+						}
+						return title;
+					});
+				} finally {
+					releaseTraceClient(titleTracing.rootRun.traceId);
+				}
+			} else {
+				llmTitle = await generateTitleForRun(modelId, userText);
+			}
 			if (!llmTitle) return;
 
 			await patchThread(memory, {

@@ -842,7 +842,7 @@ export type TraceReplayMode = 'record' | 'replay' | 'off';
 export interface InstanceAiTelemetryOptions {
 	agentRole: string;
 	functionId?: string;
-	executionMode?: 'foreground' | 'background' | 'background_subagent' | 'resume';
+	executionMode?: 'foreground' | 'background' | 'background_subagent' | 'resume' | 'internal';
 	metadata?: Record<string, AttributeValue | undefined>;
 }
 

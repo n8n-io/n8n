@@ -415,6 +415,12 @@ interface CreateDetachedSubAgentTraceContextOptions extends CreateInstanceAiTrac
 	spawnedByToolCallId?: string;
 }
 
+interface CreateInternalOperationTraceContextOptions
+	extends Omit<CreateInstanceAiTraceContextOptions, 'messageId'> {
+	operationName: string;
+	messageId?: string;
+}
+
 interface CurrentTraceSpanOptions<T = unknown> {
 	name: string;
 	runType?: string;
@@ -454,6 +460,13 @@ function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 			process.env.LANGSMITH_ENDPOINT ??
 			process.env.LANGCHAIN_ENDPOINT ??
 			tracingFlag?.toLowerCase() === 'true',
+	);
+}
+
+function isInternalOperationTracingEnabled(): boolean {
+	return (
+		process.env.N8N_INSTANCE_AI_TRACE_INTERNAL === 'true' ||
+		process.env.N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL === 'true'
 	);
 }
 
@@ -2097,4 +2110,71 @@ export async function createDetachedSubAgentTraceContext(
 		return await proxyHeaderStore.run(headers, createDetachedRuns);
 	}
 	return await createDetachedRuns();
+}
+
+export async function createInternalOperationTraceContext(
+	options: CreateInternalOperationTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	if (!isInternalOperationTracingEnabled() || !isLangSmithTracingEnabled(!!options.proxyConfig)) {
+		return undefined;
+	}
+
+	ensureLangSmithTracingEnv();
+
+	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const baseMetadata = buildBaseMetadata({
+		...options,
+		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,
+		metadata: mergeMetadata(options.metadata, {
+			operation_name: options.operationName,
+		}),
+	});
+
+	const createInternalRuns = async () => {
+		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const rootRun = startProductSpan(otelRuntime, {
+			projectName,
+			name: `instance-ai.internal.${options.operationName}`,
+			runType: 'chain',
+			tags: ['internal-operation'],
+			metadata: mergeMetadata(baseMetadata, {
+				agent_role: options.operationName,
+				execution_mode: 'internal',
+				trace_kind: 'internal_operation',
+				operation_name: options.operationName,
+			}),
+			inputs: options.input,
+			root: true,
+		});
+
+		return createTraceContext(
+			projectName,
+			'internal_operation',
+			rootRun,
+			rootRun,
+			otelRuntime,
+			options.proxyConfig,
+			createTelemetryFactory({
+				projectName,
+				traceKind: 'internal_operation',
+				rootRun,
+				actorRun: rootRun,
+				baseMetadata:
+					mergeMetadata(baseMetadata, {
+						agent_role: options.operationName,
+						execution_mode: 'internal',
+						trace_kind: 'internal_operation',
+						operation_name: options.operationName,
+					}) ?? baseMetadata,
+				baseTelemetry: otelRuntime.telemetry,
+				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+			}),
+		);
+	};
+
+	if (options.proxyConfig) {
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createInternalRuns);
+	}
+	return await createInternalRuns();
 }
