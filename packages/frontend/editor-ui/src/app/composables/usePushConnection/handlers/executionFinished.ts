@@ -213,7 +213,7 @@ export async function fetchExecutionData(
 
 	try {
 		const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
-		if (!executionResponse?.data) {
+		if (!executionResponse?.data || !executionResponse.workflowId) {
 			return;
 		}
 
