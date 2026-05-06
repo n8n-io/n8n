@@ -713,7 +713,7 @@ describe('parseStoredMessages', () => {
 			expect(result).toHaveLength(2);
 			expect(result[0].role).toBe('user');
 			expect(result[1].role).toBe('assistant');
-			expect(result[1].id).toBe('run_orphan');
+			expect(result[1].id).toBe('mg-orphan');
 			expect(result[1].runId).toBe('run_orphan');
 			expect(result[1].messageGroupId).toBe('mg-orphan');
 			expect(result[1].agentTree).toBe(orphanTree);
