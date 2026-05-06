@@ -54,13 +54,16 @@ runs:
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
+        # Exclude first-party @n8n/* packages from SafeChain's minimum-package-age
+        # filter so freshly-published versions stay visible to every subsequent
+        # step in the job (install, build, and publish).
+        echo "SAFE_CHAIN_MINIMUM_PACKAGE_AGE_EXCLUSIONS=@n8n/*" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
-        SAFE_CHAIN_MINIMUM_PACKAGE_AGE_EXCLUSIONS: '@n8n/*'
       run: |
         $INSTALL_COMMAND
       shell: bash
