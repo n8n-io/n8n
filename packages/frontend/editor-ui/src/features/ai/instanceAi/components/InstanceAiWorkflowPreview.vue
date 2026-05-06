@@ -129,7 +129,7 @@ defineExpose({ relayPushEvent });
 			:can-execute="true"
 			:hide-controls="false"
 			:suppress-notifications="true"
-			:allow-error-notifications="true"
+			:allow-error-notifications="false"
 			loader-type="spinner"
 		/>
 

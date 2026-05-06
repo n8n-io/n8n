@@ -182,51 +182,127 @@ function buildFlatAgentTree(
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Main parser
-// ---------------------------------------------------------------------------
+function snapshotTimestamp(snapshot: AgentTreeSnapshot): string {
+	return (snapshot.updatedAt ?? snapshot.createdAt ?? new Date(0)).toISOString();
+}
 
-/**
- * Build a synthetic assistant message from a snapshot that has no paired
- * Mastra-persisted message. Happens when a run was interrupted before
- * Mastra's auto-save (e.g. service shutdown while the orchestrator was
- * waiting for plan-review). The agent tree carries the partial state.
- */
-function buildOrphanSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
+function snapshotCreatedAtMs(snapshot: AgentTreeSnapshot): number | undefined {
+	return snapshot.createdAt?.getTime();
+}
+
+function messageCreatedAtMs(message: MastraDBMessage): number {
+	return message.createdAt.getTime();
+}
+
+function getNextConversationMessageTimestamp(
+	messages: MastraDBMessage[],
+	currentIndex: number,
+): number | undefined {
+	for (let i = currentIndex + 1; i < messages.length; i++) {
+		const role = messages[i].role;
+		if (role === 'user' || role === 'assistant') return messageCreatedAtMs(messages[i]);
+	}
+	return undefined;
+}
+
+function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
+	const groupId = snapshot.messageGroupId ?? snapshot.runId;
 	return {
-		id: snapshot.runId,
+		id: groupId,
 		runId: snapshot.runId,
 		messageGroupId: snapshot.messageGroupId,
 		runIds: snapshot.runIds,
 		role: 'assistant',
-		createdAt: snapshot.createdAt.toISOString(),
-		content: snapshot.tree.textContent ?? '',
-		reasoning: snapshot.tree.reasoning ?? '',
+		createdAt: snapshotTimestamp(snapshot),
+		content: snapshot.tree.textContent,
+		reasoning: snapshot.tree.reasoning,
 		isStreaming: false,
 		agentTree: snapshot.tree,
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Main parser
+// ---------------------------------------------------------------------------
+
 /**
  * Converts raw Mastra DB messages into rich InstanceAiMessage objects
  * with agent trees (from snapshots or reconstructed flat trees).
- *
- * Pairing rule: Mastra and snapshots are both ordered chronologically;
- * we pair index-by-index from the start. Snapshots beyond the paired
- * count are "orphans" — runs that were interrupted before Mastra
- * persisted the assistant message — and are surfaced as synthetic
- * assistant messages so the user sees the partial state after a restart.
  */
 export function parseStoredMessages(
 	mastraMessages: MastraDBMessage[],
 	snapshots?: RunSnapshots,
 ): InstanceAiMessage[] {
 	const messages: InstanceAiMessage[] = [];
+	const snapshotList = snapshots ?? [];
 
+	// Snapshots are stored chronologically. DB-backed snapshots have timestamps,
+	// so use them to place orphan snapshots before, between, or after assistant
+	// rows. Older tests and legacy snapshots may not have timestamps; for those,
+	// keep the positional alignment behavior.
+	const assistantCount = mastraMessages.filter((m) => m.role === 'assistant').length;
+	const hasSnapshotTimestamps = snapshotList.some((snapshot) => snapshot.createdAt !== undefined);
+	const snapshotCount = snapshotList.length;
+	const snapshotOffset =
+		!hasSnapshotTimestamps && snapshotCount <= assistantCount ? assistantCount - snapshotCount : 0;
 	let assistantIdx = 0;
+	let nextSnapshotIdx = 0;
+	const consumedSnapshots = new Set<AgentTreeSnapshot>();
+
 	let lastUserMessageId: string | undefined;
 
-	for (const msg of mastraMessages) {
+	function appendChronologicalOrphansBefore(message: MastraDBMessage): void {
+		if (!hasSnapshotTimestamps) return;
+
+		const messageTimestamp = messageCreatedAtMs(message);
+		while (nextSnapshotIdx < snapshotList.length) {
+			const snapshot = snapshotList[nextSnapshotIdx];
+			const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
+			if (snapshotTimestamp === undefined || snapshotTimestamp >= messageTimestamp) return;
+
+			consumedSnapshots.add(snapshot);
+			messages.push(buildSnapshotMessage(snapshot));
+			nextSnapshotIdx++;
+		}
+	}
+
+	function takeSnapshotForAssistant(
+		message: MastraDBMessage,
+		messageIndex: number,
+	): AgentTreeSnapshot | undefined {
+		if (!hasSnapshotTimestamps) {
+			const snapshotIdx = assistantIdx - snapshotOffset;
+			const snapshot =
+				snapshotIdx >= 0 && snapshotIdx < snapshotList.length
+					? snapshotList[snapshotIdx]
+					: undefined;
+			if (snapshot) consumedSnapshots.add(snapshot);
+			return snapshot;
+		}
+
+		appendChronologicalOrphansBefore(message);
+
+		const snapshot = snapshotList[nextSnapshotIdx];
+		if (!snapshot) return undefined;
+
+		const nextMessageTimestamp = getNextConversationMessageTimestamp(mastraMessages, messageIndex);
+		const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
+		if (
+			snapshotTimestamp !== undefined &&
+			nextMessageTimestamp !== undefined &&
+			snapshotTimestamp > nextMessageTimestamp
+		) {
+			return undefined;
+		}
+
+		consumedSnapshots.add(snapshot);
+		nextSnapshotIdx++;
+		return snapshot;
+	}
+
+	for (const [messageIndex, msg] of mastraMessages.entries()) {
+		appendChronologicalOrphansBefore(msg);
+
 		const text = extractTextFromContent(msg.content);
 
 		if (msg.role === 'user') {
@@ -253,7 +329,7 @@ export function parseStoredMessages(
 			const toolCalls = invocations.map(buildToolCallState);
 			const parts = extractParts(msg.content);
 
-			const snapshot = snapshots?.[assistantIdx];
+			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
 			assistantIdx++;
 
 			// Use the native runId from the snapshot (matches SSE events),
@@ -284,18 +360,10 @@ export function parseStoredMessages(
 		// in the assistant message's content
 	}
 
-	// Surface trailing orphan snapshots (interrupted runs that never persisted
-	// to Mastra). They land in chronological position via the sort below.
-	if (snapshots) {
-		for (let i = assistantIdx; i < snapshots.length; i++) {
-			messages.push(buildOrphanSnapshotMessage(snapshots[i]));
-		}
+	for (const snapshot of snapshots ?? []) {
+		if (consumedSnapshots.has(snapshot)) continue;
+		messages.push(buildSnapshotMessage(snapshot));
 	}
-
-	// Sort by createdAt so synthetic snapshot messages interleave correctly
-	// with Mastra-paired messages (e.g. when an interruption is followed by
-	// a successful run on the same thread).
-	messages.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
 	// Deduplicate assistant messages by messageGroupId.
 	// Follow-up runs in the same group produce separate DB rows; keep only

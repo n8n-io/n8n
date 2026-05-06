@@ -16,7 +16,7 @@ import type { INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Int
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -59,7 +59,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),

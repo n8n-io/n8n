@@ -47,6 +47,7 @@ export class DbSnapshotStorage {
 			langsmithRunId: row.langsmithRunId ?? undefined,
 			langsmithTraceId: row.langsmithTraceId ?? undefined,
 			createdAt: row.createdAt,
+			updatedAt: row.updatedAt,
 		};
 	}
 
@@ -135,6 +136,7 @@ export class DbSnapshotStorage {
 			langsmithRunId: r.langsmithRunId ?? undefined,
 			langsmithTraceId: r.langsmithTraceId ?? undefined,
 			createdAt: r.createdAt,
+			updatedAt: r.updatedAt,
 		}));
 	}
 

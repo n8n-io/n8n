@@ -924,10 +924,10 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 		if (page.mode === 'id') {
 			pageId = page.value;
 		} else if (page.value.includes('p=')) {
-			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s
+			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s or https://www.notion.com/xxxxx?v=xxxxx&p=xxxxx&pm=s
 			pageId = new URLSearchParams(page.value).get('p') || '';
 		} else {
-			// e.g https://www.notion.so/page_name-xxxxx
+			// e.g https://www.notion.so/page_name-xxxxx or https://www.notion.com/page_name-xxxxx
 			pageId = page.value.match(databasePageUrlValidationRegexp)?.[1] || '';
 		}
 	}
