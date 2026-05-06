@@ -69,7 +69,7 @@ const showError = vi.fn();
 const showMessage = vi.fn();
 
 beforeEach(() => {
-	const pinia = createTestingPinia();
+	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
 	nodeTypesStore = useNodeTypesStore(pinia);
@@ -105,11 +105,11 @@ beforeEach(() => {
 		writable: true,
 	});
 
-	vi.mocked(communityNodesStore.installPackage).mockResolvedValue(undefined);
-	vi.mocked(nodeTypesStore.getNodeTypes).mockResolvedValue(undefined);
-	vi.mocked(nodeTypesStore.fetchCommunityNodePreviews).mockResolvedValue(undefined);
-	vi.mocked(credentialsStore.fetchCredentialTypes).mockResolvedValue(undefined);
-	vi.mocked(nodeTypesStore.getCommunityNodeAttributes).mockResolvedValue({
+	vi.spyOn(communityNodesStore, 'installPackage').mockResolvedValue(undefined);
+	vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
+	vi.spyOn(nodeTypesStore, 'fetchCommunityNodePreviews').mockResolvedValue(undefined);
+	vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+	vi.spyOn(nodeTypesStore, 'getCommunityNodeAttributes').mockResolvedValue({
 		npmVersion: '1.0.0',
 		authorGithubUrl: 'https://github.com/test',
 		authorName: 'Test Author',
@@ -312,7 +312,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 1',
 					typeVersion: 1,
-					position: [100, 100] as [number, number],
+					position: [128, 128] as [number, number],
 					parameters: {},
 				},
 				{
@@ -320,15 +320,12 @@ describe('useInstallNode', () => {
 					type: 'other-node',
 					name: 'Node 2',
 					typeVersion: 1,
-					position: [200, 200] as [number, number],
+					position: [256, 256] as [number, number],
 					parameters: {},
 				},
 			];
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-			// In createTestingPinia, setNodes is stubbed and doesn't mutate state.
-			// Directly assign allNodes (pinia testing makes getters writable).
-			// @ts-expect-error -- pinia testing overrides getters to be writable
-			store.allNodes = mockNodes;
+			store.setNodes(mockNodes);
 
 			const { installNode } = useInstallNode();
 
@@ -345,7 +342,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 1',
 					typeVersion: 1,
-					position: [100, 100] as [number, number],
+					position: [128, 128] as [number, number],
 					parameters: {},
 				},
 			]);
@@ -358,7 +355,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 1',
 					typeVersion: 1,
-					position: [100, 100] as [number, number],
+					position: [128, 128] as [number, number],
 					parameters: {},
 				},
 			]);
@@ -561,7 +558,7 @@ describe('useInstallNode', () => {
 					type: 'preview:test-node',
 					name: 'Node 1',
 					typeVersion: 1,
-					position: [100, 100] as [number, number],
+					position: [128, 128] as [number, number],
 					parameters: {},
 				},
 				{
@@ -569,7 +566,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 2',
 					typeVersion: 1,
-					position: [200, 200] as [number, number],
+					position: [256, 256] as [number, number],
 					parameters: {},
 				},
 				{
@@ -577,13 +574,12 @@ describe('useInstallNode', () => {
 					type: 'other-node',
 					name: 'Node 3',
 					typeVersion: 1,
-					position: [300, 300] as [number, number],
+					position: [384, 384] as [number, number],
 					parameters: {},
 				},
 			];
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-			// @ts-expect-error -- pinia testing makes getters writable
-			store.allNodes = mockNodes;
+			store.setNodes(mockNodes);
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
@@ -602,7 +598,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 2',
 					typeVersion: 1,
-					position: [200, 200] as [number, number],
+					position: [256, 256] as [number, number],
 					parameters: {},
 				},
 			]);
@@ -615,7 +611,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 1',
 					typeVersion: 1,
-					position: [100, 100] as [number, number],
+					position: [128, 128] as [number, number],
 					parameters: {},
 				},
 				{
@@ -623,7 +619,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 2',
 					typeVersion: 1,
-					position: [200, 200] as [number, number],
+					position: [256, 256] as [number, number],
 					parameters: {},
 				},
 				{
@@ -631,13 +627,12 @@ describe('useInstallNode', () => {
 					type: 'other-node',
 					name: 'Node 3',
 					typeVersion: 1,
-					position: [300, 300] as [number, number],
+					position: [384, 384] as [number, number],
 					parameters: {},
 				},
 			];
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-			// @ts-expect-error -- pinia testing makes getters writable
-			store.allNodes = mockNodes;
+			store.setNodes(mockNodes);
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
@@ -655,7 +650,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 1',
 					typeVersion: 1,
-					position: [100, 100] as [number, number],
+					position: [128, 128] as [number, number],
 					parameters: {},
 				},
 				{
@@ -663,7 +658,7 @@ describe('useInstallNode', () => {
 					type: 'test-node',
 					name: 'Node 2',
 					typeVersion: 1,
-					position: [200, 200] as [number, number],
+					position: [256, 256] as [number, number],
 					parameters: {},
 				},
 			]);
