@@ -11,7 +11,6 @@ jest.mock('../resumable-stream-executor', () => {
 	return {
 		...actual,
 		executeResumableStream: jest.fn(),
-		createLlmStepTraceHooks: jest.fn(),
 	};
 });
 

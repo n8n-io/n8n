@@ -16,7 +16,6 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
@@ -176,7 +175,6 @@ export async function startDetachedDelegateTask(
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
 					const stream = await subAgent.stream(briefingMessage, {
 						maxIterations,
@@ -184,7 +182,6 @@ export async function startDetachedDelegateTask(
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-						...(llmStepTraceHooks?.executionOptions ?? {}),
 					});
 
 					const result = await consumeStreamWithHitl({
@@ -199,7 +196,6 @@ export async function startDetachedDelegateTask(
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
 						waitForCorrection,
-						llmStepTraceHooks,
 						maxIterations,
 					});
 
@@ -328,7 +324,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 				const consumeResult = await withTraceRun(context, traceRun, async () => {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
-						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
 						const stream = await subAgent.stream(briefingMessage, {
 							maxIterations,
@@ -336,7 +331,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
 						});
 
 						return await consumeStreamWithHitl({
@@ -349,7 +343,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 							threadId: context.threadId,
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
-							llmStepTraceHooks,
 							maxIterations,
 						});
 					});

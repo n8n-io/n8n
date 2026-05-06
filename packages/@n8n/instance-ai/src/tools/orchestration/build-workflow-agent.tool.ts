@@ -29,7 +29,6 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
 	buildAgentTraceInputs,
@@ -883,7 +882,6 @@ export async function startBuildWorkflowAgentTask(
 							let finalText: string;
 							try {
 								const hitlResult = await withTraceParentContext(traceParent, async () => {
-									const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 									const resumeOptions: Record<string, unknown> = {
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -895,7 +893,6 @@ export async function startBuildWorkflowAgentTask(
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
 										},
-										...(llmStepTraceHooks?.executionOptions ?? {}),
 									});
 
 									return await consumeStreamWithHitl({
@@ -910,7 +907,6 @@ export async function startBuildWorkflowAgentTask(
 										waitForConfirmation: context.waitForConfirmation,
 										drainCorrections,
 										waitForCorrection,
-										llmStepTraceHooks,
 										maxIterations: MAX_STEPS.BUILDER,
 										resumeOptions,
 									});
@@ -1144,7 +1140,6 @@ export async function startBuildWorkflowAgentTask(
 
 						const traceParent = getTraceParentRun();
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
-							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 							const resumeOptions: Record<string, unknown> = {
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1156,7 +1151,6 @@ export async function startBuildWorkflowAgentTask(
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
 							});
 
 							return await consumeStreamWithHitl({
@@ -1171,7 +1165,6 @@ export async function startBuildWorkflowAgentTask(
 								waitForConfirmation: context.waitForConfirmation,
 								drainCorrections,
 								waitForCorrection,
-								llmStepTraceHooks,
 								maxIterations: MAX_STEPS.BUILDER,
 								resumeOptions,
 							});

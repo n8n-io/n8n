@@ -18,7 +18,6 @@ import {
 } from './tracing-utils';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
 	buildAgentTraceInputs,
@@ -124,14 +123,12 @@ export async function startResearchAgentTask(
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
 						maxIterations: MAX_STEPS.RESEARCH,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-						...(llmStepTraceHooks?.executionOptions ?? {}),
 					});
 
 					const { text } = await consumeStreamWithHitl({
@@ -146,7 +143,6 @@ export async function startResearchAgentTask(
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
 						waitForCorrection,
-						llmStepTraceHooks,
 						maxIterations: MAX_STEPS.RESEARCH,
 					});
 

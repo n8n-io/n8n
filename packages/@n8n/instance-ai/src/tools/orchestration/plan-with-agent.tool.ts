@@ -30,7 +30,6 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
@@ -327,14 +326,12 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				const resultText = await withTraceRun(context, traceRun, async () => {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
-						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
 							maxIterations: MAX_STEPS.PLANNER,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
 						});
 
 						const result = await consumeStreamWithHitl({
@@ -347,7 +344,6 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							threadId: context.threadId,
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
-							llmStepTraceHooks,
 							maxIterations: MAX_STEPS.PLANNER,
 						});
 

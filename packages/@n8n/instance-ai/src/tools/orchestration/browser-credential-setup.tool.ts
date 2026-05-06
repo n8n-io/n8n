@@ -13,7 +13,6 @@ import {
 } from './tracing-utils';
 import { MAX_STEPS } from '../../constants/max-steps';
 import {
-	createLlmStepTraceHooks,
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../runtime/resumable-stream-executor';
@@ -270,14 +269,12 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						// Stream the sub-agent
-						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
 							maxIterations: MAX_STEPS.BROWSER,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
 						});
 
 						let activeStream = normalizeStreamSource(stream);
@@ -318,7 +315,6 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 										lastSuspendedToolName = suspension.toolName ?? '';
 									},
 								},
-								llmStepTraceHooks,
 							});
 
 							if (result.status === 'cancelled') {
@@ -337,7 +333,6 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
 										},
-										...(llmStepTraceHooks?.executionOptions ?? {}),
 									},
 								);
 								activeStream = normalizeStreamSource(nudge);

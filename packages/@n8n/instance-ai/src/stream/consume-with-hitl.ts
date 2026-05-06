@@ -1,7 +1,6 @@
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
 import type { Logger } from '../logger';
 import {
-	type LlmStepTraceHooks,
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../runtime/resumable-stream-executor';
@@ -22,7 +21,6 @@ export interface ConsumeWithHitlOptions {
 	/** Returns a promise that resolves when a new user correction is queued.
 	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
 	waitForCorrection?: () => Promise<void>;
-	llmStepTraceHooks?: LlmStepTraceHooks;
 	/** Max iterations for the agent; passed to native stream resume so resumed streams keep the same limit. */
 	maxIterations?: number;
 	/** Additional options to preserve when resuming a suspended stream. */
@@ -79,7 +77,6 @@ export async function consumeStreamWithHitl(
 					}
 				: {}),
 		},
-		llmStepTraceHooks: options.llmStepTraceHooks,
 	});
 
 	return {
