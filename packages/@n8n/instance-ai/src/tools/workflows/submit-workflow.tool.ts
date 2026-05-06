@@ -10,7 +10,7 @@ import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -398,10 +398,7 @@ export function createSubmitWorkflowTool(
 				};
 			}
 
-			// Apply Dagre layout to produce positions matching the FE's tidy-up.
-			// Temporary: until the SDK is published with toJSON({ tidyUp: true }) support,
-			// the sandbox's SDK doesn't have Dagre layout, so we apply it server-side.
-			const json = layoutWorkflowJSON(buildOutput.workflow);
+			const json = buildOutput.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {
