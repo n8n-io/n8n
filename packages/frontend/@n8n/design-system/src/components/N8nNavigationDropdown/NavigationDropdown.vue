@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { ref, useSlots } from 'vue';
+import { defineComponent, ref, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import type { IconSize } from '@n8n/design-system/types';
@@ -40,6 +40,12 @@ defineProps<{
 
 const menuRef = ref<typeof ElMenu | null>(null);
 const ROOT_MENU_INDEX = '-1';
+
+// Passing both expand-close-icon and expand-open-icon to ElSubMenu disables
+// Element Plus's default 180° chevron rotation. The displayed chevron for
+// nested submenus is fixed to ArrowRight by Element Plus, so this no-op
+// component is never actually rendered.
+const NoopIcon = defineComponent({ name: 'NoopIcon', render: () => null });
 
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
@@ -112,6 +118,8 @@ defineExpose({
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
 						:popper-offset="-10"
+						:expand-close-icon="NoopIcon"
+						:expand-open-icon="NoopIcon"
 						data-test-id="navigation-submenu"
 					>
 						<template #title>

@@ -341,6 +341,38 @@ describe('getConnectedTools', () => {
 			sourceNodeName: 'MCP Client Tool',
 		});
 	});
+
+	it('should map source node names correctly when a disabled tool node is still connected', async () => {
+		// getParentNodes returns ALL parents including disabled ones,
+		// while getInputConnectionData filters disabled nodes out.
+		// getConnectedTools must skip disabled parents to keep the index in sync.
+		const mockParentNodes = [
+			{ name: 'Tool Alpha', disabled: false },
+			{ name: 'Tool Bravo', disabled: true },
+			{ name: 'Tool Charlie', disabled: false },
+		];
+		const mockTools = [
+			{ name: 'alpha', description: 'desc-alpha' },
+			{ name: 'charlie', description: 'desc-charlie' },
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools).toHaveLength(2);
+		expect(tools[0].name).toBe('alpha');
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'Tool Alpha',
+		});
+		expect(tools[1].name).toBe('charlie');
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'Tool Charlie',
+		});
+	});
 });
 
 describe('unwrapNestedOutput', () => {
