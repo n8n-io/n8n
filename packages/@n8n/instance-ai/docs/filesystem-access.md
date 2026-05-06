@@ -99,7 +99,7 @@ The `LocalGatewaySection` component has 3 states:
 
 ### Setup command flow
 
-The setup UI calls `POST /gateway/create-link` and shows the returned command.
+The setup UI calls `POST /instance-ai/gateway/create-link` and shows the returned command.
 The user runs that exact command in the terminal:
 
 ```bash
@@ -117,7 +117,7 @@ sequenceDiagram
     participant Daemon as computer-use daemon
     participant Server as n8n Backend
 
-    UI->>Server: POST /gateway/create-link
+    UI->>Server: POST /instance-ai/gateway/create-link
     Server-->>UI: Command + one-time token (5-min TTL)
     UI-->>User: Copy command
     User->>Daemon: npx @n8n/computer-use <url> <token>
