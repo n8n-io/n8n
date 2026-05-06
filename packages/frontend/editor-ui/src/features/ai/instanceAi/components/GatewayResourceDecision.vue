@@ -13,6 +13,18 @@ import SplitButton from './SplitButton.vue';
 
 type InstanceGatewayResourceDecision = 'denyOnce' | 'allowOnce' | 'allowForSession';
 
+const INSTANCE_GATEWAY_RESOURCE_DECISIONS = [
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+] as const satisfies readonly InstanceGatewayResourceDecision[];
+
+function isInstanceGatewayResourceDecision(
+	value: string,
+): value is InstanceGatewayResourceDecision {
+	return (INSTANCE_GATEWAY_RESOURCE_DECISIONS as readonly string[]).includes(value);
+}
+
 const props = defineProps<{
 	requestId: string;
 	resource: string;
@@ -108,7 +120,7 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 					data-test-id="gateway-decision-approve"
 					caret-aria-label="More approve options"
 					@click="confirm(approvePrimary.decision)"
-					@select="confirm"
+					@select="(id: string) => isInstanceGatewayResourceDecision(id) && confirm(id)"
 				/>
 			</template>
 		</ConfirmationFooter>
