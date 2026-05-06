@@ -1863,32 +1863,18 @@ export async function createInstanceAiTraceContext(
 			inputs: options.input,
 			root: true,
 		});
-		const orchestratorRun = startProductSpan(otelRuntime, {
-			projectName,
-			name: 'instance-ai.agent.orchestrator',
-			runType: 'chain',
-			tags: ['orchestrator'],
-			metadata: mergeMetadata(baseMetadata, {
-				agent_role: 'orchestrator',
-				execution_mode: 'foreground',
-				trace_kind: 'message_turn',
-			}),
-			inputs: options.input,
-			parentRun: messageRun,
-		});
-
 		return createTraceContext(
 			projectName,
 			'message_turn',
 			messageRun,
-			orchestratorRun,
+			messageRun,
 			otelRuntime,
 			options.proxyConfig?.getAuthHeaders,
 			createTelemetryFactory({
 				projectName,
 				traceKind: 'message_turn',
 				rootRun: messageRun,
-				actorRun: orchestratorRun,
+				actorRun: messageRun,
 				baseMetadata,
 				baseTelemetry: otelRuntime.telemetry,
 				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),

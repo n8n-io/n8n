@@ -463,6 +463,24 @@ const {
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../langsmith-tracing') as typeof import('../langsmith-tracing');
+
+async function startForegroundActor(
+	tracing: NonNullable<Awaited<ReturnType<typeof createInstanceAiTraceContext>>>,
+) {
+	const actorRun = await tracing.startChildRun(tracing.rootRun, {
+		name: 'instance-ai.agent.orchestrator',
+		tags: ['orchestrator'],
+		metadata: {
+			agent_role: 'orchestrator',
+			execution_mode: 'foreground',
+			trace_kind: tracing.traceKind,
+		},
+		inputs: { message: 'test' },
+	});
+	tracing.actorRun = actorRun;
+	tracing.orchestratorRun = actorRun;
+	return actorRun;
+}
 const { createAskUserTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../../tools/shared/ask-user.tool') as typeof import('../../tools/shared/ask-user.tool');
@@ -500,7 +518,7 @@ describe('createInstanceAiTraceContext', () => {
 		}
 	});
 
-	it('persists the parent run id for child runs created from a parent run tree', async () => {
+	it('starts foreground agent spans under the message root when activated', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
 			messageId: 'message-1',
@@ -510,6 +528,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
 	});
 
@@ -688,6 +707,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
 		await expect(
 			tracing?.finishRun(tracing.orchestratorRun, {
 				outputs: { result: 'done' },
@@ -980,6 +1000,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
 			{ 'ask-user': createAskUserTool() },
@@ -1094,6 +1115,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
 			{ 'ask-user': createAskUserTool() },
@@ -1251,6 +1273,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
 			{

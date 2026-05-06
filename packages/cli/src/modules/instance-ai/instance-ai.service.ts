@@ -2119,17 +2119,6 @@ export class InstanceAiService {
 				});
 			}
 
-			const agent = await createInstanceAgent({
-				modelId,
-				context,
-				orchestrationContext,
-				mcpServers,
-				memoryConfig,
-				memory,
-				checkpointStore: this.checkpointStore,
-				timeZone: timeZone ?? this.defaultTimeZone,
-			});
-
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			let nonStructuredAttachments: InstanceAiAttachment[] = [];
 			let attachmentManifest = '';
@@ -2279,6 +2268,32 @@ export class InstanceAiService {
 				}
 				throw error;
 			}
+
+			if (tracing && tracing.actorRun.id === tracing.rootRun.id) {
+				const actorRun = await tracing.startChildRun(tracing.rootRun, {
+					name: 'instance-ai.agent.orchestrator',
+					tags: ['orchestrator'],
+					metadata: {
+						agent_role: 'orchestrator',
+						execution_mode: 'foreground',
+						trace_kind: tracing.traceKind,
+					},
+					inputs: traceInput,
+				});
+				tracing.actorRun = actorRun;
+				tracing.orchestratorRun = actorRun;
+			}
+
+			const agent = await createInstanceAgent({
+				modelId,
+				context,
+				orchestrationContext,
+				mcpServers,
+				memoryConfig,
+				memory,
+				checkpointStore: this.checkpointStore,
+				timeZone: timeZone ?? this.defaultTimeZone,
+			});
 
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
