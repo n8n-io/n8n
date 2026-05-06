@@ -3246,15 +3246,11 @@ export type DocumentationLink = {
 	url: string;
 };
 
-export type CodexData = {
-	categories?: string[];
-	subcategories?: { [category: string]: string[] };
-	resources?: {
-		credentialDocumentation?: DocumentationLink[];
-		primaryDocumentation?: DocumentationLink[];
-	};
-	alias?: string[];
-};
+// `CodexData` is the single source-of-truth schema for `.node.json` (codex)
+// files; see `./codex-file-schema.ts`. The public re-export goes through
+// `./index.ts` (`export * from './codex-file-schema'`), so the symbol is
+// only imported here for local use to avoid duplicate-export errors.
+import type { CodexData } from './codex-file-schema';
 
 export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 

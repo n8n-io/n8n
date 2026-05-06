@@ -23,7 +23,8 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build:vite": "vite build",
-    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
+    "build": "pnpm generate-schemas && tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
+    "generate-schemas": "tsx scripts/generate-codex-schemas.ts",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint src --quiet",
@@ -34,7 +35,8 @@
     "test:dev": "vitest --watch"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "schemas/**/*.json"
   ],
   "devDependencies": {
     "@langchain/core": "catalog:",
@@ -47,9 +49,11 @@
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
+    "tsx": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   },
   "dependencies": {
     "@n8n/errors": "workspace:*",
