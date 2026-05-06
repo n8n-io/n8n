@@ -1,31 +1,9 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
 import { createEvalsTool } from '../evals.tool';
-import { inferEvalShape, DEFAULT_EVAL_SHAPE } from '../infer-eval-shape.service';
 
-jest.mock('../infer-eval-shape.service', () => ({
-	inferEvalShape: jest.fn(),
-	DEFAULT_EVAL_SHAPE: {
-		suggestedInputColumns: ['input'],
-		suggestedOutputColumns: ['expected_output'],
-		suggestedMetrics: [
-			{
-				id: 'correctness',
-				name: 'Correctness',
-				kind: 'llm-judge',
-				description: 'd',
-				prompt: 'p',
-				cannedMetricKey: 'correctness',
-				defaultEnabled: true,
-			},
-		],
-	},
-}));
-
-const mockInfer = inferEvalShape as jest.MockedFunction<typeof inferEvalShape>;
-
+/** Minimal AI workflow: trigger + agent node. Agent references $json.user_query. */
 function aiWf(): WorkflowJSON {
 	return {
 		name: 'AI Flow',
@@ -44,6 +22,116 @@ function aiWf(): WorkflowJSON {
 				type: '@n8n/n8n-nodes-langchain.agent',
 				typeVersion: 1,
 				position: [200, 0],
+				parameters: { text: '={{ $json.user_query }}' },
+			},
+		],
+		connections: {},
+	} as unknown as WorkflowJSON;
+}
+
+/** AI workflow whose agent has an ai_tool connection (triggers tool_use default metric). */
+function aiWfWithTools(): WorkflowJSON {
+	return {
+		name: 'AI Flow With Tools',
+		nodes: [
+			{
+				id: '1',
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { text: '={{ $json.user_query }}' },
+			},
+			{
+				id: '3',
+				name: 'SomeTool',
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				typeVersion: 1,
+				position: [200, 200],
+				parameters: {},
+			},
+		],
+		connections: {
+			SomeTool: {
+				ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]],
+			},
+		},
+	} as unknown as WorkflowJSON;
+}
+
+/** Workflow with EvaluationTrigger wired to a DataTable. */
+function evalConfiguredWf(): WorkflowJSON {
+	return {
+		name: 'Eval Flow',
+		nodes: [
+			{
+				id: '1',
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { text: '={{ $json.user_query }}' },
+			},
+			{
+				id: '3',
+				name: 'Eval Trigger',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				position: [0, -200],
+				parameters: { dataTableId: { mode: 'id', value: 'dt-existing' } },
+			},
+		],
+		connections: {
+			'Eval Trigger': {
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			},
+		},
+	} as unknown as WorkflowJSON;
+}
+
+/** AI workflow where the agent reads from a named node ref: $('Voice or Text').item.json.text */
+function aiWfWithNamedRef(): WorkflowJSON {
+	return {
+		name: 'AI Flow',
+		nodes: [
+			{
+				id: '1',
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { text: "={{ $('Voice or Text').item.json.text }}" },
+			},
+			{
+				id: '3',
+				name: 'Voice or Text',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3,
+				position: [-200, 0],
 				parameters: {},
 			},
 		],
@@ -51,258 +139,78 @@ function aiWf(): WorkflowJSON {
 	} as unknown as WorkflowJSON;
 }
 
-function makeCtx(wf: WorkflowJSON): InstanceAiContext {
-	const ctx = mock<InstanceAiContext>();
-	ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
-	ctx.dataTableService.create = jest.fn();
-	ctx.dataTableService.insertRows = jest.fn();
-	// `jest-mock-extended` auto-stubs every property proxy-style, but the
-	// Mastra logger is used via optional chaining (`ctx.logger?.info(...)`)
-	// which short-circuits on `undefined` yet throws on "logger exists but
-	// .info is not a function". Provide explicit spies so `?.info`/`?.error`
-	// resolve to callable jest.fn()s.
-	ctx.logger = {
-		info: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		debug: jest.fn(),
-	} as never;
-	return ctx;
+/** AI workflow where the agent reads both a direct $json ref and a named-node ref. */
+function aiWfWithDirectAndNamedRef(): WorkflowJSON {
+	return {
+		name: 'AI Flow',
+		nodes: [
+			{
+				id: '1',
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: {
+					text: '={{ $json.user_query }}',
+					systemMessage: "={{ $('Memory').item.json.context }}",
+				},
+			},
+			{
+				id: '3',
+				name: 'Memory',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3,
+				position: [-200, 0],
+				parameters: {},
+			},
+		],
+		connections: {},
+	} as unknown as WorkflowJSON;
 }
 
-describe('evalsTool — propose gate checks', () => {
-	beforeEach(() => jest.clearAllMocks());
+function makeCtx(
+	wf: WorkflowJSON,
+	dataTableOverrides?: Partial<InstanceAiContext['dataTableService']>,
+): InstanceAiContext {
+	return {
+		userId: 'u1',
+		workflowService: {
+			getAsWorkflowJSON: jest.fn().mockResolvedValue(wf),
+		},
+		dataTableService: {
+			create: jest
+				.fn()
+				.mockResolvedValue({ id: 'dt-new', name: 'AI Flow — eval samples', columns: [] }),
+			insertRows: jest.fn().mockResolvedValue({
+				insertedCount: 0,
+				dataTableId: 'dt-new',
+				tableName: 'x',
+				projectId: 'p',
+			}),
+			queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
+			...dataTableOverrides,
+		},
+		executionService: {} as never,
+		credentialService: {} as never,
+		nodeService: {} as never,
+		logger: {
+			info: jest.fn(),
+			error: jest.fn(),
+			warn: jest.fn(),
+			debug: jest.fn(),
+		},
+	} as unknown as InstanceAiContext;
+}
 
-	it('returns skipped when the workflow has no AI nodes', async () => {
-		const wf = {
-			name: 'Plain',
-			nodes: [
-				{
-					id: '1',
-					name: 'T',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			],
-			connections: {},
-		} as unknown as WorkflowJSON;
-		const ctx = makeCtx(wf);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
-			agent: {},
-		} as never)) as Record<string, unknown>;
-
-		expect(result).toMatchObject({ skipped: true });
-		expect(mockInfer).not.toHaveBeenCalled();
-	});
-
-	it('returns skipped when EvaluationTrigger already exists', async () => {
-		const wf = {
-			name: 'Already',
-			nodes: [
-				{
-					id: '1',
-					name: 'T',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: '2',
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					typeVersion: 1,
-					position: [200, 0],
-					parameters: {},
-				},
-				{
-					id: '3',
-					name: 'EvalT',
-					type: 'n8n-nodes-base.evaluationTrigger',
-					typeVersion: 1,
-					position: [0, -200],
-					parameters: {},
-				},
-			],
-			connections: {},
-		} as unknown as WorkflowJSON;
-		const ctx = makeCtx(wf);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
-			agent: {},
-		} as never)) as Record<string, unknown>;
-
-		expect(result).toMatchObject({
-			skipped: true,
-			reason: expect.stringMatching(/already/i) as unknown,
-		});
-	});
-
-	it('returns skipped when a root agent reads another node JSON directly', async () => {
-		const wf = {
-			name: 'Reads Trigger',
-			nodes: [
-				{
-					id: '1',
-					name: 'Telegram Trigger',
-					type: 'n8n-nodes-base.telegramTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: '2',
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					typeVersion: 1,
-					position: [200, 0],
-					parameters: { text: "={{ $('Telegram Trigger').item.json.message.text }}" },
-				},
-			],
-			connections: {},
-		} as unknown as WorkflowJSON;
-		const ctx = makeCtx(wf);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
-			agent: {},
-		} as never)) as Record<string, unknown>;
-
-		expect(result).toMatchObject({
-			skipped: true,
-			reason: expect.stringMatching(/topology-only/i) as unknown,
-		});
-	});
-});
-
-describe('evalsTool — delegates to eval-setup-agent', () => {
-	beforeEach(() => jest.clearAllMocks());
-
-	it('delegates with create-empty (default) and only default-enabled metrics', async () => {
-		const ctx = makeCtx(aiWf());
-		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1', projectId: 'p1' }, {
-			agent: {},
-		} as never)) as Record<string, unknown>;
-
-		expect(ctx.dataTableService.create).not.toHaveBeenCalled();
-		expect(ctx.dataTableService.insertRows).not.toHaveBeenCalled();
-		expect(result).toMatchObject({
-			success: true,
-			shouldDelegateToEvalSetupAgent: true,
-			workflowId: 'w1',
-			projectId: 'p1',
-		});
-		const task = result.task as string;
-		expect(task).toContain('Create an empty DataTable');
-		expect(task).toContain('Do not insert rows');
-		expect(task).toContain('- input');
-		expect(task).toContain('- expected_output');
-	});
-
-	it('link-existing: task references provided DataTable id', async () => {
-		const ctx = makeCtx(aiWf());
-		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!(
-			{
-				action: 'propose',
-				workflowId: 'w1',
-				datasetChoice: 'link-existing',
-				existingDataTableId: 'dt-user-123',
-			},
-			{ agent: {} } as never,
-		)) as Record<string, unknown>;
-
-		expect(result).toMatchObject({
-			success: true,
-			shouldDelegateToEvalSetupAgent: true,
-			dataTableId: 'dt-user-123',
-		});
-		const task = result.task as string;
-		expect(task).toContain('dt-user-123');
-		expect(task).toContain('already exists');
-		expect(task).toContain('do not modify its rows or schema');
-	});
-
-	it('link-existing: derives input columns from the existing DataTable schema', async () => {
-		const ctx = makeCtx(aiWf());
-		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		ctx.dataTableService.getSchema = jest.fn().mockResolvedValue([
-			{ id: 'c1', name: 'targetUrl', type: 'string', index: 0 },
-			{ id: 'c2', name: 'priceThresholdDollars', type: 'number', index: 1 },
-			{ id: 'c3', name: 'expected_output', type: 'string', index: 2 },
-		]);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!(
-			{
-				action: 'propose',
-				workflowId: 'w1',
-				datasetChoice: 'link-existing',
-				existingDataTableId: 'dt-real',
-			},
-			{ agent: {} } as never,
-		)) as Record<string, unknown>;
-
-		const task = result.task as string;
-		expect(task).toContain('- targetUrl');
-		expect(task).toContain('- priceThresholdDollars');
-		expect(task).toContain('- expected_output');
-		expect(task).not.toMatch(/^- input$/m);
-	});
-
-	it('later: task tells the sub-agent to leave the dataTableId empty', async () => {
-		const ctx = makeCtx(aiWf());
-		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!(
-			{ action: 'propose', workflowId: 'w1', datasetChoice: 'later' },
-			{ agent: {} } as never,
-		)) as Record<string, unknown>;
-
-		const task = result.task as string;
-		expect(task).toContain('Do not create a DataTable');
-		expect(task).toContain('wire it manually later');
-	});
-
-	it('emits only metrics whose defaultEnabled is true', async () => {
-		const ctx = makeCtx(aiWf());
-		mockInfer.mockResolvedValue({
-			suggestedInputColumns: ['input'],
-			suggestedOutputColumns: ['expected_output'],
-			suggestedMetrics: [
-				{
-					id: 'a',
-					name: 'Metric A',
-					kind: 'llm-judge',
-					description: 'd',
-					prompt: 'p',
-					defaultEnabled: true,
-				},
-				{ id: 'b', name: 'Metric B', kind: 'exact-match', description: 'd', defaultEnabled: false },
-			],
-		});
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
-			agent: {},
-		} as never)) as Record<string, unknown>;
-
-		const task = result.task as string;
-		expect(task).toContain('Metric A');
-		expect(task).not.toContain('Metric B');
-	});
-});
+// ── action: offer ──────────────────────────────────────────────────────────
 
 describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 	beforeEach(() => jest.clearAllMocks());
@@ -335,29 +243,7 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 	});
 
 	it('returns eligible:false with reason already-configured when EvaluationTrigger is present', async () => {
-		const wf = {
-			name: 'Already',
-			nodes: [
-				{
-					id: '2',
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: '3',
-					name: 'EvalT',
-					type: 'n8n-nodes-base.evaluationTrigger',
-					typeVersion: 1,
-					position: [0, -200],
-					parameters: {},
-				},
-			],
-			connections: {},
-		} as unknown as WorkflowJSON;
-		const ctx = makeCtx(wf);
+		const ctx = makeCtx(evalConfiguredWf());
 		const tool = createEvalsTool(ctx);
 		const suspend = jest.fn();
 
@@ -366,41 +252,6 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 		} as never)) as Record<string, unknown>;
 
 		expect(result).toEqual({ eligible: false, reason: 'already-configured' });
-		expect(suspend).not.toHaveBeenCalled();
-	});
-
-	it('returns eligible:false with reason root-agent-reads-other-node and never suspends', async () => {
-		const wf = {
-			name: 'Reads Trigger',
-			nodes: [
-				{
-					id: '1',
-					name: 'Telegram Trigger',
-					type: 'n8n-nodes-base.telegramTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: '2',
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					typeVersion: 1,
-					position: [200, 0],
-					parameters: { text: "={{ $('Telegram Trigger').item.json.message.text }}" },
-				},
-			],
-			connections: {},
-		} as unknown as WorkflowJSON;
-		const ctx = makeCtx(wf);
-		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
-
-		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { suspend, resumeData: undefined },
-		} as never)) as Record<string, unknown>;
-
-		expect(result).toEqual({ eligible: false, reason: 'root-agent-reads-other-node' });
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
@@ -422,7 +273,6 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 		expect(payload).toHaveProperty('requestId');
 		expect(payload).not.toHaveProperty('inputType');
 		expect(payload).not.toHaveProperty('questions');
-		expect(payload).not.toHaveProperty('options');
 	});
 
 	it('builds a singular message when there is exactly one AI node', async () => {
@@ -458,8 +308,408 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 
 		expect(result).toEqual({ eligible: true, approved: false });
 	});
+});
 
-	it('does NOT invoke inferEvalShape — offer is a precheck, not a builder', async () => {
+// ── action: select-metrics ─────────────────────────────────────────────────
+
+describe('evals tool — select-metrics action', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	it('returns the workflow-default metric ids when user approves with default selections', async () => {
+		// Agent has ai_tool connection → defaults are ['correctness', 'tool_use']
+		const ctx = makeCtx(aiWfWithTools());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: {
+				resumeData: {
+					approved: true,
+					answers: [{ questionId: 'q1', selectedOptions: ['Correctness', 'Tool use'] }],
+				},
+			},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({
+			chosenMetricIds: ['correctness', 'tool_use'],
+			answers: [{ questionId: 'q1', selectedOptions: ['Correctness', 'Tool use'] }],
+		});
+	});
+
+	it('falls back to ["correctness"] when user dismisses the widget (resumeData.approved=false)', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: false } },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ chosenMetricIds: ['correctness'], answers: [] });
+	});
+
+	it('falls back to ["correctness"] when user submits empty selection', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: {
+				resumeData: {
+					approved: true,
+					answers: [{ questionId: 'q1', selectedOptions: [] }],
+				},
+			},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({
+			chosenMetricIds: ['correctness'],
+			answers: [{ questionId: 'q1', selectedOptions: [] }],
+		});
+	});
+
+	it('returns skipped when workflow has no AI nodes', async () => {
+		const wf = {
+			name: 'Plain',
+			nodes: [
+				{
+					id: '1',
+					name: 'T',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(wf);
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: {},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ skipped: true, reason: 'no-ai-nodes' });
+	});
+
+	it('suspends with inputType="questions" and a single multi-type question', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		await tool.execute!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+
+		expect(suspend).toHaveBeenCalledTimes(1);
+		const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).toMatchObject({
+			severity: 'info',
+			inputType: 'questions',
+		});
+		expect(payload).toHaveProperty('requestId');
+		const questions = payload.questions as Array<Record<string, unknown>>;
+		expect(Array.isArray(questions)).toBe(true);
+		expect(questions).toHaveLength(1);
+		expect(questions[0]).toMatchObject({ type: 'multi' });
+		expect(Array.isArray(questions[0].options)).toBe(true);
+	});
+
+	it('builds option labels with workflow-specific descriptions and a recommendation marker', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Chef Workflow',
+			nodes: [
+				{
+					id: 't',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'a',
+					name: 'Chef Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'c',
+					name: 'Calculator',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					typeVersion: 1,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Calculator: { ai_tool: [[{ node: 'Chef Agent', type: 'ai_tool', index: 0 }]] },
+			},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(workflow);
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+		await tool.execute!({ action: 'select-metrics', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+		const payload = suspend.mock.calls[0][0];
+		const options: string[] = payload.questions[0].options;
+
+		// Each option contains the metric name and a description.
+		expect(options.find((o) => o.startsWith('Correctness'))).toMatch(/Chef Agent/);
+		// Tool_use, since agent has tools, is the recommended metric.
+		expect(options.find((o) => o.includes('Tool use'))).toMatch(/recommended/);
+		expect(options.find((o) => o.includes('Tool use'))).toMatch(/Calculator/);
+	});
+});
+
+// ── action: propose (changed) ──────────────────────────────────────────────
+
+describe('evals tool — propose action (changed)', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	it('creates an EMPTY data table by default and never inserts rows', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{ action: 'propose', workflowId: 'w1', projectId: 'p1', metrics: ['correctness'] },
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		// dataTableService.create is called — creates empty table
+		expect(ctx.dataTableService.create).toHaveBeenCalledTimes(1);
+		const createCall = (ctx.dataTableService.create as jest.Mock).mock.calls[0];
+		// columns come from analyzeAgentInputColumns → 'user_query' (from $json.user_query in parameters)
+		expect(createCall[1]).toEqual([{ name: 'user_query', type: 'string' }]);
+
+		// insertRows must NOT be called
+		expect(ctx.dataTableService.insertRows).not.toHaveBeenCalled();
+
+		expect(result).toMatchObject({
+			success: true,
+			shouldDelegateToEvalSetupAgent: true,
+			workflowId: 'w1',
+			projectId: 'p1',
+			dataTableId: 'dt-new',
+		});
+	});
+
+	it('drops unknown metric ids', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{
+				action: 'propose',
+				workflowId: 'w1',
+				metrics: ['correctness', 'nope', 'tool_use'],
+			},
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		const task = result.task as string;
+		expect(task).toContain('Correctness');
+		expect(task).toContain('Tool use');
+		expect(task).not.toContain('nope');
+	});
+
+	it('falls back to ["correctness"] when metrics is empty', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: [] }, {
+			agent: {},
+		} as never)) as Record<string, unknown>;
+
+		const task = result.task as string;
+		expect(task).toContain('Correctness');
+	});
+
+	it('returns skipped when no AI nodes', async () => {
+		const wf = {
+			name: 'Plain',
+			nodes: [
+				{
+					id: '1',
+					name: 'T',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(wf);
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ skipped: true, reason: 'Workflow has no AI/LLM nodes.' });
+	});
+
+	it('returns skipped when EvaluationTrigger already exists', async () => {
+		const ctx = makeCtx(evalConfiguredWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toMatchObject({
+			skipped: true,
+			reason: expect.stringMatching(/already/i) as unknown,
+		});
+	});
+
+	it('uses existingDataTableId without creating a new table when datasetChoice="link-existing"', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{
+				action: 'propose',
+				workflowId: 'w1',
+				datasetChoice: 'link-existing',
+				existingDataTableId: 'dt-old',
+				metrics: ['correctness'],
+			},
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(ctx.dataTableService.create).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			success: true,
+			shouldDelegateToEvalSetupAgent: true,
+			dataTableId: 'dt-old',
+		});
+		const task = result.task as string;
+		expect(task).toContain('dt-old');
+	});
+
+	it('does not create a table when datasetChoice="later"', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{ action: 'propose', workflowId: 'w1', datasetChoice: 'later', metrics: ['correctness'] },
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(ctx.dataTableService.create).not.toHaveBeenCalled();
+		expect(result).not.toHaveProperty('dataTableId');
+		const task = result.task as string;
+		expect(task).toContain('Do not create a DataTable');
+	});
+});
+
+// ── action: offer-data-population ──────────────────────────────────────────
+
+describe('evals tool — offer-data-population action', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	it('suspends with approve/deny when an EvaluationTrigger exists and the table is empty', async () => {
+		const ctx = makeCtx(evalConfiguredWf());
+		// queryRows returns empty → table is empty → should suspend
+		ctx.dataTableService.queryRows = jest.fn().mockResolvedValue({ count: 0, data: [] });
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		await tool.execute!({ action: 'offer-data-population', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+
+		expect(suspend).toHaveBeenCalledTimes(1);
+		const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).toMatchObject({
+			severity: 'info',
+			message: expect.stringMatching(/populate/i) as unknown,
+		});
+		expect(payload).toHaveProperty('requestId');
+	});
+
+	it('returns skipped when the workflow has no eval target', async () => {
+		const ctx = makeCtx(aiWf()); // no EvaluationTrigger wired to DataTable
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'offer-data-population', workflowId: 'w1' }, {
+			agent: {},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ skipped: true, reason: 'no-eval-target' });
+	});
+
+	it('returns skipped when the table already has rows', async () => {
+		const ctx = makeCtx(evalConfiguredWf());
+		ctx.dataTableService.queryRows = jest
+			.fn()
+			.mockResolvedValue({ count: 1, data: [{ user_query: 'hello' }] });
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		const result = (await tool.execute!({ action: 'offer-data-population', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ skipped: true, reason: 'already-populated' });
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('returns approved=true with workflow + table ids on user approval', async () => {
+		const ctx = makeCtx(evalConfiguredWf());
+		ctx.dataTableService.queryRows = jest.fn().mockResolvedValue({ count: 0, data: [] });
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'offer-data-population', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: true } },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({
+			approved: true,
+			workflowId: 'w1',
+			dataTableId: 'dt-existing',
+		});
+	});
+
+	it('returns approved=false on user denial', async () => {
+		const ctx = makeCtx(evalConfiguredWf());
+		ctx.dataTableService.queryRows = jest.fn().mockResolvedValue({ count: 0, data: [] });
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'offer-data-population', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: false } },
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toEqual({ approved: false });
+	});
+});
+
+// ── action: offer with named refs ──────────────────────────────────────────
+
+describe('evals tool — offer with named refs', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	it('expands the offer message with disclosure when agent has named refs', async () => {
+		const ctx = makeCtx(aiWfWithNamedRef());
+		const tool = createEvalsTool(ctx);
+		const suspend = jest.fn();
+
+		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { suspend, resumeData: undefined },
+		} as never);
+
+		expect(suspend).toHaveBeenCalled();
+		const message = (suspend.mock.calls[0][0] as Record<string, unknown>).message as string;
+		expect(message).toMatch(/Generate an eval suite/);
+		expect(message).toMatch(/Voice or Text/);
+		expect(message).toMatch(/Set node in the production path/);
+		expect(message).toMatch(/`text`/);
+	});
+
+	it('keeps the offer message short when no named refs are present', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
 		const suspend = jest.fn();
@@ -467,10 +717,47 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
 		} as never);
-		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { resumeData: { approved: true } },
+
+		const message = (suspend.mock.calls[0][0] as Record<string, unknown>).message as string;
+		expect(message).not.toMatch(/Set node/);
+		expect(message).not.toMatch(/production path/);
+	});
+});
+
+// ── action: propose with named refs ───────────────────────────────────────
+
+describe('evals tool — propose with named refs', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	it('includes named-ref columns in the DataTable schema', async () => {
+		const create = jest
+			.fn()
+			.mockResolvedValue({ id: 'dt-1', name: 'Wf — eval samples', columns: [] });
+		const ctx = makeCtx(aiWfWithNamedRef(), { create });
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
 		} as never);
 
-		expect(mockInfer).not.toHaveBeenCalled();
+		expect(create).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.arrayContaining([{ name: 'text', type: 'string' }]),
+			undefined,
+		);
+	});
+
+	it('combines direct $json refs and named-ref columns in DataTable', async () => {
+		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const ctx = makeCtx(aiWfWithDirectAndNamedRef(), { create });
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
+		} as never);
+
+		const columnsArg = create.mock.calls[0][1] as Array<{ name: string; type: string }>;
+		const names = columnsArg.map((c) => c.name).sort();
+		expect(names).toEqual(['context', 'user_query']);
 	});
 });

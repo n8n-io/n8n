@@ -88,16 +88,6 @@ describe('eval-end-to-end runner — pure helpers', () => {
 			expect(prompt).toContain('Do not add new evals');
 		});
 
-		it('tells the agent to respect a structural-skip outcome', () => {
-			const prompt = buildEvalPrompt({
-				workflowId: 'wf-1',
-				workflowName: 'Demo',
-				mode: 'structural-skip',
-			});
-			expect(prompt).toContain('not applicable');
-			expect(prompt).toContain('do not force it');
-		});
-
 		it('tells the agent to respect a no-ai-nodes outcome', () => {
 			const prompt = buildEvalPrompt({
 				workflowId: 'wf-1',
@@ -128,11 +118,6 @@ describe('eval-end-to-end runner — pure helpers', () => {
 
 		it('drops tool-not-called findings when mode is already-configured', () => {
 			const filtered = filterToolSelectionForMode(raw, 'already-configured');
-			expect(filtered.findings).toHaveLength(0);
-		});
-
-		it('drops tool-not-called findings when mode is structural-skip', () => {
-			const filtered = filterToolSelectionForMode(raw, 'structural-skip');
 			expect(filtered.findings).toHaveLength(0);
 		});
 

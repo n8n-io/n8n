@@ -2,6 +2,15 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { analyzeEvalDataRequirements } from '../eval-data-requirements.service';
 
+const wf = (nodes: unknown[], connections: unknown = {}): WorkflowJSON =>
+	({
+		name: 't',
+		nodes,
+		connections,
+		pinData: {},
+		settings: {},
+	}) as unknown as WorkflowJSON;
+
 function workflowWithEvalTopology(): WorkflowJSON {
 	return {
 		id: 'w1',
@@ -27,31 +36,14 @@ function workflowWithEvalTopology(): WorkflowJSON {
 				},
 			},
 			{
-				id: 'bridge',
-				name: 'Eval Shape Bridge',
-				type: 'n8n-nodes-base.set',
-				typeVersion: 3.4,
-				position: [220, 240],
-				parameters: {
-					assignments: {
-						assignments: [
-							{
-								id: 'assignment-1',
-								name: 'chatInput',
-								value: '={{ $json.user_message }}',
-								type: 'string',
-							},
-						],
-					},
-				},
-			},
-			{
 				id: 'agent',
 				name: 'Classifier Agent',
 				type: '@n8n/n8n-nodes-langchain.agent',
 				typeVersion: 1,
 				position: [480, 0],
-				parameters: {},
+				parameters: {
+					text: '={{ $json.user_message }}',
+				},
 			},
 			{
 				id: 'check',
@@ -106,9 +98,6 @@ function workflowWithEvalTopology(): WorkflowJSON {
 				main: [[{ node: 'Classifier Agent', type: 'main', index: 0 }]],
 			},
 			'Eval Trigger': {
-				main: [[{ node: 'Eval Shape Bridge', type: 'main', index: 0 }]],
-			},
-			'Eval Shape Bridge': {
 				main: [[{ node: 'Classifier Agent', type: 'main', index: 0 }]],
 			},
 			'Classifier Agent': {
@@ -139,6 +128,7 @@ describe('analyzeEvalDataRequirements', () => {
 			inputColumns: ['user_message'],
 			expectedOutputColumns: ['expected_answer'],
 			actualOutputColumns: ['actual_answer'],
+			expectedToActualPairs: [{ expectedColumn: 'expected_answer', actualField: 'output' }],
 		});
 	});
 
@@ -153,5 +143,110 @@ describe('analyzeEvalDataRequirements', () => {
 
 		expect(result.targets).toEqual([]);
 		expect(result.reason).toContain('EvaluationTrigger');
+	});
+
+	it('uses analyzeAgentInputColumns to derive inputColumns from agent parameters', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'a',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].inputColumns).toEqual(['user_query']);
+		expect(result.targets[0].targetAgentNodeName).toBe('Agent');
+	});
+
+	it('extracts expectedToActualPairs from setMetrics nodes', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-1' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					parameters: { text: '={{ $json.user_query }}' },
+					position: [200, 0],
+					id: 'a',
+				},
+				{
+					name: 'Metric',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					parameters: {
+						operation: 'setMetrics',
+						expectedAnswer: "={{ $('EvalTrig').item.json.expected_response }}",
+						actualAnswer: '={{ $json.output }}',
+					},
+					position: [400, 0],
+					id: 'm',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				Agent: { main: [[{ node: 'Metric', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets[0].expectedToActualPairs).toEqual([
+			{ expectedColumn: 'expected_response', actualField: 'output' },
+		]);
+	});
+
+	it('returns empty inputColumns when no agent is reachable from the trigger', () => {
+		const workflow = wf(
+			[
+				{
+					name: 'EvalTrig',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'dt-2' } },
+					position: [0, 0],
+					id: 't',
+				},
+				{
+					name: 'SomeNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: { value: '={{ $json.col }}' },
+					position: [200, 0],
+					id: 's',
+				},
+			],
+			{
+				EvalTrig: { main: [[{ node: 'SomeNode', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const result = analyzeEvalDataRequirements(workflow);
+		expect(result.targets).toHaveLength(1);
+		expect(result.targets[0].inputColumns).toEqual([]);
+		expect(result.targets[0].targetAgentNodeName).toBeUndefined();
 	});
 });

@@ -42,28 +42,35 @@ jest.mock('@/workflow-execute-additional-data', () => ({
 }));
 
 // WorkflowExecute is a class instantiated with `new` — mock it so
-// processRunExecutionData returns a controllable IRun.
+// processRunExecutionData returns a controllable IRun and the constructor
+// arguments (including the executionData passed in) are inspectable.
 const mockProcessRunExecutionData = jest.fn();
+const mockWorkflowExecuteCtor = jest.fn().mockImplementation(() => ({
+	processRunExecutionData: mockProcessRunExecutionData,
+}));
 jest.mock('n8n-core', () => {
 	const actual = jest.requireActual('n8n-core');
 	return {
 		...actual,
-		WorkflowExecute: jest.fn().mockImplementation(() => ({
-			processRunExecutionData: mockProcessRunExecutionData,
-		})),
+		WorkflowExecute: mockWorkflowExecuteCtor,
 		ExecutionLifecycleHooks: jest.fn().mockImplementation(() => ({})),
 	};
 });
 
-// Workflow is a class instantiated with `new` — mock getStartNode
+// Workflow is a class instantiated with `new` — mock getStartNode and `nodes`
+// so individual tests can populate them (e.g. to verify the EvaluationTrigger
+// preference inside `findStartNode`).
 const mockGetStartNode = jest.fn();
+let mockWorkflowNodes: Record<string, INode> = {};
 jest.mock('n8n-workflow', () => {
 	const actual = jest.requireActual('n8n-workflow');
 	return {
 		...actual,
 		Workflow: jest.fn().mockImplementation(() => ({
 			getStartNode: mockGetStartNode,
-			nodes: {},
+			get nodes() {
+				return mockWorkflowNodes;
+			},
 		})),
 	};
 });
@@ -180,6 +187,7 @@ describe('EvalExecutionService', () => {
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		createLlmMockHandlerMock.mockReturnValue(jest.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
+		mockWorkflowNodes = {};
 		mockProcessRunExecutionData.mockResolvedValue(makeIRun());
 
 		// NodeTypes.getByNameAndVersion returns a minimal node type with no webhook
@@ -478,6 +486,80 @@ describe('EvalExecutionService', () => {
 			if (webhookResult) {
 				expect(webhookResult.executionMode).not.toBe('pinned');
 			}
+		});
+	});
+
+	// ── EvaluationTrigger preference ────────────────────────────────
+
+	describe('start node selection', () => {
+		const productionTrigger: INode = {
+			id: 'prod-1',
+			name: 'Schedule',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		} as INode;
+
+		function pinDataKeyFromLastCall(): string | undefined {
+			// `WorkflowExecute` is constructed with `(additionalData, mode, executionData)`.
+			// The trigger pin data lives at `executionData.resultData.pinData` and its
+			// single key is the start-node name.
+			const ctorArgs = mockWorkflowExecuteCtor.mock.calls[0] ?? [];
+			const executionData = ctorArgs[2] as IRunExecutionData | undefined;
+			const pinData = executionData?.resultData?.pinData ?? {};
+			return Object.keys(pinData)[0];
+		}
+
+		it('prefers an EvaluationTrigger over the production trigger when present', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+
+			const evalTrigger: INode = {
+				id: 'eval-1',
+				name: 'Eval Trigger',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				position: [0, 200] as [number, number],
+				parameters: {},
+			} as INode;
+
+			mockWorkflowNodes = { Schedule: productionTrigger, 'Eval Trigger': evalTrigger };
+			mockGetStartNode.mockReturnValue(productionTrigger);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(pinDataKeyFromLastCall()).toBe('Eval Trigger');
+		});
+
+		it('skips a disabled EvaluationTrigger and falls back to the production trigger', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+
+			const disabledEvalTrigger: INode = {
+				id: 'eval-1',
+				name: 'Eval Trigger',
+				type: 'n8n-nodes-base.evaluationTrigger',
+				typeVersion: 1,
+				position: [0, 200] as [number, number],
+				parameters: {},
+				disabled: true,
+			} as INode;
+
+			mockWorkflowNodes = { Schedule: productionTrigger, 'Eval Trigger': disabledEvalTrigger };
+			mockGetStartNode.mockReturnValue(productionTrigger);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(pinDataKeyFromLastCall()).toBe('Schedule');
+		});
+
+		it('falls back to the regular start node when the workflow has no EvaluationTrigger', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			mockWorkflowNodes = { Schedule: productionTrigger };
+			mockGetStartNode.mockReturnValue(productionTrigger);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(pinDataKeyFromLastCall()).toBe('Schedule');
 		});
 	});
 

@@ -1,5 +1,7 @@
 import type { InstanceAiEvalMetricProposal } from '@n8n/api-types';
 
+import type { NamedRef } from './detect-agent-named-refs.service';
+
 export interface FormatEvalSetupTaskInput {
 	workflowId: string;
 	workflowName: string;
@@ -10,6 +12,37 @@ export interface FormatEvalSetupTaskInput {
 	suggestedInputColumns: string[];
 	suggestedOutputColumns: string[];
 	enabledMetrics: InstanceAiEvalMetricProposal[];
+	namedRefs?: NamedRef[];
+}
+
+function formatProductionAdapter(namedRefs: NamedRef[]): string {
+	if (namedRefs.length === 0) return '';
+
+	const sources = [...new Set(namedRefs.map((r) => r.nodeName))].map((n) => `\`${n}\``).join(', ');
+	const nodeOrNodes = namedRefs.length === 1 ? 'node' : 'nodes';
+	const assignments = namedRefs
+		.map(
+			(r) => `  - { name: "${r.column}", value: "={{ ${r.originalExpression} }}", type: "string" }`,
+		)
+		.join('\n');
+	const rewrites = namedRefs
+		.map(
+			(r) =>
+				`  - Column \`${r.column}\`: replace \`${r.originalExpression}\` with \`$json.${r.column}\` everywhere it appears in the agent's parameters.`,
+		)
+		.join('\n');
+
+	return `
+PRODUCTION ADAPTER (REQUIRED — the agent currently reads input from named ${nodeOrNodes} ${sources}, which won't resolve in eval runs):
+
+1. Insert a new \`n8n-nodes-base.set\` node named \`"Eval Production Adapter"\` (\`typeVersion: 3.4\`) immediately upstream of the agent on the PRODUCTION path. The agent's existing \`main\` input parent on the production path becomes the Set adapter's \`main\` input parent. The Set adapter's \`main\` output goes to the agent.
+2. Configure the Set adapter's \`assignments.assignments\` array with these entries (one per named-ref source):
+${assignments}
+3. Rewrite the agent's parameters:
+${rewrites}
+4. The eval branch wires \`EvaluationTrigger\` directly to the agent's \`main\` input as a SECOND incoming connection (no Set adapter between them — the trigger row already has \`$json.<column>\` shape).
+
+After your edits the agent has TWO incoming \`main\` connections: one from the Eval Production Adapter (production runs) and one from the EvaluationTrigger (eval runs). Both produce \`$json.<column>\` so the rewritten agent parameters resolve in both modes.`;
 }
 
 function formatMetric(m: InstanceAiEvalMetricProposal): string {
@@ -39,6 +72,7 @@ export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
 	const metrics = input.enabledMetrics.map(formatMetric).join('\n\n');
 	const datasetSection = formatDatasetSection(input);
 	const setOutputsDataTableId = input.existingDataTableId ?? '<same as EvaluationTrigger>';
+	const adapterSection = formatProductionAdapter(input.namedRefs ?? []);
 
 	return `Set up evaluations for workflow "${input.workflowName}" (id: ${input.workflowId}).
 
@@ -47,10 +81,9 @@ AI AGENT NODES IN WORKFLOW: ${input.detectedAiNodes.join(', ')}
 DATASET:
 ${datasetSection}
 
-INPUT COLUMNS (the shape bridge MUST expose every one of these via \`={{ $json.<column> }}\` — even when the target agent uses a passthrough like \`$input.all()\` or its prompt looks hardcoded; the agent's connected sub-nodes / tools may read these columns at runtime, so include a passthrough assignment per input column even when in doubt):
+INPUT COLUMNS (the AI agent's parameters MUST reference each of these via \`={{ $json.<column> }}\`. If the agent's existing parameters reference different fields, rewrite those parameter expressions to use these dataset columns. Only rewrite input-reading parameters — leave credentials, tools, model selection, and unrelated configuration untouched):
 ${inputColumns}
-
-HARD RULE — DO NOT MODIFY TARGET AI AGENT PARAMETERS. Leave the target agent's \`text\`, \`promptType\`, \`options\`, \`systemMessage\`, tools, and every other field untouched. The shape bridge is the ONLY place where you adapt data; never rewrite the agent's prompt to match the dataset shape. If you cannot reshape the data via the Set node alone, stop and report — do not edit the agent.
+${adapterSection}
 
 GROUND-TRUTH OUTPUT COLUMNS (already in the dataset — these hold the EXPECTED values per row):
 ${outputColumns}
@@ -66,10 +99,8 @@ For each metric, set \`expectedAnswer\` to an expression pulling from the Evalua
 
 For \`correctness\` and \`helpfulness\` metrics: also wire an \`ai_languageModel\` connection from the workflow's existing LLM model node (the one already feeding the AI agent) to each setMetrics node that uses an AI-judged metric. The LLM is reused — same node, additional outgoing \`ai_languageModel\` connection. Without this, AI-judged metrics fail silently. \`stringSimilarity\`/\`categorization\`/\`toolsUsed\` don't need this.
 
-Do not modify existing production node parameters, and do not rewrite the AI Agent prompt or input expressions to make evals work. If the AI Agent currently reads another node directly, leave it unchanged and report that this target cannot be made standalone with topology-only eval setup.
-
 Apply the topology as described in your instructions:
-1. EvaluationTrigger → \`n8n-nodes-base.set\` (the SHAPE BRIDGE) → target AI agent node. The Set node is REQUIRED — it reshapes the dataset row into the shape the AI agent's existing input expressions expect (e.g. \`chatInput\` for chatTrigger, \`message.text\` for telegramTrigger, \`body.<field>\` for webhook). Inspect the AI agent's parameters in the workflow JSON to find the input expression(s) and configure the Set assignments to make those resolve correctly. Shape bridge assignment values must read only the current EvaluationTrigger row via \`$json.<input_column>\`, plus constants or constructed objects. Never reference original workflow nodes in shape bridge assignments: no \`$('Some Node').item.json\`, \`$('Some Node').first().json\`, \`$node[\`, \`$input.item\`, trigger, Wait/Delay, or preprocessing node JSON. Do not route eval input through the main trigger path, Wait/Delay nodes, or other intermediate processing nodes; recreate the required input shape in the Set node and connect it directly to the target AI agent. NOTE: \`Evaluation(setInputs)\` does NOT reshape data — it only attaches metadata for the eval-results display tab. Use a regular Set node for shape-bridging.
+1. EvaluationTrigger → target AI agent node (direct \`main\` connection). No intermediate Set/Code/transform node. The trigger emits each dataset column as \`$json.<column>\`. If the agent's existing parameters reference fields that don't match the listed INPUT COLUMNS, rewrite those parameter expressions to use \`{{ $json.<column> }}\`. NOTE: \`Evaluation(setInputs)\` does NOT reshape data — it only attaches metadata for the eval-results display tab.
 2. After the AI agent: insert \`Evaluation(checkIfEvaluating)\` (no separate IF node — it has two native output slots). Slot 0 (Evaluation) routes to setOutputs → setMetrics. Slot 1 (Normal) preserves the original production path with side-effects.
 
 Report back with a one-line summary when done.`;

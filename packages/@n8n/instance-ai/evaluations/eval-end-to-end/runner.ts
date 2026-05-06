@@ -75,10 +75,10 @@ export function buildEvalPrompt(input: {
 		].join('\n');
 	}
 
-	if (input.mode === 'structural-skip' || input.mode === 'no-ai-nodes') {
+	if (input.mode === 'no-ai-nodes') {
 		return [
 			`Try to add an evaluation suite to workflow ${input.workflowId} (${input.workflowName}).`,
-			'If eval setup is not applicable (e.g. no AI nodes, or the root agent reads from upstream nodes directly), respect that and do not force it.',
+			'If eval setup is not applicable (workflow has no AI nodes), respect that and do not force it.',
 		].join('\n');
 	}
 
@@ -352,8 +352,8 @@ export async function runEvalEndToEndCase(
 			}
 		}
 
-		if (testCase.mode === 'structural-skip' || testCase.mode === 'no-ai-nodes') {
-			// In skip modes the agent must NOT have fabricated eval nodes despite
+		if (testCase.mode === 'no-ai-nodes') {
+			// In skip mode the agent must NOT have fabricated eval nodes despite
 			// our prompt asking for them — that would be a real bug.
 			if (topologyShape.evaluationTriggerFound || topologyShape.evaluationNodeFound) {
 				topology.findings.push({
@@ -411,7 +411,7 @@ export async function runEvalEndToEndCase(
 			logger,
 		});
 
-		const skipsExecution = testCase.mode === 'structural-skip' || testCase.mode === 'no-ai-nodes';
+		const skipsExecution = testCase.mode === 'no-ai-nodes';
 		const passed =
 			toolSelection.findings.length === 0 &&
 			topology.findings.length === 0 &&
@@ -494,7 +494,7 @@ async function runEvalExecutionForMode(input: {
 	dataTableRowCount: number;
 	logger: EvalLogger;
 }): Promise<EvalEndToEndExecutionResult> {
-	if (input.mode === 'structural-skip' || input.mode === 'no-ai-nodes') {
+	if (input.mode === 'no-ai-nodes') {
 		return {
 			attempted: false,
 			success: false,
@@ -541,17 +541,17 @@ async function runEvalExecutionForMode(input: {
 
 /**
  * Drop tool-call findings that don't apply to the case's mode. For
- * `structural-skip` and `already-configured` workflows the agent is
- * EXPECTED not to call the eval setup chain, so the absence of those
- * tool calls is not a failure.
+ * `already-configured` and `no-ai-nodes` workflows the agent is EXPECTED
+ * not to call the eval setup chain, so the absence of those tool calls is
+ * not a failure.
  */
 export function filterToolSelectionForMode(
 	raw: EvalEndToEndToolSelectionResult,
 	mode: EvalEndToEndMode,
 ): EvalEndToEndToolSelectionResult {
 	// `eligible` is the only mode that requires the full chain — every other
-	// mode (already-configured, structural-skip, no-ai-nodes) must NOT call
-	// the chain because eval setup is either already done or not applicable.
+	// mode (already-configured, no-ai-nodes) must NOT call the chain because
+	// eval setup is either already done or not applicable.
 	if (mode === 'eligible') return raw;
 
 	return {

@@ -104,34 +104,4 @@ describe('loadEvalEndToEndCases — mode detection', () => {
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
-
-	it('marks a workflow whose root agent reads upstream JSON as structural-skip', () => {
-		const root = makeFixtureRoot({
-			reads_upstream: {
-				name: 'Reads',
-				nodes: [
-					{
-						name: 'Slack Trigger',
-						type: 'n8n-nodes-base.slackTrigger',
-						typeVersion: 1,
-						parameters: {},
-					},
-					{
-						name: 'Agent',
-						type: '@n8n/n8n-nodes-langchain.agent',
-						typeVersion: 1,
-						parameters: { text: "={{ $('Slack Trigger').item.json.text }}" },
-					},
-				],
-				connections: {},
-			},
-		});
-
-		try {
-			const cases = loadEvalEndToEndCases({ rootDir: root });
-			expect(cases[0].mode).toBe('structural-skip');
-		} finally {
-			rmSync(root, { recursive: true, force: true });
-		}
-	});
 });

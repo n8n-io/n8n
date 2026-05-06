@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nInput, N8nMarkdown, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -495,9 +495,10 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 									<N8nText size="medium" bold>
 										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
 									</N8nText>
-									<ConfirmationPreview>{{
-										item.toolCall.confirmation!.message
-									}}</ConfirmationPreview>
+									<N8nMarkdown
+										:class="$style.message"
+										:content="item.toolCall.confirmation!.message"
+									/>
 								</div>
 
 								<ConfirmationFooter>
@@ -595,6 +596,12 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .textCard {
 	background-color: var(--color--background--light-3);
+}
+
+.message {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	word-break: break-word;
 }
 </style>
 

@@ -124,6 +124,7 @@ import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
+import EvalsHintCallout from '@/features/ai/evaluation.ee/components/EvalsHintCallout.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
@@ -1967,6 +1968,8 @@ onBeforeUnmount(() => {
 			>
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
+
+			<EvalsHintCallout v-if="!isCanvasReadOnly" />
 
 			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"

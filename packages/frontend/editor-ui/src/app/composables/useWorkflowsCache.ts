@@ -4,6 +4,7 @@ import { ref } from 'vue';
 
 const actionTypes = [
 	'evaluations',
+	'evals-hint',
 	'errorWorkflow',
 	'timeSaved',
 	'workflow-mcp-access',

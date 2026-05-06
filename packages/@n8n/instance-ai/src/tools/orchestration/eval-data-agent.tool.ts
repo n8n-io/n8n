@@ -1,289 +1,168 @@
 import { createTool } from '@mastra/core/tools';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
-import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { truncateLabel } from './display-utils';
-import { createDetachedSubAgentTracing, withTraceContextActor } from './tracing-utils';
-import type { BackgroundTaskResult, DataTableColumnInfo, OrchestrationContext } from '../../types';
-import {
-	analyzeEvalDataRequirements,
-	type EvalDataTarget,
-} from '../evals/eval-data-requirements.service';
+import type { InstanceAiDataTableService, OrchestrationContext } from '../../types';
+import { analyzeEvalDataRequirements } from '../evals/eval-data-requirements.service';
+import { extractRowsFromExecutionHistory } from '../evals/extract-rows-from-history.service';
 import { generateSampleRows } from '../evals/generate-sample-rows.service';
 
-const DEFAULT_ROW_COUNT = 25;
+const HISTORY_THRESHOLD = 10;
+const GENERATE_ROW_COUNT = 10;
+const FALLBACK_COLUMN = 'input';
+
+async function ensureColumnsExist(
+	dataTableService: InstanceAiDataTableService,
+	dataTableId: string,
+	rows: Array<Record<string, unknown>>,
+	options: { projectId?: string } | undefined,
+): Promise<void> {
+	const referencedColumns = new Set<string>();
+	for (const row of rows) {
+		for (const key of Object.keys(row)) referencedColumns.add(key);
+	}
+	if (referencedColumns.size === 0) return;
+
+	const schema = await dataTableService.getSchema(dataTableId, options);
+	const existing = new Set(schema.map((c) => c.name));
+	const missing = [...referencedColumns].filter((name) => !existing.has(name));
+
+	for (const name of missing) {
+		await dataTableService.addColumn(dataTableId, { name, type: 'string' }, options);
+	}
+}
 
 const evalDataInputSchema = z.object({
 	workflowId: z.string().describe('ID of the workflow whose eval DataTable should be populated'),
-	projectId: z
-		.string()
-		.optional()
-		.describe('Project ID used to disambiguate the DataTable when available'),
-	rowCount: z
-		.number()
-		.int()
-		.positive()
-		.max(100)
-		.optional()
-		.describe('Number of synthetic rows to generate (default 25)'),
-	targetAgentNodeName: z
-		.string()
-		.optional()
-		.describe('Optional AI agent node name when the workflow has multiple eval targets'),
+	projectId: z.string().optional(),
 });
 
-const confirmationSuspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	severity: instanceAiConfirmationSeveritySchema,
-	workflowId: z.string(),
-	dataTableId: z.string(),
-	rowCount: z.number(),
-	columns: z.array(z.string()),
+const outputSchema = z.object({
+	status: z.enum(['imported', 'generated', 'skipped']),
+	rowCount: z.number().optional(),
+	source: z.enum(['history', 'synthetic']).optional(),
+	reason: z.string().optional(),
 });
-
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
-
-type EvalDataInput = z.infer<typeof evalDataInputSchema>;
-type ResumeData = z.infer<typeof confirmationResumeSchema>;
-
-interface EvalDataRunInput extends EvalDataInput {
-	dataTableId: string;
-	columns: string[];
-	targetAgentNodeName?: string;
-}
-
-function unique(values: string[]): string[] {
-	return [...new Set(values.filter((value) => value.length > 0))];
-}
-
-function selectTarget(targets: EvalDataTarget[], targetAgentNodeName?: string): EvalDataTarget {
-	if (!targetAgentNodeName) return targets[0];
-	return targets.find((target) => target.targetAgentNodeName === targetAgentNodeName) ?? targets[0];
-}
-
-function isGeneratedColumn(target: EvalDataTarget, columnName: string): boolean {
-	return !target.actualOutputColumns.includes(columnName) && !columnName.startsWith('actual_');
-}
-
-function resolveGenerationColumns(target: EvalDataTarget, schema: DataTableColumnInfo[]): string[] {
-	const schemaColumnNames = schema.map((column) => column.name);
-	const inferredColumns = unique([...target.inputColumns, ...target.expectedOutputColumns]).filter(
-		(column) => schemaColumnNames.includes(column),
-	);
-	const sourceColumns = inferredColumns.length > 0 ? inferredColumns : schemaColumnNames;
-	return unique(sourceColumns.filter((column) => isGeneratedColumn(target, column)));
-}
-
-async function getEvalDataRunInput(
-	context: OrchestrationContext,
-	input: EvalDataInput,
-): Promise<EvalDataRunInput | { skipped: true; reason: string }> {
-	const domainContext = context.domainContext;
-	if (!domainContext) {
-		return { skipped: true, reason: 'Domain context is not available.' };
-	}
-
-	const workflow = await domainContext.workflowService.getAsWorkflowJSON(input.workflowId);
-	const requirements = analyzeEvalDataRequirements(workflow);
-	if (requirements.targets.length === 0) {
-		return { skipped: true, reason: requirements.reason ?? 'No eval DataTable found.' };
-	}
-
-	const target = selectTarget(requirements.targets, input.targetAgentNodeName);
-	const schema = await domainContext.dataTableService.getSchema(target.dataTableId, {
-		projectId: input.projectId,
-	});
-	const columns = resolveGenerationColumns(target, schema);
-	if (columns.length === 0) {
-		return {
-			skipped: true,
-			reason: `DataTable ${target.dataTableId} has no columns suitable for synthetic eval data.`,
-		};
-	}
-
-	return {
-		...input,
-		dataTableId: target.dataTableId,
-		columns,
-		targetAgentNodeName: input.targetAgentNodeName ?? target.targetAgentNodeName,
-	};
-}
-
-export async function runEvalDataGeneration(
-	context: OrchestrationContext,
-	input: EvalDataRunInput,
-): Promise<BackgroundTaskResult> {
-	const domainContext = context.domainContext;
-	if (!domainContext) {
-		throw new Error('Domain context is not available.');
-	}
-	const workflow = await domainContext.workflowService.getAsWorkflowJSON(input.workflowId);
-	const rows = await generateSampleRows({
-		workflow,
-		columns: input.columns,
-		rowCount: input.rowCount,
-		targetAgentNodeName: input.targetAgentNodeName,
-	});
-	const result = await domainContext.dataTableService.insertRows(input.dataTableId, rows, {
-		projectId: input.projectId,
-	});
-	return {
-		text: `Eval data generated: ${result.insertedCount} rows inserted into DataTable ${input.dataTableId}.`,
-		outcome: {
-			workflowId: input.workflowId,
-			dataTableId: input.dataTableId,
-			insertedCount: result.insertedCount,
-			columns: input.columns,
-		},
-	};
-}
-
-export interface StartedEvalDataAgentTask {
-	result: string;
-	taskId: string;
-	agentId: string;
-}
-
-export async function startEvalDataAgentTask(
-	context: OrchestrationContext,
-	input: EvalDataRunInput,
-): Promise<StartedEvalDataAgentTask> {
-	if (!context.spawnBackgroundTask) {
-		return { result: 'Error: background task support not available.', taskId: '', agentId: '' };
-	}
-
-	const subAgentId = `agent-evaldata-${nanoid(6)}`;
-	const taskId = `evaldata-${nanoid(8)}`;
-	const rowCount = input.rowCount ?? DEFAULT_ROW_COUNT;
-	const goal = `Generate ${rowCount} synthetic eval rows for workflow ${input.workflowId} and insert them into DataTable ${input.dataTableId}.`;
-
-	const traceContext = await createDetachedSubAgentTracing(context, {
-		agentId: subAgentId,
-		role: 'eval-data',
-		kind: 'eval-data',
-		taskId,
-		inputs: input,
-	});
-
-	const spawnOutcome = context.spawnBackgroundTask({
-		taskId,
-		threadId: context.threadId,
-		agentId: subAgentId,
-		role: 'eval-data',
-		traceContext,
-		dedupeKey: { role: 'eval-data', workflowId: input.workflowId },
-		parentCheckpointId:
-			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
-		run: async () =>
-			await withTraceContextActor(
-				traceContext,
-				async () => await runEvalDataGeneration(context, input),
-			),
-	});
-
-	if (spawnOutcome.status === 'duplicate') {
-		return {
-			result: `Eval data generation already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the background-task follow-up — do not dispatch again.`,
-			taskId: spawnOutcome.existing.taskId,
-			agentId: spawnOutcome.existing.agentId,
-		};
-	}
-	if (spawnOutcome.status === 'limit-reached') {
-		return {
-			result:
-				'Could not start eval data generation: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
-			taskId: '',
-			agentId: '',
-		};
-	}
-
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'eval-data',
-			tools: [],
-			taskId,
-			kind: 'data-table',
-			title: 'Generating eval data',
-			subtitle: truncateLabel(goal),
-			goal,
-			targetResource: { type: 'data-table' as const, id: input.dataTableId },
-		},
-	});
-
-	return {
-		result: `Eval data generation started (task: ${taskId}). Do NOT summarize the plan or list details.`,
-		taskId,
-		agentId: subAgentId,
-	};
-}
 
 export function createEvalDataAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'eval-data',
 		description:
-			'Ask whether to generate synthetic rows for an existing eval DataTable, then start the dedicated eval-data sub-agent. Use after eval nodes exist, including workflows where eval nodes were configured manually.',
+			'Populate an eval DataTable for a workflow that already has its eval setup wired. ' +
+			'First scans the workflow execution history for real rows; if fewer than 10 valid rows ' +
+			'are available, generates 10 synthetic rows instead. Inserts at most 25 rows total. ' +
+			'Synchronous — no sub-agent, no HITL.',
 		inputSchema: evalDataInputSchema,
-		suspendSchema: confirmationSuspendSchema,
-		resumeSchema: confirmationResumeSchema,
-		outputSchema: z.object({
-			success: z.boolean(),
-			deferred: z.boolean().optional(),
-			skipped: z.boolean().optional(),
-			reason: z.string().optional(),
-			shouldWaitForEvalDataAgent: z.boolean().optional(),
-			result: z.string().optional(),
-			taskId: z.string().optional(),
-			agentId: z.string().optional(),
-			dataTableId: z.string().optional(),
-		}),
-		execute: async (input: EvalDataInput, ctx) => {
-			const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-			const suspend = ctx?.agent?.suspend as
-				| ((payload: z.infer<typeof confirmationSuspendSchema>) => Promise<void>)
-				| undefined;
-
-			const runInput = await getEvalDataRunInput(context, input);
-			if ('skipped' in runInput) {
-				return { success: true, skipped: true, reason: runInput.reason };
+		outputSchema,
+		execute: async (input: z.infer<typeof evalDataInputSchema>) => {
+			const domain = context.domainContext;
+			if (!domain) {
+				return { status: 'skipped' as const, reason: 'Domain context unavailable.' };
 			}
 
-			if (resumeData === undefined || resumeData === null) {
-				await suspend?.({
-					requestId: nanoid(),
-					message: `Generate synthetic eval data for this workflow? This will insert ${runInput.rowCount ?? DEFAULT_ROW_COUNT} rows into DataTable ${runInput.dataTableId}.`,
-					severity: 'info' as const,
-					workflowId: input.workflowId,
-					dataTableId: runInput.dataTableId,
-					rowCount: runInput.rowCount ?? DEFAULT_ROW_COUNT,
-					columns: runInput.columns,
-				});
-				return { success: false };
-			}
+			const log = (
+				level: 'info' | 'warn' | 'error',
+				msg: string,
+				meta?: Record<string, unknown>,
+			) => {
+				domain.logger?.[level]?.(`[eval-data] ${msg}`, meta);
+			};
 
-			if (!resumeData.approved) {
+			log('info', 'start', { workflowId: input.workflowId, projectId: input.projectId });
+
+			const workflow = await domain.workflowService.getAsWorkflowJSON(input.workflowId);
+			const reqs = analyzeEvalDataRequirements(workflow);
+			const target = reqs.targets[0];
+			if (!target) {
+				log('warn', 'skip:no-target', { reason: reqs.reason });
+				return { status: 'skipped' as const, reason: reqs.reason ?? 'No eval target.' };
+			}
+			log('info', 'target', {
+				dataTableId: target.dataTableId,
+				agent: target.targetAgentNodeName,
+				inputColumns: target.inputColumns,
+				expectedOutputColumns: target.expectedOutputColumns,
+				pairs: target.expectedToActualPairs,
+			});
+			if (!target.targetAgentNodeName) {
+				log('warn', 'skip:no-agent');
 				return {
-					success: true,
-					deferred: true,
-					reason: 'User skipped synthetic eval data generation.',
+					status: 'skipped' as const,
+					reason: 'No agent node reachable from EvaluationTrigger.',
+				};
+			}
+			if (
+				target.inputColumns.length === 0 ||
+				(target.inputColumns.length === 1 && target.inputColumns[0] === FALLBACK_COLUMN)
+			) {
+				log('warn', 'skip:fallback-only', { inputColumns: target.inputColumns });
+				return {
+					status: 'skipped' as const,
+					reason: 'no-detectable-input-columns-in-agent-parameters',
 				};
 			}
 
-			const started = await startEvalDataAgentTask(context, runInput);
+			const { rows: historyRows } = await extractRowsFromExecutionHistory(domain, {
+				workflow,
+				workflowId: input.workflowId,
+				agentNodeName: target.targetAgentNodeName,
+				inputColumns: target.inputColumns,
+				expectedToActualPairs: target.expectedToActualPairs,
+			});
+			log('info', 'history-extracted', { count: historyRows.length });
+
+			let rowsToInsert: Array<Record<string, unknown>>;
+			let source: 'history' | 'synthetic';
+
+			if (historyRows.length >= HISTORY_THRESHOLD) {
+				rowsToInsert = historyRows;
+				source = 'history';
+			} else {
+				rowsToInsert = await generateSampleRows({
+					workflow,
+					columns: [...target.inputColumns, ...target.expectedOutputColumns],
+					rowCount: GENERATE_ROW_COUNT,
+				});
+				source = 'synthetic';
+			}
+			log('info', 'rows-prepared', {
+				source,
+				count: rowsToInsert.length,
+				firstRowKeys: rowsToInsert[0] ? Object.keys(rowsToInsert[0]) : [],
+			});
+
+			const dataTableOptions = input.projectId ? { projectId: input.projectId } : undefined;
+
+			try {
+				await ensureColumnsExist(
+					domain.dataTableService,
+					target.dataTableId,
+					rowsToInsert,
+					dataTableOptions,
+				);
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				log('error', 'ensureColumnsExist-failed', { error: message });
+				throw err;
+			}
+
+			try {
+				const result = await domain.dataTableService.insertRows(
+					target.dataTableId,
+					rowsToInsert,
+					dataTableOptions,
+				);
+				log('info', 'insertRows-ok', { result });
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				log('error', 'insertRows-failed', { error: message });
+				throw err;
+			}
+
+			log('info', 'done', { source, rowCount: rowsToInsert.length });
 			return {
-				success: true,
-				shouldWaitForEvalDataAgent: Boolean(started.taskId),
-				result: started.result,
-				taskId: started.taskId,
-				agentId: started.agentId,
-				dataTableId: runInput.dataTableId,
+				status: source === 'history' ? ('imported' as const) : ('generated' as const),
+				rowCount: rowsToInsert.length,
+				source,
 			};
 		},
 	});

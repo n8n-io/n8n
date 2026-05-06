@@ -72,7 +72,6 @@ function detectMode(workflow: WorkflowResponse): EvalEndToEndMode {
 	const detection = detectAiNodes(workflow as unknown as WorkflowJSON);
 	if (detection.alreadyConfigured) return 'already-configured';
 	if (!detection.isAiWorkflow) return 'no-ai-nodes';
-	if (detection.rootAgentReadsOtherNode) return 'structural-skip';
 	return 'eligible';
 }
 

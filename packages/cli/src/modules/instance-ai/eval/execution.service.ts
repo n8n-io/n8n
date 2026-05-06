@@ -282,10 +282,24 @@ export class EvalExecutionService {
 
 	/**
 	 * Find the workflow's trigger/start node.
-	 * Uses Workflow.getStartNode() first (handles trigger, poll, and STARTING_NODE_TYPES),
-	 * then falls back to checking for webhook nodes which getStartNode() doesn't cover.
+	 *
+	 * When the workflow has an EvaluationTrigger, prefer it: that is the entry
+	 * point users hit from the "Evaluation" tab in the UI, and the mock run
+	 * should reproduce the same execution path end-to-end (Eval Trigger →
+	 * shape bridge → target agent → set outputs → set metrics) rather than
+	 * the production trigger path (which routes through nodes that depend on
+	 * real upstream data and crash under mocked input).
+	 *
+	 * Falls back to Workflow.getStartNode() (which handles regular triggers,
+	 * poll, and STARTING_NODE_TYPES), then to webhook nodes which
+	 * getStartNode() doesn't cover.
 	 */
 	private findStartNode(workflow: Workflow): INode | undefined {
+		const evaluationTrigger = Object.values(workflow.nodes).find(
+			(node) => !node.disabled && node.type === 'n8n-nodes-base.evaluationTrigger',
+		);
+		if (evaluationTrigger) return evaluationTrigger;
+
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
 	}
 

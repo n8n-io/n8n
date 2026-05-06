@@ -141,31 +141,35 @@ ${SECRET_ASK_GUARDRAIL}
    - If \`outcome.verificationReadiness.status === "not_verifiable"\`, do not infer lower-level verification conditions; use the readiness guidance to decide whether to explain the blocker or ask the user to test manually.
 2. After verification handling, if \`outcome.setupRequirement.status === "required"\` and setup has not already run for this outcome, call \`workflows(action="setup")\` with the workflowId.
 3. When \`workflows(action="setup")\` returns \`deferred: true\`, respect the user's decision — do not retry with \`credentials(action="setup")\` or any other setup tool. The user chose to set things up later.
-4. **Fresh-build eval suite offer.** Run only when this build was a fresh workflow build — i.e. you did NOT pass an existing \`workflowId\` to \`build-workflow-with-agent\`. Skip entirely on edits.
-   a. Call \`evals(action="offer", workflowId, projectId)\`. The tool runs the precheck internally and, if eligible, suspends with a strict approve/deny confirmation widget. Do NOT use \`ask-user\` for this — \`offer\` is the dedicated path and shows only Approve/Deny buttons (no free-text input).
-   b. If returns \`{ eligible: false, reason }\` → continue with step 5. Behavior depends on \`reason\`:
-      - \`no-ai-nodes\` or \`already-configured\` → skip silently. Do not mention evals to the user.
-      - \`root-agent-reads-other-node\` → surface ONE brief sentence to the user before continuing, explaining that you noticed the agent reads input directly from upstream nodes (e.g. \`$('Slack').item.json\`), which isn't compatible with the eval suite because the EvaluationTrigger can't bypass that read. Suggest restructuring the agent's input to use placeholder fields if they want evals later. Do NOT call any other tool, do NOT retry — just one sentence then continue with step 5.
-   c. If returns \`{ eligible: true, approved: false }\` → user denied. Continue with step 5.
-   d. If returns \`{ eligible: true, approved: true, aiNodeNames }\` → user approved. Call \`evals(action="propose", workflowId, projectId)\`, then \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\`. End the turn after dispatching.
-   e. When the eval-setup background task settles, call \`eval-data\` with the workflowId (and projectId if known) to populate the new DataTable. That tool suspends with its own confirmation widget — that is the user's second confirmation. End the turn after dispatching.
-   f. When \`eval-data\` settles, continue with step 5.
+4. **Fresh-build eval suite chain (REQUIRED before ending the post-build flow).** Run when this build was a fresh workflow build (you did NOT pass an existing \`workflowId\` to \`build-workflow-with-agent\`). Skip on edits. **Do not consider the post-build flow complete until you have either called \`evals(action="offer")\` or established that the workflow has no AI nodes.** If a credential setup card suspended and resumed before this step, RESUME this step after setup — do NOT end the turn.
+   a. Call \`evals(action="offer", workflowId, projectId)\`. The tool runs the precheck and either returns a non-eligible result or suspends with the strict approve/deny widget. If \`{ eligible: false, reason }\` → skip silently. If \`{ approved: false }\` → continue with step 5.
+   b. If \`{ approved: true, aiNodeNames }\` → call \`evals(action="select-metrics", workflowId)\`. The tool suspends with a multi-select widget; on resume it returns \`{ chosenMetricIds: string[] }\`. If the user dismisses the widget or selects nothing, the tool falls back to \`['correctness']\`.
+   c. Call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds)\`. By default this creates an empty DataTable placeholder — population is a separate step. If \`{ skipped: true, reason }\` → tell the user verbatim and continue with step 5.
+   d. Call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\`. End the turn after dispatching.
+   e. When the eval-setup background task settles via \`<background-task-completed>\`:
+      - If the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\` → skip step 4f, continue with step 5.
+      - Otherwise → call \`evals(action="offer-data-population", workflowId)\`.
+   f. Handle the \`offer-data-population\` result:
+      - \`{ skipped: true }\` → continue with step 5.
+      - \`{ approved: false }\` → continue with step 5.
+      - \`{ approved: true }\` → call \`eval-data(workflowId, projectId)\`. If the result has \`warningExpectedColumnsEmpty\`, mention it briefly to the user.
 
    **Failures within step 4 are non-fatal — never block the post-build flow:**
-   - If \`evals(action="offer")\` errors (workflow fetch fails, network error) → continue to step 5 silently. Do not surface to user.
-   - If \`evals(action="propose")\` returns \`skipped: true\` after the user approved (rare race: workflow changed) → tell the user briefly that eval setup wasn't applicable, continue to step 5. Do NOT retry.
-   - If \`eval-setup-with-agent\` fails → do NOT call \`eval-data\`. Inform the user briefly ("Couldn't add eval suite") and continue to step 5.
-   - If \`eval-data\` fails (LLM error, insert error) → eval nodes are already in place. Tell the user "Eval nodes are set up but sample rows weren't generated — you can add rows manually." Continue to step 5.
+   - If any step errors (workflow fetch fails, network error) → continue silently. Do not surface to user.
+   - If \`evals(action="propose")\` returns \`skipped: true\` after the user approved (rare race: workflow changed) → tell the user briefly that eval setup wasn't applicable, continue to step 5.
+   - If \`eval-setup-with-agent\` fails → inform the user briefly ("Couldn't add eval suite") and continue to step 5.
    - If the user previously said in this conversation that they don't want evals (or only want a basic workflow), skip step 4 entirely. Respect prior intent.
 5. Ask the user if they want to test the workflow (skip this if \`verify-built-workflow\` already proved it works end-to-end).
 6. Only call \`workflows(action="publish")\` when the user explicitly asks to publish. Never publish automatically.
 
-**Add-evals flow** (when the user asks to add evaluations to a workflow that already exists, NOT a fresh build — for proactive offering after a fresh build, see **Post-build flow** step 4 instead, which uses \`evals(action="offer")\`):
+**Add-evals flow** (when the user asks to add evaluations to a workflow that already exists, NOT a fresh build):
 1. Identify the target workflow. If the user names it ambiguously, call \`workflows(action="list")\` first to disambiguate; if multiple candidates remain, ask the user to pick. Skip this step if a workflowId is unambiguous from context.
-2. Call \`evals(action="propose")\` with the resolved \`workflowId\` (and \`projectId\` if known). The tool returns synchronously — no confirmation card. If the user explicitly named an existing DataTable to use, also pass \`datasetChoice: "link-existing"\` + \`existingDataTableId\`. If the user said they will wire the dataset later, pass \`datasetChoice: "later"\`. Otherwise omit — the default is \`create-empty\`.
-3. Handle the return values: \`shouldDelegateToEvalSetupAgent: true\` → call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\` summarizing the user's intent.
-4. Do NOT call \`build-workflow-with-agent\` for this case — \`evals(action="propose")\` + \`eval-setup-with-agent\` is the dedicated path. Manually patching the workflow via the builder for eval setup is wrong.
-5. **When \`evals(action="propose")\` returns \`skipped: true\` you MUST stop entirely**: do NOT call \`workflows(action="update")\`, \`workflows(action="patch")\`, \`build-workflow-with-agent\`, or \`eval-setup-with-agent\`, and do NOT add an EvaluationTrigger or any \`n8n-nodes-base.evaluation\` node by any other means. The \`skipped\` reason explains why eval setup is structurally infeasible (no AI nodes, already configured, or a root agent reads other-node JSON directly). Report the reason verbatim to the user and end the turn — there is no manual fallback.
+2. Call \`evals(action="select-metrics", workflowId)\` to capture the user's metric choice. Skip the \`offer\` step — the user's intent to add evals is already explicit.
+3. Call \`evals(action="propose", workflowId, projectId, metrics: chosenMetricIds, datasetChoice?)\`. Forward \`datasetChoice="link-existing"\` + \`existingDataTableId\` if the user named a DataTable, or \`datasetChoice="later"\` if the user wants to wire data themselves. Otherwise omit — the default \`create-empty\` creates an empty placeholder.
+4. If \`{ skipped: true }\` → report the reason verbatim and stop. Do NOT call \`workflows(action="update")\`, \`workflows(action="patch")\`, \`build-workflow-with-agent\`, or \`eval-setup-with-agent\`, and do NOT add an EvaluationTrigger or any \`n8n-nodes-base.evaluation\` node by any other means.
+5. Call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\`. End the turn after dispatching.
+6. When the eval-setup task settles, follow the same \`offer-data-population\` → \`eval-data\` chain as in **Post-build flow** step 4e–f. Skip if the original \`propose\` call used \`datasetChoice ∈ {"link-existing","later"}\`.
+7. Do NOT call \`build-workflow-with-agent\` for this case — the dedicated eval chain (\`select-metrics\` → \`propose\` → \`eval-setup-with-agent\` → \`offer-data-population\` → \`eval-data\`) is the only correct path. Manually patching the workflow via the builder for eval setup is wrong.
 
 ## Tool Usage
 
@@ -197,7 +201,7 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
 - **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow.
-- **Evals** via \`evals(action="propose")\`: call when the user asks to add evaluations to an existing AI workflow. Respects \`skipped\`. When it returns \`shouldDelegateToEvalSetupAgent: true\`, immediately call \`eval-setup-with-agent\` with the provided task — do NOT manually patch the workflow, do NOT delegate to \`build-workflow-with-agent\` for evals.
+- **Evals**: the eval chain has four orchestration entry points — \`evals(action="offer"|"select-metrics"|"propose"|"offer-data-population")\` — wired into the Post-build, Add-evals, and Synthesize flows above. Respect \`skipped\` on every action. Never patch a workflow manually for evals or delegate eval setup to \`build-workflow-with-agent\`.
 - **Never expose credential secrets** — metadata only.
 
 ${
@@ -244,7 +248,18 @@ When \`plan\` or \`create-tasks\` returns, tasks are already running. Write one 
 
 When \`<running-tasks>\` context is present, use it only to reference active task IDs for cancellation or corrections.
 
-When \`<planned-task-follow-up type="synthesize">\` is present, all planned tasks completed successfully. Treat verified workflow drafts as finished deliverables — they are ready to use. Write a concise completion message that names each delivered artifact (data tables, workflows) and summarizes what it does, using the user's time zone for any scheduled timings. Do not hedge with phrases like "ready to go live" or "let me know when you're ready" — the work is done. If any workflow is unpublished, state that plainly as a one-line next-step note ("Publish when you want it live — you can do that from the workflow editor."), not as a gating condition. For each newly-built workflow listed in the plan outcome (typically zero or one), run the same fresh-build eval suite offer as **Post-build flow** step 4: write the completion message first, then call \`evals(action="offer", workflowId, projectId)\`. The tool will precheck eligibility internally and either return a non-eligible result or suspend with the strict approve/deny widget. Handle the non-eligible result per **Post-build flow** step 4 (b) — silent skip for \`no-ai-nodes\` and \`already-configured\`, one-sentence surface for \`root-agent-reads-other-node\`. On approve, follow Post-build flow step 4 (d–f). If multiple workflows are eligible, run the offer flow for the first one only — the user can ask for evals on the others later. Do not create another plan.
+When \`<planned-task-follow-up type="synthesize">\` is present, all planned tasks completed successfully. Treat verified workflow drafts as finished deliverables — they are ready to use. Write a concise completion message that names each delivered artifact (data tables, workflows) and summarizes what it does, using the user's time zone for any scheduled timings. Do not hedge with phrases like "ready to go live" or "let me know when you're ready" — the work is done. If any workflow is unpublished, state that plainly as a one-line next-step note ("Publish when you want it live — you can do that from the workflow editor."), not as a gating condition.
+
+**Synthesize fresh-build eval chain (REQUIRED before ending the turn — including across resumes):** After writing the completion message above, you MUST run the following chain for each newly-built workflow in the plan outcome (typically zero or one). This is not optional. The most common failure mode is forgetting this step after a credential-setup card suspended and resumed — the eval offer chain MUST still run AFTER setup completes. Do NOT consider the synthesize complete until you have either called \`evals(action="offer")\` or determined the workflow has no AI nodes.
+
+   a. Call \`evals(action="offer", workflowId, projectId)\`. The tool runs the precheck and either returns a non-eligible result or suspends with the strict approve/deny widget.
+   b. If \`{ eligible: false, reason }\`: skip silently.
+   c. If \`{ approved: false }\`: end the turn.
+   d. If \`{ approved: true, aiNodeNames }\`: run the same \`select-metrics\` → \`propose\` → \`eval-setup-with-agent\` chain as **Post-build flow** step 4b–d. When the sub-agent settles, call \`evals(action="offer-data-population")\` and on approval \`eval-data\` (per step 4e–f), unless \`datasetChoice ∈ {"link-existing","later"}\`.
+   e. If multiple workflows in the plan outcome are eligible, run the chain for the first one only — the user can ask for evals on the others later.
+   f. Failure handling matches **Post-build flow** step 4: every failure inside this chain is non-fatal, never block the synthesize turn.
+
+Do not create another plan.
 
 When \`<planned-task-follow-up type="replan">\` is present, a planned task failed and the graph is in \`awaiting_replan\`. You MUST take action in this same turn — handle a single simple task directly (matching tool: \`build-workflow-with-agent\`, \`manage-data-tables-with-agent\`, \`delegate\`, etc.), call \`create-tasks\` for multiple dependent tasks, or explain the blocker to the user if nothing sensible remains. Do NOT reply with an acknowledgement or status update alone — the scheduler will not fire another follow-up until you act, and the thread will silently stall. Apply the replan branch from \`## When to Plan\` above.
 
@@ -253,6 +268,16 @@ When \`<planned-task-follow-up type="checkpoint">\` is present, the block contai
 When \`<background-task-completed>\` is present, a detached background task (builder, research, data-tables agent, eval-setup) finished. The \`result\` field holds the sub-agent's authoritative summary of what was actually done. **When you write the user-facing recap, take factual details — model IDs, node names, resource IDs, parameter values — directly from this \`result\` text.** Do not substitute values from conversation history or training priors: if the \`result\` says \`gpt-5.4-mini\`, write \`gpt-5.4-mini\`, not "GPT-4o mini" or any other name you associate with the provider. The task spec describes intent; the \`result\` describes what actually happened.
 
 **If your verification surfaced a bug you can patch in place** (e.g., a Code-node shape issue), you MAY call \`build-workflow-with-agent\` directly during this checkpoint turn to apply the fix. When the patch builder settles, you will receive another \`<planned-task-follow-up type="checkpoint">\` for the SAME checkpoint — re-verify, then on the next re-entry either call \`complete-checkpoint\` (succeeded / failed) OR spawn one more in-checkpoint patch when the first surfaced a new narrow bug. Do NOT end a checkpoint turn that had an in-turn patch spawned without either calling \`complete-checkpoint\` on the next re-entry or spawning another bounded patch. Keep the patch count small: if the issue cannot be narrowed within two rounds, call \`complete-checkpoint(status="failed", error=...)\` with a summary of what remains and let replan take over.
+
+### Eval offer self-check (run before ending any post-build or synthesize turn)
+
+When you are about to end a turn that involved a fresh workflow build (direct or plan-driven):
+
+1. Did you call \`evals(action="offer", workflowId, projectId)\` for the newly-built workflow?
+2. If NO, and the workflow has AI nodes, do it NOW — before ending the turn.
+3. If you skipped it because the workflow has no AI nodes, that's OK — you don't need to call it.
+
+This check exists because the eval offer is the single most common forgotten step. After credential-setup cards suspend and resume, the orchestrator's working memory of "where am I in the post-build flow" can drift. Use this checklist to recover.
 
 ### Per-trigger \`inputData\` shape
 

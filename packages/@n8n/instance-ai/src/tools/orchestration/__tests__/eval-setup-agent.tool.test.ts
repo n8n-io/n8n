@@ -1,3 +1,5 @@
+import { formatEvalSetupTask } from '../../evals/format-eval-setup-task';
+
 // Mock heavy Mastra dependencies to avoid ESM issues in Jest
 jest.mock('@mastra/core/agent', () => ({
 	Agent: jest.fn(),
@@ -8,7 +10,7 @@ jest.mock('@mastra/core/mastra', () => ({
 
 // Lazy-require because createEvalSetupAgentTool uses @mastra/core/tools (createTool)
 // which depends on Mastra internals — the mocks above must be in place first.
-const { createEmptyEvalDataTableTool, createEvalSetupAgentTool, evalSetupAgentInputSchema } =
+const { createEvalSetupAgentTool, evalSetupAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../eval-setup-agent.tool') as typeof import('../eval-setup-agent.tool');
 
@@ -71,41 +73,29 @@ describe('createEvalSetupAgentTool', () => {
 	});
 });
 
-describe('createEmptyEvalDataTableTool', () => {
-	it('creates a table with string columns and does not insert rows', async () => {
-		const context = {
-			dataTableService: {
-				create: jest.fn().mockResolvedValue({
-					id: 'dt-1',
-					name: 'Eval Dataset',
-					columns: [
-						{ id: 'c1', name: 'input', type: 'string' },
-						{ id: 'c2', name: 'expected_output', type: 'string' },
-					],
-				}),
-				insertRows: jest.fn(),
-			},
-		};
-		const tool = createEmptyEvalDataTableTool(context as never);
-
-		const result = await tool.execute!(
-			{
-				name: 'Eval Dataset',
-				projectId: 'p1',
-				columns: ['input', 'expected_output', 'input'],
-			},
-			{} as never,
-		);
-
-		expect(context.dataTableService.create).toHaveBeenCalledWith(
-			'Eval Dataset',
-			[
-				{ name: 'input', type: 'string' },
-				{ name: 'expected_output', type: 'string' },
+describe('formatEvalSetupTask', () => {
+	it('passes a task string containing the chosen metrics block to the sub-agent', () => {
+		const task = formatEvalSetupTask({
+			workflowId: 'w1',
+			workflowName: 'Wf',
+			detectedAiNodes: ['Agent'],
+			datasetChoice: 'link-existing',
+			existingDataTableId: 'dt-1',
+			suggestedInputColumns: ['user_query'],
+			suggestedOutputColumns: [],
+			enabledMetrics: [
+				{
+					id: 'correctness',
+					name: 'Correctness',
+					kind: 'llm-judge',
+					cannedMetricKey: 'correctness',
+					description: '',
+					prompt: '',
+					defaultEnabled: true,
+				},
 			],
-			{ projectId: 'p1' },
-		);
-		expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
-		expect(result).toMatchObject({ table: { id: 'dt-1' } });
+		});
+		expect(task).toMatch(/METRICS TO CONFIGURE/i);
+		expect(task).toMatch(/correctness/);
 	});
 });

@@ -1,6 +1,15 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-type WorkflowNode = WorkflowJSON['nodes'][number];
+import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
+import {
+	collectStrings,
+	extractJsonColumnRefs,
+	isRecord,
+	nodeHasName,
+	nodeTypeEndsWith,
+	unique,
+	type WorkflowNode,
+} from './column-ref-utils';
 
 export interface EvalDataTarget {
 	dataTableId: string;
@@ -10,27 +19,18 @@ export interface EvalDataTarget {
 	expectedOutputColumns: string[];
 	actualOutputColumns: string[];
 	metricNodeNames: string[];
+	/**
+	 * Pairs from setMetrics nodes: for each metric, the expected_* column
+	 * (read from the eval trigger row via `expectedAnswer`) and the agent
+	 * output field (read from $json via `actualAnswer`). Used by eval-data
+	 * to populate expected_* columns from a past execution's agent output.
+	 */
+	expectedToActualPairs: Array<{ expectedColumn: string; actualField: string }>;
 }
 
 export interface EvalDataRequirements {
 	targets: EvalDataTarget[];
 	reason?: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function unique(values: string[]): string[] {
-	return [...new Set(values.filter((value) => value.length > 0))];
-}
-
-function nodeTypeEndsWith(node: WorkflowNode, suffix: string): boolean {
-	return node.type === suffix || node.type.endsWith(`.${suffix}`);
-}
-
-function nodeHasName(node: WorkflowNode): node is WorkflowNode & { name: string } {
-	return typeof node.name === 'string' && node.name.length > 0;
 }
 
 function readOperation(node: WorkflowNode): string | undefined {
@@ -48,28 +48,6 @@ function readDataTableId(node: WorkflowNode): string | undefined {
 	if (!isRecord(dataTableId)) return undefined;
 	const value = dataTableId.value;
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function collectStrings(value: unknown): string[] {
-	if (typeof value === 'string') return [value];
-	if (Array.isArray(value)) return value.flatMap(collectStrings);
-	if (!isRecord(value)) return [];
-	return Object.values(value).flatMap(collectStrings);
-}
-
-function extractJsonColumnRefs(text: string): string[] {
-	const refs: string[] = [];
-	const patterns = [
-		/\$json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-		/\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-		/item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-	];
-	for (const pattern of patterns) {
-		for (const match of text.matchAll(pattern)) {
-			if (match[1]) refs.push(match[1]);
-		}
-	}
-	return unique(refs);
 }
 
 function childNames(workflow: WorkflowJSON, sourceName: string, outputIndex?: number): string[] {
@@ -116,19 +94,6 @@ function isAiAgentNode(node: WorkflowNode | undefined): boolean {
 	return Boolean(node?.type.includes('n8n-nodes-langchain.agent'));
 }
 
-function inputColumnsFromShapeBridge(workflow: WorkflowJSON, evalTriggerName: string): string[] {
-	const byName = nodeByName(workflow);
-	const directChildren = childNames(workflow, evalTriggerName);
-	const setNodes = directChildren
-		.map((name) => byName.get(name))
-		.filter((node): node is WorkflowNode => Boolean(node && nodeTypeEndsWith(node, 'set')));
-	return unique(
-		setNodes.flatMap((node) =>
-			collectStrings(node.parameters).flatMap((text) => extractJsonColumnRefs(text)),
-		),
-	);
-}
-
 function expectedColumnsFromMetricNodes(nodes: WorkflowNode[]): string[] {
 	return unique(
 		nodes.flatMap((node) => {
@@ -157,6 +122,37 @@ function actualColumnsFromSetOutputs(nodes: WorkflowNode[]): string[] {
 			});
 		}),
 	);
+}
+
+function pairsFromMetricNodes(
+	nodes: WorkflowNode[],
+): Array<{ expectedColumn: string; actualField: string }> {
+	const pairs: Array<{ expectedColumn: string; actualField: string }> = [];
+	for (const node of nodes) {
+		if (!nodeTypeEndsWith(node, 'evaluation') || readOperation(node) !== 'setMetrics') continue;
+		const parameters = node.parameters;
+		if (!isRecord(parameters)) continue;
+		const expectedRaw = parameters.expectedAnswer;
+		const actualRaw = parameters.actualAnswer;
+		if (typeof expectedRaw !== 'string' || typeof actualRaw !== 'string') continue;
+		const expectedRefs = extractJsonColumnRefs(expectedRaw).filter((ref) =>
+			ref.startsWith('expected'),
+		);
+		const actualRefs = extractJsonColumnRefs(actualRaw);
+		const len = Math.min(expectedRefs.length, actualRefs.length);
+		for (let i = 0; i < len; i++) {
+			pairs.push({ expectedColumn: expectedRefs[i], actualField: actualRefs[i] });
+		}
+	}
+	// Dedup by expectedColumn (last one wins). Multiple setMetrics nodes may
+	// reference the same expected column; the actualField mapping should be
+	// consistent in that case.
+	const map = new Map<string, string>();
+	for (const p of pairs) map.set(p.expectedColumn, p.actualField);
+	return [...map.entries()].map(([expectedColumn, actualField]) => ({
+		expectedColumn,
+		actualField,
+	}));
 }
 
 function firstReachableAgentName(
@@ -193,15 +189,20 @@ export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataReq
 			)
 			.map((node) => node.name);
 
+		const targetAgentNodeName = firstReachableAgentName(workflow, trigger.name);
+
 		return [
 			{
 				dataTableId,
 				evaluationTriggerName: trigger.name,
-				targetAgentNodeName: firstReachableAgentName(workflow, trigger.name),
-				inputColumns: inputColumnsFromShapeBridge(workflow, trigger.name),
+				targetAgentNodeName,
+				inputColumns: targetAgentNodeName
+					? analyzeAgentInputColumns(workflow, targetAgentNodeName).inputColumns
+					: [],
 				expectedOutputColumns: expectedColumnsFromMetricNodes(reachableNodes),
 				actualOutputColumns: actualColumnsFromSetOutputs(reachableNodes),
 				metricNodeNames,
+				expectedToActualPairs: pairsFromMetricNodes(reachableNodes),
 			},
 		];
 	});
