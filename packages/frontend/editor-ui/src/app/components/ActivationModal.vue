@@ -18,18 +18,13 @@ import {
 } from '../constants';
 
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '../stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const router = useRouter();

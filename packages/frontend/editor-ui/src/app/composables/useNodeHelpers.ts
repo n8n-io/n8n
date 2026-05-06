@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useHistoryStore } from '@/app/stores/history.store';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -51,6 +51,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
 declare namespace HttpRequestNode {
@@ -72,9 +73,7 @@ export function useNodeHelpers() {
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);

@@ -1,16 +1,13 @@
 import * as schemaPreviewApi from './schemaPreview.api';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { computed, reactive } from 'vue';
+import { reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { JSONSchema7 } from 'json-schema';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateJsonSchema } from '@/app/utils/json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
@@ -23,9 +20,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 	const rootStore = useRootStore();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function getSchemaPreviewKey({
 		nodeType,

@@ -54,8 +54,8 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
@@ -503,9 +503,7 @@ export function useWorkflowHelpers() {
 
 	const i18n = useI18n();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowDocumentStore.value.allNodes;
