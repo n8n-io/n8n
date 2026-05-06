@@ -18,6 +18,7 @@ import RecommendedTemplatesSection from '@/features/workflows/templates/recommen
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
+import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
 
 const emit = defineEmits<{
 	'click:add': [];
@@ -207,19 +208,37 @@ const openMcpOnboardingFromTile = () => {
 					>
 						<N8nCard
 							v-if="showMcpTile"
-							:class="$style.actionCard"
+							:class="[
+								$style.actionCard,
+								$style.mcpCard,
+								{ [$style.mcpCardEnabled]: mcpStore.mcpAccessEnabled },
+							]"
 							hoverable
 							data-test-id="mcp-onboarding-card"
 							@click="openMcpOnboardingFromTile"
 						>
-							<div :class="$style.cardContent">
+							<span
+								:class="[$style.mcpBadge, { [$style.mcpBadgeActive]: mcpStore.mcpAccessEnabled }]"
+							>
 								<N8nIcon
-									:class="$style.cardIcon"
-									icon="mcp"
-									color="foreground-dark"
-									:stroke-width="1.5"
+									v-if="mcpStore.mcpAccessEnabled"
+									icon="check"
+									size="xsmall"
+									:stroke-width="2.5"
 								/>
-								<N8nText size="large" class="mt-xs">
+								{{
+									i18n.baseText(
+										mcpStore.mcpAccessEnabled
+											? 'workflows.empty.mcp.tile.badge.active'
+											: 'workflows.empty.mcp.tile.badge.new',
+									)
+								}}
+							</span>
+							<div :class="$style.mcpCardContent">
+								<div :class="$style.mcpGraphic">
+									<SurfaceMcpBridgeGraphic size="tile" />
+								</div>
+								<N8nText size="large" :bold="true" :class="$style.mcpTitle">
 									{{
 										i18n.baseText(
 											mcpStore.mcpAccessEnabled
@@ -406,6 +425,81 @@ const openMcpOnboardingFromTile = () => {
 	svg {
 		transition: color 0.3s ease;
 	}
+}
+
+// --- MCP tile (experiment) ------------------------------------------------
+
+.mcpCard {
+	position: relative;
+	overflow: hidden;
+	background: radial-gradient(
+		120% 80% at 50% 0%,
+		rgb(234 152 75 / 12%) 0%,
+		rgb(234 152 75 / 0%) 60%
+	);
+	border: 1px solid var(--border-color--subtle);
+
+	&:hover {
+		border-color: var(--color--orange-300);
+	}
+}
+
+.mcpCardEnabled {
+	background: radial-gradient(120% 80% at 50% 0%, rgb(34 197 94 / 10%) 0%, rgb(34 197 94 / 0%) 60%);
+
+	&:hover {
+		border-color: var(--color--green-300);
+	}
+}
+
+.mcpCardContent {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--md);
+	gap: var(--spacing--4xs);
+	width: 100%;
+}
+
+.mcpGraphic {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: var(--spacing--xs);
+	transition: transform var(--duration--snappy) ease;
+
+	.mcpCard:hover & {
+		transform: scale(1.04);
+	}
+}
+
+.mcpTitle {
+	letter-spacing: var(--letter-spacing--tight);
+}
+
+.mcpBadge {
+	position: absolute;
+	top: var(--spacing--3xs);
+	right: var(--spacing--3xs);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	padding: 2px var(--spacing--3xs);
+	border-radius: var(--radius--full);
+	background: var(--color--orange-100);
+	color: var(--color--orange-800);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: var(--letter-spacing--wider);
+	text-transform: uppercase;
+	line-height: 1;
+	z-index: 1;
+}
+
+.mcpBadgeActive {
+	background: var(--color--green-100);
+	color: var(--color--green-800);
 }
 
 .orDivider {

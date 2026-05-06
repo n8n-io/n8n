@@ -44,9 +44,11 @@ type MockApiKey = { apiKey: string } | null;
 
 type MockMcpStore = {
 	mcpAccessEnabled: boolean;
+	mcpManagedByEnv: boolean;
 	currentUserMCPKey: MockApiKey;
 	setMcpAccessEnabled: ReturnType<typeof vi.fn>;
 	getOrCreateApiKey: ReturnType<typeof vi.fn>;
+	generateNewApiKey: ReturnType<typeof vi.fn>;
 	resetCurrentUserMCPKey: ReturnType<typeof vi.fn>;
 };
 
@@ -75,6 +77,12 @@ const renderComponent = createComponentRenderer(MCPOnboardingModal, {
 	global: {
 		stubs: {
 			Modal: ModalStub,
+			// Stub ElSwitch to avoid jsdom-triggered spurious model updates.
+			ElSwitch: {
+				props: ['modelValue', 'disabled', 'loading'],
+				template:
+					'<button type="button" role="switch" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" :disabled="disabled || loading" @click="$emit(\'update:modelValue\')" />',
+			},
 		},
 	},
 });
@@ -87,6 +95,7 @@ describe('MCPOnboardingModal', () => {
 
 		mockMcpStore = reactive({
 			mcpAccessEnabled: false,
+			mcpManagedByEnv: false,
 			currentUserMCPKey: null,
 			setMcpAccessEnabled: vi.fn().mockImplementation(async () => {
 				mockMcpStore.mcpAccessEnabled = true;
@@ -96,24 +105,68 @@ describe('MCPOnboardingModal', () => {
 				mockMcpStore.currentUserMCPKey = { apiKey: 'n8n-test-token' };
 				return mockMcpStore.currentUserMCPKey;
 			}),
+			generateNewApiKey: vi.fn().mockImplementation(async () => {
+				mockMcpStore.currentUserMCPKey = { apiKey: 'n8n-rotated-token' };
+				return mockMcpStore.currentUserMCPKey;
+			}),
 			resetCurrentUserMCPKey: vi.fn(),
 		}) as MockMcpStore;
 	});
 
-	it('enables MCP and loads connection details inline', async () => {
+	it('enables MCP, loads the prompt, and tracks enable telemetry when toggled on', async () => {
 		const user = userEvent.setup();
-		const { getByRole, findByDisplayValue } = renderComponent();
+		const { getByRole, findByText, queryByTestId } = renderComponent();
 
-		await user.click(getByRole('button', { name: 'Enable MCP access' }));
+		await user.click(getByRole('switch'));
 
 		expect(mockMcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(true);
 		expect(mockExperimentStore.trackEnableClicked).toHaveBeenCalledWith('first_open_modal');
 		expect(mockMcpStore.getOrCreateApiKey).toHaveBeenCalled();
-		expect(await findByDisplayValue('n8n-test-token')).toBeInTheDocument();
+		expect(await findByText(/n8n-test-token/)).toBeInTheDocument();
 		expect(mockExperimentStore.trackEnabled).toHaveBeenCalledWith('first_open_modal');
+		expect(queryByTestId('mcp-onboarding-pending-notice')).not.toBeInTheDocument();
 	});
 
-	it('loads connection details immediately when MCP is already enabled', async () => {
+	it('hides the prompt and shows the pending notice when toggled off', async () => {
+		const user = userEvent.setup();
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.currentUserMCPKey = { apiKey: 'existing-token' };
+		mockMcpStore.getOrCreateApiKey = vi.fn().mockImplementation(async () => {
+			mockMcpStore.currentUserMCPKey = { apiKey: 'existing-token' };
+			return mockMcpStore.currentUserMCPKey;
+		});
+		mockMcpStore.setMcpAccessEnabled = vi.fn().mockImplementation(async () => {
+			mockMcpStore.mcpAccessEnabled = false;
+			return false;
+		});
+
+		const { getByRole, findByText, getByTestId, queryByTestId } = renderComponent();
+
+		await findByText(/existing-token/);
+		await user.click(getByRole('switch'));
+
+		expect(mockMcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(false);
+		expect(getByTestId('mcp-onboarding-pending-notice')).toBeInTheDocument();
+		expect(queryByTestId('mcp-onboarding-client-setup')).not.toBeInTheDocument();
+		expect(mockExperimentStore.trackEnableClicked).not.toHaveBeenCalled();
+		expect(mockExperimentStore.trackEnabled).not.toHaveBeenCalled();
+	});
+
+	it('disables the toggle when MCP is managed by the environment', async () => {
+		const user = userEvent.setup();
+		mockMcpStore.mcpManagedByEnv = true;
+
+		const { getByRole } = renderComponent();
+
+		const toggle = getByRole('switch');
+		expect(toggle).toBeDisabled();
+
+		await user.click(toggle);
+
+		expect(mockMcpStore.setMcpAccessEnabled).not.toHaveBeenCalled();
+	});
+
+	it('loads the prompt immediately when MCP is already enabled on mount', async () => {
 		mockMcpStore.mcpAccessEnabled = true;
 		mockMcpStore.currentUserMCPKey = null;
 		mockMcpStore.getOrCreateApiKey = vi.fn().mockImplementation(async () => {
@@ -121,11 +174,97 @@ describe('MCPOnboardingModal', () => {
 			return mockMcpStore.currentUserMCPKey;
 		});
 
-		renderComponent();
+		const { findByText } = renderComponent();
 
 		await waitFor(() => {
 			expect(mockMcpStore.getOrCreateApiKey).toHaveBeenCalled();
 		});
+		expect(await findByText(/existing-token/)).toBeInTheDocument();
+		expect(await findByText(/https:\/\/example\.n8n\.cloud\/mcp-server\/http/)).toBeInTheDocument();
+	});
+
+	it('auto-rotates and surfaces a fresh token when the existing token is redacted on mount', async () => {
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.currentUserMCPKey = null;
+		mockMcpStore.getOrCreateApiKey = vi.fn().mockImplementation(async () => {
+			mockMcpStore.currentUserMCPKey = { apiKey: 'n8n_******' };
+			return mockMcpStore.currentUserMCPKey;
+		});
+		mockMcpStore.generateNewApiKey = vi.fn().mockImplementation(async () => {
+			mockMcpStore.currentUserMCPKey = { apiKey: 'n8n-fresh-token' };
+			return mockMcpStore.currentUserMCPKey;
+		});
+
+		const { findByText, queryByTestId, getByTestId } = renderComponent();
+
+		await waitFor(() => {
+			expect(mockMcpStore.getOrCreateApiKey).toHaveBeenCalled();
+		});
+		await waitFor(() => {
+			expect(mockMcpStore.generateNewApiKey).toHaveBeenCalled();
+		});
+		expect(await findByText(/n8n-fresh-token/)).toBeInTheDocument();
+		expect(queryByTestId('mcp-onboarding-redacted-notice')).not.toBeInTheDocument();
+		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeEnabled();
+	});
+
+	it('falls back to the recovery notice when auto-rotation fails for a redacted token', async () => {
+		const error = new Error('rotation failed');
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.currentUserMCPKey = null;
+		mockMcpStore.getOrCreateApiKey = vi.fn().mockImplementation(async () => {
+			mockMcpStore.currentUserMCPKey = { apiKey: 'n8n_******' };
+			return mockMcpStore.currentUserMCPKey;
+		});
+		mockMcpStore.generateNewApiKey = vi.fn().mockRejectedValue(error);
+
+		const { findByText, getByTestId } = renderComponent();
+
+		await waitFor(() => {
+			expect(mockMcpStore.generateNewApiKey).toHaveBeenCalled();
+		});
+		expect(mockShowError).toHaveBeenCalledWith(error, 'Error updating MCP access');
+		expect(
+			await findByText(/Rotate the access token in Settings > MCP to copy a new setup prompt\./),
+		).toBeInTheDocument();
+		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeDisabled();
+	});
+
+	it('shows an error toast and keeps the prompt unresolved if mount-time token loading fails', async () => {
+		const error = new Error('token fetch failed');
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.getOrCreateApiKey = vi.fn().mockRejectedValue(error);
+
+		const { findByText, getByTestId } = renderComponent();
+
+		await waitFor(() => {
+			expect(mockShowError).toHaveBeenCalledWith(error, 'Error updating MCP access');
+		});
+		expect(await findByText(/<your-access-token>/)).toBeInTheDocument();
+		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeDisabled();
+	});
+
+	it('preserves the resolved prompt if disabling MCP fails', async () => {
+		const user = userEvent.setup();
+		const error = new Error('disable failed');
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.getOrCreateApiKey = vi.fn().mockImplementation(async () => {
+			mockMcpStore.currentUserMCPKey = { apiKey: 'existing-token' };
+			return mockMcpStore.currentUserMCPKey;
+		});
+		mockMcpStore.setMcpAccessEnabled = vi.fn().mockRejectedValue(error);
+
+		const { getByRole, findByText, queryByTestId, getByTestId } = renderComponent();
+
+		await findByText(/existing-token/);
+		await user.click(getByRole('switch'));
+
+		await waitFor(() => {
+			expect(mockShowError).toHaveBeenCalledWith(error, 'Error updating MCP access');
+		});
+		expect(queryByTestId('mcp-onboarding-pending-notice')).not.toBeInTheDocument();
+		expect(await findByText(/existing-token/)).toBeInTheDocument();
+		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeEnabled();
 	});
 
 	it('switches between Claude Code and Codex setup instructions', async () => {
@@ -133,11 +272,28 @@ describe('MCPOnboardingModal', () => {
 		mockMcpStore.mcpAccessEnabled = true;
 		mockMcpStore.currentUserMCPKey = { apiKey: 'n8n-test-token' };
 
-		const { getByText } = renderComponent();
+		const { getByText, container } = renderComponent();
 
 		await user.click(getByText('Codex'));
 
 		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('codex');
-		expect(getByText('Create or update `.codex/config.toml`.')).toBeInTheDocument();
+		expect(container.textContent).toContain('[mcp_servers.n8n]');
+	});
+
+	it('forwards prompt copy telemetry with the selected client', async () => {
+		const user = userEvent.setup();
+		mockMcpStore.mcpAccessEnabled = true;
+		mockMcpStore.currentUserMCPKey = { apiKey: 'n8n-test-token' };
+
+		const { getByText, getByTestId } = renderComponent();
+
+		await user.click(getByText('Codex'));
+		await user.click(getByTestId('mcp-onboarding-copy-prompt-button'));
+
+		expect(mockExperimentStore.trackCopiedParameter).toHaveBeenCalledWith(
+			'first_open_modal',
+			'codex',
+			'agent-prompt',
+		);
 	});
 });

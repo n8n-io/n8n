@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useClipboard } from '@/app/composables/useClipboard';
-import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nMarkdown, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 type MCPOnboardingClient = 'claude_code' | 'codex';
 
@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	copy: [parameter: 'setup-config'];
+	copy: [parameter: 'agent-prompt'];
 }>();
 
 const i18n = useI18n();
@@ -22,91 +22,80 @@ const { copy } = useClipboard();
 
 const tokenValue = computed(() => (props.isTokenReady ? props.accessToken : '<your-access-token>'));
 
-const envSnippet = computed(() => `export N8N_MCP_TOKEN="${tokenValue.value}"`);
+const promptKey = computed(() =>
+	props.client === 'claude_code'
+		? 'settings.mcp.onboarding.prompt.claudeCode'
+		: 'settings.mcp.onboarding.prompt.codex',
+);
 
-const claudeConfigSnippet = computed(() =>
-	JSON.stringify(
-		{
-			mcpServers: {
-				n8n: {
-					type: 'http',
-					url: props.serverUrl,
-					headers: {
-						Authorization: 'Bearer ${N8N_MCP_TOKEN}',
-					},
-				},
-			},
+const promptBody = computed(() =>
+	i18n.baseText(promptKey.value, {
+		interpolate: {
+			token: tokenValue.value,
+			serverUrl: props.serverUrl,
 		},
-		null,
-		2,
+	}),
+);
+
+const promptMarkdown = computed(() => `\`\`\`\n${promptBody.value}\n\`\`\``);
+
+const clientLabel = computed(() =>
+	i18n.baseText(
+		props.client === 'claude_code'
+			? 'settings.mcp.onboarding.client.claudeCode'
+			: 'settings.mcp.onboarding.client.codex',
 	),
 );
 
-const codexConfigSnippet = computed(
-	() =>
-		`[mcp_servers.n8n]
-url = "${props.serverUrl}"
-bearer_token_env_var = "N8N_MCP_TOKEN"`,
+const description = computed(() =>
+	i18n.baseText('settings.mcp.onboarding.prompt.description', {
+		interpolate: { client: clientLabel.value },
+	}),
 );
 
-const configSnippet = computed(() =>
-	props.client === 'claude_code' ? claudeConfigSnippet.value : codexConfigSnippet.value,
-);
+const justCopied = ref(false);
+let copyResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const configLanguage = computed(() => (props.client === 'claude_code' ? 'json' : 'toml'));
+async function handleCopy() {
+	await copy(promptBody.value);
+	emit('copy', 'agent-prompt');
 
-const pathText = computed(() =>
-	props.client === 'claude_code'
-		? i18n.baseText('settings.mcp.onboarding.claudeCode.path')
-		: i18n.baseText('settings.mcp.onboarding.codex.path'),
-);
-
-const envMarkdown = computed(() => `\`\`\`bash\n${envSnippet.value}\n\`\`\``);
-const configMarkdown = computed(
-	() => `\`\`\`${configLanguage.value}\n${configSnippet.value}\n\`\`\``,
-);
-
-async function copySetup(text: string) {
-	await copy(text);
-	emit('copy', 'setup-config');
+	justCopied.value = true;
+	if (copyResetTimeout) {
+		clearTimeout(copyResetTimeout);
+	}
+	copyResetTimeout = setTimeout(() => {
+		justCopied.value = false;
+	}, 1800);
 }
+
+const copyTooltip = computed(() =>
+	justCopied.value
+		? i18n.baseText('settings.mcp.onboarding.copy.copied')
+		: i18n.baseText('settings.mcp.onboarding.copy.tooltip'),
+);
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="mcp-onboarding-client-setup">
-		<div :class="$style.step">
-			<N8nText tag="p" size="small" color="text-base">
-				{{ i18n.baseText('settings.mcp.onboarding.step.env') }}
-			</N8nText>
-			<N8nMarkdown :content="envMarkdown" />
-			<N8nButton
-				variant="subtle"
-				size="small"
-				:disabled="!isTokenReady"
-				data-test-id="mcp-onboarding-copy-env-button"
-				@click="copySetup(envSnippet)"
-			>
-				{{ i18n.baseText('generic.copy') }}
-			</N8nButton>
-		</div>
-
-		<div :class="$style.step">
-			<N8nText tag="p" size="small" color="text-base">
-				{{ i18n.baseText('settings.mcp.onboarding.step.config') }}
-			</N8nText>
-			<N8nText tag="p" size="small" color="text-light" data-test-id="mcp-onboarding-client-path">
-				{{ pathText }}
-			</N8nText>
-			<N8nMarkdown :content="configMarkdown" />
-			<N8nButton
-				variant="subtle"
-				size="small"
-				:disabled="!isTokenReady"
-				data-test-id="mcp-onboarding-copy-config-button"
-				@click="copySetup(configSnippet)"
-			>
-				{{ i18n.baseText('generic.copy') }}
-			</N8nButton>
+		<N8nText tag="p" size="small" color="text-light" :class="$style.helper">
+			{{ description }}
+		</N8nText>
+		<div :class="$style.codeBlock">
+			<div :class="$style.codeToolbar">
+				<N8nTooltip :content="copyTooltip" placement="top">
+					<N8nIconButton
+						icon="copy"
+						variant="ghost"
+						size="small"
+						:disabled="!isTokenReady"
+						:aria-label="copyTooltip"
+						data-test-id="mcp-onboarding-copy-prompt-button"
+						@click="handleCopy"
+					/>
+				</N8nTooltip>
+			</div>
+			<N8nMarkdown :content="promptMarkdown" />
 		</div>
 	</div>
 </template>
@@ -115,25 +104,48 @@ async function copySetup(text: string) {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
-.step {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs);
+.helper {
+	line-height: 1.5;
+}
+
+.codeBlock {
+	position: relative;
 	border: var(--border);
 	border-radius: var(--radius);
+	background: var(--background--surface);
+	overflow: hidden;
+	width: 100%;
 
 	:global(.n8n-markdown) {
 		width: 100%;
 	}
 
+	:global(pre) {
+		margin: 0;
+		max-height: 240px;
+		overflow-y: auto;
+	}
+
 	:global(code) {
 		display: block;
 		overflow-x: auto;
-		font-size: var(--font-size--2xs);
+		font-size: var(--font-size--3xs);
+		line-height: 1.55;
+		padding-right: var(--spacing--xl);
 	}
+}
+
+.codeToolbar {
+	position: absolute;
+	top: var(--spacing--4xs);
+	right: var(--spacing--4xs);
+	z-index: 1;
+	background: var(--background--surface);
+	border-radius: var(--radius--xs);
+	padding: var(--spacing--5xs);
 }
 </style>
