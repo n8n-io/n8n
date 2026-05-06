@@ -722,6 +722,7 @@ function enrichLangSmithToolAttributes(attributes: Record<string, unknown>): unk
 	attributes['llm.available_tool_count'] = normalizedTools.length;
 	attributes['llm.available_tool_names'] = toolNames;
 	attributes['llm.available_tools'] = serializedTools;
+	attributes['llm.tool_manifest_ref'] = schemaHash;
 	attributes['llm.tool_schema_hash'] = schemaHash;
 	attributes.tools = serializedTools;
 	attributes['invocation_params.tools'] = serializedTools;
@@ -929,6 +930,83 @@ function summarizeToolDescription(tool: unknown): string | undefined {
 	return typeof tool.description === 'string' ? tool.description : undefined;
 }
 
+function classifyToolSource(name: string, toolRecord: Record<string, unknown>): string {
+	if (toolRecord.mcpTool === true) {
+		return typeof toolRecord.mcpServerName === 'string' &&
+			toolRecord.mcpServerName.toLowerCase().includes('local')
+			? 'local-mcp'
+			: 'mcp';
+	}
+
+	if (
+		name.startsWith('workspace_') ||
+		name === 'write-file' ||
+		name === 'submit-workflow' ||
+		name === 'apply-workflow-credentials'
+	) {
+		return 'workspace';
+	}
+
+	if (
+		[
+			'plan',
+			'submit-plan',
+			'add-plan-item',
+			'remove-plan-item',
+			'create-tasks',
+			'build-workflow-with-agent',
+			'manage-data-tables-with-agent',
+			'research-with-agent',
+			'delegate',
+			'browser-credential-setup',
+			'complete-checkpoint',
+			'verify-built-workflow',
+			'report-verification-verdict',
+		].includes(name)
+	) {
+		return 'orchestration';
+	}
+
+	return 'domain';
+}
+
+function classifyToolCategory(name: string): string {
+	if (name.includes('credential')) return 'credential';
+	if (name.includes('browser')) return 'browser';
+	if (name.includes('data-table')) return 'data-table';
+	if (name.includes('workflow') || name === 'build-workflow' || name === 'submit-workflow') {
+		return 'workflow';
+	}
+	if (name === 'nodes' || name === 'materialize-node-type') return 'node';
+	if (name === 'executions') return 'execution';
+	if (name.includes('research')) return 'research';
+	if (name === 'plan' || name.includes('plan') || name === 'create-tasks') return 'planning';
+	if (name.startsWith('workspace_')) return 'workspace';
+	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
+	return 'other';
+}
+
+function classifyToolSideEffect(name: string): string {
+	if (name.includes('browser')) return 'browser';
+	if (name.includes('research')) return 'network';
+	if (name === 'executions' || name.includes('execute') || name.includes('run')) return 'execute';
+	if (
+		name.includes('write') ||
+		name.includes('submit') ||
+		name.includes('apply') ||
+		name.includes('build') ||
+		name.includes('create') ||
+		name.includes('update') ||
+		name.includes('delete') ||
+		name.includes('remove') ||
+		name.includes('complete')
+	) {
+		return 'write';
+	}
+	if (name.includes('ask-user') || name.includes('pause-for-user')) return 'none';
+	return 'read';
+}
+
 function getToolInputSchema(tool: unknown): unknown {
 	if (!isRecord(tool)) {
 		return undefined;
@@ -975,6 +1053,9 @@ function summarizeToolForManifest(name: string, tool: unknown): Record<string, u
 		name,
 		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
 		kind: toolRecord.mcpTool === true ? 'mcp' : 'local',
+		source: classifyToolSource(name, toolRecord),
+		category: classifyToolCategory(name),
+		side_effect: classifyToolSideEffect(name),
 		...(typeof toolRecord.mcpServerName === 'string'
 			? { mcp_server_name: toolRecord.mcpServerName }
 			: {}),
@@ -1019,6 +1100,9 @@ function summarizeToolSet(
 			name: tool.name,
 			description: tool.description,
 			kind: tool.kind,
+			source: tool.source,
+			category: tool.category,
+			side_effect: tool.side_effect,
 		})),
 		[`${fieldPrefix}_tool_catalog`]: serializeTraceText(catalogText),
 	};

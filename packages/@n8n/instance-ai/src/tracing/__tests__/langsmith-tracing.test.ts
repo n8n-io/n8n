@@ -696,6 +696,9 @@ describe('createInstanceAiTraceContext', () => {
 		expect(redacted.attributes['llm.available_tool_names']).toEqual(['lookup']);
 		expect(redacted.attributes['llm.available_tool_count']).toBe(1);
 		expect(redacted.attributes['llm.tool_schema_hash']).toEqual(expect.any(String));
+		expect(redacted.attributes['llm.tool_manifest_ref']).toBe(
+			redacted.attributes['llm.tool_schema_hash'],
+		);
 		expect(jsonParse(redacted.attributes['tools'] as string)).toEqual(prompt.tools);
 		expect(jsonParse(redacted.attributes['invocation_params.tools'] as string)).toEqual(
 			prompt.tools,
@@ -965,14 +968,29 @@ describe('createInstanceAiTraceContext', () => {
 		expect(actorInputs.loaded_tool_schema_hash).toEqual(expect.any(String));
 		expect(loadedTools).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ name: 'build-workflow', kind: 'local' }),
-				expect.objectContaining({ name: 'submit-workflow', kind: 'local' }),
+				expect.objectContaining({
+					name: 'build-workflow',
+					kind: 'local',
+					source: 'domain',
+					category: 'workflow',
+					side_effect: 'write',
+				}),
+				expect.objectContaining({
+					name: 'submit-workflow',
+					kind: 'local',
+					source: 'workspace',
+					category: 'workflow',
+					side_effect: 'write',
+				}),
 			]),
 		);
 		const buildWorkflowManifest = loadedToolManifest.find((tool) => tool.name === 'build-workflow');
 		expect(buildWorkflowManifest).toEqual(
 			expect.objectContaining({
 				name: 'build-workflow',
+				source: 'domain',
+				category: 'workflow',
+				side_effect: 'write',
 				approval: {
 					default_approval: false,
 					suspend: false,
