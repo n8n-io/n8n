@@ -3161,7 +3161,6 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeName: string | undefined,
 			headers: Record<string, string>,
 		) => void;
-		includeAiSpans?: boolean;
 	};
 }
 

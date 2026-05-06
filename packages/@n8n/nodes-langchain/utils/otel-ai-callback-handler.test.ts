@@ -83,7 +83,7 @@ describe('OtelAiCallbackHandler', () => {
 			expect(span.status.code).toBe(SpanStatusCode.OK);
 			expect(span.attributes['gen_ai.system']).toBe('openai');
 			expect(span.attributes['gen_ai.request.model']).toBe('gpt-4');
-			expect(span.attributes['gen_ai.prompt.length']).toBe(19);
+			expect(span.attributes['n8n.ai.prompt.length']).toBe(19);
 			expect(span.attributes['gen_ai.request.temperature']).toBe(0.7);
 			expect(span.attributes['gen_ai.request.max_tokens']).toBe(100);
 			expect(span.attributes['gen_ai.usage.input_tokens']).toBe(10);
@@ -261,10 +261,9 @@ describe('OtelAiCallbackHandler', () => {
 	});
 
 	describe('Parent-child nesting', () => {
-		it('should create all spans in a nested agent execution', async () => {
+		it('should nest LLM span under chain span when parentRunId is provided', async () => {
 			const handler = new OtelAiCallbackHandler();
 
-			// Simulate: chain -> llm -> tool -> llm (typical agent loop)
 			await handler.handleChainStart(makeChainSerialized(), {}, 'chain-parent');
 			await handler.handleLLMStart(makeLlmSerialized(), ['prompt'], 'llm-child', 'chain-parent');
 			await handler.handleLLMEnd(
@@ -281,9 +280,13 @@ describe('OtelAiCallbackHandler', () => {
 
 			expect(llmSpan).toBeDefined();
 			expect(chainSpan).toBeDefined();
+
+			// Verify parent-child relationship: LLM span's parent should be the chain span
+			expect(llmSpan.parentSpanContext?.spanId).toBe(chainSpan.spanContext().spanId);
+			expect(llmSpan.spanContext().traceId).toBe(chainSpan.spanContext().traceId);
 		});
 
-		it('should create spans for chain -> llm -> tool hierarchy', async () => {
+		it('should nest chain -> llm -> tool with correct parent-child hierarchy', async () => {
 			const handler = new OtelAiCallbackHandler();
 
 			await handler.handleChainStart(makeChainSerialized(), {}, 'chain-1');
@@ -307,10 +310,14 @@ describe('OtelAiCallbackHandler', () => {
 			expect(llmSpan).toBeDefined();
 			expect(chainSpan).toBeDefined();
 
-			// All spans should have valid span IDs (not be no-ops)
-			expect(toolSpan.spanContext().spanId).toBeTruthy();
-			expect(llmSpan.spanContext().spanId).toBeTruthy();
-			expect(chainSpan.spanContext().spanId).toBeTruthy();
+			// Verify hierarchy: tool -> llm -> chain
+			expect(toolSpan.parentSpanContext?.spanId).toBe(llmSpan.spanContext().spanId);
+			expect(llmSpan.parentSpanContext?.spanId).toBe(chainSpan.spanContext().spanId);
+
+			// All spans should share the same traceId
+			const traceId = chainSpan.spanContext().traceId;
+			expect(llmSpan.spanContext().traceId).toBe(traceId);
+			expect(toolSpan.spanContext().traceId).toBe(traceId);
 		});
 	});
 

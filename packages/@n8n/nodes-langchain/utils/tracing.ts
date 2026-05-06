@@ -95,8 +95,10 @@ export function getTracingConfig(
 	// Build callbacks array, including OTEL handler when an active span exists
 	// (indicating OTEL is enabled and the node is being traced).
 	// When OTEL is not configured, trace.getActiveSpan() returns undefined and no handler is added.
+	// The N8N_OTEL_TRACES_INCLUDE_AI_SPANS env var (default: true) allows explicit opt-out.
 	let callbacks: Callbacks | undefined = parentRunManager;
-	const activeSpan = trace.getActiveSpan();
+	const includeAiSpans = process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS !== 'false';
+	const activeSpan = includeAiSpans ? trace.getActiveSpan() : undefined;
 	if (activeSpan) {
 		const otelHandler = new OtelAiCallbackHandler(activeSpan);
 		callbacks = parentRunManager ? [parentRunManager, otelHandler] : [otelHandler];

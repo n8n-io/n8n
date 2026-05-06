@@ -190,6 +190,32 @@ describe('getTracingConfig', () => {
 
 			getActiveSpanSpy.mockRestore();
 		});
+
+		it('should not include OTEL handler when N8N_OTEL_TRACES_INCLUDE_AI_SPANS is false', () => {
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			const mockSpan = { spanContext: () => ({ traceId: 'abc', spanId: '123' }) };
+			const getActiveSpanSpy = vi.spyOn(trace, 'getActiveSpan').mockReturnValue(mockSpan as any);
+
+			const originalEnv = process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS;
+			process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS = 'false';
+
+			try {
+				const result = getTracingConfig(mockContext);
+				expect(result.callbacks).toBeUndefined();
+			} finally {
+				if (originalEnv === undefined) {
+					delete process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS;
+				} else {
+					process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS = originalEnv;
+				}
+				getActiveSpanSpy.mockRestore();
+			}
+		});
 	});
 
 	describe('edge cases', () => {

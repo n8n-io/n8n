@@ -11,6 +11,11 @@ const TRACER_NAME = 'n8n-ai';
  * Creates child spans under the active node.execute span for LLM calls,
  * tool invocations, and chain executions. This allows AI agent internals
  * to appear in your OTEL traces alongside workflow/node spans.
+ *
+ * Note: Streaming LLM callbacks (handleLLMNewToken) are intentionally not
+ * instrumented — the span lifecycle is handled by handleLLMStart/handleLLMEnd
+ * which works correctly for both streaming and non-streaming models. Token
+ * usage may be absent in handleLLMEnd for some streaming providers.
  */
 export class OtelAiCallbackHandler extends BaseCallbackHandler {
 	name = 'OtelAiCallbackHandler';
@@ -45,7 +50,7 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 				attributes: {
 					'gen_ai.system': extractProvider(llm),
 					'gen_ai.request.model': modelName,
-					'gen_ai.prompt.length': prompts.join('').length,
+					'n8n.ai.prompt.length': prompts.join('').length,
 					...(extraParams?.temperature !== undefined && {
 						'gen_ai.request.temperature': Number(extraParams.temperature),
 					}),
