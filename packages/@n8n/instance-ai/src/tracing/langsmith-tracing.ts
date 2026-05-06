@@ -972,7 +972,6 @@ function enrichLangSmithToolAttributes(attributes: Record<string, unknown>): unk
 
 	attributes['llm.available_tool_count'] = normalizedTools.length;
 	attributes['llm.available_tool_names'] = toolNames;
-	attributes['llm.available_tools'] = serializedTools;
 	attributes['llm.tool_manifest_ref'] = schemaHash;
 	attributes['llm.tool_schema_hash'] = schemaHash;
 	attributes.tools = serializedTools;
@@ -1420,41 +1419,21 @@ function summarizeToolSet(
 	const summaries = Object.entries(tools).map(([name, tool]) =>
 		summarizeToolForManifest(name, tool),
 	);
-	const catalogText = summaries
-		.map((tool) => {
-			const name = typeof tool.name === 'string' ? tool.name : 'unknown';
-			return typeof tool.description === 'string' ? `${name}: ${tool.description}` : name;
-		})
-		.join('\n');
 	const manifestHash = stableHash(summaries);
 	const toolNames = summaries
 		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
 		.filter((name): name is string => name !== undefined);
-	const aliases: Record<string, unknown> = {};
 	if (fieldPrefix === 'loaded') {
-		aliases.assigned_tool_count = summaries.length;
-		aliases.assigned_tool_names = toolNames;
+		return {
+			assigned_tool_count: summaries.length,
+			assigned_tool_names: toolNames,
+			assigned_tool_schema_hash: manifestHash,
+		};
 	}
-	if (fieldPrefix === 'runtime') {
-		aliases.runtime_tool_count = summaries.length;
-		aliases.runtime_tool_names = toolNames;
-	}
-
 	return {
-		...aliases,
 		[`${fieldPrefix}_tool_count`]: summaries.length,
 		[`${fieldPrefix}_tool_names`]: toolNames,
-		[`${fieldPrefix}_tool_manifest`]: serializeTraceText(JSON.stringify(summaries)),
 		[`${fieldPrefix}_tool_schema_hash`]: manifestHash,
-		[`${fieldPrefix}_tools`]: summaries.map((tool) => ({
-			name: tool.name,
-			description: tool.description,
-			kind: tool.kind,
-			source: tool.source,
-			category: tool.category,
-			side_effect: tool.side_effect,
-		})),
-		[`${fieldPrefix}_tool_catalog`]: serializeTraceText(catalogText),
 	};
 }
 

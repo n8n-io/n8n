@@ -738,6 +738,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(redacted.attributes['llm.tool_manifest_ref']).toBe(
 			redacted.attributes['llm.tool_schema_hash'],
 		);
+		expect(redacted.attributes['llm.available_tools']).toBeUndefined();
 		expect(jsonParse(redacted.attributes['tools'] as string)).toEqual(prompt.tools);
 		expect(jsonParse(redacted.attributes['invocation_params.tools'] as string)).toEqual(
 			prompt.tools,
@@ -1084,7 +1085,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(telemetry.runtimeRootSpanEnabled).toBe(false);
 	});
 
-	it('attaches root agent config without duplicating it into llm steps', async () => {
+	it('attaches compact root agent config without duplicating tool schemas into agent spans', async () => {
 		const tracing = await createDetachedSubAgentTraceContext({
 			threadId: 'thread-1',
 			conversationId: 'thread-1',
@@ -1131,21 +1132,22 @@ describe('createInstanceAiTraceContext', () => {
 		);
 
 		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
-		const loadedTools = actorInputs.loaded_tools as Array<Record<string, unknown>>;
-		const loadedToolManifest = jsonParse<Array<Record<string, unknown>>>(
-			actorInputs.loaded_tool_manifest as string,
-		);
 		const systemPrompt = actorInputs.system_prompt as Record<string, unknown>;
 
 		expect(actorInputs.task).toBe('Build a workflow');
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.loaded_tool_count).toBe(2);
-		expect(actorInputs.loaded_tool_names).toEqual(['build-workflow', 'submit-workflow']);
 		expect(actorInputs.assigned_tool_count).toBe(2);
 		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.assigned_tool_schema_hash).toEqual(expect.any(String));
 		expect(actorInputs.runtime_tool_count).toBe(1);
 		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
-		expect(actorInputs.loaded_tool_schema_hash).toEqual(expect.any(String));
+		expect(actorInputs.runtime_tool_schema_hash).toEqual(expect.any(String));
+		expect(actorInputs.loaded_tool_count).toBeUndefined();
+		expect(actorInputs.loaded_tool_names).toBeUndefined();
+		expect(actorInputs.loaded_tool_schema_hash).toBeUndefined();
+		expect(actorInputs.loaded_tool_manifest).toBeUndefined();
+		expect(actorInputs.loaded_tools).toBeUndefined();
+		expect(actorInputs.loaded_tool_catalog).toBeUndefined();
 		const actorSpan = agentsMock
 			.getSpans()
 			.find((span) => span.id === tracing?.actorRun.otelSpanId);
@@ -1154,41 +1156,8 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
 		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
-		expect(loadedTools).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					name: 'build-workflow',
-					kind: 'local',
-					source: 'domain',
-					category: 'workflow',
-					side_effect: 'write',
-				}),
-				expect.objectContaining({
-					name: 'submit-workflow',
-					kind: 'local',
-					source: 'workspace',
-					category: 'workflow',
-					side_effect: 'write',
-				}),
-			]),
-		);
-		const buildWorkflowManifest = loadedToolManifest.find((tool) => tool.name === 'build-workflow');
-		expect(buildWorkflowManifest).toEqual(
-			expect.objectContaining({
-				name: 'build-workflow',
-				source: 'domain',
-				category: 'workflow',
-				side_effect: 'write',
-				approval: {
-					default_approval: false,
-					suspend: false,
-					resume: false,
-				},
-			}),
-		);
-		expect(buildWorkflowManifest?.input_schema).toEqual(
-			expect.objectContaining({ type: 'object' }),
-		);
+		expect(spanInputs.loaded_tool_manifest).toBeUndefined();
+		expect(spanInputs.loaded_tools).toBeUndefined();
 		expect(systemPrompt.part_01).toEqual(expect.any(String));
 		expect(systemPrompt.part_02).toEqual(expect.any(String));
 	});
@@ -1229,7 +1198,8 @@ describe('createInstanceAiTraceContext', () => {
 		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
 		expect(actorInputs.system_prompt).toBe('system prompt');
-		expect(actorInputs.loaded_tool_count).toBe(1);
+		expect(actorInputs.assigned_tool_count).toBe(1);
+		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
 	});
 
 	it('redacts model secrets from agent trace inputs', () => {
