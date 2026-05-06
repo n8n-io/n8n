@@ -121,7 +121,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `600000` | Per-test-case timeout |
+| `--timeout-ms` | `900000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
@@ -154,6 +154,47 @@ Every run produces:
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
+
+## Regression detection
+
+When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). Two output files are written:
+
+- `eval-results.json` — structured data only, including `comparison.result` when a baseline was found.
+- `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
+
+The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
+
+### Refreshing the baseline
+
+There is no auto-refresh — refresh explicitly when you want a new reference point, ideally with high N for low noise:
+
+```bash
+# From packages/@n8n/instance-ai/, on master at the version you want to pin
+LANGSMITH_API_KEY=... dotenvx run -f ../../../.env.local -- \
+  pnpm eval:instance-ai --experiment-name instance-ai-baseline --iterations 10
+```
+
+LangSmith appends a random suffix (e.g. `instance-ai-baseline-7abc1234`); the most recently started one becomes the comparison target on the next eval run. The comparison is silently skipped on the baseline-creation run itself.
+
+### How scenarios are tiered
+
+Each scenario lands in one of three regression tiers, evaluated in order of strictness:
+
+- **Regression** — high-confidence flag, gating-grade. The drop must be statistically significant (chance of seeing it by noise < 5%), at least 30 percentage points in size, and the baseline must have been reliable (≥ 70% pass rate).
+- **Soft regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
+- **Notable movement** — any scenario whose pass rate moved by ≥ 35 percentage points without reaching either flag tier. Pure visibility, no implication of cause.
+
+Other verdicts: `improvement` (PR significantly better, skips the reliability gate), `unreliable_baseline` (confident drop but baseline was too flaky to call a regression — surfaced but not flagged), `stable`, `insufficient_data`.
+
+Why these tiers and not a flat percentage threshold? At the small N PR runs use (typically 3 iterations), a flat threshold can't tell a real regression from coin-flip noise. The confidence cutoff filters out gaps that could plausibly happen by chance, and the reliability gate avoids chasing noise on already-flaky scenarios. Implementation lives in `comparison/statistics.ts` (Fisher's exact test for the confidence check, Wilson interval for the headline aggregate band). Tune the soft tier first if the false-positive rate looks off — keep the hard tier strict.
+
+### Failure-category drift
+
+When both sides captured per-trial `failureCategory` values, the comparison also surfaces a run-level table of category rates (PR vs baseline). A category is marked **notable** when its absolute rate delta is ≥ 5 percentage points _and_ the count change beyond what scenario-count scaling would predict is ≥ 3 trials. This catches cross-scenario shifts (e.g. mock-generation breaking, or a model getting weaker overall) that per-scenario flags can miss.
+
+### Best-effort
+
+Comparison is logged and skipped on any LangSmith failure — it never fails the eval. It is also skipped when no baseline experiment exists yet.
 
 ## Pairwise evals
 
