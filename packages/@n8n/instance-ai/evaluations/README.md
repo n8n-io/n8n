@@ -11,6 +11,7 @@ Three harnesses live here:
 Sections:
 
 - [Running e2e + sub-agent evals](#running-evals)
+- [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the sub-agent harness works](#how-the-sub-agent-harness-works)
@@ -116,7 +117,9 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--verbose` | `false` | Log build/execute/verify timing and SSE events |
-| `--filter` | — | Filter test cases by filename substring (e.g. `contact-form`) |
+| `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
+| `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
+| `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
 | `--keep-workflows` | `false` | Don't delete built workflows after the run |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
@@ -154,6 +157,40 @@ Every run produces:
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
+
+## Running evals against pre-built workflows
+
+The eval framework normally builds each workflow with Instance AI and then verifies it. With `--prebuilt-workflows <path>`, the build step is skipped for matched test cases — the harness fetches the existing workflow from the n8n instance and runs verification against it instead. Use this to score workflows authored by other tools (an MCP-driven session, a hand-built reference, an older Instance AI snapshot) on the same dataset and the same verifier.
+
+The manifest is a JSON file mapping test-case file slugs to workflow IDs:
+
+```json
+{
+  "version": 1,
+  "builder": "instance-mcp",
+  "workflows": {
+    "contact-form-automation": ["W1abc", "W2def", "W3ghi"],
+    "deduplication-trigger": ["W4jkl"]
+  }
+}
+```
+
+- **Keys** are test-case file slugs — the JSON filename without `.json` (e.g. `contact-form-automation` for `evaluations/data/workflows/contact-form-automation.json`). The `--filter` flag uses the same identifier.
+- **Values** are arrays of workflow IDs that already exist in the target n8n instance. Multiple iterations rotate through the list with `iteration % ids.length`, so an `--iterations 5` run with 5 IDs gets 5 distinct builds.
+- **`builder`** is a free-form label that surfaces in run logs.
+
+Test cases not present in the manifest fall back to the regular Instance AI build path. To run *only* the prebuilt set, pair with `--exclude` to skip the rest, or `--filter` to narrow the run.
+
+```bash
+# Score the prebuilt cohort, skipping anything not in the manifest
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --prebuilt-workflows ./mcp-manifest.json \
+  --filter contact-form-automation,deduplication-trigger \
+  --iterations 5 \
+  --experiment-name mcp-cohort
+```
+
+The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs.
 
 ## Pairwise evals
 

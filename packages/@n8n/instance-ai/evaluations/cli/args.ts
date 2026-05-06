@@ -22,8 +22,17 @@ export interface CliArgs {
 	email?: string;
 	password?: string;
 	verbose: boolean;
-	/** Filter workflow test cases by filename substring (e.g. "contact-form") */
+	/** Filter workflow test cases by filename substring(s). Accepts a comma-separated
+	 *  list with OR semantics, e.g. "contact-form,deduplication". */
 	filter?: string;
+	/** Exclude workflow test cases whose filename matches any of the substring(s).
+	 *  Same comma-separated shape as --filter; applied after --filter. */
+	exclude?: string;
+	/** Path to a JSON manifest mapping test-case file slugs to one or more
+	 *  pre-built workflow IDs. When set, the harness skips the orchestrator
+	 *  build for matched test cases and verifies the existing workflow instead.
+	 *  See evaluations/harness/prebuilt-workflows.ts for the schema. */
+	prebuiltWorkflows?: string;
 	/** Keep built workflows after evaluation instead of deleting them */
 	keepWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
@@ -51,6 +60,8 @@ const cliArgsSchema = z.object({
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
 	filter: z.string().optional(),
+	exclude: z.string().optional(),
+	prebuiltWorkflows: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
 	dataset: z.string().default('instance-ai-workflow-evals'),
@@ -74,6 +85,8 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		password: validated.password,
 		verbose: validated.verbose,
 		filter: validated.filter,
+		exclude: validated.exclude,
+		prebuiltWorkflows: validated.prebuiltWorkflows,
 		keepWorkflows: validated.keepWorkflows,
 		outputDir: validated.outputDir,
 		dataset: validated.dataset,
@@ -94,6 +107,8 @@ interface RawArgs {
 	password?: string;
 	verbose: boolean;
 	filter?: string;
+	exclude?: string;
+	prebuiltWorkflows?: string;
 	keepWorkflows: boolean;
 	outputDir?: string;
 	dataset: string;
@@ -150,6 +165,16 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--filter':
 				result.filter = nextArg(argv, i, '--filter');
+				i++;
+				break;
+
+			case '--exclude':
+				result.exclude = nextArg(argv, i, '--exclude');
+				i++;
+				break;
+
+			case '--prebuilt-workflows':
+				result.prebuiltWorkflows = nextArg(argv, i, '--prebuilt-workflows');
 				i++;
 				break;
 
