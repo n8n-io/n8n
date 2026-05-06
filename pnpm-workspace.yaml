@@ -52,14 +52,14 @@ catalog:
   typescript: 5.9.2
   uuid: 10.0.0
   vite: npm:rolldown-vite@latest
-  vm2: ^3.10.5
+  vm2: 3.11.2
   vite-plugin-dts: ^4.5.4
   vitest: ^3.1.3
   vitest-mock-extended: ^3.1.0
   xml2js: 0.6.2
   xss: 1.0.15
-  zod: 3.25.67
-  zod-to-json-schema: 3.23.3
+  zod: 4.4.0
+  zod-to-json-schema: 3.25.0
 
 catalogs:
   frontend:
