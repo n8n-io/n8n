@@ -1214,9 +1214,10 @@ export class AgentsService {
 		});
 		const namesById = new Map(credentials.map((c) => [c.id, c.name]));
 
+		const integrations: unknown[] = cfg.integrations;
 		return {
 			...cfg,
-			integrations: cfg.integrations.map((integration) => {
+			integrations: integrations.map((integration: unknown): unknown => {
 				if (!integration || typeof integration !== 'object') return integration;
 				const i = integration as { credentialId?: unknown; credentialName?: unknown };
 				if (typeof i.credentialId !== 'string' || i.credentialName !== undefined) {
