@@ -20,6 +20,7 @@ import type { GenericValue, INodeTypes } from 'n8n-workflow';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
+import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
@@ -306,7 +307,7 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string } | null>;
+	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -545,9 +546,13 @@ export interface InstanceAiWorkspaceService {
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
-	| { status: 'connected' }
-	| { status: 'disconnected'; capabilities: string[] }
-	| { status: 'disabled' };
+	| {
+			status: 'connected';
+			capabilities: string[];
+	  }
+	| {
+			status: 'disabledGlobally' | 'disconnected' | 'disabled';
+	  };
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
@@ -1044,6 +1049,8 @@ export interface CreateInstanceAgentOptions {
 	context: InstanceAiContext;
 	orchestrationContext?: OrchestrationContext;
 	mcpServers?: McpServerConfig[];
+	/** Owns MCP client connections + tool listing caches; the service passes its singleton in. */
+	mcpManager: McpClientManager;
 	memoryConfig: InstanceAiMemoryConfig;
 	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
 	memory?: Memory;
