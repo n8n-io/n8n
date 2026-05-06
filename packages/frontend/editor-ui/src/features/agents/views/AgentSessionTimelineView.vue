@@ -12,8 +12,8 @@ import {
 } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
-	ExecutionThread,
-	ThreadExecution,
+	AgentExecution,
+	AgentExecutionThread,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
@@ -50,8 +50,8 @@ const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
 
-const thread = ref<ExecutionThread | null>(null);
-const executions = ref<ThreadExecution[]>([]);
+const thread = ref<AgentExecutionThread | null>(null);
+const executions = ref<AgentExecution[]>([]);
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
@@ -110,8 +110,7 @@ const filterOptions = computed<FilterOption[]>(() => {
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
 	const first = executions.value[0];
-	const source = first.metadata.find((m) => m.key === 'source')?.value;
-	return source ?? 'chat';
+	return first.source ?? 'chat';
 });
 
 const triggerIcon = computed((): 'slack' | 'bolt-filled' => {

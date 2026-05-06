@@ -132,24 +132,48 @@ describe('formatDuration', () => {
 });
 
 import { flattenExecutionsToTimelineItems } from '../session-timeline.utils';
-import type { ThreadExecution } from '../composables/useAgentThreadsApi';
+import type {
+	AgentExecution,
+	AgentExecutionTimelineEvent,
+} from '../composables/useAgentThreadsApi';
 
-function exec(
-	metadata: Array<[string, string]>,
-	overrides: Partial<ThreadExecution> = {},
-): ThreadExecution {
+function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'e-1',
+		threadId: 't-1',
+		agentId: 'a-1',
+		status: 'success',
+		createdAt: '2026-04-24T10:00:00Z',
 		startedAt: '2026-04-24T10:00:00Z',
 		stoppedAt: null,
-		metadata: metadata.map(([key, value]) => ({ key, value })),
+		duration: 0,
+		userMessage: '',
+		assistantResponse: '',
+		model: null,
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
+		cost: null,
+		toolCalls: null,
+		timeline: null,
+		error: null,
+		hitlStatus: null,
+		workingMemory: null,
+		source: null,
 		...overrides,
-	} as unknown as ThreadExecution;
+	};
+}
+
+function withTimeline(
+	events: AgentExecutionTimelineEvent[],
+	overrides: Partial<AgentExecution> = {},
+): AgentExecution {
+	return exec({ timeline: events, ...overrides });
 }
 
 describe('flattenExecutionsToTimelineItems', () => {
-	it('emits a user item from userMessage metadata using execution startedAt', () => {
-		const items = flattenExecutionsToTimelineItems([exec([['userMessage', 'hello']])]);
+	it('emits a user item from userMessage using execution startedAt', () => {
+		const items = flattenExecutionsToTimelineItems([exec({ userMessage: 'hello' })]);
 		expect(items[0]).toMatchObject({
 			kind: 'user',
 			content: 'hello',
@@ -158,30 +182,32 @@ describe('flattenExecutionsToTimelineItems', () => {
 	});
 
 	it('maps a text timeline event to an agent item', () => {
-		const timeline = JSON.stringify([{ type: 'text', content: 'hi there', timestamp: 1234 }]);
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', timeline]])]);
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', content: 'hi there', timestamp: 1234 }]),
+		]);
 		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
 	});
 
 	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {
-		const timeline = JSON.stringify([
-			{
-				type: 'tool-call',
-				kind: 'workflow',
-				name: 'run-wf',
-				toolCallId: 'tc-1',
-				input: {},
-				output: { executionId: 'exec-42', status: 'success' },
-				startTime: 1000,
-				endTime: 1500,
-				success: true,
-				workflowId: 'wf-1',
-				workflowName: 'Run WF',
-				workflowExecutionId: 'exec-42',
-				triggerType: 'manual',
-			},
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'workflow',
+					name: 'run-wf',
+					toolCallId: 'tc-1',
+					input: {},
+					output: { executionId: 'exec-42', status: 'success' },
+					startTime: 1000,
+					endTime: 1500,
+					success: true,
+					workflowId: 'wf-1',
+					workflowName: 'Run WF',
+					workflowExecutionId: 'exec-42',
+					triggerType: 'manual',
+				},
+			]),
 		]);
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', timeline]])]);
 		const wf = items.find((i) => i.kind === 'workflow');
 		expect(wf).toMatchObject({
 			workflowId: 'wf-1',
@@ -195,20 +221,21 @@ describe('flattenExecutionsToTimelineItems', () => {
 	});
 
 	it('maps a regular tool-call timeline event to kind:tool', () => {
-		const timeline = JSON.stringify([
-			{
-				type: 'tool-call',
-				kind: 'tool',
-				name: 'http',
-				toolCallId: 'tc-1',
-				input: { method: 'GET' },
-				output: { ok: true },
-				startTime: 1000,
-				endTime: 1200,
-				success: true,
-			},
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'http',
+					toolCallId: 'tc-1',
+					input: { method: 'GET' },
+					output: { ok: true },
+					startTime: 1000,
+					endTime: 1200,
+					success: true,
+				},
+			]),
 		]);
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', timeline]])]);
 		const tool = items.find((i) => i.kind === 'tool');
 		expect(tool).toMatchObject({
 			toolName: 'http',
@@ -221,33 +248,36 @@ describe('flattenExecutionsToTimelineItems', () => {
 	});
 
 	it('treats tool-call events without a kind field as kind:tool (defensive)', () => {
-		const timeline = JSON.stringify([
-			{
-				type: 'tool-call',
-				name: 'http',
-				toolCallId: 'tc-1',
-				input: {},
-				output: { ok: true },
-				startTime: 0,
-				endTime: 100,
-				success: true,
-			},
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					name: 'http',
+					toolCallId: 'tc-1',
+					input: {},
+					output: { ok: true },
+					startTime: 0,
+					endTime: 100,
+					success: true,
+				},
+			]),
 		]);
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', timeline]])]);
 		expect(items[0]?.kind).toBe('tool');
 	});
 
 	it('maps a working-memory timeline event', () => {
-		const timeline = JSON.stringify([{ type: 'working-memory', content: 'note', timestamp: 2000 }]);
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', timeline]])]);
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'working-memory', content: 'note', timestamp: 2000 }]),
+		]);
 		expect(items[0]).toMatchObject({ kind: 'working-memory', content: 'note', timestamp: 2000 });
 	});
 
 	it('maps a suspension timeline event', () => {
-		const timeline = JSON.stringify([
-			{ type: 'suspension', toolName: 'approval-tool', toolCallId: 'tc-1', timestamp: 3000 },
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'suspension', toolName: 'approval-tool', toolCallId: 'tc-1', timestamp: 3000 },
+			]),
 		]);
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', timeline]])]);
 		expect(items[0]).toMatchObject({
 			kind: 'suspension',
 			toolName: 'approval-tool',
@@ -256,31 +286,28 @@ describe('flattenExecutionsToTimelineItems', () => {
 	});
 
 	it('tags resumed:true on the first text event of a resumed execution only', () => {
-		const timeline = JSON.stringify([
-			{ type: 'text', content: 'first', timestamp: 100 },
-			{ type: 'text', content: 'second', timestamp: 200 },
-		]);
 		const items = flattenExecutionsToTimelineItems([
-			exec([
-				['timeline', timeline],
-				['hitlStatus', 'resumed'],
-			]),
+			withTimeline(
+				[
+					{ type: 'text', content: 'first', timestamp: 100 },
+					{ type: 'text', content: 'second', timestamp: 200 },
+				],
+				{ hitlStatus: 'resumed' },
+			),
 		]);
 		expect(items[0]?.resumed).toBe(true);
 		expect(items[1]?.resumed).toBeFalsy();
 	});
 
-	it('returns [] when timeline metadata is malformed JSON', () => {
-		const items = flattenExecutionsToTimelineItems([exec([['timeline', 'not-json']])]);
+	it('returns [] when execution has no timeline events', () => {
+		const items = flattenExecutionsToTimelineItems([exec({ timeline: null })]);
 		expect(items).toEqual([]);
 	});
 
 	it('preserves chronological order across multiple executions', () => {
-		const timelineA = JSON.stringify([{ type: 'text', content: 'a', timestamp: 100 }]);
-		const timelineB = JSON.stringify([{ type: 'text', content: 'b', timestamp: 200 }]);
 		const items = flattenExecutionsToTimelineItems([
-			exec([['timeline', timelineA]], { id: 'e-a' }),
-			exec([['timeline', timelineB]], { id: 'e-b' }),
+			withTimeline([{ type: 'text', content: 'a', timestamp: 100 }], { id: 'e-a' }),
+			withTimeline([{ type: 'text', content: 'b', timestamp: 200 }], { id: 'e-b' }),
 		]);
 		expect(items.map((i) => i.content)).toEqual(['a', 'b']);
 	});

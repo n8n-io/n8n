@@ -1,4 +1,4 @@
-import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
+import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
@@ -35,10 +35,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 
-	@Column({ type: 'timestamptz', precision: 3, nullable: true })
+	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;
 
-	@Column({ type: 'timestamptz', precision: 3, nullable: true })
+	@DateTimeColumn({ precision: 3, nullable: true })
 	stoppedAt: Date | null;
 
 	/** Wall-clock generation time in milliseconds. */
