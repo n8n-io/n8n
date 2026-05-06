@@ -72,7 +72,7 @@ export class AgentBrowserAdapter implements Adapter {
 	// =========================================================================
 
 	private async run(args: string[], timeoutMs = 30_000): Promise<AgentBrowserResponse> {
-		log.debug('run:', args.join(' '));
+		log.debug('run:', args[0]);
 		const cdpArgs = this.cdpEndpoint ? ['--cdp', this.cdpEndpoint] : [];
 		try {
 			const { stdout } = await execFileAsync(
@@ -426,7 +426,7 @@ export class AgentBrowserAdapter implements Adapter {
 	async getContent(pageId: string, selector?: string): Promise<{ html: string; url: string }> {
 		await this.switchToTab(pageId);
 		const script = selector
-			? `document.querySelector('${selector}')?.outerHTML??''`
+			? `document.querySelector(${JSON.stringify(selector)})?.outerHTML??''`
 			: "document.documentElement?.outerHTML??''";
 		const resp = await this.run(['eval', script]);
 		const tabs = await this.refreshTabs();

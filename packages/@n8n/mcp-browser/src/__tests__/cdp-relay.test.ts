@@ -246,6 +246,21 @@ describe('CDPRelayServer', () => {
 		ext.close();
 	});
 
+	it('should return an error from Target.attachToTarget when extension is not connected', async () => {
+		// Connect Playwright without an extension
+		const pw = connectPlaywright();
+		await waitForOpen(pw);
+
+		const response = await sendCDPCommand(pw, 12, 'Target.attachToTarget', {
+			targetId: 'tab-1',
+		});
+
+		expect(response.error).toBeDefined();
+		expect(response.error?.message).toContain('connection lost');
+
+		pw.close();
+	});
+
 	it('should replace a stale Playwright connection when a new one arrives', async () => {
 		const ext = connectExtension();
 		await waitForOpen(ext);

@@ -388,7 +388,8 @@ export class CDPRelayServer {
 
 			case 'Target.attachToTarget': {
 				const targetId = (params as { targetId: string })?.targetId;
-				await this.extensionConn?.send('attachTab', { id: targetId });
+				if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
+				await this.extensionConn.send('attachTab', { id: targetId });
 				return { sessionId: targetId };
 			}
 

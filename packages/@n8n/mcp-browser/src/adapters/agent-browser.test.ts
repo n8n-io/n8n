@@ -426,6 +426,42 @@ describe('AgentBrowserAdapter', () => {
 	});
 
 	// =========================================================================
+	// getContent
+	// =========================================================================
+
+	describe('getContent', () => {
+		beforeEach(async () => {
+			await withActiveTab();
+		});
+
+		it('uses documentElement when no selector is given', async () => {
+			stubRun({ success: true, data: '<html></html>' }); // eval
+			stubRun({
+				success: true,
+				data: { tabs: [{ tabId: 't1', title: 'T', url: 'http://t.com', active: true }] },
+			}); // refreshTabs
+
+			await adapter.getContent('t1');
+
+			expect(getRunArgs(0)).toEqual(['eval', "document.documentElement?.outerHTML??''"]);
+		});
+
+		it('embeds the selector via JSON.stringify so single quotes are safe', async () => {
+			const selector = "input[name='q']";
+			stubRun({ success: true, data: '<input>' }); // eval
+			stubRun({
+				success: true,
+				data: { tabs: [{ tabId: 't1', title: 'T', url: 'http://t.com', active: true }] },
+			}); // refreshTabs
+
+			await adapter.getContent('t1', selector);
+
+			const script = getRunArgs(0)[1];
+			expect(script).toBe(`document.querySelector(${JSON.stringify(selector)})?.outerHTML??''`);
+		});
+	});
+
+	// =========================================================================
 	// navigate
 	// =========================================================================
 
