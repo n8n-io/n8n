@@ -1,6 +1,6 @@
 import type { InjectionKey, Ref } from 'vue';
 
-import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
 export const DropdownMenuPortalTargetKey: InjectionKey<Ref<string | HTMLElement | undefined>> =
@@ -30,6 +30,8 @@ export type DropdownMenuTrigger = 'click' | 'hover';
 export type DropdownMenuItemProps<T = string, D = never> = {
 	/** Unique identifier for the item */
 	id: T;
+	/** Test id rendered on the menu item element */
+	testId?: string;
 	/** Display text for the item */
 	label: string;
 	/** Icon or emoji displayed before the label */
@@ -63,6 +65,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 export interface DropdownMenuProps<T = string, D = never> {
 	/** Unique identifier for the dropdown */
 	id?: string;
+	/** Test id rendered on the dropdown content element */
+	contentTestId?: string;
 	/** Portal target element (e.g. pop-out window's document.body). When set, portals content to the specified element. Use with `modal: false` in cross-window contexts. */
 	portalTarget?: string | HTMLElement;
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
@@ -91,6 +95,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	loadingItemCount?: number;
 	/** Additional CSS class for the dropdown popper */
 	extraPopperClass?: string;
+	/** Test id rendered on the dropdown trigger element */
+	dataTestId?: string;
 	/** Enable search functionality */
 	searchable?: boolean;
 	/** Search input placeholder */
@@ -101,7 +107,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	emptyText?: string;
 }
 
-export interface DropdownMenuEmits<T = string> {
+export interface DropdownMenuEmits<T = string, D = never> {
 	/** Emitted when dropdown open state changes */
 	(e: 'update:modelValue', open: boolean): void;
 	/** Emitted when a menu item is selected */
@@ -110,6 +116,8 @@ export interface DropdownMenuEmits<T = string> {
 	(e: 'search', searchTerm: string, itemId?: T): void;
 	/** Emitted when a sub-menu opens or closes */
 	(e: 'submenu:toggle', itemId: T, open: boolean): void;
+	/** Emitted on mouseup event for an item (for wrapper compatibility) */
+	(e: 'item-mouseup', item: DropdownMenuItemProps<T, D>): void;
 }
 
 type SlotUiProps = { class: string };

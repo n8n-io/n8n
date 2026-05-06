@@ -4,7 +4,7 @@ import { ref } from 'vue';
 
 import DropdownMenuSearch from './DropdownMenuSearch.vue';
 
-describe('v2/components/DropdownMenuSearch', () => {
+describe('N8nDropdownMenuSearch', () => {
 	describe('rendering', () => {
 		it('should render correctly', () => {
 			const { container } = render(DropdownMenuSearch);

@@ -31,7 +31,7 @@ function renderMenuItem<T = string>(
 	});
 }
 
-describe('v2/components/DropdownMenuItem', () => {
+describe('N8nDropdownMenuItem', () => {
 	describe('rendering', () => {
 		it('should render item with label', async () => {
 			renderMenuItem({ id: 'test', label: 'Test Item' });
