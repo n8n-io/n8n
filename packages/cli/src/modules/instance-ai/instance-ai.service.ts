@@ -3191,6 +3191,14 @@ export class InstanceAiService {
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
 			}
+			// Mirror executeRun's finally: clean up the Mastra workflow snapshot
+			// when the run finished without re-suspending. Mastra only persists
+			// snapshots on suspension and never deletes them on completion, so a
+			// resumed run that completes leaves an orphan until the periodic
+			// snapshot pruner catches it ~24h later.
+			if (!this.runState.hasSuspendedRun(opts.threadId)) {
+				void this.cleanupMastraSnapshots(opts.mastraRunId);
+			}
 			// Post-run planned-task wiring — mirror the executeRun finally.
 			// Resumed ordinary-chat runs also need to drive the scheduler in case
 			// a background task settled while they were active or suspended and
