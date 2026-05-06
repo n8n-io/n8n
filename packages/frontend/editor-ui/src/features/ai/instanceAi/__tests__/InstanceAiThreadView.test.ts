@@ -4,14 +4,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import InstanceAiView from '../InstanceAiView.vue';
+import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-
-vi.mock('@/app/composables/useDocumentTitle', () => ({
-	useDocumentTitle: () => ({ set: vi.fn() }),
-}));
+import { SidebarStateKey } from '../instanceAiLayout';
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
@@ -20,10 +15,10 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({
-		params: {},
-		path: '/instance-ai',
+		params: { threadId: 'thread-1' },
+		path: '/instance-ai/thread-1',
 		matched: [],
-		fullPath: '/instance-ai',
+		fullPath: '/instance-ai/thread-1',
 		query: {},
 		hash: '',
 		meta: {},
@@ -35,7 +30,6 @@ vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal()),
 	useScroll: () => ({ arrivedState: { bottom: true } }),
 	useWindowSize: () => ({ width: ref(1200) }),
-	useLocalStorage: (_key: string, defaultValue: unknown) => ref(defaultValue),
 }));
 
 const InstanceAiInputStub = defineComponent({
@@ -55,89 +49,50 @@ const InstanceAiInputStub = defineComponent({
 	},
 });
 
-const renderView = createComponentRenderer(InstanceAiView, {
+const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
+		provide: {
+			[SidebarStateKey as symbol]: { collapsed: ref(false), toggle: vi.fn() },
+		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 		},
 	},
 });
 
-describe('InstanceAiView', () => {
+describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
-	let settingsStore: ReturnType<typeof mockedStore<typeof useInstanceAiSettingsStore>>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
 		store = mockedStore(useInstanceAiStore);
-		settingsStore = mockedStore(useInstanceAiSettingsStore);
-		const pushStore = mockedStore(usePushConnectionStore);
-
 		store.currentThreadId = 'thread-1';
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Test thread',
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.threads;
 		store.loadThreads.mockResolvedValue(true);
-		store.fetchCredits.mockResolvedValue(undefined);
 		store.loadHistoricalMessages.mockResolvedValue('applied');
 		store.connectSSE.mockResolvedValue(undefined);
 		store.closeSSE.mockReturnValue(undefined);
-		settingsStore.isLocalGatewayDisabled = true;
-		settingsStore.refreshModuleSettings.mockResolvedValue(undefined);
-		pushStore.pushConnect.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('passes the fixed suggestions to the empty-state composer', () => {
-		const { getByTestId } = renderView();
-		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('4');
-	});
-
-	it('does not pass suggestions once the thread has messages', () => {
-		store.hasMessages = true;
-		store.messages = [
-			{
-				id: 'msg-1',
-				role: 'user',
-				content: 'hello',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-			},
-		] as typeof store.messages;
-
+	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
-	it('does not pass suggestions while an existing thread is hydrating', () => {
-		store.isHydratingThread = true;
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
-	});
-
-	it('clears the current thread when mounted on the base route (AI-2408)', async () => {
-		// Default setup has store.currentThreadId = 'thread-1'. Rendering the
-		// view WITHOUT a `threadId` prop simulates landing on /instance-ai
-		// (fresh load, back button, or AI Assistant nav link). The view must
-		// reset the store so the sidebar doesn't keep highlighting 'thread-1'
-		// alongside the empty main view.
-		store.sseState = 'disconnected';
-
-		renderView();
-
-		await vi.waitFor(() => {
-			expect(store.clearCurrentThread).toHaveBeenCalled();
-		});
-		expect(store.loadHistoricalMessages).not.toHaveBeenCalled();
-		expect(store.loadThreadStatus).not.toHaveBeenCalled();
-		expect(store.connectSSE).not.toHaveBeenCalled();
-	});
-
-	it('reconnects on same-thread re-entry (thread route, SSE disconnected)', async () => {
-		store.currentThreadId = 'thread-1';
+	it('reconnects on same-thread re-entry when SSE is disconnected', async () => {
 		store.sseState = 'disconnected';
 		store.hasMessages = true;
 		store.messages = [
@@ -151,8 +106,6 @@ describe('InstanceAiView', () => {
 		] as typeof store.messages;
 		store.loadHistoricalMessages.mockResolvedValue('skipped');
 
-		// Render WITH the threadId prop — this is the thread-route re-entry
-		// path (user lands on /instance-ai/thread-1 after SSE was torn down).
 		renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
@@ -160,5 +113,24 @@ describe('InstanceAiView', () => {
 		});
 		expect(store.loadThreadStatus).toHaveBeenCalledWith('thread-1');
 		expect(store.connectSSE).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('switches threads when navigating to a known but inactive thread', async () => {
+		store.currentThreadId = 'thread-1';
+		store.threads = [
+			...store.threads,
+			{
+				id: 'thread-2',
+				title: 'Another',
+				createdAt: '2026-04-02T00:00:00.000Z',
+				updatedAt: '2026-04-02T00:00:00.000Z',
+			},
+		] as typeof store.threads;
+
+		renderView({ props: { threadId: 'thread-2' } });
+
+		await vi.waitFor(() => {
+			expect(store.switchThread).toHaveBeenCalledWith('thread-2');
+		});
 	});
 });
