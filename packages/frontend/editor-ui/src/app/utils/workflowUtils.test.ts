@@ -695,5 +695,27 @@ describe('workflowUtils', () => {
 				},
 			});
 		});
+
+		it('should drop connections whose source or target nodes are missing', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'End', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Missing', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+				Missing: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			expect(sanitizeConnections(connections, new Set(['Start', 'End']))).toEqual({
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			});
+		});
 	});
 });

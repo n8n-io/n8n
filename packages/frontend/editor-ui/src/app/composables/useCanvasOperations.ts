@@ -2340,6 +2340,7 @@ export function useCanvasOperations() {
 		const validNodes = data.nodes
 			.filter((node) => !!node.type)
 			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
+		const validNodeNames = new Set(validNodes.map((node) => node.name));
 
 		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
@@ -2353,7 +2354,7 @@ export function useCanvasOperations() {
 		});
 
 		initializedDocumentStore.setNodes(validNodes);
-		initializedDocumentStore.setConnections(sanitizeConnections(data.connections));
+		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2651,7 +2652,10 @@ export function useCanvasOperations() {
 		}
 
 		if (workflowData.connections) {
-			workflowData.connections = sanitizeConnections(workflowData.connections);
+			const validNodeNames = workflowData.nodes
+				? new Set(workflowData.nodes.map((node) => node.name))
+				: undefined;
+			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
 		}
 
 		try {

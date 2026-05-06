@@ -59,12 +59,18 @@ export function ensureNodePosition(position: unknown): [number, number] {
 /**
  * Strip out malformed connection entries that would crash the canvas.
  * Keeps only entries where each connection type maps to an array of buckets,
- * and each bucket is either an array or null.
+ * and each bucket is either an array or null. When validNodeNames is provided,
+ * it also removes connections whose source or target node is missing.
  */
-export function sanitizeConnections(connections: IConnections): IConnections {
+export function sanitizeConnections(
+	connections: IConnections,
+	validNodeNames?: ReadonlySet<string>,
+): IConnections {
 	const sanitized: IConnections = {};
 
 	for (const nodeName of Object.keys(connections)) {
+		if (validNodeNames && !validNodeNames.has(nodeName)) continue;
+
 		const nodeConnections = connections[nodeName];
 		if (typeof nodeConnections !== 'object' || nodeConnections === null) continue;
 
@@ -72,9 +78,13 @@ export function sanitizeConnections(connections: IConnections): IConnections {
 		for (const type of Object.keys(nodeConnections)) {
 			const buckets = nodeConnections[type];
 			if (!Array.isArray(buckets)) continue;
-			sanitizedNodeConnections[type] = buckets.map((bucket) =>
-				Array.isArray(bucket) ? bucket : null,
-			);
+			sanitizedNodeConnections[type] = buckets.map((bucket) => {
+				if (!Array.isArray(bucket)) return null;
+
+				return validNodeNames
+					? bucket.filter((connection) => validNodeNames.has(connection.node))
+					: bucket;
+			});
 		}
 
 		sanitized[nodeName] = sanitizedNodeConnections;
