@@ -434,7 +434,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').click();
+		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
 		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
 		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
 	}

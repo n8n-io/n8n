@@ -47,6 +47,11 @@ const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
@@ -254,6 +259,9 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithTrigger;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			// and the document store's setNodes is a no-op
+			evaluationStore.evaluationTriggerExists = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -306,6 +314,8 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithOutputNode;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			evaluationStore.evaluationSetOutputsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -358,6 +368,8 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithMetricsNode;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			evaluationStore.evaluationSetMetricsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
