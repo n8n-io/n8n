@@ -88,6 +88,43 @@ function isExecuteFunctions(
 	return 'getExecuteData' in context;
 }
 
+const MAX_AGENT_FAILURE_MESSAGE_LENGTH = 1024;
+
+function truncateAgentFailureMessage(message: string): string {
+	if (message.length <= MAX_AGENT_FAILURE_MESSAGE_LENGTH) return message;
+	return message.slice(0, MAX_AGENT_FAILURE_MESSAGE_LENGTH);
+}
+
+function applyAgentTracingMetadata(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	stats: {
+		toolCalls: number;
+		failedItems: number;
+		totalItems: number;
+		streamingEnabled: boolean;
+		failureMessage?: string;
+		memoryLoads?: number;
+	},
+): void {
+	if (!isExecuteFunctions(context)) return;
+
+	const tracing: Record<string, string | number | boolean> = {
+		'ai.agent.version': 'v2',
+		'ai.agent.streaming.enabled': stats.streamingEnabled,
+		'ai.agent.items.total': stats.totalItems,
+		'ai.agent.items.failed': stats.failedItems,
+		'ai.agent.tool_calls.total': stats.toolCalls,
+		'ai.agent.memory.loads': stats.memoryLoads ?? 0,
+		'ai.agent.memory.saves': 0,
+		'ai.agent.execution.succeeded': stats.failureMessage === undefined,
+	};
+	if (stats.failureMessage !== undefined) {
+		tracing['ai.agent.failure.message'] = truncateAgentFailureMessage(stats.failureMessage);
+	}
+
+	context.setMetadata({ tracing });
+}
+
 async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
@@ -199,189 +236,222 @@ function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
 export async function toolsAgentExecute(
 	this: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<INodeExecutionData[][]> {
-	const version = this.getNode().typeVersion;
-	this.logger.debug('Executing Tools Agent V2');
+	let toolCalls = 0;
+	let failedItems = 0;
+	let totalItems = 0;
+	let enableStreaming = true;
+	let failureMessage: string | undefined;
+	let memoryLoads = 0;
 
-	const returnData: INodeExecutionData[] = [];
-	const items = this.getInputData();
-	const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 1) as number;
-	const delayBetweenBatches = this.getNodeParameter(
-		'options.batching.delayBetweenBatches',
-		0,
-		0,
-	) as number;
-	const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
-	const memory = await getOptionalMemory(this);
-	const model = await getChatModel(this, 0);
-	assert(model, 'Please connect a model to the Chat Model input');
-	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
+	try {
+		const version = this.getNode().typeVersion;
+		this.logger.debug('Executing Tools Agent V2');
 
-	// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
-	// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
-	if (checkIsResponsesApi(model)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`This model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
-		);
-	}
+		const returnData: INodeExecutionData[] = [];
+		const items = this.getInputData();
+		totalItems = items.length;
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 1) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'options.batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
+		const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
+		const memory = await getOptionalMemory(this);
+		const model = await getChatModel(this, 0);
+		assert(model, 'Please connect a model to the Chat Model input');
+		const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
 
-	if (checkIsResponsesApi(fallbackModel)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`This fallback model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
-		);
-	}
-
-	if (needsFallback && !fallbackModel) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Please connect a model to the Fallback Model input or disable the fallback option',
-		);
-	}
-
-	// Check if streaming is enabled
-	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
-
-	for (let i = 0; i < items.length; i += batchSize) {
-		const batch = items.slice(i, i + batchSize);
-		const batchPromises = batch.map(async (_item, batchItemIndex) => {
-			const itemIndex = i + batchItemIndex;
-
-			const input = getPromptInputByType({
-				ctx: this,
-				i: itemIndex,
-				inputKey: 'text',
-				promptTypeKey: 'promptType',
-			});
-			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
-			}
-			const outputParser = await getOptionalOutputParser(this, itemIndex);
-			const tools = await getTools(this, outputParser);
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				systemMessage?: string;
-				maxIterations?: number;
-				returnIntermediateSteps?: boolean;
-				passthroughBinaryImages?: boolean;
-				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
-			};
-
-			// Prepare the prompt messages and prompt template.
-			const messages = await prepareMessages(this, itemIndex, {
-				systemMessage: options.systemMessage,
-				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
-				outputParser,
-			});
-			const prompt: ChatPromptTemplate = preparePrompt(messages);
-
-			// Create executors for primary and fallback models
-			const executor = createAgentExecutor(
-				model,
-				tools,
-				prompt,
-				options,
-				outputParser,
-				memory,
-				fallbackModel,
+		// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
+		// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
+		if (checkIsResponsesApi(model)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`This model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
 			);
-			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
-			if (Object.keys(additionalMetadata).length > 0) {
-				this.logger.debug('Tracing metadata', { additionalMetadata });
-			}
-			const tracingConfig = isExecuteFunctions(this)
-				? getTracingConfig(this, { additionalMetadata })
-				: undefined;
-			const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
-			// Invoke with fallback logic
-			const invokeParams = {
-				input,
-				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-				formatting_instructions:
-					'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-			};
-			const executeOptions = { signal: this.getExecutionCancelSignal() };
-
-			// Check if streaming is actually available
-			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
-
-			if (
-				'isStreaming' in this &&
-				enableStreaming &&
-				isStreamingAvailable &&
-				this.getNode().typeVersion >= 2.1
-			) {
-				// Get chat history respecting the context window length configured in memory
-				const chatHistory = memory ? await loadMemory(memory, model) : undefined;
-				const eventStream = executor.streamEvents(
-					{
-						...invokeParams,
-						chat_history: chatHistory ?? undefined,
-					},
-					{
-						version: 'v2',
-						...executeOptions,
-					},
-				);
-
-				return await processEventStream(
-					this,
-					eventStream,
-					itemIndex,
-					options.returnIntermediateSteps,
-				);
-			} else {
-				// Handle regular execution
-				return await executorWithTracing.invoke(invokeParams, executeOptions);
-			}
-		});
-
-		const batchResults = await Promise.allSettled(batchPromises);
-		// This is only used to check if the output parser is connected
-		// so we can parse the output if needed. Actual output parsing is done in the loop above
-		const outputParser = await getOptionalOutputParser(this, 0);
-		batchResults.forEach((result, index) => {
-			const itemIndex = i + index;
-			if (result.status === 'rejected') {
-				const error = result.reason as Error;
-				if (this.continueOnFail()) {
-					returnData.push({
-						json: { error: error.message },
-						pairedItem: { item: itemIndex },
-					});
-					return;
-				} else {
-					throw new NodeOperationError(this.getNode(), error);
-				}
-			}
-			const response = result.value;
-			// If memory and outputParser are connected, parse the output.
-			if (memory && outputParser) {
-				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
-					response.output as string,
-				);
-				response.output = parsedOutput?.output ?? parsedOutput;
-			}
-
-			// Omit internal keys before returning the result.
-			const itemResult = {
-				json: omit(
-					response,
-					'system_message',
-					'formatting_instructions',
-					'input',
-					'chat_history',
-					'agent_scratchpad',
-				),
-				pairedItem: { item: itemIndex },
-			};
-
-			returnData.push(itemResult);
-		});
-
-		if (i + batchSize < items.length && delayBetweenBatches > 0) {
-			await sleep(delayBetweenBatches);
 		}
-	}
 
-	return [returnData];
+		if (checkIsResponsesApi(fallbackModel)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`This fallback model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
+			);
+		}
+
+		if (needsFallback && !fallbackModel) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Please connect a model to the Fallback Model input or disable the fallback option',
+			);
+		}
+
+		// Check if streaming is enabled
+		enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
+
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, batchItemIndex) => {
+				const itemIndex = i + batchItemIndex;
+
+				const input = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
+				if (input === undefined) {
+					throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
+				}
+				const outputParser = await getOptionalOutputParser(this, itemIndex);
+				const tools = await getTools(this, outputParser);
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					systemMessage?: string;
+					maxIterations?: number;
+					returnIntermediateSteps?: boolean;
+					passthroughBinaryImages?: boolean;
+					tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
+				};
+
+				// Prepare the prompt messages and prompt template.
+				const messages = await prepareMessages(this, itemIndex, {
+					systemMessage: options.systemMessage,
+					passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+					outputParser,
+				});
+				const prompt: ChatPromptTemplate = preparePrompt(messages);
+
+				// Create executors for primary and fallback models
+				const executor = createAgentExecutor(
+					model,
+					tools,
+					prompt,
+					options,
+					outputParser,
+					memory,
+					fallbackModel,
+				);
+				const additionalMetadata = buildTracingMetadata(
+					options.tracingMetadata?.values,
+					this.logger,
+				);
+				if (Object.keys(additionalMetadata).length > 0) {
+					this.logger.debug('Tracing metadata', { additionalMetadata });
+				}
+				const tracingConfig = isExecuteFunctions(this)
+					? getTracingConfig(this, { additionalMetadata })
+					: undefined;
+				const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
+				// Invoke with fallback logic
+				const invokeParams = {
+					input,
+					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+					formatting_instructions:
+						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+				};
+				const executeOptions = { signal: this.getExecutionCancelSignal() };
+
+				// Check if streaming is actually available
+				const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
+
+				if (
+					'isStreaming' in this &&
+					enableStreaming &&
+					isStreamingAvailable &&
+					this.getNode().typeVersion >= 2.1
+				) {
+					// Get chat history respecting the context window length configured in memory
+					const chatHistory = memory ? await loadMemory(memory, model) : undefined;
+					if (memory) {
+						memoryLoads++;
+					}
+					const eventStream = executorWithTracing.streamEvents(
+						{
+							...invokeParams,
+							chat_history: chatHistory ?? undefined,
+						},
+						{
+							version: 'v2',
+							...executeOptions,
+						},
+					);
+
+					return await processEventStream(
+						this,
+						eventStream,
+						itemIndex,
+						options.returnIntermediateSteps,
+					);
+				} else {
+					// Handle regular execution
+					return await executorWithTracing.invoke(invokeParams, executeOptions);
+				}
+			});
+
+			const batchResults = await Promise.allSettled(batchPromises);
+			// This is only used to check if the output parser is connected
+			// so we can parse the output if needed. Actual output parsing is done in the loop above
+			const outputParser = await getOptionalOutputParser(this, 0);
+			batchResults.forEach((result, index) => {
+				const itemIndex = i + index;
+				if (result.status === 'rejected') {
+					const error = result.reason as Error;
+					if (this.continueOnFail()) {
+						failedItems++;
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: itemIndex },
+						});
+						return;
+					} else {
+						throw new NodeOperationError(this.getNode(), error);
+					}
+				}
+				const response = result.value;
+				const intermediateSteps = response?.intermediateSteps;
+				if (Array.isArray(intermediateSteps)) {
+					toolCalls += intermediateSteps.length;
+				}
+				// If memory and outputParser are connected, parse the output.
+				if (memory && outputParser) {
+					const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+						response.output as string,
+					);
+					response.output = parsedOutput?.output ?? parsedOutput;
+				}
+
+				// Omit internal keys before returning the result.
+				const itemResult = {
+					json: omit(
+						response,
+						'system_message',
+						'formatting_instructions',
+						'input',
+						'chat_history',
+						'agent_scratchpad',
+					),
+					pairedItem: { item: itemIndex },
+				};
+
+				returnData.push(itemResult);
+			});
+
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
+			}
+		}
+
+		return [returnData];
+	} catch (error) {
+		failureMessage = error instanceof Error ? error.message : String(error);
+		throw error;
+	} finally {
+		applyAgentTracingMetadata(this, {
+			toolCalls,
+			failedItems,
+			totalItems,
+			streamingEnabled: enableStreaming,
+			failureMessage,
+			memoryLoads,
+		});
+	}
 }

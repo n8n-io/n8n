@@ -339,6 +339,98 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
 		});
+
+		it('should attach AI agent tracing metadata as node.execute custom attributes', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-agent-meta',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const agentNode = { id: 'n-agent', name: 'Agent', type: 'test', typeVersion: 1 };
+			tracer.startNode({
+				executionId: 'exec-agent-meta',
+				node: agentNode,
+			});
+			tracer.endNode({
+				executionId: 'exec-agent-meta',
+				node: agentNode,
+				inputItemCount: 1,
+				outputItemCount: 1,
+				customAttributes: {
+					'ai.agent.version': 'v3',
+					'ai.agent.streaming.enabled': 'true',
+					'ai.agent.iteration.count': '2',
+					'ai.agent.tool_calls.requested': '1',
+					'ai.agent.tool_calls.completed': '1',
+					'ai.agent.memory.loads': '2',
+					'ai.agent.memory.saves': '1',
+					'ai.agent.execution.succeeded': 'true',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-agent-meta',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const spans = otel.getFinishedSpans();
+			expect(spans.map((s) => s.name)).toEqual(
+				expect.arrayContaining(['workflow.execute', 'node.execute']),
+			);
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.status.code).toBe(SpanStatusCode.OK);
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.version']).toBe('v3');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.streaming.enabled']).toBe('true');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.iteration.count']).toBe('2');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.tool_calls.requested']).toBe('1');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.tool_calls.completed']).toBe('1');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.memory.loads']).toBe('2');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.memory.saves']).toBe('1');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.execution.succeeded']).toBe('true');
+		});
+
+		it('should preserve agent tracing custom attributes on node.execute when the node errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-agent-meta-err',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const agentNode = { id: 'n-agent', name: 'Agent', type: 'test', typeVersion: 1 };
+			tracer.startNode({
+				executionId: 'exec-agent-meta-err',
+				node: agentNode,
+			});
+			tracer.endNode({
+				executionId: 'exec-agent-meta-err',
+				node: agentNode,
+				inputItemCount: 1,
+				outputItemCount: 0,
+				customAttributes: {
+					'ai.agent.version': 'v3',
+					'ai.agent.failure.message': 'Max iterations reached',
+				},
+				error: {
+					message: 'agent failed',
+					constructor: { name: 'NodeOperationError' },
+					stack: 'stack trace here',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-agent-meta-err',
+				status: 'error',
+				mode: 'manual',
+				error: new Error('workflow failed'),
+				isRetry: false,
+			});
+
+			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.version']).toBe('v3');
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.failure.message']).toBe(
+				'Max iterations reached',
+			);
+		});
 	});
 
 	describe('endDanglingNodeSpans', () => {

@@ -37,6 +37,8 @@ vi.mock('n8n-workflow', async () => ({
 	sleep: vi.fn(),
 }));
 
+const emptyMemoryHits = { loads: 0, saves: 0 };
+
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
@@ -72,6 +74,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -107,6 +110,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
@@ -152,11 +156,13 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 				{ json: { output: 'success 2' }, pairedItem: { item: 1 } },
 			],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		const mockBatchResult2 = {
 			returnData: [{ json: { output: 'success 3' }, pairedItem: { item: 2 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -224,6 +230,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [],
 			request: mockRequest,
+			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -275,8 +282,16 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
 		vi.spyOn(helpers, 'executeBatch')
-			.mockResolvedValueOnce({ returnData: [], request: mockRequest1 })
-			.mockResolvedValueOnce({ returnData: [], request: mockRequest2 });
+			.mockResolvedValueOnce({
+				returnData: [],
+				request: mockRequest1,
+				memoryHits: emptyMemoryHits,
+			})
+			.mockResolvedValueOnce({
+				returnData: [],
+				request: mockRequest2,
+				memoryHits: emptyMemoryHits,
+			});
 
 		const result = (await toolsAgentExecute.call(
 			mockContext,
@@ -304,6 +319,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -332,6 +348,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
@@ -356,6 +373,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		const mockBatchResult = {
 			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
 			request: undefined,
+			memoryHits: emptyMemoryHits,
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
@@ -413,10 +431,12 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			.mockResolvedValueOnce({
 				returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
 				request: undefined,
+				memoryHits: emptyMemoryHits,
 			})
 			.mockResolvedValueOnce({
 				returnData: [{ json: { output: 'success 2' }, pairedItem: { item: 1 } }],
 				request: undefined,
+				memoryHits: emptyMemoryHits,
 			});
 
 		const result = await toolsAgentExecute.call(mockContext);

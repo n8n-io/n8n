@@ -83,6 +83,8 @@ export class ExecutionLevelTracer {
 			span.setStatus({ code: isError(params.status) ? SpanStatusCode.ERROR : SpanStatusCode.OK });
 			if (isError(params.status) && params.error) {
 				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
+				const recordableError = toRecordableError(params.error);
+				if (recordableError) span.recordException(recordableError);
 			}
 
 			//	We don't expect any to be open but we should close any children still running
@@ -156,11 +158,16 @@ export class ExecutionLevelTracer {
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
-				activeNodeSpan.addEvent('exception', {
-					[ATTR_EXCEPTION_MESSAGE]: params.error.message,
-					[ATTR_EXCEPTION_TYPE]: params.error.constructor.name,
-					[ATTR_EXCEPTION_STACKTRACE]: params.error.stack,
-				});
+				const recordableError = nodeErrorToError(params.error);
+				if (recordableError) {
+					activeNodeSpan.recordException(recordableError);
+				} else {
+					activeNodeSpan.addEvent('exception', {
+						[ATTR_EXCEPTION_MESSAGE]: params.error.message,
+						[ATTR_EXCEPTION_TYPE]: params.error.constructor.name,
+						[ATTR_EXCEPTION_STACKTRACE]: params.error.stack,
+					});
+				}
 			}
 
 			activeNodeSpan.end();
@@ -279,4 +286,29 @@ function getErrorType(error: unknown): string {
 	if (typeof ctor === 'function' && ctor.name && ctor.name !== 'Object') return ctor.name;
 
 	return 'UnknownError';
+}
+
+function nodeErrorToError(nodeError: NonNullable<EndNodeParams['error']>): Error | undefined {
+	const { message, constructor: ctor, stack } = nodeError;
+	const name = typeof ctor?.name === 'string' && ctor.name.trim() !== '' ? ctor.name : 'Error';
+	const synthetic = new Error(message);
+	synthetic.name = name;
+	if (typeof stack === 'string' && stack.trim() !== '') synthetic.stack = stack;
+	return synthetic;
+}
+
+function toRecordableError(error: unknown): Error | undefined {
+	if (error instanceof Error) return error;
+	if (typeof error === 'object' && error !== null && 'message' in error) {
+		const msg = (error as { message?: unknown }).message;
+		if (typeof msg === 'string') {
+			const synthetic = new Error(msg);
+			if ('name' in error && typeof (error as { name?: unknown }).name === 'string') {
+				synthetic.name = (error as { name: string }).name;
+			}
+			return synthetic;
+		}
+	}
+	if (typeof error === 'string') return new Error(error);
+	return undefined;
 }
