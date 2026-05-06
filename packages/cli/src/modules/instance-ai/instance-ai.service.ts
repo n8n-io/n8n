@@ -1449,6 +1449,16 @@ export class InstanceAiService {
 
 		const { activeRuns } = this.runState.shutdown();
 		for (const run of activeRuns) {
+			// Publish a terminal SSE event so the frontend reducer marks the
+			// message as no-longer-streaming and the run as ended. Without
+			// this, runs that were mid-flight at shutdown look stuck after
+			// reload (no run-finish in the event log).
+			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
+			// Persist the final agent-tree snapshot so reload reflects the
+			// cancelled state. The snapshot is built from in-memory events
+			// including the run-finish we just published; eventBus.clear()
+			// at the end of shutdown then disposes the in-memory copy.
+			await this.saveAgentTreeSnapshot(run.threadId, run.runId, this.dbSnapshotStorage, true);
 			run.abortController.abort();
 			await this.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',

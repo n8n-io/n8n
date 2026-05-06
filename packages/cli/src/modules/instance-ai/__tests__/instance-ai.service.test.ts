@@ -683,3 +683,145 @@ describe('InstanceAiService — restoreSuspendedRunFromDb', () => {
 		expect(opts.tracing).toBeUndefined();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Shutdown — terminate active runs cleanly so SSE consumers + persisted tree
+// see a final state. Without this, a run mid-flight at shutdown looks stuck
+// after reload (no run-finish in the event log, isStreaming: true on the
+// snapshot tree).
+// ---------------------------------------------------------------------------
+
+type ShutdownActiveRun = {
+	threadId: string;
+	runId: string;
+	abortController: AbortController;
+	tracing?: { id: string };
+};
+
+type ShutdownServiceInternals = {
+	shutdown: () => Promise<void>;
+	confirmationTimeoutInterval: NodeJS.Timeout | undefined;
+	runState: { shutdown: jest.Mock };
+	publishRunFinish: jest.Mock;
+	saveAgentTreeSnapshot: jest.Mock;
+	finalizeRunTracing: jest.Mock;
+	finalizeBackgroundTaskTracing: jest.Mock;
+	finalizeRemainingMessageTraceRoots: jest.Mock;
+	backgroundTasks: { cancelAll: jest.Mock };
+	gatewayRegistry: { disconnectAll: jest.Mock };
+	sandboxes: Map<string, unknown>;
+	destroySandbox: jest.Mock;
+	builderSandboxSessions: { cleanupAll: jest.Mock };
+	domainAccessTrackersByThread: Map<string, unknown>;
+	traceContextsByRunId: Map<string, unknown>;
+	eventBus: { clear: jest.Mock };
+	mcpClientManager: { disconnect: jest.Mock };
+	dbSnapshotStorage: object;
+	logger: { debug: jest.Mock };
+};
+
+function createShutdownService(activeRuns: ShutdownActiveRun[]): ShutdownServiceInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as ShutdownServiceInternals;
+	service.confirmationTimeoutInterval = undefined;
+	service.runState = {
+		shutdown: jest.fn(() => ({ activeRuns })),
+	};
+	service.publishRunFinish = jest.fn();
+	service.saveAgentTreeSnapshot = jest.fn(async () => undefined);
+	service.finalizeRunTracing = jest.fn(async () => undefined);
+	service.finalizeBackgroundTaskTracing = jest.fn(async () => undefined);
+	service.finalizeRemainingMessageTraceRoots = jest.fn(async () => undefined);
+	service.backgroundTasks = { cancelAll: jest.fn(() => []) };
+	service.gatewayRegistry = { disconnectAll: jest.fn() };
+	service.sandboxes = new Map();
+	service.destroySandbox = jest.fn(async () => undefined);
+	service.builderSandboxSessions = { cleanupAll: jest.fn(async () => undefined) };
+	service.domainAccessTrackersByThread = new Map();
+	service.traceContextsByRunId = new Map();
+	service.eventBus = { clear: jest.fn() };
+	service.mcpClientManager = { disconnect: jest.fn(async () => undefined) };
+	service.dbSnapshotStorage = {};
+	service.logger = { debug: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — shutdown', () => {
+	it('publishes run-finish and persists a final snapshot for each active run', async () => {
+		const abortController1 = new AbortController();
+		const abortController2 = new AbortController();
+		const abortSpy1 = jest.spyOn(abortController1, 'abort');
+		const abortSpy2 = jest.spyOn(abortController2, 'abort');
+
+		const service = createShutdownService([
+			{ threadId: 'thread-a', runId: 'run-1', abortController: abortController1 },
+			{
+				threadId: 'thread-b',
+				runId: 'run-2',
+				abortController: abortController2,
+				tracing: { id: 'trace-2' },
+			},
+		]);
+
+		await service.shutdown();
+
+		// run-finish published per active run, with shutdown reason
+		expect(service.publishRunFinish).toHaveBeenCalledTimes(2);
+		expect(service.publishRunFinish).toHaveBeenNthCalledWith(
+			1,
+			'thread-a',
+			'run-1',
+			'cancelled',
+			'service_shutdown',
+		);
+		expect(service.publishRunFinish).toHaveBeenNthCalledWith(
+			2,
+			'thread-b',
+			'run-2',
+			'cancelled',
+			'service_shutdown',
+		);
+
+		// Snapshot persisted with isUpdate=true
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledTimes(2);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenNthCalledWith(
+			1,
+			'thread-a',
+			'run-1',
+			service.dbSnapshotStorage,
+			true,
+		);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenNthCalledWith(
+			2,
+			'thread-b',
+			'run-2',
+			service.dbSnapshotStorage,
+			true,
+		);
+
+		// Abort + trace finalize still happen (regression check)
+		expect(abortSpy1).toHaveBeenCalled();
+		expect(abortSpy2).toHaveBeenCalled();
+		expect(service.finalizeRunTracing).toHaveBeenCalledWith('run-1', undefined, {
+			status: 'cancelled',
+			reason: 'service_shutdown',
+		});
+		expect(service.finalizeRunTracing).toHaveBeenCalledWith(
+			'run-2',
+			{ id: 'trace-2' },
+			{
+				status: 'cancelled',
+				reason: 'service_shutdown',
+			},
+		);
+	});
+
+	it('runs through cleanly when no active runs are present', async () => {
+		const service = createShutdownService([]);
+
+		await service.shutdown();
+
+		expect(service.publishRunFinish).not.toHaveBeenCalled();
+		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
+		expect(service.eventBus.clear).toHaveBeenCalled();
+	});
+});

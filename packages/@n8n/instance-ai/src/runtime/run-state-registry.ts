@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import type { InstanceAiTraceContext } from '../types';
 
 export interface ActiveRunState {
+	threadId: string;
 	runId: string;
 	abortController: AbortController;
 	messageGroupId?: string;
@@ -114,7 +115,12 @@ export class RunStateRegistry<TUser = unknown> {
 		const abortController = new AbortController();
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 
-		this.activeRuns.set(options.threadId, { runId, abortController, messageGroupId });
+		this.activeRuns.set(options.threadId, {
+			threadId: options.threadId,
+			runId,
+			abortController,
+			messageGroupId,
+		});
 		this.threadUsers.set(options.threadId, options.user);
 		if (options.researchMode !== undefined) {
 			this.threadResearchMode.set(options.threadId, options.researchMode);
@@ -136,7 +142,7 @@ export class RunStateRegistry<TUser = unknown> {
 		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
 		if (groupRunIds) groupRunIds.push(runId);
 
-		return { runId, abortController, messageGroupId };
+		return { threadId: options.threadId, runId, abortController, messageGroupId };
 	}
 
 	hasActiveRun(threadId: string): boolean {

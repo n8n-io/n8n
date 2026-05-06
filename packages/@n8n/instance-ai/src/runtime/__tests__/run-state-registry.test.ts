@@ -69,6 +69,12 @@ describe('RunStateRegistry', () => {
 			expect(result.runId).toBe('run_original');
 		});
 
+		it('stores the threadId on the active-run entry so shutdown can route per-run signals', () => {
+			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+
+			expect(registry.getActiveRun('thread-1')?.threadId).toBe('thread-1');
+		});
+
 		it('stores user for the thread', () => {
 			registry.startRun({
 				threadId: 'thread-1',
