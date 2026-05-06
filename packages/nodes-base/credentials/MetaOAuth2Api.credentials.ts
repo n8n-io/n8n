@@ -71,7 +71,7 @@ export class MetaOAuth2Api implements ICredentialType {
 			default: 'internal_oauth_token',
 			required: true,
 			description:
-				'Name of the claim inside the decrypted JWT whose value should be used as the bearer token sent to the API',
+				'Name of the claim inside the decrypted JWT token ID whose value should be used as the bearer token sent to the API',
 		},
 	];
 
@@ -87,12 +87,12 @@ export class MetaOAuth2Api implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 	): Promise<IDataObject> {
 		const tokenData = credentials.oauthTokenData as OAuthTokenData | undefined;
-		if (!tokenData?.access_token) {
+		if (!tokenData?.id_token) {
 			return {};
 		}
 
 		const claimName = (credentials.bearerClaim as string) || 'internal_oauth_token';
-		const payload = decodeJwtPayload(tokenData.access_token);
+		const payload = decodeJwtPayload(tokenData.id_token);
 		const extracted = payload[claimName];
 
 		if (typeof extracted !== 'string' || extracted.length === 0) {
