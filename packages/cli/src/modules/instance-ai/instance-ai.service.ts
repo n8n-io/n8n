@@ -789,6 +789,7 @@ export class InstanceAiService {
 			input: options.input,
 			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
 			metadata: {
+				n8n_version: N8N_VERSION || undefined,
 				resume_reason: options.resumeReason,
 				agent_id: ORCHESTRATOR_AGENT_ID,
 				...options.metadata,
@@ -2200,6 +2201,9 @@ export class InstanceAiService {
 						modelId,
 						input: traceInput,
 						proxyConfig: orchestrationContext.tracingProxyConfig,
+						metadata: {
+							n8n_version: N8N_VERSION || undefined,
+						},
 					});
 
 			// When trace replay is enabled but LangSmith isn't configured,
@@ -3692,6 +3696,7 @@ export class InstanceAiService {
 				},
 				proxyConfig: baseTracing?.proxyConfig,
 				metadata: {
+					n8n_version: N8N_VERSION || undefined,
 					operation_name: 'thread_title',
 					trigger: 'run_completed',
 				},

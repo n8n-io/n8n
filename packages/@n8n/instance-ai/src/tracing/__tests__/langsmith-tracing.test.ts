@@ -546,6 +546,8 @@ describe('createInstanceAiTraceContext', () => {
 				'instance_ai.canonical_name': 'instance-ai.message_turn',
 			}),
 		);
+		expect(typeof tracing?.rootRun.metadata?.agents_version).toBe('string');
+		expect(typeof tracing?.rootRun.metadata?.workflow_sdk_version).toBe('string');
 		await startForegroundActor(tracing!);
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
 	});
@@ -559,6 +561,7 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
+			metadata: { n8n_version: '2.19.0' },
 		});
 
 		expect(tracing?.getTelemetry).toBeDefined();
@@ -585,6 +588,7 @@ describe('createInstanceAiTraceContext', () => {
 				run_id: 'run-1',
 				user_id: 'user-1',
 				agent_role: 'orchestrator',
+				n8n_version: '2.19.0',
 				execution_mode: 'foreground',
 				trace_kind: 'message_turn',
 				langsmith_trace_id: tracing?.rootRun.traceId,
@@ -593,6 +597,8 @@ describe('createInstanceAiTraceContext', () => {
 				custom_flag: true,
 			}),
 		);
+		expect(typeof telemetry.metadata?.agents_version).toBe('string');
+		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
 
 		await telemetry.provider?.shutdown();
 	});
@@ -1041,6 +1047,7 @@ describe('createInstanceAiTraceContext', () => {
 			spawnedByAgentRole: 'orchestrator',
 			spawnedByToolCallId: 'toolu-1',
 			input: { task: 'Build a workflow' },
+			metadata: { n8n_version: '2.19.0' },
 		});
 
 		expect(tracing).toBeDefined();
@@ -1057,6 +1064,7 @@ describe('createInstanceAiTraceContext', () => {
 				task_id: 'build-1',
 				task_kind: 'builder',
 				agent_id: 'agent-builder-1',
+				n8n_version: '2.19.0',
 				trace_kind: 'background_subagent',
 				execution_mode: 'background_subagent',
 				spawned_by_trace_id: 'trace-parent-1',
@@ -1068,6 +1076,8 @@ describe('createInstanceAiTraceContext', () => {
 				'instance_ai.canonical_name': 'instance-ai.background_subagent',
 			}),
 		);
+		expect(typeof tracing?.rootRun.metadata?.agents_version).toBe('string');
+		expect(typeof tracing?.rootRun.metadata?.workflow_sdk_version).toBe('string');
 		expect(tracing?.actorRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.agent.workflow-builder',

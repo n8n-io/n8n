@@ -17,6 +17,7 @@ import type { Context as OtelContext, Span as OtelApiSpan } from '@opentelemetry
 import { Client } from 'langsmith';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 
 import type {
 	InstanceAiToolTraceOptions,
@@ -54,6 +55,7 @@ const productTraceStorage = new AsyncLocalStorage<{
 const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 
 const otelTraceRuntimes = new Map<string, ProductOtelTraceRuntime>();
+const hostRequire = createRequire(__filename);
 
 /**
  * Fetch wrapper for LangSmith clients:
@@ -2170,6 +2172,35 @@ export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
 	return ctx;
 }
 
+interface TraceRuntimeVersions {
+	agents_version?: string;
+	workflow_sdk_version?: string;
+}
+
+let traceRuntimeVersions: TraceRuntimeVersions | undefined;
+
+function readPackageVersion(packageName: string): string | undefined {
+	try {
+		const packageJson = hostRequire(`${packageName}/package.json`) as { version?: unknown };
+		return typeof packageJson.version === 'string' ? packageJson.version : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function getTraceRuntimeVersions(): TraceRuntimeVersions {
+	if (!traceRuntimeVersions) {
+		const agentsVersion = readPackageVersion('@n8n/agents');
+		const workflowSdkVersion = readPackageVersion('@n8n/workflow-sdk');
+		traceRuntimeVersions = {
+			...(agentsVersion ? { agents_version: agentsVersion } : {}),
+			...(workflowSdkVersion ? { workflow_sdk_version: workflowSdkVersion } : {}),
+		};
+	}
+
+	return traceRuntimeVersions;
+}
+
 function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record<string, unknown> {
 	return {
 		thread_id: options.threadId,
@@ -2181,6 +2212,7 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		activation_id: options.runId,
 		user_id: options.userId,
 		'instance_ai.trace_version': OTEL_TRACE_VERSION,
+		...getTraceRuntimeVersions(),
 		...(options.modelId !== undefined
 			? { model_id: serializeModelIdForTrace(options.modelId) }
 			: {}),
