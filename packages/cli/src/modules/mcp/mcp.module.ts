@@ -1,3 +1,4 @@
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -20,12 +21,13 @@ export class McpModule implements ModuleInterface {
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
-	 * The response shape will be `{ mcp: { mcpAccessEnabled: boolean } }`.
+	 * The response shape will be `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service');
 		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
-		return { mcpAccessEnabled };
+		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
+		return { mcpAccessEnabled, mcpManagedByEnv };
 	}
 
 	async entities() {

@@ -134,7 +134,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 
 		if (response.waitingForWebhook === true) {
-			workflowsStore.executionWaitingForWebhook = true;
+			workflowsStore.setExecutionWaitingForWebhook(true);
 		}
 
 		return response;
@@ -189,7 +189,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflowDocumentStore.value.getSnapshot(),
+				workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			);
 
 			const { startNodeNames } = consolidatedData;
@@ -250,7 +250,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode.nodeName;
+						workflowsStore.setChatPartialExecutionDestinationNode(options.destinationNode.nodeName);
 						startChat();
 						return;
 					}
@@ -539,7 +539,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
-					workflowData: workflowsStore.workflow,
+					workflowData: workflowDocumentStore.value.getSnapshot(),
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,

@@ -93,6 +93,7 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
@@ -147,6 +148,9 @@ export interface FrontendSettings {
 			loginEnabled: boolean;
 		};
 	};
+	logStreaming: {
+		managedByEnv: boolean;
+	};
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -156,6 +160,7 @@ export interface FrontendSettings {
 		};
 	};
 	workflowTagsDisabled: boolean;
+	workflowsAutosaveDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -266,6 +271,8 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+		/** Whether MCP settings are managed via environment variables. */
+		mcpManagedByEnv: boolean;
 	};
 
 	/**
@@ -308,6 +315,19 @@ export type FrontendModuleSettings = {
 		roleBasedAccess: boolean;
 		/** Whether system roles (admin, editor) have external secrets scopes. */
 		systemRolesEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the agents module.
+	 */
+	agents?: {
+		/**
+		 * Enabled agent sub-feature modules. Each token unlocks a specific
+		 * capability inside the agents module (see the backend's
+		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
+		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 */
+		modules: string[];
 	};
 };
 

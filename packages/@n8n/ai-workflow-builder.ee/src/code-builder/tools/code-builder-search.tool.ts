@@ -10,7 +10,7 @@
  */
 
 import { tool } from '@langchain/core/tools';
-import type { IParameterBuilderHint, IRelatedNode } from 'n8n-workflow';
+import { isTriggerNodeType, type IParameterBuilderHint, type IRelatedNode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -24,28 +24,6 @@ import {
 	type ModeInfo,
 } from '../utils/discriminator-utils';
 import type { NodeTypeParser, ParsedNodeType } from '../utils/node-type-parser';
-
-/**
- * Trigger node types that don't have "trigger" in their name
- * but still function as workflow entry points
- */
-const TRIGGER_NODE_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.cron', // Legacy schedule trigger
-	'n8n-nodes-base.emailReadImap', // Email polling trigger
-	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
-	'n8n-nodes-base.start', // Legacy trigger
-]);
-
-/**
- * Check if a node type is a trigger
- */
-export function isTriggerNodeType(type: string): boolean {
-	if (TRIGGER_NODE_TYPES.has(type)) {
-		return true;
-	}
-	return type.toLowerCase().includes('trigger');
-}
 
 /**
  * Simplified operation info for discriminator display
@@ -112,9 +90,10 @@ function getRelatedNodesWithHints(
 	nodeTypeParser: NodeTypeParser,
 	nodeId: string,
 	version: number,
+	nodeFilter?: (nodeId: string) => boolean,
 ): IRelatedNode[] | undefined {
 	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
-	return nodeType?.builderHint?.relatedNodes;
+	return nodeType?.builderHint?.relatedNodes?.filter((r) => nodeFilter?.(r.nodeType) ?? true);
 }
 
 /**
@@ -447,112 +426,128 @@ export function formatNodeResult(
 	return parts.join('\n');
 }
 
+export interface CodeBuilderSearchToolOptions {
+	/** Optional predicate to exclude nodes from results. Return `false` to filter a node out. */
+	nodeFilter?: (nodeId: string) => boolean;
+}
+
+/**
+ * Search for a single query and return the formatted result block.
+ * Extracted to keep the tool handler's cyclomatic complexity within limits.
+ */
+function searchForQuery(
+	nodeTypeParser: NodeTypeParser,
+	query: string,
+	nodeFilter?: (nodeId: string) => boolean,
+): string {
+	const results = nodeTypeParser.searchNodeTypes(query, 5, nodeFilter);
+
+	if (results.length === 0) {
+		return `## "${query}"\nNo nodes found. Try a different search term.`;
+	}
+
+	// Track which node IDs have been shown to avoid duplicates
+	const shownNodeIds = new Set<string>(results.map((node: ParsedNodeType) => node.id));
+
+	const allNodeLines: string[] = [];
+	let totalRelatedCount = 0;
+
+	for (const node of results) {
+		// Format the search result node
+		const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
+		const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
+
+		// Get builder hint
+		const builderHint = formatBuilderHint(nodeTypeParser, node.id, node.version);
+
+		// Check for new relatedNodes format with hints
+		const relatedNodesWithHints = getRelatedNodesWithHints(
+			nodeTypeParser,
+			node.id,
+			node.version,
+			nodeFilter,
+		);
+
+		// Get discriminator info
+		const discInfo = getDiscriminatorInfo(nodeTypeParser, node.id, node.version);
+		const discStr = formatDiscriminatorInfo(discInfo, node.id);
+
+		const parts = [basicInfo];
+		if (builderHint) parts.push(builderHint);
+
+		// If using new format with hints, display @relatedNodes section instead of expanding
+		if (relatedNodesWithHints && relatedNodesWithHints.length > 0) {
+			const relatedNodesStr = formatRelatedNodesWithHints(relatedNodesWithHints);
+			if (relatedNodesStr) parts.push(relatedNodesStr);
+		} else {
+			// Legacy format: expand related nodes as [RELATED] entries
+			const relatedNodeIds = collectAllRelatedNodeIds(
+				nodeTypeParser,
+				[{ id: node.id, version: node.version }],
+				shownNodeIds,
+			);
+
+			// Add discriminator info to current node, then push it
+			if (discStr) parts.push(discStr);
+			allNodeLines.push(parts.join('\n'));
+
+			for (const relatedId of relatedNodeIds) {
+				if (nodeFilter && !nodeFilter(relatedId)) continue;
+
+				const nodeType = nodeTypeParser.getNodeType(relatedId);
+				if (nodeType) {
+					const version = Array.isArray(nodeType.version)
+						? nodeType.version[nodeType.version.length - 1]
+						: nodeType.version;
+					const relatedTriggerTag = isTriggerNodeType(relatedId) ? ' [TRIGGER]' : '';
+					const relatedBasicInfo = `- ${relatedId}${relatedTriggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
+
+					// Get builder hint for related node too
+					const relatedBuilderHint = formatBuilderHint(nodeTypeParser, relatedId, version);
+
+					// Get discriminator info for related node
+					const relatedDiscInfo = getDiscriminatorInfo(nodeTypeParser, relatedId, version);
+					const relatedDiscStr = formatDiscriminatorInfo(relatedDiscInfo, relatedId);
+
+					const relatedParts = [relatedBasicInfo];
+					if (relatedBuilderHint) relatedParts.push(relatedBuilderHint);
+					if (relatedDiscStr) relatedParts.push(relatedDiscStr);
+
+					allNodeLines.push(relatedParts.join('\n'));
+
+					// Mark as shown to prevent duplicates
+					shownNodeIds.add(relatedId);
+					totalRelatedCount++;
+				}
+			}
+			continue; // Skip the common push below since we handled it in the legacy branch
+		}
+
+		if (discStr) parts.push(discStr);
+		allNodeLines.push(parts.join('\n'));
+	}
+
+	const countSuffix = totalRelatedCount > 0 ? ` (+ ${totalRelatedCount} related)` : '';
+	return `## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`;
+}
+
 /**
  * Create the simplified node search tool for code builder
  * Accepts multiple queries and returns separate results for each
  * Includes discriminator information for nodes with resource/operation or mode patterns
  */
-export function createCodeBuilderSearchTool(nodeTypeParser: NodeTypeParser) {
+export function createCodeBuilderSearchTool(
+	nodeTypeParser: NodeTypeParser,
+	options?: CodeBuilderSearchToolOptions,
+) {
+	const { nodeFilter } = options ?? {};
+
 	return tool(
 		async (input: { queries: string[] }) => {
-			const allResults: string[] = [];
-
-			for (const query of input.queries) {
-				const results = nodeTypeParser.searchNodeTypes(query, 5);
-
-				if (results.length === 0) {
-					allResults.push(`## "${query}"\nNo nodes found. Try a different search term.`);
-				} else {
-					// Track which node IDs have been shown to avoid duplicates
-					const shownNodeIds = new Set<string>(results.map((node: ParsedNodeType) => node.id));
-
-					const allNodeLines: string[] = [];
-					let totalRelatedCount = 0;
-
-					for (const node of results) {
-						// Format the search result node
-						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
-						const basicInfo = `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Version: ${node.version}\n  Description: ${node.description}`;
-
-						// Get builder hint
-						const builderHint = formatBuilderHint(nodeTypeParser, node.id, node.version);
-
-						// Check for new relatedNodes format with hints
-						const relatedNodesWithHints = getRelatedNodesWithHints(
-							nodeTypeParser,
-							node.id,
-							node.version,
-						);
-
-						// Get discriminator info
-						const discInfo = getDiscriminatorInfo(nodeTypeParser, node.id, node.version);
-						const discStr = formatDiscriminatorInfo(discInfo, node.id);
-
-						const parts = [basicInfo];
-						if (builderHint) parts.push(builderHint);
-
-						// If using new format with hints, display @relatedNodes section instead of expanding
-						if (relatedNodesWithHints && relatedNodesWithHints.length > 0) {
-							const relatedNodesStr = formatRelatedNodesWithHints(relatedNodesWithHints);
-							if (relatedNodesStr) parts.push(relatedNodesStr);
-						} else {
-							// Legacy format: expand related nodes as [RELATED] entries
-							const relatedNodeIds = collectAllRelatedNodeIds(
-								nodeTypeParser,
-								[{ id: node.id, version: node.version }],
-								shownNodeIds,
-							);
-
-							// Add related nodes immediately after their parent search result
-							// First, add discriminator info to current node
-							if (discStr) parts.push(discStr);
-							allNodeLines.push(parts.join('\n'));
-
-							for (const relatedId of relatedNodeIds) {
-								const nodeType = nodeTypeParser.getNodeType(relatedId);
-								if (nodeType) {
-									const version = Array.isArray(nodeType.version)
-										? nodeType.version[nodeType.version.length - 1]
-										: nodeType.version;
-									const relatedTriggerTag = isTriggerNodeType(relatedId) ? ' [TRIGGER]' : '';
-									const relatedBasicInfo = `- ${relatedId}${relatedTriggerTag} [RELATED]\n  Display Name: ${nodeType.displayName}\n  Version: ${version}\n  Description: ${nodeType.description}`;
-
-									// Get builder hint for related node too
-									const relatedBuilderHint = formatBuilderHint(nodeTypeParser, relatedId, version);
-
-									// Get discriminator info for related node
-									const relatedDiscInfo = getDiscriminatorInfo(nodeTypeParser, relatedId, version);
-									const relatedDiscStr = formatDiscriminatorInfo(relatedDiscInfo, relatedId);
-
-									const relatedParts = [relatedBasicInfo];
-									if (relatedBuilderHint) relatedParts.push(relatedBuilderHint);
-									if (relatedDiscStr) relatedParts.push(relatedDiscStr);
-
-									allNodeLines.push(relatedParts.join('\n'));
-
-									// Mark as shown to prevent duplicates
-									shownNodeIds.add(relatedId);
-									totalRelatedCount++;
-								}
-							}
-							continue; // Skip the common push below since we handled it in the legacy branch
-						}
-
-						if (discStr) parts.push(discStr);
-						allNodeLines.push(parts.join('\n'));
-					}
-
-					const countSuffix = totalRelatedCount > 0 ? ` (+ ${totalRelatedCount} related)` : '';
-
-					allResults.push(
-						`## "${query}"\nFound ${results.length} nodes${countSuffix}:\n\n${allNodeLines.join('\n\n')}`,
-					);
-				}
-			}
-
-			const response = allResults.join('\n\n---\n\n');
-
-			return response;
+			const allResults = input.queries.map((query) =>
+				searchForQuery(nodeTypeParser, query, nodeFilter),
+			);
+			return allResults.join('\n\n---\n\n');
 		},
 		{
 			name: 'search_nodes',

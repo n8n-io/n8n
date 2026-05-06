@@ -60,7 +60,7 @@ export class DynamicCredentialResolverService {
 	async create(params: CreateResolverParams): Promise<DynamicCredentialResolver> {
 		await this.validateConfig(params.type, params.config);
 
-		const encryptedConfig = this.encryptConfig(params.config);
+		const encryptedConfig = await this.encryptConfig(params.config);
 
 		const resolver = this.repository.create({
 			name: params.name,
@@ -71,7 +71,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(resolver);
 		this.logger.debug(`Created credential resolver "${saved.name}" (${saved.id})`);
 
-		return this.withDecryptedConfig(saved);
+		return await this.withDecryptedConfig(saved);
 	}
 
 	/**
@@ -80,7 +80,9 @@ export class DynamicCredentialResolverService {
 	 */
 	async findAll(): Promise<DynamicCredentialResolver[]> {
 		const resolvers = await this.repository.find();
-		return resolvers.map((resolver) => this.withDecryptedConfig(resolver));
+		return await Promise.all(
+			resolvers.map(async (resolver) => await this.withDecryptedConfig(resolver)),
+		);
 	}
 
 	/**
@@ -100,7 +102,7 @@ export class DynamicCredentialResolverService {
 		if (!resolver) {
 			throw new DynamicCredentialResolverNotFoundError(id);
 		}
-		return this.withDecryptedConfig(resolver);
+		return await this.withDecryptedConfig(resolver);
 	}
 
 	/**
@@ -118,14 +120,14 @@ export class DynamicCredentialResolverService {
 			existing.type = params.type;
 			// Re-validate existing config against new type if config wasn't provided
 			if (params.config === undefined) {
-				const existingConfig = this.decryptConfig(existing.config);
+				const existingConfig = await this.decryptConfig(existing.config);
 				await this.validateConfig(existing.type, existingConfig);
 			}
 		}
 
 		if (params.config !== undefined) {
 			await this.validateConfig(existing.type, params.config);
-			existing.config = this.encryptConfig(params.config);
+			existing.config = await this.encryptConfig(params.config);
 		}
 
 		if (params.name !== undefined) {
@@ -143,7 +145,7 @@ export class DynamicCredentialResolverService {
 				await resolver.deleteAllSecrets({
 					resolverId: id,
 					resolverName: resolver.metadata.name,
-					configuration: this.decryptConfig(existing.config),
+					configuration: await this.decryptConfig(existing.config),
 				});
 			}
 		}
@@ -151,7 +153,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(existing);
 		this.logger.debug(`Updated credential resolver "${saved.name}" (${saved.id})`);
 
-		return this.withDecryptedConfig(saved);
+		return await this.withDecryptedConfig(saved);
 	}
 
 	/**
@@ -241,15 +243,15 @@ export class DynamicCredentialResolverService {
 	/**
 	 * Encrypts the config for storage.
 	 */
-	private encryptConfig(config: CredentialResolverConfiguration): string {
-		return this.cipher.encrypt(config);
+	private async encryptConfig(config: CredentialResolverConfiguration): Promise<string> {
+		return await this.cipher.encryptV2(config);
 	}
 
 	/**
 	 * Decrypts the config from storage.
 	 */
-	private decryptConfig(encryptedConfig: string): CredentialResolverConfiguration {
-		const decryptedData = this.cipher.decrypt(encryptedConfig);
+	private async decryptConfig(encryptedConfig: string): Promise<CredentialResolverConfiguration> {
+		const decryptedData = await this.cipher.decryptV2(encryptedConfig);
 		try {
 			return jsonParse<CredentialResolverConfiguration>(decryptedData);
 		} catch {
@@ -262,8 +264,10 @@ export class DynamicCredentialResolverService {
 	/**
 	 * Populates the decryptedConfig field on the resolver.
 	 */
-	private withDecryptedConfig(resolver: DynamicCredentialResolver): DynamicCredentialResolver {
-		resolver.decryptedConfig = this.decryptConfig(resolver.config);
+	private async withDecryptedConfig(
+		resolver: DynamicCredentialResolver,
+	): Promise<DynamicCredentialResolver> {
+		resolver.decryptedConfig = await this.decryptConfig(resolver.config);
 		return resolver;
 	}
 }

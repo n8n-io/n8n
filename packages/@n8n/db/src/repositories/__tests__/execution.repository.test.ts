@@ -2,9 +2,8 @@
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
 
-import type { IExecutionResponse } from 'entities/types-db';
-
 import { ExecutionEntity } from '../../entities';
+import type { IExecutionResponse } from '../../entities/types-db';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ExecutionRepository } from '../execution.repository';
 

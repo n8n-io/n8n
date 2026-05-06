@@ -48,8 +48,8 @@ export function useRecentResources() {
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
 
 	function trackResourceOpened(to: RouteLocationNormalized): void {
-		if (to.name === VIEWS.WORKFLOW && typeof to.params.name === 'string') {
-			const workflowId = to.params.name;
+		if (to.name === VIEWS.WORKFLOW && typeof to.params.workflowId === 'string') {
+			const workflowId = to.params.workflowId;
 			const isNewWorkflow = to.query.new === 'true';
 			// Check if it's a valid workflow ID (not empty and exists)
 			if (workflowId && !isNewWorkflow) {
@@ -98,8 +98,8 @@ export function useRecentResources() {
 
 		const currentRoute = router.currentRoute.value;
 		const currentWorkflowId =
-			currentRoute.name === VIEWS.WORKFLOW && typeof currentRoute.params.name === 'string'
-				? currentRoute.params.name
+			currentRoute.name === VIEWS.WORKFLOW && typeof currentRoute.params.workflowId === 'string'
+				? currentRoute.params.workflowId
 				: null;
 
 		if (currentWorkflowId && recentNodes.value[currentWorkflowId]) {
@@ -168,7 +168,7 @@ export function useRecentResources() {
 					handler: () => {
 						const targetRoute = router.resolve({
 							name: VIEWS.WORKFLOW,
-							params: { name: recentWorkflow.id },
+							params: { workflowId: recentWorkflow.id },
 						});
 						window.location.href = targetRoute.fullPath;
 					},

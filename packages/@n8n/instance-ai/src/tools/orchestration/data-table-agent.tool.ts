@@ -72,22 +72,6 @@ export async function startDataTableAgentTask(
 	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
 	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'data-table-manager',
-			tools: Object.keys(dataTableTools),
-			taskId,
-			kind: 'data-table',
-			title: 'Managing data table',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: { type: 'data-table' as const },
-		},
-	});
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'data-table-manager',
@@ -101,13 +85,16 @@ export async function startDataTableAgentTask(
 	});
 	const tracedDataTableTools = traceSubAgentTools(context, dataTableTools, 'data-table-manager');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role: 'data-table-manager', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, _drainCorrections, _waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
@@ -172,6 +159,41 @@ export async function startDataTableAgentTask(
 					return await hitlResult.text;
 				});
 			});
+		},
+	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Data table operation already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start data table operation: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'data-table-manager',
+			tools: Object.keys(dataTableTools),
+			taskId,
+			kind: 'data-table',
+			title: 'Managing data table',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: { type: 'data-table' as const },
 		},
 	});
 

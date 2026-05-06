@@ -213,18 +213,24 @@ describe('Test Google Sheets, prepareSheetData', () => {
 });
 
 describe('Test Google Sheets, autoMapInputData', () => {
-	it('should autoMapInputData', async () => {
-		const node: INode = {
-			id: '1',
-			name: 'Postgres node',
-			typeVersion: 2,
-			type: 'n8n-nodes-base.postgres',
-			position: [60, 760],
-			parameters: {
-				operation: 'executeQuery',
-			},
-		};
+	const node: INode = {
+		id: '1',
+		name: 'Postgres node',
+		typeVersion: 2,
+		type: 'n8n-nodes-base.postgres',
+		position: [60, 760],
+		parameters: {
+			operation: 'executeQuery',
+		},
+	};
 
+	const fakeExecuteFunction = {
+		getNode() {
+			return node;
+		},
+	} as unknown as IExecuteFunctions;
+
+	it('should autoMapInputData', async () => {
 		const items = [
 			{
 				json: {
@@ -250,15 +256,11 @@ describe('Test Google Sheets, autoMapInputData', () => {
 			},
 		];
 
-		const fakeExecuteFunction = {
-			getNode() {
-				return node;
-			},
-		} as unknown as IExecuteFunctions;
-
 		const getData = (GoogleSheet.prototype.getData = jest.fn().mockResolvedValue([[]]));
 
 		const updateRows = (GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true));
+
+		GoogleSheet.prototype.setColumnNamesHint = jest.fn();
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
@@ -296,6 +298,57 @@ describe('Test Google Sheets, autoMapInputData', () => {
 				info: 'some info',
 			},
 		]);
+	});
+
+	it('should skip getData when prefetchedColumnNames is provided', async () => {
+		const items = [{ json: { id: 1, name: 'Jon' } }];
+
+		const getData = (GoogleSheet.prototype.getData = jest.fn());
+		GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true);
+		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = jest.fn());
+
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		await autoMapInputData.call(fakeExecuteFunction, 'Sheet1', googleSheet, items, {}, [
+			'id',
+			'name',
+		]);
+
+		expect(getData).not.toHaveBeenCalled();
+		expect(setColumnNamesHint).toHaveBeenCalledWith(['id', 'name']);
+	});
+
+	it('should call setColumnNamesHint with updated columns when new columns are discovered', async () => {
+		const items = [{ json: { id: 1, name: 'Jon', age: 30 } }];
+
+		GoogleSheet.prototype.getData = jest.fn();
+		GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true);
+		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = jest.fn());
+
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		await autoMapInputData.call(fakeExecuteFunction, 'Sheet1', googleSheet, items, {}, [
+			'id',
+			'name',
+		]);
+
+		// 'age' is a new column — hint must include it so convertObjectArrayToSheetDataArray writes the value
+		expect(setColumnNamesHint).toHaveBeenCalledWith(['id', 'name', 'age']);
+	});
+
+	it('should call setColumnNamesHint with columns fetched via getData when no prefetch provided', async () => {
+		const items = [{ json: { id: 1, name: 'Jon' } }];
+
+		const getData = (GoogleSheet.prototype.getData = jest.fn().mockResolvedValue([['id', 'name']]));
+		GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true);
+		const setColumnNamesHint = (GoogleSheet.prototype.setColumnNamesHint = jest.fn());
+
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		await autoMapInputData.call(fakeExecuteFunction, 'Sheet1', googleSheet, items, {});
+
+		expect(getData).toHaveBeenCalledTimes(1);
+		expect(setColumnNamesHint).toHaveBeenCalledWith(['id', 'name']);
 	});
 });
 

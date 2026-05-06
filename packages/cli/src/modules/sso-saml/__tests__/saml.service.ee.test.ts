@@ -216,8 +216,10 @@ describe('SamlService', () => {
 		});
 		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
-		cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`) as Cipher['encrypt'];
-		cipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		cipher.encryptV2 = jest.fn(async (data: string) => `encrypted:${data}`) as Cipher['encryptV2'];
+		cipher.decryptV2 = jest.fn(async (data: string) =>
+			data.replace('encrypted:', ''),
+		) as Cipher['decryptV2'];
 		cacheService = mock<CacheService>();
 
 		jest
@@ -960,7 +962,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
+				expect(cipher.encryptV2).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should not expose plaintext private key via getter', async () => {
@@ -999,13 +1001,13 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				const decrypted = await samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
-			it('should return undefined when no signing key is stored', () => {
+			it('should return undefined when no signing key is stored', async () => {
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should return undefined when feature flag is disabled', async () => {
@@ -1015,7 +1017,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should throw BadRequestError when decryption fails', async () => {
@@ -1023,12 +1025,12 @@ describe('SamlService', () => {
 				await samlService.loadPreferencesWithoutValidation({
 					signingPrivateKey: 'corrupted-encrypted-data',
 				});
-				cipher.decrypt = jest.fn(() => {
+				cipher.decryptV2 = jest.fn(async () => {
 					throw new Error('Decryption failed');
-				});
+				}) as Cipher['decryptV2'];
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(() => samlService.getDecryptedSigningPrivateKey()).toThrow(
+				await expect(samlService.getDecryptedSigningPrivateKey()).rejects.toThrow(
 					'Failed to decrypt SAML signing private key',
 				);
 			});
@@ -1063,7 +1065,7 @@ describe('SamlService', () => {
 
 				// The encrypted key should be stored as-is (not re-encrypted)
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
-				expect(cipher.encrypt).not.toHaveBeenCalled();
+				expect(cipher.encryptV2).not.toHaveBeenCalled();
 			});
 
 			it('should survive loadFromDbAndApplySamlPreferences after saving encrypted key', async () => {
@@ -1099,7 +1101,7 @@ describe('SamlService', () => {
 
 				// Step 5: Verify the key can still be decrypted back to the original PEM
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 		});
 
@@ -1170,7 +1172,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
-				expect(cipher.encrypt).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
+				expect(cipher.encryptV2).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(
 					`encrypted:${EC_TEST_PRIVATE_KEY}`,
 				);
@@ -1184,7 +1186,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				const decrypted = await samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(EC_TEST_PRIVATE_KEY);
 			});
 		});
@@ -1213,7 +1215,7 @@ describe('SamlService', () => {
 				// Key should remain unchanged
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedBefore);
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should not trigger feature flag check for blanking value', async () => {
@@ -1253,7 +1255,7 @@ describe('SamlService', () => {
 				});
 
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 				// Clear the key
 				await samlService.setSamlPreferences({
@@ -1263,7 +1265,7 @@ describe('SamlService', () => {
 
 				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
 				// @ts-expect-error -- accessing private method for testing
-				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+				expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
 			it('should clear signing certificate when empty string is sent', async () => {
