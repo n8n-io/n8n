@@ -1,8 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Replaces the unreleased 1783000000001-CreateExecutionThreads migration.
- *
  * Agent runs no longer share `execution_entity` with workflow executions.
  * They live in two dedicated tables:
  *   - `agent_execution_threads` — per-session aggregate (token usage,
@@ -51,7 +49,7 @@ export class CreateAgentExecutionTables1783000000001 implements ReversibleMigrat
 
 		const refreshedExecutionTable = await queryRunner.getTable(`${tablePrefix}execution_entity`);
 		const workflowIdCol = refreshedExecutionTable?.findColumnByName('workflowId');
-		if (workflowIdCol && workflowIdCol.isNullable) {
+		if (workflowIdCol?.isNullable) {
 			await addNotNull('execution_entity', 'workflowId');
 		}
 
