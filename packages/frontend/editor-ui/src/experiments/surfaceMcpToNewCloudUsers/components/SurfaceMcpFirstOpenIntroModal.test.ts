@@ -3,7 +3,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import { MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_ONBOARDING_MODAL_KEY, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
@@ -21,10 +21,16 @@ const ModalStub = defineComponent({
 	`,
 });
 
+const RouterLinkStub = defineComponent({
+	props: ['to'],
+	template: '<a :data-route-name="to?.name"><slot /></a>',
+});
+
 const renderComponent = createComponentRenderer(SurfaceMcpFirstOpenIntroModal, {
 	global: {
 		stubs: {
 			Modal: ModalStub,
+			RouterLink: RouterLinkStub,
 		},
 	},
 });
@@ -50,9 +56,12 @@ describe('SurfaceMcpFirstOpenIntroModal', () => {
 		expect(getByText('Try MCP with Claude Code, Cursor, or Codex')).toBeInTheDocument();
 		expect(
 			getByText(
-				'Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance',
+				'Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance.',
 			),
 		).toBeInTheDocument();
+		const settingsLink = getByTestId('surface-mcp-intro-settings-link');
+		expect(settingsLink).toHaveTextContent('Settings > Instance-level MCP');
+		expect(settingsLink).toHaveAttribute('data-route-name', MCP_SETTINGS_VIEW);
 		expect(getByTestId('surface-mcp-intro-skip-button')).toBeInTheDocument();
 		expect(getByTestId('surface-mcp-intro-try-button')).toBeInTheDocument();
 	});

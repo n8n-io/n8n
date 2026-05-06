@@ -4,11 +4,13 @@ import { useUIStore } from '@/app/stores/ui.store';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
 import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import { MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
+import { MCP_ONBOARDING_MODAL_KEY, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { N8nButton, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	modalName?: string;
@@ -97,6 +99,18 @@ onBeforeUnmount(() => {
 				</N8nHeading>
 				<N8nText tag="p" size="medium" color="text-base" :class="$style.description">
 					{{ i18n.baseText('settings.mcp.onboarding.intro.description') }}
+					{{ ' ' }}
+					<I18nT keypath="settings.mcp.onboarding.intro.settingsHint" tag="span" scope="global">
+						<template #settingsLink>
+							<N8nLink
+								:to="{ name: MCP_SETTINGS_VIEW }"
+								size="medium"
+								data-test-id="surface-mcp-intro-settings-link"
+							>
+								{{ i18n.baseText('settings.mcp.onboarding.intro.settingsLink' as BaseTextKey) }}
+							</N8nLink>
+						</template>
+					</I18nT>
 				</N8nText>
 			</div>
 		</template>
