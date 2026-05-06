@@ -1,10 +1,11 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import {
 	buildMcpToolkit,
@@ -14,15 +15,15 @@ import {
 } from '../shared/runtime';
 import { McpRegistryClientTool } from './McpRegistryClientTool.node';
 
-jest.mock('../shared/runtime', () => ({
-	buildMcpToolkit: jest.fn(),
-	executeMcpTool: jest.fn(),
-	loadMcpToolOptions: jest.fn(),
+vi.mock('../shared/runtime', () => ({
+	buildMcpToolkit: vi.fn(),
+	executeMcpTool: vi.fn(),
+	loadMcpToolOptions: vi.fn(),
 }));
 
-const buildMcpToolkitMock = buildMcpToolkit as jest.MockedFunction<typeof buildMcpToolkit>;
-const executeMcpToolMock = executeMcpTool as jest.MockedFunction<typeof executeMcpTool>;
-const loadMcpToolOptionsMock = loadMcpToolOptions as jest.MockedFunction<typeof loadMcpToolOptions>;
+const buildMcpToolkitMock = buildMcpToolkit as MockedFunction<typeof buildMcpToolkit>;
+const executeMcpToolMock = executeMcpTool as MockedFunction<typeof executeMcpTool>;
+const loadMcpToolOptionsMock = loadMcpToolOptions as MockedFunction<typeof loadMcpToolOptions>;
 
 type ParamMap = Record<string, unknown>;
 
@@ -59,7 +60,7 @@ function createExecuteCtx(params: ParamMap) {
 
 describe('McpRegistryClientTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('loadOptions: getTools', () => {
@@ -110,7 +111,7 @@ describe('McpRegistryClientTool', () => {
 				includeTools: ['notion-search'],
 				excludeTools: [],
 			});
-			const expectedToolkit = { response: {}, closeFunction: jest.fn() };
+			const expectedToolkit = { response: {}, closeFunction: vi.fn() };
 			buildMcpToolkitMock.mockResolvedValue(expectedToolkit as never);
 
 			const node = new McpRegistryClientTool();
