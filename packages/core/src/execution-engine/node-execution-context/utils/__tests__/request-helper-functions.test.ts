@@ -353,7 +353,7 @@ describe('Request Helper Functions', () => {
 					hostname: 'example.de',
 					href: requestObject.uri,
 				};
-				axiosOptions.beforeRedirect!(redirectOptions, mock());
+				axiosOptions.beforeRedirect!(redirectOptions, mock(), mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
 				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
