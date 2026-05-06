@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "[beta] Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "SEE LICENSE IN LICENSE.md",
   "bin": {

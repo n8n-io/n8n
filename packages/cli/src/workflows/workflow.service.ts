@@ -251,6 +251,12 @@ export class WorkflowService {
 		);
 	}
 
+	private isWorkflowWithSharing(
+		workflow: ListQueryDb.Workflow.Plain,
+	): workflow is ListQueryDb.Workflow.WithSharing {
+		return 'shared' in workflow;
+	}
+
 	private cleanupSharedField(
 		workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 	): void {
@@ -260,7 +266,9 @@ export class WorkflowService {
 			though. So to avoid leaking the information we just delete it.
 		*/
 		workflows.forEach((workflow) => {
-			delete workflow.shared;
+			if (this.isWorkflowWithSharing(workflow)) {
+				delete workflow.shared;
+			}
 		});
 	}
 

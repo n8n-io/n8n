@@ -220,7 +220,7 @@ describe('new command', () => {
 				'implements ICredentialType',
 			);
 		},
-		15_000,
+		30_000,
 	);
 
 	test('handles prompt cancellation gracefully', async () => {

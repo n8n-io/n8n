@@ -8,9 +8,12 @@ import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import InstanceAiWorkflowSetup from '../components/InstanceAiWorkflowSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -136,8 +139,8 @@ describe('InstanceAiWorkflowSetup', () => {
 		const nodeTypesStore = useNodeTypesStore();
 		vi.spyOn(nodeTypesStore, 'getNodesInformation').mockResolvedValue([]);
 
-		const workflowsStore = useWorkflowsStore();
-		workflowsStore.getNodeByName = vi.fn().mockReturnValue(undefined);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+		workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(undefined);
 	});
 
 	describe('handleLater in wizard mode', () => {
@@ -235,7 +238,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 			expect(getByText('instanceAi.workflowSetup.deferred')).toBeTruthy();
 		});
 
@@ -273,13 +276,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				expect.objectContaining({ action: 'apply' }),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -357,13 +354,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				expect.objectContaining({ action: 'apply' }),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -402,13 +393,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				expect.objectContaining({ action: 'apply' }),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -437,7 +422,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 			expect(getByText('instanceAi.workflowSetup.deferred')).toBeTruthy();
 		});
 	});
@@ -575,7 +560,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			// Should defer since there's only 1 card and no selection
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 		});
 	});
 
@@ -724,8 +709,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowsStore = useWorkflowsStore();
-			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const hydrateSpy = vi.spyOn(workflowDocumentStore, 'hydrate');
 
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
@@ -740,8 +725,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				},
 			});
 
-			expect(setWorkflowSpy).toHaveBeenCalled();
-			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			expect(hydrateSpy).toHaveBeenCalled();
+			const firstCall = hydrateSpy.mock.calls[0][0];
 			expect(firstCall.nodes[0].parameters).toEqual(
 				expect.objectContaining({
 					authentication: 'triggerOAuth2',
@@ -775,8 +760,8 @@ describe('InstanceAiWorkflowSetup', () => {
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => null);
 
-			const workflowsStore = useWorkflowsStore();
-			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const hydrateSpy = vi.spyOn(workflowDocumentStore, 'hydrate');
 
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
@@ -791,14 +776,14 @@ describe('InstanceAiWorkflowSetup', () => {
 				},
 			});
 
-			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			const firstCall = hydrateSpy.mock.calls[0][0];
 			expect(firstCall.nodes[0].parameters).toEqual({ foo: 'bar' });
 		});
 	});
 
 	describe('NDV parameter fallback', () => {
 		it('includes store node parameters in apply payload when not in local paramValues', async () => {
-			const workflowsStore = useWorkflowsStore();
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
 			const nodeName = 'My Slack Node';
 			const storeNode = {
 				id: 'node-1',
@@ -808,7 +793,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				parameters: { channel: '#general' },
 				position: [0, 0],
 			};
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+			workflowDocumentStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
 				if (name === nodeName) return storeNode;
 				return undefined;
 			});
@@ -850,14 +835,8 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
 				expect.objectContaining({
-					action: 'apply',
+					kind: 'setupWorkflowApply',
 					nodeParameters: { [nodeName]: { channel: '#general' } },
 				}),
 			);
@@ -870,6 +849,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
 				name: 'n8n-nodes-base.dataTable',
+				group: [],
 				properties: [
 					{
 						name: 'filters',
@@ -880,8 +860,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue({
 				id: 'node-1',
 				name: 'DataTable',
 				type: 'n8n-nodes-base.dataTable',
@@ -922,13 +902,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await waitFor(() => {
 				expect(confirmSpy).toHaveBeenCalledWith(
 					'req-1',
-					true,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					expect.objectContaining({ action: 'apply' }),
+					expect.objectContaining({ kind: 'setupWorkflowApply' }),
 				);
 			});
 		});
@@ -938,6 +912,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
 				name: 'n8n-nodes-base.dataTable',
+				group: [],
 				properties: [
 					{
 						name: 'tableName',
@@ -954,8 +929,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue({
 				id: 'node-1',
 				name: 'DataTable',
 				type: 'n8n-nodes-base.dataTable',

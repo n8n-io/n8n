@@ -256,6 +256,31 @@ describe('NodeExecutionContext', () => {
 				undefined,
 			);
 		});
+
+		it('should not build mock credentials in eval mode when the node has other credentials configured but not the requested type', async () => {
+			const testNode = mock<INode>({ type: 'n8n-nodes-base.graphql' });
+			testNode.credentials = { httpHeaderAuth: { id: 'cred1', name: 'Header' } };
+
+			const getCredentialsProperties = jest
+				.fn()
+				.mockReturnValue([{ displayName: 'JSON', name: 'json', type: 'json', default: '' }]);
+			const evalAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mock({ getCredentialsProperties }),
+				evalLlmMockHandler: jest.fn(),
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			});
+
+			const evalContext = new TestContext(workflow, testNode, evalAdditionalData, 'evaluation');
+
+			let resolved: unknown;
+			try {
+				resolved = await evalContext['_getCredentials']('httpCustomAuth');
+			} catch {
+				return;
+			}
+			expect(resolved).toBeUndefined();
+		});
 	});
 
 	describe('prepareOutputData', () => {

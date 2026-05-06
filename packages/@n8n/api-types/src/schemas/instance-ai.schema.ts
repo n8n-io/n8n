@@ -112,6 +112,13 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * Workflow IDs the run-finish reap soft-deleted — intermediate
+	 * stepping-stones the agent created but never promoted to the main
+	 * deliverable. Surfaced to the UI so the artifacts panel can dim these
+	 * entries and label them as archived.
+	 */
+	archivedWorkflowIds: z.array(z.string()).optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -290,6 +297,15 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const confirmationInputTypeSchema = z.enum([
+	'approval',
+	'text',
+	'questions',
+	'plan-review',
+	'resource-decision',
+]);
+export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -308,8 +324,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
 		),
-	inputType: z
-		.enum(['approval', 'text', 'questions', 'plan-review', 'resource-decision'])
+	inputType: confirmationInputTypeSchema
 		.optional()
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
@@ -352,6 +367,53 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
 });
+export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
+
+function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasItems<T>(items: T[] | undefined): items is [T, ...T[]] {
+	return Array.isArray(items) && items.length > 0;
+}
+
+function argsContainPlannedTasks(args: Record<string, unknown>): boolean {
+	const tasks = args.tasks;
+	if (!Array.isArray(tasks)) return false;
+
+	return tasks.some((task) => plannedTaskArgSchema.safeParse(task).success);
+}
+
+function assertNever(value: never): never {
+	throw new Error(`Unhandled confirmation input type: ${String(value)}`);
+}
+
+/**
+ * True when the current frontend has enough typed confirmation payload to show
+ * a meaningful waiting-for-user UI. Correlation metadata alone must not count.
+ */
+export function isDisplayableConfirmationRequest(
+	payload: InstanceAiConfirmationRequestPayload,
+): boolean {
+	if (hasItems(payload.setupRequests)) return true;
+	if (hasItems(payload.credentialRequests)) return true;
+	if (payload.domainAccess) return true;
+
+	const inputType = payload.inputType ?? 'approval';
+	switch (inputType) {
+		case 'approval':
+		case 'text':
+			return isNonEmptyString(payload.message);
+		case 'questions':
+			return hasItems(payload.questions);
+		case 'plan-review':
+			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
+		case 'resource-decision':
+			return payload.resourceDecision !== undefined;
+		default:
+			return assertNever(inputType);
+	}
+}
 
 export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
@@ -594,28 +656,6 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
-export interface InstanceAiConfirmResponse {
-	approved: boolean;
-	credentialId?: string;
-	credentials?: Record<string, string>;
-	/** Per-node credential assignments: `{ nodeName: { credType: credId } }`.
-	 *  Preferred over `credentials` when present — enables card-scoped selection. */
-	nodeCredentials?: Record<string, Record<string, string>>;
-	autoSetup?: { credentialType: string };
-	userInput?: string;
-	domainAccessAction?: DomainAccessAction;
-	resourceDecision?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
-}
-
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
@@ -728,6 +768,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	updatedAt: string;
 	metadata?: Record<string, unknown>;
 }
 
@@ -992,6 +1033,8 @@ export interface InstanceAiEvalInterceptedRequest {
 
 export interface InstanceAiEvalNodeResult {
 	output: unknown;
+	/** Full count of output items (`output` is truncated for artifact size) */
+	outputCount?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
@@ -1020,3 +1063,41 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 }) {}
+
+// ---------------------------------------------------------------------------
+// Sub-agent evaluation endpoint
+// ---------------------------------------------------------------------------
+
+export class InstanceAiEvalSubAgentRequest extends Z.class({
+	/** Role name from the server's sub-agent registry (currently: "builder"). */
+	role: z.string().min(1).max(64),
+	/** The task the sub-agent should perform. */
+	prompt: z.string().min(1).max(10_000),
+	/** Optional model override. Defaults to the server's configured Instance AI model. */
+	modelId: z.string().min(1).optional(),
+	/** Max agent steps. Defaults to 40. */
+	maxSteps: z.number().int().positive().max(200).optional(),
+	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
+	timeoutMs: z.number().int().positive().max(600_000).optional(),
+}) {}
+
+export interface InstanceAiEvalToolCall {
+	toolName: string;
+	args: unknown;
+}
+
+export interface InstanceAiEvalToolResult {
+	toolName: string;
+	result: unknown;
+	isError: boolean;
+}
+
+export interface InstanceAiEvalSubAgentResponse {
+	text: string;
+	toolCalls: InstanceAiEvalToolCall[];
+	toolResults: InstanceAiEvalToolResult[];
+	capturedWorkflowIds: string[];
+	durationMs: number;
+	stopReason?: string;
+	error?: string;
+}

@@ -1,6 +1,9 @@
 import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	isDisplayableConfirmationRequest,
+	type InstanceAiConfirmationInputType,
+	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
 
@@ -51,5 +54,180 @@ describe('applyBranchReadOnlyOverrides', () => {
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+function makeConfirmation(
+	overrides: Partial<InstanceAiConfirmationRequestPayload> = {},
+): InstanceAiConfirmationRequestPayload {
+	return {
+		requestId: 'req-1',
+		toolCallId: 'tc-1',
+		toolName: 'tool',
+		args: {},
+		severity: 'info',
+		message: 'Please approve',
+		...overrides,
+	};
+}
+
+describe('isDisplayableConfirmationRequest', () => {
+	it('treats approval and text messages as displayable', () => {
+		expect(isDisplayableConfirmationRequest(makeConfirmation({ inputType: 'approval' }))).toBe(
+			true,
+		);
+		expect(isDisplayableConfirmationRequest(makeConfirmation({ inputType: 'text' }))).toBe(true);
+	});
+
+	it('does not treat metadata-only approval prompts as displayable', () => {
+		expect(isDisplayableConfirmationRequest(makeConfirmation({ message: '   ' }))).toBe(false);
+	});
+
+	it('does not treat intro-only questions prompts as displayable', () => {
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'questions',
+					message: '',
+					introMessage: 'A little context before the questions',
+				}),
+			),
+		).toBe(false);
+	});
+
+	it('recognizes typed display variants', () => {
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'questions',
+					message: '',
+					questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['A'] }],
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'plan-review',
+					message: 'Ignored for displayability',
+					planItems: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'resource-decision',
+					message: '',
+					resourceDecision: {
+						toolGroup: 'filesystem',
+						resource: '/tmp',
+						description: 'Access /tmp',
+						options: ['allowForSession'],
+					},
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					setupRequests: [
+						{
+							node: {
+								name: 'Webhook',
+								type: 'n8n-nodes-base.webhook',
+								typeVersion: 1,
+								parameters: {},
+								position: [0, 0],
+								id: 'node-1',
+							},
+							isTrigger: true,
+						},
+					],
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					credentialRequests: [
+						{ credentialType: 'httpBasicAuth', reason: 'Required', existingCredentials: [] },
+					],
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					domainAccess: { url: 'https://example.com', host: 'example.com' },
+				}),
+			),
+		).toBe(true);
+	});
+
+	it('does not treat credential flow metadata as displayable on its own', () => {
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					credentialFlow: { stage: 'finalize' },
+				}),
+			),
+		).toBe(false);
+	});
+
+	it('does not treat lightweight task lists as displayable plan reviews', () => {
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'plan-review',
+					message: 'Ignored for displayability',
+					tasks: {
+						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
+					},
+				}),
+			),
+		).toBe(false);
+	});
+
+	it('recognizes only renderable task args for plan reviews', () => {
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'plan-review',
+					message: 'Ignored for displayability',
+					args: {
+						tasks: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
+					},
+				}),
+			),
+		).toBe(true);
+
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'plan-review',
+					message: 'Ignored for displayability',
+					args: {
+						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
+					},
+				}),
+			),
+		).toBe(false);
+	});
+
+	it('keeps the input type switch exhaustive', () => {
+		const handled = {
+			approval: true,
+			text: true,
+			questions: true,
+			'plan-review': true,
+			'resource-decision': true,
+		} satisfies Record<InstanceAiConfirmationInputType, true>;
+
+		expect(Object.keys(handled)).toHaveLength(5);
 	});
 });

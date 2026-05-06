@@ -67,12 +67,18 @@ function getContextWindowForModel(modelId: ModelConfig): number {
 
 /** Estimate tokens consumed by system prompt, tools, and working memory overhead. */
 const FIXED_CONTEXT_OVERHEAD_TOKENS = 8_000;
+const MIN_UNSUMMARIZED_TOKENS = 500;
 
 interface ConversationSummaryMetadata {
 	version: number;
 	upToMessageId: string;
 	summary: string;
 	updatedAt: string;
+}
+
+interface PendingCompactionInput {
+	label: string;
+	text: string;
 }
 
 /**
@@ -114,9 +120,11 @@ export class InstanceAiCompactionService {
 		modelId: ModelConfig,
 		lastMessages: number,
 		compactionThreshold = 0.8,
+		currentInput?: PendingCompactionInput,
 	): Promise<string | null> {
 		try {
-			const recentTail = lastMessages;
+			const recentTail = Math.max(0, lastMessages);
+			const currentInputTokens = currentInput ? estimateTokens(currentInput.text) : 0;
 
 			// Load all messages for the thread, ordered chronologically
 			const { messages: allMessages } = await this.memoryStorage.listMessages({
@@ -125,14 +133,12 @@ export class InstanceAiCompactionService {
 				orderBy: { field: 'createdAt', direction: 'ASC' },
 			});
 
-			if (allMessages.length <= recentTail) {
-				return await this.getCachedSummaryBlock(threadId, memory);
-			}
-
 			// Estimate total token usage across all messages
-			const totalTokens =
-				FIXED_CONTEXT_OVERHEAD_TOKENS +
-				allMessages.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
+			const rawMessageTokens = allMessages.reduce(
+				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
+				0,
+			);
+			const totalTokens = FIXED_CONTEXT_OVERHEAD_TOKENS + rawMessageTokens + currentInputTokens;
 
 			const modelContextWindow = getContextWindowForModel(modelId);
 			const contextWindow =
@@ -141,18 +147,22 @@ export class InstanceAiCompactionService {
 					: modelContextWindow;
 			const threshold = contextWindow * compactionThreshold;
 
+			// Load existing compaction state
+			const thread = await memory.getThreadById({ threadId });
+			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+
+			if (allMessages.length <= recentTail) {
+				return this.formatCachedSummaryBlock(existing);
+			}
+
 			// Only compact when context usage exceeds the threshold
 			if (totalTokens < threshold) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Split into prefix (older messages) and tail (recent)
 			const prefixEnd = allMessages.length - recentTail;
 			const prefix = allMessages.slice(0, prefixEnd);
-
-			// Load existing compaction state
-			const thread = await memory.getThreadById({ threadId });
-			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
 
 			// Find where the previous summary left off
 			let unsummarizedStart = 0;
@@ -170,16 +180,18 @@ export class InstanceAiCompactionService {
 				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
 				0,
 			);
-			if (unsummarizedTokens < 500) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+			if (unsummarizedTokens < MIN_UNSUMMARIZED_TOKENS) {
+				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Extract high-signal content from the unsummarized slice
 			const messageBatch = this.extractHighSignalContent(unsummarizedSlice);
 
 			if (messageBatch.length === 0) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+				return this.formatCachedSummaryBlock(existing);
 			}
+
+			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
 
 			// Generate the updated summary
 			const summary = await generateCompactionSummary(modelId, {
@@ -188,7 +200,6 @@ export class InstanceAiCompactionService {
 			});
 
 			// Persist the updated compaction state
-			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
 			const newMetadata: ConversationSummaryMetadata = {
 				version: (existing?.version ?? 0) + 1,
 				upToMessageId: lastCompactedMessage.id,
@@ -208,12 +219,7 @@ export class InstanceAiCompactionService {
 		}
 	}
 
-	/**
-	 * Return the cached summary block if one exists, without re-generating.
-	 */
-	private async getCachedSummaryBlock(threadId: string, memory: Memory): Promise<string | null> {
-		const thread = await memory.getThreadById({ threadId });
-		const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+	private formatCachedSummaryBlock(existing: ConversationSummaryMetadata | null): string | null {
 		if (existing?.summary) {
 			return this.formatSummaryBlock(existing.summary);
 		}

@@ -203,4 +203,13 @@ describe('countFilteredAdditions', () => {
 		];
 		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 50);
 	});
+
+	it('applies EXCLUDE_PATTERNS to markdown files', () => {
+		const files = [
+			{ filename: 'packages/cli/src/service.ts', additions: 50 },
+			{ filename: 'packages/cli/AGENTS.md', additions: 100 },
+			{ filename: 'packages/frontend/STORIES.mdx', additions: 100 },
+		];
+		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 50);
+	});
 });

@@ -57,6 +57,7 @@ import {
 	toAiSdkTools,
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
+import type { AgentEventSpecificData } from '../types/runtime/event';
 import { AgentEvent } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
@@ -99,6 +100,16 @@ export interface AgentRuntimeConfig {
 	toolCallConcurrency?: number;
 	titleGeneration?: TitleGenerationConfig;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Pre-fetched model cost from the catalog. When provided, skips the per-run
+	 * catalog fetch. Set once during Agent.build() and shared across per-run runtimes.
+	 */
+	modelCost?: ModelCost;
+	/**
+	 * Shared RunStateManager for suspend/resume. When provided, all per-run runtimes
+	 * use the same store so that resume() can find state from a prior stream()/generate() call.
+	 */
+	runState?: RunStateManager;
 }
 
 const MAX_LOOP_ITERATIONS = 20;
@@ -197,12 +208,17 @@ export class AgentRuntime {
 
 	private modelCost: ModelCost | undefined;
 
-	/** Resolved telemetry for the current run (own config or inherited from parent). */
+	/** Unique identifier for the current run. Set at the start of generate/stream/resume. */
+	private runId = '';
+
+	/** Execution options for the current run (excludes persistence). Set at the start of generate/stream/resume. */
+	private executionOptions: ExecutionOptions | undefined;
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
-		this.runState = new RunStateManager(config.checkpointStorage);
+		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
+		this.modelCost = config.modelCost;
 		this.currentState = {
 			persistence: undefined,
 			status: 'idle',
@@ -226,20 +242,28 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const runId = generateRunId();
+		this.runId = generateRunId();
+		this.executionOptions = options;
+		this.updateState({ persistence: options?.persistence });
 		let list: AgentMessageList | undefined = undefined;
 		try {
-			list = await this.initRun(input, options);
-			const rawResult = await this.runGenerateLoop(list, options, undefined, runId);
-			return this.finalizeGenerate(rawResult, list, runId);
+			list = await this.initRun(input);
+			const rawResult = await this.runGenerateLoop(list);
+			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
-			await this.flushTelemetry(options);
+			await this.flushTelemetry();
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return { runId, messages: list?.responseDelta() ?? [], finishReason: 'error', error };
+			return {
+				runId: this.runId,
+				messages: list?.responseDelta() ?? [],
+				finishReason: 'error',
+				error,
+				getState: () => this.getState(),
+			};
 		}
 	}
 
@@ -248,20 +272,26 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const runId = generateRunId();
+		this.runId = generateRunId();
+		this.executionOptions = options;
+		this.updateState({ persistence: options?.persistence });
 		let list: AgentMessageList;
 		try {
-			list = await this.initRun(input, options);
+			list = await this.initRun(input);
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return { runId, stream: makeErrorStream(error) };
+			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
 
-		return { runId, stream: this.startStreamLoop(list, options, undefined, runId) };
+		return {
+			runId: this.runId,
+			stream: this.startStreamLoop(list),
+			getState: () => this.getState(),
+		};
 	}
 
 	/**
@@ -287,8 +317,9 @@ export class AgentRuntime {
 		data: unknown,
 		options: { runId: string; toolCallId: string } & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		const state = await this.runState.resume(options.runId);
-		if (!state) throw new Error(`No suspended run found for runId: ${options.runId}`);
+		this.runId = options.runId;
+		const state = await this.runState.resume(this.runId);
+		if (!state) throw new Error(`No suspended run found for runId: ${this.runId}`);
 
 		const toolCall = state.pendingToolCalls[options.toolCallId];
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
@@ -308,7 +339,8 @@ export class AgentRuntime {
 		try {
 			const list = AgentMessageList.deserialize(state.messageList);
 
-			// Merge persisted execution options with fresh caller options
+			// Merge persisted execution options with fresh caller options.
+			// runId and toolCallId are resume-routing keys, not run options.
 			const { runId: _rid, toolCallId: _tcid, ...callerExecOptions } = options;
 			const persisted = state.executionOptions ?? {};
 			const mergedExecOptions: ExecutionOptions = {
@@ -316,13 +348,11 @@ export class AgentRuntime {
 				...callerExecOptions,
 			};
 
-			const resumeOptions: RunOptions & ExecutionOptions = {
-				persistence: state.persistence,
-				...mergedExecOptions,
-			};
+			this.executionOptions = mergedExecOptions;
+			this.updateState({ persistence: state.persistence });
 
 			// Pass abortSignal to event bus
-			this.eventBus.resetAbort(resumeOptions.abortSignal);
+			this.eventBus.resetAbort(this.executionOptions?.abortSignal);
 
 			const pendingResume: PendingResume = {
 				pendingToolCalls: state.pendingToolCalls,
@@ -337,37 +367,34 @@ export class AgentRuntime {
 			await this.setListWorkingMemoryConfig(list, state.persistence);
 
 			if (method === 'generate') {
-				const rawResult = await this.runGenerateLoop(
-					list,
-					resumeOptions,
-					pendingResume,
-					options.runId,
-				);
+				const rawResult = await this.runGenerateLoop(list, pendingResume);
 				if (!rawResult.pendingSuspend) {
-					await this.cleanupRun(options.runId);
+					await this.cleanupRun();
 				}
-				return this.finalizeGenerate(rawResult, list, options.runId);
+				return this.finalizeGenerate(rawResult, list);
 			}
 
 			return {
-				runId: options.runId,
-				stream: this.startStreamLoop(list, resumeOptions, pendingResume, options.runId),
+				runId: this.runId,
+				stream: this.startStreamLoop(list, pendingResume),
+				getState: () => this.getState(),
 			};
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
 			}
 			if (method === 'generate') {
 				return {
-					runId: options.runId,
+					runId: this.runId,
 					messages: [],
 					finishReason: 'error' as const,
 					error,
+					getState: () => this.getState(),
 				};
 			}
-			return { runId: options.runId, stream: makeErrorStream(error) };
+			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
 	}
 
@@ -381,14 +408,12 @@ export class AgentRuntime {
 	 * The system prompt is NOT stored in the list; list.forLlm(instructions)
 	 * prepends it at every LLM call site.
 	 */
-	private async buildMessageList(
-		input: AgentMessage[],
-		options?: RunOptions,
-	): Promise<AgentMessageList> {
+	private async buildMessageList(input: AgentMessage[]): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
+		const persistence = this.currentState.persistence;
 
-		if (this.config.memory && options?.persistence?.threadId) {
-			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
+		if (this.config.memory && persistence?.threadId) {
+			const memMessages = await this.config.memory.getMessages(persistence.threadId, {
 				limit: this.config.lastMessages ?? 10,
 			});
 			if (memMessages.length > 0) {
@@ -397,17 +422,12 @@ export class AgentRuntime {
 		}
 
 		// Semantic recall — retrieve relevant past messages beyond the history window
-		if (this.config.semanticRecall && options?.persistence?.threadId) {
-			await this.performSemanticRecall(
-				list,
-				input,
-				options.persistence.threadId,
-				options.persistence.resourceId,
-			);
+		if (this.config.semanticRecall && persistence?.threadId) {
+			await this.performSemanticRecall(list, input, persistence.threadId, persistence.resourceId);
 		}
 
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
-		await this.setListWorkingMemoryConfig(list, options?.persistence);
+		await this.setListWorkingMemoryConfig(list, persistence);
 
 		list.addInput(input);
 		return list;
@@ -528,51 +548,41 @@ export class AgentRuntime {
 	 * emit AgentStart, fetch model cost, normalize input, and build the message list.
 	 * Throws if buildMessageList fails; callers catch and handle the error.
 	 */
-	private async initRun(
-		input: AgentMessage[] | string,
-		options?: RunOptions & ExecutionOptions,
-	): Promise<AgentMessageList> {
-		this.eventBus.resetAbort(options?.abortSignal);
-		this.updateState({
-			status: 'running',
-			persistence: options?.persistence,
-		});
-		this.eventBus.emit({ type: AgentEvent.AgentStart });
+	private async initRun(input: AgentMessage[] | string): Promise<AgentMessageList> {
+		this.eventBus.resetAbort(this.executionOptions?.abortSignal);
+		this.updateState({ status: 'running' });
+		this.emitEvent({ type: AgentEvent.AgentStart });
 		await this.ensureModelCost();
 		const normalizedInput = normalizeInput(input);
-		return await this.buildMessageList(normalizedInput, options);
+		return await this.buildMessageList(normalizedInput);
 	}
 
 	/**
 	 * Post-loop finalization for generate: apply cost, set model id, roll up sub-agent usage,
 	 * transition to success, and emit AgentEnd. Returns the finalized result.
 	 */
-	private finalizeGenerate(
-		result: GenerateResult,
-		list: AgentMessageList,
-		runId: string,
-	): GenerateResult {
-		result.runId = runId;
+	private finalizeGenerate(result: GenerateResult, list: AgentMessageList): GenerateResult {
+		result.runId = this.runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
 		const finalized = applySubAgentUsage(result);
 		this.updateState({ status: 'success', messageList: list.serialize() });
-		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: finalized.messages });
-		return finalized;
+		this.emitEvent({ type: AgentEvent.AgentEnd, messages: finalized.messages });
+		return { ...finalized, getState: () => this.getState() };
 	}
 
-	/** Resolve telemetry: own config wins, then inherited from options, then nothing. */
-	private resolveTelemetry(options?: ExecutionOptions): BuiltTelemetry | undefined {
+	/** Resolve telemetry: own config wins, then inherited from executionOptions, then nothing. */
+	private resolveTelemetry(): BuiltTelemetry | undefined {
 		if (this.config.telemetry) return this.config.telemetry;
-		const inherited = options?.telemetry;
+		const inherited = this.executionOptions?.telemetry;
 		if (!inherited) return undefined;
 		return { ...inherited, functionId: this.config.name };
 	}
 
 	/** Best-effort flush of telemetry provider. Never throws. */
-	private async flushTelemetry(options?: ExecutionOptions): Promise<void> {
+	private async flushTelemetry(): Promise<void> {
 		try {
-			const resolved = this.resolveTelemetry(options);
+			const resolved = this.resolveTelemetry();
 			if (resolved?.provider) {
 				await resolved.provider.forceFlush();
 			}
@@ -582,8 +592,8 @@ export class AgentRuntime {
 	}
 
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
-	private buildTelemetryOptions(options?: ExecutionOptions): Record<string, unknown> {
-		const t = this.resolveTelemetry(options);
+	private buildTelemetryOptions(): Record<string, unknown> {
+		const t = this.resolveTelemetry();
 		if (!t?.enabled) return {};
 
 		return {
@@ -603,19 +613,15 @@ export class AgentRuntime {
 	 * Core generate loop using generateText (non-streaming).
 	 *
 	 * @param list - Message list for this turn. Grows during the loop via addResponse().
-	 * @param options - Run options for memory persistence.
 	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
 	 *   to execute before the first LLM call.
-	 * @param runId - The pre-generated runId for this run (reused on resume).
 	 */
 	private async runGenerateLoop(
 		list: AgentMessageList,
-		options: (RunOptions & ExecutionOptions) | undefined,
 		pendingResume?: PendingResume,
-		runId?: string,
 	): Promise<GenerateResult> {
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
-			this.buildLoopContext({ ...options, persistence: options?.persistence });
+			this.buildLoopContext();
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
@@ -624,7 +630,7 @@ export class AgentRuntime {
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
-		const runTelemetry = this.resolveTelemetry(options);
+		const runTelemetry = this.resolveTelemetry();
 		if (pendingResume) {
 			const batch = await this.iteratePendingToolCallsConcurrent(
 				pendingResume,
@@ -639,13 +645,7 @@ export class AgentRuntime {
 			}
 
 			if (Object.keys(batch.pending).length > 0) {
-				const suspendRunId = await this.persistSuspension(
-					batch.pending,
-					options,
-					list,
-					totalUsage,
-					runId,
-				);
+				const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
 				return {
 					runId: suspendRunId,
 					messages: list.responseDelta(),
@@ -659,18 +659,19 @@ export class AgentRuntime {
 						suspendPayload: s.payload,
 						resumeSchema: s.resumeSchema,
 					})),
+					getState: () => this.getState(),
 				};
 			}
 		}
 
-		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const maxIterations = this.executionOptions?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		for (let i = 0; i < maxIterations; i++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
 
-			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			this.emitEvent({ type: AgentEvent.TurnStart });
 
 			const result = await generateText({
 				model,
@@ -681,7 +682,7 @@ export class AgentRuntime {
 					? { providerOptions: providerOptions as Record<string, JSONObject> }
 					: {}),
 				...(outputSpec ? { output: outputSpec } : {}),
-				...this.buildTelemetryOptions(options),
+				...this.buildTelemetryOptions(),
 			});
 
 			const aiFinishReason = result.finishReason;
@@ -714,13 +715,7 @@ export class AgentRuntime {
 			}
 
 			if (Object.keys(batch.pending).length > 0) {
-				const suspendRunId = await this.persistSuspension(
-					batch.pending,
-					options,
-					list,
-					totalUsage,
-					runId,
-				);
+				const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
 				return {
 					runId: suspendRunId,
 					messages: list.responseDelta(),
@@ -734,6 +729,7 @@ export class AgentRuntime {
 						suspendPayload: s.payload,
 						resumeSchema: s.resumeSchema,
 					})),
+					getState: () => this.getState(),
 				};
 			}
 
@@ -747,14 +743,15 @@ export class AgentRuntime {
 			);
 		}
 
-		await this.saveToMemory(list, options);
-		await this.flushTelemetry(options);
+		await this.saveToMemory(list);
+		await this.flushTelemetry();
 
-		if (this.config.titleGeneration && options?.persistence?.threadId && this.config.memory) {
+		const persistence = this.currentState.persistence;
+		if (this.config.titleGeneration && persistence?.threadId && this.config.memory) {
 			void generateThreadTitle({
 				memory: this.config.memory,
-				threadId: options.persistence.threadId,
-				resourceId: options.persistence.resourceId,
+				threadId: persistence.threadId,
+				resourceId: persistence.resourceId,
 				titleConfig: this.config.titleGeneration,
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
@@ -762,13 +759,14 @@ export class AgentRuntime {
 		}
 
 		return {
-			runId: runId ?? '',
+			runId: this.runId,
 			messages: list.responseDelta(),
 			finishReason: lastFinishReason,
 			usage: totalUsage,
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(toolCallSummary.length > 0 && { toolCalls: toolCallSummary }),
 			...(collectedSubAgentUsage.length > 0 && { subAgentUsage: collectedSubAgentUsage }),
+			getState: () => this.getState(),
 		};
 	}
 
@@ -778,30 +776,25 @@ export class AgentRuntime {
 	 *
 	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
 	 *   to execute before the first LLM stream starts.
-	 * @param runId - The pre-generated runId for this run.
 	 */
 	private startStreamLoop(
 		list: AgentMessageList,
-		options: (RunOptions & ExecutionOptions) | undefined,
 		pendingResume?: PendingResume,
-		runId?: string,
 	): ReadableStream<StreamChunk> {
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		this.runStreamLoop(list, options, writer, pendingResume, runId).catch(
-			async (error: unknown) => {
-				await this.flushTelemetry(options);
-				await this.cleanupRun(runId);
-				try {
-					await writer.write({ type: 'error', error });
-					await writer.write({ type: 'finish', finishReason: 'error' });
-					await writer.close();
-				} catch {
-					writer.abort(error).catch(() => {});
-				}
-			},
-		);
+		this.runStreamLoop(list, writer, pendingResume).catch(async (error: unknown) => {
+			await this.flushTelemetry();
+			await this.cleanupRun();
+			try {
+				await writer.write({ type: 'error', error });
+				await writer.write({ type: 'finish', finishReason: 'error' });
+				await writer.close();
+			} catch {
+				writer.abort(error).catch(() => {});
+			}
+		});
 
 		return readable;
 	}
@@ -810,21 +803,17 @@ export class AgentRuntime {
 	 * Core stream loop using streamText.
 	 *
 	 * @param list - Message list for this turn. Grows during the loop via addResponse().
-	 * @param options - Run options for memory persistence.
 	 * @param writer - Stream writer to emit StreamChunks to the consumer.
 	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
 	 *   to execute before the first LLM call.
-	 * @param runId - The pre-generated runId for this run (reused on resume).
 	 */
 	private async runStreamLoop(
 		list: AgentMessageList,
-		options: (RunOptions & ExecutionOptions) | undefined,
 		writer: WritableStreamDefaultWriter<StreamChunk>,
 		pendingResume?: PendingResume,
-		runId?: string,
 	): Promise<void> {
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
-			this.buildLoopContext({ ...options, persistence: options?.persistence });
+			this.buildLoopContext();
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
 			await writer.write(chunk);
@@ -834,10 +823,10 @@ export class AgentRuntime {
 		let lastFinishReason: FinishReason = 'stop';
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
-		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const maxIterations = this.executionOptions?.maxIterations ?? MAX_LOOP_ITERATIONS;
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
-			await this.cleanupRun(runId);
+			await this.cleanupRun();
 			this.updateState({ status });
 			await writer.write({ type: 'error', error });
 			await writer.write({ type: 'finish', finishReason: 'error' });
@@ -851,7 +840,7 @@ export class AgentRuntime {
 		};
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
-		const runTelemetry = this.resolveTelemetry(options);
+		const runTelemetry = this.resolveTelemetry();
 		if (pendingResume) {
 			try {
 				const batch = await this.iteratePendingToolCallsConcurrent(
@@ -880,13 +869,7 @@ export class AgentRuntime {
 				}
 
 				if (Object.keys(batch.pending).length > 0) {
-					const suspendRunId = await this.persistSuspension(
-						batch.pending,
-						options,
-						list,
-						totalUsage,
-						runId,
-					);
+					const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
 					for (const s of batch.suspensions) {
 						await writer.write({
 							type: 'tool-call-suspended',
@@ -903,7 +886,7 @@ export class AgentRuntime {
 					return;
 				}
 			} catch (error) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
 				await closeStreamWithError(error, 'failed');
 				return;
 			}
@@ -912,7 +895,7 @@ export class AgentRuntime {
 		for (let i = 0; i < maxIterations; i++) {
 			if (await handleAbort()) return;
 
-			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			this.emitEvent({ type: AgentEvent.TurnStart });
 
 			const result = streamText({
 				model,
@@ -923,7 +906,7 @@ export class AgentRuntime {
 					? { providerOptions: providerOptions as Record<string, JSONObject> }
 					: {}),
 				...(outputSpec ? { output: outputSpec } : {}),
-				...this.buildTelemetryOptions(options),
+				...this.buildTelemetryOptions(),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
@@ -937,7 +920,7 @@ export class AgentRuntime {
 				}
 			} catch (streamError) {
 				if (await handleAbort()) return;
-				this.eventBus.emit({
+				this.emitEvent({
 					type: AgentEvent.Error,
 					message: String(streamError),
 					error: streamError,
@@ -994,13 +977,7 @@ export class AgentRuntime {
 				}
 
 				if (Object.keys(batch.pending).length > 0) {
-					const suspendRunId = await this.persistSuspension(
-						batch.pending,
-						options,
-						list,
-						totalUsage,
-						runId,
-					);
+					const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
 					for (const s of batch.suspensions) {
 						await writer.write({
 							type: 'tool-call-suspended',
@@ -1017,7 +994,7 @@ export class AgentRuntime {
 					return;
 				}
 			} catch (error) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
 				await closeStreamWithError(error, 'failed');
 				return;
 			}
@@ -1042,51 +1019,46 @@ export class AgentRuntime {
 		});
 
 		try {
-			await this.saveToMemory(list, options);
+			await this.saveToMemory(list);
 
-			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
+			const persistence = this.currentState.persistence;
+			if (this.config.titleGeneration && persistence && this.config.memory) {
 				void generateThreadTitle({
 					memory: this.config.memory,
-					threadId: options.persistence.threadId,
-					resourceId: options.persistence.resourceId,
+					threadId: persistence.threadId,
+					resourceId: persistence.resourceId,
 					titleConfig: this.config.titleGeneration,
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
 				});
 			}
 
-			await this.cleanupRun(runId);
-			await this.flushTelemetry(options);
+			await this.cleanupRun();
+			await this.flushTelemetry();
 
 			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+			this.emitEvent({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
 		} finally {
 			await writer.close();
 		}
 	}
 
 	/** Persist the current-turn delta to memory. */
-	private async saveToMemory(
-		list: AgentMessageList,
-		options: RunOptions | undefined,
-	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+	private async saveToMemory(list: AgentMessageList): Promise<void> {
+		const persistence = this.currentState.persistence;
+		if (!this.config.memory || !persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
 		await saveMessagesToThread(
 			this.config.memory,
-			options.persistence.threadId,
-			options.persistence.resourceId,
+			persistence.threadId,
+			persistence.resourceId,
 			delta,
 		);
 
 		// Generate and save embeddings if semantic recall is configured
 		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
-			await this.saveEmbeddingsForMessages(
-				options.persistence.threadId,
-				options.persistence.resourceId,
-				delta,
-			);
+			await this.saveEmbeddingsForMessages(persistence.threadId, persistence.resourceId, delta);
 		}
 	}
 
@@ -1473,7 +1445,7 @@ export class AgentRuntime {
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
 
-		this.eventBus.emit({
+		this.emitEvent({
 			type: AgentEvent.ToolExecutionStart,
 			toolCallId,
 			toolName,
@@ -1481,7 +1453,7 @@ export class AgentRuntime {
 		});
 
 		const makeToolError = (error: unknown): ToolCallOutcome => {
-			this.eventBus.emit({
+			this.emitEvent({
 				type: AgentEvent.ToolExecutionEnd,
 				toolCallId,
 				toolName,
@@ -1506,7 +1478,7 @@ export class AgentRuntime {
 		const existingToolResult = existingToolResults.find((r) => r.toolCallId === toolCallId);
 
 		if (existingToolResult) {
-			this.eventBus.emit({
+			this.emitEvent({
 				type: AgentEvent.ToolExecutionEnd,
 				toolCallId,
 				toolName,
@@ -1563,7 +1535,7 @@ export class AgentRuntime {
 			extractedSubAgentUsage = toolResult.subAgentUsage;
 		}
 
-		this.eventBus.emit({
+		this.emitEvent({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
 			toolName,
@@ -1600,10 +1572,8 @@ export class AgentRuntime {
 	}
 
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */
-	private buildLoopContext(
-		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
-	) {
-		const wmTool = this.buildWorkingMemoryToolForRun(execOptions?.persistence);
+	private buildLoopContext() {
+		const wmTool = this.buildWorkingMemoryToolForRun(this.currentState.persistence);
 		const allUserTools = wmTool
 			? [...(this.config.tools ?? []), wmTool]
 			: (this.config.tools ?? []);
@@ -1614,7 +1584,7 @@ export class AgentRuntime {
 			model: createModel(this.config.model),
 			toolMap: buildToolMap(allUserTools),
 			aiTools: allTools,
-			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
+			providerOptions: this.buildCallProviderOptions(this.executionOptions?.providerOptions),
 			hasTools: Object.keys(allTools).length > 0,
 			outputSpec: this.config.structuredOutput
 				? Output.object({ schema: this.config.structuredOutput })
@@ -1638,39 +1608,37 @@ export class AgentRuntime {
 
 	/**
 	 * Persist a suspended run state and update the current state snapshot.
-	 * Returns the runId (reuses existingRunId when resuming to prevent dangling runs).
+	 * Returns the runId (reuses this.runId when resuming to prevent dangling runs).
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
-		options: (RunOptions & ExecutionOptions) | undefined,
 		list: AgentMessageList,
 		totalUsage: TokenUsage | undefined,
-		existingRunId?: string,
 	): Promise<string> {
-		const runId = existingRunId ?? generateRunId();
-
 		// Only persist maxIterations. providerOptions are intentionally excluded
 		// because they may contain sensitive data (API keys, auth headers).
 		const executionOptions: PersistedExecutionOptions | undefined =
-			options?.maxIterations !== undefined ? { maxIterations: options.maxIterations } : undefined;
+			this.executionOptions?.maxIterations !== undefined
+				? { maxIterations: this.executionOptions.maxIterations }
+				: undefined;
 
 		const state: SerializableAgentState = {
-			persistence: options?.persistence,
+			persistence: this.currentState.persistence,
 			status: 'suspended',
 			messageList: list.serialize(),
 			pendingToolCalls,
 			usage: totalUsage,
 			executionOptions,
 		};
-		await this.runState.suspend(runId, state);
+		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-		return runId;
+		return this.runId;
 	}
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
-	private async cleanupRun(runId: string | undefined): Promise<void> {
-		if (runId) {
-			await this.runState.complete(runId);
+	private async cleanupRun(): Promise<void> {
+		if (this.runId) {
+			await this.runState.complete(this.runId);
 		}
 	}
 
@@ -1678,7 +1646,7 @@ export class AgentRuntime {
 	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolResult[]): void {
 		const assistantMsg = newMessages.find((m) => 'role' in m && m.role === 'assistant');
 		if (assistantMsg) {
-			this.eventBus.emit({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });
+			this.emitEvent({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });
 		}
 	}
 
@@ -1735,6 +1703,10 @@ export class AgentRuntime {
 			state: wmState,
 			...(wmParams.instruction !== undefined && { instruction: wmParams.instruction }),
 		};
+	}
+
+	private emitEvent(data: AgentEventSpecificData): void {
+		this.eventBus.emit({ ...data, runId: this.runId });
 	}
 
 	private resolveWorkingMemoryParams(options: AgentPersistenceOptions | undefined) {

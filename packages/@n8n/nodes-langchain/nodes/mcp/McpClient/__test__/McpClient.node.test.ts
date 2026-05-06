@@ -1,6 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as sharedUtils from '../../shared/utils';
 import { getTools } from '../listSearch';
@@ -8,8 +8,8 @@ import { McpClient } from '../McpClient.node';
 import { getToolParameters } from '../resourceMapping';
 
 describe('McpClient', () => {
-	const getAuthHeaders = jest.spyOn(sharedUtils, 'getAuthHeaders');
-	const connectMcpClient = jest.spyOn(sharedUtils, 'connectMcpClient');
+	const getAuthHeaders = vi.spyOn(sharedUtils, 'getAuthHeaders');
+	const connectMcpClient = vi.spyOn(sharedUtils, 'connectMcpClient');
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 	const client = mockDeep<Client>();
 	const defaultParams = {
@@ -23,7 +23,7 @@ describe('McpClient', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		executeFunctions.getNode.mockReturnValue({
 			id: '123',
@@ -111,6 +111,52 @@ describe('McpClient', () => {
 			[
 				{
 					json: { content: [{ type: 'text', text: { answer: 'Weather in Berlin is sunny' } }] },
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
+	it('should merge structuredContent with content', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Success' }],
+			structuredContent: { id: '123', status: 'active' },
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: {
+						structuredContent: { id: '123', status: 'active' },
+						content: [{ type: 'text', text: 'Success' }],
+					},
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
+	it('should ignore structuredContent if it is an array', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Success' }],
+			toolResult: undefined,
+			structuredContent: ['should', 'be', 'ignored'],
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: { content: [{ type: 'text', text: 'Success' }] },
 					pairedItem: { item: 0 },
 				},
 			],
@@ -260,7 +306,7 @@ describe('McpClient', () => {
 			});
 
 			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					id: '123',
 					name: 'MCP Client',
 					type: '@n8n/n8n-nodes-langchain.mcpClient',
@@ -268,7 +314,7 @@ describe('McpClient', () => {
 					position: [0, 0],
 					parameters: {},
 				}),
-				getNodeParameter: jest.fn().mockImplementation((key: string) => {
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
 					const params: Record<string, unknown> = {
 						authentication: 'none',
 						serverTransport: 'httpStreamable',
@@ -287,7 +333,7 @@ describe('McpClient', () => {
 			client.listTools.mockRejectedValue(new Error('listTools failed'));
 
 			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					id: '123',
 					name: 'MCP Client',
 					type: '@n8n/n8n-nodes-langchain.mcpClient',
@@ -295,7 +341,7 @@ describe('McpClient', () => {
 					position: [0, 0],
 					parameters: {},
 				}),
-				getNodeParameter: jest.fn().mockImplementation((key: string) => {
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
 					const params: Record<string, unknown> = {
 						authentication: 'none',
 						serverTransport: 'httpStreamable',
@@ -329,7 +375,7 @@ describe('McpClient', () => {
 			});
 
 			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					id: '123',
 					name: 'MCP Client',
 					type: '@n8n/n8n-nodes-langchain.mcpClient',
@@ -337,7 +383,7 @@ describe('McpClient', () => {
 					position: [0, 0],
 					parameters: {},
 				}),
-				getNodeParameter: jest.fn().mockImplementation((key: string) => {
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
 					const params: Record<string, unknown> = {
 						tool: 'tool1',
 						authentication: 'none',
@@ -357,7 +403,7 @@ describe('McpClient', () => {
 			client.listTools.mockRejectedValue(new Error('getAllTools failed'));
 
 			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					id: '123',
 					name: 'MCP Client',
 					type: '@n8n/n8n-nodes-langchain.mcpClient',
@@ -365,7 +411,7 @@ describe('McpClient', () => {
 					position: [0, 0],
 					parameters: {},
 				}),
-				getNodeParameter: jest.fn().mockImplementation((key: string) => {
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
 					const params: Record<string, unknown> = {
 						tool: 'tool1',
 						authentication: 'none',
@@ -395,7 +441,7 @@ describe('McpClient', () => {
 			});
 
 			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					id: '123',
 					name: 'MCP Client',
 					type: '@n8n/n8n-nodes-langchain.mcpClient',
@@ -403,7 +449,7 @@ describe('McpClient', () => {
 					position: [0, 0],
 					parameters: {},
 				}),
-				getNodeParameter: jest.fn().mockImplementation((key: string) => {
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
 					const params: Record<string, unknown> = {
 						tool: 'nonexistent_tool',
 						authentication: 'none',

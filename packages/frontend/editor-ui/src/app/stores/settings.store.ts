@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
@@ -154,12 +155,22 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
 	);
 
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
+
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
 	);
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
+	);
+
+	const isAutosaveEnabled = computed(() =>
+		settings.value.workflowsAutosaveDisabled !== undefined
+			? !settings.value.workflowsAutosaveDisabled
+			: true,
 	);
 
 	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
@@ -291,6 +302,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setJwksUri(fetchedSettings.jwksUri);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
@@ -392,6 +404,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantEnabled,
 		isCustomRolesFeatureEnabled,
 		areTagsEnabled,
+		isAutosaveEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,
 		isTemplatesEndpointReachable,
@@ -435,5 +448,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

@@ -23,7 +23,7 @@ export class LmChatMoonshot implements INodeType {
 		name: 'lmChatMoonshot',
 		icon: { light: 'file:moonshot.svg', dark: 'file:moonshot.dark.svg' },
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'Moonshot Kimi Chat Model',
@@ -118,6 +118,67 @@ export class LmChatMoonshot implements INodeType {
 					},
 				},
 				default: 'kimi-k2.5',
+				builderHint: {
+					message:
+						'Default to the latest Kimi model (kimi-k2.6). Avoid kimi-k2.5, kimi-k2, kimi-k1, and earlier.',
+				},
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				description:
+					'The model which will generate the completion. <a href="https://platform.kimi.ai/docs/api/chat">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: 'kimi-k2.6',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Options',

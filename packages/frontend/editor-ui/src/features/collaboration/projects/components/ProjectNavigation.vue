@@ -13,7 +13,6 @@ import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
-import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -35,8 +34,13 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
-const { favoriteGroups, activeTabId, onFavoriteProjectClick, onFavoriteWorkflowClick } =
-	useFavoriteNavItems();
+const {
+	favoriteGroups,
+	activeTabId,
+	onFavoriteProjectClick,
+	onFavoriteWorkflowClick,
+	onUnpinFavorite,
+} = useFavoriteNavItems();
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
@@ -115,7 +119,7 @@ const instanceAi = computed<IMenuItem>(() => ({
 	icon: 'sparkles',
 	label: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	beta: true,
+	preview: true,
 }));
 
 const chat = computed<IMenuItem>(() => ({
@@ -124,7 +128,7 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
-	beta: true,
+	preview: true,
 }));
 
 async function onSourceControlPull() {
@@ -194,36 +198,41 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="small"
+					size="medium"
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
-			<div v-if="!favoritesCollapsed" :class="$style.projectItems">
-				<!-- Expanded: flat list, icon hidden (but space preserved) on non-first items per group -->
-				<template v-if="!props.collapsed">
-					<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
-						<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-						<template v-for="item in group.items" :key="item.id">
-							<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
-								<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
-							</div>
-							<div
-								v-else
-								@click="group.type === 'workflow' ? onFavoriteWorkflowClick() : undefined"
+			<div v-if="props.collapsed || !favoritesCollapsed" :class="$style.projectItems">
+				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
+					<div v-if="!props.collapsed && groupIndex > 0" :class="$style.groupSpacer" />
+					<template v-for="entry in group.items" :key="entry.menuItem.id">
+						<div
+							:class="[$style.favoriteItem, props.collapsed && $style.collapsed]"
+							@click="
+								group.type === 'project'
+									? onFavoriteProjectClick(entry.resourceId)
+									: group.type === 'workflow'
+										? onFavoriteWorkflowClick()
+										: undefined
+							"
+						>
+							<N8nMenuItem
+								:item="entry.menuItem"
+								:compact="props.collapsed"
+								:active="activeTabId === entry.menuItem.id"
+							/>
+							<button
+								v-if="!props.collapsed"
+								:class="$style.unpinButton"
+								:aria-label="locale.baseText('favorites.remove')"
+								data-test-id="favorite-unpin-button"
+								@click.stop.prevent="onUnpinFavorite(entry.resourceId, entry.resourceType)"
 							>
-								<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
-							</div>
-						</template>
+								<N8nIcon icon="x" size="small" />
+							</button>
+						</div>
 					</template>
 				</template>
-				<!-- Collapsed sidebar: single star trigger with hover popover -->
-				<template v-else>
-					<FavoritesSidebarCompact />
-				</template>
-			</div>
-			<!-- Compact sidebar always shows the star icon regardless of favoritesCollapsed -->
-			<div v-else-if="props.collapsed" :class="$style.projectItems">
-				<FavoritesSidebarCompact />
 			</div>
 		</template>
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
@@ -237,7 +246,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="small"
+					size="medium"
 					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -289,22 +298,33 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	width: 100%;
+	width: calc(100% - var(--spacing--3xs) * 2);
 	box-sizing: border-box;
-	padding: 0 var(--spacing--xs);
-	margin-top: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	margin: var(--spacing--4xs) var(--spacing--3xs) 0;
 	background: none;
 	border: none;
+	border-radius: var(--spacing--4xs);
 	cursor: pointer;
 	color: inherit;
 
-	&:hover .chevron {
-		color: var(--color--text);
+	&:hover {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+
+		.chevron {
+			color: var(--color--text--shade-1);
+		}
+	}
+
+	&:focus-visible {
+		outline: 1px solid var(--color--secondary);
+		outline-offset: -1px;
 	}
 }
 
 .chevron {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	transition: transform 0.15s ease;
 	flex-shrink: 0;
 }
@@ -356,6 +376,45 @@ onBeforeUnmount(() => {
 }
 
 .groupSpacer {
-	height: var(--spacing--4xs);
+	height: var(--spacing--5xs);
+}
+
+.favoriteItem {
+	position: relative;
+
+	&:hover .unpinButton,
+	.unpinButton:focus-visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	&:not(.collapsed):hover a[role='menuitem'] {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+		padding-right: var(--spacing--lg);
+	}
+}
+
+.unpinButton {
+	position: absolute;
+	right: var(--spacing--4xs);
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--5xs);
+	background: none;
+	border: none;
+	color: var(--color--text--tint-2);
+	cursor: pointer;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+
+	&:hover,
+	&:focus-visible {
+		color: var(--color--text);
+	}
 }
 </style>
