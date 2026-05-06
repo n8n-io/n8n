@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { createMockEnterpriseSettings } from '@/__tests__/mocks';
+import { createMockEnterpriseSettings, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
@@ -19,6 +19,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -130,9 +131,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
-	const setupEnabledPublishButton = (overrides = {}) => {
-		workflowsStore.workflowTriggerNodes = [triggerNode];
+	const setupEnabledPublishButton = (overrides: Record<string, unknown> = {}) => {
 		Object.assign(workflowsStore, overrides);
+		if (!workflowsStore.workflow.nodes.length) {
+			workflowsStore.workflow.nodes = [triggerNode];
+		}
 	};
 
 	beforeEach(() => {
@@ -154,10 +157,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			nodes: [],
 			connections: {},
 		};
+		const nodeTypesStore = useNodeTypesStore();
+		nodeTypesStore.setNodeTypes([
+			mockNodeTypeDescription({
+				name: 'n8n-nodes-base.webhook',
+				group: ['trigger'],
+			}),
+		]);
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
 		workflowDocumentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
-		workflowsStore.workflowTriggerNodes = [];
 		uiStore.markStateClean();
 		uiStore.isActionActive = { workflowSaving: false };
 		collaborationStore.shouldBeReadOnly = false;
@@ -424,7 +433,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 	describe('Publish button state', () => {
 		it('should show publish button disabled when there are no trigger nodes', () => {
-			workflowsStore.workflowTriggerNodes = [];
+			workflowsStore.workflow.nodes = [];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
@@ -438,7 +447,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button disabled when trigger node is disabled', () => {
-			workflowsStore.workflowTriggerNodes = [{ ...triggerNode, disabled: true }];
+			workflowsStore.workflow.nodes = [{ ...triggerNode, disabled: true }];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
@@ -452,7 +461,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.nodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
@@ -466,7 +475,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when state is dirty', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.nodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
@@ -480,7 +489,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button disabled when versions match and state is not dirty', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.nodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
@@ -494,7 +503,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should keep the version menu enabled when workflow is published with no changes', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.nodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
@@ -509,7 +518,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should keep the version menu enabled when workflow is published with no changes and unpublish is unavailable', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.nodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
@@ -532,7 +541,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when workflow has never been published (no active version)', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.nodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 			uiStore.markStateClean();

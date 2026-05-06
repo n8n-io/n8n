@@ -25,6 +25,13 @@ import {
 } from './useWorkflowDocumentNodes';
 import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 
+const getNodeType = vi.fn().mockReturnValue(null);
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeType,
+	})),
+}));
+
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
 }
@@ -610,5 +617,300 @@ describe('useWorkflowDocumentNodes', () => {
 				);
 			},
 		);
+	});
+
+	describe('workflowTriggerNodes', () => {
+		beforeEach(() => {
+			getNodeType.mockReset();
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+		});
+
+		it('should return only nodes that are triggers', () => {
+			getNodeType.mockImplementation((nodeTypeName: string) => ({
+				group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
+				inputs: [],
+				webhooks: [],
+				properties: [],
+			}));
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Trigger', type: 'triggerNode', typeVersion: 1 }),
+				createNode({ name: 'Regular', type: 'nonTriggerNode', typeVersion: 1 }),
+			]);
+
+			expect(workflowDocumentNodes.workflowTriggerNodes.value).toHaveLength(1);
+			expect(workflowDocumentNodes.workflowTriggerNodes.value[0].type).toBe('triggerNode');
+		});
+
+		it('should return empty array when no nodes are triggers', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Regular1', type: 'nonTriggerNode1', typeVersion: 1 }),
+				createNode({ name: 'Regular2', type: 'nonTriggerNode2', typeVersion: 1 }),
+			]);
+
+			expect(workflowDocumentNodes.workflowTriggerNodes.value).toHaveLength(0);
+		});
+	});
+
+	describe('assignCredentialToMatchingNodes', () => {
+		beforeEach(() => {
+			getNodeType.mockReset();
+		});
+
+		it("should assign credential to nodes that support it but don't have it set", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node 1', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node 2', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(2);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials).toEqual({
+				slackApi: credential,
+			});
+			expect(workflowDocumentNodes.allNodes.value[2].credentials).toEqual({
+				slackApi: credential,
+			});
+		});
+
+		it('should not overwrite existing credentials of the same type', () => {
+			const newCredential = { id: 'cred-new', name: 'New Credential' };
+			const existingCredential = { id: 'cred-old', name: 'Existing Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({
+					name: 'Node With Existing Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					credentials: { slackApi: existingCredential },
+				}),
+				createNode({
+					name: 'Node Without Cred',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: newCredential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials?.slackApi).toEqual(
+				existingCredential,
+			);
+			expect(workflowDocumentNodes.allNodes.value[2].credentials?.slackApi).toEqual(newCredential);
+		});
+
+		it("should not affect nodes that don't support the credential type", () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return {
+					credentials: [{ name: 'httpBasicAuth', required: false }],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [],
+				};
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({ name: 'Slack Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({
+					name: 'HTTP Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(1);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials?.slackApi).toEqual(credential);
+			expect(workflowDocumentNodes.allNodes.value[2].credentials).toBeUndefined();
+		});
+
+		it('should handle nodes with no credential support', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.slack') {
+					return {
+						credentials: [{ name: 'slackApi', required: true }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return { inputs: [], group: [], webhooks: [], properties: [] };
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+				createNode({
+					name: 'Node Without Creds Support',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials).toBeUndefined();
+		});
+
+		it('should not assign credential to nodes where displayOptions do not match current parameters', () => {
+			const credential = { id: 'cred-1', name: 'Header Auth Credential' };
+			const credentialType = 'httpHeaderAuth';
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.httpRequest') {
+					return {
+						credentials: [{ name: 'httpHeaderAuth', required: false }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				return {
+					credentials: [
+						{
+							name: 'httpHeaderAuth',
+							required: false,
+							displayOptions: { show: { authentication: ['headerAuth'] } },
+						},
+					],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							default: 'none',
+							options: [
+								{ name: 'None', value: 'none' },
+								{ name: 'Header Auth', value: 'headerAuth' },
+							],
+						},
+					],
+				};
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+				createNode({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					parameters: { authentication: 'none' },
+				}),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'HTTP Request',
+			});
+
+			expect(result).toBe(0);
+			expect(workflowDocumentNodes.allNodes.value[1].credentials).toBeUndefined();
+		});
+
+		it('should return 0 when there are no matching nodes', () => {
+			const credential = { id: 'cred-1', name: 'Test Credential' };
+			const credentialType = 'slackApi';
+
+			getNodeType.mockReturnValue({
+				credentials: [{ name: 'slackApi', required: true }],
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({ name: 'Current Node', type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+			]);
+
+			const result = workflowDocumentNodes.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'Current Node',
+			});
+
+			expect(result).toBe(0);
+		});
 	});
 });
