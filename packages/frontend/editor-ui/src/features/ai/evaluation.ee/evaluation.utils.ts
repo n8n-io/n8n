@@ -18,10 +18,7 @@ export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }
 
 export type DeltaTone = 'positive' | 'negative' | 'default';
 
-/**
- * Categories surfaced as a badge on each metric. Mirrors the values of the
- * Evaluation node's `metric` parameter (see `Description.node.ts`).
- */
+// Categories — mirror the Evaluation node's `metric` parameter values.
 export type MetricCategory =
 	| 'aiBased'
 	| 'stringSimilarity'
@@ -29,10 +26,7 @@ export type MetricCategory =
 	| 'toolsUsed'
 	| 'custom';
 
-/**
- * Metadata pulled from the workflow's `setMetrics` Evaluation nodes — keyed
- * by the metric name as it appears in the run output.
- */
+// Metadata pulled from the workflow's `setMetrics` nodes, keyed by metric name.
 export type MetricSource = {
 	category: MetricCategory;
 	nodeName: string;
@@ -48,10 +42,7 @@ const PREDEFINED_METRIC_KEYS: ReadonlySet<string> = new Set([
 	'executionTime',
 ]);
 
-/**
- * Returns the user-defined metric names from a metrics record, excluding
- * the predefined ones (token counts, execution time) emitted by every run.
- */
+// Excludes predefined keys (token counts, execution time) emitted by every run.
 export function getUserDefinedMetricNames(
 	metrics: Record<string, number | boolean> | null | undefined,
 ): string[] {
@@ -59,20 +50,13 @@ export function getUserDefinedMetricNames(
 	return Object.keys(metrics).filter((key) => !PREDEFINED_METRIC_KEYS.has(key));
 }
 
-/**
- * Coerces a metric value (which can be `number | boolean`) into a comparable
- * number. Booleans map to 1/0 to keep delta math consistent.
- */
+// Booleans map to 1/0 so delta math stays consistent across metric types.
 export function normalizeMetricValue(value: number | boolean | undefined): number | undefined {
 	if (value === undefined) return undefined;
 	if (typeof value === 'boolean') return value ? 1 : 0;
 	return value;
 }
 
-/**
- * Signed delta between current and previous metric values, or undefined when
- * either side is missing (e.g. first run or metric only appeared this run).
- */
 export function computeDelta(
 	current: number | boolean | undefined,
 	previous: number | boolean | undefined,
@@ -83,12 +67,6 @@ export function computeDelta(
 	return currentNum - previousNum;
 }
 
-/**
- * Maps a delta value to a tone for FE coloring:
- *   - positive (improved vs previous run) → green
- *   - negative (declined vs previous run) → red
- *   - default (no comparison available) → neutral
- */
 export function getDeltaTone(delta: number | undefined): DeltaTone {
 	if (delta === undefined) return 'default';
 	if (delta > 0) return 'positive';
@@ -96,36 +74,20 @@ export function getDeltaTone(delta: number | undefined): DeltaTone {
 	return 'default';
 }
 
-/**
- * Formats a token count as e.g. "3,912t" — used in the per-case header.
- */
 export function formatTokens(tokens: number | undefined): string {
 	if (tokens === undefined || Number.isNaN(tokens)) return '–';
 	return `${Math.round(tokens).toLocaleString()}t`;
 }
 
-/**
- * Built-in AI-based metric handlers (correctness, helpfulness) return integer
- * scores 1–5 — see `nodes-base/nodes/Evaluation/utils/metricHandlers.ts`.
- * The other built-in handlers (stringSimilarity, categorization, toolsUsed)
- * return 0–1.
- */
+// AI-based handlers (correctness, helpfulness) return 1-5; others return 0-1.
 export type MetricScale = 'oneToFive' | 'normalized';
 
 export function getMetricScale(category: MetricCategory | undefined): MetricScale {
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
 }
 
-/**
- * Formats a numeric metric value as a percentage string e.g. "94%".
- *
- * The conversion depends on the metric's category:
- * - `aiBased` (correctness/helpfulness): integer 1–5 → `value / 5 * 100`,
- *   so a perfect 5 renders as "100%" and 1 as "20%".
- * - Anything else (heuristic built-ins, custom metrics, or no category):
- *   heuristic — values within [-1, 1] are 0–1 normalized scores scaled to
- *   percent; values outside that range are assumed to already be percentages.
- */
+// aiBased: 1-5 → value/5*100 (so 5 → 100%). Otherwise: |v|≤1 is a 0-1 score
+// scaled to percent; out-of-range values are assumed to be percentages already.
 export function formatMetricPercent(
 	value: number | boolean | undefined,
 	options: { category?: MetricCategory } = {},
@@ -141,19 +103,12 @@ export function formatMetricPercent(
 	return `${Math.round(scaled)}%`;
 }
 
-/**
- * Formats a metric key for display (snake_case / camelCase → Title Case).
- * `count_accuracy` → "Count Accuracy", `helpfulness` → "Helpfulness".
- */
+// snake_case / camelCase → Title Case (e.g. count_accuracy → "Count Accuracy").
 export function formatMetricLabel(name: string): string {
 	return startCase(name);
 }
 
-/**
- * Maps the raw `metric` parameter value of an Evaluation node to its display
- * category. `correctness` and `helpfulness` collapse into "AI-based" since
- * they're both LLM-as-judge metrics.
- */
+// `correctness` + `helpfulness` collapse into 'aiBased' (both LLM-as-judge).
 export function getMetricCategory(metric: string | undefined): MetricCategory {
 	switch (metric) {
 		case 'correctness':
@@ -175,11 +130,7 @@ function formatScoreNumerator(value: number): string {
 	return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
-/**
- * Returns the raw score in `x/y` form for a single per-case row. Only AI-based
- * metrics surface this — normalized 0–1 metrics are hidden because the
- * percentage already conveys the same information.
- */
+// `x/5` form for AI-based per-case rows (only — 0-1 metrics duplicate the %).
 export function formatMetricRawScore(
 	value: number | boolean | undefined,
 	options: { category?: MetricCategory } = {},
@@ -190,13 +141,7 @@ export function formatMetricRawScore(
 	return `${formatScoreNumerator(num)}/5`;
 }
 
-/**
- * Returns the run-level totals as a collapsed sum, e.g.
- *   - `13/15`  for AI-based 1–5 metrics (sum of scores / 5 × case count)
- *   - `1.11/6` for normalized 0–1 metrics (sum of scores / case count)
- * Surfaces under each strip card so the user can see the totals that
- * summed into the aggregated percentage.
- */
+// Run-level totals: "13/15" (AI-based: sum / 5×count) or "1.11/6" (0-1: sum / count).
 export function formatMetricRawScoreSum(
 	values: Array<number | boolean | undefined>,
 	options: { category?: MetricCategory } = {},
@@ -215,11 +160,7 @@ export function formatMetricRawScoreSum(
 	return `${numeratorDisplay}/${denominator}`;
 }
 
-/**
- * Formats a delta in percentage points with a leading sign, e.g. "+4%" / "-28%".
- * Mirrors `formatMetricPercent` — for 1–5-scale metrics a delta of +1 (e.g.
- * 4 → 5) becomes +20%; for normalized 0–1 metrics +0.04 becomes +4%.
- */
+// Signed delta in percentage points (e.g. "+4%" / "-28%"). 1-5: +1 → +20%; 0-1: +0.04 → +4%.
 export function formatDeltaPercent(
 	delta: number | undefined,
 	options: { category?: MetricCategory } = {},
@@ -236,12 +177,7 @@ export function formatDeltaPercent(
 	return `${sign}${rounded}%`;
 }
 
-/**
- * Formats a duration in milliseconds as a compact human label:
- *   - `< 1s`         → "Xms" (e.g. "243ms")
- *   - `1s` – `< 60s` → "Xs" or "X.Xs" (trailing `.0` dropped, e.g. "8s", "1.2s")
- *   - `>= 60s`       → "Xm Ys", `Ys` omitted when zero (e.g. "1m 30s", "2m")
- */
+// Compact duration: <1s → "243ms", <60s → "8s"/"1.2s", ≥60s → "1m 30s"/"2m".
 export function formatDuration(ms: number | undefined): string {
 	if (ms === undefined || Number.isNaN(ms) || ms < 0) return '–';
 	if (ms < 1000) return `${Math.round(ms)}ms`;
@@ -259,10 +195,7 @@ export function formatDuration(ms: number | undefined): string {
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
-/**
- * Duration in ms between two ISO date strings, or undefined when either end
- * is missing.
- */
+// Duration in ms between two ISO timestamps, or undefined if either is missing.
 export function computeDurationMs(
 	startIso: string | undefined,
 	endIso: string | null | undefined,

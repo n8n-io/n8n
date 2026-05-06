@@ -76,7 +76,6 @@ const mockTestCases = [
 	mock<TestCaseExecutionRecord>({
 		id: 'test-case-1',
 		testRunId: 'test-run-id',
-		runIndex: 0,
 		status: 'success',
 		runAt: '2023-10-02T10:00:00Z',
 		updatedAt: '2023-10-02T10:00:01Z',
@@ -90,7 +89,6 @@ const mockTestCases = [
 	mock<TestCaseExecutionRecord>({
 		id: 'test-case-2',
 		testRunId: 'test-run-id',
-		runIndex: 1,
 		status: 'error',
 		runAt: '2023-10-02T10:01:00Z',
 		updatedAt: '2023-10-02T10:01:01Z',

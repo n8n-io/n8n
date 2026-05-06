@@ -95,16 +95,9 @@ export const useEvaluationStore = defineStore(
 			return evaluationNodeExist('setOutputs');
 		});
 
-		/**
-		 * For each metric the current workflow's `setMetrics` Evaluation nodes
-		 * emit, returns the category and source-node name. Used by the run
-		 * detail page to badge each metric with its origin.
-		 *
-		 * Built-in metric nodes (correctness/helpfulness/stringSimilarity/
-		 * categorization/toolsUsed) emit a single key — `options.metricName`
-		 * if set, otherwise the metric's default name. `customMetrics` nodes
-		 * (and pre-4.7 nodes) emit one key per assignment in `metrics.assignments`.
-		 */
+		// Per-metric category + source-node name, keyed by metric name as it
+		// appears in the run output. Built-in nodes emit one key (overridable
+		// via `options.metricName`); customMetrics emits one key per assignment.
 		const metricSourceByKey = computed<Record<string, MetricSource>>(() => {
 			const map: Record<string, MetricSource> = {};
 

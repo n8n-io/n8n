@@ -30,7 +30,6 @@ interface DeleteTestRunParams {
 export type TestCaseExecutionStatus =
 	| 'new'
 	| 'running'
-	| 'evaluation_running'
 	| 'success'
 	| 'error'
 	| 'warning'
@@ -38,16 +37,12 @@ export type TestCaseExecutionStatus =
 
 export interface TestCaseExecutionRecord {
 	id: string;
-	// API doesn't surface the FK directly; the store stamps this on
-	// records as they're fetched so callers can filter by run.
-	testRunId?: string;
+	testRunId?: string; // FK not surfaced by API; store stamps it on records.
 	executionId: string | null;
 	status: TestCaseExecutionStatus;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string | null;
-	// Pre-migration runs and old fixtures may not carry a runIndex.
-	runIndex?: number | null;
 	metrics?: Record<string, number>;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
