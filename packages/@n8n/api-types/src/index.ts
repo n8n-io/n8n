@@ -409,6 +409,7 @@ export type {
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
+	InstanceAiEvalMockedCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,

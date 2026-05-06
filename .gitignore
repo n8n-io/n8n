@@ -69,3 +69,8 @@ packages/cli/src/commands/export/outputs
 .n8n
 lefthook-local.yml
 .playwright-mcp
+
+# Per-builder workspaces created by the local Instance AI sandbox provider.
+# Each eval build allocates a directory here with node_modules + workflow JSONs.
+# No trailing slash so this also covers symlinks (e.g. dev redirect to /tmp).
+packages/cli/bin/workspace-builders
