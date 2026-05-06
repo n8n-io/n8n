@@ -1,6 +1,6 @@
 import type { ConsoleMessage, Page } from '@playwright/test';
 
-import { test, expect } from '../../fixtures/base';
+import { test } from '../../fixtures/base';
 
 /**
  * Smoke tests that catch app-wide regressions where the editor-ui fails to boot —
@@ -45,6 +45,12 @@ const navigateAndAssertNoErrors = async (
 	page.on('console', onConsole);
 	page.on('pageerror', onPageError);
 
+	// When dev-mode module resolution is broken, the JS app never bootstraps —
+	// so entry points like `fromHome()` time out waiting for the post-redirect
+	// URL. That timeout would mask the real cause (the SyntaxError captured
+	// below). Capture any navigation failure and surface page/console errors
+	// as the primary diagnostic when both happened.
+	let navigationError: Error | undefined;
 	try {
 		await navigate();
 		// `load` (and not `networkidle`) is the project convention; entry points
@@ -52,19 +58,24 @@ const navigateAndAssertNoErrors = async (
 		// initial module evaluation has completed and any SyntaxError-on-import
 		// has surfaced to either pageerror or console.error.
 		await page.waitForLoadState('load', { timeout: 15_000 });
+	} catch (error) {
+		navigationError = error instanceof Error ? error : new Error(String(error));
 	} finally {
 		page.off('console', onConsole);
 		page.off('pageerror', onPageError);
 	}
 
-	expect(
-		pageErrors,
-		`[${label}] uncaught page errors during navigation:\n${pageErrors.join('\n')}`,
-	).toEqual([]);
-	expect(
-		consoleErrors,
-		`[${label}] error-level console messages during navigation:\n${consoleErrors.join('\n')}`,
-	).toEqual([]);
+	if (pageErrors.length > 0 || consoleErrors.length > 0) {
+		const sections = [
+			pageErrors.length > 0 && `Uncaught page errors:\n  ${pageErrors.join('\n  ')}`,
+			consoleErrors.length > 0 && `Error-level console messages:\n  ${consoleErrors.join('\n  ')}`,
+			navigationError &&
+				`Navigation also failed (likely a downstream effect): ${navigationError.message.split('\n')[0]}`,
+		].filter(Boolean);
+		throw new Error(`[${label}] dev-server boot failed.\n\n${sections.join('\n\n')}`);
+	}
+
+	if (navigationError) throw navigationError;
 };
 
 test.describe(
