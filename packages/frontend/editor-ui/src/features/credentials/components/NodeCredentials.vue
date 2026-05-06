@@ -448,7 +448,7 @@ function onCredentialSelected(
 				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
 	) {
 		// update all nodes in the workflow with the same old/invalid credentials
-		workflowsStore.replaceInvalidWorkflowCredentials({
+		workflowDocumentStore?.value?.replaceInvalidWorkflowCredentials({
 			credentials: newSelectedCredentials,
 			invalid: oldCredentials,
 			type: selectedCredentialsType,
@@ -469,11 +469,12 @@ function onCredentialSelected(
 	// Auto-assign credential to other matching nodes
 	// Skip auto-assign for automatic/system actions (e.g., auto-selecting on mount)
 	if (isUserAction && !props.standalone) {
-		const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
-			credentials: newSelectedCredentials,
-			type: selectedCredentialsType,
-			currentNodeName: props.node.name,
-		});
+		const updatedNodesCount =
+			workflowDocumentStore?.value?.assignCredentialToMatchingNodes({
+				credentials: newSelectedCredentials,
+				type: selectedCredentialsType,
+				currentNodeName: props.node.name,
+			}) ?? 0;
 
 		if (updatedNodesCount > 0) {
 			nodeHelpers.updateNodesCredentialsIssues();

@@ -22,6 +22,7 @@ jobs:
       ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
+      dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
@@ -63,6 +64,16 @@ jobs:
               .github/actions/load-n8n-docker/**
               packages/testing/playwright/**
               packages/testing/containers/**
+            dev-server-smoke:
+              packages/frontend/editor-ui/vite.config.mts
+              pnpm-workspace.yaml
+              packages/@n8n/*/package.json
+              packages/testing/playwright/tests/dev-server-smoke/**
+              packages/testing/playwright/playwright.config.ts
+              packages/testing/playwright/playwright-projects.ts
+              packages/testing/playwright/package.json
+              .github/workflows/test-dev-server-smoke-reusable.yml
+              .github/workflows/ci-pull-requests.yml
             workflows: .github/**
             workflow-scripts: .github/scripts/**
             performance:
@@ -221,6 +232,19 @@ jobs:
       upload-failure-artifacts: ${{ github.event.pull_request.head.repo.fork == true }}
     secrets: inherit
 
+  # Boots the editor-ui against the Vite dev server and fails on any console
+  # or page error during load. Catches regressions in dev-mode module
+  # resolution (missing Vite alias, broken workspace package interop) that
+  # the production-bundle e2e job bundles around.
+  dev-server-smoke:
+    name: Dev-server boot smoke
+    needs: install-and-build
+    if: needs.install-and-build.outputs.dev_server_smoke == 'true' && github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-dev-server-smoke-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
   db-tests:
     name: DB Tests
     needs: install-and-build
@@ -296,6 +320,7 @@ jobs:
         check-packaging,
         sqlite-sanity,
         e2e,
+        dev-server-smoke,
         db-tests,
         performance,
         security-checks,

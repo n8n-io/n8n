@@ -1,5 +1,5 @@
 import { createTool } from '@mastra/core/tools';
-import { generateWorkflowCode, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
@@ -149,9 +149,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Apply Dagre layout to produce positions matching the FE's tidy-up.
-			// Temporary: remove once the SDK is published with toJSON({ tidyUp: true }).
-			const json = layoutWorkflowJSON(result.workflow);
+			const json = result.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

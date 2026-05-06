@@ -236,5 +236,9 @@ export { VersionSinceDateQueryDto } from './instance-version-history/version-sin
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
-export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export {
+	ListEncryptionKeysQueryDto,
+	ENCRYPTION_KEYS_SORT_OPTIONS,
+	type EncryptionKeysSortOption,
+} from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

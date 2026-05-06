@@ -1,5 +1,4 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
-import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -149,7 +148,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
-			const workflowJson = layoutWorkflowJSON(result.workflow);
+			const workflowJson = result.workflow;
 
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {

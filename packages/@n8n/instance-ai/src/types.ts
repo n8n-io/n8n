@@ -39,6 +39,7 @@ export interface WorkflowSummary {
 	name: string;
 	versionId: string;
 	activeVersionId: string | null;
+	isArchived: boolean;
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
@@ -149,8 +150,14 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 	connections: Record<string, unknown>;
 }
 
+export type WorkflowListStatus = 'active' | 'archived' | 'all';
+
 export interface InstanceAiWorkflowService {
-	list(options?: { query?: string; limit?: number }): Promise<WorkflowSummary[]>;
+	list(options?: {
+		query?: string;
+		limit?: number;
+		status?: WorkflowListStatus;
+	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
@@ -166,7 +173,7 @@ export interface InstanceAiWorkflowService {
 		options?: { projectId?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
-	delete(workflowId: string): Promise<void>;
+	unarchive(workflowId: string): Promise<void>;
 	/**
 	 * Clear the AI-builder temporary marker on a workflow — used to promote the
 	 * main deliverable so the run-finish reap leaves it alone.
