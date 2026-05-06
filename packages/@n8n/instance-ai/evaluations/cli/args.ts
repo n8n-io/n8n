@@ -45,7 +45,7 @@ export interface CliArgs {
 // ---------------------------------------------------------------------------
 
 const cliArgsSchema = z.object({
-	timeoutMs: z.number().int().positive().default(600_000),
+	timeoutMs: z.number().int().positive().default(900_000),
 	baseUrls: z.array(z.string().url()).min(1).default(['http://localhost:5678']),
 	email: z.string().optional(),
 	password: z.string().optional(),
@@ -104,7 +104,7 @@ interface RawArgs {
 
 function parseRawArgs(argv: string[]): RawArgs {
 	const result: RawArgs = {
-		timeoutMs: 600_000,
+		timeoutMs: 900_000,
 		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
