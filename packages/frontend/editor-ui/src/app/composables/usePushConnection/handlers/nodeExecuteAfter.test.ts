@@ -3,7 +3,7 @@ import { nodeExecuteAfter } from './nodeExecuteAfter';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
-import { TRIMMED_TASK_DATA_CONNECTIONS_KEY, createRunExecutionData } from 'n8n-workflow';
+import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
@@ -12,6 +12,7 @@ import {
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
 vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	useAssistantStore: vi.fn().mockReturnValue({
@@ -34,16 +35,14 @@ describe('nodeExecuteAfter', () => {
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		executionDataStore.setExecution({
-			id: 'exec-1',
-			finished: false,
-			mode: 'manual',
-			status: 'running',
-			createdAt: new Date(),
-			startedAt: new Date(),
-			workflowData: { id: 'test-wf', name: 'Test', nodes: [], connections: {} } as never,
-			data: createRunExecutionData(),
-		});
+		executionDataStore.setExecution(
+			createTestWorkflowExecutionResponse({
+				id: 'exec-1',
+				finished: false,
+				status: 'running',
+				workflowData: createTestWorkflow({ id: 'test-wf', name: 'Test' }),
+			}),
+		);
 
 		stateStore.setActiveExecutionId('exec-1');
 
