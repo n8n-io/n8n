@@ -49,7 +49,10 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	) {
 		this.scopedLogger = this.logger.scoped('expression-engine');
 
-		if (!this.config.observabilityEnabled || this.config.engine !== 'vm') {
+		if (
+			!this.config.observabilityEnabled ||
+			(this.config.engine !== 'vm' && this.config.engine !== 'quickjs')
+		) {
 			this.metrics = NoOpProvider.metrics;
 			this.traces = NoOpProvider.traces;
 			this.logs = NoOpProvider.logs;
