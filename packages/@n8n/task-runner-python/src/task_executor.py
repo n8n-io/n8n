@@ -1,7 +1,6 @@
 import multiprocessing
 import traceback
 import textwrap
-import types
 import json
 import io
 import os
@@ -436,7 +435,49 @@ class TaskExecutor:
 
         filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
 
-        return types.MappingProxyType(filtered)
+        class _ImmutableBuiltins:
+            __slots__ = ()
+
+            def __getitem__(self, key):
+                return filtered[key]
+
+            def __contains__(self, key):
+                return key in filtered
+
+            def __iter__(self):
+                return iter(filtered)
+
+            def __len__(self):
+                return len(filtered)
+
+            def keys(self):
+                return filtered.keys()
+
+            def values(self):
+                return filtered.values()
+
+            def items(self):
+                return filtered.items()
+
+            def get(self, key, default=None):
+                return filtered.get(key, default)
+
+            def __getattr__(self, name):
+                try:
+                    return filtered[name]
+                except KeyError:
+                    raise AttributeError(name) from None
+
+            def __setattr__(self, name, value):
+                raise AttributeError("read-only")
+
+            def __delattr__(self, name):
+                raise AttributeError("read-only")
+
+            def __repr__(self):
+                return f"ImmutableBuiltins({len(filtered)} keys)"
+
+        return _ImmutableBuiltins()
 
     @staticmethod
     def _sanitize_sys_modules(security_config: SecurityConfig):

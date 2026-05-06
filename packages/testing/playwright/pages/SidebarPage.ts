@@ -36,19 +36,39 @@ export class SidebarPage {
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
-		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
+		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'New project' });
 	}
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Workflow').click();
-		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+		const universalAdd = this.page.getByTestId('universal-add');
+		// "New workflow" only has a submenu when team projects exist; otherwise it's
+		// a direct route to the personal project.
+		const hasSubmenu =
+			(await universalAdd
+				.getByTestId('navigation-submenu')
+				.filter({ hasText: 'New workflow' })
+				.count()) > 0;
+		await universalAdd.getByText('New workflow').click();
+		if (hasSubmenu) {
+			await universalAdd.getByRole('link', { name: projectName }).click();
+		}
 	}
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Credential', { exact: true }).click();
-		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+		const universalAdd = this.page.getByTestId('universal-add');
+		// "New credential" only has a submenu when team projects exist; otherwise it's
+		// a direct route to create the credential in the personal project.
+		const hasSubmenu =
+			(await universalAdd
+				.getByTestId('navigation-submenu')
+				.filter({ hasText: 'New credential' })
+				.count()) > 0;
+		await universalAdd.getByText('New credential', { exact: true }).click();
+		if (hasSubmenu) {
+			await universalAdd.getByRole('link', { name: projectName }).click();
+		}
 	}
 
 	getProjectMenuItems(): Locator {

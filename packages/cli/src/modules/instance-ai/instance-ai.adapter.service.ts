@@ -115,6 +115,7 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -190,6 +191,7 @@ export class InstanceAiAdapterService {
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -1451,6 +1453,7 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
+		const ssrf = this.ssrfProtectionService;
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1509,6 +1512,7 @@ export class InstanceAiAdapterService {
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
 					authorizeUrl: options?.authorizeUrl,
+					ssrf,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)
@@ -1620,6 +1624,17 @@ export class InstanceAiAdapterService {
 				if (exact) return exact;
 			}
 			return nodes.find((n) => n.name === nodeType);
+		};
+
+		const normalizeNodeVersion = (version?: string): number | undefined => {
+			if (!version) return undefined;
+			const normalized = version.replace(/^v/i, '');
+			if (!/^\d+$/.test(normalized)) return Number(normalized);
+			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
+			if (normalized.length === 2) {
+				return Number(`${normalized[0]}.${normalized[1]}`);
+			}
+			return Number(normalized);
 		};
 
 		return {
@@ -1776,7 +1791,19 @@ export class InstanceAiAdapterService {
 					return { content: '', error: result.error };
 				}
 
-				return { content: result.content, version: result.version };
+				const nodes = await getNodes();
+				const nodeDesc = findNodeByVersion(
+					nodes,
+					nodeType,
+					normalizeNodeVersion(result.version ?? options?.version),
+				);
+				const builderHint = nodeDesc?.builderHint?.message;
+
+				return {
+					content: result.content,
+					version: result.version,
+					...(builderHint ? { builderHint } : {}),
+				};
 			},
 
 			listDiscriminators: async (nodeType) => {

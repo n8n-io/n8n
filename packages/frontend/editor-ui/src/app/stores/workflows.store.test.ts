@@ -16,7 +16,7 @@ import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import { createEmptyRunExecutionData, createRunExecutionData, deepCopy } from 'n8n-workflow';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ExecutionSummary, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -162,14 +162,14 @@ describe('useWorkflowsStore', () => {
 
 	describe('getWorkflowRunData', () => {
 		it('should return null when no execution data is present', () => {
-			workflowsStore.workflowExecutionData = null;
+			workflowsStore.setWorkflowExecutionData(null);
 
 			const runData = workflowsStore.getWorkflowRunData;
 			expect(runData).toBeNull();
 		});
 
 		it('should return null when execution data does not contain resultData', () => {
-			workflowsStore.workflowExecutionData = { data: {} } as IExecutionResponse;
+			workflowsStore.setWorkflowExecutionData({ data: {} } as IExecutionResponse);
 
 			const runData = workflowsStore.getWorkflowRunData;
 			expect(runData).toBeNull();
@@ -177,9 +177,9 @@ describe('useWorkflowsStore', () => {
 
 		it('should return runData when execution data contains resultData', () => {
 			const expectedRunData = { node1: [{}, {}], node2: [{}] };
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				data: { resultData: { runData: expectedRunData } },
-			} as unknown as IExecutionResponse;
+			} as unknown as IExecutionResponse);
 
 			const runData = workflowsStore.getWorkflowRunData;
 			expect(runData).toEqual(expectedRunData);
@@ -188,16 +188,16 @@ describe('useWorkflowsStore', () => {
 
 	describe('getWorkflowResultDataByNodeName()', () => {
 		it('should return null when no workflow run data is present', () => {
-			workflowsStore.workflowExecutionData = null;
+			workflowsStore.setWorkflowExecutionData(null);
 
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toBeNull();
 		});
 
 		it('should return null when node name is not present in workflow run data', () => {
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse;
+			} as unknown as IExecutionResponse);
 
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toBeNull();
@@ -205,9 +205,9 @@ describe('useWorkflowsStore', () => {
 
 		it('should return result data when node name is present in workflow run data', () => {
 			const expectedData = [{}, {}];
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				data: { resultData: { runData: { Node1: expectedData } } },
-			} as unknown as IExecutionResponse;
+			} as unknown as IExecutionResponse);
 
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toEqual(expectedData);
@@ -544,32 +544,34 @@ describe('useWorkflowsStore', () => {
 
 	describe('updateNodeExecutionRunData', () => {
 		beforeEach(() => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				id: 'test-execution',
-				data: createRunExecutionData({
-					resultData: {
-						runData: {
-							n0: [
-								createTestTaskData({
-									executionIndex: 0,
-									executionStatus: 'success',
-									executionTime: 33,
-								}),
-								createTestTaskData({
-									executionIndex: 1,
-									executionStatus: 'success',
-									executionTime: 44,
-								}),
-								createTestTaskData({
-									executionIndex: 2,
-									executionStatus: 'running',
-									executionTime: undefined,
-								}),
-							],
+			workflowsStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					id: 'test-execution',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								n0: [
+									createTestTaskData({
+										executionIndex: 0,
+										executionStatus: 'success',
+										executionTime: 33,
+									}),
+									createTestTaskData({
+										executionIndex: 1,
+										executionStatus: 'success',
+										executionTime: 44,
+									}),
+									createTestTaskData({
+										executionIndex: 2,
+										executionStatus: 'running',
+										executionTime: undefined,
+									}),
+								],
+							},
 						},
-					},
+					}),
 				}),
-			});
+			);
 		});
 
 		it('should replace run data at the matched index in the execution data', () => {
@@ -1123,7 +1125,7 @@ describe('useWorkflowsStore', () => {
 			const nodeName = 'Rename me';
 			const newName = 'Renamed';
 
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				data: {
 					resultData: {
 						runData: {
@@ -1202,7 +1204,7 @@ describe('useWorkflowsStore', () => {
 						lastNodeExecuted: 'Edit Fields',
 					},
 				},
-			} as unknown as IExecutionResponse;
+			} as unknown as IExecutionResponse);
 
 			workflowsStore.setWorkflowId('test-workflow-id');
 
@@ -1530,7 +1532,7 @@ describe('useWorkflowsStore', () => {
 			workflowDocumentStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
 
 			// Initialize execution data directly
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				id: executionId,
 				workflowData: createTestWorkflow(),
 				finished: false,
@@ -1539,7 +1541,7 @@ describe('useWorkflowsStore', () => {
 				createdAt: new Date(),
 				status: 'running',
 				data: createEmptyRunExecutionData(),
-			} as IExecutionResponse;
+			} as IExecutionResponse);
 
 			// Call updateNodeExecutionStatus with waiting status and metadata.resumeFormUrl
 			workflowsStore.updateNodeExecutionStatus({
@@ -1573,7 +1575,7 @@ describe('useWorkflowsStore', () => {
 			wfDocStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
 
 			// Initialize execution data directly
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				id: executionId,
 				workflowData: createTestWorkflow(),
 				finished: false,
@@ -1582,7 +1584,7 @@ describe('useWorkflowsStore', () => {
 				createdAt: new Date(),
 				status: 'running',
 				data: createEmptyRunExecutionData(),
-			} as IExecutionResponse;
+			} as IExecutionResponse);
 
 			// Call updateNodeExecutionStatus with waiting status but NO metadata.resumeFormUrl
 			workflowsStore.updateNodeExecutionStatus({

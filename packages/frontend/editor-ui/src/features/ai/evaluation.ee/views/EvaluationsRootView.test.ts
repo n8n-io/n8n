@@ -116,7 +116,7 @@ describe('EvaluationsRootView', () => {
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 
-		renderComponent({ props: { name: mockWorkflow.id } });
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await flushPromises();
 
@@ -129,7 +129,7 @@ describe('EvaluationsRootView', () => {
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.fetchTestRuns.mockResolvedValue(mockTestRuns);
 
-		renderComponent({ props: { name: mockWorkflow.id } });
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await waitFor(() =>
 			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id),
@@ -140,7 +140,7 @@ describe('EvaluationsRootView', () => {
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.testRunsById = { foo: mock<TestRunRecord>({ workflowId: mockWorkflow.id }) };
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		// Check that setupContent is not present
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeFalsy());
@@ -156,7 +156,7 @@ describe('EvaluationsRootView', () => {
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await flushPromises();
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeTruthy());
@@ -174,7 +174,7 @@ describe('EvaluationsRootView', () => {
 		evaluationStore.testRunsById = {};
 		sourceControlStore.preferences = mock<SourceControlPreferences>({ branchReadOnly: true });
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await flushPromises();
 		await waitFor(() => {
@@ -198,7 +198,7 @@ describe('EvaluationsRootView', () => {
 			// Mock no evaluation nodes in workflow
 			getNodeType.mockReturnValue(null);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -226,7 +226,7 @@ describe('EvaluationsRootView', () => {
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 1;
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -272,7 +272,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -326,7 +326,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -380,7 +380,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -408,7 +408,7 @@ describe('EvaluationsRootView', () => {
 			// Mock no evaluation nodes in workflow
 			getNodeType.mockReturnValue(null);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {

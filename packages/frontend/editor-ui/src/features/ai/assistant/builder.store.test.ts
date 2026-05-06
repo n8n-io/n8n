@@ -181,7 +181,7 @@ describe('AI Builder store', () => {
 		);
 		workflowDocumentStore.setNodes([]);
 		workflowDocumentStore.setConnections({});
-		workflowsStore.workflowExecutionData = null;
+		workflowsStore.setWorkflowExecutionData(null);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);

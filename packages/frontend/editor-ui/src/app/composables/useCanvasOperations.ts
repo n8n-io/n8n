@@ -2316,9 +2316,9 @@ export function useCanvasOperations() {
 		// Reset editable workflow state
 		workflowsStore.resetWorkflow();
 		workflowState.resetState();
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.clearCurrentWorkflowExecutions();
 		workflowState.setActiveExecutionId(undefined);
-		workflowsStore.lastSuccessfulExecution = null;
+		workflowsStore.setLastSuccessfulExecution(null);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -3157,7 +3157,7 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		let data: IWorkflowTemplate | undefined;
@@ -3220,7 +3220,7 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		uiStore.isBlankRedirect = true;

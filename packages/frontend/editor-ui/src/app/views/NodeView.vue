@@ -518,6 +518,7 @@ async function onCopyNodes(ids: string[]) {
 
 async function onClipboardPaste(plainTextData: string): Promise<void> {
 	if (
+		isCanvasReadOnly.value ||
 		getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW ||
 		!keyBindingsEnabled.value ||
 		!checkIfEditingIsAllowed()
@@ -1870,6 +1871,7 @@ onBeforeUnmount(() => {
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:embedded="isDemoRoute"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"

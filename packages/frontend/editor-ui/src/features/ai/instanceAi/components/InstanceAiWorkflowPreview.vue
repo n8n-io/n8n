@@ -1,18 +1,15 @@
 <script lang="ts" setup>
-import { ref, watch, computed, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useInstanceAiStore } from '../instanceAi.store';
 import type { IWorkflowDb } from '@/Interface';
 
 const props = withDefaults(
 	defineProps<{
 		workflowId: string | null;
-		executionId: string | null;
 		/** Incremented to force re-fetch even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
 	}>(),
@@ -21,21 +18,21 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'iframe-ready': [];
+	/** Fires after a workflow fetch resolves and the new workflow has been
+	 * propagated to the embedded WorkflowPreview (which sends `openWorkflow` to
+	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
+	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
+	'workflow-loaded': [workflowId: string];
 }>();
 
 const i18n = useI18n();
 const workflowsListStore = useWorkflowsListStore();
-const workflowsStore = useWorkflowsStore();
-const instanceAiStore = useInstanceAiStore();
 const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('previewComponent');
 
 const workflow = ref<IWorkflowDb | null>(null);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
 let fetchGeneration = 0;
-
-// When executionId is set, switch WorkflowPreview to execution mode
-const previewMode = computed(() => (props.executionId ? 'execution' : 'workflow'));
 
 function handleIframeMessage(event: MessageEvent) {
 	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
@@ -72,6 +69,13 @@ async function fetchWorkflow(id: string) {
 		const result = await workflowsListStore.fetchWorkflow(id);
 		if (generation !== fetchGeneration) return;
 		workflow.value = result;
+		// Wait for Vue to propagate the new workflow to <WorkflowPreview>'s
+		// reactive watcher, which posts `openWorkflow` to the iframe. Emitting
+		// after this tick lets parents replay buffered execution events
+		// without racing the workflow load.
+		await nextTick();
+		if (generation !== fetchGeneration) return;
+		emit('workflow-loaded', id);
 	} catch {
 		if (generation !== fetchGeneration) return;
 		workflow.value = null;
@@ -97,79 +101,11 @@ watch(
 	{ immediate: true },
 );
 
-// --- Execution completion polling ---
-// The execute_workflow tool returns immediately (fire-and-forget). When the
-// preview loads the execution it may still be running or waiting (e.g. Wait
-// node). Poll until the execution finishes so the iframe can reload with the
-// final node statuses.
-//
-// While the agent is streaming we poll indefinitely. Once streaming stops we
-// allow a short grace window (MAX_POST_STREAM_POLLS) for the execution to
-// finish before giving up.
-const POLL_INTERVAL_MS = 1_500;
-const MAX_POST_STREAM_POLLS = 5; // ~7.5 s grace after streaming ends
-let pollTimer: ReturnType<typeof setTimeout> | null = null;
-let postStreamAttempts = 0;
-
-function stopPolling() {
-	if (pollTimer !== null) {
-		clearTimeout(pollTimer);
-		pollTimer = null;
-	}
-	postStreamAttempts = 0;
-}
-
-async function pollExecutionUntilDone(executionId: string) {
-	if (executionId !== props.executionId) return;
-
-	if (instanceAiStore.isStreaming) {
-		postStreamAttempts = 0;
-	} else {
-		postStreamAttempts++;
-		if (postStreamAttempts > MAX_POST_STREAM_POLLS) return;
-	}
-
-	try {
-		const execution = await workflowsStore.fetchExecutionDataById(executionId);
-		if (executionId !== props.executionId) return; // stale
-
-		const isFinished = execution?.finished === true;
-		if (isFinished) {
-			// Tell the iframe to re-load the now-complete execution data
-			const preview = previewRef.value as
-				| { reloadExecution?: () => void; iframeRef?: HTMLIFrameElement | null }
-				| undefined;
-			preview?.reloadExecution?.();
-			return;
-		}
-	} catch {
-		// Execution might not be ready yet — retry
-	}
-
-	pollTimer = setTimeout(() => {
-		void pollExecutionUntilDone(executionId);
-	}, POLL_INTERVAL_MS);
-}
-
-watch(
-	() => props.executionId,
-	(execId) => {
-		stopPolling();
-		if (execId) {
-			// Start polling after a short initial delay to give the execution time
-			pollTimer = setTimeout(() => {
-				void pollExecutionUntilDone(execId);
-			}, POLL_INTERVAL_MS);
-		}
-	},
-);
-
 // Listen for iframe ready signal
 window.addEventListener('message', handleIframeMessage);
 
 onBeforeUnmount(() => {
 	window.removeEventListener('message', handleIframeMessage);
-	stopPolling();
 });
 
 defineExpose({ relayPushEvent });
@@ -182,13 +118,13 @@ defineExpose({ relayPushEvent });
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
+		<!-- Always mounted so the iframe boots before any artifact exists; it hides itself
+		     internally when no workflow is set. Live execution state is painted onto
+		     the canvas via `relayPushEvent` from SDK push events. -->
 		<WorkflowPreview
-			v-if="workflow"
 			ref="previewComponent"
-			:mode="previewMode"
-			:workflow="workflow"
-			:execution-id="props.executionId ?? undefined"
+			mode="workflow"
+			:workflow="workflow ?? undefined"
 			:can-open-ndv="true"
 			:can-execute="true"
 			:hide-controls="false"

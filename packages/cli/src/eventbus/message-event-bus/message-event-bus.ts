@@ -6,6 +6,8 @@ import { Service } from '@n8n/di';
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
+import { InstanceSettings } from 'n8n-core';
+import { existsSync } from 'node:fs';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -27,6 +29,10 @@ import { EventMessageRunner } from '../event-message-classes/event-message-runne
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
 import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
+import {
+	resolveEventLogPath,
+	type EventLogProcessType,
+} from '../message-event-bus-writer/resolve-event-log-path';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -56,6 +62,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly recoveryService: ExecutionRecoveryService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		super();
 	}
@@ -76,18 +83,26 @@ export class MessageEventBus extends EventEmitter {
 		this.logger.debug('Initializing event bus...');
 
 		this.logger.debug('Initializing event writer');
-		if (options?.workerId || options?.webhookProcessorId) {
-			// only add 'worker' or 'webhook-processor' to log file name since the ID changes on every start and we
-			// would not be able to recover the log files from the previous run not knowing it
-			const logBaseName =
-				this.globalConfig.eventBus.logWriter.logBaseName +
-				(options.workerId ? '-worker' : '-webhook-processor');
-			this.logWriter = await MessageEventBusLogWriter.getInstance({
-				logBaseName,
-			});
-		} else {
-			this.logWriter = await MessageEventBusLogWriter.getInstance();
+		const processType: EventLogProcessType = options?.workerId
+			? 'worker'
+			: options?.webhookProcessorId
+				? 'webhook-processor'
+				: 'main';
+
+		const resolved = resolveEventLogPath({
+			logFullPath: this.globalConfig.eventBus.logWriter.logFullPath,
+			logBaseName: this.globalConfig.eventBus.logWriter.logBaseName,
+			instanceDir: this.instanceSettings.n8nFolder,
+			processType,
+		});
+
+		if (this.globalConfig.eventBus.logWriter.logFullPath) {
+			this.warnIfDefaultLocationEventLogsCoexist(processType);
 		}
+
+		this.logWriter = await MessageEventBusLogWriter.getInstance({
+			resolvedPath: { logFullBasePath: resolved.logFullBasePath },
+		});
 
 		if (!this.logWriter) {
 			this.logger.warn('Could not initialize event writer');
@@ -107,6 +122,30 @@ export class MessageEventBus extends EventEmitter {
 
 		this.logger.debug('MessageEventBus initialized');
 		this.isInitialized = true;
+	}
+
+	private warnIfDefaultLocationEventLogsCoexist(processType: EventLogProcessType): void {
+		const { logFullBasePath: defaultBase, logFileName: defaultLogFile } = resolveEventLogPath({
+			logFullPath: '',
+			logBaseName: this.globalConfig.eventBus.logWriter.logBaseName,
+			instanceDir: this.instanceSettings.n8nFolder,
+			processType,
+		});
+		const candidates = [
+			defaultLogFile,
+			...Array.from(
+				{ length: this.globalConfig.eventBus.logWriter.keepLogCount },
+				(_, i) => `${defaultBase}-${i + 1}.log`,
+			),
+		];
+		const stale = candidates.filter((p) => existsSync(p));
+		if (stale.length > 0) {
+			this.logger.warn(
+				`N8N_EVENTBUS_LOGWRITER_LOGFULLPATH is set, but event log file(s) at the default location still exist: ${stale.join(', ')}. ` +
+					'These files are no longer being written to and may contain unsent events from a previous run. ' +
+					'Drain or relocate them as part of the migration.',
+			);
+		}
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {

@@ -139,7 +139,16 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('outcome.workflowId');
 			expect(prompt).toContain('outcome.workItemId');
+			expect(prompt).toContain('outcome.verification');
 			expect(prompt).toMatch(/result.*only a short text summary/);
+		});
+
+		it('reuses successful structured builder verification evidence instead of re-running verify', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('successful structured tool evidence');
+			expect(prompt).toContain('do **not** call `verify-built-workflow` again');
+			expect(prompt).toContain('Never trust builder prose alone');
 		});
 
 		it('runs verify even when mocked credentials are present', () => {
@@ -152,6 +161,15 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('checkpoint branch — in-turn patch rule + retry carve-out', () => {
+		it('allows checkpoints to reuse successful structured verification evidence', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Always require structured verification evidence');
+			expect(prompt).toContain('never trust builder prose');
+			expect(prompt).toContain('without re-running verification');
+			expect(prompt).not.toContain('Always run your own verification');
+		});
+
 		it('tells the orchestrator it may patch during a checkpoint and will re-enter the same checkpoint', () => {
 			const prompt = getSystemPrompt({});
 

@@ -129,6 +129,8 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .defaultTrigger {
 	display: inline-flex;
 	align-items: center;
@@ -198,6 +200,11 @@ defineExpose({
 }
 
 .content {
+	--animation--popover-in--translate-x: 0;
+	--animation--popover-in--translate-y: 0;
+	--dropdown--transform-origin-x: center;
+	--dropdown--transform-origin-y: center;
+
 	min-width: 200px;
 	max-width: 400px;
 	max-height: 320px;
@@ -208,29 +215,57 @@ defineExpose({
 	z-index: 9999;
 	overflow: auto;
 	padding: var(--spacing--3xs);
+	transform-origin: var(--dropdown--transform-origin-x) var(--dropdown--transform-origin-y);
+
+	&[data-state='open'] {
+		--animation--popover-in--duration: var(--animation--duration);
+		--animation--popover-in--easing: var(--animation--easing);
+
+		@include motion.popover-in;
+	}
 
 	&[data-side='bottom'] {
-		transform-origin: top center;
-
-		&[data-state='open'] {
-			animation: slideDown var(--animation--duration) var(--animation--easing);
-		}
-
-		&[data-state='closed'] {
-			animation: slideDown var(--animation--duration) var(--animation--easing) reverse;
-		}
+		--animation--popover-in--translate-y: 2px;
+		--dropdown--transform-origin-y: top;
 	}
 
 	&[data-side='top'] {
-		transform-origin: bottom center;
+		--animation--popover-in--translate-y: -2px;
+		--dropdown--transform-origin-y: bottom;
+	}
 
-		&[data-state='open'] {
-			animation: slideUp var(--animation--duration) var(--animation--easing);
-		}
+	&[data-side='right'] {
+		--animation--popover-in--translate-x: 2px;
+		--dropdown--transform-origin-x: left;
+	}
 
-		&[data-state='closed'] {
-			animation: slideUp var(--animation--duration) var(--animation--easing) reverse;
-		}
+	&[data-side='left'] {
+		--animation--popover-in--translate-x: -2px;
+		--dropdown--transform-origin-x: right;
+	}
+
+	&[data-side='top'][data-align='start'],
+	&[data-side='bottom'][data-align='start'] {
+		--animation--popover-in--translate-x: -2px;
+		--dropdown--transform-origin-x: left;
+	}
+
+	&[data-side='top'][data-align='end'],
+	&[data-side='bottom'][data-align='end'] {
+		--animation--popover-in--translate-x: 2px;
+		--dropdown--transform-origin-x: right;
+	}
+
+	&[data-side='left'][data-align='start'],
+	&[data-side='right'][data-align='start'] {
+		--animation--popover-in--translate-y: -2px;
+		--dropdown--transform-origin-y: top;
+	}
+
+	&[data-side='left'][data-align='end'],
+	&[data-side='right'][data-align='end'] {
+		--animation--popover-in--translate-y: 2px;
+		--dropdown--transform-origin-y: bottom;
 	}
 }
 
@@ -269,27 +304,5 @@ defineExpose({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-@keyframes slideDown {
-	from {
-		opacity: 0;
-		transform: translateY(-4px) scaleY(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scaleY(1);
-	}
-}
-
-@keyframes slideUp {
-	from {
-		opacity: 0;
-		transform: translateY(4px) scaleY(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scaleY(1);
-	}
 }
 </style>

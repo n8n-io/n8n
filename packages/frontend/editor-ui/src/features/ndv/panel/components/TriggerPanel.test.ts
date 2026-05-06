@@ -65,7 +65,7 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('renders listening state for webhook node', () => {
-		workflowsStore.executionWaitingForWebhook = true;
+		workflowsStore.setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'Webhook';
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
@@ -79,7 +79,7 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('does not render listening state for other nodes', () => {
-		workflowsStore.executionWaitingForWebhook = true;
+		workflowsStore.setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'OtherNode';
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
@@ -93,7 +93,7 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('renders listening state when executedNode is a child of the current node', () => {
-		workflowsStore.executionWaitingForWebhook = true;
+		workflowsStore.setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'ChildNode';
 		vi.spyOn(workflowDocStore, 'getParentNodes').mockReturnValue(['Webhook']);
 		const { getByTestId } = renderComponent(TriggerPanel, {
@@ -108,7 +108,7 @@ describe('TriggerPanel.vue', () => {
 	});
 
 	it('does not render listening state when executedNode is not a child or current node', () => {
-		workflowsStore.executionWaitingForWebhook = true;
+		workflowsStore.setExecutionWaitingForWebhook(true);
 		workflowsStore.executedNode = 'UnrelatedNode';
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
