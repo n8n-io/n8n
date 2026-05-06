@@ -41,6 +41,7 @@ export const WorkflowExecuteModeList = [
 	'webhook',
 	'evaluation',
 	'chat',
+	'agent',
 ] as const;
 
 const WorkflowExecuteModeSchema = z.enum(WorkflowExecuteModeList);

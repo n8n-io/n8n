@@ -505,11 +505,14 @@ describe('VectorStoreRedis.node', () => {
 			} as any;
 
 			const node = new RedisNode.VectorStoreRedis();
-
-			const execution = (node as any).populateVectorStore(context, {}, [], 0);
-
-			await expect(execution).rejects.toThrow(NodeOperationError);
-			await expect(execution).rejects.toThrow('Error: fail');
+			await expect((node as any).populateVectorStore(context, {}, [], 0)).rejects.toBeInstanceOf(
+				NodeOperationError,
+			);
+			await expect((node as any).populateVectorStore(context, {}, [], 0)).rejects.toMatchObject({
+				message: 'Error: fail',
+				description: 'Please check your index/schema and parameters',
+				context: { itemIndex: 0 },
+			});
 
 			expect(loadOptionsFunctions.logger.info).toHaveBeenCalledWith(
 				'Error while populating the store: fail',

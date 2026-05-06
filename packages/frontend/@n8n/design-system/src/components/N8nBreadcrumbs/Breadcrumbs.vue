@@ -246,7 +246,8 @@ const handleTooltipClose = () => {
 				<li
 					:class="{
 						[$style.item]: true,
-						[$style.current]: props.highlightLastItem && index === items.length - 1,
+						[$style.current]:
+							props.highlightLastItem && items.length > 1 && index === items.length - 1,
 						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"
@@ -292,6 +293,7 @@ const handleTooltipClose = () => {
 
 .item {
 	border: var(--border-width) var(--border-style) transparent;
+	color: var(--color--text--tint-1);
 }
 
 .item.dragging:hover {
