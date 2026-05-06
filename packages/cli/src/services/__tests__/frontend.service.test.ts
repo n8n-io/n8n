@@ -623,26 +623,24 @@ describe('FrontendService', () => {
 				expect(jwksProperty?.default).toBe(expectedJwksUri);
 			});
 
-			it('should inject the instance JWKS URI on credentials extending oAuth2Api', () => {
-				// `jwksUri` is inheritable so an extending credential that
-				// re-declares `jweEnabled` (opting into JWE) gets the runtime URL
-				// for free. Without a re-declared `jweEnabled`, the field's
-				// `displayOptions` keeps it hidden anyway — but the default is
-				// still populated server-side.
+			it('should leave credentials extending oAuth2Api untouched (jwksUri is doNotInherit)', () => {
+				// Both `jweEnabled` and `jwksUri` carry `doNotInherit: true` because
+				// inheriting `jwksUri` alone breaks `getParameterResolveOrder` on
+				// the child (its `displayOptions` references a missing field).
+				// So extending credentials don't carry `jwksUri` in the first place
+				// and the injection is correctly scoped to the bare `oAuth2Api`.
 				const credential = {
 					name: 'slackOAuth2Api',
 					displayName: 'Slack OAuth2 API',
-					properties: [makeJwksUriProperty()],
+					properties: [],
 				} as unknown as ICredentialType;
 
 				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
-				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue(['oAuth2Api']);
 
 				const { service } = createMockService();
 				(service as any).overwriteCredentialsProperties();
 
-				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
-				expect(jwksProperty?.default).toBe(expectedJwksUri);
+				expect(credential.properties).toEqual([]);
 			});
 
 			it('should leave non-OAuth2 credentials untouched', () => {
