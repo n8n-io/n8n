@@ -49,6 +49,22 @@ export class MetaOAuth2Api implements ICredentialType {
 			default: true,
 		},
 		{
+			displayName: 'JWKS URI',
+			name: 'jwksUri',
+			type: 'string',
+			typeOptions: {
+				copyButton: true,
+			},
+			default: '',
+			description:
+				'Provide this URL to your IdP so it can fetch the public key used to encrypt access and ID tokens for this instance.',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
+		},
+		{
 			displayName: 'Bearer Claim',
 			name: 'bearerClaim',
 			type: 'string',
