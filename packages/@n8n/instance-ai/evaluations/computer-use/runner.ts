@@ -230,14 +230,7 @@ async function runGraders(
 	const results: GraderResult[] = [];
 	for (const grader of scenario.graders) {
 		try {
-			results.push(
-				await applyGrader(grader, {
-					sandboxDir,
-					trace,
-					userPrompt: scenario.prompt,
-					scenarioCategory: scenario.category,
-				}),
-			);
+			results.push(await applyGrader(grader, { sandboxDir, trace }));
 		} catch (error) {
 			results.push({
 				grader,

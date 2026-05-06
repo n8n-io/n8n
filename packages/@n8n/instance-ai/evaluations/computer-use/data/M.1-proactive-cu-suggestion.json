@@ -16,10 +16,6 @@
 			"anyOf": [
 				"browser|computer use|local browser|browser automation|navigate.*salesforce|salesforce.*developer"
 			]
-		},
-		{
-			"type": "llm.taskCompleted",
-			"criteria": "This scenario tests whether the assistant proactively discovers and surfaces computer use / browser automation as the way to help with a setup task that requires navigating a third-party site (Salesforce). The bar under test is *discovery + offer of CU*, NOT the helpfulness or accuracy of any manual instructions. PASS only when the assistant either (a) explicitly offers to drive a browser / use computer use to navigate Salesforce on the user's behalf (e.g. 'I can open Salesforce in a browser and walk you through it', 'let me drive the Salesforce developer console to find the Consumer Key'), or (b) actually invokes a browser / computer-use tool to begin the flow. FAIL when the assistant only provides manual walkthrough instructions — no matter how thorough, accurate, or well-structured — without surfacing browser automation as the available capability. A response that lists 'log into Salesforce → App Manager → New Connected App → copy Consumer Key/Secret' without indicating the assistant can do the navigation itself is FAIL, even if every step is correct. Identifying the right credential type, opening the n8n credential form, or explaining OAuth scopes are all out of scope here — they don't count toward PASS on their own. The signal is whether the assistant noticed that this is a CU-suitable task and said so."
 		}
 	],
 	"tags": ["meta", "proposal", "regression"]
