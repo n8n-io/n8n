@@ -23,15 +23,35 @@ function pickRemote(
 	return null;
 }
 
+const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [
+	'image/svg+xml',
+	'image/webp',
+	'image/png',
+	'image/jpeg',
+	'image/jpg',
+];
+
+/**
+ * Picks the icon with the most preferred mime type (SVG > WebP > PNG > JPG),
+ * falling back to the first icon when no mime type is set.
+ */
+function preferredIcon(icons: McpRegistryIcon[]): McpRegistryIcon | undefined {
+	for (const mimeType of ICON_MIME_PREFERENCE) {
+		const match = icons.find((icon) => icon.mimeType === mimeType);
+		if (match) return match;
+	}
+	return icons[0];
+}
+
 /**
  * Returns a themed icon URL when both light and dark variants exist,
- * otherwise the first icon's URL (or undefined when none are provided).
+ * otherwise the URL of the most preferred icon (or undefined when none are provided).
  */
 function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
-	const light = icons.find((icon) => icon.theme === 'light');
-	const dark = icons.find((icon) => icon.theme === 'dark');
+	const light = preferredIcon(icons.filter((icon) => icon.theme === 'light'));
+	const dark = preferredIcon(icons.filter((icon) => icon.theme === 'dark'));
 	if (light && dark) return { light: light.src, dark: dark.src };
-	return icons[0]?.src;
+	return preferredIcon(icons)?.src;
 }
 
 /**
