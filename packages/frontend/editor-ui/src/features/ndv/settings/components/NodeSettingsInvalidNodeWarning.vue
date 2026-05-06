@@ -4,7 +4,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { CUSTOM_NODES_DOCS_URL } from '@/app/constants';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/settings/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,7 +24,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const usersStore = useUsersStore();
 

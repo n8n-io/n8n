@@ -28,7 +28,7 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TIMEOUT_MS = 600_000;
+const DEFAULT_TIMEOUT_MS = 900_000;
 const SSE_SETTLE_DELAY_MS = 200;
 const POLL_INTERVAL_MS = 500;
 const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;

@@ -5,6 +5,8 @@ jest.mock('@n8n/instance-ai', () => {
 	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
 	return {
 		McpClientManager: class {
+			getRegularTools = jest.fn().mockResolvedValue({});
+			getBrowserTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),

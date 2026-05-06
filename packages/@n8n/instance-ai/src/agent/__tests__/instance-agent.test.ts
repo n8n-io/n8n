@@ -21,12 +21,6 @@ jest.mock('@mastra/core/processors', () => ({
 	}),
 }));
 
-jest.mock('@mastra/mcp', () => ({
-	MCPClient: jest.fn().mockImplementation(() => ({
-		listTools: jest.fn().mockResolvedValue({}),
-	})),
-}));
-
 jest.mock('../../memory/memory-config', () => ({
 	createMemory: jest.fn().mockReturnValue({}),
 }));
@@ -53,10 +47,6 @@ jest.mock('../../tracing/langsmith-tracing', () => ({
 	mergeTraceRunInputs: jest.fn(),
 }));
 
-jest.mock('../sanitize-mcp-schemas', () => ({
-	sanitizeMcpToolSchemas: jest.fn((tools: Record<string, unknown>) => tools),
-}));
-
 jest.mock('../system-prompt', () => ({
 	getSystemPrompt: jest.fn().mockReturnValue('system prompt'),
 }));
@@ -73,12 +63,21 @@ const { Agent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('@mastra/core/agent') as { Agent: jest.Mock };
 
+function createMcpManagerStub() {
+	return {
+		getRegularTools: jest.fn().mockResolvedValue({}),
+		getBrowserTools: jest.fn().mockResolvedValue({}),
+		disconnect: jest.fn().mockResolvedValue(undefined),
+	};
+}
+
 describe('createInstanceAgent', () => {
 	it('creates a fresh deferred tool processor for each run-scoped toolset', async () => {
 		const memoryConfig = {
 			storage: { id: 'memory-store' },
 		} as never;
 
+		const mcpManager = createMcpManagerStub();
 		const createOptions = (runId: string) =>
 			({
 				modelId: 'test-model',
@@ -93,6 +92,7 @@ describe('createInstanceAgent', () => {
 					browserMcpConfig: undefined,
 				},
 				memoryConfig,
+				mcpManager,
 			}) as never;
 
 		await createInstanceAgent(createOptions('run-1'));
@@ -129,6 +129,7 @@ describe('createInstanceAgent', () => {
 				workspace: fakeWorkspace,
 			},
 			memoryConfig,
+			mcpManager: createMcpManagerStub(),
 			// Exercise the deprecated field to confirm it is ignored.
 			workspace: fakeWorkspace,
 		} as never);
