@@ -2,15 +2,26 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { QuickJsBridge } from '../bridge/quickjs-bridge';
 import { TimeoutError, MemoryLimitError } from '../types';
 
-describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
+const isQuickJS = process.env.N8N_EXPRESSION_ENGINE === 'quickjs';
+const engineName = process.env.N8N_EXPRESSION_ENGINE || 'isolated-vm';
+
+function createBridge() {
+	if (isQuickJS) {
+		return new QuickJsBridge({ timeout: 5000 });
+	}
+	return new IsolatedVmBridge({ timeout: 5000 });
+}
+
+describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	let evaluator: ExpressionEvaluator;
 	const caller = {};
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 1024,
 		});
 		await evaluator.initialize();
