@@ -5176,6 +5176,7 @@
 	"instanceAi.artifactsPanel.archived": "Archived",
 	"instanceAi.previewTabBar.collapse": "Collapse panel",
 	"instanceAi.previewTabBar.openInEditor": "Open in editor",
+	"instanceAi.previewTabBar.openWorkflowInEditor": "Open workflow in editor",
 	"instanceAi.previewTabBar.copyLink": "Copy link",
 	"instanceAi.delegateCard.implementsStep": "Step {step}",
 	"instanceAi.delegateCard.delegatingTo": "Delegating to",
