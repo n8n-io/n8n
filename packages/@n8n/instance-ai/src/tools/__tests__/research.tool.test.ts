@@ -130,13 +130,13 @@ describe('research tool', () => {
 					},
 				],
 			};
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'test' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			const snippet = (result as { results: Array<{ snippet: string }> }).results[0].snippet;
@@ -161,13 +161,13 @@ describe('research tool', () => {
 					},
 				],
 			};
-			const context = createMockContext();
+			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
 			const result = await tool.execute!(
 				{ action: 'web-search' as const, query: 'test' },
-				{} as never,
+				createAgentCtx() as never,
 			);
 
 			const snippet = (result as { results: Array<{ snippet: string }> }).results[0].snippet;
