@@ -16,7 +16,6 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 	NodeLoader,
-	NodeLoaderTypes,
 } from 'n8n-workflow';
 import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
@@ -51,7 +50,7 @@ type Codex = {
 	alias: string[];
 };
 
-export type Types = NodeLoaderTypes;
+export type Types = { nodes: INodeTypeDescription[]; credentials: ICredentialType[] };
 
 /**
  * Base class for loading n8n nodes and credentials from a directory.

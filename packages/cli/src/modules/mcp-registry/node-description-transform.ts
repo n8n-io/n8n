@@ -1,7 +1,7 @@
 import { camelCase } from 'change-case';
-import type { ICredentialType, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodeTypeDescription, Themed } from 'n8n-workflow';
 
-import type { McpRegistryServer } from './registry/mcp-registry.types';
+import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -75,6 +75,37 @@ function pickRemote(
 	return null;
 }
 
+const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [
+	'image/svg+xml',
+	'image/webp',
+	'image/png',
+	'image/jpeg',
+	'image/jpg',
+];
+
+/**
+ * Picks the icon with the most preferred mime type (SVG > WebP > PNG > JPG),
+ * falling back to the first icon when no mime type is set.
+ */
+function preferredIcon(icons: McpRegistryIcon[]): McpRegistryIcon | undefined {
+	for (const mimeType of ICON_MIME_PREFERENCE) {
+		const match = icons.find((icon) => icon.mimeType === mimeType);
+		if (match) return match;
+	}
+	return icons[0];
+}
+
+/**
+ * Returns a themed icon URL when both light and dark variants exist,
+ * otherwise the URL of the most preferred icon (or undefined when none are provided).
+ */
+function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
+	const light = preferredIcon(icons.filter((icon) => icon.theme === 'light'));
+	const dark = preferredIcon(icons.filter((icon) => icon.theme === 'dark'));
+	if (light && dark) return { light: light.src, dark: dark.src };
+	return preferredIcon(icons)?.src;
+}
+
 /**
  * Patches the `endpointUrl` and `serverTransport` defaults on a cloned property
  * list with the entry's resolved remote, leaving the rest of the runtime's UI
@@ -119,10 +150,14 @@ export function serverToNodeDescription(
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
 
-	delete description.hidden;
+	if (server.status === 'deprecated') {
+		description.hidden = true;
+	} else {
+		delete description.hidden;
+	}
 	description.displayName = displayName;
-	description.name = getMcpRegistryNodeTypeName(server);
-	description.iconUrl = server.icons[0]?.src;
+	description.name = camelCase(server.slug);
+	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.description;
 	description.defaults = { name: displayName };
 	description.credentials = getNodeDescriptionCredentials(server);

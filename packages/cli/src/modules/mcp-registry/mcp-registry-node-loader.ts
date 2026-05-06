@@ -8,15 +8,13 @@ import {
 	type ICredentialTypeData,
 	type INodeType,
 	type INodeTypeData,
-	type INodeTypeNameVersion,
+	type INodeTypeDescription,
 	type IVersionedNodeType,
 	type KnownNodesAndCredentials,
 	type LoadedClass,
 	type NodeLoader,
-	type NodeLoaderTypes,
 } from 'n8n-workflow';
 
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import {
 	LANGCHAIN_PACKAGE_NAME,
@@ -27,6 +25,8 @@ import {
 } from './node-description-transform';
 import type { McpRegistryService } from './registry/mcp-registry.service';
 
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
 /**
  * Synthetic node loader: turns each registry server into a node type, all
  * routed to the `McpRegistryClientTool` runtime class
@@ -36,13 +36,15 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
-	types: NodeLoaderTypes = { nodes: [], credentials: [] };
+	types: { nodes: INodeTypeDescription[]; credentials: ICredentialType[] } = {
+		nodes: [],
+		credentials: [],
+	};
 
-	nodeTypes: INodeTypeData = {};
+	private nodeTypes: INodeTypeData = {};
 
-	credentialTypes: ICredentialTypeData = {};
-
-	loadedNodes: INodeTypeNameVersion[] = [];
+	// TODO: remove this?
+	private credentialTypes: ICredentialTypeData = {};
 
 	private typesReleased = true;
 
@@ -62,7 +64,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
-		for (const server of this.registry.getAll()) {
+		for (const server of this.registry.getAll({ includeDeprecated: true })) {
 			const nodeDescription = serverToNodeDescription(server, baseDescription);
 			const credentialDescription = serverToCredentialDescription(server);
 			if (!nodeDescription) continue;
@@ -78,7 +80,6 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				className: 'McpRegistryClientTool',
 				sourcePath,
 			};
-			this.loadedNodes.push({ name: bareName, version: 1 });
 
 			if (credentialDescription) {
 				this.types.credentials.push(credentialDescription);
@@ -113,7 +114,6 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		this.types = { nodes: [], credentials: [] };
 		this.nodeTypes = {};
 		this.credentialTypes = {};
-		this.loadedNodes = [];
 		this.typesReleased = true;
 	}
 

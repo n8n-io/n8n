@@ -1,6 +1,6 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 
@@ -14,14 +14,14 @@ import * as transport from './transport';
 
 describe('GoogleGemini Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
-	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
-	const transferFileMock = jest.spyOn(utils, 'transferFile');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
+	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
+	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
+	const transferFileMock = vi.spyOn(utils, 'transferFile');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
 	});
 
@@ -1843,25 +1843,22 @@ describe('GoogleGemini Node', () => {
 				name: 'Google Gemini',
 			} as INode);
 
-			await expect(image.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
-				new NodeOperationError(
-					executeFunctionsMock.getNode(),
-					'Model models/unsupported-model is not supported for image generation',
-					{
-						description: 'Please check the model ID and try again.',
-					},
-				),
+			const execution = image.generate.execute.call(executeFunctionsMock, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Model models/unsupported-model is not supported for image generation',
 			);
 		});
 	});
 
 	describe('Video -> Generate', () => {
 		beforeEach(() => {
-			jest.useFakeTimers({ advanceTimers: true });
+			vi.useFakeTimers({ shouldAdvanceTime: true });
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should generate video using Veo model', async () => {
@@ -1927,8 +1924,8 @@ describe('GoogleGemini Node', () => {
 			});
 
 			const promise = video.generate.execute.call(executeFunctionsMock, 0);
-			await jest.advanceTimersByTimeAsync(5000);
-			await jest.advanceTimersByTimeAsync(5000);
+			await vi.advanceTimersByTimeAsync(5000);
+			await vi.advanceTimersByTimeAsync(5000);
 			const result = await promise;
 
 			expect(result).toEqual([
@@ -2029,7 +2026,7 @@ describe('GoogleGemini Node', () => {
 			});
 
 			const promise = video.generate.execute.call(executeFunctionsMock, 0);
-			await jest.advanceTimersByTimeAsync(5000);
+			await vi.advanceTimersByTimeAsync(5000);
 			const result = await promise;
 
 			expect(result[0]?.binary?.data?.fileName).toBe('video.webm');

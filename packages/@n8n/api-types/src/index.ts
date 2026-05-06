@@ -177,6 +177,13 @@ export {
 } from './schemas/user.schema';
 
 export {
+	encryptionKeySchema,
+	encryptionKeysListSchema,
+	type EncryptionKey,
+	type EncryptionKeysList,
+} from './schemas/encryption-key.schema';
+
+export {
 	DATA_TABLE_COLUMN_REGEX,
 	DATA_TABLE_COLUMN_MAX_LENGTH,
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
@@ -276,6 +283,7 @@ export {
 	toolResultPayloadSchema,
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
+	confirmationInputTypeSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
@@ -284,6 +292,7 @@ export {
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
 	getRenderHint,
+	isDisplayableConfirmationRequest,
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
@@ -316,6 +325,8 @@ export type {
 	InstanceAiEventType,
 	InstanceAiRunStatus,
 	InstanceAiConfirmation,
+	InstanceAiConfirmationInputType,
+	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,

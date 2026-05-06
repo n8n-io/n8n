@@ -88,6 +88,90 @@ describe('serverToNodeDescription', () => {
 		expect(serverToNodeDescription(unsupportedServer, baseDescription)).toBeNull();
 	});
 
+	it('marks deprecated servers as hidden so the node creator skips them', () => {
+		const deprecatedServer: McpRegistryServer = { ...notionMockServer, status: 'deprecated' };
+
+		const description = serverToNodeDescription(deprecatedServer, baseDescription);
+
+		expect(description?.hidden).toBe(true);
+	});
+
+	it('returns a themed iconUrl when both light and dark variants are available', () => {
+		const themedServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [
+				{ src: 'https://example.com/light.svg', theme: 'light' },
+				{ src: 'https://example.com/dark.svg', theme: 'dark' },
+			],
+		};
+
+		const description = serverToNodeDescription(themedServer, baseDescription);
+
+		expect(description?.iconUrl).toEqual({
+			light: 'https://example.com/light.svg',
+			dark: 'https://example.com/dark.svg',
+		});
+	});
+
+	it('falls back to the first icon when only one theme is provided', () => {
+		const lightOnlyServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [{ src: 'https://example.com/light.svg', theme: 'light' }],
+		};
+
+		const description = serverToNodeDescription(lightOnlyServer, baseDescription);
+
+		expect(description?.iconUrl).toBe('https://example.com/light.svg');
+	});
+
+	it('prefers SVG over PNG over JPG when multiple formats are available', () => {
+		const multiFormatServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [
+				{ src: 'https://example.com/icon.jpg', mimeType: 'image/jpeg' },
+				{ src: 'https://example.com/icon.png', mimeType: 'image/png' },
+				{ src: 'https://example.com/icon.svg', mimeType: 'image/svg+xml' },
+			],
+		};
+
+		const description = serverToNodeDescription(multiFormatServer, baseDescription);
+
+		expect(description?.iconUrl).toBe('https://example.com/icon.svg');
+	});
+
+	it('prefers PNG over JPG when SVG is not available', () => {
+		const noSvgServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [
+				{ src: 'https://example.com/icon.jpg', mimeType: 'image/jpeg' },
+				{ src: 'https://example.com/icon.png', mimeType: 'image/png' },
+			],
+		};
+
+		const description = serverToNodeDescription(noSvgServer, baseDescription);
+
+		expect(description?.iconUrl).toBe('https://example.com/icon.png');
+	});
+
+	it('applies mime type preference within each theme', () => {
+		const themedMultiFormatServer: McpRegistryServer = {
+			...notionMockServer,
+			icons: [
+				{ src: 'https://example.com/light.png', mimeType: 'image/png', theme: 'light' },
+				{ src: 'https://example.com/light.svg', mimeType: 'image/svg+xml', theme: 'light' },
+				{ src: 'https://example.com/dark.jpg', mimeType: 'image/jpeg', theme: 'dark' },
+				{ src: 'https://example.com/dark.png', mimeType: 'image/png', theme: 'dark' },
+			],
+		};
+
+		const description = serverToNodeDescription(themedMultiFormatServer, baseDescription);
+
+		expect(description?.iconUrl).toEqual({
+			light: 'https://example.com/light.svg',
+			dark: 'https://example.com/dark.png',
+		});
+	});
+
 	it('extends codex.alias with the title and displayName', () => {
 		const description = serverToNodeDescription(notionMockServer, baseDescription);
 
