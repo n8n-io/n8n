@@ -166,7 +166,10 @@ async function generateMockResponse(
 		);
 	}
 
-	const apiDocs = await fetchApiDocs(serviceName, `${request.method ?? 'GET'} ${endpoint} response format`);
+	const apiDocs = await fetchApiDocs(
+		serviceName,
+		`${request.method ?? 'GET'} ${endpoint} response format`,
+	);
 	sections.push('', '## API documentation', apiDocs);
 
 	if (context.nodeConfig) {
