@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { ref } from 'vue';
 
 import type { DropdownMenuItemProps, DropdownMenuPlacement } from './DropdownMenu.types';
@@ -22,7 +22,7 @@ async function getDropdownContent() {
 	return { dropdown };
 }
 
-describe('v2/components/DropdownMenu', () => {
+describe('N8nDropdownMenu', () => {
 	describe('rendering', () => {
 		it('should render default trigger button', () => {
 			const { container } = render(DropdownMenu, {
@@ -143,6 +143,26 @@ describe('v2/components/DropdownMenu', () => {
 				expect(emits).toBeTruthy();
 				expect(emits?.[emits.length - 1]).toEqual([false]);
 			});
+		});
+
+		it('should keep hover dropdown open after leaving the trigger', async () => {
+			const { container } = render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					trigger: 'hover',
+				},
+			});
+
+			const trigger = container.querySelector('button')!;
+			await userEvent.hover(trigger);
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			await fireEvent.pointerLeave(trigger);
+
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
 		});
 	});
 

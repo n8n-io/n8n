@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`v2/components/DropdownMenuItem > rendering > should render checked item with checkmark 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render checked item with checkmark 1`] = `
 <div
   class="item"
   data-reka-collection-item=""
@@ -49,10 +49,10 @@ exports[`v2/components/DropdownMenuItem > rendering > should render checked item
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render disabled item 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render disabled item 1`] = `
 <div
   aria-disabled="true"
-  class="item"
+  class="item is-disabled"
   data-disabled=""
   data-reka-collection-item=""
   role="menuitem"
@@ -66,7 +66,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render disabled ite
   
   
   <span
-    class="n8n-text text-light size-medium regular item-label item-label"
+    class="n8n-text text-xlight size-medium regular item-label item-label"
   >
     
     Disabled Item
@@ -82,7 +82,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render disabled ite
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render highlighted item 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render highlighted item 1`] = `
 <div
   class="item highlighted"
   data-reka-collection-item=""
@@ -113,7 +113,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render highlighted 
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render item with emoji 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render item with emoji 1`] = `
 <div
   class="item"
   data-reka-collection-item=""
@@ -148,7 +148,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with em
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render item with icon 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render item with icon 1`] = `
 <div
   class="item"
   data-reka-collection-item=""
@@ -205,7 +205,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with ic
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render item with label 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render item with label 1`] = `
 <div
   class="item"
   data-reka-collection-item=""
@@ -236,7 +236,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with la
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render separator when divided is true 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render separator when divided is true 1`] = `
 <div
   class="wrapper"
 >
@@ -282,7 +282,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render separator wh
 </div>
 `;
 
-exports[`v2/components/DropdownMenuItem > rendering > should render sub-menu trigger when has children 1`] = `
+exports[`N8nDropdownMenuItem > rendering > should render sub-menu trigger when has children 1`] = `
 <div
   aria-controls=""
   aria-expanded="false"

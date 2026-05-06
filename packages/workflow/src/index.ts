@@ -30,6 +30,7 @@ export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';
 export * from './workflow-validation';
+export * from './workflow-structure-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';

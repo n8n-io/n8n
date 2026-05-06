@@ -10,8 +10,8 @@ import {
 import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nLoading from '@n8n/design-system/components/N8nLoading';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
-import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import {
@@ -162,10 +162,12 @@ watch(
 		>
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
+				:data-test-id="testId"
 				:class="[
 					$style.item,
 					$style['sub-trigger'],
 					props.class,
+					{ 'is-disabled': !!disabled },
 					{ [$style.highlighted]: highlighted },
 				]"
 			>
@@ -186,7 +188,7 @@ watch(
 						:class="$style['item-label']"
 						:title="titleAttr"
 						size="medium"
-						:color="disabled ? 'text-light' : 'text-dark'"
+						:color="disabled ? 'text-xlight' : 'text-dark'"
 					>
 						{{ label }}
 					</N8nText>
@@ -267,7 +269,13 @@ watch(
 		<DropdownMenuItem
 			v-else
 			:disabled="disabled"
-			:class="[$style.item, props.class, { [$style.highlighted]: highlighted }]"
+			:data-test-id="testId"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled },
+				{ [$style.highlighted]: highlighted },
+			]"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -275,8 +283,8 @@ watch(
 					v-if="icon?.type === 'icon'"
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
-					size="large"
 					:color="disabled ? 'text-xlight' : 'text-light'"
+					size="large"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -287,7 +295,7 @@ watch(
 					:class="$style['item-label']"
 					:title="titleAttr"
 					size="medium"
-					:color="disabled ? 'text-light' : 'text-dark'"
+					:color="disabled ? 'text-xlight' : 'text-dark'"
 				>
 					{{ label }}
 				</N8nText>
@@ -318,28 +326,28 @@ watch(
 .item {
 	font-size: var(--font-size--2xs);
 	line-height: 1;
-	border-radius: var(--radius);
+	border-radius: var(--radius--2xs);
 	display: flex;
 	align-items: center;
-	height: var(--spacing--xl);
+	min-height: var(--spacing--xl);
 	padding: var(--spacing--2xs);
 	position: relative;
 	user-select: none;
-	color: var(--color--text--shade-1);
-	gap: var(--spacing--3xs);
+	color: var(--text-color);
+	gap: var(--spacing--2xs);
 	outline: none;
 
 	&:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted],
 		&.highlighted {
-			background-color: var(--color--foreground--tint-1);
+			background-color: var(--background--hover);
 			cursor: pointer;
 		}
 	}
 
 	&[data-disabled] {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--disabled);
 		cursor: not-allowed;
 	}
 
@@ -351,7 +359,7 @@ watch(
 
 .sub-trigger {
 	&[data-state='open'] {
-		background-color: var(--color--foreground--tint-1);
+		background-color: var(--background--active);
 	}
 }
 
@@ -363,10 +371,9 @@ watch(
 
 .sub-content {
 	min-width: 160px;
-	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-2);
-	box-shadow: var(--shadow);
+	border-radius: var(--radius--xs);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
+	background-color: var(--background--surface);
 	z-index: 999999;
 }
 
@@ -375,7 +382,7 @@ watch(
 }
 
 .emoji {
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--sm);
 	line-height: 1;
 }
 
@@ -394,8 +401,8 @@ watch(
 
 .separator {
 	height: 1px;
-	background-color: var(--color--foreground);
-	margin: var(--spacing--5xs) 0;
+	background-color: var(--border-color);
+	margin: var(--spacing--5xs) calc(var(--spacing--4xs) * -1);
 }
 
 .loading-container {
@@ -411,7 +418,7 @@ watch(
 
 .empty-state {
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--sm);
 	text-align: center;
 }

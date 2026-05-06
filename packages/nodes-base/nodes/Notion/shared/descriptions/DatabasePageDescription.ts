@@ -115,7 +115,7 @@ export const databasePageFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				placeholder:
-					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+					'https://www.notion.com/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
 				validation: [
 					{
 						type: 'regex',
@@ -148,7 +148,7 @@ export const databasePageFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -598,7 +598,7 @@ export const databasePageFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				placeholder: 'https://www.notion.com/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
 				validation: [
 					{
 						type: 'regex',
@@ -631,7 +631,7 @@ export const databasePageFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -1064,7 +1064,7 @@ export const databasePageFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				placeholder: 'https://www.notion.com/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
 				validation: [
 					{
 						type: 'regex',
@@ -1097,7 +1097,7 @@ export const databasePageFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -1152,7 +1152,7 @@ export const databasePageFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				placeholder:
-					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+					'https://www.notion.com/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
 				validation: [
 					{
 						type: 'regex',
@@ -1185,7 +1185,7 @@ export const databasePageFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {

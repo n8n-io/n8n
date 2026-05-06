@@ -443,7 +443,6 @@ const items = ref([
 
 ## Implementation Notes
 
-- `closeOnParentScroll` is not yet implemented - requires `useParentScroll` composable migration
 - The new `update:modelValue` replaces both `visible-change` and `visibleChange` events
 - Search is opt-in via `searchable` prop. Both root-level and sub-menu search are supported
 - Search filtering is not built-in - use the `search` event to filter items externally (e.g., for async search)

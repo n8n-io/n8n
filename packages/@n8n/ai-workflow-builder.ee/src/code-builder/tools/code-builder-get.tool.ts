@@ -64,24 +64,22 @@ function getGeneratedNodesPaths(nodeDefinitionDirs?: string[]): string[] {
 /**
  * Find the first nodes path that contains the given node directory.
  * Returns { nodesPath, nodeDir } or null if not found in any dir.
+ *
+ * Tool variants (e.g. "slackHitlTool", "httpRequestTool") have no on-disk type files;
+ * fall back to the base node by stripping the suffix. The regex tries "HitlTool" before
+ * "Tool" so "slackHitlTool" resolves to "slack", not "slackHitl".
  */
 function findNodeDir(
 	parsed: { packageName: string; nodeName: string },
 	nodesPaths: string[],
 ): { nodesPath: string; nodeDir: string } | null {
-	for (const nodesPath of nodesPaths) {
-		const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
-		if (existsSync(nodeDir)) {
-			return { nodesPath, nodeDir };
-		}
-	}
+	const candidates = [parsed.nodeName];
+	const baseName = parsed.nodeName.replace(/(?:HitlTool|Tool)$/, '');
+	if (baseName !== parsed.nodeName) candidates.push(baseName);
 
-	// Tool variant fallback: e.g. "httpRequestTool" -> "httpRequest"
-	// Tool variants share type definitions with their base node
-	if (parsed.nodeName.endsWith('Tool')) {
-		const baseName = parsed.nodeName.slice(0, -4);
+	for (const candidate of candidates) {
 		for (const nodesPath of nodesPaths) {
-			const nodeDir = join(nodesPath, parsed.packageName, baseName);
+			const nodeDir = join(nodesPath, parsed.packageName, candidate);
 			if (existsSync(nodeDir)) {
 				return { nodesPath, nodeDir };
 			}
@@ -355,10 +353,11 @@ function resolveModePath(
 }
 
 /**
- * Try to resolve file path for a specific node ID
- * This is the core resolution logic used by getNodeFilePath
+ * Get the file path for a node ID, optionally for a specific version and discriminators.
+ * If no version specified, returns the latest version. If the node uses split structure,
+ * discriminators are required. Tool-variant fallback is handled in findNodeDir.
  */
-function tryGetNodeFilePath(
+function getNodeFilePath(
 	nodeId: string,
 	version: string | undefined,
 	nodeDefinitionDirs: string[] | undefined,
@@ -453,35 +452,6 @@ function tryGetNodeFilePath(
 	}
 
 	return { filePath };
-}
-
-/**
- * Get the file path for a node ID, optionally for a specific version and discriminators
- * If no version specified, returns the latest version
- * If node uses split structure, discriminators are required
- *
- * For tool variants (e.g., "googleCalendarTool"), falls back to the base node
- * (e.g., "googleCalendar") since tool variants don't have separate type files.
- */
-function getNodeFilePath(
-	nodeId: string,
-	version?: string,
-	nodeDefinitionDirs?: string[],
-	discriminators?: { resource?: string; operation?: string; mode?: string },
-): PathResolutionResult {
-	// Try exact node ID first
-	let result = tryGetNodeFilePath(nodeId, version, nodeDefinitionDirs, discriminators);
-
-	// If not found and node name ends with 'Tool', try base node as fallback
-	// (e.g., n8n-nodes-base.googleCalendarTool -> n8n-nodes-base.googleCalendar)
-	// Note: Some nodes legitimately end in Tool (agentTool, mcpClientTool) but those
-	// have their own type files, so this fallback only triggers when no file is found
-	if (result.error && nodeId.endsWith('Tool')) {
-		const baseNodeId = nodeId.slice(0, -4);
-		result = tryGetNodeFilePath(baseNodeId, version, nodeDefinitionDirs, discriminators);
-	}
-
-	return result;
 }
 
 /**
