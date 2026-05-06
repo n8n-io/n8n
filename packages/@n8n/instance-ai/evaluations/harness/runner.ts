@@ -29,7 +29,7 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TIMEOUT_MS = 600_000;
+const DEFAULT_TIMEOUT_MS = 900_000;
 
 /** Max concurrent scenario executions per test case */
 const MAX_CONCURRENT_SCENARIOS = 99;

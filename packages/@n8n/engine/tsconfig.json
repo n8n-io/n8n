@@ -1,0 +1,13 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023"],
+		"types": ["node"],
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts"]
+}
