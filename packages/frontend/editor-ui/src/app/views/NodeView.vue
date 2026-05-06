@@ -488,10 +488,10 @@ function onClickNode(_id: string, event: VueFlowXYPosition) {
 	closeNodeCreator();
 }
 
-function onSetNodeActivated(id: string, event?: MouseEvent) {
+async function onSetNodeActivated(id: string, event?: MouseEvent) {
 	// Handle Ctrl/Cmd + Double Click case
 	if (event?.metaKey || event?.ctrlKey) {
-		const didOpen = tryToOpenSubworkflowInNewTab(id);
+		const didOpen = await tryToOpenSubworkflowInNewTab(id);
 		if (didOpen) {
 			return;
 		}
