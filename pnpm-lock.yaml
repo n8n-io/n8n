@@ -1334,6 +1334,12 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/engine:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/errors:
     dependencies:
       callsites:

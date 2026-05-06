@@ -1,0 +1,27 @@
+{
+  "name": "@n8n/engine",
+  "version": "0.1.0",
+  "description": "n8n workflow execution engine (v2)",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "test": "jest --passWithNoTests",
+    "test:dev": "jest --watch",
+    "watch": "tsc -p tsconfig.build.json --watch"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
+}
