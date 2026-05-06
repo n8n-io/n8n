@@ -6,12 +6,11 @@ import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThanOrEqual } from '@n8n/typeorm';
+import { mockEntityManager } from '@test/mocking';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-
-import { mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -104,6 +103,27 @@ describe('ExecutionRepository', () => {
 				ExecutionEntity,
 				{ id: In(executionIds) },
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
+			);
+		});
+	});
+
+	describe('stopBeforeRun()', () => {
+		test('should clear waitTill when stopping execution before run', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: '1',
+				status: 'waiting',
+				waitTill: new Date('2023-12-28T13:00:00.000Z'),
+			});
+			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			await executionRepository.stopBeforeRun(execution);
+
+			expect(execution.waitTill).toBeNull();
+			expect(execution.status).toBe('canceled');
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: '1' },
+				expect.objectContaining({ status: 'canceled', waitTill: null }),
 			);
 		});
 	});
