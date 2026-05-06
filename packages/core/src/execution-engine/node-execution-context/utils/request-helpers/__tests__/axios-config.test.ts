@@ -8,7 +8,9 @@ import '../axios-config';
 const getRequestInterceptor = () => {
 	const handlers = (
 		axios.interceptors.request as unknown as {
-			handlers: Array<{ fulfilled: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig } | null>;
+			handlers: Array<{
+				fulfilled: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig;
+			} | null>;
 		}
 	).handlers;
 	const handler = handlers.find((h) => h !== null);
@@ -18,10 +20,11 @@ const getRequestInterceptor = () => {
 
 const buildConfig = (
 	overrides: Partial<InternalAxiosRequestConfig> = {},
-): InternalAxiosRequestConfig => ({
-	headers: new AxiosHeaders(),
-	...overrides,
-}) as InternalAxiosRequestConfig;
+): InternalAxiosRequestConfig =>
+	({
+		headers: new AxiosHeaders(),
+		...overrides,
+	}) as InternalAxiosRequestConfig;
 
 describe('axios request interceptor', () => {
 	describe('applyVendorHeaders for api.openai.com', () => {
