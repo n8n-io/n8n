@@ -44,9 +44,10 @@ export function isValidPathComponent(component: string): boolean {
 export function validatePathWithinBase(filePath: string, baseDir: string): boolean {
 	const resolvedPath = resolve(filePath);
 	const resolvedBase = resolve(baseDir);
+	const separator = process.platform === 'win32' ? '\\' : '/';
 
 	// Path must start with base directory (with trailing separator to prevent prefix attacks)
-	return resolvedPath.startsWith(resolvedBase + '/') || resolvedPath === resolvedBase;
+	return resolvedPath.startsWith(resolvedBase + separator) || resolvedPath === resolvedBase;
 }
 
 /**

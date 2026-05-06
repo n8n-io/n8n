@@ -6,6 +6,13 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/amazon-bedrock': ^4.0.95
+  '@ai-sdk/azure': ^3.0.54
+  '@ai-sdk/cohere': ^3.0.30
+  '@ai-sdk/deepseek': ^2.0.29
+  '@ai-sdk/gateway': ^3.0.104
+  '@ai-sdk/groq': ^3.0.35
+  '@ai-sdk/mistral': ^3.0.30
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
@@ -38,6 +45,7 @@ catalog:
   '@mastra/pg': 1.8.3
   '@n8n/typeorm': 0.3.20-16
   '@n8n_io/ai-assistant-sdk': 1.21.0
+  '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.36.0
   '@testcontainers/k3s': ^11.13.0
@@ -58,9 +66,11 @@ catalog:
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
+  cron: 4.4.0
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12
+  fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
   flatted: 3.4.2
   form-data: 4.0.4

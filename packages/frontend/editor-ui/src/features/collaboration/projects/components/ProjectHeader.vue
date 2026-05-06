@@ -20,13 +20,16 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -35,6 +38,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -148,6 +152,7 @@ const ACTION_TYPES = {
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
+	AGENT: 'agent',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -191,7 +196,19 @@ const createVariableButton = computed(() => ({
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
-const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
+const createAgentButton = computed(() => ({
+	value: ACTION_TYPES.AGENT,
+	label: i18n.baseText('projects.header.create.agent'),
+	size: 'mini' as const,
+	disabled: sourceControlStore.preferences.branchReadOnly,
+}));
+
+const selectedMainButtonType = computed(() => {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
+});
 
 const mainButtonConfig = computed(() => {
 	switch (selectedMainButtonType.value) {
@@ -201,6 +218,8 @@ const mainButtonConfig = computed(() => {
 			return createDataTableButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
+		case ACTION_TYPES.AGENT:
+			return createAgentButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -269,6 +288,17 @@ const menu = computed(() => {
 		});
 	}
 
+	if (
+		settingsStore.isModuleActive('agents') &&
+		selectedMainButtonType.value !== ACTION_TYPES.AGENT
+	) {
+		items.push({
+			value: ACTION_TYPES.AGENT,
+			label: i18n.baseText('projects.header.create.agent'),
+			disabled: sourceControlStore.preferences.branchReadOnly,
+		});
+	}
+
 	return items;
 });
 
@@ -309,7 +339,9 @@ function getUIContext(routeName: string) {
 	}
 }
 
-const actions: Record<ActionTypes, (projectId: string) => void> = {
+type CreateSource = 'button' | 'dropdown';
+
+const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
@@ -344,6 +376,10 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.VARIABLE]: () => {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
+	},
+	[ACTION_TYPES.AGENT]: (projectId, source) => {
+		agentTelemetry.trackClickedNewAgent(source);
+		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
 	},
 } as const;
 
@@ -420,13 +456,13 @@ const projectDescriptionTruncated = computed(() => {
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
-const onSelect = (action: string) => {
+const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
 		return;
 	}
 
-	executableAction(homeProject.value.id);
+	executableAction(homeProject.value.id, source);
 };
 </script>
 
@@ -478,13 +514,13 @@ const onSelect = (action: string) => {
 							data-test-id="add-resource-buttons"
 							:actions="menu"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
-							@action="onSelect"
+							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
 							<N8nButton
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
 								size="medium"
-								@click="onSelect(selectedMainButtonType)"
+								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>
 					</div>

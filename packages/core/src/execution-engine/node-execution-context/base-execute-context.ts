@@ -13,6 +13,8 @@ import type {
 	IExecuteWorkflowInfo,
 	RelatedExecution,
 	ExecuteWorkflowData,
+	ExecuteAgentInfo,
+	ExecuteAgentData,
 	ITaskMetadata,
 	ContextType,
 	IContextObject,
@@ -25,6 +27,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
+	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
@@ -151,6 +154,27 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		return result;
+	}
+
+	async executeAgent(
+		agentInfo: ExecuteAgentInfo,
+		message: string,
+		executionId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		if (!this.additionalData.executeAgent) {
+			throw new OperationalError('Agent execution is not available in this context');
+		}
+
+		const threadId = `${executionId}-${itemIndex}`;
+
+		return await this.additionalData.executeAgent(
+			agentInfo.agentId,
+			message,
+			executionId,
+			threadId,
+			this.additionalData,
+		);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
