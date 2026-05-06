@@ -1,6 +1,6 @@
 # Filesystem Access for Instance AI
 
-> **ADR**: ADR-025 (gateway protocol), ADR-027 (setup command UX)
+> **ADR**: ADR-025 (gateway protocol), ADR-027 (auto-connect UX)
 > **Status**: Implemented — gateway-only architecture via `@n8n/computer-use` daemon
 > **Depends on**: ADR-002 (interface boundary)
 
@@ -37,20 +37,17 @@ The gateway protocol provides filesystem access via a lightweight daemon
 running on the user's machine.
 
 The protocol is simple:
-1. **Daemon initializes** with `POST /instance-ai/gateway/init`, uploading its
-   MCP tools and consuming either a pairing token or static key
-2. **Daemon subscribes** to `GET /instance-ai/gateway/events` (SSE)
-3. **Server publishes** `filesystem-request` events when the agent calls a
-   gateway tool
-4. **Daemon executes** the requested tool locally
-5. **Daemon POSTs** the result to `POST /instance-ai/gateway/response/:requestId`
+1. **Daemon connects** to `GET /instance-ai/gateway/events` (SSE)
+2. **Server publishes** `filesystem-request` events when the agent needs files
+3. **Daemon reads** the file from local disk
+4. **Daemon POSTs** the result to `POST /instance-ai/gateway/response/:requestId`
 
 ```
-Agent calls read_file({ filePath: "src/index.ts" })
-  → LocalGateway publishes filesystem-request with toolCall to SSE subscriber
-  → Daemon receives event and executes the local MCP tool
+Agent calls readFile("src/index.ts")
+  → LocalGateway publishes filesystem-request to SSE subscriber
+  → Daemon receives event, reads file from disk
   → Daemon POSTs content to /instance-ai/gateway/response/:requestId
-  → Gateway resolves pending Promise → tool gets MCP result back
+  → Gateway resolves pending Promise → tool gets FileContent back
 ```
 
 The `@n8n/computer-use` CLI daemon is one implementation of this protocol. Any
@@ -95,71 +92,70 @@ The `LocalGatewaySection` component has 3 states:
 |-------|-----------|-----|
 | **Connected** | `isGatewayConnected` | Green indicator with connected host and capabilities |
 | **Connecting** | `isDaemonConnecting` | Spinner: "Connecting..." |
-| **Setup needed** | Default | Paste-ready `npx @n8n/computer-use <url> <token>` command + copy button + waiting spinner |
+| **Setup needed** | Default | `npx @n8n/computer-use` command + copy button + waiting spinner |
 
-### Setup command flow
+### Auto-connect flow
 
-The setup UI calls `POST /instance-ai/gateway/create-link` and shows the returned command.
-The user runs that exact command in the terminal:
-
-```bash
-npx @n8n/computer-use <instance-url> <pairing-token>
-```
-
-The CLI requires both the n8n instance URL and the one-time pairing token. The
-browser does not probe `localhost:7655` or POST connection details to the local
-daemon.
+The user runs `npx @n8n/computer-use` and everything connects automatically. No
+URLs, no tokens, no buttons.
 
 ```mermaid
 sequenceDiagram
     participant UI as Frontend (browser)
-    participant User as User terminal
-    participant Daemon as computer-use daemon
+    participant Daemon as computer-use daemon (localhost:7655)
     participant Server as n8n Backend
 
-    UI->>Server: POST /instance-ai/gateway/create-link
-    Server-->>UI: Command + one-time token (5-min TTL)
-    UI-->>User: Copy command
-    User->>Daemon: npx @n8n/computer-use <url> <token>
-    Daemon->>Server: POST /gateway/init (capabilities + pairing token)
+    UI->>Daemon: GET localhost:7655/health (polling every 5s)
+    Daemon-->>UI: 200 OK
+    UI->>Server: Request pairing token
+    Server-->>UI: One-time token (5-min TTL)
+    UI->>Daemon: POST localhost:7655/connect (token + server URL)
+    Daemon->>Server: SSE subscribe + upload directory tree
     Server-->>Daemon: Session key (token consumed)
-    Daemon->>Server: GET /gateway/events (SSE with session key)
     Server-->>UI: Push: gateway connected
     Note over UI: UI → "Connected"
 ```
 
-The pairing token is ephemeral (5-min TTL, single-use), and once consumed, all
+The browser mediates the pairing — it is the only component with network
+access to both the local daemon (`localhost:7655`) and the n8n server. The
+pairing token is ephemeral (5-min TTL, single-use), and once consumed, all
 subsequent communication uses a session key.
 
-### Setup by deployment scenario
+### Auto-connect by deployment scenario
 
 #### Self-hosted (bare metal / Docker / Kubernetes)
 
 Whether n8n runs on bare metal or inside a container, it **cannot** directly
-read files from the user's project directory. The user runs the paste-ready
-command on the machine whose files or browser should be exposed.
+read files from the user's project directory. The gateway bridge is required.
 
 ```mermaid
 sequenceDiagram
-    participant Browser as Browser
-    participant Terminal as User terminal
-    participant Daemon as computer-use daemon
+    participant Browser as Browser (host)
+    participant Daemon as computer-use daemon (host:7655)
     participant Server as n8n server (container)
 
-    Browser->>Server: Request setup command
-    Server-->>Browser: npx @n8n/computer-use <url> <token>
-    Browser-->>Terminal: Copy command
-    Terminal->>Daemon: Run command
-    Daemon->>Server: Upload capabilities
+    Note over Browser,Daemon: 1. User starts daemon
+    Daemon->>Daemon: npx @n8n/computer-use (scans project dir)
+
+    Note over Browser,Daemon: 2. Browser detects daemon
+    Browser->>Daemon: GET localhost:7655/health (polling every 5s)
+    Daemon-->>Browser: 200 OK
+
+    Note over Browser,Server: 3. Pairing
+    Browser->>Server: Request pairing token
+    Server-->>Browser: One-time token (5-min TTL)
+    Browser->>Daemon: POST localhost:7655/connect (token + server URL)
+
+    Note over Daemon,Server: 4. Daemon connects to server
+    Daemon->>Server: SSE subscribe + upload directory tree
     Server-->>Daemon: Session key (token consumed)
-    Daemon->>Server: SSE subscribe (outbound HTTP/S)
     Server-->>Browser: Push: gateway connected
     Note over Browser: UI → "Connected"
 ```
 
-**Why this works:** the daemon connects outbound to the n8n server URL embedded
-in the command. The n8n server never needs inbound access to the user's local
-machine.
+**Why this works:** the browser is the only component that can see **both** the
+daemon (`localhost:7655` on the host) and the n8n server (container network or
+mapped port). It brokers the pairing between the two.
 
 #### Cloud (n8n Cloud)
 
@@ -169,35 +165,40 @@ so the gateway bridge is required.
 ```mermaid
 sequenceDiagram
     participant Browser as Browser (user's machine)
-    participant Terminal as User terminal
-    participant Daemon as computer-use daemon
+    participant Daemon as computer-use daemon (localhost:7655)
     participant Cloud as n8n Cloud server
 
-    Browser->>Cloud: Request setup command
-    Cloud-->>Browser: npx @n8n/computer-use <cloud-url> <token>
-    Browser-->>Terminal: Copy command
-    Terminal->>Daemon: Run command
-    Daemon->>Cloud: Upload capabilities
-    Cloud-->>Daemon: Session key
+    Browser->>Daemon: GET localhost:7655/health
+    Daemon-->>Browser: 200 OK
+    Browser->>Cloud: Request pairing token
+    Cloud-->>Browser: One-time token
+    Browser->>Daemon: POST localhost:7655/connect (token + cloud URL)
     Daemon->>Cloud: SSE subscribe (outbound HTTPS)
+    Cloud-->>Daemon: Session key
     Cloud-->>Browser: Push: gateway connected
     Note over Browser: UI → "Connected"
 ```
 
-The daemon connects **outbound** to the cloud server over standard HTTPS. No
-ports need to be exposed, no firewall rules — SSE is a regular outbound
-connection.
+**Key difference from Docker self-hosted:** the daemon connects **outbound**
+to the cloud server over standard HTTPS. No ports need to be exposed, no
+firewall rules — SSE is a regular outbound connection.
 
 #### Deployment summary
 
 | Deployment | Access path | Daemon needed? | User action |
 |------------|-------------|----------------|-------------|
-| Self-hosted | Gateway bridge | Yes | Run the setup command on the host |
-| n8n Cloud | Gateway bridge | Yes | Run the setup command on the local machine |
+| Self-hosted | Gateway bridge | Yes | `npx @n8n/computer-use` on host |
+| n8n Cloud | Gateway bridge | Yes | `npx @n8n/computer-use` on local machine |
 
 Alternatively, setting `N8N_INSTANCE_AI_GATEWAY_API_KEY` on both the n8n
 server and the daemon skips the pairing flow entirely — useful for permanent
 daemon setups or headless environments.
+
+### Filesystem toggle
+
+The UI includes a toggle switch to temporarily disable filesystem access
+without disconnecting the gateway. This calls `POST /filesystem/toggle` and
+the agent stops receiving filesystem tools until re-enabled.
 
 ---
 
@@ -211,14 +212,14 @@ sequenceDiagram
     participant GW as Gateway (n8n server)
     participant Agent as AI Agent
 
-    Note over Client,GW: Phase 1: Initialize and connect
-    Client->>GW: POST init (capabilities)
-    GW-->>Client: Session key
+    Note over Client,GW: Phase 1: Connect
     Client->>GW: Subscribe via SSE
+    Client->>GW: Upload initial state (directory tree)
+    GW-->>Client: Session key
 
     Note over Agent,Client: Phase 2: Serve requests
     Agent->>GW: Operation request
-    GW-->>Client: SSE event with request ID + toolCall
+    GW-->>Client: SSE event with request ID + operation + args
     Client->>Client: Execute locally
     Client->>GW: POST response with request ID
     GW-->>Agent: Result
@@ -238,12 +239,13 @@ sequenceDiagram
 
 | Step | Method | Path | Auth | Body |
 |------|--------|------|------|------|
-| Connect | `GET` | `/instance-ai/gateway/events` | `X-Gateway-Key` header | — (SSE stream) |
-| Init | `POST` | `/instance-ai/gateway/init` | `X-Gateway-Key` header | `{ rootPath, tools, hostIdentifier?, toolCategories? }` |
-| Respond | `POST` | `/instance-ai/gateway/response/:requestId` | `X-Gateway-Key` header | `{ result }` or `{ error }` |
+| Connect | `GET` | `/instance-ai/gateway/events?apiKey=<token>` | API key query param | — (SSE stream) |
+| Init | `POST` | `/instance-ai/gateway/init` | `X-Gateway-Key` header | `{ rootPath, tree: [{path, type, sizeBytes}], treeText }` |
+| Respond | `POST` | `/instance-ai/gateway/response/:requestId` | `X-Gateway-Key` header | `{ data }` or `{ error }` |
 | Create link | `POST` | `/instance-ai/gateway/create-link` | Session auth (cookie) | — |
 | Status | `GET` | `/instance-ai/gateway/status` | Session auth (cookie) | — |
 | Disconnect | `POST` | `/instance-ai/gateway/disconnect` | `X-Gateway-Key` header | — |
+| Toggle FS | `POST` | `/instance-ai/filesystem/toggle` | Session auth (cookie) | — |
 
 ### SSE event format
 
@@ -252,17 +254,14 @@ sequenceDiagram
   "type": "filesystem-request",
   "payload": {
     "requestId": "gw_abc123",
-    "toolCall": {
-      "name": "read_file",
-      "arguments": { "filePath": "src/index.ts" }
-    }
+    "operation": "read-file",
+    "args": { "filePath": "src/index.ts", "maxLines": 500 }
   }
 }
 ```
 
-Tool calls use the MCP tool names advertised during init, for example
-`read_file`, `search_files`, browser tools, shell tools, or any other capability
-the daemon exposes.
+Operations: `read-file` and `search-files`. Tree/list operations are served
+from the cached directory tree uploaded during init — no round-trip needed.
 
 ### Authentication
 
@@ -276,9 +275,7 @@ Two options:
   2. Daemon calls `POST /instance-ai/gateway/init` with the pairing token →
      server consumes the token and returns `{ ok: true, sessionKey }`.
   3. All subsequent requests (SSE, response) use the **session key** instead
-     of the consumed pairing token. Session keys persist until explicit
-     revocation and are rotated on reconnect when the rotation window has
-     elapsed.
+     of the consumed pairing token.
 
 ```
 create-link → pairingToken (5 min TTL, single-use)
@@ -292,8 +289,8 @@ create-link → pairingToken (5 min TTL, single-use)
 
 This prevents token replay: the pairing token is visible in terminal output
 and `ps aux`, but it becomes useless after the first successful `init` call.
-The setup UI shows the token expiry and suggests a leading space for shells
-that support omitting commands from history.
+The resulting session key has no time-based expiry and remains valid until
+explicit disconnect/revocation.
 All key comparisons use `timingSafeEqual()` to prevent timing attacks.
 
 ---
@@ -307,7 +304,7 @@ a Go binary, a mobile companion, etc.
 
 Any client that implements three interactions is a valid gateway client:
 1. **Subscribe**: open an SSE connection to receive operation requests
-2. **Initialize**: upload capabilities (`rootPath`, MCP tools, host, categories)
+2. **Initialize**: upload initial state (for filesystem: the directory tree)
 3. **Respond**: handle each request locally and POST the result back
 
 ### What you do NOT need to change
@@ -315,19 +312,24 @@ Any client that implements three interactions is a valid gateway client:
 - **No agent changes** — tools call the interface, not the transport
 - **No gateway changes** — `LocalGateway` is protocol-level
 - **No controller changes** — endpoints are client-agnostic
-- **No frontend changes** — unless you want a different setup UX
+- **No frontend changes** — unless you want auto-connect (see below)
 
-### Custom client connection UX
+### Optional: auto-connect support
 
-The setup UI does not auto-detect local clients. A custom client can either:
+The frontend probes `http://127.0.0.1:7655/health` every 5s to auto-detect
+a running daemon. To support this for a custom client:
 
-1. Accept the instance URL and pairing token from a command, deep link, or app
-   handoff, then call the gateway endpoints directly.
-2. Use a static `N8N_INSTANCE_AI_GATEWAY_API_KEY` for a permanent, headless
-   connection.
+1. Listen on port 7655 (or any port, but 7655 gets auto-detected)
+2. Respond to `GET /health` with `200 OK`
+3. Accept `POST /connect` with `{ url, token }` — then use those to connect
+   to the gateway endpoints above
 
-No changes are needed on the n8n server. The protocol, auth, and lifecycle are
-client-agnostic.
+If your client has its own auth/connection flow (e.g., a desktop app that
+talks to n8n directly), you can skip auto-connect entirely and call the
+gateway endpoints with your own token.
+
+No changes are needed on the n8n server. The protocol, auth, and lifecycle
+are client-agnostic.
 
 ---
 
@@ -338,12 +340,11 @@ client-agnostic.
 | Read-only | No write methods on interface |
 | File size | 512 KB max per read |
 | Line limits | 200 default, 500 max per read |
-| Binary detection | Null-byte, UTF-8, and control-character checks |
+| Binary detection | Null-byte check in first 8 KB |
 | Directory containment | `path.resolve()` + `fs.realpath()` when basePath is set |
-| Directory exclusions | Read/search/list/tree reject excluded path segments |
 | Auth | Timing-safe key comparison (`timingSafeEqual()`) |
 | Pairing token | One-time use, 5-min TTL, consumed on init |
-| Session key | Server-issued, persists until revoked, rotates on reconnect |
+| Session key | Server-issued, replaces pairing token after init |
 | Request timeout | 30s per gateway round-trip |
 | Keep-alive | 15s ping interval to detect stale connections |
 
@@ -359,9 +360,10 @@ The daemon excludes common non-essential directories from the tree scan:
 
 | Component | Max entries | Default depth |
 |-----------|-------------|---------------|
-| `get_file_tree` scan | 10,000 | 2 |
+| Tree scanner (daemon) | 10,000 | 8 |
 
-The daemon scans on demand when the agent calls `get_file_tree`.
+The daemon scans broadly (10,000 entries, depth 8) because it uploads
+the full tree on init for cached queries.
 
 ---
 
@@ -371,8 +373,8 @@ The daemon scans on demand when the agent calls `get_file_tree`.
 |---------|---------|---------|
 | `N8N_INSTANCE_AI_GATEWAY_API_KEY` | none | Static auth key for gateway (skips pairing flow) |
 
-No env vars needed for most deployments. The setup UI provides a tokenized
-command, and the daemon pairs with that token.
+No env vars needed for most deployments. The browser auto-connects the daemon
+via the pairing flow.
 
 See `docs/configuration.md` for the full configuration reference.
 
@@ -384,16 +386,16 @@ See `docs/configuration.md` for the full configuration reference.
 |---------|----------------|
 | `@n8n/instance-ai` | Agent core: service interfaces, tool definitions, data shapes. Framework-agnostic, zero n8n dependencies. |
 | `packages/cli/.../instance-ai/` | n8n backend: HTTP endpoints, gateway singleton, event bus. |
-| `@n8n/computer-use` | Reference gateway client: standalone CLI daemon. SSE client, local MCP tool executor. Independently installable via npx. |
+| `@n8n/computer-use` | Reference gateway client: standalone CLI daemon. HTTP server, SSE client, local file reader, directory scanner. Independently installable via npx. |
 
-### On-demand tree behavior
+### Tree scanner behavior
 
-The reference daemon (`@n8n/computer-use`) exposes a `get_file_tree` tool. It
-scans the requested directory only when that tool is called:
+The reference daemon (`@n8n/computer-use`) scans the user's project directory on
+startup:
 
 - **Algorithm**: Breadth-first, broad top-level coverage before descending
   into deeply nested paths
-- **Depth limit**: requested by the tool call, defaulting to 2 levels
+- **Depth limit**: 8 levels (default)
 - **Entry cap**: 10,000
 - **Sort order**: Directories first, then files, alphabetical within each group
 - **Excluded directories**: node_modules, .git, dist, build, coverage,

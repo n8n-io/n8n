@@ -15,7 +15,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, ToolCategory } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -41,7 +41,7 @@ import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { ENV_GATEWAY_USER_ID, InstanceAiService } from './instance-ai.service';
+import { InstanceAiService } from './instance-ai.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -51,20 +51,8 @@ import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
-type GatewayStateChangedData = {
-	connected: boolean;
-	directory: string | null;
-	hostIdentifier: string | null;
-	toolCategories: ToolCategory[];
-};
 
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
-const DISCONNECTED_GATEWAY_STATE: GatewayStateChangedData = {
-	connected: false,
-	directory: null,
-	hostIdentifier: null,
-	toolCategories: [],
-};
 
 @RestController('/instance-ai')
 export class InstanceAiController {
@@ -113,13 +101,6 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-	}
-
-	private notifyGatewayStateChanged(userIds: string[], data: GatewayStateChangedData): void {
-		const realUserIds = userIds.filter((userId) => userId !== ENV_GATEWAY_USER_ID);
-		if (realUserIds.length === 0) return;
-
-		this.push.sendToUsers({ type: 'instanceAiGatewayStateChanged', data }, realUserIds);
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -457,7 +438,20 @@ export class InstanceAiController {
 
 		if (payload.enabled === false || payload.localGatewayDisabled === true) {
 			const disconnectedUserIds = this.instanceAiService.disconnectAllGateways();
-			this.notifyGatewayStateChanged(disconnectedUserIds, DISCONNECTED_GATEWAY_STATE);
+			if (disconnectedUserIds.length > 0) {
+				this.push.sendToUsers(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
+					disconnectedUserIds,
+				);
+			}
 		}
 
 		return result;
@@ -481,12 +475,6 @@ export class InstanceAiController {
 		const result = await this.settingsService.updateUserPreferences(req.user, payload);
 		if (payload.localGatewayDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
-		}
-		if (
-			payload.localGatewayDisabled === true &&
-			this.instanceAiService.revokeGatewaySession(req.user.id)
-		) {
-			this.notifyGatewayStateChanged([req.user.id], DISCONNECTED_GATEWAY_STATE);
 		}
 		return result;
 	}
@@ -643,28 +631,19 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
 		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
 		const ttlSeconds = expiresAt
 			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
 			: null;
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
 		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
-		const key = this.getGatewayKeyHeader(req);
-		const userId = this.validateGatewaySessionKey(key);
+		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 		await this.assertGatewayEnabled(userId);
-
-		if (
-			key &&
-			userId !== ENV_GATEWAY_USER_ID &&
-			this.instanceAiService.isGatewaySessionRotationDue(userId, key)
-		) {
-			throw new ForbiddenError('Local gateway session requires rotation');
-		}
 
 		const gateway = this.instanceAiService.getLocalGateway(userId);
 
@@ -699,18 +678,6 @@ export class InstanceAiController {
 			res.write(': ping\n\n');
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
-		const sessionRotateAfter =
-			key && userId !== ENV_GATEWAY_USER_ID
-				? this.instanceAiService.getGatewaySessionRotateAfter(userId, key)
-				: null;
-		const sessionRotationTimer = sessionRotateAfter
-			? setTimeout(
-					() => {
-						res.end();
-					},
-					Math.max(0, sessionRotateAfter.getTime() - Date.now()),
-				)
-			: null;
 
 		let cleanedUp = false;
 		const cleanup = () => {
@@ -719,14 +686,19 @@ export class InstanceAiController {
 			unsubscribeRequest();
 			unsubscribeDisconnect();
 			clearInterval(keepAlive);
-			if (sessionRotationTimer) clearTimeout(sessionRotationTimer);
-			const shouldStartDisconnectTimer =
-				userId === ENV_GATEWAY_USER_ID ||
-				(key !== undefined && this.instanceAiService.getUserIdForApiKey(key) === userId);
-			if (!shouldStartDisconnectTimer) return;
-
 			this.instanceAiService.startDisconnectTimer(userId, () => {
-				this.notifyGatewayStateChanged([userId], DISCONNECTED_GATEWAY_STATE);
+				this.push.sendToUsers(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
+					[userId],
+				);
 			});
 		};
 		req.once('close', cleanup);
@@ -739,23 +711,23 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(key);
 		await this.assertGatewayEnabled(userId);
 
-		// Upgrade or rotate the key before initializing so replacing a session
-		// disconnects any prior transport before the fresh daemon attaches.
-		const sessionKey =
-			key && userId !== ENV_GATEWAY_USER_ID
-				? (this.instanceAiService.consumePairingToken(userId, key) ??
-					this.instanceAiService.rotateSessionKeyIfNeeded(userId, key))
-				: null;
-
 		this.instanceAiService.initGateway(userId, payload);
 
-		this.notifyGatewayStateChanged([userId], {
-			connected: true,
-			directory: payload.rootPath,
-			hostIdentifier: payload.hostIdentifier ?? null,
-			toolCategories: payload.toolCategories ?? [],
-		});
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: {
+					connected: true,
+					directory: payload.rootPath,
+					hostIdentifier: payload.hostIdentifier ?? null,
+					toolCategories: payload.toolCategories ?? [],
+				},
+			},
+			[userId],
+		);
 
+		// Try to consume a pairing token and upgrade to a session key
+		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
@@ -763,26 +735,30 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/disconnect', { skipAuth: true })
-	async gatewayDisconnect(req: Request) {
-		const userId = this.validateGatewaySessionKey(this.getGatewayKeyHeader(req));
-		await this.assertGatewayEnabled(userId);
+	gatewayDisconnect(req: Request) {
+		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
 		this.instanceAiService.clearDisconnectTimer(userId);
 		this.instanceAiService.disconnectGateway(userId);
 		this.instanceAiService.clearActiveSessionKey(userId);
-		this.notifyGatewayStateChanged([userId], DISCONNECTED_GATEWAY_STATE);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
 		return { ok: true };
 	}
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
-	async gatewayResponse(
+	gatewayResponse(
 		req: Request,
 		_res: Response,
 		@Param('requestId') requestId: string,
 		@Body payload: InstanceAiFilesystemResponseDto,
 	) {
-		const userId = this.validateGatewaySessionKey(this.getGatewayKeyHeader(req));
-		await this.assertGatewayEnabled(userId);
+		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
 		const resolved = this.instanceAiService.resolveGatewayRequest(
 			userId,
@@ -815,7 +791,13 @@ export class InstanceAiController {
 		this.instanceAiService.clearDisconnectTimer(userId);
 		this.instanceAiService.disconnectGateway(userId);
 		this.instanceAiService.clearActiveSessionKey(userId);
-		this.notifyGatewayStateChanged([userId], DISCONNECTED_GATEWAY_STATE);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
 		return { ok: true };
 	}
 
@@ -841,15 +823,6 @@ export class InstanceAiController {
 
 	/** Throw if the local gateway is disabled globally or for this user. */
 	private async assertGatewayEnabled(userId: string): Promise<void> {
-		if (userId === ENV_GATEWAY_USER_ID) {
-			if (
-				!this.settingsService.isInstanceAiEnabled() ||
-				this.settingsService.isLocalGatewayDisabled()
-			) {
-				throw new ForbiddenError('Local gateway is disabled');
-			}
-			return;
-		}
 		if (await this.settingsService.isLocalGatewayDisabledForUser(userId)) {
 			throw new ForbiddenError('Local gateway is disabled');
 		}
@@ -868,27 +841,11 @@ export class InstanceAiController {
 	}
 
 	/**
-	 * Validate the gateway init key from header.
-	 * Accepts: static env var key, one-time pairing token, or active session key.
+	 * Validate the gateway API key from query param or header.
+	 * Accepts: static env var key, one-time pairing token (init only), or active session key.
 	 * Returns the userId associated with the key.
 	 */
 	private validateGatewayApiKey(key: string | undefined): string {
-		return this.validateGatewayKey(key, { allowPairingToken: true });
-	}
-
-	/**
-	 * Validate the gateway session key from header.
-	 * Accepts: static env var key or active session key.
-	 * Returns the userId associated with the key.
-	 */
-	private validateGatewaySessionKey(key: string | undefined): string {
-		return this.validateGatewayKey(key, { allowPairingToken: false });
-	}
-
-	private validateGatewayKey(
-		key: string | undefined,
-		options: { allowPairingToken: boolean },
-	): string {
 		if (!key) {
 			throw new ForbiddenError('Missing API key');
 		}
@@ -898,13 +855,12 @@ export class InstanceAiController {
 		if (this.gatewayApiKey) {
 			const expected = Buffer.from(this.gatewayApiKey);
 			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return ENV_GATEWAY_USER_ID;
+				return 'env-gateway';
 			}
 		}
 
-		const userId = options.allowPairingToken
-			? this.instanceAiService.getUserIdForApiKey(key)
-			: this.instanceAiService.getUserIdForSessionKey(key);
+		// Check per-user pairing token or session key via reverse lookup
+		const userId = this.instanceAiService.getUserIdForApiKey(key);
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');

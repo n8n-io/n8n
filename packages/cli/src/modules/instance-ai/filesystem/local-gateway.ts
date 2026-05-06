@@ -136,8 +136,6 @@ export class LocalGateway {
 		this.emitter.emit('gateway-disconnect', {
 			type: 'gateway-disconnect',
 		} satisfies LocalGatewayDisconnectEvent);
-		this.emitter.removeAllListeners('filesystem-request');
-		this.emitter.removeAllListeners('gateway-disconnect');
 
 		this._connected = false;
 		this._connectedAt = null;

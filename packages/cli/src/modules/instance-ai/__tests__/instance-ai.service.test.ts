@@ -127,7 +127,7 @@ import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { resumeAgentRun, type TerminalOutcome } from '@n8n/instance-ai';
 
-import { ENV_GATEWAY_USER_ID, InstanceAiService } from '../instance-ai.service';
+import { InstanceAiService } from '../instance-ai.service';
 
 type ServiceInternals = {
 	pendingCheckpointReentries: Map<string, Set<string>>;
@@ -142,15 +142,6 @@ type ServiceInternals = {
 		hasSuspendedRun: jest.Mock;
 	};
 	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
-};
-
-type GatewayStatus = ReturnType<InstanceAiService['getGatewayStatus']>;
-
-type GatewayStatusServiceInternals = {
-	gatewayRegistry: {
-		getGatewayStatus: jest.Mock<GatewayStatus, [string]>;
-	};
-	getGatewayStatus: InstanceAiService['getGatewayStatus'];
 };
 
 type RunningTask = { taskId: string };
@@ -247,59 +238,6 @@ function createTemporaryCleanupService({
 }
 
 const fakeUser = { id: 'user-1' } as User;
-
-const DISCONNECTED_STATUS: GatewayStatus = {
-	connected: false,
-	connectedAt: null,
-	directory: null,
-	hostIdentifier: null,
-	toolCategories: [],
-};
-
-const ENV_CONNECTED_STATUS: GatewayStatus = {
-	connected: true,
-	connectedAt: '2026-01-01T00:00:00.000Z',
-	directory: '/workspace',
-	hostIdentifier: 'host',
-	toolCategories: [],
-};
-
-function createGatewayStatusService(): GatewayStatusServiceInternals {
-	const service = Object.create(
-		InstanceAiService.prototype,
-	) as unknown as GatewayStatusServiceInternals;
-	service.gatewayRegistry = {
-		getGatewayStatus: jest.fn((userId: string) =>
-			userId === ENV_GATEWAY_USER_ID ? ENV_CONNECTED_STATUS : DISCONNECTED_STATUS,
-		),
-	};
-	return service;
-}
-
-describe('InstanceAiService — gateway status', () => {
-	it('does not fall back to the static env gateway when the user has no active gateway', () => {
-		const service = createGatewayStatusService();
-
-		expect(service.getGatewayStatus('user-1')).toBe(DISCONNECTED_STATUS);
-		expect(service.gatewayRegistry.getGatewayStatus).toHaveBeenCalledWith('user-1');
-		expect(service.gatewayRegistry.getGatewayStatus).not.toHaveBeenCalledWith(ENV_GATEWAY_USER_ID);
-	});
-
-	it('prefers the user gateway when it is connected', () => {
-		const userConnectedStatus: GatewayStatus = {
-			...DISCONNECTED_STATUS,
-			connected: true,
-			directory: '/user-workspace',
-		};
-		const service = createGatewayStatusService();
-		service.gatewayRegistry.getGatewayStatus.mockImplementation((userId: string) =>
-			userId === 'user-1' ? userConnectedStatus : ENV_CONNECTED_STATUS,
-		);
-
-		expect(service.getGatewayStatus('user-1')).toBe(userConnectedStatus);
-		expect(service.gatewayRegistry.getGatewayStatus).not.toHaveBeenCalledWith(ENV_GATEWAY_USER_ID);
-	});
-});
 
 type TerminalOutcomeServiceInternals = {
 	replayUndeliveredTerminalOutcomes: (

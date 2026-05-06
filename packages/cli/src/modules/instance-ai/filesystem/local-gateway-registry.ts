@@ -1,16 +1,17 @@
+import { nanoid } from 'nanoid';
+
 import type {
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
 	ToolCategory,
 } from '@n8n/api-types';
-import { nanoid } from 'nanoid';
 
 import { LocalGateway } from './local-gateway';
 
 interface UserGatewayState {
 	gateway: LocalGateway;
 	pairingToken: { token: string; createdAt: number } | null;
-	activeSession: { key: string; createdAt: number; rotateAfter: number } | null;
+	activeSessionKey: string | null;
 	disconnectTimer: ReturnType<typeof setTimeout> | null;
 	reconnectCount: number;
 }
@@ -18,7 +19,6 @@ interface UserGatewayState {
 const INITIAL_GRACE_MS = 10_000;
 const MAX_GRACE_MS = 120_000;
 const PAIRING_TOKEN_TTL_MS = 5 * 60 * 1000;
-const SESSION_KEY_ROTATION_MS = 60 * 60 * 1000;
 
 /**
  * Manages per-user Local Gateway connections.
@@ -45,7 +45,7 @@ export class LocalGatewayRegistry {
 			this.userGateways.set(userId, {
 				gateway: new LocalGateway(),
 				pairingToken: null,
-				activeSession: null,
+				activeSessionKey: null,
 				disconnectTimer: null,
 				reconnectCount: 0,
 			});
@@ -53,88 +53,9 @@ export class LocalGatewayRegistry {
 		return this.userGateways.get(userId)!;
 	}
 
-	private clearPairingToken(state: UserGatewayState): void {
-		if (!state.pairingToken) return;
-		this.apiKeyToUserId.delete(state.pairingToken.token);
-		state.pairingToken = null;
-	}
-
-	private clearActiveSession(state: UserGatewayState): void {
-		if (!state.activeSession) return;
-		this.apiKeyToUserId.delete(state.activeSession.key);
-		state.activeSession = null;
-	}
-
-	private createSession(userId: string, state: UserGatewayState): string {
-		const now = Date.now();
-		const sessionKey = this.generateUniqueKey('sess');
-		this.clearActiveSession(state);
-		state.activeSession = {
-			key: sessionKey,
-			createdAt: now,
-			rotateAfter: now + SESSION_KEY_ROTATION_MS,
-		};
-		this.apiKeyToUserId.set(sessionKey, userId);
-		return sessionKey;
-	}
-
-	private disconnectExistingGatewayForSessionReplacement(
-		userId: string,
-		state: UserGatewayState,
-	): void {
-		if (!state.activeSession && !state.gateway.getStatus().connected) return;
-
-		this.clearDisconnectTimer(userId);
-		state.reconnectCount = 0;
-		state.gateway.disconnect();
-	}
-
 	/** Resolve an API key (pairing token or session key) back to the owning userId. */
 	getUserIdForApiKey(key: string): string | undefined {
-		const userId = this.apiKeyToUserId.get(key);
-		if (!userId) return undefined;
-
-		const state = this.userGateways.get(userId);
-		if (!state) {
-			this.apiKeyToUserId.delete(key);
-			return undefined;
-		}
-
-		if (state.pairingToken?.token === key) {
-			if (Date.now() - state.pairingToken.createdAt > PAIRING_TOKEN_TTL_MS) {
-				this.clearPairingToken(state);
-				return undefined;
-			}
-			return userId;
-		}
-
-		if (state.activeSession?.key === key) {
-			return userId;
-		}
-
-		this.apiKeyToUserId.delete(key);
-		return undefined;
-	}
-
-	/** Resolve only active session keys back to the owning userId. */
-	getUserIdForSessionKey(key: string): string | undefined {
-		const userId = this.apiKeyToUserId.get(key);
-		if (!userId) return undefined;
-
-		const state = this.userGateways.get(userId);
-		if (!state) {
-			this.apiKeyToUserId.delete(key);
-			return undefined;
-		}
-
-		if (state.activeSession?.key !== key) {
-			if (state.pairingToken?.token !== key) {
-				this.apiKeyToUserId.delete(key);
-			}
-			return undefined;
-		}
-
-		return userId;
+		return this.apiKeyToUserId.get(key);
 	}
 
 	/** Generate a one-time pairing token for UI-initiated connections. */
@@ -156,7 +77,8 @@ export class LocalGatewayRegistry {
 		const state = this.userGateways.get(userId);
 		if (!state?.pairingToken) return null;
 		if (Date.now() - state.pairingToken.createdAt > PAIRING_TOKEN_TTL_MS) {
-			this.clearPairingToken(state);
+			this.apiKeyToUserId.delete(state.pairingToken.token);
+			state.pairingToken = null;
 			return null;
 		}
 		return state.pairingToken.token;
@@ -165,15 +87,10 @@ export class LocalGatewayRegistry {
 	/** Get the expiry time for an active pairing token. Session keys do not expire. */
 	getApiKeyExpiresAt(userId: string, key: string): Date | null {
 		const state = this.userGateways.get(userId);
-		if (!state) return null;
-		if (state.pairingToken?.token === key) {
-			if (!this.getPairingToken(userId)) return null;
-			const freshPairingToken = state.pairingToken;
-			return freshPairingToken
-				? new Date(freshPairingToken.createdAt + PAIRING_TOKEN_TTL_MS)
-				: null;
-		}
-		return null;
+		if (!state?.pairingToken || state.pairingToken.token !== key) return null;
+		const token = this.getPairingToken(userId);
+		if (!token) return null;
+		return new Date(state.pairingToken.createdAt + PAIRING_TOKEN_TTL_MS);
 	}
 
 	/**
@@ -185,62 +102,25 @@ export class LocalGatewayRegistry {
 		const valid = this.getPairingToken(userId);
 		if (!state || !valid || valid !== token) return null;
 
-		this.clearPairingToken(state); // Consumed — cannot be reused
-		this.disconnectExistingGatewayForSessionReplacement(userId, state);
-		return this.createSession(userId, state);
+		this.apiKeyToUserId.delete(token);
+		state.pairingToken = null; // Consumed — cannot be reused
+		const sessionKey = this.generateUniqueKey('sess');
+		state.activeSessionKey = sessionKey;
+		this.apiKeyToUserId.set(sessionKey, userId);
+		return sessionKey;
 	}
 
 	/** Get the active session key for a user. */
 	getActiveSessionKey(userId: string): string | null {
-		const state = this.userGateways.get(userId);
-		if (!state) return null;
-		return state.activeSession?.key ?? null;
-	}
-
-	/** Rotate the active session key when a reconnect arrives after the rotation window. */
-	rotateSessionKeyIfNeeded(userId: string, key: string): string | null {
-		const state = this.userGateways.get(userId);
-		if (!state?.activeSession || state.activeSession.key !== key) return null;
-		if (Date.now() < state.activeSession.rotateAfter) return null;
-
-		this.disconnectExistingGatewayForSessionReplacement(userId, state);
-		return this.createSession(userId, state);
-	}
-
-	/** Whether this active session key should be rotated on the next reconnect. */
-	isSessionKeyDueForRotation(userId: string, key: string): boolean {
-		const state = this.userGateways.get(userId);
-		if (!state?.activeSession || state.activeSession.key !== key) return false;
-		return Date.now() >= state.activeSession.rotateAfter;
-	}
-
-	/** Get the time after which the active session key should be rotated. */
-	getSessionKeyRotateAfter(userId: string, key: string): Date | null {
-		const state = this.userGateways.get(userId);
-		if (!state?.activeSession || state.activeSession.key !== key) return null;
-		return new Date(state.activeSession.rotateAfter);
+		return this.userGateways.get(userId)?.activeSessionKey ?? null;
 	}
 
 	/** Clear the active session key (called on explicit disconnect). */
 	clearActiveSessionKey(userId: string): void {
 		const state = this.userGateways.get(userId);
-		if (!state) return;
-		this.clearActiveSession(state);
-	}
-
-	/** Revoke local gateway auth material and disconnect the user's gateway. */
-	revokeSession(userId: string): boolean {
-		const state = this.userGateways.get(userId);
-		if (!state) return false;
-
-		const hadState =
-			state.gateway.getStatus().connected || !!state.activeSession || !!state.pairingToken;
-		this.clearDisconnectTimer(userId);
-		this.clearPairingToken(state);
-		this.clearActiveSession(state);
-		state.gateway.disconnect();
-		state.reconnectCount = 0;
-		return hadState;
+		if (!state?.activeSessionKey) return;
+		this.apiKeyToUserId.delete(state.activeSessionKey);
+		state.activeSessionKey = null;
 	}
 
 	/** Return the user's LocalGateway instance, creating state if needed. */
@@ -250,9 +130,7 @@ export class LocalGatewayRegistry {
 
 	/** Return the user's LocalGateway if state exists, or undefined if the user has never connected. */
 	findGateway(userId: string): LocalGateway | undefined {
-		const state = this.userGateways.get(userId);
-		if (!state) return undefined;
-		return state.gateway;
+		return this.userGateways.get(userId)?.gateway;
 	}
 
 	/** Initialize the gateway from daemon capabilities. Clears any pending disconnect timer. */
@@ -286,9 +164,8 @@ export class LocalGatewayRegistry {
 		hostIdentifier: string | null;
 		toolCategories: ToolCategory[];
 	} {
-		const state = this.userGateways.get(userId);
 		return (
-			state?.gateway.getStatus() ?? {
+			this.userGateways.get(userId)?.gateway.getStatus() ?? {
 				connected: false,
 				connectedAt: null,
 				directory: null,
@@ -311,6 +188,8 @@ export class LocalGatewayRegistry {
 		state.disconnectTimer = setTimeout(() => {
 			state.disconnectTimer = null;
 			this.disconnectGateway(userId);
+			// Session key is kept alive so the daemon can re-authenticate on reconnect.
+			// It is only cleared on explicit /gateway/disconnect.
 			onDisconnect();
 		}, graceMs);
 	}
