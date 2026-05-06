@@ -623,12 +623,11 @@ describe('FrontendService', () => {
 				expect(jwksProperty?.default).toBe(expectedJwksUri);
 			});
 
-			it('should leave credentials extending oAuth2Api untouched (jwksUri is doNotInherit)', () => {
-				// Both `jweEnabled` and `jwksUri` carry `doNotInherit: true` because
-				// inheriting `jwksUri` alone breaks `getParameterResolveOrder` on
-				// the child (its `displayOptions` references a missing field).
-				// So extending credentials don't carry `jwksUri` in the first place
-				// and the injection is correctly scoped to the bare `oAuth2Api`.
+			it('should not touch standard OAuth2-extending credentials (jwksUri not inherited)', () => {
+				// Both `jweEnabled` and `jwksUri` carry `doNotInherit: true` so
+				// provider-specific OAuth2 credentials (Google, Slack, GitHub, ...)
+				// don't inherit them. Without a `jwksUri` property in scope, the
+				// injection has nothing to mutate.
 				const credential = {
 					name: 'slackOAuth2Api',
 					displayName: 'Slack OAuth2 API',
@@ -641,6 +640,28 @@ describe('FrontendService', () => {
 				(service as any).overwriteCredentialsProperties();
 
 				expect(credential.properties).toEqual([]);
+			});
+
+			it('should inject the JWKS URI on JWE-aware OAuth2 extensions that re-declare jwksUri', () => {
+				// Custom credentials extending oAuth2Api can opt into the JWE flow
+				// by re-declaring both `jweEnabled` and `jwksUri`. The runtime URL
+				// injection must reach those credentials so the user sees the
+				// instance JWKS endpoint without the credential class hardcoding
+				// it (which would be impossible per-instance).
+				const credential = {
+					name: 'metaOAuth2Api',
+					displayName: 'Meta OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue(['oAuth2Api']);
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
 			});
 
 			it('should leave non-OAuth2 credentials untouched', () => {

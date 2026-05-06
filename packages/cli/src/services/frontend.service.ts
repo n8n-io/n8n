@@ -695,12 +695,17 @@ export class FrontendService {
 				credential.__skipManagedCreation = true;
 			}
 
-			// Inject the per-instance JWKS URI as the default of `oAuth2Api.jwksUri`.
-			// The field is hidden behind the `jweEnabled` toggle (and the toggle
-			// itself is gated by the OAuth2 JWE feature flag on the frontend), so
-			// the value only surfaces when the feature is in use. Both fields
-			// are non-inheritable, so this only fires for the bare `oAuth2Api`.
-			if (credential.name === 'oAuth2Api' && credential.properties) {
+			// Inject the per-instance JWKS URI as the default of any `jwksUri`
+			// property on `oAuth2Api` itself or any credential that extends it
+			// and explicitly re-declares the field. Inheritance is blocked by
+			// `doNotInherit: true` on both `jweEnabled` and `jwksUri` so that
+			// extending credentials don't silently inherit half a dependency
+			// pair (which would crash `getParameterResolveOrder`); custom
+			// JWE-aware OAuth2 extensions can re-declare both fields together.
+			const isOAuth2Credential =
+				credential.name === 'oAuth2Api' ||
+				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
+			if (isOAuth2Credential && credential.properties) {
 				const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
 				credential.properties = credential.properties.map((property) =>
 					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
