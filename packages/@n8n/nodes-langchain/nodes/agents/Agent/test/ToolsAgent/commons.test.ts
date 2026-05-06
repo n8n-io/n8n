@@ -208,6 +208,33 @@ describe('extractBinaryMessages', () => {
 			text: `File: test.txt\nContent:\n${textContent}`,
 		});
 	});
+
+	it('should extract audio files', async () => {
+		const audioContent = 'audio-data-here';
+		const fakeItem = {
+			json: {},
+			binary: {
+				audio: {
+					mimeType: 'audio/mpeg',
+					fileName: 'test.mp3',
+					data: Buffer.from(audioContent).toString('base64'),
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'input_audio',
+			input_audio: {
+				data: Buffer.from(audioContent).toString('base64'),
+				format: 'mpeg',
+			},
+		});
+	});
 });
 
 describe('fixEmptyContentMessage', () => {
@@ -391,6 +418,46 @@ describe('prepareMessages', () => {
 			(m) => typeof m === 'object' && m instanceof HumanMessage,
 		);
 		expect(hasBinaryMessage).toBe(true);
+	});
+
+	it('should include audio message if passthroughBinaryAudios is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				audio1: {
+					mimeType: 'audio/mpeg',
+					data: 'base64data',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryAudios: true,
+		});
+		const humanMessage = messages.find((m) => m instanceof HumanMessage) as HumanMessage;
+		expect(humanMessage).toBeDefined();
+		expect(humanMessage.content).toHaveLength(1);
+		expect((humanMessage.content[0] as any).type).toBe('input_audio');
+	});
+
+	it('should not include audio message if passthroughBinaryAudios is false', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				audio1: {
+					mimeType: 'audio/mpeg',
+					data: 'base64data',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryAudios: false,
+		});
+		const humanMessage = messages.find((m) => m instanceof HumanMessage) as HumanMessage;
+		expect(humanMessage).toBeUndefined();
 	});
 
 	it('should not include a binary message if no binary data is present', async () => {

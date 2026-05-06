@@ -263,6 +263,7 @@ export async function toolsAgentExecute(
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				passthroughBinaryAudios?: boolean;
 				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 			};
 
@@ -270,6 +271,7 @@ export async function toolsAgentExecute(
 			const messages = await prepareMessages(this, itemIndex, {
 				systemMessage: options.systemMessage,
 				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+				passthroughBinaryAudios: options.passthroughBinaryAudios ?? true,
 				outputParser,
 			});
 			const prompt: ChatPromptTemplate = preparePrompt(messages);
