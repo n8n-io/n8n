@@ -6401,6 +6401,32 @@ describe('useCanvasOperations', () => {
 			expect(windowOpenSpy).not.toHaveBeenCalled();
 		});
 
+		it('should return false when expression resolution throws', async () => {
+			const mockResolveExpression = vi.fn().mockRejectedValue(new Error('Invalid expression'));
+			vi.spyOn(workflowHelpersModule, 'useWorkflowHelpers').mockReturnValue({
+				resolveExpression: mockResolveExpression,
+			} as unknown as ReturnType<typeof workflowHelpersModule.useWorkflowHelpers>);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: {
+					workflowId: {
+						__rl: true,
+						mode: 'id',
+						value: '={{ $invalid.expression }}',
+					},
+				},
+			});
+
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
+
+			const result = await tryToOpenSubworkflowInNewTab(node.id);
+
+			expect(result).toBe(false);
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+
 		it('should return false when node does not exist', async () => {
 			const { tryToOpenSubworkflowInNewTab } = useCanvasOperations();
 

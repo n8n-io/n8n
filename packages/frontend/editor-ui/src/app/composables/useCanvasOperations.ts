@@ -3025,13 +3025,17 @@ export function useCanvasOperations() {
 		if (!subWorkflowId) return false;
 
 		if (subWorkflowId.startsWith('=')) {
-			const resolved = await workflowHelpers.resolveExpression(
-				subWorkflowId,
-				{},
-				{ contextNodeName: node.name },
-			);
-			if (typeof resolved !== 'string' || !resolved) return false;
-			subWorkflowId = resolved;
+			try {
+				const resolved = await workflowHelpers.resolveExpression(
+					subWorkflowId,
+					{},
+					{ contextNodeName: node.name },
+				);
+				if (typeof resolved !== 'string' || !resolved) return false;
+				subWorkflowId = resolved;
+			} catch {
+				return false;
+			}
 		}
 
 		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
