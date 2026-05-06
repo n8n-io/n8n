@@ -5,38 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * agents a first-class citizens feature.
  */
 export class CreateAgentTables1783000000000 implements ReversibleMigration {
-	async up({
-		schemaBuilder: { createTable, createIndex, column },
-		queryRunner,
-		escape,
-		runQuery,
-		isPostgres,
-		tablePrefix,
-	}: MigrationContext) {
-		const findIndexByExactColumns = async (tableName: string, columnNames: string[]) => {
-			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
-			return (
-				t?.indices.find(
-					(index) =>
-						index.columnNames.length === columnNames.length &&
-						columnNames.every(
-							(columnName, indexInList) => index.columnNames[indexInList] === columnName,
-						),
-				) ?? null
-			);
-		};
-
-		const hasIndexStartingWithColumns = async (tableName: string, columnNames: string[]) => {
-			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
-			return (
-				t?.indices.some((index) =>
-					columnNames.every(
-						(columnName, indexInList) => index.columnNames[indexInList] === columnName,
-					),
-				) ?? false
-			);
-		};
-
+	async up({ schemaBuilder: { createTable, createIndex, column } }: MigrationContext) {
 		await createTable('agents')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
@@ -59,9 +28,7 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		if (!(await hasIndexStartingWithColumns('agents', ['projectId']))) {
-			await createIndex('agents', ['projectId']);
-		}
+		await createIndex('agents', ['projectId']);
 
 		await createTable('agent_checkpoints')
 			.withColumns(
@@ -107,14 +74,7 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		if (!(await hasIndexStartingWithColumns('agents_messages', ['threadId', 'createdAt']))) {
-			await createIndex('agents_messages', ['threadId', 'createdAt']);
-		}
-
-		const redundantThreadIdIndex = await findIndexByExactColumns('agents_messages', ['threadId']);
-		if (redundantThreadIdIndex) {
-			await queryRunner.dropIndex(`${tablePrefix}agents_messages`, redundantThreadIdIndex);
-		}
+		await createIndex('agents_messages', ['threadId', 'createdAt']);
 
 		await createTable('agent_published_version')
 			.withColumns(
@@ -138,16 +98,6 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			}).withTimestamps;
-
-		if (isPostgres) {
-			const tableName = escape.tableName('agent_published_version');
-			await runQuery(
-				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('createdAt')} SET DEFAULT CURRENT_TIMESTAMP(3)`,
-			);
-			await runQuery(
-				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('updatedAt')} SET DEFAULT CURRENT_TIMESTAMP(3)`,
-			);
-		}
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
