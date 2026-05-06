@@ -354,8 +354,7 @@ tr.dangerBg {
 }
 
 .runTime {
-	text-align: right;
+	font-family: var(--font-family--monospace);
 	font-variant-numeric: tabular-nums;
 }
-
 </style>
