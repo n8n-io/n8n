@@ -738,6 +738,7 @@ const tags = computed(
 				</div>
 				<N8nActionToggle
 					:actions="actions"
+					placement="bottom-end"
 					theme="dark"
 					data-test-id="workflow-card-actions"
 					@action="onAction"

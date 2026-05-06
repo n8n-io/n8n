@@ -488,3 +488,7 @@ export function disposeNDVStore(store: NDVStore) {
 		delete pinia.state.value[store.$id];
 	}
 }
+
+export function injectNDVStore(): ReturnType<typeof useNDVStore> {
+	return useNDVStore();
+}
