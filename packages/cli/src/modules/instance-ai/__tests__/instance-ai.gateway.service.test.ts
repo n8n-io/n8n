@@ -105,6 +105,19 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			expect(registry.getPairingToken('user-a')).toBeNull();
 			expect(registry.getUserIdForApiKey(token)).toBeUndefined();
 		});
+
+		it('rejects an expired pairing token via getUserIdForApiKey without prior cleanup', () => {
+			const token = registry.generatePairingToken('user-a');
+
+			const userGateways = (
+				registry as unknown as {
+					userGateways: Map<string, { pairingToken: { token: string; createdAt: number } | null }>;
+				}
+			).userGateways;
+			userGateways.get('user-a')!.pairingToken!.createdAt = Date.now() - 10 * 60 * 1000;
+
+			expect(registry.getUserIdForApiKey(token)).toBeUndefined();
+		});
 	});
 
 	describe('getGatewayStatus', () => {

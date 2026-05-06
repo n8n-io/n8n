@@ -55,7 +55,18 @@ export class LocalGatewayRegistry {
 
 	/** Resolve an API key (pairing token or session key) back to the owning userId. */
 	getUserIdForApiKey(key: string): string | undefined {
-		return this.apiKeyToUserId.get(key);
+		const userId = this.apiKeyToUserId.get(key);
+		if (!userId) return undefined;
+
+		const state = this.userGateways.get(userId);
+		if (state?.pairingToken?.token === key) {
+			if (Date.now() - state.pairingToken.createdAt > PAIRING_TOKEN_TTL_MS) {
+				this.apiKeyToUserId.delete(state.pairingToken.token);
+				state.pairingToken = null;
+				return undefined;
+			}
+		}
+		return userId;
 	}
 
 	/** Generate a one-time pairing token for UI-initiated connections. */
