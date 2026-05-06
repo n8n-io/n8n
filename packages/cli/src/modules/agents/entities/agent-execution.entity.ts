@@ -28,10 +28,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	threadId: string;
 
-	/** Denormalized so per-agent queries (across threads) don't need a join. */
-	@Column({ type: 'varchar', length: 36 })
-	agentId: string;
-
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 

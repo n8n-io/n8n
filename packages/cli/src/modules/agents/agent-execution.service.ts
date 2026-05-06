@@ -74,7 +74,6 @@ export class AgentExecutionService {
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
 				threadId,
-				agentId,
 				status,
 				startedAt,
 				stoppedAt,

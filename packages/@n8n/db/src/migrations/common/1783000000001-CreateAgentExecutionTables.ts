@@ -5,22 +5,10 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * They live in two dedicated tables:
  *   - `agent_execution_threads` — per-session aggregate (token usage,
  *     session number, title, emoji). Renamed from `execution_threads`.
- *   - `agent_execution`         — per-message run record with typed
+ *   - `agent_execution` — per-message run record with typed
  *     columns. Replaces the agent rows that previously lived in
  *     `execution_entity` + free-form key/value rows in
  *     `execution_metadata`.
- *
- * This migration also undoes the side-effects the previous migration
- * applied to `execution_entity`:
- *   - deletes any agent rows (`mode = 'agent'`) so the workflowId
- *     NOT NULL invariant can be restored,
- *   - drops the `threadId` column and its index,
- *   - re-applies NOT NULL on `workflowId`.
- *
- * Idempotent for fresh DBs and for DBs that ran the previous version.
- * The agents feature is unreleased and used only on dev branches, so
- * dropping the prior agent rows is acceptable — there is nothing in
- * production to preserve.
  */
 export class CreateAgentExecutionTables1783000000001 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
@@ -28,7 +16,7 @@ export class CreateAgentExecutionTables1783000000001 implements ReversibleMigrat
 
 		await createTable('agent_execution_threads')
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
+				column('id').varchar(36).primary,
 				column('agentId').varchar(36).notNull,
 				column('agentName').varchar(255).notNull,
 				column('projectId').varchar(255).notNull,
@@ -55,10 +43,9 @@ export class CreateAgentExecutionTables1783000000001 implements ReversibleMigrat
 
 		await createTable('agent_execution')
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
+				column('id').varchar(36).primary,
 				column('threadId').varchar(36).notNull,
-				column('agentId').varchar(36).notNull,
-				column('status').varchar(16).notNull,
+				column('status').varchar(16).notNull.withEnumCheck(['success', 'error']),
 				column('startedAt').timestampTimezone(3),
 				column('stoppedAt').timestampTimezone(3),
 				column('duration').int.notNull.default(0),
@@ -72,7 +59,7 @@ export class CreateAgentExecutionTables1783000000001 implements ReversibleMigrat
 				column('toolCalls').json,
 				column('timeline').json,
 				column('error').text,
-				column('hitlStatus').varchar(16),
+				column('hitlStatus').varchar(16).withEnumCheck(['suspended', 'resumed']),
 				column('workingMemory').text,
 				column('source').varchar(32),
 			)

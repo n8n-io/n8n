@@ -1,27 +1,18 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Consolidated migration for agent tables. Replaces the unreleased
- * branch migrations 1776..1782 that introduced the agents feature.
- *
- * Idempotent: existing DBs that already ran the older migrations
- * will detect existing tables/columns and no-op.
+ * Build the agent tables and required indexes for it - handling storage of the new
+ * agents a first-class citizens feature.
  */
 export class CreateAgentTables1783000000000 implements ReversibleMigration {
 	async up({
-		schemaBuilder: { createTable, addColumns, dropColumns, createIndex, column },
+		schemaBuilder: { createTable, createIndex, column },
 		queryRunner,
 		escape,
 		runQuery,
 		isPostgres,
+		tablePrefix,
 	}: MigrationContext) {
-		const tablePrefix = escape.tableName('').replace(/"/g, '');
-
-		const columnExists = async (tableName: string, columnName: string) => {
-			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
-			return t?.findColumnByName(columnName) !== undefined;
-		};
-
 		const findIndexByExactColumns = async (tableName: string, columnNames: string[]) => {
 			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
 			return (
@@ -70,23 +61,6 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 
 		if (!(await hasIndexStartingWithColumns('agents', ['projectId']))) {
 			await createIndex('agents', ['projectId']);
-		}
-
-		// Backfill missing columns for DBs that ran the older migrations
-		// before tools/skills/versionId existed.
-		if (!(await columnExists('agents', 'tools'))) {
-			await addColumns('agents', [column('tools').json.notNull.default("'{}'")]);
-		}
-		if (!(await columnExists('agents', 'skills'))) {
-			await addColumns('agents', [column('skills').json.notNull.default("'{}'")]);
-		}
-		if (!(await columnExists('agents', 'versionId'))) {
-			await addColumns('agents', [column('versionId').varchar(36)]);
-		}
-		// `code` was created in the original 1776 and dropped in 1779. Drop it
-		// here for any DB still on a pre-1779 state.
-		if (await columnExists('agents', 'code')) {
-			await dropColumns('agents', ['code']);
 		}
 
 		await createTable('agent_checkpoints')
@@ -172,20 +146,6 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 			);
 			await runQuery(
 				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('updatedAt')} SET DEFAULT CURRENT_TIMESTAMP(3)`,
-			);
-		}
-
-		// Backfill missing columns for DBs that created agent_published_version
-		// before tools/skills were added.
-		if (!(await columnExists('agent_published_version', 'tools'))) {
-			await addColumns('agent_published_version', [column('tools').json]);
-		}
-		if (!(await columnExists('agent_published_version', 'skills'))) {
-			await addColumns('agent_published_version', [column('skills').json]);
-			const tableName = escape.tableName('agent_published_version');
-			const skillsColumn = escape.columnName('skills');
-			await runQuery(
-				`UPDATE ${tableName} SET ${skillsColumn} = '{}' WHERE ${skillsColumn} IS NULL`,
 			);
 		}
 	}
