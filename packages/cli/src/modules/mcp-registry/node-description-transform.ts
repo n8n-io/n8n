@@ -14,14 +14,24 @@ export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
 
+/**
+ * Get node type name based on server's slug
+ */
 function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 	return camelCase(server.slug);
 }
 
+/**
+ * Get credentials type name based on server's slug and auth type
+ */
 function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
+	// for now we support only OAuth2, so the suffix is always `McpOAuth2Api`
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+/**
+ * Registry MCP server → service-specific credential type for OAuth2 auth type
+ */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
 	const remote = pickRemote(server);
 	if (!remote) return null;
@@ -54,6 +64,9 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 	};
 }
 
+/**
+ * Get the `credentials` property for node description based on the server's auth type
+ */
 function getNodeDescriptionCredentials(server: McpRegistryServer): INodeCredentialDescription[] {
 	switch (server.authType) {
 		case 'oauth2':

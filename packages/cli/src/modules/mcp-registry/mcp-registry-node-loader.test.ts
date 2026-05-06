@@ -15,7 +15,7 @@ import {
 } from './node-description-transform';
 import type { McpRegistryService } from './registry/mcp-registry.service';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
-import { notionMockServer } from './registry/notion-mock-server';
+import { notionMockServer } from './registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',

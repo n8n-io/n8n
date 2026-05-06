@@ -1,6 +1,6 @@
 import { McpRegistryService } from './mcp-registry.service';
 import type { McpRegistryServer } from './mcp-registry.types';
-import { notionMockServer } from './notion-mock-server';
+import { notionMockServer } from './mock-servers';
 
 describe('McpRegistryService', () => {
 	let service: McpRegistryService;

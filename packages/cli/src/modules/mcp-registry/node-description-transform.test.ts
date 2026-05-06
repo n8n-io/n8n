@@ -2,7 +2,7 @@ import { deepCopy, type INodeTypeDescription } from 'n8n-workflow';
 
 import { serverToNodeDescription } from './node-description-transform';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
-import { notionMockServer } from './registry/notion-mock-server';
+import { notionMockServer } from './registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
