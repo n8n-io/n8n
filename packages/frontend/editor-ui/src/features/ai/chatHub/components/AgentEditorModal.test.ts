@@ -9,7 +9,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { TOOLS_MANAGER_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import AgentEditorModal from './AgentEditorModal.vue';
-import { waitFor, fireEvent, within } from '@testing-library/vue';
+import { cleanup, waitFor, fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { ref } from 'vue';
@@ -112,35 +112,21 @@ const MOCK_AGENT_MODEL: ChatModelDto = {
 	groupIcon: null,
 };
 
-const ElDialogStub = {
+const ModalStub = {
 	template: `
 		<div role="dialog">
 			<slot name="header" />
+			<div v-if="loading" class="loader" />
+			<slot v-else name="content" />
+			<slot v-if="!loading" name="footer" />
 			<slot />
-			<slot name="footer" />
 		</div>
 	`,
-	props: [
-		'modelValue',
-		'beforeClose',
-		'class',
-		'center',
-		'width',
-		'showClose',
-		'closeOnClickModal',
-		'closeOnPressEscape',
-		'style',
-		'appendTo',
-		'lockScroll',
-		'appendToBody',
-		'dataTestId',
-		'modalClass',
-		'zIndex',
-	],
+	props: ['name', 'title', 'loading', 'width', 'showClose', 'customClass'],
 };
 
 const sharedStubs = {
-	ElDialog: ElDialogStub,
+	Modal: ModalStub,
 	ModelSelector: {
 		template: '<div data-test-id="model-selector" />',
 		props: [
@@ -194,6 +180,7 @@ describe('AgentEditorModal', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
+		cleanup();
 		vi.clearAllMocks();
 
 		createTestingPinia({ stubActions: false });
@@ -235,10 +222,10 @@ describe('AgentEditorModal', () => {
 		});
 
 		it('should not show delete button', () => {
-			const { queryByText, container } = renderModal();
+			const { queryByText, baseElement } = renderModal();
 
 			// No delete button (only shown in edit mode)
-			const deleteButton = container.querySelector('.deleteButton');
+			const deleteButton = baseElement.querySelector('.deleteButton');
 			expect(deleteButton).toBeNull();
 			// But cancel and save are shown
 			expect(queryByText('chatHub.tools.editor.cancel')).toBeTruthy();
@@ -282,23 +269,25 @@ describe('AgentEditorModal', () => {
 		});
 
 		it('should show delete button', () => {
-			const { container } = renderModal({ agentId: 'agent-1' });
+			const { baseElement } = renderModal({ agentId: 'agent-1' });
 
-			const deleteButton = container.querySelector('.deleteButton');
+			const deleteButton = baseElement.querySelector('.deleteButton');
 			expect(deleteButton).toBeTruthy();
 		});
 
 		it('should populate form from existing agent', async () => {
-			const { container } = renderModal({ agentId: 'agent-1' });
+			const { baseElement } = renderModal({ agentId: 'agent-1' });
 
 			await waitFor(() => {
-				const nameInput = container.querySelector('#agent-name') as HTMLInputElement;
+				const nameInput = baseElement.querySelector('#agent-name') as HTMLInputElement;
 				expect(nameInput?.value).toBe('Test Agent');
 
-				const descInput = container.querySelector('#agent-description') as HTMLTextAreaElement;
+				const descInput = baseElement.querySelector('#agent-description') as HTMLTextAreaElement;
 				expect(descInput?.value).toBe('A test agent');
 
-				const promptInput = container.querySelector('#agent-system-prompt') as HTMLTextAreaElement;
+				const promptInput = baseElement.querySelector(
+					'#agent-system-prompt',
+				) as HTMLTextAreaElement;
 				expect(promptInput?.value).toBe('You are a helpful assistant');
 			});
 		});
@@ -383,12 +372,12 @@ describe('AgentEditorModal', () => {
 		it('should delete agent after confirmation', async () => {
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
-			const { container } = renderModal({
+			const { baseElement } = renderModal({
 				agentId: 'agent-1',
 				credentials: { openai: 'cred-1' },
 			});
 
-			const deleteButton = container.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = baseElement.querySelector('.deleteButton') as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -404,9 +393,9 @@ describe('AgentEditorModal', () => {
 		it('should not delete when confirmation is cancelled', async () => {
 			mockConfirm.mockResolvedValue('cancel');
 
-			const { container } = renderModal({ agentId: 'agent-1' });
+			const { baseElement } = renderModal({ agentId: 'agent-1' });
 
-			const deleteButton = container.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = baseElement.querySelector('.deleteButton') as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -420,12 +409,12 @@ describe('AgentEditorModal', () => {
 			const error = new Error('Delete failed');
 			chatStore.deleteCustomAgent = vi.fn().mockRejectedValue(error);
 
-			const { container } = renderModal({
+			const { baseElement } = renderModal({
 				agentId: 'agent-1',
 				credentials: { openai: 'cred-1' },
 			});
 
-			const deleteButton = container.querySelector('.deleteButton') as HTMLElement;
+			const deleteButton = baseElement.querySelector('.deleteButton') as HTMLElement;
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
@@ -443,10 +432,10 @@ describe('AgentEditorModal', () => {
 				customAgent: ref(undefined),
 			});
 
-			const { container, queryByText } = renderModal({ agentId: 'agent-1' });
+			const { baseElement, queryByText } = renderModal({ agentId: 'agent-1' });
 
 			// Spinner should be visible, form fields should not
-			expect(container.querySelector('.loader')).toBeTruthy();
+			expect(baseElement.querySelector('.loader')).toBeTruthy();
 			expect(queryByText('chatHub.agent.editor.name.label')).toBeNull();
 		});
 	});
@@ -474,7 +463,7 @@ describe('AgentEditorModal', () => {
 				},
 				global: {
 					stubs: {
-						ElDialog: ElDialogStub,
+						Modal: ModalStub,
 						ModelSelector: sharedStubs.ModelSelector,
 						N8nIconPicker: sharedStubs.N8nIconPicker,
 						NodeIcon: { template: '<div />' },
@@ -609,7 +598,7 @@ describe('AgentEditorModal', () => {
 		});
 
 		it('should call the upload endpoint once per chunk when multiple files exceed the chunk size', async () => {
-			const { container, getByRole, findByRole } = renderModal({
+			const { baseElement, getByRole, findByRole } = renderModal({
 				agentId: 'agent-1',
 				credentials: { openai: 'cred-1' },
 			});
@@ -622,7 +611,7 @@ describe('AgentEditorModal', () => {
 				new File(['ab'], 'doc3.pdf', { type: 'application/pdf' }),
 			];
 
-			const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+			const fileInput = baseElement.querySelector('input[type="file"]') as HTMLInputElement;
 
 			Object.defineProperty(fileInput, 'files', { value: files, configurable: true });
 

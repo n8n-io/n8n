@@ -3,11 +3,16 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ModalKey } from '@/Interface';
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
-import { useStyles } from '@/app/composables/useStyles';
 
-import { ElDialog } from 'element-plus';
-import { N8nHeading, N8nSpinner } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nHeading,
+	N8nSpinner,
+} from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		name: ModalKey;
@@ -33,6 +38,7 @@ const props = withDefaults(
 		closeOnPressEscape?: boolean;
 		appendToBody?: boolean;
 		lockScroll?: boolean;
+		modal?: boolean;
 	}>(),
 	{
 		title: '',
@@ -49,34 +55,35 @@ const props = withDefaults(
 		closeOnPressEscape: true,
 		appendToBody: false,
 		lockScroll: true,
+		modal: true,
 	},
 );
 
 const emit = defineEmits<{ enter: [] }>();
 
-const { APP_Z_INDEXES } = useStyles();
-
 const styles = computed(() => {
-	const styles: { [prop: string]: string } = {};
+	const modalStyles: { [prop: string]: string } = {};
+	if (props.width) {
+		modalStyles['--dialog--width'] = props.width;
+		modalStyles['--dialog--max-width'] = props.width;
+	}
 	if (props.height) {
-		styles['--dialog--height'] = props.height;
+		modalStyles['--dialog--height'] = props.height;
 	}
 	if (props.minHeight) {
-		styles['--dialog--min-height'] = props.minHeight;
+		modalStyles['--dialog--min-height'] = props.minHeight;
 	}
 	if (props.maxHeight) {
-		styles['--dialog--max-height'] = props.maxHeight;
+		modalStyles['--dialog--max-height'] = props.maxHeight;
 	}
 	if (props.maxWidth) {
-		styles['--dialog--max-width'] = props.maxWidth;
+		modalStyles['--dialog--max-width'] = props.maxWidth;
 	}
 	if (props.minWidth) {
-		styles['--dialog--min-width'] = props.minWidth;
+		modalStyles['--dialog--min-width'] = props.minWidth;
 	}
-	return styles;
+	return modalStyles;
 });
-
-const appModalsId = `#${APP_MODALS_ELEMENT_ID}`;
 
 onMounted(() => {
 	window.addEventListener('keydown', onWindowKeydown);
@@ -100,21 +107,17 @@ function handleEnter() {
 }
 
 function onOpened() {
-	// Triggers when the Dialog opening animation ends.
-	// This can be helpful at positioning dropdowns etc correctly,
-	// as the dialog doesn't now move anymore at this point.
 	props.eventBus?.emit('opened');
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
-	if (event?.keyCode === 13) handleEnter();
+	if (event?.key === 'Enter') handleEnter();
 }
 
 async function closeDialog(returnData?: unknown) {
 	if (props.beforeClose) {
 		const shouldClose = await props.beforeClose();
 		if (shouldClose === false) {
-			// must be strictly false to stop modal from closing
 			return;
 		}
 	}
@@ -135,44 +138,64 @@ function getCustomClass() {
 
 	return classes;
 }
+
+async function onUpdateOpen(isOpen: boolean) {
+	if (isOpen) {
+		onOpened();
+		return;
+	}
+
+	await onCloseDialog();
+}
+
+function onEscapeKeyDown(event: KeyboardEvent) {
+	if (!props.closeOnPressEscape) {
+		event.preventDefault();
+	}
+}
+
+function onInteractOutside(event: Event) {
+	if (!props.closeOnClickModal) {
+		event.preventDefault();
+	}
+}
 </script>
 
 <template>
-	<ElDialog
-		:model-value="uiStore.modalsById[name]?.open"
-		:before-close="onCloseDialog"
-		:class="{
+	<N8nDialog
+		:open="uiStore.modalsById[name]?.open"
+		:modal="modal"
+		:disable-outside-pointer-events="closeOnClickModal"
+		:show-close-button="showClose"
+		:content-test-id="`${name}-modal`"
+		:content-class="{
 			'dialog-wrapper': true,
 			scrollable: scrollable,
+			centered: center,
 			[getCustomClass()]: true,
 		}"
-		:center="center"
-		:width="width"
-		:show-close="showClose"
-		:close-on-click-modal="closeOnClickModal"
-		:close-on-press-escape="closeOnPressEscape"
-		:style="styles"
-		:append-to="appendToBody ? undefined : appModalsId"
-		:lock-scroll="lockScroll"
-		:append-to-body="appendToBody"
-		:data-test-id="`${name}-modal`"
-		:modal-class="center ? $style.center : ''"
-		:z-index="APP_Z_INDEXES.MODALS"
-		@opened="onOpened"
+		:content-style="styles"
+		:aria-label="$slots.header || title ? undefined : name"
+		:aria-description="subtitle"
+		@update:open="onUpdateOpen"
+		@escape-key-down="onEscapeKeyDown"
+		@interact-outside="onInteractOutside"
 	>
-		<template v-if="$slots.header" #header>
+		<template v-if="$slots.header">
 			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
 		</template>
-		<template v-else-if="title" #title>
+		<N8nDialogHeader v-else-if="title">
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
+					<N8nDialogTitle>
+						<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
+					</N8nDialogTitle>
 				</div>
-				<div v-if="subtitle" :class="$style.subtitle">
+				<N8nDialogDescription v-if="subtitle" :class="$style.subtitle">
 					<N8nHeading tag="h3" size="small" color="text-light">{{ subtitle }}</N8nHeading>
-				</div>
+				</N8nDialogDescription>
 			</div>
-		</template>
+		</N8nDialogHeader>
 		<div
 			class="modal-content"
 			@keydown.stop
@@ -184,30 +207,22 @@ function getCustomClass() {
 				<N8nSpinner />
 			</div>
 		</div>
-		<div v-if="!loading && $slots.footer" :class="$style.footer">
+		<N8nDialogFooter v-if="!loading && $slots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
-		</div>
-	</ElDialog>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss">
 .dialog-wrapper {
-	&.el-dialog {
-		display: flex;
-		flex-direction: column;
-		max-width: var(--dialog--max-width, 80%);
-		min-width: var(--dialog--min-width, 420px);
-		height: var(--dialog--height);
-		min-height: var(--dialog--min-height);
-		max-height: var(--dialog--max-height);
-	}
-
-	.el-dialog__body {
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-		flex-grow: 1;
-	}
+	max-width: var(--dialog--max-width, 80%);
+	min-width: var(--dialog--min-width, 420px);
+	width: var(--dialog--width);
+	height: var(--dialog--height);
+	min-height: var(--dialog--min-height);
+	max-height: var(--dialog--max-height);
+	display: flex;
+	flex-direction: column;
 
 	.modal-content {
 		overflow: hidden;
@@ -220,14 +235,14 @@ function getCustomClass() {
 	&.scrollable .modal-content {
 		overflow-y: auto;
 	}
+
+	&.centered {
+		margin-inline: auto;
+	}
 }
 </style>
 
 <style lang="scss" module>
-.center > div {
-	justify-content: center;
-}
-
 .loader {
 	display: flex;
 	align-items: center;
@@ -247,5 +262,11 @@ function getCustomClass() {
 
 .footer {
 	margin-top: var(--spacing--lg);
+	width: 100%;
+
+	/** If in it's own container, makes sure the footer takes all the available space and pushes the content to the top if needed */
+	> div:only-child {
+		flex: 1;
+	}
 }
 </style>
