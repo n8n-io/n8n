@@ -1,3 +1,14 @@
+## [2.19.3](https://github.com/n8n-io/n8n/compare/n8n@2.19.2...n8n@2.19.3) (2026-05-06)
+
+
+### Bug Fixes
+
+* **core:** Acquire expression isolate for dynamic node parameter requests ([#29711](https://github.com/n8n-io/n8n/issues/29711)) ([cd4a3f5](https://github.com/n8n-io/n8n/commit/cd4a3f579545736be33921c6f7dd9337165e37dc))
+* **core:** Add file path validation to localFile source ([#29789](https://github.com/n8n-io/n8n/issues/29789)) ([5352606](https://github.com/n8n-io/n8n/commit/5352606c74989cfdee36f8890b889a0478c19516))
+* **core:** Show AI Builder draft workflows in workflow list ([#29678](https://github.com/n8n-io/n8n/issues/29678)) ([fa798fb](https://github.com/n8n-io/n8n/commit/fa798fb379eabdb24274324e782dad62b01a9514))
+* Restore broken stdlib calls in Python Code node ([#29782](https://github.com/n8n-io/n8n/issues/29782)) ([616f255](https://github.com/n8n-io/n8n/commit/616f255e2d4b590ae5ac455612d6e927324c0812))
+
+
 ## [2.19.2](https://github.com/n8n-io/n8n/compare/n8n@2.19.1...n8n@2.19.2) (2026-05-01)
 
 
