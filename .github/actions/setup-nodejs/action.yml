@@ -60,6 +60,7 @@ runs:
       if: ${{ inputs.install-command != '' }}
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
+        SAFE_CHAIN_MINIMUM_PACKAGE_AGE_EXCLUSIONS: '@n8n/*'
       run: |
         $INSTALL_COMMAND
       shell: bash
