@@ -622,6 +622,43 @@ describe('workflows tool', () => {
 				'HTTP Request': { url: 'https://example.com/api' },
 			});
 		});
+
+		it('should block setup when updateWorkflow is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+		});
+
+		it('should block setup apply when updateWorkflow is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
+					},
+				},
+			} as never);
+
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+		});
 	});
 
 	describe('unpublish action', () => {

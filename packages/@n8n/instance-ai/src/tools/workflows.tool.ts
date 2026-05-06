@@ -293,6 +293,13 @@ async function handleSetup(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 	state: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null },
 ) {
+	// `setup` mutates workflow nodes via applyNodeChanges (credentials and
+	// parameters are workflow-record fields), so it's gated under
+	// `updateWorkflow` like other workflow-mutating actions.
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
 	const resumeData = ctx?.agent?.resumeData as z.infer<typeof setupResumeSchema> | undefined;
 	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 
