@@ -6,7 +6,7 @@ export class CreateInstanceAiPendingConfirmation1778100000000 implements Reversi
 			.withColumns(
 				column('requestId').varchar(36).primary.notNull,
 				column('threadId').uuid.notNull,
-				column('userId').varchar(36).notNull,
+				column('userId').uuid.notNull,
 				column('kind').varchar(16).notNull,
 				column('mastraRunId').varchar(64),
 				column('toolCallId').varchar(64),

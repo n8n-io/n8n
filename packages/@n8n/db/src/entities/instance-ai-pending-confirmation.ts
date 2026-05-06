@@ -22,7 +22,7 @@ export class InstanceAiPendingConfirmation extends WithTimestamps {
 	@Column({ type: 'uuid' })
 	threadId: string;
 
-	@Column({ type: 'varchar', length: 36 })
+	@Column({ type: 'uuid' })
 	userId: string;
 
 	@ManyToOne('User', { onDelete: 'CASCADE' })
