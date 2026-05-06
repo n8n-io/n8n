@@ -4,10 +4,12 @@ import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
 jest.mock('axios');
 jest.mock('@n8n/client-oauth2');
@@ -16,6 +18,7 @@ jest.mock('pkce-challenge');
 describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const externalHooks = mockInstance(ExternalHooks);
+	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
 
 	mockInstance(Logger);
 
@@ -717,6 +720,116 @@ describe('OAuth2CredentialController', () => {
 				}),
 				['csrfSecret'],
 			);
+		});
+
+		describe('JWE decryption', () => {
+			const baseState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+
+			async function setupCallback(jweEnabled: boolean, tokenResponse: Record<string, unknown>) {
+				const mockGetToken = jest.fn().mockResolvedValue({ data: { ...tokenResponse } });
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				jest
+					.mocked(ClientOAuth2)
+					.mockImplementation(() => ({ code: { getToken: mockGetToken } }) as any);
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{ csrfSecret: 'csrf-secret' },
+					{
+						clientId: 'client_id',
+						clientSecret: 'client_secret',
+						authUrl: 'https://example.domain/oauth2/auth',
+						accessTokenUrl: 'https://example.domain/oauth2/token',
+						scope: 'openid',
+						grantType: 'authorizationCode',
+						authentication: 'header',
+						jweEnabled,
+					} as any,
+					baseState,
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+				externalHooks.run.mockResolvedValue(undefined);
+				return { mockGetToken, mockResolvedCredential };
+			}
+
+			it('persists the decrypted response returned by the proxy', async () => {
+				oauthJweServiceProxy.decryptOAuth2TokenData.mockResolvedValue({
+					access_token: 'decrypted',
+					refresh_token: 'r',
+				});
+				const { mockResolvedCredential } = await setupCallback(true, {
+					access_token: 'jwe-blob',
+					refresh_token: 'r',
+				});
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: { code: 'auth_code', state: validState },
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				expect(oauthJweServiceProxy.decryptOAuth2TokenData).toHaveBeenCalledWith(
+					expect.objectContaining({ access_token: 'jwe-blob' }),
+				);
+				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+					mockResolvedCredential,
+					expect.objectContaining({
+						oauthTokenData: expect.objectContaining({ access_token: 'decrypted' }),
+					}),
+					['csrfSecret'],
+				);
+			});
+
+			it('renders error when the proxy rejects plaintext', async () => {
+				oauthJweServiceProxy.decryptOAuth2TokenData.mockRejectedValue(
+					new UserError('Expected at least one JWE-encrypted token but received only plaintext'),
+				);
+				await setupCallback(true, { access_token: 'plaintext' });
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: { code: 'auth_code', state: validState },
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'Expected at least one JWE-encrypted token but received only plaintext',
+					undefined,
+				);
+				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
+			});
+
+			it('skips the proxy entirely when the credential opts out', async () => {
+				const { mockResolvedCredential } = await setupCallback(false, {
+					access_token: 'plaintext',
+				});
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: { code: 'auth_code', state: validState },
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				expect(oauthJweServiceProxy.decryptOAuth2TokenData).not.toHaveBeenCalled();
+				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+					mockResolvedCredential,
+					expect.objectContaining({
+						oauthTokenData: expect.objectContaining({ access_token: 'plaintext' }),
+					}),
+					['csrfSecret'],
+				);
+			});
 		});
 
 		it('should handle errors and render error page', async () => {

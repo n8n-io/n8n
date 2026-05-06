@@ -1,7 +1,7 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import * as sendAndWaitUtils from 'n8n-nodes-base/dist/utils/sendAndWait/utils';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { ChatNodeMessageType, FREE_TEXT_CHAT_RESPONSE_TYPE } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getChatMessage } from '../util';
 
@@ -10,7 +10,7 @@ describe('util', () => {
 		const ctx = mockDeep<IExecuteFunctions>();
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should return a string for v1.0', () => {
@@ -41,7 +41,7 @@ describe('util', () => {
 		});
 
 		it('should return ChatNodeMessageWithButtons for v1.1 with approval response type', () => {
-			jest.spyOn(sendAndWaitUtils, 'getSendAndWaitConfig').mockReturnValue({
+			vi.spyOn(sendAndWaitUtils, 'getSendAndWaitConfig').mockReturnValue({
 				title: '',
 				message: '',
 				options: [

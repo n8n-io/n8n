@@ -10,6 +10,13 @@ import type { NodeInstance } from '../types/base';
 /**
  * Check if a node or any of its subnodes have a newCredential() marker.
  * Nodes with new credentials need pin data to avoid execution errors.
+ *
+ * Note: by the time a NodeInstance reaches this code, credentials slots only
+ * ever contain `CredentialReference` or `__newCredential` markers — never
+ * `__placeholder` markers. `placeholder()` values supplied for credentials
+ * are normalized to `__newCredential` at config ingest in
+ * `node-builder.ts#normalizeNodeConfig`, so we don't need a second check
+ * here.
  */
 export function hasNewCredential(node: NodeInstance<string, string, unknown>): boolean {
 	// Check main node credentials
