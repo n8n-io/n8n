@@ -148,9 +148,6 @@ export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';
 // Utility functions
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
-// Layout
-export { layoutWorkflowJSON } from './workflow-builder/layout-utils';
-
 // Validation
 export {
 	validateWorkflow,

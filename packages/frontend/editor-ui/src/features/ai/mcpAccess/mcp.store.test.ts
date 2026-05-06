@@ -9,6 +9,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [],
+		workflowTriggerNodes: [],
 		name: '',
 		settings: {},
 		mergeSettings: vi.fn(),
