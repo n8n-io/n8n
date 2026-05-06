@@ -109,6 +109,8 @@ import { ProxyTokenManager } from './proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
 
+export const ENV_GATEWAY_USER_ID = 'env-gateway';
+
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -1272,8 +1274,16 @@ export class InstanceAiService {
 		return this.gatewayRegistry.getUserIdForApiKey(key);
 	}
 
+	getUserIdForSessionKey(key: string): string | undefined {
+		return this.gatewayRegistry.getUserIdForSessionKey(key);
+	}
+
 	generatePairingToken(userId: string): string {
 		return this.gatewayRegistry.generatePairingToken(userId);
+	}
+
+	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
 	}
 
 	getPairingToken(userId: string): string | null {
@@ -1288,12 +1298,32 @@ export class InstanceAiService {
 		return this.gatewayRegistry.getActiveSessionKey(userId);
 	}
 
+	rotateSessionKeyIfNeeded(userId: string, key: string): string | null {
+		return this.gatewayRegistry.rotateSessionKeyIfNeeded(userId, key);
+	}
+
+	isGatewaySessionRotationDue(userId: string, key: string): boolean {
+		return this.gatewayRegistry.isSessionKeyDueForRotation(userId, key);
+	}
+
+	getGatewaySessionRotateAfter(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getSessionKeyRotateAfter(userId, key);
+	}
+
 	clearActiveSessionKey(userId: string): void {
 		this.gatewayRegistry.clearActiveSessionKey(userId);
 	}
 
+	revokeGatewaySession(userId: string): boolean {
+		return this.gatewayRegistry.revokeSession(userId);
+	}
+
 	getLocalGateway(userId: string): LocalGateway {
 		return this.gatewayRegistry.getGateway(userId);
+	}
+
+	private findEffectiveLocalGateway(userId: string): LocalGateway | undefined {
+		return this.gatewayRegistry.findGateway(userId);
 	}
 
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
@@ -1969,7 +1999,7 @@ export class InstanceAiService {
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
-		const userGateway = this.gatewayRegistry.findGateway(user.id);
+		const userGateway = this.findEffectiveLocalGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and
 		// AiAssistantClient that are shared across model, search, and tracing
