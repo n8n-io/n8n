@@ -8,9 +8,11 @@ import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
 // 2 mains + 2 workers fits within the CI runner's CPU budget while still
-// exercising multi-main HA. Pair with `webhook-single-instance.spec.ts`
-// (1 main, no workers) to read the scaling factor: 2m+2w should hit ~2× the
-// single-instance ingestion rate if HA distribution is clean.
+// exercising multi-main HA. Pair with `webhook-queue-baseline.spec.ts`
+// (1m + 1w queue mode) — NOT `webhook-single-instance.spec.ts` (1m + 0w
+// direct mode) — to read the main-scaling factor cleanly. Comparing against
+// the direct-mode spec would conflate "adding a main" with "switching from
+// direct to queue execution" since the architectures differ.
 //
 // Multi-main HA requires N8N_MULTI_MAIN_SETUP_ENABLED and a license cert
 // (picked up from N8N_LICENSE_ACTIVATION_KEY / N8N_LICENSE_CERT in the host
@@ -33,9 +35,10 @@ test.describe(
 	},
 	() => {
 		// Async webhook so HTTP req/s = ingestion ACK rate (independent of worker drain).
-		// At 1 main: baseline ingestion ceiling (see webhook-single-instance.spec.ts).
-		// At N mains: should be N× baseline if load distributes evenly. Sub-linear
-		// means LB or shared resource contention; super-linear is impossible.
+		// Baseline (1m + 1w queue mode): see webhook-queue-baseline.spec.ts.
+		// At N mains, holding worker count proportional: should be ~N× baseline if
+		// load distributes evenly. Sub-linear means LB or shared resource
+		// contention; super-linear is impossible.
 		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (${MAINS} mains + ${WORKERS} workers)`, async ({
 			api,
 			services,
@@ -63,7 +66,7 @@ test.describe(
 			});
 
 			console.log(
-				`\n[MAIN SCALING] mains=${MAINS} | Compare HTTP req/s vs webhook-single-instance.\n` +
+				`\n[MAIN SCALING] mains=${MAINS}, workers=${WORKERS} | Compare HTTP req/s vs webhook-queue-baseline (1m+1w).\n` +
 					'  Linear scaling = ingestion req/s grows ~N× with mains.\n' +
 					'  Sub-linear = load balancer / shared resource bottleneck.',
 			);
