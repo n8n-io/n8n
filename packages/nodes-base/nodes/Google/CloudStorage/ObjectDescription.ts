@@ -4,8 +4,37 @@ import {
 	type IDataObject,
 	type INodeExecutionData,
 	type INodeProperties,
+	type JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
+
+const RESUMABLE_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024;
+
+async function processStreamInChunks(
+	stream: Readable,
+	chunkSize: number,
+	onChunk: (chunk: Buffer, offset: number) => Promise<void>,
+) {
+	let buffer = Buffer.alloc(0);
+	let offset = 0;
+
+	for await (const chunk of stream) {
+		const currentChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+		buffer = Buffer.concat([buffer, currentChunk]);
+
+		while (buffer.length >= chunkSize) {
+			await onChunk(buffer.subarray(0, chunkSize), offset);
+
+			buffer = buffer.subarray(chunkSize);
+			offset += chunkSize;
+		}
+	}
+
+	if (buffer.length > 0) {
+		await onChunk(buffer, offset);
+	}
+}
 
 // Define these because we'll be using them in two separate places
 const metagenerationFilters: INodeProperties[] = [
@@ -160,10 +189,16 @@ export const objectOperations: INodeProperties[] = [
 
 									const binaryData = this.helpers.assertBinaryData(binaryPropertyName);
 									if (binaryData.id) {
-										content = await this.helpers.getBinaryStream(binaryData.id);
 										const binaryMetadata = await this.helpers.getBinaryMetadata(binaryData.id);
 										contentType = binaryMetadata.mimeType ?? 'application/octet-stream';
 										contentLength = binaryMetadata.fileSize;
+										content =
+											Number.isFinite(contentLength) && contentLength === 0
+												? Buffer.alloc(0)
+												: await this.helpers.getBinaryStream(
+														binaryData.id,
+														RESUMABLE_UPLOAD_CHUNK_SIZE,
+													);
 									} else {
 										content = Buffer.from(binaryData.data, BINARY_ENCODING);
 										contentType = binaryData.mimeType;
@@ -174,6 +209,114 @@ export const objectOperations: INodeProperties[] = [
 									contentType = 'text/plain';
 									contentLength = content.length;
 								}
+
+								if (content instanceof Readable) {
+									const bucketName = this.getNodeParameter('bucketName') as string;
+									const objectName = this.getNodeParameter('objectName') as string;
+									const uploadHeaders: IDataObject = {
+										...requestOptions.headers,
+										'Content-Type': 'application/json',
+										'X-Upload-Content-Type': contentType,
+									};
+
+									if (Number.isFinite(contentLength)) {
+										uploadHeaders['X-Upload-Content-Length'] = contentLength;
+									}
+
+									const uploadSessionResponse =
+										await this.helpers.httpRequestWithAuthentication.call(
+											this,
+											'googleCloudStorageOAuth2Api',
+											{
+												method: 'POST',
+												url: `/b/${bucketName}/o/`,
+												baseURL: 'https://storage.googleapis.com/upload/storage/v1',
+												qs: {
+													...requestOptions.qs,
+													uploadType: 'resumable',
+												},
+												headers: uploadHeaders,
+												body: metadata,
+												returnFullResponse: true,
+											},
+										);
+
+									const uploadUrl = uploadSessionResponse.headers.location as string | undefined;
+									if (!uploadUrl) {
+										throw new NodeApiError(
+											this.getNode(),
+											uploadSessionResponse.body as JsonObject,
+										);
+									}
+
+									const uploadChunk = async (
+										chunk: Buffer,
+										offset: number,
+										totalSize: number | '*',
+									) => {
+										const response = await this.helpers.httpRequest({
+											method: 'PUT',
+											url: uploadUrl,
+											headers: {
+												...requestOptions.headers,
+												'Content-Length': chunk.length,
+												'Content-Range': `bytes ${offset}-${offset + chunk.length - 1}/${totalSize}`,
+											},
+											body: chunk,
+											returnFullResponse: true,
+											ignoreHttpStatusErrors: true,
+										});
+
+										if (response.statusCode !== 308 && response.statusCode >= 400) {
+											throw new NodeApiError(this.getNode(), response.body as JsonObject);
+										}
+									};
+
+									if (Number.isFinite(contentLength)) {
+										await processStreamInChunks(
+											content,
+											RESUMABLE_UPLOAD_CHUNK_SIZE,
+											async (chunk, offset) => await uploadChunk(chunk, offset, contentLength),
+										);
+									} else {
+										let pendingChunk: Buffer | undefined;
+										let pendingOffset = 0;
+
+										await processStreamInChunks(
+											content,
+											RESUMABLE_UPLOAD_CHUNK_SIZE,
+											async (chunk, currentOffset) => {
+												if (pendingChunk) {
+													await uploadChunk(pendingChunk, pendingOffset, '*');
+												}
+												pendingChunk = chunk;
+												pendingOffset = currentOffset;
+											},
+										);
+
+										if (pendingChunk) {
+											await uploadChunk(
+												pendingChunk,
+												pendingOffset,
+												pendingOffset + pendingChunk.length,
+											);
+										}
+									}
+
+									const projection = requestOptions.qs?.projection;
+
+									requestOptions.method = 'GET';
+									requestOptions.baseURL = 'https://storage.googleapis.com/storage/v1';
+									requestOptions.url = `/b/${bucketName}/o/${objectName}`;
+									requestOptions.qs = projection ? { projection } : {};
+									requestOptions.headers = this.getNodeParameter(
+										'encryptionHeaders',
+									) as IDataObject;
+									delete requestOptions.body;
+
+									return requestOptions;
+								}
+
 								body.append('file', content, { contentType, knownLength: contentLength });
 
 								// Set the headers
