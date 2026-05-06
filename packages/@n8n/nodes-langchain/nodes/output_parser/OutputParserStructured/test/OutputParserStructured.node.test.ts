@@ -824,6 +824,7 @@ describe('OutputParserStructured', () => {
 
 				const execution = outputParser.supplyData.call(thisArg, 0);
 
+				await expect(execution).rejects.toThrow(NodeOperationError);
 				await expect(execution).rejects.toThrow(
 					'Auto-fixing parser prompt has to contain {error} placeholder',
 				);
