@@ -1,7 +1,7 @@
 import { ref, computed, shallowRef } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { safeValidateWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
+import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -155,7 +155,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				return true;
 			}
 
-			const templateValidation = safeValidateWorkflowStructure({
+			const templateValidation = safeParseWorkflowStructure({
 				nodes: workflow.nodes,
 				connections: workflow.connections,
 			});
@@ -243,7 +243,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function openWorkflow(data: IWorkflowDb) {
-		const validationResult = safeValidateWorkflowStructure({
+		const validationResult = safeParseWorkflowStructure({
 			nodes: data.nodes,
 			connections: data.connections,
 		});

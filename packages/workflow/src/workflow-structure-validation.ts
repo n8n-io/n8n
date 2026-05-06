@@ -116,7 +116,7 @@ export class WorkflowStructureValidationError extends Error {
 	}
 }
 
-export function safeValidateWorkflowStructure(input: unknown): WorkflowStructureValidationResult {
+export function safeParseWorkflowStructure(input: unknown): WorkflowStructureValidationResult {
 	const parsed = workflowStructureSchema.safeParse(input);
 
 	if (!parsed.success) {
@@ -187,8 +187,8 @@ export function safeValidateWorkflowStructure(input: unknown): WorkflowStructure
 	};
 }
 
-export function validateWorkflowStructure(input: unknown): WorkflowStructureData {
-	const result = safeValidateWorkflowStructure(input);
+export function parseWorkflowStructure(input: unknown): WorkflowStructureData {
+	const result = safeParseWorkflowStructure(input);
 
 	if (!result.success) {
 		throw new WorkflowStructureValidationError(result.issues);

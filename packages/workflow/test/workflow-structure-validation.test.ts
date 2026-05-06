@@ -1,6 +1,6 @@
 import {
-	safeValidateWorkflowStructure,
-	validateWorkflowStructure,
+	safeParseWorkflowStructure,
+	parseWorkflowStructure,
 	WorkflowStructureValidationError,
 } from '../src/workflow-structure-validation';
 
@@ -30,14 +30,14 @@ describe('workflow-structure-validation', () => {
 	};
 
 	test('accepts a structurally valid workflow', () => {
-		expect(safeValidateWorkflowStructure(validWorkflow)).toEqual({
+		expect(safeParseWorkflowStructure(validWorkflow)).toEqual({
 			success: true,
 			data: validWorkflow,
 		});
 	});
 
 	test('accepts a valid workflow with empty connections', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			nodes: [validWorkflow.nodes[0]],
 			connections: {},
 		});
@@ -46,7 +46,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('accepts a valid workflow with empty nodes array', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			nodes: [],
 			connections: {},
 		});
@@ -55,7 +55,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('accepts null connection buckets (unused output slots)', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			connections: {
 				Start: {
@@ -68,7 +68,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects nodes missing a required field', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: [{ ...validWorkflow.nodes[0], type: undefined }],
 		});
@@ -85,7 +85,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects empty string node name', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: [{ ...validWorkflow.nodes[0], name: '' }],
 		});
@@ -102,7 +102,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects positions with fewer than two coordinates', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: [{ ...validWorkflow.nodes[0], position: [0] }],
 		});
@@ -119,7 +119,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects positions with more than two coordinates', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: [{ ...validWorkflow.nodes[0], position: [0, 0, 50] }],
 		});
@@ -136,7 +136,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects connection with negative index', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			connections: {
 				Start: {
@@ -157,7 +157,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects duplicate node names', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: [
 				validWorkflow.nodes[0],
@@ -180,7 +180,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects unknown connection sources', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			connections: {
 				Missing: {
@@ -201,7 +201,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects unknown connection targets', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			connections: {
 				Start: {
@@ -222,7 +222,7 @@ describe('workflow-structure-validation', () => {
 	});
 
 	test('rejects empty nodes with non-empty connections', () => {
-		const result = safeValidateWorkflowStructure({
+		const result = safeParseWorkflowStructure({
 			nodes: [],
 			connections: {
 				Start: {
@@ -243,7 +243,7 @@ describe('workflow-structure-validation', () => {
 
 	test('throws a typed error for invalid workflows', () => {
 		expect(() =>
-			validateWorkflowStructure({
+			parseWorkflowStructure({
 				nodes: [{ name: 'Start', position: [0, 0], parameters: {} }],
 				connections: {},
 			}),
@@ -254,7 +254,7 @@ describe('workflow-structure-validation', () => {
 		let thrown: WorkflowStructureValidationError | undefined;
 
 		try {
-			validateWorkflowStructure({
+			parseWorkflowStructure({
 				nodes: [{ name: 'Start', position: [0, 0], parameters: {} }],
 				connections: {},
 			});

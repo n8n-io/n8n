@@ -15,7 +15,7 @@ import type {
 import {
 	formatWorkflowStructureIssuePath,
 	resolveNodeWebhookId,
-	safeValidateWorkflowStructure,
+	safeParseWorkflowStructure,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -126,7 +126,7 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
-	const result = safeValidateWorkflowStructure(workflow);
+	const result = safeParseWorkflowStructure(workflow);
 
 	if (result.success) return;
 
