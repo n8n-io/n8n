@@ -1,3 +1,11 @@
+## [1.123.40](https://github.com/n8n-io/n8n/compare/n8n@1.123.39...n8n@1.123.40) (2026-05-06)
+
+
+### Bug Fixes
+
+* **Snowflake Node:** Fix issue with Insert and Update operations not working ([#29812](https://github.com/n8n-io/n8n/issues/29812)) ([aec110f](https://github.com/n8n-io/n8n/commit/aec110f19889174374274f5a1ff209515a169d9a))
+
+
 ## [1.123.39](https://github.com/n8n-io/n8n/compare/n8n@1.123.38...n8n@1.123.39) (2026-05-06)
 
 
