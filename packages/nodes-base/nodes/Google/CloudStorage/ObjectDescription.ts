@@ -370,7 +370,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + encodeURIComponent($parameter["objectName"])}}',
 						qs: {},
 					},
 				},
@@ -383,7 +383,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + encodeURIComponent($parameter["objectName"])}}',
 						returnFullResponse: true,
 						qs: {
 							alt: '={{$parameter["alt"]}}',
@@ -511,7 +511,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + encodeURIComponent($parameter["objectName"])}}',
 						qs: {},
 						body: {},
 					},
