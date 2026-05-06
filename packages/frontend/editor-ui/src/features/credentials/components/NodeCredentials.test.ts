@@ -17,7 +17,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -88,13 +87,6 @@ const openAiNodeNoCreds: INodeUi = {
 	credentials: {},
 };
 
-const openAiNodeNoCreds2: INodeUi = {
-	...openAiNode,
-	id: '74b41295-a277-4cdf-8c46-6c3f85b335e9',
-	name: 'OpenAI no creds 2',
-	credentials: {},
-};
-
 const openAiApiCredentialType = {
 	name: 'openAiApi',
 	displayName: 'OpenAi',
@@ -152,7 +144,6 @@ describe('NodeCredentials', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let workflowDocumentStoreRef: ReturnType<
 		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
@@ -193,7 +184,6 @@ describe('NodeCredentials', () => {
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
 
 		projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
 		settingsStore.settings = {
@@ -389,7 +379,7 @@ describe('NodeCredentials', () => {
 				c8vqdPpPClh4TgIO: createCredential(),
 			};
 
-			workflowsStore.allNodes = [openAiNodeNoCreds, openAiNodeNoCreds2];
+			const assignSpy = vi.spyOn(workflowDocumentStore, 'assignCredentialToMatchingNodes');
 
 			renderComponent(
 				{
@@ -400,7 +390,7 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
-			expect(workflowsStore.assignCredentialToMatchingNodes).not.toHaveBeenCalled();
+			expect(assignSpy).not.toHaveBeenCalled();
 		});
 
 		it('should call assignCredentialToMatchingNodes after selecting credentials', async () => {
@@ -416,7 +406,7 @@ describe('NodeCredentials', () => {
 				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
 			};
 
-			workflowsStore.allNodes = [openAiNodeWithCred, openAiNodeNoCreds2];
+			const assignSpy = vi.spyOn(workflowDocumentStore, 'assignCredentialToMatchingNodes');
 
 			renderComponent(
 				{
@@ -436,7 +426,7 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(openAiCreds!);
 
-			expect(workflowsStore.assignCredentialToMatchingNodes).toHaveBeenCalledWith({
+			expect(assignSpy).toHaveBeenCalledWith({
 				credentials: {
 					id: 'secondCred',
 					name: 'OpenAi account 2',

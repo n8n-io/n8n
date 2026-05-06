@@ -138,6 +138,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
+import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
 
 defineOptions({
 	name: 'NodeView',
@@ -409,11 +410,13 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
+const selectableTriggerNodes = computed(() =>
+	triggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
+);
 const isRunButtonSplit = computed(() => {
-	const selectableTriggerNodes = triggerNodes.value.filter(
-		(node) => !node.disabled && !isChatNode(node),
+	return (
+		selectableTriggerNodes.value.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined
 	);
-	return selectableTriggerNodes.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined;
 });
 
 function onTidyUp(
@@ -1680,6 +1683,51 @@ watch(
 			}
 		}
 	},
+);
+
+const workflowExecutionTriggerNodeName = computed(() => {
+	if (!isWorkflowRunning.value) {
+		return undefined;
+	}
+
+	if (workflowsStore.workflowExecutionData?.triggerNode) {
+		return workflowsStore.workflowExecutionData.triggerNode;
+	}
+
+	// In case of partial execution, triggerNode is not set, so I'm trying to find from runData
+	return Object.keys(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {}).find(
+		(name) => workflowDocumentStore?.value?.workflowTriggerNodes.some((node) => node.name === name),
+	);
+});
+
+watch(
+	[selectableTriggerNodes, workflowExecutionTriggerNodeName],
+	([newSelectable, currentTrigger], [oldSelectable]) => {
+		if (currentTrigger !== undefined) {
+			workflowsStore.setSelectedTriggerNodeName(currentTrigger);
+			return;
+		}
+
+		if (
+			workflowsStore.selectedTriggerNodeName === undefined ||
+			newSelectable.every((node) => node.name !== workflowsStore.selectedTriggerNodeName)
+		) {
+			workflowsStore.setSelectedTriggerNodeName(
+				findTriggerNodeToAutoSelect(selectableTriggerNodes.value, nodeTypesStore.getNodeType)?.name,
+			);
+			return;
+		}
+
+		const newTrigger = newSelectable?.find((node) =>
+			oldSelectable?.every((old) => old.name !== node.name),
+		);
+
+		if (newTrigger !== undefined) {
+			// Select newly added node
+			workflowsStore.setSelectedTriggerNodeName(newTrigger.name);
+		}
+	},
+	{ immediate: true },
 );
 
 onBeforeRouteLeave(async (to, from, next) => {
