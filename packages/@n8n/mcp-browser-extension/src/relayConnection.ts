@@ -492,22 +492,6 @@ export class RelayConnection {
 			}
 			await Promise.all(promises);
 			return {};
-		} else if (method === 'Target.getTargets') {
-			const targetInfos: Array<{
-				targetId: string;
-				type: string;
-				title: string;
-				url: string;
-			}> = Array.from(this.tabs.keys()).map((targetId) => ({
-				tabId: Number(targetId),
-				targetId,
-				type: 'page',
-				title: 'about:blank',
-				url: 'about:blank',
-			}));
-			return {
-				targetInfos,
-			};
 		}
 
 		const { id, entry } = this.resolveTab(rawId as string | undefined);

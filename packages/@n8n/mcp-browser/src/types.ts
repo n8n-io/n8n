@@ -91,7 +91,7 @@ export interface Adapter {
 	upload(pageId: string, target: ElementTarget | undefined, files: string[]): Promise<void>;
 	dialog(pageId: string, action: 'accept' | 'dismiss', text?: string): Promise<string>;
 	// Inspection
-	snapshot(pageId: string, target?: ElementTarget): Promise<SnapshotResult>;
+	snapshot(pageId: string, target?: ElementTarget, interactive?: boolean): Promise<SnapshotResult>;
 	screenshot(pageId: string, target?: ElementTarget, options?: ScreenshotOptions): Promise<string>;
 	getText(pageId: string, target?: ElementTarget): Promise<string>;
 	getContent(pageId: string, selector?: string): Promise<{ html: string; url: string }>;

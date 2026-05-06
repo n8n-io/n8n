@@ -384,9 +384,14 @@ export class AgentBrowserAdapter implements Adapter {
 	// Inspection
 	// =========================================================================
 
-	async snapshot(pageId: string, _target?: ElementTarget): Promise<SnapshotResult> {
+	async snapshot(
+		pageId: string,
+		_target?: ElementTarget,
+		interactive = true,
+	): Promise<SnapshotResult> {
 		await this.switchToTab(pageId);
-		const response = await this.run(['snapshot', '-i']);
+		const args = interactive ? ['snapshot', '-i'] : ['snapshot'];
+		const response = await this.run(args);
 		const tree =
 			typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? '');
 		const refCount = (tree.match(/@e\d+/g) ?? []).length;

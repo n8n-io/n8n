@@ -490,7 +490,11 @@ export class PlaywrightAdapter {
 		return buffer.toString('base64');
 	}
 
-	async snapshot(pageId: string, target?: ElementTarget): Promise<SnapshotResult> {
+	async snapshot(
+		pageId: string,
+		target?: ElementTarget,
+		_interactive?: boolean,
+	): Promise<SnapshotResult> {
 		const { page } = await this.ensurePage(pageId);
 
 		// Use Playwright's internal _snapshotForAI API which returns a YAML
