@@ -154,3 +154,16 @@ export async function useVmEngine(): Promise<void> {
 		bridgeMemoryLimit: 128,
 	});
 }
+
+export async function useQuickJsEngine(): Promise<void> {
+	// Dispose any previously initialized engine so initExpressionEngine
+	// creates a fresh evaluator with the QuickJS bridge.
+	await Expression.disposeExpressionEngine();
+	await Expression.initExpressionEngine({
+		engine: 'quickjs',
+		poolSize: 1,
+		maxCodeCacheSize: 1024,
+		bridgeTimeout: 60_000,
+		bridgeMemoryLimit: 128,
+	});
+}
