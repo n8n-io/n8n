@@ -1349,8 +1349,10 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const mockWorkflowService = {
 		archive: jest.fn().mockResolvedValue(undefined),
+		activateWorkflow: jest.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
+	const mockTelemetry = { track: jest.fn() };
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -1403,7 +1405,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
-		{ track: jest.fn() } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
@@ -1420,6 +1422,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockSharedWorkflowRepository,
 		mockAiBuilderTemporaryWorkflowRepository,
 		mockWorkflowService,
+		mockTelemetry,
 		mockUser,
 	};
 }
@@ -1475,6 +1478,18 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'restricted-project-id',
 			}),
 		).rejects.toThrow('User does not have the required permissions in this project');
+	});
+
+	it('tracks workflow id when publishing a builder workflow', async () => {
+		const { adapter, mockTelemetry } = createWorkflowAdapterForTests();
+
+		await adapter.publish('wf-new');
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder published workflow', {
+			thread_id: 'thread-1',
+			workflow_id: 'wf-new',
+			executed_by: 'ai',
+		});
 	});
 
 	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
@@ -1928,7 +1943,15 @@ describe('resolveDataTableByIdOrName', () => {
 // createExecutionAdapter – run() forces save settings
 // ---------------------------------------------------------------------------
 
-function createRunAdapterForTests(workflow: Record<string, unknown>) {
+function createRunAdapterForTests(
+	workflow: Record<string, unknown>,
+	options?: {
+		activeExecution?: boolean;
+		execution?: ReturnType<typeof makeExecution>;
+		postExecutePromise?: Promise<unknown>;
+		threadId?: string;
+	},
+) {
 	const mockWorkflowFinderService = {
 		findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 	};
@@ -1938,12 +1961,17 @@ function createRunAdapterForTests(workflow: Record<string, unknown>) {
 	};
 
 	const mockActiveExecutions = {
-		has: jest.fn().mockReturnValue(false),
+		getPostExecutePromise: jest
+			.fn()
+			.mockReturnValue(options?.postExecutePromise ?? Promise.resolve()),
+		has: jest.fn().mockReturnValue(options?.activeExecution ?? false),
+		stopExecution: jest.fn(),
 	};
 
 	const mockExecutionRepository = {
-		findSingleExecution: jest.fn().mockResolvedValue(undefined),
+		findSingleExecution: jest.fn().mockResolvedValue(options?.execution),
 	};
+	const mockTelemetry = { track: jest.fn() };
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -1987,14 +2015,14 @@ function createRunAdapterForTests(workflow: Record<string, unknown>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
-	const adapter = service.createContext(mockUser).executionService;
+	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
 
-	return { adapter, mockWorkflowRunner };
+	return { adapter, mockActiveExecutions, mockTelemetry, mockWorkflowRunner };
 }
 
 describe('createExecutionAdapter run()', () => {
@@ -2040,5 +2068,79 @@ describe('createExecutionAdapter run()', () => {
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
 		});
+	});
+
+	it('tracks workflow id and success status when a builder execution finishes', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				execution: makeExecution({ status: 'success' }),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder executed workflow', {
+			thread_id: 'thread-1',
+			workflow_id: 'wf-1',
+			executed_by: 'ai',
+			pinned_node_count: 0,
+			exec_type: 'manual',
+			status: 'success',
+		});
+	});
+
+	it('tracks error status when a builder execution fails', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				execution: makeExecution({ status: 'error', error: { message: 'boom' } }),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+			}),
+		);
+	});
+
+	it('tracks timeout cancellation as an error status', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+
+		await expect(adapter.run('wf-1', undefined, { timeout: 1 })).resolves.toMatchObject({
+			status: 'error',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+			}),
+		);
 	});
 });
