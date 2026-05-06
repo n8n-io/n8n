@@ -41,6 +41,7 @@ import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.r
 const PATCH_ONLY_METADATA_KEYS = [
 	'instanceAiPlannedTasks',
 	'instanceAiTasks',
+	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
 ] as const;
 

@@ -14,8 +14,8 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
 - \`sticky('content', nodes?, config?)\` — creates a sticky note on the canvas.
   Example: \`sticky('## Data Processing', [httpNode, setNode], { color: 2 })\`
 
-- \`.output(n)\` — selects a specific output index for multi-output nodes. IF and Switch have dedicated methods (\`onTrue/onFalse\`, \`onCase\`), but \`.output(n)\` works as a generic alternative.
-  Example: \`classifier.output(1).to(categoryB)\`
+- \`.output(n)\` — selects a specific output index for multi-output nodes. The index is **0-based**: \`.output(0)\` is the first output, \`.output(1)\` is the second. IF and Switch have dedicated methods (\`onTrue/onFalse\`, \`onCase\`), but \`.output(n)\` works as a generic alternative.
+  Example: \`classifier.output(0).to(categoryA); classifier.output(1).to(categoryB)\`
 
 - \`.onError(handler)\` — connects a node's error output to a handler node. Requires \`onError: 'continueErrorOutput'\` in the node config.
   Example: \`httpNode.onError(errorHandler)\` (with \`config: { onError: 'continueErrorOutput' }\`)
