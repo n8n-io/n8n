@@ -489,7 +489,7 @@ describe('composable integration', () => {
 			expect(h.relayedEvents.length).toBeGreaterThan(0);
 		});
 
-		test('execution on inactive workflow — no relay until tab switch + iframe ready', async () => {
+		test('execution on inactive workflow — buffered events replay via workflowLoaded', async () => {
 			h.registerWorkflow('wf-1', 'Workflow A');
 			h.registerWorkflow('wf-2', 'Workflow B');
 			h.selectTab('wf-2');
@@ -505,12 +505,17 @@ describe('composable integration', () => {
 			// Tab shows success
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('success');
 
-			// Switch to wf-1 — iframe ready replays buffered (but buffer was cleared on finish)
+			// Switch to wf-1 — tab switch alone does not replay (waits for workflowLoaded)
 			h.selectTab('wf-1');
 			await h.flush();
-			await h.simulateIframeReady();
-			// Buffer is cleared after finish, so no replay
 			expect(h.relayedEvents.length).toBe(0);
+
+			// workflowLoaded replays buffered events
+			await h.simulateWorkflowLoaded('wf-1');
+			expect(h.relayedEvents.length).toBe(3);
+			expect(h.relayedEvents[0].type).toBe('executionStarted');
+			expect(h.relayedEvents[1].type).toBe('nodeExecuteBefore');
+			expect(h.relayedEvents[2].type).toBe('executionFinished');
 		});
 
 		test('thread switch during running execution stops relay', async () => {
@@ -556,11 +561,17 @@ describe('composable integration', () => {
 
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('success');
 
-			// Switch to workflow tab — iframe ready can replay (buffer cleared on finish though)
+			// Switch to workflow tab — tab switch alone does not replay
 			h.selectTab('wf-1');
 			await h.flush();
-			await h.simulateIframeReady();
-			expect(h.relayedEvents.length).toBe(0); // buffer cleared after finish
+			expect(h.relayedEvents.length).toBe(0);
+
+			// workflowLoaded replays buffered events
+			await h.simulateWorkflowLoaded('wf-1');
+			expect(h.relayedEvents.length).toBe(3);
+			expect(h.relayedEvents[0].type).toBe('executionStarted');
+			expect(h.relayedEvents[1].type).toBe('nodeExecuteBefore');
+			expect(h.relayedEvents[2].type).toBe('executionFinished');
 		});
 
 		test('rapid re-execution: relay tracks latest execution only', async () => {

@@ -124,6 +124,7 @@ export interface InstanceAiHarness {
 	activeTabId: Ref<string | undefined>;
 	activeWorkflowId: ReturnType<typeof useCanvasPreview>['activeWorkflowId'];
 	activeDataTableId: ReturnType<typeof useCanvasPreview>['activeDataTableId'];
+	activeExecutionId: ReturnType<typeof useCanvasPreview>['activeExecutionId'];
 	isPreviewVisible: ReturnType<typeof useCanvasPreview>['isPreviewVisible'];
 	allArtifactTabs: ReturnType<typeof useCanvasPreview>['allArtifactTabs'];
 	workflowRefreshKey: Ref<number>;
@@ -199,6 +200,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const preview = useCanvasPreview({
 		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
 		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
+		workflowExecutions: executionTracking.workflowExecutions,
 	});
 
 	const relayedEvents: PushMessage[] = [];
@@ -380,6 +382,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		activeTabId: preview.activeTabId,
 		activeWorkflowId: preview.activeWorkflowId,
 		activeDataTableId: preview.activeDataTableId,
+		activeExecutionId: preview.activeExecutionId,
 		isPreviewVisible: preview.isPreviewVisible,
 		allArtifactTabs: preview.allArtifactTabs,
 		workflowRefreshKey: preview.workflowRefreshKey,
