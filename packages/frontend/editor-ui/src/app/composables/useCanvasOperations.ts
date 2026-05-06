@@ -2340,7 +2340,7 @@ export function useCanvasOperations() {
 		const validNodes = data.nodes
 			.filter((node) => !!node.type)
 			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
-		const validNodeNames = new Set(validNodes.map((node) => node.name));
+		const validNodeNames = validNodes.map((node) => node.name);
 
 		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
@@ -2652,9 +2652,7 @@ export function useCanvasOperations() {
 		}
 
 		if (workflowData.connections) {
-			const validNodeNames = workflowData.nodes
-				? new Set(workflowData.nodes.map((node) => node.name))
-				: undefined;
+			const validNodeNames = workflowData.nodes?.map((node) => node.name);
 			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
 		}
 

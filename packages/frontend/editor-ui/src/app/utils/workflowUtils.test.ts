@@ -612,6 +612,10 @@ describe('workflowUtils', () => {
 			expect(sanitizeConnections({})).toEqual({});
 		});
 
+		it('should return empty object for non-object input', () => {
+			expect(sanitizeConnections('broken')).toEqual({});
+		});
+
 		it('should pass through valid connections unchanged', () => {
 			const connections: IConnections = {
 				Start: {
@@ -711,7 +715,48 @@ describe('workflowUtils', () => {
 				},
 			};
 
-			expect(sanitizeConnections(connections, new Set(['Start', 'End']))).toEqual({
+			expect(sanitizeConnections(connections, ['Start', 'End'])).toEqual({
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			});
+		});
+
+		it('should drop malformed entries inside a valid bucket', () => {
+			const connections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'End', type: NodeConnectionTypes.Main, index: 0 },
+							null,
+							'broken',
+							{ node: 'Other', type: NodeConnectionTypes.Main },
+						],
+					],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			});
+		});
+
+		it('should drop malformed entries before checking valid node names', () => {
+			const connections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[
+							null,
+							{ node: 'End', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Missing', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections, ['Start', 'End'])).toEqual({
 				Start: {
 					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
 				},

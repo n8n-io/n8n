@@ -1,7 +1,8 @@
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import type { IConnections, INodeConnections } from 'n8n-workflow';
+import type { IConnection, IConnections, INodeConnections } from 'n8n-workflow';
 import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
+import { isObject } from '@/app/utils/objectUtils';
 
 /**
  * Converts workflow tags from ITag[] (API response format) to string[] (store format)
@@ -56,23 +57,41 @@ export function ensureNodePosition(position: unknown): [number, number] {
 	return [0, 0];
 }
 
+function isValidConnectionEntry(connection: unknown): connection is IConnection {
+	if (!isObject(connection)) return false;
+	if (!('node' in connection) || !('type' in connection) || !('index' in connection)) {
+		return false;
+	}
+
+	return (
+		typeof connection.node === 'string' &&
+		typeof connection.type === 'string' &&
+		typeof connection.index === 'number'
+	);
+}
+
 /**
  * Strip out malformed connection entries that would crash the canvas.
  * Keeps only entries where each connection type maps to an array of buckets,
- * and each bucket is either an array or null. When validNodeNames is provided,
- * it also removes connections whose source or target node is missing.
+ * each bucket is either an array or null, and each bucket entry matches the
+ * expected connection shape. When validNodeNames is provided, it also removes
+ * connections whose source or target node is missing.
  */
 export function sanitizeConnections(
-	connections: IConnections,
-	validNodeNames?: ReadonlySet<string>,
+	connections: unknown,
+	validNodeNames?: Iterable<string>,
 ): IConnections {
+	if (!isObject(connections)) return {};
+
 	const sanitized: IConnections = {};
 
+	const validNodeNameSet = validNodeNames ? new Set(validNodeNames) : undefined;
+
 	for (const nodeName of Object.keys(connections)) {
-		if (validNodeNames && !validNodeNames.has(nodeName)) continue;
+		if (validNodeNameSet && !validNodeNameSet.has(nodeName)) continue;
 
 		const nodeConnections = connections[nodeName];
-		if (typeof nodeConnections !== 'object' || nodeConnections === null) continue;
+		if (!isObject(nodeConnections)) continue;
 
 		const sanitizedNodeConnections: INodeConnections = {};
 		for (const type of Object.keys(nodeConnections)) {
@@ -81,9 +100,11 @@ export function sanitizeConnections(
 			sanitizedNodeConnections[type] = buckets.map((bucket) => {
 				if (!Array.isArray(bucket)) return null;
 
-				return validNodeNames
-					? bucket.filter((connection) => validNodeNames.has(connection.node))
-					: bucket;
+				return bucket.filter(
+					(connection): connection is IConnection =>
+						isValidConnectionEntry(connection) &&
+						(!validNodeNameSet || validNodeNameSet.has(connection.node)),
+				);
 			});
 		}
 
