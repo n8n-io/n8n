@@ -2,9 +2,12 @@ import { readFileSync, readdirSync } from 'fs';
 import { basename, extname, join } from 'path';
 import { z } from 'zod';
 
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { toWorkflowConnections } from '../eval-setup-topology/types';
-import type { EvalEndToEndCase } from './types';
+import { detectAiNodes } from '../../src/tools/evals/detect-ai-nodes';
+import type { EvalEndToEndCase, EvalEndToEndMode } from './types';
 
 /**
  * Reuse the workflow JSON fixtures from the eval-setup-topology suite.
@@ -54,13 +57,23 @@ export function loadEvalEndToEndCases(options: LoadOptions = {}): EvalEndToEndCa
 		.map((slug) => {
 			const workflowPath = join(workflowsDir, `${slug}.json`);
 			const workflow = loadWorkflow(workflowPath, slug);
+			const mode = detectMode(workflow);
 
 			return {
 				slug,
 				workflowPath,
 				workflow,
+				mode,
 			};
 		});
+}
+
+function detectMode(workflow: WorkflowResponse): EvalEndToEndMode {
+	const detection = detectAiNodes(workflow as unknown as WorkflowJSON);
+	if (detection.alreadyConfigured) return 'already-configured';
+	if (!detection.isAiWorkflow) return 'no-ai-nodes';
+	if (detection.rootAgentReadsOtherNode) return 'structural-skip';
+	return 'eligible';
 }
 
 function loadWorkflow(workflowPath: string, slug: string): WorkflowResponse {

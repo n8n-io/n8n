@@ -5,10 +5,11 @@ import {
 	buildWorkflowCreatePayload,
 	evaluateTopology,
 	extractConfirmationRequestId,
+	filterToolSelectionForMode,
 	findEvaluationTriggerDataTableId,
 	isApprovableConfirmation,
 } from '../runner';
-import type { EvalEndToEndCase } from '../types';
+import type { EvalEndToEndCase, EvalEndToEndToolSelectionResult } from '../types';
 
 function makeWorkflow(nodes: Array<Record<string, unknown>> = []): WorkflowResponse {
 	return {
@@ -33,6 +34,7 @@ function makeCase(slug = 'demo'): EvalEndToEndCase {
 				parameters: {},
 			},
 		]),
+		mode: 'eligible',
 	};
 }
 
@@ -64,12 +66,79 @@ describe('eval-end-to-end runner — pure helpers', () => {
 	});
 
 	describe('buildEvalPrompt', () => {
-		it('asks the agent to add evals AND populate the dataset via eval-data', () => {
-			const prompt = buildEvalPrompt({ workflowId: 'wf-1', workflowName: 'Demo' });
+		it('asks the agent to add evals AND populate the dataset for an eligible workflow', () => {
+			const prompt = buildEvalPrompt({
+				workflowId: 'wf-1',
+				workflowName: 'Demo',
+				mode: 'eligible',
+			});
 			expect(prompt).toContain('wf-1');
 			expect(prompt).toContain('Demo');
 			expect(prompt).toContain('EvaluationTrigger');
 			expect(prompt).toContain('eval-data');
+		});
+
+		it('tells the agent NOT to add new evals when the workflow is already configured', () => {
+			const prompt = buildEvalPrompt({
+				workflowId: 'wf-1',
+				workflowName: 'Demo',
+				mode: 'already-configured',
+			});
+			expect(prompt).toContain('already has eval nodes');
+			expect(prompt).toContain('Do not add new evals');
+		});
+
+		it('tells the agent to respect a structural-skip outcome', () => {
+			const prompt = buildEvalPrompt({
+				workflowId: 'wf-1',
+				workflowName: 'Demo',
+				mode: 'structural-skip',
+			});
+			expect(prompt).toContain('not applicable');
+			expect(prompt).toContain('do not force it');
+		});
+
+		it('tells the agent to respect a no-ai-nodes outcome', () => {
+			const prompt = buildEvalPrompt({
+				workflowId: 'wf-1',
+				workflowName: 'Demo',
+				mode: 'no-ai-nodes',
+			});
+			expect(prompt).toContain('not applicable');
+			expect(prompt).toContain('do not force it');
+		});
+	});
+
+	describe('filterToolSelectionForMode', () => {
+		const raw: EvalEndToEndToolSelectionResult = {
+			evalsToolCalled: false,
+			evalSetupAgentCalled: false,
+			evalDataToolCalled: false,
+			findings: [
+				{ severity: 'error', code: 'evals_tool_not_called', message: 'x' },
+				{ severity: 'error', code: 'eval_setup_agent_not_called', message: 'y' },
+				{ severity: 'error', code: 'eval_data_tool_not_called', message: 'z' },
+			],
+		};
+
+		it('keeps tool-not-called findings as errors when mode is eligible', () => {
+			const filtered = filterToolSelectionForMode(raw, 'eligible');
+			expect(filtered.findings).toHaveLength(3);
+		});
+
+		it('drops tool-not-called findings when mode is already-configured', () => {
+			const filtered = filterToolSelectionForMode(raw, 'already-configured');
+			expect(filtered.findings).toHaveLength(0);
+		});
+
+		it('drops tool-not-called findings when mode is structural-skip', () => {
+			const filtered = filterToolSelectionForMode(raw, 'structural-skip');
+			expect(filtered.findings).toHaveLength(0);
+		});
+
+		it('drops tool-not-called findings when mode is no-ai-nodes', () => {
+			const filtered = filterToolSelectionForMode(raw, 'no-ai-nodes');
+			expect(filtered.findings).toHaveLength(0);
 		});
 	});
 

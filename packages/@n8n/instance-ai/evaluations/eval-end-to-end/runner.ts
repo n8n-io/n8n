@@ -10,6 +10,8 @@ import type {
 	EvalEndToEndCaseResult,
 	EvalEndToEndExecutionResult,
 	EvalEndToEndFinding,
+	EvalEndToEndMode,
+	EvalEndToEndToolSelectionResult,
 	EvalEndToEndTopologyResult,
 } from './types';
 
@@ -61,7 +63,25 @@ export function buildWorkflowCreatePayload(
 	};
 }
 
-export function buildEvalPrompt(input: { workflowId: string; workflowName: string }): string {
+export function buildEvalPrompt(input: {
+	workflowId: string;
+	workflowName: string;
+	mode: EvalEndToEndMode;
+}): string {
+	if (input.mode === 'already-configured') {
+		return [
+			`Workflow ${input.workflowId} (${input.workflowName}) already has eval nodes.`,
+			'Do not add new evals — just confirm that the existing eval setup looks correct.',
+		].join('\n');
+	}
+
+	if (input.mode === 'structural-skip' || input.mode === 'no-ai-nodes') {
+		return [
+			`Try to add an evaluation suite to workflow ${input.workflowId} (${input.workflowName}).`,
+			'If eval setup is not applicable (e.g. no AI nodes, or the root agent reads from upstream nodes directly), respect that and do not force it.',
+		].join('\n');
+	}
+
 	return [
 		`Add a complete evaluation suite to workflow ${input.workflowId} (${input.workflowName}).`,
 		'1. Use the evals + eval-setup-with-agent flow to add EvaluationTrigger and Evaluation nodes that target each AI agent independently.',
@@ -276,6 +296,7 @@ export async function runEvalEndToEndCase(
 			buildEvalPrompt({
 				workflowId: importedWorkflow.id,
 				workflowName: importedWorkflow.name,
+				mode: testCase.mode,
 			}),
 		);
 
@@ -297,7 +318,8 @@ export async function runEvalEndToEndCase(
 		const threadMessages = await client.getThreadMessages(threadId).catch(() => undefined);
 		const updatedWorkflow = await client.getWorkflow(importedWorkflow.id);
 
-		const toolSelection = extractToolSelection({ events, threadMessages });
+		const rawToolSelection = extractToolSelection({ events, threadMessages });
+		const toolSelection = filterToolSelectionForMode(rawToolSelection, testCase.mode);
 
 		const topologyShape = evaluateTopology(updatedWorkflow);
 		dataTableId = topologyShape.dataTableId;
@@ -310,22 +332,43 @@ export async function runEvalEndToEndCase(
 			findings: [],
 		};
 
-		if (!topologyShape.evaluationTriggerFound) {
-			topology.findings.push({
-				severity: 'error',
-				code: 'evaluation_trigger_missing',
-				message: 'Updated workflow does not contain an EvaluationTrigger node.',
-			});
-		}
-		if (!topologyShape.evaluationNodeFound) {
-			topology.findings.push({
-				severity: 'error',
-				code: 'evaluation_node_missing',
-				message: 'Updated workflow does not contain an Evaluation node.',
-			});
+		// Topology assertions are only meaningful when we expect new eval setup.
+		const expectsNewTopology = testCase.mode === 'eligible';
+
+		if (expectsNewTopology) {
+			if (!topologyShape.evaluationTriggerFound) {
+				topology.findings.push({
+					severity: 'error',
+					code: 'evaluation_trigger_missing',
+					message: 'Updated workflow does not contain an EvaluationTrigger node.',
+				});
+			}
+			if (!topologyShape.evaluationNodeFound) {
+				topology.findings.push({
+					severity: 'error',
+					code: 'evaluation_node_missing',
+					message: 'Updated workflow does not contain an Evaluation node.',
+				});
+			}
 		}
 
-		if (topologyShape.dataTableId !== undefined) {
+		if (testCase.mode === 'structural-skip' || testCase.mode === 'no-ai-nodes') {
+			// In skip modes the agent must NOT have fabricated eval nodes despite
+			// our prompt asking for them — that would be a real bug.
+			if (topologyShape.evaluationTriggerFound || topologyShape.evaluationNodeFound) {
+				topology.findings.push({
+					severity: 'error',
+					code: 'unexpected_eval_nodes_added',
+					message: `Workflow mode is ${testCase.mode} but the agent added eval nodes anyway.`,
+				});
+			}
+		}
+
+		// DataTable assertions: only for modes where we expect a populated DataTable.
+		const expectsPopulatedDataTable =
+			testCase.mode === 'eligible' || testCase.mode === 'already-configured';
+
+		if (expectsPopulatedDataTable && topologyShape.dataTableId !== undefined) {
 			try {
 				const rows = await client.getDataTableRows(projectId, topologyShape.dataTableId, {
 					take: 1,
@@ -339,7 +382,7 @@ export async function runEvalEndToEndCase(
 					message: `Failed to read DataTable ${topologyShape.dataTableId}: ${message}`,
 				});
 			}
-		} else {
+		} else if (expectsPopulatedDataTable) {
 			topology.findings.push({
 				severity: 'error',
 				code: 'data_table_id_missing',
@@ -347,7 +390,11 @@ export async function runEvalEndToEndCase(
 			});
 		}
 
-		if (topology.dataTableRowCount === 0 && topologyShape.dataTableId !== undefined) {
+		if (
+			testCase.mode === 'eligible' &&
+			topologyShape.dataTableId !== undefined &&
+			topology.dataTableRowCount === 0
+		) {
 			topology.findings.push({
 				severity: 'error',
 				code: 'data_table_empty',
@@ -355,24 +402,24 @@ export async function runEvalEndToEndCase(
 			});
 		}
 
-		const execution = await runEvalExecution({
+		const execution = await runEvalExecutionForMode({
 			client,
 			workflowId: importedWorkflow.id,
-			topologyOk:
-				topologyShape.evaluationTriggerFound &&
-				topologyShape.evaluationNodeFound &&
-				topology.dataTableRowCount > 0,
+			mode: testCase.mode,
+			topologyShape,
+			dataTableRowCount: topology.dataTableRowCount,
 			logger,
 		});
 
+		const skipsExecution = testCase.mode === 'structural-skip' || testCase.mode === 'no-ai-nodes';
 		const passed =
 			toolSelection.findings.length === 0 &&
 			topology.findings.length === 0 &&
-			execution.attempted &&
-			execution.success;
+			(skipsExecution || (execution.attempted && execution.success));
 
 		return {
 			caseSlug: testCase.slug,
+			mode: testCase.mode,
 			workflowId: importedWorkflow.id,
 			...(dataTableId === undefined ? {} : { dataTableId }),
 			toolSelection,
@@ -404,6 +451,7 @@ export async function runEvalEndToEndCase(
 
 		return {
 			caseSlug: testCase.slug,
+			mode: testCase.mode,
 			...(workflowId === undefined ? {} : { workflowId }),
 			...(dataTableId === undefined ? {} : { dataTableId }),
 			toolSelection: emptyToolSelection(),
@@ -438,13 +486,28 @@ export async function runEvalEndToEndCase(
 	}
 }
 
-async function runEvalExecution(input: {
+async function runEvalExecutionForMode(input: {
 	client: Pick<N8nClient, 'executeWithLlmMock'>;
 	workflowId: string;
-	topologyOk: boolean;
+	mode: EvalEndToEndMode;
+	topologyShape: { evaluationTriggerFound: boolean; evaluationNodeFound: boolean };
+	dataTableRowCount: number;
 	logger: EvalLogger;
 }): Promise<EvalEndToEndExecutionResult> {
-	if (!input.topologyOk) {
+	if (input.mode === 'structural-skip' || input.mode === 'no-ai-nodes') {
+		return {
+			attempted: false,
+			success: false,
+			errors: ['Execution intentionally skipped — workflow is not eligible for eval setup.'],
+		};
+	}
+
+	const topologyOk =
+		input.topologyShape.evaluationTriggerFound &&
+		input.topologyShape.evaluationNodeFound &&
+		input.dataTableRowCount > 0;
+
+	if (!topologyOk) {
 		return {
 			attempted: false,
 			success: false,
@@ -474,6 +537,34 @@ async function runEvalExecution(input: {
 			errors: [message],
 		};
 	}
+}
+
+/**
+ * Drop tool-call findings that don't apply to the case's mode. For
+ * `structural-skip` and `already-configured` workflows the agent is
+ * EXPECTED not to call the eval setup chain, so the absence of those
+ * tool calls is not a failure.
+ */
+export function filterToolSelectionForMode(
+	raw: EvalEndToEndToolSelectionResult,
+	mode: EvalEndToEndMode,
+): EvalEndToEndToolSelectionResult {
+	// `eligible` is the only mode that requires the full chain — every other
+	// mode (already-configured, structural-skip, no-ai-nodes) must NOT call
+	// the chain because eval setup is either already done or not applicable.
+	if (mode === 'eligible') return raw;
+
+	return {
+		evalsToolCalled: raw.evalsToolCalled,
+		evalSetupAgentCalled: raw.evalSetupAgentCalled,
+		evalDataToolCalled: raw.evalDataToolCalled,
+		findings: raw.findings.filter(
+			(finding) =>
+				finding.code !== 'evals_tool_not_called' &&
+				finding.code !== 'eval_setup_agent_not_called' &&
+				finding.code !== 'eval_data_tool_not_called',
+		),
+	};
 }
 
 function emptyToolSelection() {
