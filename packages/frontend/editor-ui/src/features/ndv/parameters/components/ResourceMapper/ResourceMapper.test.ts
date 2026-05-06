@@ -353,14 +353,31 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
-	it('should refresh the cached schema in the background when refreshSchemaOnOpen is set', async () => {
-		renderComponent(
+	it('should reconcile the cached schema with the live source when refreshSchemaOnOpen is set', async () => {
+		// A cached schema that doesn't match the live response — different field
+		// IDs and a different field count. After auto-refresh, the rendered
+		// fields should match the live response (MAPPING_COLUMNS_RESPONSE), not
+		// the cached schema below.
+		const staleCachedSchema = [
+			{
+				id: 'cached_only_field',
+				displayName: 'cached_only_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				removed: false,
+			},
+		];
+
+		const { getByTestId } = renderComponent(
 			{
 				props: {
 					node: createTestNode({
 						parameters: {
 							columns: {
-								schema: UPDATED_SCHEMA,
+								schema: staleCachedSchema,
 							},
 						},
 					}),
@@ -380,6 +397,11 @@ describe('ResourceMapper.vue', () => {
 		);
 		await waitAllPromises();
 		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+		// Schema was reconciled with the live source — the cached-only field
+		// is gone and a field from MAPPING_COLUMNS_RESPONSE is rendered.
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).not.toContain('cached_only_field');
+		expect(mappingContainer.textContent).toContain('First name');
 	});
 
 	it('renders initially selected matching column properly', async () => {
