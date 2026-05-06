@@ -130,14 +130,25 @@ const formattedWaitTillDate = computed(() => {
 	return props.execution.waitTill ? formatDate(props.execution.waitTill) : '';
 });
 
+const durationFormatter = new Intl.NumberFormat(undefined, {
+	minimumFractionDigits: 3,
+	maximumFractionDigits: 3,
+});
+
+function formatRuntime(milliseconds: number) {
+	return `${durationFormatter.format(milliseconds / 1000)}s`;
+}
+
 const formattedStoppedAtDate = computed(() => {
-	return props.execution.stoppedAt
-		? locale.displayTimer(
-				new Date(props.execution.stoppedAt).getTime() -
-					new Date(props.execution.startedAt ?? props.execution.createdAt).getTime(),
-				true,
-			)
-		: '';
+	if (!props.execution.stoppedAt) {
+		return '';
+	}
+
+	const durationMs =
+		new Date(props.execution.stoppedAt).getTime() -
+		new Date(props.execution.startedAt ?? props.execution.createdAt).getTime();
+
+	return formatRuntime(durationMs);
 });
 
 function getStatusLabel(status: ExecutionStatus) {
@@ -243,7 +254,7 @@ async function handleActionItemClick(commandData: Command) {
 		<td>
 			{{ formattedStartedAtDate }}
 		</td>
-		<td data-test-id="execution-time">
+		<td :class="$style.runTime" data-test-id="execution-time">
 			<template v-if="formattedStoppedAtDate">
 				{{ formattedStoppedAtDate }}
 			</template>
@@ -341,4 +352,10 @@ tr.dangerBg {
 	line-height: var(--line-height--lg);
 	max-width: 450px;
 }
+
+.runTime {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
 </style>
