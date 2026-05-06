@@ -32,7 +32,11 @@ const homeProjectSchema = z
 	.object({
 		id: z.string().describe('The unique identifier of the project'),
 		name: z.string().describe('The name of the project'),
-		type: z.string().describe("The project type, e.g. 'personal' or 'team'"),
+		type: z
+			.string()
+			.describe(
+				"The project type. 'personal' is a user's private project; 'team' is a shared project accessible to multiple users.",
+			),
 	})
 	.nullable()
 	.describe('The project that owns the credential, if available');
