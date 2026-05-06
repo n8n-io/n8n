@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
@@ -109,8 +109,11 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 	// Tracks whether the user sent a message in the current thread session.
 	// Used to distinguish live operations (should auto-open preview) from
-	// historical data being loaded (should not).
-	const userSentMessage = ref(false);
+	// historical data being loaded (should not). Sourced from the runtime so
+	// the flag survives the EmptyView → ThreadView leaf swap (EmptyView's
+	// `sendMessage` flips it true; this composable doesn't exist yet at that
+	// point, so a local ref would miss it).
+	const userSentMessage = toRef(store, 'userSentMessage');
 
 	// Tracks whether the canvas was open before the most recent thread switch,
 	// so we can restore it when the new thread has a build result.
@@ -149,7 +152,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	}
 
 	function markUserSentMessage() {
-		userSentMessage.value = true;
+		store.markUserSentMessage();
 	}
 
 	// --- Guard: fall back if active tab is removed from registry ---

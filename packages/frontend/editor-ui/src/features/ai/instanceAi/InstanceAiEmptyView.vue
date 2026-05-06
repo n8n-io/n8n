@@ -35,6 +35,11 @@ onMounted(() => {
 });
 
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	// Flag the user-send intent on the runtime so the canvas-preview composable
+	// in the incoming ThreadView auto-opens the workflow preview when the
+	// build artifact arrives. Without this, the freshly-mounted ThreadView
+	// would treat the artifact as historical and skip auto-open.
+	store.markUserSentMessage();
 	// Capture the placeholder thread id before send. After the send completes
 	// and syncThread persists it, navigate to the thread route so the URL
 	// reflects the active conversation and the sidebar highlights it.

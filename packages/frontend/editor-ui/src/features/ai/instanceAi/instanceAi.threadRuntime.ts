@@ -251,6 +251,12 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	// Set when the user sends a message via this runtime (or markUserSentMessage
+	// is called explicitly). The canvas-preview composable reads this to decide
+	// whether to auto-open the workflow preview when a build artifact arrives —
+	// distinguishing a live user-driven build from historical hydration. Reset
+	// by `resetState` (i.e. on thread switch).
+	const userSentMessage = ref(false);
 
 	// --- Non-reactive runtime state ---
 	let runStateByGroupId: Record<string, AgentRunState> = {};
@@ -568,9 +574,20 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		debugEvents.value = [];
 		resetFeedback();
 		resolvedConfirmationIds.value = new Map();
+		userSentMessage.value = false;
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		activeHydrationRequestToken = null;
+	}
+
+	/**
+	 * Flag that the user just initiated a send (called automatically by
+	 * `sendMessage`, also exposed for callers that need to pre-flag the
+	 * intent — e.g. EmptyView starts a send and then navigates, so the
+	 * incoming ThreadView's preview composable needs the flag already true.
+	 */
+	function markUserSentMessage(): void {
+		userSentMessage.value = true;
 	}
 
 	/**
@@ -676,6 +693,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		// Clear amend context on new message
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
+		userSentMessage.value = true;
 
 		// Ensure SSE is connected before sending. Vue's Suspense boundary can
 		// unmount → remount InstanceAiView during layout transitions, which closes
@@ -828,6 +846,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		sseState,
 		lastEventIdByThread,
 		amendContext,
+		userSentMessage,
 
 		// computeds
 		isStreaming,
@@ -861,5 +880,6 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,
+		markUserSentMessage,
 	};
 }

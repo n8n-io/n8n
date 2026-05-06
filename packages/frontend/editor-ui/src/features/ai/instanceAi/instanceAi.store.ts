@@ -292,6 +292,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		messages: runtime.messages,
 		debugEvents: runtime.debugEvents,
 		amendContext: runtime.amendContext,
+		userSentMessage: runtime.userSentMessage,
 		resolvedConfirmationIds: runtime.resolvedConfirmationIds,
 		feedbackByResponseId: runtime.feedbackByResponseId,
 
@@ -341,6 +342,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		findToolCallByRequestId: runtime.findToolCallByRequestId,
 		copyFullTrace: runtime.copyFullTrace,
 		submitFeedback: runtime.submitFeedback,
+		markUserSentMessage: runtime.markUserSentMessage,
 		connectSSE: runtime.connectSSE,
 		closeSSE: runtime.closeSSE,
 	};
