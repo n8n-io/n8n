@@ -11,28 +11,51 @@ import { Readable } from 'stream';
 
 const RESUMABLE_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024;
 
-async function processStreamInChunks(
+/**
+ * Reads a Readable stream and calls `onChunk` with fixed-size slices of the data.
+ *
+ * Incoming stream events are collected in an array and only concatenated when
+ * enough bytes have accumulated to fill a chunk, avoiding O(n²) allocations
+ * from concatenating on every stream event.
+ *
+ * The final call to `onChunk` may receive fewer bytes than `chunkSize` if the
+ * total data length is not an exact multiple of `chunkSize`.
+ *
+ * @param stream    - Readable stream to consume.
+ * @param chunkSize - Maximum number of bytes per chunk.
+ * @param onChunk   - Called for each chunk with the chunk buffer and its byte offset in the stream.
+ */
+export async function processStreamInChunks(
 	stream: Readable,
 	chunkSize: number,
 	onChunk: (chunk: Buffer, offset: number) => Promise<void>,
 ) {
-	let buffer = Buffer.alloc(0);
+	const accumulated: Buffer[] = [];
+	let accumulatedLength = 0;
 	let offset = 0;
 
-	for await (const chunk of stream) {
-		const currentChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-		buffer = Buffer.concat([buffer, currentChunk]);
+	for await (const rawChunk of stream) {
+		const chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
+		accumulated.push(chunk);
+		accumulatedLength += chunk.length;
 
-		while (buffer.length >= chunkSize) {
+		while (accumulatedLength >= chunkSize) {
+			const buffer = Buffer.concat(accumulated);
+			accumulated.length = 0;
+
 			await onChunk(buffer.subarray(0, chunkSize), offset);
-
-			buffer = buffer.subarray(chunkSize);
 			offset += chunkSize;
+
+			const remaining = buffer.subarray(chunkSize);
+			accumulatedLength = remaining.length;
+			if (remaining.length > 0) {
+				accumulated.push(remaining);
+			}
 		}
 	}
 
-	if (buffer.length > 0) {
-		await onChunk(buffer, offset);
+	if (accumulatedLength > 0) {
+		await onChunk(Buffer.concat(accumulated), offset);
 	}
 }
 
@@ -237,6 +260,10 @@ export const objectOperations: INodeProperties[] = [
 												},
 												headers: uploadHeaders,
 												body: metadata,
+												// Required so the IDataObject body is serialized as JSON.
+												// Without this, httpRequestWithAuthentication passes the object as-is
+												// and the GCS session initiation receives a malformed body.
+												json: true,
 												returnFullResponse: true,
 											},
 										);
@@ -307,7 +334,9 @@ export const objectOperations: INodeProperties[] = [
 
 									requestOptions.method = 'GET';
 									requestOptions.baseURL = 'https://storage.googleapis.com/storage/v1';
-									requestOptions.url = `/b/${bucketName}/o/${objectName}`;
+									// GCS requires object names to be percent-encoded in the URL path.
+									// Without this, names containing '/', spaces, or '#' produce a 404.
+									requestOptions.url = `/b/${bucketName}/o/${encodeURIComponent(objectName)}`;
 									requestOptions.qs = projection ? { projection } : {};
 									requestOptions.headers = this.getNodeParameter(
 										'encryptionHeaders',

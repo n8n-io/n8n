@@ -9,6 +9,14 @@ export async function searchProjects(
 	if (paginationToken) {
 		qs.pageToken = paginationToken;
 	}
+	// Use server-side filtering so the API only returns matching projects across all pages,
+	// rather than fetching a full page and discarding non-matching results on the client.
+	// lifecycleState:ACTIVE excludes projects pending deletion.
+	if (filter) {
+		qs.filter = `(name:${filter}* OR id:${filter}*) AND lifecycleState:ACTIVE`;
+	} else {
+		qs.filter = 'lifecycleState:ACTIVE';
+	}
 
 	const response = await this.helpers.requestOAuth2.call(this, 'googleCloudStorageOAuth2Api', {
 		method: 'GET',
@@ -17,16 +25,7 @@ export async function searchProjects(
 		json: true,
 	});
 
-	let projects = (response.projects as IDataObject[]) ?? [];
-
-	if (filter) {
-		const lowerFilter = filter.toLowerCase();
-		projects = projects.filter(
-			(project) =>
-				(project.name as string)?.toLowerCase().includes(lowerFilter) ||
-				(project.projectId as string)?.toLowerCase().includes(lowerFilter),
-		);
-	}
+	const projects = (response.projects as IDataObject[]) ?? [];
 
 	return {
 		results: projects.map((project) => ({
