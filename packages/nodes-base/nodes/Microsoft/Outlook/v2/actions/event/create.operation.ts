@@ -6,6 +6,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { calendarRLC } from '../../descriptions';
+import { prepareEventFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
@@ -38,6 +39,58 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
+			{
+				displayName: 'Attendees',
+				name: 'attendees',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Add Attendee',
+				options: [
+					{
+						displayName: 'Attendee',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Email',
+								name: 'email',
+								type: 'string',
+								placeholder: 'name@email.com',
+								required: true,
+								default: '',
+							},
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								default: 'required',
+								options: [
+									{
+										name: 'Optional',
+										value: 'optional',
+									},
+									{
+										name: 'Required',
+										value: 'required',
+									},
+									{
+										name: 'Resource',
+										value: 'resource',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Categories',
@@ -116,6 +169,14 @@ export const properties: INodeProperties[] = [
 				name: 'isOnlineMeeting',
 				type: 'boolean',
 				default: false,
+			},
+			{
+				displayName: 'Location',
+				name: 'location',
+				type: 'string',
+				default: '',
+				description:
+					'The location of the event (e.g. a meeting room name, address, or meeting link)',
 			},
 			{
 				displayName: 'Sensitivity',
@@ -250,6 +311,8 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			contentType: 'html',
 		};
 	}
+
+	prepareEventFields(additionalFields);
 
 	let startDateTime = this.getNodeParameter('startDateTime', index) as string;
 	let endDateTime = this.getNodeParameter('endDateTime', index) as string;

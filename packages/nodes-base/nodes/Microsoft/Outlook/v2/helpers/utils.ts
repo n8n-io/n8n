@@ -229,6 +229,23 @@ export function prepareContactFields(fields: IDataObject) {
 	return returnData;
 }
 
+export function prepareEventFields(fields: IDataObject) {
+	if (fields.location) {
+		fields.location = { displayName: fields.location };
+	}
+
+	if (fields.attendees) {
+		const attendeeEntries = ((fields.attendees as IDataObject).values as IDataObject[]) ?? [];
+		fields.attendees = attendeeEntries.map((entry) => ({
+			emailAddress: {
+				address: entry.email,
+				...(entry.name ? { name: entry.name } : {}),
+			},
+			type: entry.type,
+		}));
+	}
+}
+
 export function prepareFilterString(filters: IDataObject) {
 	const selectedFilters = filters.filters as IDataObject;
 	const filterString: string[] = [];
