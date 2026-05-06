@@ -1,7 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-export interface ExecutionThread {
+export interface AgentExecutionThread {
 	id: string;
 	agentId: string;
 	agentName: string;
@@ -18,22 +18,55 @@ export interface ExecutionThread {
 	firstMessage?: string | null;
 }
 
-export interface ThreadExecution {
+export type AgentExecutionStatus = 'success' | 'error';
+export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
+
+/**
+ * Raw timeline event shape as persisted on the agent_execution row.
+ * The display-side parser in `session-timeline.utils.ts` is the source of
+ * truth for the discriminated union; this is intentionally loose so the
+ * API surface doesn't need to track every event field.
+ */
+export type AgentExecutionTimelineEvent = Record<string, unknown> & { type: string };
+
+export interface AgentExecutionToolCall {
+	toolName: string;
+	input: unknown;
+	output: unknown;
+	[key: string]: unknown;
+}
+
+export interface AgentExecution {
 	id: string;
-	status: string;
+	threadId: string;
+	agentId: string;
+	status: AgentExecutionStatus;
+	createdAt: string;
 	startedAt: string | null;
 	stoppedAt: string | null;
-	createdAt: string;
-	metadata: Array<{ key: string; value: string }>;
+	duration: number;
+	userMessage: string;
+	assistantResponse: string;
+	model: string | null;
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
+	cost: number | null;
+	toolCalls: AgentExecutionToolCall[] | null;
+	timeline: AgentExecutionTimelineEvent[] | null;
+	error: string | null;
+	hitlStatus: AgentExecutionHitlStatus | null;
+	workingMemory: string | null;
+	source: string | null;
 }
 
 export interface ThreadDetail {
-	thread: ExecutionThread;
-	executions: ThreadExecution[];
+	thread: AgentExecutionThread;
+	executions: AgentExecution[];
 }
 
 export interface ThreadsPage {
-	threads: ExecutionThread[];
+	threads: AgentExecutionThread[];
 	nextCursor: string | null;
 }
 

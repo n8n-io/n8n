@@ -162,7 +162,7 @@ import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
-import { CreateExecutionThreads1783000000001 } from '../common/1783000000001-CreateExecutionThreads';
+import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -330,7 +330,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	AddExecutionDeduplicationKey1778000000000,
 	CreateAgentTables1783000000000,
-	CreateExecutionThreads1783000000001,
+	CreateAgentExecutionTables1783000000001,
 ];
 
 export { sqliteMigrations };

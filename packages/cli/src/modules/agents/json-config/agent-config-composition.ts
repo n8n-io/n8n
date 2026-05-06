@@ -27,3 +27,19 @@ export function decomposeJsonConfig(config: AgentJsonConfig): {
 	const { integrations, ...schemaConfig } = config;
 	return { schemaConfig, integrations: integrations ?? [] };
 }
+
+/**
+ * Coerce a display name into a tool name that satisfies the
+ * Anthropic/OpenAI constraint `^[a-zA-Z0-9_-]{1,128}$`. Applied at runtime
+ * only — the persisted `tool.name` keeps the user's original display string
+ * (e.g. "D&D Invite"), and the LLM-facing name is derived from it on the
+ * fly. Already-valid names pass through unchanged.
+ */
+export function sanitizeToolName(name: string): string {
+	if (/^[a-zA-Z0-9_-]{1,128}$/.test(name)) return name;
+	return name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
+		.slice(0, 128);
+}

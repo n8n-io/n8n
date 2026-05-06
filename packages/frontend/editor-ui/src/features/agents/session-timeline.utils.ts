@@ -1,5 +1,5 @@
 import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
-import type { ThreadExecution } from './composables/useAgentThreadsApi';
+import type { AgentExecution } from './composables/useAgentThreadsApi';
 import { formatToolNameForDisplay } from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
@@ -218,37 +218,32 @@ interface RawSuspensionEvent {
 
 type RawEvent = RawToolCallEvent | RawTextEvent | RawMemoryEvent | RawSuspensionEvent;
 
-function metaValue(exec: ThreadExecution, key: string): string | undefined {
-	return exec.metadata.find((m) => m.key === key)?.value;
+/**
+ * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
+ * into the discriminated union used by the renderer. The backend writes
+ * the same producer schema both layers expect; the API type is loose so
+ * `useAgentThreadsApi.ts` doesn't have to import the renderer's types.
+ */
+function timelineEvents(exec: AgentExecution): RawEvent[] {
+	return (exec.timeline ?? []) as unknown as RawEvent[];
 }
 
-function parseTimeline(exec: ThreadExecution): RawEvent[] {
-	const raw = metaValue(exec, 'timeline');
-	if (!raw) return [];
-	try {
-		return JSON.parse(raw) as RawEvent[];
-	} catch {
-		return [];
-	}
-}
-
-export function flattenExecutionsToTimelineItems(executions: ThreadExecution[]): TimelineItem[] {
+export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
 	for (const exec of executions) {
-		const isResumed = metaValue(exec, 'hitlStatus') === 'resumed';
+		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
-		const userMsg = metaValue(exec, 'userMessage');
-		if (userMsg) {
+		if (exec.userMessage) {
 			items.push({
 				kind: 'user',
 				executionId: exec.id,
-				content: userMsg,
+				content: exec.userMessage,
 				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
 			});
 		}
 
-		for (const event of parseTimeline(exec)) {
+		for (const event of timelineEvents(exec)) {
 			if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;

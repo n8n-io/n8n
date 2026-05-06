@@ -19,6 +19,7 @@ import { extractFromAIParameters } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
+	CredentialsRepository,
 	ExecutionRepository,
 	ProjectRelationRepository,
 	UserRepository,
@@ -1184,6 +1185,51 @@ export class AgentsService {
 	}
 
 	/**
+	 * Backfill `credentialName` on credential integrations that were created
+	 * before the field was required. Looks up the name by `credentialId` and
+	 * splices it into the config; integrations that already have a name, or
+	 * aren't credential integrations at all, pass through untouched.
+	 *
+	 * If a credential id no longer resolves, the integration is left as-is —
+	 * validation will then fail with a clear "credentialName required" error
+	 * pointing at the orphaned integration, which is the correct outcome.
+	 */
+	private async healIntegrationCredentialNames(rawConfig: unknown): Promise<unknown> {
+		if (!rawConfig || typeof rawConfig !== 'object') return rawConfig;
+		const cfg = rawConfig as { integrations?: unknown };
+		if (!Array.isArray(cfg.integrations)) return rawConfig;
+
+		const missingIds = new Set<string>();
+		for (const integration of cfg.integrations) {
+			if (!integration || typeof integration !== 'object') continue;
+			const i = integration as { credentialId?: unknown; credentialName?: unknown };
+			if (typeof i.credentialId === 'string' && i.credentialName === undefined) {
+				missingIds.add(i.credentialId);
+			}
+		}
+		if (missingIds.size === 0) return rawConfig;
+
+		const credentials = await Container.get(CredentialsRepository).findBy({
+			id: In(Array.from(missingIds)),
+		});
+		const namesById = new Map(credentials.map((c) => [c.id, c.name]));
+
+		const integrations: unknown[] = cfg.integrations;
+		return {
+			...cfg,
+			integrations: integrations.map((integration: unknown): unknown => {
+				if (!integration || typeof integration !== 'object') return integration;
+				const i = integration as { credentialId?: unknown; credentialName?: unknown };
+				if (typeof i.credentialId !== 'string' || i.credentialName !== undefined) {
+					return integration;
+				}
+				const name = namesById.get(i.credentialId);
+				return name ? { ...integration, credentialName: name } : integration;
+			}),
+		};
+	}
+
+	/**
 	 * Persist a new AgentJsonConfig (full replace).
 	 */
 	async updateConfig(
@@ -1194,7 +1240,14 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const result = await this.validateConfig(config);
+		// Repair integrations missing `credentialName`. Agents created before
+		// the field was added to the schema return integrations of the form
+		// `{ type, credentialId }` from `findById`; the UI sends them back
+		// unchanged on save and validation rejects them as invalid. Look the
+		// names up by id once here so the next save persists the full shape.
+		const healedConfig = await this.healIntegrationCredentialNames(config);
+
+		const result = await this.validateConfig(healedConfig);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}

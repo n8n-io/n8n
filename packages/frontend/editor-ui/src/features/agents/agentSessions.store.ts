@@ -5,7 +5,7 @@ import {
 	listThreads,
 	getThreadDetail as getThreadDetailApi,
 	deleteThread as deleteThreadApi,
-	type ExecutionThread,
+	type AgentExecutionThread,
 	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
 
@@ -13,7 +13,7 @@ const ITEMS_PER_PAGE = 20;
 const AUTO_REFRESH_INTERVAL_MS = 2_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
-	const threads = ref<ExecutionThread[]>([]);
+	const threads = ref<AgentExecutionThread[]>([]);
 	const nextCursor = ref<string | null>(null);
 	const loading = ref(false);
 	const autoRefresh = ref(true);

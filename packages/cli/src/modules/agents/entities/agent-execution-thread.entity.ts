@@ -3,8 +3,21 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { Agent } from './agent.entity';
 
-@Entity({ name: 'execution_threads' })
-export class ExecutionThread extends WithTimestampsAndStringId {
+/**
+ * One conversation between a user and an agent. Aggregates per-session
+ * counters (token usage, cost, duration) so the sessions list can render
+ * without scanning every message.
+ *
+ * Replaces the unreleased `ExecutionThread` entity (`execution_threads`
+ * table). Per-message records live in `AgentExecution` (`agent_execution`
+ * table) — see {@link AgentExecution}.
+ *
+ * Distinct from the SDK memory `AgentThreadEntity` (`agents_threads`),
+ * which stores chat-history state owned by the n8n-memory integration.
+ * Both use the same `threadId` value but serve different layers.
+ */
+@Entity({ name: 'agent_execution_threads' })
+export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
 	agent: Agent;

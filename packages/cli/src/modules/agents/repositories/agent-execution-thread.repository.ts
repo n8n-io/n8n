@@ -1,17 +1,17 @@
 import { Service } from '@n8n/di';
 import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
-import { ExecutionThread } from '../entities/execution-thread.entity';
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 
-export interface ThreadPage {
-	threads: ExecutionThread[];
+export interface AgentExecutionThreadPage {
+	threads: AgentExecutionThread[];
 	nextCursor: string | null;
 }
 
 @Service()
-export class ExecutionThreadRepository extends Repository<ExecutionThread> {
+export class AgentExecutionThreadRepository extends Repository<AgentExecutionThread> {
 	constructor(dataSource: DataSource) {
-		super(ExecutionThread, dataSource.manager);
+		super(AgentExecutionThread, dataSource.manager);
 	}
 
 	/**
@@ -23,7 +23,7 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		agentId: string,
 		agentName: string,
 		projectId: string,
-	): Promise<{ thread: ExecutionThread; created: boolean }> {
+	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		const existing = await this.findOneBy({ id: threadId });
 		if (existing) {
 			return { thread: existing, created: false };
@@ -51,7 +51,7 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		limit: number,
 		cursor?: string,
 		agentId?: string,
-	): Promise<ThreadPage> {
+	): Promise<AgentExecutionThreadPage> {
 		const where: Record<string, unknown> = { projectId };
 		if (agentId) {
 			where.agentId = agentId;
@@ -100,7 +100,7 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		}
 
 		await this.createQueryBuilder()
-			.update(ExecutionThread)
+			.update(AgentExecutionThread)
 			.set(set)
 			.where('id = :threadId', { threadId })
 			.setParameters({ promptTokens, completionTokens, cost, duration })
