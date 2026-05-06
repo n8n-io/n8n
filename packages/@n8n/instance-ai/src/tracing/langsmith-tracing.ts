@@ -623,8 +623,13 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 		return '[redacted]';
 	}
 
+	const maxDepth =
+		key === 'ai.prompt.messages' || key === GEN_AI_PROMPT
+			? MAX_PROMPT_SCHEMA_TRACE_DEPTH
+			: MAX_TRACE_DEPTH;
+
 	if (typeof value !== 'string') {
-		return redactTelemetryJsonValue(value, key);
+		return redactTelemetryJsonValue(value, key, 0, maxDepth);
 	}
 
 	const trimmed = value.trim();
@@ -634,7 +639,7 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 	) {
 		try {
 			const parsed: unknown = JSON.parse(trimmed);
-			return JSON.stringify(redactTelemetryJsonValue(parsed, key));
+			return JSON.stringify(redactTelemetryJsonValue(parsed, key, 0, maxDepth));
 		} catch {
 			return redactSecretString(value);
 		}
@@ -669,6 +674,152 @@ function parseTelemetryTools(value: unknown): unknown[] | undefined {
 	}
 
 	return tools.length > 0 ? tools : undefined;
+}
+
+function readToolCallPayload(part: Record<string, unknown>): unknown {
+	if ('input' in part) return part.input;
+	if ('args' in part) return part.args;
+	if ('arguments' in part) return part.arguments;
+	return {};
+}
+
+function readToolResultPayload(part: Record<string, unknown>): unknown {
+	if ('output' in part) return part.output;
+	if ('result' in part) return part.result;
+	if ('content' in part) return part.content;
+	return '';
+}
+
+function stringifyToolPayload(value: unknown): string {
+	if (value === undefined || value === null) {
+		return '';
+	}
+
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	try {
+		return JSON.stringify(value) ?? '';
+	} catch {
+		return '[unserializable]';
+	}
+}
+
+function normalizeAssistantMessageForLangSmith(message: Record<string, unknown>): unknown {
+	const content = message.content;
+	if (!Array.isArray(content)) {
+		return message;
+	}
+
+	const textParts: string[] = [];
+	const toolCalls: Array<Record<string, unknown>> = [];
+
+	for (const part of content) {
+		if (!isRecord(part)) continue;
+
+		if (part.type === 'text' && typeof part.text === 'string') {
+			textParts.push(part.text);
+			continue;
+		}
+
+		if (part.type !== 'tool-call') continue;
+
+		const toolCallId =
+			typeof part.toolCallId === 'string'
+				? part.toolCallId
+				: typeof part.id === 'string'
+					? part.id
+					: undefined;
+		const toolName =
+			typeof part.toolName === 'string'
+				? part.toolName
+				: typeof part.name === 'string'
+					? part.name
+					: undefined;
+		if (!toolCallId || !toolName) continue;
+
+		toolCalls.push({
+			id: toolCallId,
+			type: 'function',
+			function: {
+				name: toolName,
+				arguments: stringifyToolPayload(readToolCallPayload(part)),
+			},
+		});
+	}
+
+	if (toolCalls.length === 0) {
+		return message;
+	}
+
+	return {
+		role: 'assistant',
+		content: textParts.join('\n'),
+		tool_calls: toolCalls,
+	};
+}
+
+function normalizeToolMessageForLangSmith(message: Record<string, unknown>): unknown[] {
+	const content = message.content;
+	if (!Array.isArray(content)) {
+		return [message];
+	}
+
+	const normalizedMessages: unknown[] = [];
+	for (const part of content) {
+		if (!isRecord(part) || part.type !== 'tool-result') {
+			continue;
+		}
+
+		const toolCallId =
+			typeof part.toolCallId === 'string'
+				? part.toolCallId
+				: typeof part.id === 'string'
+					? part.id
+					: undefined;
+		const toolName =
+			typeof part.toolName === 'string'
+				? part.toolName
+				: typeof part.name === 'string'
+					? part.name
+					: undefined;
+		if (!toolCallId) continue;
+
+		normalizedMessages.push({
+			role: 'tool',
+			tool_call_id: toolCallId,
+			...(toolName ? { name: toolName } : {}),
+			content: stringifyToolPayload(readToolResultPayload(part)),
+		});
+	}
+
+	return normalizedMessages.length > 0 ? normalizedMessages : [message];
+}
+
+function normalizeMessagesForLangSmith(messages: unknown[]): unknown[] {
+	const normalizedMessages: unknown[] = [];
+
+	for (const message of messages) {
+		if (!isRecord(message) || typeof message.role !== 'string') {
+			normalizedMessages.push(message);
+			continue;
+		}
+
+		if (message.role === 'assistant') {
+			normalizedMessages.push(normalizeAssistantMessageForLangSmith(message));
+			continue;
+		}
+
+		if (message.role === 'tool') {
+			normalizedMessages.push(...normalizeToolMessageForLangSmith(message));
+			continue;
+		}
+
+		normalizedMessages.push(message);
+	}
+
+	return normalizedMessages;
 }
 
 function stableStringify(value: unknown): string {
@@ -759,7 +910,7 @@ function enrichLangSmithPromptAttribute(attributes: Record<string, unknown>): vo
 		return;
 	}
 
-	const prompt: Record<string, unknown> = { input: messages };
+	const prompt: Record<string, unknown> = { input: normalizeMessagesForLangSmith(messages) };
 	if (tools) {
 		prompt.tools = tools;
 	}

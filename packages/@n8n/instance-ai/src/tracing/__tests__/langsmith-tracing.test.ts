@@ -737,6 +737,98 @@ describe('createInstanceAiTraceContext', () => {
 		});
 	});
 
+	it('normalizes AI SDK tool messages for LangSmith chat rendering', () => {
+		const span = {
+			attributes: {
+				'ai.prompt.messages': JSON.stringify([
+					{
+						role: 'user',
+						content: [{ type: 'text', text: 'find my Slack credential' }],
+					},
+					{
+						role: 'assistant',
+						content: [
+							{ type: 'text', text: 'Checking credentials.' },
+							{
+								type: 'tool-call',
+								toolCallId: 'toolu-1',
+								toolName: 'credentials',
+								input: { action: 'list', name: 'Slack account' },
+								providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+							},
+						],
+					},
+					{
+						role: 'tool',
+						content: [
+							{
+								type: 'tool-result',
+								toolCallId: 'toolu-1',
+								toolName: 'credentials',
+								output: {
+									ok: true,
+									items: [{ name: 'Slack account', apiKey: 'sk-secret' }],
+								},
+							},
+						],
+					},
+				]),
+				'ai.prompt.tools': [
+					JSON.stringify({
+						type: 'function',
+						name: 'credentials',
+						description: 'List credentials',
+						input_schema: {
+							type: 'object',
+							properties: {
+								action: { type: 'string' },
+								name: { type: 'string' },
+							},
+						},
+					}),
+				],
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const prompt = jsonParse<{ input: Array<Record<string, unknown>> }>(
+			redacted.attributes['gen_ai.prompt'] as string,
+		);
+
+		expect(prompt.input[1]).toEqual({
+			role: 'assistant',
+			content: 'Checking credentials.',
+			tool_calls: [
+				{
+					id: 'toolu-1',
+					type: 'function',
+					function: {
+						name: 'credentials',
+						arguments: JSON.stringify({ action: 'list', name: 'Slack account' }),
+					},
+				},
+			],
+		});
+		expect(prompt.input[2]).toEqual({
+			role: 'tool',
+			tool_call_id: 'toolu-1',
+			name: 'credentials',
+			content: JSON.stringify({
+				ok: true,
+				items: [{ name: 'Slack account', apiKey: '[redacted]' }],
+			}),
+		});
+
+		const originalMessages = jsonParse<Array<Record<string, unknown>>>(
+			redacted.attributes['ai.prompt.messages'] as string,
+		);
+		expect(JSON.stringify(originalMessages)).toContain('Slack account');
+		expect(JSON.stringify(originalMessages)).not.toContain('[redacted-depth-limit]');
+		expect(JSON.stringify(prompt)).not.toContain('sk-secret');
+	});
+
 	it('finishes OTel child spans with their parent linkage', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
