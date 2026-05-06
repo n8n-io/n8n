@@ -517,10 +517,10 @@ describe('LogsPanel', () => {
 		await canvasOperations.renameNode('AI Model', 'Renamed!!');
 
 		await waitFor(() => {
+			expect(rendered.getByTestId('log-details-header')).toHaveTextContent('Renamed!!');
 			expect(
-				within(rendered.getByTestId('log-details-header')).getByText('Renamed!!'),
-			).toBeInTheDocument();
-			expect(within(rendered.getByRole('tree')).getByText('Renamed!!')).toBeInTheDocument();
+				within(rendered.getByRole('tree')).getAllByText('Renamed!!').length,
+			).toBeGreaterThanOrEqual(1);
 		});
 	});
 

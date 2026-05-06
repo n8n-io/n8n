@@ -1394,7 +1394,9 @@ describe('RunData', () => {
 			id: '1',
 			finished: true,
 			mode: 'trigger',
+			status: 'success',
 			startedAt: new Date(),
+			createdAt: new Date(),
 			workflowData: {
 				id: '1',
 				name: 'Test Workflow',
@@ -1413,7 +1415,7 @@ describe('RunData', () => {
 				},
 				...(redactionInfo ? { redactionInfo } : {}),
 			},
-		} as IExecutionResponse);
+		} as unknown as IExecutionResponse);
 
 		if (lastSuccessfulExecution) {
 			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);

@@ -179,7 +179,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			}
 
 			executionResultDataLastUpdate.value = Date.now();
-			execution.value = { ...execution.value };
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE, nodeName);
 		}
 
@@ -191,7 +193,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (tasksData?.[existingRunIndex]) {
 				tasksData.splice(existingRunIndex, 1, pushData.data);
 				executionResultDataLastUpdate.value = Date.now();
-				execution.value = { ...execution.value };
+				if (execution.value) {
+					execution.value = { ...execution.value };
+				}
 				fireChange(CHANGE_ACTION.UPDATE, pushData.nodeName);
 			}
 		}
@@ -201,7 +205,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
 			execution.value.data.resultData.runData = remaining;
 			executionResultDataLastUpdate.value = Date.now();
-			execution.value = { ...execution.value };
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.DELETE, nodeName);
 		}
 
@@ -281,8 +287,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.executedNode = newName;
 			}
 
-			executionResultDataLastUpdate.value = Date.now();
-			execution.value = { ...execution.value };
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE);
 		}
 
@@ -304,7 +311,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				execution.value.stoppedAt = stopData.stoppedAt;
 			}
 			executionResultDataLastUpdate.value = Date.now();
-			execution.value = { ...execution.value };
+			if (execution.value) {
+				execution.value = { ...execution.value };
+			}
 			fireChange(CHANGE_ACTION.UPDATE);
 		}
 

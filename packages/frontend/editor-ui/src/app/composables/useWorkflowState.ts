@@ -43,6 +43,7 @@ export function useWorkflowState() {
 		const stateStore = getStateStore();
 		if (workflowResultData === null) {
 			stateStore.setPendingExecution(null);
+			stateStore.clearDisplayedExecution();
 		} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
 			stateStore.setPendingExecution(workflowResultData);
 			stateStore.setActiveExecutionId(null);
