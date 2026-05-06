@@ -5,8 +5,9 @@
 // the agent's effects (e.g. a markdown file was written with expected content).
 // ---------------------------------------------------------------------------
 
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import fg from 'fast-glob';
+import { readFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import type { FsFileExistsGrader, FsFileMatchesGrader, GraderResult } from '../types';
 
@@ -74,62 +75,11 @@ export async function gradeFileMatches(
 }
 
 // ---------------------------------------------------------------------------
-// Glob: minimal implementation supporting * (no /) and ** (any depth)
+// Glob: thin wrapper around fast-glob, returning POSIX-style paths relative
+// to `rootDir`. Supports `*`, `**`, `?`, character classes, and brace
+// expansion — anything fast-glob handles.
 // ---------------------------------------------------------------------------
 
 export async function findFiles(rootDir: string, glob: string): Promise<string[]> {
-	const regex = globToRegex(glob);
-	const out: string[] = [];
-	await walk(rootDir, rootDir, (relPath) => {
-		if (regex.test(relPath)) out.push(relPath);
-	});
-	return out;
-}
-
-function globToRegex(glob: string): RegExp {
-	const normalized = glob.split('/').join(sep === '\\' ? '\\\\' : '/');
-	let pattern = '';
-	let i = 0;
-	while (i < normalized.length) {
-		const ch = normalized[i];
-		if (ch === '*' && normalized[i + 1] === '*') {
-			pattern += '.*';
-			i += 2;
-			if (normalized[i] === '/') i += 1;
-		} else if (ch === '*') {
-			pattern += '[^/\\\\]*';
-			i += 1;
-		} else if (ch === '?') {
-			pattern += '[^/\\\\]';
-			i += 1;
-		} else if ('.+^$()|[]{}\\'.includes(ch)) {
-			pattern += '\\' + ch;
-			i += 1;
-		} else {
-			pattern += ch;
-			i += 1;
-		}
-	}
-	return new RegExp(`^${pattern}$`);
-}
-
-async function walk(
-	rootDir: string,
-	currentDir: string,
-	visit: (relPath: string) => void,
-): Promise<void> {
-	let entries;
-	try {
-		entries = await readdir(currentDir, { withFileTypes: true });
-	} catch {
-		return;
-	}
-	for (const entry of entries) {
-		const abs = join(currentDir, entry.name);
-		if (entry.isDirectory()) {
-			await walk(rootDir, abs, visit);
-		} else if (entry.isFile()) {
-			visit(relative(rootDir, abs));
-		}
-	}
+	return await fg(glob, { cwd: rootDir, onlyFiles: true });
 }

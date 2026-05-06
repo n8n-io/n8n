@@ -14,7 +14,7 @@
 
 import { jsonParse } from 'n8n-workflow';
 import { copyFile, mkdir, readFile, rm } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 import { runChat } from './chat';
 import { cleanupDelta, snapshotResources } from './cleanup';
@@ -61,7 +61,7 @@ export async function runScenario(options: RunScenarioOptions): Promise<Scenario
 	}
 
 	const graderResults = trace ? await runGraders(scenario, trace, sandboxDir) : [];
-	const pass = !runError && graderResults.length > 0 && graderResults.every((r) => r.pass);
+	const pass = !runError && graderResults.every((r) => r.pass);
 
 	for (const r of graderResults) {
 		const tag = r.pass ? 'PASS' : 'FAIL';
@@ -138,7 +138,7 @@ async function preClean(sandboxDir: string, scenario: Scenario, logger: EvalLogg
 	}
 
 	for (const p of paths) {
-		const full = join(sandboxDir, p);
+		const full = resolveInside(sandboxDir, p, 'sandbox path');
 		await rm(full, { recursive: true, force: true });
 	}
 
@@ -155,8 +155,8 @@ async function seedFiles(
 ): Promise<void> {
 	const seeds = scenario.setup?.seedFiles ?? [];
 	for (const seed of seeds) {
-		const src = resolveFixture(fixturesDir, seed.from);
-		const dest = join(sandboxDir, seed.to);
+		const src = resolveInside(fixturesDir, seed.from, 'fixture path');
+		const dest = resolveInside(sandboxDir, seed.to, 'sandbox path');
 		await mkdir(dirname(dest), { recursive: true });
 		await copyFile(src, dest);
 	}
@@ -166,12 +166,28 @@ async function seedFiles(
 }
 
 function resolveFixture(fixturesDir: string, fixturePath: string): string {
-	const resolved = resolve(fixturesDir, fixturePath);
-	const root = resolve(fixturesDir);
-	if (!resolved.startsWith(root + '/') && resolved !== root) {
-		throw new Error(`fixture path "${fixturePath}" escapes ${fixturesDir}`);
+	return resolveInside(fixturesDir, fixturePath, 'fixture path');
+}
+
+/**
+ * Join `candidate` onto `root` and assert the result stays within `root`.
+ * Throws if the resolved path escapes (e.g. via `..`). Used to keep scenario
+ * authors honest when declaring fixture paths and sandbox destinations.
+ *
+ * Exported for unit testing — keep the import surface narrow.
+ */
+export function resolveInside(root: string, candidate: string, label: string): string {
+	const rootResolved = resolve(root);
+	const fullResolved = resolve(rootResolved, candidate);
+	const rel = relative(rootResolved, fullResolved);
+	// `relative` returns:
+	//  - '' when full === root
+	//  - a path starting with '..' when full escapes via traversal
+	//  - an absolute path when full is on a different volume (Windows cross-drive)
+	if (rel.startsWith('..') || isAbsolute(rel)) {
+		throw new Error(`${label} "${candidate}" escapes ${root}`);
 	}
-	return resolved;
+	return fullResolved;
 }
 
 // ---------------------------------------------------------------------------

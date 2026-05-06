@@ -13,6 +13,32 @@ import type {
 	InstanceAiEvalSubAgentRequest,
 	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
+import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Computer-use gateway response shapes (Zod-validated to keep the client
+// honest about API drift instead of trusting `as` casts)
+// ---------------------------------------------------------------------------
+
+const GatewayLinkSchema = z.object({
+	token: z.string(),
+	command: z.string(),
+});
+const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
+export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
+
+const GatewayStatusSchema = z.object({
+	connected: z.boolean(),
+	directory: z.string().nullable(),
+	toolCategories: z.array(
+		z.object({
+			name: z.string(),
+			enabled: z.boolean(),
+		}),
+	),
+});
+const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
+export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -190,11 +216,11 @@ export class N8nClient {
 	 * Generate a one-shot pairing token for the local computer-use daemon.
 	 * POST /rest/instance-ai/gateway/create-link
 	 */
-	async createGatewayLink(): Promise<{ token: string; command: string }> {
-		const result = (await this.fetch('/rest/instance-ai/gateway/create-link', {
+	async createGatewayLink(): Promise<GatewayLink> {
+		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
 			method: 'POST',
-		})) as { data: { token: string; command: string } };
-		return result.data;
+		});
+		return GatewayLinkEnvelope.parse(result).data;
 	}
 
 	/**
@@ -202,19 +228,9 @@ export class N8nClient {
 	 * once it has registered its capabilities.
 	 * GET /rest/instance-ai/gateway/status
 	 */
-	async getGatewayStatus(): Promise<{
-		connected: boolean;
-		directory: string | null;
-		toolCategories: Array<{ name: string; enabled: boolean }>;
-	}> {
-		const result = (await this.fetch('/rest/instance-ai/gateway/status')) as {
-			data: {
-				connected: boolean;
-				directory: string | null;
-				toolCategories: Array<{ name: string; enabled: boolean }>;
-			};
-		};
-		return result.data;
+	async getGatewayStatus(): Promise<GatewayStatus> {
+		const result = await this.fetch('/rest/instance-ai/gateway/status');
+		return GatewayStatusEnvelope.parse(result).data;
 	}
 
 	// -- REST API (verification helpers) -------------------------------------

@@ -156,9 +156,10 @@ export interface FsFileMatchesGrader {
 /**
  * Default-on trip-wire that fails if known credential shapes leak through the
  * trace. Scans tool args, tool results and final agent text for PEM key
- * headers, common API-key prefixes, and any values seeded via `EVAL_SECRET_*`
- * env vars. Auto-appended to every scenario at scenario-load time — explicit
- * inclusion in a scenario JSON is allowed but not required.
+ * headers and common API-key prefixes. Auto-appended to every scenario at
+ * scenario-load time — explicit inclusion in a scenario JSON is allowed
+ * (e.g. to pass `extraLiterals` for a literal value the scenario should
+ * never echo back) but not required.
  */
 export interface SecurityNoSecretLeakGrader {
 	type: 'security.noSecretLeak';

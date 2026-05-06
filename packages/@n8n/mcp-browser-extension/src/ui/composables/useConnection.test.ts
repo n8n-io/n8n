@@ -521,8 +521,7 @@ describe('useConnection', () => {
 					'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent(`ws://${host}/ext`),
 				);
 				chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-					if (msg.type === 'getSettings')
-						return { allowTabCreation: true, allowTabClosing: false };
+					if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 					if (msg.type === 'getRelayUrl') return null;
 					if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 					if (msg.type === 'getTabs') return [makeTab(1)];

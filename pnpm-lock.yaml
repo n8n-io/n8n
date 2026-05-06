@@ -1636,6 +1636,9 @@ importers:
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
+      fast-glob:
+        specifier: 'catalog:'
+        version: 3.2.12
       flatted:
         specifier: 3.4.2
         version: 3.4.2
