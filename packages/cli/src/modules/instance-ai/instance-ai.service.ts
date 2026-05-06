@@ -2983,6 +2983,7 @@ export class InstanceAiService {
 			plannedTaskId: opts.plannedTaskId,
 			workItemId: opts.workItemId,
 			traceContext: opts.traceContext,
+			createTraceContext: opts.createTraceContext,
 			dedupeKey: opts.dedupeKey,
 			parentCheckpointId: opts.parentCheckpointId,
 			run: opts.run,

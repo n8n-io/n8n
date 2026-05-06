@@ -20,7 +20,7 @@ import {
 import { compactBuilderMemoryThread } from './builder-memory-compaction';
 import { truncateLabel } from './display-utils';
 import {
-	createDetachedSubAgentTracing,
+	createDetachedSubAgentTraceFactory,
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
@@ -684,30 +684,32 @@ export async function startBuildWorkflowAgentTask(
 						: undefined,
 					runningTasks: runningTaskSummaries,
 				});
-	let traceContext: Awaited<ReturnType<typeof createDetachedSubAgentTracing>>;
-	try {
-		traceContext = await createDetachedSubAgentTracing(context, {
-			agentId: subAgentId,
-			role: 'workflow-builder',
-			kind: 'builder',
-			taskId,
-			plannedTaskId: input.plannedTaskId,
-			workItemId,
-			inputs: {
-				task: input.task,
-				workflowId: input.workflowId,
-				conversationContext: input.conversationContext,
-			},
-		});
-	} catch (error) {
-		if (reusedBuilderSession) {
-			void context.builderSandboxSessionRegistry?.release(reusedBuilderSession.sessionId, {
-				keep: true,
-				reason: 'trace_setup_failed',
-			});
+	const detachedTraceFactory = createDetachedSubAgentTraceFactory(context, {
+		agentId: subAgentId,
+		role: 'workflow-builder',
+		kind: 'builder',
+		taskId,
+		plannedTaskId: input.plannedTaskId,
+		workItemId,
+		inputs: {
+			task: input.task,
+			workflowId: input.workflowId,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const createTraceContext = async () => {
+		try {
+			return await detachedTraceFactory();
+		} catch (error) {
+			if (reusedBuilderSession) {
+				void context.builderSandboxSessionRegistry?.release(reusedBuilderSession.sessionId, {
+					keep: true,
+					reason: 'trace_setup_failed',
+				});
+			}
+			throw error;
 		}
-		throw error;
-	}
+	};
 
 	let spawnOutcome: ReturnType<typeof spawnBackgroundTask>;
 	try {
@@ -716,7 +718,7 @@ export async function startBuildWorkflowAgentTask(
 			threadId: context.threadId,
 			agentId: subAgentId,
 			role: 'workflow-builder',
-			traceContext,
+			createTraceContext,
 			plannedTaskId: input.plannedTaskId,
 			workItemId,
 			dedupeKey: {
@@ -731,7 +733,12 @@ export async function startBuildWorkflowAgentTask(
 			// bare background-task-completed shell.
 			parentCheckpointId:
 				context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
-			run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
+			run: async (
+				signal,
+				drainCorrections,
+				waitForCorrection,
+				{ traceContext },
+			): Promise<BackgroundTaskResult> =>
 				await withTraceContextActor(traceContext, async () => {
 					let builderWs: BuilderWorkspace | undefined;
 					let activeBuilderSession: BuilderSandboxSession | undefined = reusedBuilderSession;

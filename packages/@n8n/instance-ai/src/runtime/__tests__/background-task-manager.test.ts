@@ -37,6 +37,7 @@ describe('BackgroundTaskManager', () => {
 
 		it('rejects spawn when concurrent limit is reached', () => {
 			const onLimitReached = jest.fn();
+			const createTraceContext = jest.fn();
 
 			manager.spawn(
 				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
@@ -48,10 +49,30 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({ taskId: 't3', run: async () => await new Promise(() => {}) }),
 			);
 
-			const result = manager.spawn(makeSpawnOptions({ taskId: 't4', onLimitReached }));
+			const result = manager.spawn(
+				makeSpawnOptions({ taskId: 't4', onLimitReached, createTraceContext }),
+			);
 
 			expect(result.status).toBe('limit-reached');
 			expect(onLimitReached).toHaveBeenCalledWith(expect.stringContaining('limit of 3'));
+			expect(createTraceContext).not.toHaveBeenCalled();
+		});
+
+		it('creates lazy trace context only after a task is accepted', async () => {
+			const traceContext = { projectName: 'instance-ai' } as never;
+			const createTraceContext = jest.fn().mockResolvedValue(traceContext);
+			const run = jest.fn().mockResolvedValue('done');
+
+			manager.spawn(makeSpawnOptions({ createTraceContext, run }));
+			await flushPromises();
+
+			expect(createTraceContext).toHaveBeenCalledTimes(1);
+			expect(run).toHaveBeenCalledWith(
+				expect.any(AbortSignal),
+				expect.any(Function),
+				expect.any(Function),
+				{ traceContext },
+			);
 		});
 
 		it('calls onCompleted and onSettled when run resolves with string', async () => {
@@ -196,6 +217,28 @@ describe('BackgroundTaskManager', () => {
 			}
 			expect(run).not.toHaveBeenCalled();
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
+
+		it('does not create lazy trace context for duplicate spawns', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'first',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+				}),
+			);
+			const createTraceContext = jest.fn();
+
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'second',
+					createTraceContext,
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+				}),
+			);
+
+			expect(second.status).toBe('duplicate');
+			expect(createTraceContext).not.toHaveBeenCalled();
 		});
 
 		it('allows a new spawn once the first planned-task settles', async () => {

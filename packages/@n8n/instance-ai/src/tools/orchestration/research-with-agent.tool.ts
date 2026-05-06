@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
 import {
-	createDetachedSubAgentTracing,
+	createDetachedSubAgentTraceFactory,
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
@@ -63,7 +63,7 @@ export async function startResearchAgentTask(
 		additionalContext: input.constraints ? `Constraints: ${input.constraints}` : undefined,
 		runningTasks: context.getRunningTaskSummaries?.(),
 	});
-	const traceContext = await createDetachedSubAgentTracing(context, {
+	const createTraceContext = createDetachedSubAgentTraceFactory(context, {
 		agentId: subAgentId,
 		role: 'web-researcher',
 		kind: 'research',
@@ -82,12 +82,12 @@ export async function startResearchAgentTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
-		traceContext,
+		createTraceContext,
 		plannedTaskId: input.plannedTaskId,
 		dedupeKey: { role: 'web-researcher', plannedTaskId: input.plannedTaskId },
 		parentCheckpointId:
 			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
-		run: async (signal, drainCorrections, waitForCorrection) => {
+		run: async (signal, drainCorrections, waitForCorrection, { traceContext }) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent('Web Research Agent')
 					.model(context.modelId)

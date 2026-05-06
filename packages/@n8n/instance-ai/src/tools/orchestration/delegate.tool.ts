@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import {
-	createDetachedSubAgentTracing,
+	createDetachedSubAgentTraceFactory,
 	failTraceRun,
 	finishTraceRun,
 	startSubAgentTrace,
@@ -132,7 +132,7 @@ export async function startDetachedDelegateTask(
 		input.artifacts,
 		input.conversationContext,
 	);
-	const traceContext = await createDetachedSubAgentTracing(context, {
+	const createTraceContext = createDetachedSubAgentTraceFactory(context, {
 		agentId: subAgentId,
 		role,
 		kind: 'delegate',
@@ -152,12 +152,12 @@ export async function startDetachedDelegateTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role,
-		traceContext,
+		createTraceContext,
 		plannedTaskId: input.plannedTaskId,
 		dedupeKey: { role, plannedTaskId: input.plannedTaskId },
 		parentCheckpointId:
 			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
-		run: async (signal, drainCorrections, waitForCorrection) => {
+		run: async (signal, drainCorrections, waitForCorrection, { traceContext }) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({
 					agentId: subAgentId,

@@ -896,7 +896,10 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	/** Existing trace context for legacy callers. Prefer createTraceContext for new background tasks. */
 	traceContext?: InstanceAiTraceContext;
+	/** Lazily creates the background trace only after the task is accepted and starts executing. */
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** When set, links the background task back to a planned task in the scheduler. */
 	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
@@ -927,6 +930,7 @@ export interface SpawnBackgroundTaskOptions {
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
+		taskContext: { traceContext?: InstanceAiTraceContext },
 	) => Promise<string | BackgroundTaskResult>;
 }
 

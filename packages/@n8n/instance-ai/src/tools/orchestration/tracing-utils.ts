@@ -50,7 +50,14 @@ export async function createDetachedSubAgentTracing(
 	context: OrchestrationContext,
 	options: StartSubAgentTraceOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!context.tracing) return undefined;
+	return await createDetachedSubAgentTraceFactory(context, options)();
+}
+
+export function createDetachedSubAgentTraceFactory(
+	context: OrchestrationContext,
+	options: StartSubAgentTraceOptions,
+): () => Promise<InstanceAiTraceContext | undefined> {
+	if (!context.tracing) return async () => undefined;
 
 	const messageId =
 		typeof context.tracing.actorRun.metadata?.message_id === 'string'
@@ -69,46 +76,51 @@ export async function createDetachedSubAgentTracing(
 			? context.tracing.actorRun.metadata.agent_role
 			: undefined;
 	const activeSpanContext = getCurrentOtelSpanContext();
-	const tracing = await createDetachedSubAgentTraceContext({
-		projectName: context.tracing.projectName,
-		threadId: context.threadId,
-		conversationId,
-		messageGroupId: context.messageGroupId,
-		messageId,
-		runId: context.runId,
-		userId: context.userId,
-		modelId: context.modelId,
-		input: options.inputs,
-		metadata: options.metadata,
-		agentId: options.agentId,
-		role: options.role,
-		kind: options.kind,
-		taskId: options.taskId,
-		plannedTaskId: options.plannedTaskId,
-		workItemId: options.workItemId,
-		spawnedByTraceId:
-			activeSpanContext?.traceId ??
-			context.tracing.rootRun.otelTraceId ??
-			context.tracing.rootRun.traceId,
-		spawnedBySpanId: activeSpanContext?.spanId ?? context.tracing.actorRun.otelSpanId,
-		spawnedByRunId: context.tracing.actorRun.id,
-		spawnedByAgentId,
-		spawnedByAgentRole,
-		spawnedByToolCallId: getCurrentTraceToolCallId(),
-		proxyConfig: context.tracingProxyConfig,
-	});
+	const spawnedByToolCallId = getCurrentTraceToolCallId();
 
-	if (tracing) {
-		mergeCurrentTraceMetadata({
-			detached_trace: true,
-			spawned_role: options.role,
-			...(options.taskId ? { spawned_task_id: options.taskId } : {}),
-			spawned_trace_id: tracing.rootRun.traceId,
-			spawned_root_run_id: tracing.rootRun.id,
+	return async () => {
+		if (!context.tracing) return undefined;
+		const tracing = await createDetachedSubAgentTraceContext({
+			projectName: context.tracing.projectName,
+			threadId: context.threadId,
+			conversationId,
+			messageGroupId: context.messageGroupId,
+			messageId,
+			runId: context.runId,
+			userId: context.userId,
+			modelId: context.modelId,
+			input: options.inputs,
+			metadata: options.metadata,
+			agentId: options.agentId,
+			role: options.role,
+			kind: options.kind,
+			taskId: options.taskId,
+			plannedTaskId: options.plannedTaskId,
+			workItemId: options.workItemId,
+			spawnedByTraceId:
+				activeSpanContext?.traceId ??
+				context.tracing.rootRun.otelTraceId ??
+				context.tracing.rootRun.traceId,
+			spawnedBySpanId: activeSpanContext?.spanId ?? context.tracing.actorRun.otelSpanId,
+			spawnedByRunId: context.tracing.actorRun.id,
+			spawnedByAgentId,
+			spawnedByAgentRole,
+			spawnedByToolCallId,
+			proxyConfig: context.tracingProxyConfig,
 		});
-	}
 
-	return tracing;
+		if (tracing) {
+			mergeCurrentTraceMetadata({
+				detached_trace: true,
+				spawned_role: options.role,
+				...(options.taskId ? { spawned_task_id: options.taskId } : {}),
+				spawned_trace_id: tracing.rootRun.traceId,
+				spawned_root_run_id: tracing.rootRun.id,
+			});
+		}
+
+		return tracing;
+	};
 }
 
 export function traceSubAgentTools(

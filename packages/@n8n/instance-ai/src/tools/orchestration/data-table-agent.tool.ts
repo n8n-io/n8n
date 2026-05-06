@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
 import { truncateLabel } from './display-utils';
 import {
-	createDetachedSubAgentTracing,
+	createDetachedSubAgentTraceFactory,
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
@@ -63,7 +63,7 @@ export async function startDataTableAgentTask(
 	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
 	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
 
-	const traceContext = await createDetachedSubAgentTracing(context, {
+	const createTraceContext = createDetachedSubAgentTraceFactory(context, {
 		agentId: subAgentId,
 		role: 'data-table-manager',
 		kind: 'data-table',
@@ -81,12 +81,12 @@ export async function startDataTableAgentTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
-		traceContext,
+		createTraceContext,
 		plannedTaskId: input.plannedTaskId,
 		dedupeKey: { role: 'data-table-manager', plannedTaskId: input.plannedTaskId },
 		parentCheckpointId:
 			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
-		run: async (signal, _drainCorrections, _waitForCorrection) => {
+		run: async (signal, _drainCorrections, _waitForCorrection, { traceContext }) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent('Data Table Agent')
 					.model(context.modelId)
