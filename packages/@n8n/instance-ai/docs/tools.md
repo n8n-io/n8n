@@ -225,6 +225,8 @@ List workflows accessible to the current user.
 
 **Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }] }`
 
+`activeVersionId` is `null` when the workflow is unpublished.
+
 ### `get-workflow`
 
 Get full workflow definition including nodes, connections, and settings.
@@ -234,6 +236,8 @@ Get full workflow definition including nodes, connections, and settings.
 | `workflowId` | string | yes | Workflow ID |
 
 **Returns**: `{ id, name, activeVersionId, isArchived, nodes, connections, settings }`
+
+`activeVersionId` is `null` when the workflow is unpublished.
 
 ### `get-workflow-as-code`
 
@@ -275,7 +279,7 @@ with `unarchive-workflow`.
 
 ### `unarchive-workflow`
 
-Restore an archived workflow without publishing or activating it.
+Restore an archived workflow without publishing it.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
