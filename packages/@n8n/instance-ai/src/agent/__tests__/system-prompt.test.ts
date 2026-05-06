@@ -284,6 +284,21 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Eval nodes are set up but sample rows');
 		});
 
+		it('treats no-ai-nodes and already-configured as silent skip', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('`no-ai-nodes` or `already-configured` → skip silently');
+		});
+
+		it('surfaces ONE sentence to the user when reason is root-agent-reads-other-node', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('`root-agent-reads-other-node`');
+			expect(prompt).toContain('surface ONE brief sentence');
+			expect(prompt).toContain("EvaluationTrigger can't bypass");
+			expect(prompt).toContain('Do NOT call any other tool, do NOT retry');
+		});
+
 		it('respects prior user intent to skip evals', () => {
 			const prompt = getSystemPrompt({});
 

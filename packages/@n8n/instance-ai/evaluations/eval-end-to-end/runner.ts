@@ -1,0 +1,503 @@
+import crypto from 'node:crypto';
+
+import { consumeSseStream } from '../clients/sse-client';
+import type { N8nClient, WorkflowCreatePayload, WorkflowResponse } from '../clients/n8n-client';
+import type { EvalLogger } from '../harness/logger';
+import type { CapturedEvent } from '../types';
+import { extractToolSelection } from './tool-selection';
+import type {
+	EvalEndToEndCase,
+	EvalEndToEndCaseResult,
+	EvalEndToEndExecutionResult,
+	EvalEndToEndFinding,
+	EvalEndToEndTopologyResult,
+} from './types';
+
+const SSE_SETTLE_DELAY_MS = 200;
+const POLL_INTERVAL_MS = 1_000;
+const DEFAULT_TIMEOUT_MS = 600_000;
+const CONFIRMATION_MAX_RETRIES = 5;
+const EVAL_EXECUTION_TIMEOUT_MS = 300_000;
+
+const EVALUATION_TRIGGER_TYPE = 'n8n-nodes-base.evaluationTrigger';
+const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
+
+export interface EvalEndToEndRunnerConfig {
+	client: N8nClient;
+	testCase: EvalEndToEndCase;
+	logger: EvalLogger;
+	timeoutMs?: number;
+	keepArtifacts?: boolean;
+	projectId?: string;
+}
+
+type ConfirmationClient = Pick<N8nClient, 'confirmAction'>;
+type SseClient = Pick<N8nClient, 'getEventsUrl' | 'cookie'>;
+type ThreadStatusClient = Pick<N8nClient, 'getThreadStatus' | 'confirmAction'>;
+
+export async function delay(ms: number): Promise<void> {
+	return await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function uniqueName(prefix: string, slug: string): string {
+	return `${prefix}-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export function buildWorkflowCreatePayload(
+	testCase: EvalEndToEndCase,
+	projectId?: string,
+): WorkflowCreatePayload {
+	const workflow = testCase.workflow;
+
+	return {
+		name: uniqueName('eval-end-to-end', testCase.slug),
+		nodes: workflow.nodes.map(({ credentials: _credentials, ...node }) => node),
+		connections: workflow.connections,
+		...(projectId === undefined ? {} : { projectId }),
+		...(workflow.pinData === undefined ? {} : { pinData: workflow.pinData }),
+		...(workflow.settings === undefined ? {} : { settings: workflow.settings }),
+		...(workflow.staticData === undefined ? {} : { staticData: workflow.staticData }),
+		...(workflow.meta === undefined ? {} : { meta: workflow.meta }),
+	};
+}
+
+export function buildEvalPrompt(input: { workflowId: string; workflowName: string }): string {
+	return [
+		`Add a complete evaluation suite to workflow ${input.workflowId} (${input.workflowName}).`,
+		'1. Use the evals + eval-setup-with-agent flow to add EvaluationTrigger and Evaluation nodes that target each AI agent independently.',
+		'2. After eval setup completes, call the eval-data tool to populate the new DataTable with synthetic sample rows so the eval workflow can be executed.',
+		'Approve any confirmation dialogs for workflow updates and DataTable inserts that appear.',
+	].join('\n');
+}
+
+export function extractConfirmationRequestId(event: CapturedEvent): string | undefined {
+	if (typeof event.data.requestId === 'string') {
+		return event.data.requestId;
+	}
+	const payload = event.data.payload;
+	if (isRecord(payload) && typeof payload.requestId === 'string') {
+		return payload.requestId;
+	}
+	return undefined;
+}
+
+export function isApprovableConfirmation(event: CapturedEvent): boolean {
+	if (event.type !== 'confirmation-request') {
+		return false;
+	}
+	// In the end-to-end suite the runner runs in a sandbox project — auto-approve
+	// every confirmation surface (workflow updates, DataTable inserts, etc.) so
+	// the chain (evals → eval-setup → eval-data) can settle without human input.
+	return true;
+}
+
+export async function startSseConnection(
+	client: SseClient,
+	threadId: string,
+	events: CapturedEvent[],
+	signal: AbortSignal,
+): Promise<void> {
+	await consumeSseStream(
+		client.getEventsUrl(threadId),
+		client.cookie,
+		(event) => {
+			try {
+				const data: unknown = JSON.parse(event.data);
+				if (!isRecord(data)) return;
+				events.push({
+					timestamp: Date.now(),
+					type: typeof data.type === 'string' ? data.type : (event.type ?? 'unknown'),
+					data,
+				});
+			} catch {
+				// SSE can include transient non-JSON payloads; not useful for verification.
+			}
+		},
+		signal,
+	);
+}
+
+export async function approveConfirmations(input: {
+	client: ConfirmationClient;
+	events: CapturedEvent[];
+	approvedRequestIds: Set<string>;
+	logger: EvalLogger;
+	retryCounts?: Map<string, number>;
+}): Promise<void> {
+	for (const event of input.events) {
+		if (!isApprovableConfirmation(event)) continue;
+
+		const requestId = extractConfirmationRequestId(event);
+		if (!requestId || input.approvedRequestIds.has(requestId)) continue;
+
+		const retryCounts = input.retryCounts ?? new Map<string, number>();
+		const retryCount = retryCounts.get(requestId) ?? 0;
+		if (retryCount >= CONFIRMATION_MAX_RETRIES) continue;
+
+		try {
+			input.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
+			await input.client.confirmAction(requestId, { kind: 'approval', approved: true });
+			input.approvedRequestIds.add(requestId);
+			retryCounts.delete(requestId);
+		} catch (error) {
+			retryCounts.set(requestId, retryCount + 1);
+			const message = error instanceof Error ? error.message : String(error);
+			input.logger.verbose(
+				`[auto-approve] Failed to approve ${requestId} (attempt ${String(
+					retryCount + 1,
+				)}/${String(CONFIRMATION_MAX_RETRIES)}): ${message}`,
+			);
+		}
+	}
+}
+
+export async function waitForThreadToSettle(input: {
+	client: ThreadStatusClient;
+	threadId: string;
+	events: CapturedEvent[];
+	approvedRequestIds: Set<string>;
+	logger: EvalLogger;
+	timeoutMs: number;
+	getStreamError?: () => unknown;
+}): Promise<void> {
+	const deadline = Date.now() + input.timeoutMs;
+	const retryCounts = new Map<string, number>();
+
+	while (Date.now() <= deadline) {
+		throwIfStreamFailed(input.getStreamError?.());
+		await approveConfirmations({
+			client: input.client,
+			events: input.events,
+			approvedRequestIds: input.approvedRequestIds,
+			logger: input.logger,
+			retryCounts,
+		});
+		throwIfStreamFailed(input.getStreamError?.());
+
+		const status = await input.client.getThreadStatus(input.threadId);
+		const runningBackgroundTasks = status.backgroundTasks.filter(
+			(task) => task.status === 'running',
+		);
+
+		if (!status.hasActiveRun && !status.isSuspended && runningBackgroundTasks.length === 0) {
+			await delay(SSE_SETTLE_DELAY_MS);
+			await approveConfirmations({
+				client: input.client,
+				events: input.events,
+				approvedRequestIds: input.approvedRequestIds,
+				logger: input.logger,
+				retryCounts,
+			});
+			throwIfStreamFailed(input.getStreamError?.());
+			const stableStatus = await input.client.getThreadStatus(input.threadId);
+			const stableRunningBackgroundTasks = stableStatus.backgroundTasks.filter(
+				(task) => task.status === 'running',
+			);
+
+			if (
+				!stableStatus.hasActiveRun &&
+				!stableStatus.isSuspended &&
+				stableRunningBackgroundTasks.length === 0
+			) {
+				return;
+			}
+		}
+
+		await delay(POLL_INTERVAL_MS);
+	}
+
+	throw new Error(
+		`Timed out after ${String(input.timeoutMs)}ms waiting for thread ${input.threadId} to settle`,
+	);
+}
+
+export function findEvaluationTriggerDataTableId(workflow: WorkflowResponse): string | undefined {
+	for (const node of workflow.nodes) {
+		if (node.type !== EVALUATION_TRIGGER_TYPE) continue;
+		const params = (node as { parameters?: Record<string, unknown> }).parameters;
+		if (!isRecord(params)) continue;
+		const dataTableId = params.dataTableId;
+		if (typeof dataTableId === 'string' && dataTableId.length > 0) return dataTableId;
+		// Some templates nest the id inside a credential-like object: { value: '...' }
+		if (isRecord(dataTableId) && typeof dataTableId.value === 'string') return dataTableId.value;
+	}
+	return undefined;
+}
+
+export function evaluateTopology(updatedWorkflow: WorkflowResponse): {
+	evaluationTriggerFound: boolean;
+	evaluationNodeFound: boolean;
+	dataTableId?: string;
+} {
+	const evaluationTriggerFound = updatedWorkflow.nodes.some(
+		(node) => node.type === EVALUATION_TRIGGER_TYPE,
+	);
+	const evaluationNodeFound = updatedWorkflow.nodes.some(
+		(node) => node.type === EVALUATION_NODE_TYPE,
+	);
+	const dataTableId = findEvaluationTriggerDataTableId(updatedWorkflow);
+	return { evaluationTriggerFound, evaluationNodeFound, dataTableId };
+}
+
+export async function runEvalEndToEndCase(
+	config: EvalEndToEndRunnerConfig,
+): Promise<EvalEndToEndCaseResult> {
+	const { client, testCase, logger } = config;
+	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	const events: CapturedEvent[] = [];
+	const approvedRequestIds = new Set<string>();
+	const abortController = new AbortController();
+	let streamPromise: Promise<void> | undefined;
+	let streamError: unknown;
+	let projectId: string | undefined;
+	let workflowId: string | undefined;
+	let dataTableId: string | undefined;
+	let threadId: string | undefined;
+	let threadSettled = false;
+
+	try {
+		projectId = config.projectId ?? (await client.getPersonalProjectId());
+		const importedWorkflow = await client.createWorkflow(
+			buildWorkflowCreatePayload(testCase, projectId),
+		);
+		workflowId = importedWorkflow.id;
+
+		threadId = `eval-end-to-end-${crypto.randomUUID()}`;
+		streamPromise = startSseConnection(client, threadId, events, abortController.signal).catch(
+			(error) => {
+				streamError = error;
+			},
+		);
+		await delay(SSE_SETTLE_DELAY_MS);
+		throwIfStreamFailed(streamError);
+
+		await client.sendMessage(
+			threadId,
+			buildEvalPrompt({
+				workflowId: importedWorkflow.id,
+				workflowName: importedWorkflow.name,
+			}),
+		);
+
+		await waitForThreadToSettle({
+			client,
+			threadId,
+			events,
+			approvedRequestIds,
+			logger,
+			timeoutMs,
+			getStreamError: () => streamError,
+		});
+		threadSettled = true;
+
+		abortController.abort();
+		await streamPromise;
+		throwIfStreamFailed(streamError);
+
+		const threadMessages = await client.getThreadMessages(threadId).catch(() => undefined);
+		const updatedWorkflow = await client.getWorkflow(importedWorkflow.id);
+
+		const toolSelection = extractToolSelection({ events, threadMessages });
+
+		const topologyShape = evaluateTopology(updatedWorkflow);
+		dataTableId = topologyShape.dataTableId;
+
+		const topology: EvalEndToEndTopologyResult = {
+			evaluationTriggerFound: topologyShape.evaluationTriggerFound,
+			evaluationNodeFound: topologyShape.evaluationNodeFound,
+			dataTableId: topologyShape.dataTableId,
+			dataTableRowCount: 0,
+			findings: [],
+		};
+
+		if (!topologyShape.evaluationTriggerFound) {
+			topology.findings.push({
+				severity: 'error',
+				code: 'evaluation_trigger_missing',
+				message: 'Updated workflow does not contain an EvaluationTrigger node.',
+			});
+		}
+		if (!topologyShape.evaluationNodeFound) {
+			topology.findings.push({
+				severity: 'error',
+				code: 'evaluation_node_missing',
+				message: 'Updated workflow does not contain an Evaluation node.',
+			});
+		}
+
+		if (topologyShape.dataTableId !== undefined) {
+			try {
+				const rows = await client.getDataTableRows(projectId, topologyShape.dataTableId, {
+					take: 1,
+				});
+				topology.dataTableRowCount = rows.count ?? 0;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				topology.findings.push({
+					severity: 'error',
+					code: 'data_table_read_failed',
+					message: `Failed to read DataTable ${topologyShape.dataTableId}: ${message}`,
+				});
+			}
+		} else {
+			topology.findings.push({
+				severity: 'error',
+				code: 'data_table_id_missing',
+				message: 'EvaluationTrigger does not reference a DataTable id.',
+			});
+		}
+
+		if (topology.dataTableRowCount === 0 && topologyShape.dataTableId !== undefined) {
+			topology.findings.push({
+				severity: 'error',
+				code: 'data_table_empty',
+				message: 'eval-data did not populate the DataTable with sample rows.',
+			});
+		}
+
+		const execution = await runEvalExecution({
+			client,
+			workflowId: importedWorkflow.id,
+			topologyOk:
+				topologyShape.evaluationTriggerFound &&
+				topologyShape.evaluationNodeFound &&
+				topology.dataTableRowCount > 0,
+			logger,
+		});
+
+		const passed =
+			toolSelection.findings.length === 0 &&
+			topology.findings.length === 0 &&
+			execution.attempted &&
+			execution.success;
+
+		return {
+			caseSlug: testCase.slug,
+			workflowId: importedWorkflow.id,
+			...(dataTableId === undefined ? {} : { dataTableId }),
+			toolSelection,
+			topology,
+			execution,
+			passed,
+		};
+	} catch (error) {
+		abortController.abort();
+		if (threadId && !threadSettled) {
+			await client.cancelRun(threadId).catch((cancelError) => {
+				const message = cancelError instanceof Error ? cancelError.message : String(cancelError);
+				logger.verbose(`Failed to cancel thread ${threadId}: ${message}`);
+			});
+		}
+		if (streamPromise) {
+			await streamPromise.catch((cleanupError) => {
+				const message = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+				logger.verbose(`SSE stream ended with error during failure handling: ${message}`);
+			});
+		}
+
+		const message = error instanceof Error ? error.message : String(error);
+		const finding: EvalEndToEndFinding = {
+			severity: 'error',
+			code: 'runner_error',
+			message,
+		};
+
+		return {
+			caseSlug: testCase.slug,
+			...(workflowId === undefined ? {} : { workflowId }),
+			...(dataTableId === undefined ? {} : { dataTableId }),
+			toolSelection: emptyToolSelection(),
+			topology: runnerErrorTopology(finding),
+			execution: { attempted: false, success: false, errors: [message] },
+			passed: false,
+			error: message,
+		};
+	} finally {
+		abortController.abort();
+		if (streamPromise) {
+			await streamPromise.catch((error) => {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.verbose(`SSE cleanup error: ${message}`);
+			});
+		}
+
+		if (!config.keepArtifacts && projectId) {
+			if (workflowId) {
+				await client.deleteWorkflow(workflowId).catch((error) => {
+					const message = error instanceof Error ? error.message : String(error);
+					logger.verbose(`Failed to clean up workflow ${workflowId}: ${message}`);
+				});
+			}
+			if (dataTableId) {
+				await client.deleteDataTable(projectId, dataTableId).catch((error) => {
+					const message = error instanceof Error ? error.message : String(error);
+					logger.verbose(`Failed to clean up DataTable ${dataTableId}: ${message}`);
+				});
+			}
+		}
+	}
+}
+
+async function runEvalExecution(input: {
+	client: Pick<N8nClient, 'executeWithLlmMock'>;
+	workflowId: string;
+	topologyOk: boolean;
+	logger: EvalLogger;
+}): Promise<EvalEndToEndExecutionResult> {
+	if (!input.topologyOk) {
+		return {
+			attempted: false,
+			success: false,
+			errors: ['Skipped execution — eval topology or DataTable is incomplete.'],
+		};
+	}
+
+	try {
+		const result = await input.client.executeWithLlmMock(
+			input.workflowId,
+			undefined,
+			EVAL_EXECUTION_TIMEOUT_MS,
+		);
+		return {
+			attempted: true,
+			success: result.success,
+			executionId: result.executionId,
+			errors: result.errors,
+			rawResult: result,
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		input.logger.verbose(`executeWithLlmMock failed: ${message}`);
+		return {
+			attempted: true,
+			success: false,
+			errors: [message],
+		};
+	}
+}
+
+function emptyToolSelection() {
+	return {
+		evalsToolCalled: false,
+		evalSetupAgentCalled: false,
+		evalDataToolCalled: false,
+		findings: [],
+	};
+}
+
+function runnerErrorTopology(finding: EvalEndToEndFinding): EvalEndToEndTopologyResult {
+	return {
+		evaluationTriggerFound: false,
+		evaluationNodeFound: false,
+		dataTableRowCount: 0,
+		findings: [finding],
+	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function throwIfStreamFailed(error: unknown): void {
+	if (error) throw error;
+}
