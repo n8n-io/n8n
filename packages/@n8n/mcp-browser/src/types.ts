@@ -26,7 +26,7 @@ const browserOverrideSchema = z.object({
 export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
-	adapter: z.enum(['playwright', 'agent-browser']).default('playwright'),
+	adapter: z.enum(['playwright', 'agent-browser']).default('agent-browser'),
 });
 
 export type Config = z.input<typeof configSchema>;
