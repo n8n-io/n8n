@@ -12,6 +12,3 @@ Be careful adding dependencies here. This package should not have runtime
 dependencies on other n8n components, only interfaces. If there is some
 functionality that should be shared, it should be factored into a common
 library.
-
-## Notes
-- emitDecoratorMetadata is not set, so anything using decorators won't compile

@@ -6,7 +6,7 @@
 	"compilerOptions": {
 		"target": "es2023",
 		"lib": ["es2023"],
-		"types": ["node", "jest"],
+		"types": ["node"],
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"]

@@ -10,18 +10,19 @@
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "test": "jest --passWithNoTests",
-    "test:dev": "jest --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:dev": "vitest --watch",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
   "main": "dist/index.js",
-  "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
   ],
   "dependencies": {},
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "vitest": "catalog:"
   }
 }
