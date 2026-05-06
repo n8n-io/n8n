@@ -27,18 +27,22 @@ const loadMcpToolOptionsMock = loadMcpToolOptions as MockedFunction<typeof loadM
 
 type ParamMap = Record<string, unknown>;
 
-function createLoadOptionsCtx(params: ParamMap) {
+function createLoadOptionsCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 	const ctx = mockDeep<ILoadOptionsFunctions>();
-	ctx.getNode.mockReturnValue(mock<INode>({ name: 'Notion MCP', type: 'notion' }));
+	ctx.getNode.mockReturnValue(
+		mock<INode>({ name: 'Notion MCP', type: 'notion', ...(nodeOverrides ?? {}) }),
+	);
 	ctx.getNodeParameter.mockImplementation((key: string, defaultValue?: unknown) => {
 		return (key in params ? params[key] : defaultValue) as never;
 	});
 	return ctx;
 }
 
-function createSupplyDataCtx(params: ParamMap) {
+function createSupplyDataCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 	const ctx = mockDeep<ISupplyDataFunctions>();
-	ctx.getNode.mockReturnValue(mock<INode>({ name: 'Notion MCP', type: 'notion' }));
+	ctx.getNode.mockReturnValue(
+		mock<INode>({ name: 'Notion MCP', type: 'notion', ...(nodeOverrides ?? {}) }),
+	);
 	ctx.getNodeParameter.mockImplementation(
 		(key: string, _itemIndex?: number, defaultValue?: unknown) => {
 			return (key in params ? params[key] : defaultValue) as never;
@@ -47,9 +51,11 @@ function createSupplyDataCtx(params: ParamMap) {
 	return ctx;
 }
 
-function createExecuteCtx(params: ParamMap) {
+function createExecuteCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 	const ctx = mockDeep<IExecuteFunctions>();
-	ctx.getNode.mockReturnValue(mock<INode>({ name: 'Notion MCP', type: 'notion' }));
+	ctx.getNode.mockReturnValue(
+		mock<INode>({ name: 'Notion MCP', type: 'notion', ...(nodeOverrides ?? {}) }),
+	);
 	ctx.getNodeParameter.mockImplementation(
 		(key: string, _itemIndex: number, defaultValue?: unknown) => {
 			return (key in params ? params[key] : defaultValue) as never;
@@ -75,6 +81,54 @@ describe('McpRegistryClientTool', () => {
 			const node = new McpRegistryClientTool();
 			const result = await node.methods.loadOptions.getTools.call(ctx);
 
+			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(ctx, {
+				authentication: 'mcpOAuth2Api',
+				transport: 'httpStreamable',
+				endpointUrl: 'https://mcp.example.com/mcp',
+				timeout: 30000,
+			});
+			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
+		});
+
+		it('finds OAuth2 credentials defined on the node', async () => {
+			const ctx = createLoadOptionsCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.example.com/mcp',
+					'options.timeout': 30000,
+				},
+				{
+					credentials: { someServiceMcpOAuth2Api: {} },
+				},
+			);
+			loadMcpToolOptionsMock.mockResolvedValue([{ name: 'tool-a', value: 'tool-a' }]);
+
+			const node = new McpRegistryClientTool();
+			const result = await node.methods.loadOptions.getTools.call(ctx);
+
+			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
+			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(ctx, {
+				authentication: 'someServiceMcpOAuth2Api',
+				transport: 'httpStreamable',
+				endpointUrl: 'https://mcp.example.com/mcp',
+				timeout: 30000,
+			});
+			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
+		});
+
+		it('falls back to mcpOAuth2Api when no OAuth2 credentials are defined on the node', async () => {
+			const ctx = createLoadOptionsCtx({
+				serverTransport: 'httpStreamable',
+				endpointUrl: 'https://mcp.example.com/mcp',
+				'options.timeout': 30000,
+				authentication: 'none',
+			});
+			loadMcpToolOptionsMock.mockResolvedValue([{ name: 'tool-a', value: 'tool-a' }]);
+			const node = new McpRegistryClientTool();
+
+			const result = await node.methods.loadOptions.getTools.call(ctx);
+
+			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
 			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(ctx, {
 				authentication: 'mcpOAuth2Api',
 				transport: 'httpStreamable',
@@ -152,6 +206,52 @@ describe('McpRegistryClientTool', () => {
 				}),
 			);
 		});
+
+		it('finds OAuth2 credentials defined on the node', async () => {
+			const ctx = createSupplyDataCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.notion.com/mcp',
+					'options.timeout': 30000,
+				},
+				{
+					credentials: { someServiceMcpOAuth2Api: {} },
+				},
+			);
+			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
+
+			const node = new McpRegistryClientTool();
+			await node.supplyData.call(ctx, 0);
+
+			expect(buildMcpToolkitMock).toHaveBeenCalledWith(
+				ctx,
+				0,
+				expect.objectContaining({
+					authentication: 'someServiceMcpOAuth2Api',
+				}),
+			);
+		});
+
+		it('falls back to mcpOAuth2Api when no OAuth2 credentials are defined on the node', async () => {
+			const ctx = createSupplyDataCtx({
+				serverTransport: 'httpStreamable',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				'options.timeout': 30000,
+				authentication: 'none',
+			});
+			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
+
+			const node = new McpRegistryClientTool();
+			await node.supplyData.call(ctx, 0);
+
+			expect(buildMcpToolkitMock).toHaveBeenCalledWith(
+				ctx,
+				0,
+				expect.objectContaining({
+					authentication: 'mcpOAuth2Api',
+				}),
+			);
+		});
 	});
 
 	describe('execute', () => {
@@ -179,6 +279,52 @@ describe('McpRegistryClientTool', () => {
 				timeout: 60000,
 				toolFilter: { mode: 'all', includeTools: [], excludeTools: [] },
 			});
+		});
+
+		it('finds OAuth2 credentials defined on the node', async () => {
+			const ctx = createExecuteCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.notion.com/mcp',
+					'options.timeout': 30000,
+				},
+				{
+					credentials: { someServiceMcpOAuth2Api: {} },
+				},
+			);
+			executeMcpToolMock.mockResolvedValue([[]]);
+
+			const node = new McpRegistryClientTool();
+			await node.execute.call(ctx);
+
+			expect(executeMcpToolMock).toHaveBeenCalledWith(ctx, expect.any(Function));
+			const resolve = executeMcpToolMock.mock.calls[0][1];
+			expect(resolve(0)).toEqual(
+				expect.objectContaining({
+					authentication: 'someServiceMcpOAuth2Api',
+				}),
+			);
+		});
+
+		it('falls back to mcpOAuth2Api when no OAuth2 credentials are defined on the node', async () => {
+			const ctx = createExecuteCtx({
+				serverTransport: 'httpStreamable',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				'options.timeout': 30000,
+				authentication: 'none',
+			});
+			executeMcpToolMock.mockResolvedValue([[]]);
+
+			const node = new McpRegistryClientTool();
+			await node.execute.call(ctx);
+
+			expect(executeMcpToolMock).toHaveBeenCalledWith(ctx, expect.any(Function));
+			const resolve = executeMcpToolMock.mock.calls[0][1];
+			expect(resolve(0)).toEqual(
+				expect.objectContaining({
+					authentication: 'mcpOAuth2Api',
+				}),
+			);
 		});
 	});
 });
