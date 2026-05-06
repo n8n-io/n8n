@@ -78,6 +78,7 @@ export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
+export { RedisConfig } from './configs/redis.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
