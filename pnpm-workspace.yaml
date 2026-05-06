@@ -48,6 +48,7 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.36.0
+  '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
   '@testcontainers/mysql': ^11.13.0
@@ -111,7 +112,7 @@ catalog:
   vite-plugin-dts: ^4.5.4
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
-  vm2: ^3.10.5
+  vm2: 3.11.2
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
