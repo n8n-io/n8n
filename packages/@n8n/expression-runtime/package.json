@@ -34,6 +34,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
     "isolated-vm": "^6.0.2",
+    "quickjs-emscripten": "^0.32.0",
     "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",
