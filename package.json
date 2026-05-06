@@ -153,8 +153,8 @@
       "hono@<=4.12.16": "4.12.16",
       "brace-expansion@<=2.1.0": "2.1.0",
       "langsmith@<=0.5.19": "0.5.19",
-      "axios": "1.15.1",
-      "zod": "4.4.0",
+      "axios": "1.15.2",
+      "zod": "3.25.67",
       "fast-xml-parser": "5.7.2"
     },
     "patchedDependencies": {
