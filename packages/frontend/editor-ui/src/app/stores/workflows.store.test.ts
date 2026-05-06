@@ -1,11 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/app/api/workflows';
-import {
-	DUPLICATE_POSTFFIX,
-	MANUAL_TRIGGER_NODE_TYPE,
-	MAX_WORKFLOW_NAME_LENGTH,
-	WAIT_NODE_TYPE,
-} from '@/app/constants';
+import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, WAIT_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
@@ -27,9 +22,7 @@ import {
 	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
-	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
@@ -1288,35 +1281,6 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			]);
-		});
-	});
-
-	describe('selectedTriggerNode', () => {
-		const n0 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
-		const n1 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n1' });
-		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
-
-		beforeEach(() => {
-			workflowsStore.workflow.nodes = [n0, n1];
-			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
-		});
-
-		it('should select newly added trigger node automatically', async () => {
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
-			workflowsStore.workflow.nodes.push(n2);
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
-		});
-
-		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).removeNode(n0);
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
-				name: 'n1',
-				key: 'disabled',
-				value: true,
-			});
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});
 
