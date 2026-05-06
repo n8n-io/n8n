@@ -225,7 +225,7 @@ type RawEvent = RawToolCallEvent | RawTextEvent | RawMemoryEvent | RawSuspension
  * `useAgentThreadsApi.ts` doesn't have to import the renderer's types.
  */
 function timelineEvents(exec: AgentExecution): RawEvent[] {
-	return (exec.timeline ?? []) as RawEvent[];
+	return (exec.timeline ?? []) as unknown as RawEvent[];
 }
 
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
