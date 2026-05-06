@@ -788,7 +788,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		await this.update(
 			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: null },
+			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
 		);
 
 		return execution;
