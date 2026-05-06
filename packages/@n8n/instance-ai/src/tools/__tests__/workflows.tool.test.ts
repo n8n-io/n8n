@@ -330,7 +330,7 @@ describe('workflows tool', () => {
 				message: expect.stringContaining('Archived WF'),
 				severity: 'warning',
 			});
-			expect(suspend.mock.calls[0][0].message).toContain('will not publish or activate it');
+			expect(suspend.mock.calls[0][0].message).toContain('will not publish it');
 			expect(result).toEqual({
 				success: false,
 				denied: true,

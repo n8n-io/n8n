@@ -52,7 +52,7 @@ const deleteAction = z.object({
 const unarchiveAction = z.object({
 	action: z
 		.literal('unarchive')
-		.describe('Restore an archived workflow by ID without publishing or activating it'),
+		.describe('Restore an archived workflow by ID without publishing it'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -273,7 +273,7 @@ async function handleUnarchive(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const suspension = await suspend?.({
 			requestId: nanoid(),
-			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish or activate it.`,
+			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish it.`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -667,7 +667,7 @@ export function createWorkflowsTool(
 	return createTool({
 		id: 'workflows',
 		description:
-			'Manage workflows — list, inspect, archive, restore, set up, publish, unpublish, and manage versions.',
+			'Manage workflows — list, inspect, archive, restore, set up, publish, unpublish, and manage versions. Workflow results use activeVersionId: null for unpublished workflows.',
 		inputSchema,
 		suspendSchema,
 		resumeSchema,
