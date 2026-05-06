@@ -3736,7 +3736,7 @@ export class InstanceAiService {
 								role: opts.role,
 								status: task.result ? 'completed' : task.error ? 'failed' : 'finished',
 								result: task.result ?? undefined,
-								outcome: task.outcome ?? undefined,
+								outcome: projectOutcomeForFollowUp(task.outcome),
 								error: task.error ?? undefined,
 							},
 							null,

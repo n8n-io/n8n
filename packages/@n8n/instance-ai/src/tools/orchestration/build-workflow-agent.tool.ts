@@ -42,6 +42,7 @@ import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import type { WorkSummary } from '../../stream/work-summary-accumulator';
 import {
 	buildAgentTraceInputs,
 	getTraceParentRun,
@@ -399,6 +400,7 @@ function toBuilderSubAgentOutcome(
 	taskKey: string,
 	startTime: number,
 	result: { text: string; outcome: WorkflowBuildOutcome },
+	workSummary?: WorkSummary,
 ): SubAgentOutcome {
 	return {
 		taskKey,
@@ -406,8 +408,8 @@ function toBuilderSubAgentOutcome(
 		status: result.outcome.submitted ? 'completed' : 'failed',
 		resultText: result.text,
 		durationMs: Date.now() - startTime,
-		toolCallCount: 0,
-		toolErrorCount: 0,
+		toolCallCount: workSummary?.totalToolCalls ?? 0,
+		toolErrorCount: workSummary?.totalToolErrors ?? 0,
 		payload: result.outcome,
 	};
 }
@@ -416,10 +418,11 @@ function toBuilderTaskResult(
 	taskKey: string,
 	startTime: number,
 	result: { text: string; outcome: WorkflowBuildOutcome },
+	workSummary?: WorkSummary,
 ): BackgroundTaskResult {
 	return {
 		text: result.text,
-		outcome: toBuilderSubAgentOutcome(taskKey, startTime, result),
+		outcome: toBuilderSubAgentOutcome(taskKey, startTime, result, workSummary),
 	};
 }
 
@@ -988,6 +991,7 @@ export async function startBuildWorkflowAgentTask(
 
 							const traceParent = getTraceParentRun();
 							let finalText: string;
+							let builderWorkSummary: WorkSummary | undefined;
 							try {
 								const hitlResult = await withTraceParentContext(traceParent, async () => {
 									const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
@@ -1035,6 +1039,7 @@ export async function startBuildWorkflowAgentTask(
 									});
 								});
 
+								builderWorkSummary = hitlResult.workSummary;
 								finalText = await hitlResult.text;
 							} catch (error) {
 								const recovered = resultFromPostStreamError({
@@ -1055,6 +1060,7 @@ export async function startBuildWorkflowAgentTask(
 										handoff.taskKey,
 										startTime,
 										await finalizeBuildResult(context, workItemId, recovered),
+										builderWorkSummary,
 									);
 								}
 								throw error;
@@ -1067,10 +1073,15 @@ export async function startBuildWorkflowAgentTask(
 							if (!mainWorkflowAttempt) {
 								const text =
 									'Error: workflow builder finished without submitting /src/workflow.ts.';
-								return toBuilderTaskResult(handoff.taskKey, startTime, {
-									text,
-									outcome: buildOutcome(workItemId, context.runId, taskId, undefined, text),
-								});
+								return toBuilderTaskResult(
+									handoff.taskKey,
+									startTime,
+									{
+										text,
+										outcome: buildOutcome(workItemId, context.runId, taskId, undefined, text),
+									},
+									builderWorkSummary,
+								);
 							}
 
 							if (!mainWorkflowAttempt.success) {
@@ -1092,22 +1103,28 @@ export async function startBuildWorkflowAgentTask(
 										handoff.taskKey,
 										startTime,
 										await finalizeBuildResult(context, workItemId, recovered),
+										builderWorkSummary,
 									);
 								}
 
 								const errorText =
 									mainWorkflowAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
 								const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
-								return toBuilderTaskResult(handoff.taskKey, startTime, {
-									text,
-									outcome: buildOutcome(
-										workItemId,
-										context.runId,
-										taskId,
-										mainWorkflowAttempt,
+								return toBuilderTaskResult(
+									handoff.taskKey,
+									startTime,
+									{
 										text,
-									),
-								});
+										outcome: buildOutcome(
+											workItemId,
+											context.runId,
+											taskId,
+											mainWorkflowAttempt,
+											text,
+										),
+									},
+									builderWorkSummary,
+								);
 							}
 
 							if (mainWorkflowAttempt.sourceHash !== currentMainWorkflowHash) {
@@ -1156,10 +1173,15 @@ export async function startBuildWorkflowAgentTask(
 											refreshedAttempt,
 											finalText,
 										);
-										return toBuilderTaskResult(handoff.taskKey, startTime, {
-											text: finalText,
-											outcome,
-										});
+										return toBuilderTaskResult(
+											handoff.taskKey,
+											startTime,
+											{
+												text: finalText,
+												outcome,
+											},
+											builderWorkSummary,
+										);
 									}
 
 									const resubmitErrors =
@@ -1188,20 +1210,26 @@ export async function startBuildWorkflowAgentTask(
 												handoff.taskKey,
 												startTime,
 												await finalizeBuildResult(context, workItemId, recovered),
+												builderWorkSummary,
 											);
 										}
 									}
 									const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
-									return toBuilderTaskResult(handoff.taskKey, startTime, {
-										text,
-										outcome: buildOutcome(
-											workItemId,
-											context.runId,
-											taskId,
-											refreshedAttempt ?? undefined,
+									return toBuilderTaskResult(
+										handoff.taskKey,
+										startTime,
+										{
 											text,
-										),
-									});
+											outcome: buildOutcome(
+												workItemId,
+												context.runId,
+												taskId,
+												refreshedAttempt ?? undefined,
+												text,
+											),
+										},
+										builderWorkSummary,
+									);
 								}
 							}
 
@@ -1230,10 +1258,15 @@ export async function startBuildWorkflowAgentTask(
 								mainWorkflowAttempt,
 								finalText,
 							);
-							return toBuilderTaskResult(handoff.taskKey, startTime, {
-								text: finalText,
-								outcome,
-							});
+							return toBuilderTaskResult(
+								handoff.taskKey,
+								startTime,
+								{
+									text: finalText,
+									outcome,
+								},
+								builderWorkSummary,
+							);
 						}
 
 						let fallbackMainWorkflowId: string | undefined;
