@@ -349,7 +349,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 		it('should handle edge cases', () => {
 			expect(jsonToDocument(0)).toEqual({ integerValue: 0 });
 			expect(jsonToDocument(NaN as any)).toEqual({});
-			expect(jsonToDocument(undefined as any)).toEqual({});
+			expect(jsonToDocument(undefined as any)).toEqual({ nullValue: null });
 		});
 
 		it('should skip unsafe object properties', () => {

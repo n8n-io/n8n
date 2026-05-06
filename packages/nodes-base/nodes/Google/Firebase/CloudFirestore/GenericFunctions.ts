@@ -85,9 +85,13 @@ const isValidDate = (str: string) =>
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
-export function jsonToDocument(value: string | number | IDataObject | IDataObject[]): IDataObject {
+export function jsonToDocument(
+	value: string | number | boolean | null | undefined | IDataObject | IDataObject[],
+): IDataObject {
 	if (value === 'true' || value === 'false' || typeof value === 'boolean') {
 		return { booleanValue: value };
+	} else if (value === undefined) {
+		return { nullValue: null };
 	} else if (value === null) {
 		return { nullValue: null };
 	} else if (typeof value === 'number' && !Number.isNaN(value)) {
