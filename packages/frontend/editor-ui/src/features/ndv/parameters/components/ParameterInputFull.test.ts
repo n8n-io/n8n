@@ -37,6 +37,11 @@ beforeEach(() => {
 	mockNodeTypesState = {
 		allNodeTypes: [],
 		getNodeType: vi.fn().mockReturnValue({}),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	};
 	mockSettingsState = {
 		settings: {
