@@ -131,7 +131,7 @@ describe('InstanceAiController', () => {
 
 		it('should start a run and return runId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.hasActiveRun.mockResolvedValue(false);
 			instanceAiService.startRun.mockReturnValue('run-1');
 
 			const result = await controller.chat(req, res, THREAD_ID, payload);
@@ -150,7 +150,7 @@ describe('InstanceAiController', () => {
 
 		it('should allow new threads', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.hasActiveRun.mockResolvedValue(false);
 			instanceAiService.startRun.mockReturnValue('run-1');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).resolves.toEqual({
@@ -165,7 +165,7 @@ describe('InstanceAiController', () => {
 				timeZone: 'UTC',
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.hasActiveRun.mockResolvedValue(false);
 			instanceAiService.startRun.mockReturnValue('run-2');
 
 			await controller.chat(req, res, THREAD_ID, payloadWithPushRef);
@@ -183,7 +183,7 @@ describe('InstanceAiController', () => {
 
 		it('should throw ConflictError when a run is already active', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(true);
+			instanceAiService.hasActiveRun.mockResolvedValue(true);
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ConflictError);
 		});
@@ -203,7 +203,7 @@ describe('InstanceAiController', () => {
 		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			eventBus.getEventsAfter.mockReturnValue([]);
-			instanceAiService.getThreadStatus.mockReturnValue({
+			instanceAiService.getThreadStatus.mockResolvedValue({
 				hasActiveRun: true,
 				isSuspended: false,
 				backgroundTasks: [],
@@ -298,7 +298,7 @@ describe('InstanceAiController', () => {
 				return jest.fn();
 			});
 			eventBus.getEventsAfter.mockReturnValue([]);
-			instanceAiService.getThreadStatus.mockReturnValue({
+			instanceAiService.getThreadStatus.mockResolvedValue({
 				hasActiveRun: false,
 				isSuspended: false,
 				backgroundTasks: [],
@@ -345,7 +345,7 @@ describe('InstanceAiController', () => {
 				return jest.fn();
 			});
 			eventBus.getEventsAfter.mockReturnValue([]);
-			instanceAiService.getThreadStatus.mockReturnValue({
+			instanceAiService.getThreadStatus.mockResolvedValue({
 				hasActiveRun: false,
 				isSuspended: false,
 				backgroundTasks: [],

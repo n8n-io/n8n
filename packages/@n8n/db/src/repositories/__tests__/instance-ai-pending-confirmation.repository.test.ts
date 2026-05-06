@@ -84,6 +84,40 @@ describe('InstanceAiPendingConfirmationRepository', () => {
 		});
 	});
 
+	describe('existsSuspendedForThread', () => {
+		it('queries for kind=suspended rows on the thread that have not expired', async () => {
+			const existsBySpy = jest.spyOn(repository, 'existsBy').mockResolvedValueOnce(true);
+			const now = new Date('2030-01-01T00:00:00Z');
+
+			const result = await repository.existsSuspendedForThread('thread-1', now);
+
+			expect(result).toBe(true);
+			expect(existsBySpy).toHaveBeenCalledWith({
+				threadId: 'thread-1',
+				kind: 'suspended',
+				expiresAt: MoreThan(now),
+			});
+		});
+
+		it('returns false when no row exists', async () => {
+			jest.spyOn(repository, 'existsBy').mockResolvedValueOnce(false);
+
+			const result = await repository.existsSuspendedForThread('thread-1', new Date());
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('findByThread', () => {
+		it('returns all rows for the thread regardless of kind or expiry', async () => {
+			const findSpy = jest.spyOn(repository, 'find').mockResolvedValueOnce([]);
+
+			await repository.findByThread('thread-1');
+
+			expect(findSpy).toHaveBeenCalledWith({ where: { threadId: 'thread-1' } });
+		});
+	});
+
 	describe('claim', () => {
 		it('returns true when the row was deleted (this caller wins)', async () => {
 			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: {} });

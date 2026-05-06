@@ -41,12 +41,12 @@ type ServiceInternals = {
 	queuePendingCheckpointReentry: (threadId: string, checkpointTaskId: string) => void;
 	drainPendingCheckpointReentries: (user: User, threadId: string) => Promise<void>;
 	reenterCheckpointById: jest.Mock<Promise<boolean>, [User, string, string, string?]>;
+	isThreadSuspendedInDb: jest.MockedFunction<(threadId: string) => Promise<boolean>>;
 	backgroundTasks: {
 		getRunningTasksByParentCheckpoint: jest.Mock;
 	};
 	runState: {
 		getActiveRunId: jest.Mock;
-		hasSuspendedRun: jest.Mock;
 	};
 	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
 };
@@ -88,12 +88,12 @@ function createCheckpointService(): ServiceInternals {
 	service.reenterCheckpointById = jest.fn(
 		async (_user: User, _threadId: string, _checkpointTaskId: string, _mgid?: string) => true,
 	);
+	service.isThreadSuspendedInDb = jest.fn(async (_threadId: string) => false);
 	service.backgroundTasks = {
 		getRunningTasksByParentCheckpoint: jest.fn(() => []),
 	};
 	service.runState = {
 		getActiveRunId: jest.fn(() => undefined),
-		hasSuspendedRun: jest.fn(() => false),
 	};
 	service.logger = {
 		debug: jest.fn(),
@@ -233,7 +233,7 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 		it('returns early when a suspended run is present', async () => {
 			const service = createCheckpointService();
 			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.runState.hasSuspendedRun.mockReturnValue(true);
+			service.isThreadSuspendedInDb.mockResolvedValueOnce(true);
 
 			await service.drainPendingCheckpointReentries(fakeUser, 'thread-a');
 
@@ -465,6 +465,7 @@ type RestoreServiceInternals = {
 	parseMcpServers: jest.Mock;
 	processResumedStream: jest.Mock;
 	deletePersistedConfirmation: jest.Mock;
+	getTraceContext: jest.MockedFunction<(runId: string) => unknown>;
 	pendingConfirmationRepository: {
 		claim: jest.MockedFunction<(requestId: string) => Promise<boolean>>;
 	};
@@ -527,6 +528,7 @@ function createRestoreService(): RestoreServiceInternals {
 	service.createMemoryConfig = jest.fn(() => ({}));
 	service.processResumedStream = jest.fn(async () => undefined);
 	service.deletePersistedConfirmation = jest.fn(async () => undefined);
+	service.getTraceContext = jest.fn((_runId: string) => undefined);
 	service.instanceAiConfig = { mcpServers: '' };
 	service.dbSnapshotStorage = {};
 	service.defaultTimeZone = 'UTC';
@@ -660,5 +662,27 @@ describe('InstanceAiService — restoreSuspendedRunFromDb', () => {
 				checkpoint: { isCheckpointFollowUp: true, checkpointTaskId: 'cp-task-1' },
 			}),
 		);
+	});
+
+	it('passes the same-process trace context through when getTraceContext returns one', async () => {
+		const service = createRestoreService();
+		const tracingSentinel = { actorRun: { id: 'lf-actor-1' } };
+		service.getTraceContext.mockReturnValueOnce(tracingSentinel);
+
+		await service.restoreSuspendedRunFromDb(buildRow(), { approved: true });
+
+		expect(service.getTraceContext).toHaveBeenCalledWith('run-original');
+		const [, , opts] = service.processResumedStream.mock.calls[0];
+		expect(opts).toEqual(expect.objectContaining({ tracing: tracingSentinel }));
+	});
+
+	it('proceeds with undefined tracing when no same-process context exists', async () => {
+		const service = createRestoreService();
+		// default mock returns undefined
+
+		await service.restoreSuspendedRunFromDb(buildRow(), { approved: true });
+
+		const [, , opts] = service.processResumedStream.mock.calls[0];
+		expect(opts.tracing).toBeUndefined();
 	});
 });

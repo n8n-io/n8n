@@ -54,6 +54,27 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		});
 	}
 
+	/** Source-of-truth check for "is this thread suspended anywhere in the
+	 *  fleet?" Used by cross-instance flow guards (run-conflict gating,
+	 *  checkpoint re-entry, public thread status). Filters out expired rows
+	 *  via the `expiresAt > now` predicate so a stale row past its TTL never
+	 *  blocks a fresh run on the same thread. */
+	async existsSuspendedForThread(threadId: string, now: Date = new Date()): Promise<boolean> {
+		return await this.existsBy({
+			threadId,
+			kind: 'suspended',
+			expiresAt: MoreThan(now),
+		});
+	}
+
+	/** Fetch all rows for a thread (any kind, ignoring expiry). Used by the
+	 *  cancel/clear lifecycle to capture `mastraRunId` + `runId` from each row
+	 *  before deletion, so Mastra-snapshot cleanup and trace finalization can
+	 *  proceed against rows that originated on a different instance. */
+	async findByThread(threadId: string): Promise<InstanceAiPendingConfirmation[]> {
+		return await this.find({ where: { threadId } });
+	}
+
 	async deleteByRequestId(
 		requestId: string,
 		entityManager: EntityManager = this.manager,
