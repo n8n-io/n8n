@@ -8,6 +8,7 @@ import {
 } from './errors';
 import { createLogger } from './logger';
 import type {
+	Adapter,
 	BrowserName,
 	Config,
 	ConnectConfig,
@@ -58,6 +59,7 @@ export class BrowserConnection {
 		this.config = {
 			defaultBrowser: parsed.defaultBrowser,
 			browsers,
+			adapter: parsed.adapter,
 		};
 	}
 
@@ -159,7 +161,11 @@ export class BrowserConnection {
 		}
 	}
 
-	private async createAdapter() {
+	private async createAdapter(): Promise<Adapter> {
+		if (this.config.adapter === 'agent-browser') {
+			const { AgentBrowserAdapter } = await import('./adapters/agent-browser');
+			return new AgentBrowserAdapter(this.config);
+		}
 		const { PlaywrightAdapter } = await import('./adapters/playwright');
 		return new PlaywrightAdapter(this.config);
 	}

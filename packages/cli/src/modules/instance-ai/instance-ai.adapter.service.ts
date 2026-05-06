@@ -290,12 +290,14 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				const filter = {
+					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(options?.query ? { query: options.query } : {}),
+				};
+
 				const { workflows } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
-					filter: {
-						isArchived: false,
-						...(options?.query ? { query: options.query } : {}),
-					},
+					filter,
 				});
 
 				return workflows
@@ -306,6 +308,7 @@ export class InstanceAiAdapterService {
 							name: wf.name,
 							versionId: wf.versionId,
 							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -326,12 +329,18 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
-			async delete(workflowId: string) {
+			async unarchive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.delete(user, workflowId);
+				const result = await workflowService.unarchive(user, workflowId);
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
 			async clearAiTemporary(workflowId: string) {
@@ -381,6 +390,7 @@ export class InstanceAiAdapterService {
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
 						thread_id: threadId,
+						workflow_id: workflowId,
 						executed_by: 'ai',
 					});
 				}
@@ -807,6 +817,19 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+						status,
+					});
+				};
+
 				const executionId = await workflowRunner.run(runData);
 
 				// Wait for completion with timeout protection
@@ -838,30 +861,25 @@ export class InstanceAiAdapterService {
 							} catch {
 								// Execution may have completed between timeout and cancel
 							}
-							return {
+							const result = {
 								executionId,
 								status: 'error',
 								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 							} satisfies ExecutionResult;
+							trackBuilderExecutedWorkflow(result.status);
+							return result;
 						}
 						throw error;
 					}
 				}
 
-				if (threadId) {
-					telemetry.track('Builder executed workflow', {
-						thread_id: threadId,
-						executed_by: 'ai',
-						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
-						exec_type: runData.executionMode,
-					});
-				}
-
-				return await extractExecutionResult(
+				const result = await extractExecutionResult(
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
 				);
+				trackBuilderExecutedWorkflow(result.status);
+				return result;
 			},
 
 			async getStatus(executionId: string) {
@@ -1626,6 +1644,17 @@ export class InstanceAiAdapterService {
 			return nodes.find((n) => n.name === nodeType);
 		};
 
+		const normalizeNodeVersion = (version?: string): number | undefined => {
+			if (!version) return undefined;
+			const normalized = version.replace(/^v/i, '');
+			if (!/^\d+$/.test(normalized)) return Number(normalized);
+			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
+			if (normalized.length === 2) {
+				return Number(`${normalized[0]}.${normalized[1]}`);
+			}
+			return Number(normalized);
+		};
+
 		return {
 			async listAvailable(options) {
 				const nodes = await getNodes();
@@ -1780,7 +1809,19 @@ export class InstanceAiAdapterService {
 					return { content: '', error: result.error };
 				}
 
-				return { content: result.content, version: result.version };
+				const nodes = await getNodes();
+				const nodeDesc = findNodeByVersion(
+					nodes,
+					nodeType,
+					normalizeNodeVersion(result.version ?? options?.version),
+				);
+				const builderHint = nodeDesc?.builderHint?.message;
+
+				return {
+					content: result.content,
+					version: result.version,
+					...(builderHint ? { builderHint } : {}),
+				};
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -2949,6 +2990,7 @@ function toWorkflowDetail(
 		name: workflow.name,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId ?? null,
+		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(

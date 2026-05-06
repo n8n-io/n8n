@@ -501,7 +501,7 @@ describe('Request Helper Functions', () => {
 					hostname: 'example.de',
 					href: requestObject.uri,
 				};
-				axiosOptions.beforeRedirect!(redirectOptions, mock());
+				axiosOptions.beforeRedirect!(redirectOptions, mock(), mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
 				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
@@ -2240,7 +2240,7 @@ describe('Request Helper Functions', () => {
 					};
 
 					expect(axiosOptions.beforeRedirect).toBeDefined();
-					expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock())).toThrow(
+					expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock(), mock())).toThrow(
 						'Domain not allowed',
 					);
 				});
@@ -2259,7 +2259,9 @@ describe('Request Helper Functions', () => {
 						};
 
 						expect(axiosOptions.beforeRedirect).toBeDefined();
-						expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock())).not.toThrow();
+						expect(() =>
+							axiosOptions.beforeRedirect!(redirectOptions, mock(), mock()),
+						).not.toThrow();
 					},
 				);
 			});
@@ -2278,7 +2280,7 @@ describe('Request Helper Functions', () => {
 					};
 
 					expect(axiosConfig.beforeRedirect).toBeDefined();
-					expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock())).toThrow(
+					expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock(), mock())).toThrow(
 						'Domain not allowed',
 					);
 				});
@@ -2298,7 +2300,9 @@ describe('Request Helper Functions', () => {
 						};
 
 						expect(axiosConfig.beforeRedirect).toBeDefined();
-						expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock())).not.toThrow();
+						expect(() =>
+							axiosConfig.beforeRedirect!(redirectOptions, mock(), mock()),
+						).not.toThrow();
 					},
 				);
 			});

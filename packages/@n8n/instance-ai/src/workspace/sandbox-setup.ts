@@ -169,7 +169,7 @@ try {
     process.exit(1);
   }
   const validation = wf.validate();
-  const json = wf.toJSON();
+  const json = wf.toJSON({ tidyUp: true });
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
