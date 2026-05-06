@@ -5,18 +5,11 @@ import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_OPTIN_MODAL_KEY,
 } from '@/app/constants/modals';
-import {
-	INSTANCE_AI_VIEW,
-	INSTANCE_AI_THREAD_VIEW,
-	INSTANCE_AI_SETTINGS_VIEW,
-	INSTANCE_AI_PERMISSIONS_GALLERY_VIEW,
-} from './constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const InstanceAiPermissionsGalleryView = async () =>
-	await import('./views/InstanceAiPermissionsGalleryView.vue');
 const InstanceAiOptinModal = async () => await import('./components/InstanceAiOptinModal.vue');
 const ComputerUseSetupModal = async () =>
 	await import('./components/modals/ComputerUseSetupModal.vue');
@@ -46,14 +39,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			props: true,
 			meta: {
 				layout: 'instanceAi',
-				middleware: ['authenticated', 'custom'],
-			},
-		},
-		{
-			name: INSTANCE_AI_PERMISSIONS_GALLERY_VIEW,
-			path: '/instance-ai-permissions-gallery',
-			component: InstanceAiPermissionsGalleryView,
-			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
