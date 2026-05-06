@@ -10,6 +10,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { NodeTypes } from '@/node-types';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -85,6 +86,24 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
+		it('should throw BadRequestError for invalid workflow structure', async () => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
+				throw new BadRequestError('Workflow structure is invalid. nodes[0].type: Required');
+			});
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.name = 'Test';
+			newWorkflow.nodes = [{ name: 'Start', position: [0, 0], parameters: {} }] as never;
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+			).rejects.toThrow('Workflow structure is invalid.');
+		});
+
 		describe('credential retrieval', () => {
 			it('should include global credentials when checking credential permissions', async () => {
 				/**

@@ -293,7 +293,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="isQuickConnectMode">
-				<QuickConnectBanner v-if="quickConnectBannerText" :text="quickConnectBannerText" />
+				<QuickConnectBanner
+					v-if="quickConnectBannerText || quickConnectOption?.disclaimer"
+					:text="quickConnectBannerText"
+					:disclaimer="quickConnectOption?.disclaimer"
+				/>
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"

@@ -1,8 +1,8 @@
 import type { Agent } from '@n8n/agents';
 
 import { createEvalAgent, extractText } from '../../../src/utils/eval-agents';
-import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../../src/utils/llm-judge';
 import type { WorkflowResponse } from '../../clients/n8n-client';
+import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type { BinaryCheck, BinaryCheckContext } from '../types';
 
 const DEFAULT_TIMEOUT_MS = 30_000;

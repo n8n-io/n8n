@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { DATA_TABLE_NODES } from '@/app/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 import { N8nCallout } from '@n8n/design-system';
 const i18n = useI18n();
-const nvdStore = useNDVStore();
+const nvdStore = injectNDVStore();
 const dataTableStore = useDataTableStore();
 
 const calloutType = computed(() => {

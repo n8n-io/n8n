@@ -2730,6 +2730,25 @@ type LoadedData<T> = Record<string, LoadedClass<T>>;
 export type ICredentialTypeData = LoadedData<ICredentialType>;
 export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
 
+/**
+ * Contract that the runtime consumes from each node source. Implemented by the
+ * filesystem-backed `DirectoryLoader` in `n8n-core` and in modules
+ */
+export interface NodeLoader {
+	packageName: string;
+
+	known: KnownNodesAndCredentials;
+	types: { nodes: INodeTypeDescription[]; credentials: ICredentialType[] };
+
+	loadAll(): Promise<void>;
+	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType>;
+	getCredential(credentialType: string): LoadedClass<ICredentialType>;
+	reset(): void;
+	releaseTypes(): void;
+	ensureTypesLoaded(): Promise<void>;
+	resolveSourcePath(sourcePath: string): string;
+}
+
 export interface IRun {
 	data: IRunExecutionData;
 	/**

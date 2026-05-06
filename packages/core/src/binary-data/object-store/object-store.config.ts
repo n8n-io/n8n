@@ -51,6 +51,10 @@ export class ObjectStoreConfig {
 	@Env('N8N_EXTERNAL_STORAGE_S3_FORCE_PATH_STYLE')
 	forcePathStyle: boolean = true;
 
+	/** Maximum number of retry attempts for S3 requests */
+	@Env('N8N_EXTERNAL_STORAGE_S3_MAX_ATTEMPTS')
+	maxAttempts: number = 3;
+
 	@Nested
 	bucket: ObjectStoreBucketConfig = {} as ObjectStoreBucketConfig;
 

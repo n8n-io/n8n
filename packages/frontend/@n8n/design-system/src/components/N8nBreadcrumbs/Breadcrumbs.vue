@@ -1,8 +1,9 @@
 <script lang="ts" setup generic="UserType extends IUser">
 import { computed, ref, watch } from 'vue';
 
-import type { IUser, UserAction } from '../../types';
+import type { IUser } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
 import N8nText from '../N8nText';
@@ -69,9 +70,9 @@ const dropdownDisabled = computed(() => {
 	return props.pathTruncated && !hasHiddenItems.value;
 });
 
-const hiddenItemActions = computed((): Array<UserAction<UserType>> => {
+const hiddenItemActions = computed((): Array<DropdownMenuItemProps<string>> => {
 	return loadedHiddenItems.value.map((item) => ({
-		value: item.id,
+		id: item.id,
 		label: item.label,
 		disabled: false,
 	}));
@@ -146,8 +147,8 @@ const emitItemHover = (id: string) => {
 	emit('itemHover', item);
 };
 
-const onHiddenItemMouseUp = (item: UserAction<UserType>) => {
-	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.value);
+const onHiddenItemMouseUp = (item: DropdownMenuItemProps<string, unknown>) => {
+	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.id);
 	if (!pathItem || !props.dragActive) {
 		return;
 	}
