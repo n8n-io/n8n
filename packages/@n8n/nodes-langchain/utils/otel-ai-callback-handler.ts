@@ -38,6 +38,7 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 		extraParams?: Record<string, unknown>,
 	): Promise<void> {
 		const modelName = extractModelName(llm, extraParams);
+		const parentCtx = this.getParentContext(parentRunId);
 		const span = this.tracer.startSpan(
 			'ai.llm.call',
 			{
@@ -53,10 +54,10 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 					}),
 				},
 			},
-			this.getParentContext(parentRunId),
+			parentCtx,
 		);
 
-		this.spans.set(runId, { span, ctx: trace.setSpan(context.active(), span) });
+		this.spans.set(runId, { span, ctx: trace.setSpan(parentCtx, span) });
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
@@ -109,6 +110,7 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 		name?: string,
 	): Promise<void> {
 		const toolName = name ?? tool.id?.[tool.id.length - 1] ?? 'unknown_tool';
+		const parentCtx = this.getParentContext(parentRunId);
 		const span = this.tracer.startSpan(
 			'ai.tool.call',
 			{
@@ -117,10 +119,10 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 					'n8n.ai.tool.input.length': input.length,
 				},
 			},
-			this.getParentContext(parentRunId),
+			parentCtx,
 		);
 
-		this.spans.set(runId, { span, ctx: trace.setSpan(context.active(), span) });
+		this.spans.set(runId, { span, ctx: trace.setSpan(parentCtx, span) });
 	}
 
 	async handleToolEnd(output: string, runId: string): Promise<void> {
@@ -155,6 +157,7 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 		parentRunId?: string,
 	): Promise<void> {
 		const chainType = chain.id?.[chain.id.length - 1] ?? 'unknown_chain';
+		const parentCtx = this.getParentContext(parentRunId);
 		const span = this.tracer.startSpan(
 			'ai.chain.call',
 			{
@@ -162,10 +165,10 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 					'n8n.ai.chain.type': chainType,
 				},
 			},
-			this.getParentContext(parentRunId),
+			parentCtx,
 		);
 
-		this.spans.set(runId, { span, ctx: trace.setSpan(context.active(), span) });
+		this.spans.set(runId, { span, ctx: trace.setSpan(parentCtx, span) });
 	}
 
 	async handleChainEnd(_outputs: Record<string, unknown>, runId: string): Promise<void> {
@@ -199,6 +202,7 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 		parentRunId?: string,
 	): Promise<void> {
 		const retrieverType = retriever.id?.[retriever.id.length - 1] ?? 'unknown_retriever';
+		const parentCtx = this.getParentContext(parentRunId);
 		const span = this.tracer.startSpan(
 			'ai.retriever.call',
 			{
@@ -207,10 +211,10 @@ export class OtelAiCallbackHandler extends BaseCallbackHandler {
 					'n8n.ai.retriever.query.length': query.length,
 				},
 			},
-			this.getParentContext(parentRunId),
+			parentCtx,
 		);
 
-		this.spans.set(runId, { span, ctx: trace.setSpan(context.active(), span) });
+		this.spans.set(runId, { span, ctx: trace.setSpan(parentCtx, span) });
 	}
 
 	async handleRetrieverEnd(
