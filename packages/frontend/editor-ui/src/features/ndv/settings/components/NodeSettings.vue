@@ -41,13 +41,12 @@ import NodeTitle from '@/app/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -67,8 +66,9 @@ import { useQuickConnect } from '@/features/credentials/quickConnect/composables
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 
 const props = withDefaults(
 	defineProps<{
@@ -122,10 +122,10 @@ const slots = defineSlots<{ actions?: {} }>();
 const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
@@ -148,6 +148,7 @@ if (props.isEmbeddedInCanvas) {
 }
 
 const nodeValid = ref(true);
+
 const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
@@ -159,8 +160,8 @@ const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
-const currentWorkflow = computed(
-	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+const currentWorkflow = computed(() =>
+	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -183,6 +184,8 @@ const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackag
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+
+const isModelNode = computed(() => !!node.value && nodeTypesStore.isModelNode(node.value.type));
 
 const isExecutable = computed(() =>
 	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
@@ -280,7 +283,7 @@ const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(no
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
-	Object.values(workflowsStore.usedCredentials).filter((credential) =>
+	Object.values(workflowDocumentStore?.value?.usedCredentials ?? {}).filter((credential) =>
 		Object.values(node.value?.credentials || []).find(
 			(nodeCredential) => nodeCredential.id === credential.id,
 		),
@@ -306,7 +309,8 @@ const featureRequestUrl = computed(() => {
 
 const hasOutputConnection = computed(() => {
 	if (!node.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+	const outgoingConnections =
+		workflowDocumentStore?.value?.outgoingConnectionsByNodeName(node.value.name) ?? {};
 
 	// Check if there's at-least one output connection
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
@@ -330,7 +334,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		return;
 	}
 
-	const _node = workflowsStore.getNodeByName(nodeNameBefore);
+	const _node = workflowDocumentStore?.value?.getNodeByName(nodeNameBefore) ?? null;
 
 	if (_node === null) {
 		return;
@@ -416,7 +420,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				value: nodeParameters,
 			};
 
-			workflowState.setNodeParameters(updateInformation);
+			workflowDocumentStore?.value?.setNodeParameters(updateInformation);
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
@@ -446,7 +450,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowState.setNodeValue(updateInformation);
+		workflowDocumentStore?.value?.setNodeValue(updateInformation);
 	}
 };
 
@@ -457,7 +461,9 @@ const setHttpNodeParameters = (parameters: CurlToJSONResponse) => {
 			name: 'parameters',
 			value: parameters as unknown as INodeParameters,
 		});
-	} catch {}
+	} catch (error) {
+		console.error('Failed to apply cURL parameters to node:', error);
+	}
 };
 
 const onSwitchSelectedNode = (node: string) => {
@@ -473,21 +479,19 @@ const onOpenConnectionNodeCreator = (
 };
 
 const populateHiddenIssuesSet = () => {
-	if (!node.value || !workflowsStore.isNodePristine(node.value.name)) return;
+	if (!node.value || !workflowDocumentStore?.value?.isNodePristine(node.value.name)) return;
 	hiddenIssuesInputs.value.push('credentials');
 	parametersByTab.value.params.forEach((parameter) => {
 		hiddenIssuesInputs.value.push(parameter.name);
 	});
-	workflowsStore.setNodePristine(node.value.name, false);
+	workflowDocumentStore?.value?.setNodePristine(node.value.name, false);
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
-const iconSource = computed(() =>
-	getNodeIconSource(nodeType.value ?? node.value?.type, node.value ?? null),
-);
+const iconSource = useNodeIconSource(nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -506,9 +510,9 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowState.updateNodeProperties(updateInformation);
+	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 
-	const node = workflowsStore.getNodeByName(updateInformation.name);
+	const node = workflowDocumentStore?.value?.getNodeByName(updateInformation.name) ?? null;
 
 	if (node) {
 		// Update the issues
@@ -627,7 +631,6 @@ function handleSelectAction(params: INodeParameters) {
 			embedded: props.isEmbeddedInCanvas,
 		}"
 		:data-has-output-connection="hasOutputConnection"
-		@keydown.stop
 	>
 		<ExperimentalEmbeddedNdvHeader
 			v-if="isEmbeddedInCanvas && node"
@@ -761,6 +764,7 @@ function handleSelectAction(params: INodeParameters) {
 					<QuickConnectBanner
 						v-if="showQuickConnectBanner"
 						:text="quickConnect?.text ?? ''"
+						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
 					<NodeCredentials
@@ -860,7 +864,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
-			:show-manage="useUsersStore().isInstanceOwner"
+			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
 </template>

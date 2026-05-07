@@ -3,7 +3,14 @@ import { computed, ref, useCssModule } from 'vue';
 import { useAsyncState } from '@vueuse/core';
 import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
-import { N8nAlertDialog, N8nBadge, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nAlertDialog,
+	N8nBadge,
+	N8nHeading,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -57,7 +64,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state, isLoading } = useAsyncState(async () => {
+const { state } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
@@ -65,8 +72,11 @@ const { state, isLoading } = useAsyncState(async () => {
 		publishedPersonalWorkflowsCount: settings.publishedPersonalWorkflowsCount,
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
+		managedByEnv: settings.managedByEnv,
 	};
 }, undefined);
+
+const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
 async function updatePersonalSpaceSetting(
 	key: 'personalSpacePublishing' | 'personalSpaceSharing',
@@ -166,6 +176,13 @@ const sharingCountText = computed(() => {
 			</N8nText>
 		</div>
 
+		<N8nNotice
+			v-if="isManagedByEnv"
+			class="mb-l"
+			:content="i18n.baseText('settings.security.managedByEnv')"
+			data-test-id="security-managed-by-env-notice"
+		/>
+
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
 		</N8nHeading>
@@ -188,6 +205,7 @@ const sharingCountText = computed(() => {
 						<ElSwitch
 							:model-value="settingsStore.isMFAEnforced"
 							size="large"
+							:disabled="isManagedByEnv"
 							data-test-id="enable-force-mfa"
 							@update:model-value="onUpdateMfaEnforced"
 						/>
@@ -234,15 +252,17 @@ const sharingCountText = computed(() => {
 				<div :class="$style.settingsContainerAction">
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
 						<ElSwitch
+							v-if="state !== undefined"
 							v-model="personalSpaceSharing"
-							:loading="isLoading"
 							size="large"
+							:disabled="isManagedByEnv"
 							data-test-id="security-personal-space-sharing-toggle"
 						/>
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
-									:model-value="false"
+									v-if="state !== undefined"
+									:model-value="personalSpaceSharing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-sharing-toggle"
@@ -289,15 +309,17 @@ const sharingCountText = computed(() => {
 				<div :class="$style.settingsContainerAction">
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
 						<ElSwitch
+							v-if="state !== undefined"
 							v-model="personalSpacePublishing"
-							:loading="isLoading"
 							size="large"
+							:disabled="isManagedByEnv"
 							data-test-id="security-personal-space-publishing-toggle"
 						/>
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
-									:model-value="false"
+									v-if="state !== undefined"
+									:model-value="personalSpacePublishing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-publishing-toggle"

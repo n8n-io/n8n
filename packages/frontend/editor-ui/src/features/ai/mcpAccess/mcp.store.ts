@@ -2,21 +2,34 @@ import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { WorkflowListItem } from '@/Interface';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import type { IWorkflowSettings, WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
-	toggleWorkflowMcpAccessApi,
+	toggleWorkflowsMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
+	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	type ToggleWorkflowsMcpAccessResponse,
+	type ToggleWorkflowsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
-import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
+import type {
+	ApiKey,
+	InstanceMcpClientStatsResponseDto,
+	OAuthClientResponseDto,
+	DeleteOAuthClientResponseDto,
+} from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -26,9 +39,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
+	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
 
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
@@ -52,45 +67,69 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			enabled,
 		);
 		settingsStore.moduleSettings.mcp = {
+			mcpManagedByEnv: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
 			mcpAccessEnabled: updated,
 		};
 		return updated;
 	}
 
+	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
+		const existing = workflowsListStore.workflowsById[workflowId];
+		if (existing) {
+			if (existing.settings) {
+				existing.settings.availableInMCP = availableInMCP;
+			} else {
+				existing.settings = { availableInMCP } as IWorkflowSettings;
+			}
+		}
+
+		if (workflowId === workflowsStore.workflowId) {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.mergeSettings({ availableInMCP });
+		}
+	}
+
+	// Toggle MCP access for a single workflow
 	async function toggleWorkflowMcpAccess(
 		workflowId: string,
 		availableInMCP: boolean,
-	): Promise<{
-		id: string;
-		settings: { availableInMCP?: boolean } | undefined;
-		versionId: string;
-	}> {
-		const response = await toggleWorkflowMcpAccessApi(
+	): Promise<ToggleWorkflowsMcpAccessResponse> {
+		const response = await toggleWorkflowsMcpAccessApi(
 			rootStore.restApiContext,
-			workflowId,
+			{ workflowIds: [workflowId] },
 			availableInMCP,
 		);
 
-		const { id, settings, versionId } = response;
-
-		// Update local  version of the workflow
-		if (id === workflowsStore.workflowId) {
-			workflowsStore.setWorkflowVersionData({
-				versionId,
-				name: workflowsStore.versionData?.name ?? null,
-				description: workflowsStore.versionData?.description ?? null,
-			});
-			if (settings) {
-				workflowsStore.private.setWorkflowSettings(settings);
-			}
+		if (!(response.updatedIds ?? []).includes(workflowId)) {
+			throw new Error(
+				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
+					interpolate: { workflowId },
+				}),
+			);
 		}
-		if (workflowsListStore.workflowsById[id]) {
-			workflowsListStore.workflowsById[id] = {
-				...workflowsListStore.workflowsById[id],
-				settings,
-				versionId,
-			};
+
+		applyAvailableInMCPToLocalStores(workflowId, availableInMCP);
+
+		return response;
+	}
+
+	/**
+	 * Bulk-toggle MCP availability, scoped by an id list, a project,
+	 * or a folder (+ descendants)
+	 */
+	async function toggleWorkflowsMcpAccess(
+		target: ToggleWorkflowsMcpAccessTarget,
+		availableInMCP: boolean,
+	): Promise<ToggleWorkflowsMcpAccessResponse> {
+		const response = await toggleWorkflowsMcpAccessApi(
+			rootStore.restApiContext,
+			target,
+			availableInMCP,
+		);
+
+		for (const id of response.updatedIds ?? []) {
+			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 
 		return response;
@@ -118,6 +157,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response.data;
 	}
 
+	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
+		try {
+			const stats = await fetchInstanceMcpClientStats(rootStore.restApiContext);
+			instanceClientStats.value = stats;
+			return stats;
+		} catch {
+			// Endpoint is admin-only; non-admin members get 403. Swallow silently
+			// so the settings page still renders for them.
+			instanceClientStats.value = null;
+			return null;
+		}
+	}
+
 	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
 		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
 		// Remove the client from the local store
@@ -143,15 +195,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	return {
 		mcpAccessEnabled,
+		mcpManagedByEnv,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
+		toggleWorkflowsMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		instanceClientStats,
 		getAllOAuthClients,
+		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
 		connectPopoverOpen,

@@ -153,6 +153,36 @@ describe('AuthController', () => {
 				body.password,
 			);
 			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail: body.emailOrLdapLoginId,
+				reason: 'SSO is enabled, please log in with SSO',
+			});
+		});
+
+		it('should emit login failed event on invalid password if SSO is enabled', async () => {
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'wrong-password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				body,
+			});
+			const res = mock<Response>();
+
+			emailAuthHandler.handleLogin.mockResolvedValue(undefined);
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			await expect(controller.login(req, res, body)).rejects.toThrowError(
+				new AuthError('SSO is enabled, please log in with SSO'),
+			);
+
+			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail: body.emailOrLdapLoginId,
+				reason: 'SSO is enabled, please log in with SSO',
+			});
 		});
 
 		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {
@@ -203,7 +233,7 @@ describe('AuthController', () => {
 
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -218,8 +248,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -237,6 +266,7 @@ describe('AuthController', () => {
 		it('throws a ForbiddenError if the users quota is reached', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -251,8 +281,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -274,6 +303,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the users are not found', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -288,8 +318,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -312,6 +341,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the invitee already has a password', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -326,8 +356,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -359,6 +388,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the inviter does not exist or is not set up', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -373,8 +403,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -408,6 +437,7 @@ describe('AuthController', () => {
 		it('returns the inviter if the invitation is valid', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			const id = uuidv4();
+			const token = 'valid-jwt-token';
 
 			const authController = new AuthController(
 				logger,
@@ -422,8 +452,7 @@ describe('AuthController', () => {
 			);
 
 			const payload = new ResolveSignupTokenQueryDto({
-				inviterId: id,
-				inviteeId: id,
+				token,
 			});
 
 			const req = mock<AuthlessRequest>({
@@ -517,7 +546,7 @@ describe('AuthController', () => {
 				},
 			});
 
-			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith(payload);
+			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith(token);
 		});
 
 		it('throws BadRequestError if JWT token is invalid', async () => {
@@ -588,7 +617,7 @@ describe('AuthController', () => {
 			);
 		});
 
-		it('throws BadRequestError if neither token nor inviterId/inviteeId are provided', async () => {
+		it('throws BadRequestError if token is missing', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 
 			const authController = new AuthController(
@@ -603,7 +632,7 @@ describe('AuthController', () => {
 				postHog,
 			);
 
-			// Create empty payload to test validation when neither token nor IDs are provided
+			// Create empty payload to test validation when token is missing
 			// Use type assertion to bypass zod-class validation for all-optional schemas
 			// Validation is handled in the service layer
 			const payload = {} as ResolveSignupTokenQueryDto;
@@ -613,12 +642,8 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			jest
-				.spyOn(userService, 'getInvitationIdsFromPayload')
-				.mockRejectedValue(new BadRequestError('Invalid invite URL'));
-
 			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
-				new BadRequestError('Invalid invite URL'),
+				new BadRequestError('Token is required'),
 			);
 		});
 	});

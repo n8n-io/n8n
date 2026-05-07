@@ -14,11 +14,13 @@ import {
 	validateNodeParameters,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,6 +91,10 @@ export class LmChatGoogleVertex implements INodeType {
 				description:
 					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
 				default: 'gemini-2.5-flash',
+				builderHint: {
+					message:
+						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+				},
 			},
 			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],

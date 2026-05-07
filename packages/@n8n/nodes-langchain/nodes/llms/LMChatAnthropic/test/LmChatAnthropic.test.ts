@@ -4,22 +4,32 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
 
-jest.mock('@langchain/anthropic');
-jest.mock('@n8n/ai-utilities');
+vi.mock('@langchain/anthropic', () => ({
+	ChatAnthropic: vi.fn(),
+}));
+vi.mock('@n8n/ai-utilities', () => ({
+	getConnectionHintNoticeField: vi
+		.fn()
+		.mockReturnValue({ displayName: '', name: 'notice', type: 'notice', default: '' }),
+	makeN8nLlmFailedAttemptHandler: vi.fn(),
+	N8nLlmTracing: vi.fn(),
+	getProxyAgent: vi.fn(),
+}));
 
-const MockedChatAnthropic = jest.mocked(ChatAnthropic);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const MockedChatAnthropic = vi.mocked(ChatAnthropic);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -35,35 +45,37 @@ describe('LmChatAnthropic', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 		});
-		mockContext.getNode = jest.fn().mockReturnValue(node);
-		mockContext.getNodeParameter = jest.fn();
+		mockContext.getNode = vi.fn().mockReturnValue(node);
+		//@ts-expect-error - Mocking
+		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return mockContext;
 	};
 
 	const createMockModel = (properties: Partial<ChatAnthropic>): ChatAnthropic => {
 		const mockModel = properties as ChatAnthropic;
-		MockedChatAnthropic.mockImplementation(() => mockModel);
+		MockedChatAnthropic.mockImplementation(function () {
+			return mockModel;
+		} as unknown as typeof ChatAnthropic);
 		return mockModel;
 	};
 
 	beforeEach(() => {
 		lmChatAnthropic = new LmChatAnthropic();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -72,7 +84,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -96,7 +108,7 @@ describe('LmChatAnthropic', () => {
 		it('should create ChatAnthropic instance with basic configuration (version >= 1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -135,7 +147,7 @@ describe('LmChatAnthropic', () => {
 		it('should create ChatAnthropic instance with basic configuration (version < 1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'claude-3-5-sonnet-20241022';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -163,7 +175,7 @@ describe('LmChatAnthropic', () => {
 				url: customURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -189,7 +201,7 @@ describe('LmChatAnthropic', () => {
 				topP: 0.9,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -216,7 +228,7 @@ describe('LmChatAnthropic', () => {
 		it('should remove topP from model when not explicitly set', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { temperature: 0.7 };
 				return undefined;
@@ -236,7 +248,7 @@ describe('LmChatAnthropic', () => {
 		it('should keep topP on model when explicitly set', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { topP: 0.9 };
 				return undefined;
@@ -255,7 +267,7 @@ describe('LmChatAnthropic', () => {
 		it('should remove temperature when topP is set but temperature is not', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { topP: 0.9 };
 				return undefined;
@@ -276,7 +288,7 @@ describe('LmChatAnthropic', () => {
 		it('should keep temperature when both topP and temperature are set', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { topP: 0.9, temperature: 0.8 };
 				return undefined;
@@ -302,7 +314,7 @@ describe('LmChatAnthropic', () => {
 				maxTokensToSample: 4096,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -335,7 +347,7 @@ describe('LmChatAnthropic', () => {
 				thinking: true,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -370,7 +382,7 @@ describe('LmChatAnthropic', () => {
 				topP: 0.9,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -402,7 +414,7 @@ describe('LmChatAnthropic', () => {
 		it('should create N8nLlmTracing callback with tokens usage parser', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -421,7 +433,7 @@ describe('LmChatAnthropic', () => {
 		it('should create failed attempt handler without gateway handler for direct API', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -440,7 +452,7 @@ describe('LmChatAnthropic', () => {
 				url: 'https://ai-gateway.example.com',
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -463,7 +475,7 @@ describe('LmChatAnthropic', () => {
 				url: gatewayURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -473,7 +485,7 @@ describe('LmChatAnthropic', () => {
 			let capturedHandler: ((error: unknown) => void) | undefined;
 			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
 				capturedHandler = handler as (error: unknown) => void;
-				return jest.fn();
+				return vi.fn();
 			});
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
@@ -493,7 +505,7 @@ describe('LmChatAnthropic', () => {
 		it('should throw when model is empty (v1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return '';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -508,7 +520,7 @@ describe('LmChatAnthropic', () => {
 		it('should throw when model is empty (v1.2)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return '';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -530,7 +542,7 @@ describe('LmChatAnthropic', () => {
 				url: gatewayURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return gatewayModel;
 				if (paramName === 'options') return {};
 				return undefined;
@@ -547,12 +559,12 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should have a default model in v1.3 resource locator', () => {
+		it('should keep Claude Sonnet 4.5 as default for v1.3 resource locator', () => {
 			const v13ModelField = lmChatAnthropic.description.properties.find(
 				(p) =>
 					p.name === 'model' &&
 					p.type === 'resourceLocator' &&
-					p.displayOptions?.show?.['@version']?.[0] !== undefined,
+					p.displayOptions?.show?.['@version']?.[0] === 1.3,
 			);
 
 			expect(v13ModelField).toBeDefined();
@@ -561,6 +573,258 @@ describe('LmChatAnthropic', () => {
 				value: 'claude-sonnet-4-5-20250929',
 				cachedResultName: 'Claude Sonnet 4.5',
 			});
+		});
+
+		it('should have Claude Sonnet 4.6 as default for v1.4 resource locator', () => {
+			const v14ModelField = lmChatAnthropic.description.properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					p.displayOptions?.show?.['@version']?.[0] === 1.4,
+			);
+
+			expect(v14ModelField).toBeDefined();
+			expect(v14ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
+			});
+		});
+	});
+
+	describe('thinking modes (v1.5)', () => {
+		it('should not set thinking-related invocationKwargs when thinkingMode is disabled', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinkingMode: 'disabled', temperature: 0.5, topK: 10, topP: 0.8 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-4-6',
+					temperature: 0.5,
+					topK: 10,
+					topP: 0.8,
+					invocationKwargs: {},
+				}),
+			);
+		});
+
+		it('should configure adaptive thinking with default effort (medium)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return { thinkingMode: 'adaptive' };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-4-6',
+					invocationKwargs: {
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'medium' },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it.each(['low', 'medium', 'high', 'xhigh', 'max'] as const)(
+			'should forward effort=%s for adaptive mode',
+			async (effort) => {
+				const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
+					if (paramName === 'options') return { thinkingMode: 'adaptive', effort };
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						invocationKwargs: expect.objectContaining({
+							thinking: { type: 'adaptive' },
+							output_config: { effort },
+						}),
+					}),
+				);
+			},
+		);
+
+		it('should keep legacy enabled+budget payload for manual thinkingMode on Sonnet 4.6', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinkingMode: 'manual', thinkingBudget: 2048, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-4-6',
+					invocationKwargs: {
+						thinking: { type: 'enabled', budget_tokens: 2048 },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should strip temperature/topK/topP from constructor when model is Opus 4.7 (disabled mode)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
+				if (paramName === 'options')
+					return { thinkingMode: 'disabled', temperature: 0.5, topK: 40, topP: 0.9 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0]!;
+			expect(callArgs.model).toBe('claude-opus-4-7-20251101');
+			expect(callArgs).not.toHaveProperty('temperature');
+			expect(callArgs).not.toHaveProperty('topK');
+			expect(callArgs).not.toHaveProperty('topP');
+		});
+
+		it('should throw NodeOperationError when manual mode is selected on Opus 4.7', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
+				if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(MockedChatAnthropic).not.toHaveBeenCalled();
+		});
+
+		it('should still emit legacy thinking payload when thinking=true on v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						thinking: { type: 'enabled', budget_tokens: 1500 },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should emit empty invocationKwargs when thinking=false on v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return { thinking: false };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
+		it('should describe v1.5 model field, thinkingMode, and gated effort fields', () => {
+			const properties = lmChatAnthropic.description.properties;
+
+			const v15ModelField = properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
+						1.5,
+			);
+			expect(v15ModelField).toBeDefined();
+			expect(v15ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
+			});
+
+			const optionsField = properties.find((p) => p.name === 'options' && p.type === 'collection');
+			expect(optionsField).toBeDefined();
+
+			const innerOptions = (optionsField as { options: INodeProperties[] }).options;
+
+			const thinkingMode = innerOptions.find((o) => o.name === 'thinkingMode');
+			expect(thinkingMode).toBeDefined();
+			expect(thinkingMode!.type).toBe('options');
+			const modeValues = (thinkingMode as { options: Array<{ value: string }> }).options.map(
+				(o) => o.value,
+			);
+			expect(modeValues).toEqual(['disabled', 'adaptive', 'manual']);
+
+			const effortFields = innerOptions.filter((o) => o.name === 'effort');
+			expect(effortFields).toHaveLength(2);
+
+			const opusEffort = effortFields.find((f) => {
+				const cnd = (
+					f.displayOptions?.show?.['/model.value']?.[0] as {
+						_cnd?: { includes?: string };
+					}
+				)?._cnd;
+				return cnd?.includes === 'opus';
+			});
+			expect(opusEffort).toBeDefined();
+			expect(
+				(opusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
+
+			const nonOpusEffort = effortFields.find((f) => {
+				const cnd = (
+					f.displayOptions?.show?.['/model.value']?.[0] as {
+						_cnd?: { regex?: string };
+					}
+				)?._cnd;
+				return typeof cnd?.regex === 'string';
+			});
+			expect(nonOpusEffort).toBeDefined();
+			expect(
+				(nonOpusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['low', 'medium', 'high']);
 		});
 	});
 

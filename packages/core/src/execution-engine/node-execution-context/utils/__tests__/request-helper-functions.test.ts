@@ -13,29 +13,36 @@ import type {
 	PaginationOptions,
 	Workflow,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 
+import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
-	createFormDataObject,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
 	proxyRequestToAxios,
 	refreshOAuth2Token,
 	removeEmptyBody,
+	requestOAuth2,
 } from '../request-helper-functions';
+
+const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
 
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
 		const baseUrl = 'https://example.de';
 		const workflow = mock<Workflow>();
 		const hooks = mock<ExecutionLifecycleHooks>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			hooks,
+			ssrfBridge: undefined,
+		});
 		const node = mock<INode>();
 
 		beforeEach(() => {
@@ -371,11 +378,35 @@ describe('Request Helper Functions', () => {
 				expect.objectContaining({
 					url: 'https://example.com',
 					method: 'POST',
-					headers: { accept: '*/*', 'content-type': 'application/json' },
+					headers: {
+						accept: '*/*',
+						'content-type': 'application/json',
+						'User-Agent': 'n8n',
+					},
 					data: { key: 'value' },
 					maxRedirects: 0,
 				}),
 			);
+		});
+
+		test('should set default User-Agent when none provided', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'n8n' });
+		});
+
+		test('should preserve a caller-supplied User-Agent header', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+				headers: { 'User-Agent': 'MyCustomNode/1.0' },
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'MyCustomNode/1.0' });
+			expect(axiosOptions.headers).not.toMatchObject({ 'User-Agent': 'n8n' });
 		});
 
 		test('should set correct headers for FormData', async () => {
@@ -399,6 +430,40 @@ describe('Request Helper Functions', () => {
 			expect(axiosOptions.data).toBeInstanceOf(FormData);
 		});
 
+		test('should handle FormData from a different module copy (duck-typing)', async () => {
+			// Simulate a FormData created by a different copy of the form-data package.
+			// instanceof FormData would return false, but duck-type check should pass.
+			const realFormData = new FormData();
+			realFormData.append('key', 'value');
+
+			// Create a wrapper that breaks instanceof but preserves the interface
+			const foreignFormData: Record<string, unknown> = Object.create(null);
+			for (const prop of Object.getOwnPropertyNames(Object.getPrototypeOf(realFormData))) {
+				const value = (realFormData as unknown as Record<string, unknown>)[prop];
+				if (typeof value === 'function') {
+					foreignFormData[prop] = value.bind(realFormData);
+				}
+			}
+			for (const prop of Object.getOwnPropertyNames(realFormData)) {
+				foreignFormData[prop] = (realFormData as unknown as Record<string, unknown>)[prop];
+			}
+
+			// Verify it's NOT an instanceof FormData
+			expect(foreignFormData instanceof FormData).toBe(false);
+
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				formData: foreignFormData as unknown as FormData,
+				headers: {
+					'content-type': 'multipart/form-data',
+				},
+			});
+
+			expect(axiosOptions.headers).toMatchObject({
+				'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+			});
+		});
+
 		test('should not use Host header for SNI', async () => {
 			const axiosOptions = await parseRequestObject({
 				url: 'https://example.de/foo/bar',
@@ -409,7 +474,7 @@ describe('Request Helper Functions', () => {
 
 		describe('should set SSL certificates', () => {
 			const agentOptions: SecureContextOptions = {
-				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+				ca: TEST_CA_CERT,
 			};
 			const requestObject: IRequestOptions = {
 				method: 'GET',
@@ -485,45 +550,6 @@ describe('Request Helper Functions', () => {
 					expect(axiosOptions.maxRedirects).toEqual(1234);
 				},
 			);
-		});
-	});
-
-	describe('createFormDataObject', () => {
-		test('should create FormData with simple key-value pairs', () => {
-			const data = { key1: 'value1', key2: 'value2' };
-			const formData = createFormDataObject(data);
-
-			expect(formData).toBeInstanceOf(FormData);
-
-			const formDataEntries: string[] = [];
-			formData.getHeaders(); // Ensures form data is processed
-
-			formData.on('data', (chunk) => {
-				formDataEntries.push(chunk.toString());
-			});
-		});
-
-		test('should handle array values', () => {
-			const data = { files: ['file1.txt', 'file2.txt'] };
-			const formData = createFormDataObject(data);
-
-			expect(formData).toBeInstanceOf(FormData);
-		});
-
-		test('should handle complex form data with options', () => {
-			const data = {
-				file: {
-					value: Buffer.from('test content'),
-					options: {
-						filename: 'test.txt',
-						contentType: 'text/plain',
-					},
-				},
-			};
-
-			const formData = createFormDataObject(data);
-
-			expect(formData).toBeInstanceOf(FormData);
 		});
 	});
 
@@ -644,6 +670,36 @@ describe('Request Helper Functions', () => {
 			expect(axiosConfig.validateStatus).toBeDefined();
 			expect(axiosConfig.validateStatus!(401)).toBe(true);
 			expect(axiosConfig.validateStatus!(500)).toBe(true);
+		});
+
+		test('should pass agentOptions through to the https agent', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				agentOptions: {
+					ca: TEST_CA_CERT,
+				},
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect((axiosConfig.httpsAgent as HttpsAgent).options.ca).toBe(TEST_CA_CERT);
+		});
+
+		test('should merge agentOptions with skipSslCertificateValidation', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				skipSslCertificateValidation: true,
+				agentOptions: {
+					ca: TEST_CA_CERT,
+				},
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect((axiosConfig.httpsAgent as HttpsAgent).options.rejectUnauthorized).toBe(false);
+			expect((axiosConfig.httpsAgent as HttpsAgent).options.ca).toBe(TEST_CA_CERT);
 		});
 	});
 
@@ -806,6 +862,21 @@ describe('Request Helper Functions', () => {
 			const response = await httpRequest({
 				method: 'GET',
 				url: `${baseUrl}/users`,
+			});
+
+			expect(response).toEqual({ users: ['John', 'Jane'] });
+			scope.done();
+		});
+
+		test('should ignore invalid baseURL when url is absolute', async () => {
+			const scope = nock(baseUrl)
+				.get('/users')
+				.reply(200, { users: ['John', 'Jane'] });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/users`,
+				baseURL: 'not-a-valid-url',
 			});
 
 			expect(response).toEqual({ users: ['John', 'Jane'] });
@@ -1084,6 +1155,9 @@ describe('Request Helper Functions', () => {
 		const mockThis = mockDeep<IAllExecuteFunctions>();
 		const mockNode = mockDeep<INode>();
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		// mockDeep auto-creates a proxy for module-augmented keys; the OAuth2
+		// flow tests must opt out of the JWE proxy unless they wire one in.
+		(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
 		const mockCredentialData = {
 			clientId: 'test-client-id',
 			clientSecret: 'test-client-secret',
@@ -1264,6 +1338,970 @@ describe('Request Helper Functions', () => {
 			expect(
 				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 			).not.toHaveBeenCalled();
+		});
+
+		describe('JWE decryption via oauth-jwe proxy', () => {
+			beforeEach(() => {
+				nock.cleanAll();
+				jest.resetAllMocks();
+				mockNode.name = 'test-node-name';
+				mockNode.credentials = {
+					'test-credentials-type': { id: 'test-credentials-id', name: 'test-credentials-name' },
+				};
+			});
+
+			test('decrypts the refreshed token via the proxy when present', async () => {
+				const oauthJweProxyProvider = {
+					decryptOAuth2TokenData: jest.fn().mockResolvedValue({
+						access_token: 'decrypted-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				};
+				const additionalDataWithProxy = {
+					...mockAdditionalData,
+					'oauth-jwe': { oauthJweProxyProvider },
+				} as unknown as IWorkflowExecuteAdditionalData;
+
+				mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData, jweEnabled: true });
+				nock(baseUrl).post('/token').reply(200, {
+					access_token: 'jwe-blob',
+					refresh_token: 'new-refresh-token',
+				});
+
+				await refreshOAuth2Token.call(
+					mockThis,
+					'test-credentials-type',
+					mockNode,
+					additionalDataWithProxy,
+				);
+
+				expect(oauthJweProxyProvider.decryptOAuth2TokenData).toHaveBeenCalledWith(
+					expect.objectContaining({ access_token: 'jwe-blob' }),
+				);
+				expect(
+					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					'test-credentials-type',
+					expect.objectContaining({
+						oauthTokenData: expect.objectContaining({ access_token: 'decrypted-token' }),
+					}),
+					additionalDataWithProxy,
+				);
+			});
+
+			test('passes refreshed token through unchanged when proxy is absent', async () => {
+				mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+				nock(baseUrl).post('/token').reply(200, {
+					access_token: 'plaintext-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+				const result = await refreshOAuth2Token.call(
+					mockThis,
+					'test-credentials-type',
+					mockNode,
+					mockAdditionalData,
+				);
+
+				expect(result.access_token).toBe('plaintext-token');
+				expect(
+					mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+				).toHaveBeenCalled();
+			});
+
+			test('propagates plaintext rejection thrown by the proxy', async () => {
+				const oauthJweProxyProvider = {
+					decryptOAuth2TokenData: jest
+						.fn()
+						.mockRejectedValue(
+							new UserError(
+								'Expected at least one JWE-encrypted token but received only plaintext',
+							),
+						),
+				};
+				const additionalDataWithProxy = {
+					...mockAdditionalData,
+					'oauth-jwe': { oauthJweProxyProvider },
+				} as unknown as IWorkflowExecuteAdditionalData;
+
+				mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData, jweEnabled: true });
+				nock(baseUrl).post('/token').reply(200, {
+					access_token: 'plaintext',
+					refresh_token: 'new-refresh-token',
+				});
+
+				await expect(
+					refreshOAuth2Token.call(
+						mockThis,
+						'test-credentials-type',
+						mockNode,
+						additionalDataWithProxy,
+					),
+				).rejects.toThrow('Expected at least one JWE-encrypted token but received only plaintext');
+				expect(
+					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
+				).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('requestOAuth2 - tokenExpiredStatusCode', () => {
+		const baseUrl = 'https://api.example.com';
+		const tokenUrl = 'https://auth.example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+
+		const makeCredentialData = (overrides?: Record<string, unknown>) => ({
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'clientCredentials',
+			accessTokenUrl: `${tokenUrl}/token`,
+			authentication: 'body',
+			scope: 'read',
+			oauthTokenData: {
+				access_token: 'expired-token',
+				token_type: 'bearer',
+			},
+			...overrides,
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node';
+			mockNode.credentials = {
+				testOAuth2: {
+					id: 'cred-id',
+					name: 'cred-name',
+				},
+			};
+		});
+
+		test('should retry on 401 by default (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+
+			// First call returns 401
+			nock(baseUrl).get('/data').reply(401, 'Unauthorized');
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+			// Retry succeeds
+			nock(baseUrl).get('/data').reply(200, { success: true });
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('401'), { response: { status: 401 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true, // isN8nRequest
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should retry on custom tokenExpiredStatusCode from credentials (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: 403 }),
+			);
+
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('403'), { response: { status: 403 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should NOT retry on 401 when credential sets tokenExpiredStatusCode to 403 (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: 403 }),
+			);
+
+			const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					undefined,
+					true,
+				),
+			).rejects.toThrow('401');
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+		});
+
+		test('credential-level tokenExpiredStatusCode should take priority over oAuth2Options', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: 403 }),
+			);
+
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+
+			// credential says 403, oAuth2Options says 429 — 403 should win
+			const error403 = Object.assign(new Error('403'), { response: { status: 403 } });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(error403);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				{ tokenExpiredStatusCode: 429 },
+				true,
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should NOT retry on token-expired status when oAuth2Options.skipTokenRefresh is true (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+			const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					{ skipTokenRefresh: true },
+					true,
+				),
+			).rejects.toThrow('401');
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should NOT retry on token-expired status when oAuth2Options.skipTokenRefresh is true (legacy request path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+			const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+			mockThis.helpers.request.mockRejectedValueOnce(error401);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					{ skipTokenRefresh: true },
+					false,
+				),
+			).rejects.toThrow('401');
+			expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('requestOAuth2 - client credentials initial token fetch', () => {
+		const baseUrl = 'https://api.example.com';
+		const tokenUrl = 'https://auth.example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node';
+			mockNode.credentials = {
+				testOAuth2: { id: 'cred-id', name: 'cred-name' },
+			};
+		});
+
+		test('should not send scope parameter when scope is empty', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				grantType: 'clientCredentials',
+				accessTokenUrl: `${tokenUrl}/token`,
+				authentication: 'body',
+				scope: '',
+				oauthTokenData: undefined,
+			});
+
+			// Token endpoint must NOT receive scope in body
+			nock(tokenUrl)
+				.post('/token', (body) => !('scope' in body) || body.scope === undefined)
+				.reply(
+					200,
+					{ access_token: 'new-token', token_type: 'bearer' },
+					{ 'content-type': 'application/json' },
+				);
+
+			nock(baseUrl).get('/data').reply(200, { success: true });
+
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true, // isN8nRequest
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer new-token' }),
+				}),
+			);
+		});
+
+		test('should send scope parameter when scope is set', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				grantType: 'clientCredentials',
+				accessTokenUrl: `${tokenUrl}/token`,
+				authentication: 'body',
+				scope: 'read write',
+				oauthTokenData: undefined,
+			});
+
+			nock(tokenUrl)
+				.post('/token', (body) => body.scope === 'read write')
+				.reply(
+					200,
+					{ access_token: 'scoped-token', token_type: 'bearer' },
+					{ 'content-type': 'application/json' },
+				);
+
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ data: 'ok' });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer scoped-token' }),
+				}),
+			);
+		});
+
+		test('should throw ApplicationError with clear message when token acquisition fails', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				clientId: 'client-id',
+				clientSecret: 'wrong-secret',
+				grantType: 'clientCredentials',
+				accessTokenUrl: `${tokenUrl}/token`,
+				authentication: 'body',
+				scope: '',
+				oauthTokenData: undefined,
+			});
+
+			nock(tokenUrl)
+				.post('/token')
+				.reply(
+					400,
+					{ error: 'invalid_client', error_description: 'Invalid client credentials' },
+					{ 'content-type': 'application/json' },
+				);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					undefined,
+					true,
+				),
+			).rejects.toThrow('Failed to acquire OAuth2 access token');
+		});
+	});
+
+	describe('requestOAuth2 - preAuthentication', () => {
+		const baseUrl = 'https://api.example.com';
+		const tokenUrl = 'https://auth.example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+
+		const credentialData = () => ({
+			clientId: 'client-id',
+			clientSecret: 'client-secret',
+			grantType: 'authorizationCode',
+			authUrl: `${tokenUrl}/auth`,
+			accessTokenUrl: `${tokenUrl}/token`,
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: {
+				access_token: 'raw-token',
+				refresh_token: 'old-refresh',
+				token_type: 'bearer',
+			},
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node';
+			mockNode.credentials = {
+				testOAuth2: { id: 'cred-id', name: 'cred-name' },
+			};
+		});
+
+		test('initial path: signs request with token transformed by preAuthentication', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue({
+				oauthTokenData: {
+					access_token: 'transformed-token',
+					token_type: 'bearer',
+				},
+			});
+
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockAdditionalData.credentialsHelper.runPreAuthentication).toHaveBeenCalled();
+			const preAuthCall = mockAdditionalData.credentialsHelper.runPreAuthentication.mock.calls[0];
+			expect(preAuthCall[2]).toBe('testOAuth2');
+			// runPreAuthentication is the non-persisting variant — must not call updateCredentials
+			expect(mockAdditionalData.credentialsHelper.updateCredentials).not.toHaveBeenCalled();
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer transformed-token' }),
+				}),
+			);
+		});
+
+		test('initial path: undefined preAuthentication leaves request untouched', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue(undefined);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer raw-token' }),
+				}),
+			);
+		});
+
+		test('refresh path: retry signs with preAuthentication-transformed refreshed token and persists it', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+
+			// preAuthentication is called twice (initial + refresh). Initial returns undefined
+			// so the 401 fires; refresh returns a transformed token.
+			mockAdditionalData.credentialsHelper.runPreAuthentication
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce({
+					oauthTokenData: {
+						access_token: 'transformed-refreshed',
+						refresh_token: 'new-refresh',
+						token_type: 'bearer',
+					},
+				});
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'raw-refreshed',
+				refresh_token: 'new-refresh',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('401'), { response: { status: 401 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						Authorization: 'Bearer transformed-refreshed',
+					}),
+				}),
+			);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!.testOAuth2,
+				'testOAuth2',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'transformed-refreshed' }),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('refresh path: undefined preAuthentication signs retry with raw refreshed token', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue(undefined);
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'raw-refreshed',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('401'), { response: { status: 401 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer raw-refreshed' }),
+				}),
+			);
+		});
+
+		test('refreshOAuth2Token: returns transformed data after preAuthentication', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue({
+				oauthTokenData: {
+					access_token: 'transformed-refreshed',
+					refresh_token: 'new-refresh',
+					token_type: 'bearer',
+				},
+			});
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'raw-refreshed',
+				refresh_token: 'new-refresh',
+				token_type: 'bearer',
+			});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'testOAuth2',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ access_token: 'transformed-refreshed' }));
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!.testOAuth2,
+				'testOAuth2',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'transformed-refreshed' }),
+				}),
+				mockAdditionalData,
+			);
+		});
+	});
+
+	describe('SSRF protection wiring', () => {
+		const baseUrl = 'https://example.com';
+		const workflow = mock<Workflow>();
+		const hooks = mock<ExecutionLifecycleHooks>();
+		const node = mock<INode>();
+
+		const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
+			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateRedirectSync: jest.fn(),
+			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+			...overrides,
+		});
+		beforeEach(() => {
+			nock.cleanAll();
+			hooks.runHook.mockClear();
+		});
+
+		describe('convertN8nRequestToAxios with ssrfBridge', () => {
+			test('should inject secureLookup into agent options when no proxy', () => {
+				const lookupFn = jest.fn();
+				const ssrfBridge = createSsrfBridge({
+					createSecureLookup: jest.fn().mockReturnValue(lookupFn),
+				});
+
+				const axiosConfig = convertN8nRequestToAxios(
+					{ method: 'GET', url: 'https://example.com/test' },
+					ssrfBridge,
+				);
+
+				expect(ssrfBridge.createSecureLookup).toHaveBeenCalled();
+				expect((axiosConfig.httpsAgent as HttpsAgent).options.lookup).toBe(lookupFn);
+			});
+
+			test('should NOT inject secureLookup when proxy is configured', () => {
+				const lookupFn = jest.fn();
+				const ssrfBridge = createSsrfBridge({
+					createSecureLookup: jest.fn().mockReturnValue(lookupFn),
+				});
+
+				const axiosConfig = convertN8nRequestToAxios(
+					{
+						method: 'GET',
+						url: 'https://example.com/test',
+						proxy: { host: 'my-proxy', port: 8080 },
+					},
+					ssrfBridge,
+				);
+
+				expect((axiosConfig.httpsAgent as HttpsAgent).options.lookup).toBeUndefined();
+			});
+
+			test('should not inject secureLookup when ssrfBridge is absent', () => {
+				const axiosConfig = convertN8nRequestToAxios({
+					method: 'GET',
+					url: 'https://example.com/test',
+				});
+
+				expect((axiosConfig.httpsAgent as HttpsAgent).options.lookup).toBeUndefined();
+			});
+		});
+
+		test('proxyRequestToAxios should resolve baseURL + relative url for validateUrl', async () => {
+			const ssrfBridge = createSsrfBridge();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				ssrfBridge,
+			});
+
+			nock(baseUrl).get('/test').reply(200, 'ok');
+
+			const response = await proxyRequestToAxios(workflow, additionalData, node, {
+				baseURL: baseUrl,
+				url: '/test',
+			});
+
+			expect(response).toEqual('ok');
+			expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/test`));
+		});
+		describe('domain allowlist enforcement', () => {
+			const baseUrl = 'https://example.com';
+			const workflow = mock<Workflow>();
+			const hooks = mock<ExecutionLifecycleHooks>();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks, ssrfBridge: undefined });
+			const node = mock<INode>();
+
+			beforeEach(() => {
+				nock.cleanAll();
+			});
+
+			describe('httpRequest', () => {
+				test('should block requests to disallowed domains', async () => {
+					await expect(
+						httpRequest({
+							method: 'GET',
+							url: `${baseUrl}/data`,
+							allowedDomains: 'other.com',
+						}),
+					).rejects.toThrow('Domain not allowed');
+				});
+
+				test.each([['example.com'], [undefined]])(
+					'should allow requests to allowed domains when allowedDomains is %s',
+					async (allowedDomains) => {
+						nock(baseUrl).get('/data').reply(200, 'ok');
+
+						const response = await httpRequest({
+							method: 'GET',
+							url: `${baseUrl}/data`,
+							allowedDomains,
+						});
+
+						expect(response).toEqual('ok');
+					},
+				);
+
+				test('should block redirects to disallowed domains', async () => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://not-allowed.com/data' });
+					nock('https://not-allowed.com').get('/data').reply(200, 'not-ok');
+
+					await expect(
+						httpRequest({
+							method: 'GET',
+							url: `${baseUrl}/redirect`,
+							allowedDomains: 'example.com',
+						}),
+					).rejects.toThrow('Domain not allowed');
+				});
+
+				test.each([['example.com, allowed.com'], [undefined]])(
+					'should allow redirects to allowed domains when allowedDomains is %s',
+					async (allowedDomains) => {
+						nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://allowed.com/data' });
+						nock('https://allowed.com').get('/data').reply(200, 'ok');
+
+						const response = await httpRequest({
+							method: 'GET',
+							url: `${baseUrl}/redirect`,
+							allowedDomains,
+						});
+
+						expect(response).toEqual('ok');
+					},
+				);
+
+				test('should support wildcard domains in allowedDomains', async () => {
+					nock('https://api.example.com').get('/data').reply(200, 'ok');
+
+					const response = await httpRequest({
+						method: 'GET',
+						url: 'https://api.example.com/data',
+						allowedDomains: '*.example.com',
+					});
+
+					expect(response).toEqual('ok');
+				});
+
+				test('should block wildcard domains that do not match', async () => {
+					await expect(
+						httpRequest({
+							method: 'GET',
+							url: 'https://blocked.com/data',
+							allowedDomains: '*.example.com',
+						}),
+					).rejects.toThrow('Domain not allowed');
+				});
+			});
+
+			describe('proxyRequestToAxios', () => {
+				test('should block requests to disallowed domains', async () => {
+					await expect(
+						proxyRequestToAxios(workflow, additionalData, node, {
+							url: `${baseUrl}/data`,
+							allowedDomains: 'other.com',
+						}),
+					).rejects.toThrow('Domain not allowed');
+				});
+
+				test.each([['example.com'], [undefined]])(
+					'should allow requests to allowed domains when allowedDomains is %s',
+					async (allowedDomains) => {
+						nock(baseUrl).get('/data').reply(200, 'ok');
+
+						const response = await proxyRequestToAxios(workflow, additionalData, node, {
+							url: `${baseUrl}/data`,
+							allowedDomains,
+						});
+
+						expect(response).toBe('ok');
+					},
+				);
+
+				test('should block redirects to disallowed domains', async () => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://not-allowed.com/data' });
+					nock('https://not-allowed.com').get('/data').reply(200, 'not-ok');
+
+					await expect(
+						proxyRequestToAxios(workflow, additionalData, node, {
+							url: `${baseUrl}/redirect`,
+							allowedDomains: 'example.com',
+							followAllRedirects: true,
+						}),
+					).rejects.toThrow('Domain not allowed');
+				});
+
+				test.each([['example.com, allowed.com'], [undefined]])(
+					'should allow redirects to allowed domains when allowedDomains is %s',
+					async (allowedDomains) => {
+						nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://allowed.com/data' });
+						nock('https://allowed.com').get('/data').reply(200, 'ok');
+
+						const response = await proxyRequestToAxios(workflow, additionalData, node, {
+							url: `${baseUrl}/redirect`,
+							allowedDomains,
+							followAllRedirects: true,
+						});
+
+						expect(response).toBe('ok');
+					},
+				);
+
+				test('should support wildcard domains in allowedDomains', async () => {
+					nock('https://api.example.com').get('/data').reply(200, 'ok');
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: 'https://api.example.com/data',
+						allowedDomains: '*.example.com',
+					});
+
+					expect(response).toBe('ok');
+				});
+
+				test('should block wildcard domains that do not match', async () => {
+					await expect(
+						proxyRequestToAxios(workflow, additionalData, node, {
+							url: 'https://blocked.com/data',
+							allowedDomains: '*.example.com',
+						}),
+					).rejects.toThrow('Domain not allowed');
+				});
+			});
+
+			describe('parseRequestObject', () => {
+				test('should pass allowedDomains to beforeRedirect', async () => {
+					const axiosOptions = await parseRequestObject({
+						url: `${baseUrl}/test`,
+						allowedDomains: 'example.com',
+					});
+					const redirectOptions = {
+						agents: {},
+						hostname: 'not-allowed.com',
+						href: 'https://not-allowed.com/data',
+					};
+
+					expect(axiosOptions.beforeRedirect).toBeDefined();
+					expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock())).toThrow(
+						'Domain not allowed',
+					);
+				});
+
+				test.each([['example.com'], [undefined]])(
+					'should not block redirects when allowedDomains is %s',
+					async (allowedDomains) => {
+						const axiosOptions = await parseRequestObject({
+							url: `${baseUrl}/test`,
+							allowedDomains,
+						});
+						const redirectOptions = {
+							agents: {},
+							hostname: 'example.com',
+							href: 'https://example.com/data',
+						};
+
+						expect(axiosOptions.beforeRedirect).toBeDefined();
+						expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock())).not.toThrow();
+					},
+				);
+			});
+
+			describe('convertN8nRequestToAxios', () => {
+				test('should pass allowedDomains to beforeRedirect', () => {
+					const axiosConfig = convertN8nRequestToAxios({
+						method: 'GET',
+						url: `${baseUrl}/test`,
+						allowedDomains: 'example.com',
+					});
+					const redirectOptions = {
+						agents: {},
+						hostname: 'not-allowed.com',
+						href: 'https://not-allowed.com/data',
+					};
+
+					expect(axiosConfig.beforeRedirect).toBeDefined();
+					expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock())).toThrow(
+						'Domain not allowed',
+					);
+				});
+
+				test.each([['example.com'], [undefined]])(
+					'should not block redirects when allowedDomains is %s',
+					(allowedDomains) => {
+						const axiosConfig = convertN8nRequestToAxios({
+							method: 'GET',
+							url: `${baseUrl}/test`,
+							allowedDomains,
+						});
+						const redirectOptions = {
+							agents: {},
+							hostname: 'example.com',
+							href: 'https://example.com/data',
+						};
+
+						expect(axiosConfig.beforeRedirect).toBeDefined();
+						expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock())).not.toThrow();
+					},
+				);
+			});
 		});
 	});
 });

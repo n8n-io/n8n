@@ -9,6 +9,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { CodeWorkflowBuilder } from '@/code-builder';
+import type { HistoryContext } from '@/code-builder';
+import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -30,7 +32,6 @@ import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
-	type EvaluationArgs,
 } from './argument-parser';
 import { buildCIMetadata } from './ci-metadata';
 import {
@@ -38,14 +39,14 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
-import { loadSubgraphDatasetFile } from './dataset-file-loader';
 import { sendWebhookNotification } from './webhook';
 import { WorkflowGenerationError } from '../errors';
 import {
-	consumeGenerator,
+	collectAgentTextResponse,
 	extractSubgraphMetrics,
 	getChatPayload,
 } from '../harness/evaluation-helpers';
+import type { DatasetInputContext } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
 import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
 import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
@@ -58,16 +59,12 @@ import {
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
 	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
 	type GenerationResult,
-	createSubgraphRunner,
-	createResponderEvaluator,
-	type EvaluationLifecycle,
-	runLocalSubgraphEvaluation,
-	runSubgraphEvaluation,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
@@ -77,7 +74,6 @@ import {
 	createAgent,
 	resolveNodesBasePath,
 	type ResolvedStageLLMs,
-	type TestEnvironment,
 } from '../support/environment';
 import { generateEvalPinData } from '../support/pin-data-generator';
 
@@ -131,8 +127,16 @@ function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
-): (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow> {
-	return async (prompt: string, collectors?: GenerationCollectors): Promise<SimpleWorkflow> => {
+): (
+	prompt: string,
+	datasetInputContext?: DatasetInputContext,
+	collectors?: GenerationCollectors,
+) => Promise<GenerationResult> {
+	return async (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
 		const agent = createAgent({
@@ -145,17 +149,20 @@ function createWorkflowGenerator(
 		// (supervisor, discovery, builder, responder agents)
 		const tokenTracker = collectors?.tokenUsage ? new TokenUsageTrackingHandler() : undefined;
 
-		await consumeGenerator(
+		const agentTextResponse = await collectAgentTextResponse(
 			agent.chat(
 				getChatPayload({
 					evalType: EVAL_TYPES.LANGSMITH,
 					message: prompt,
 					workflowId: runId,
 					featureFlags,
+					workflowContext: datasetInputContext?.workflowContext,
+					mode: datasetInputContext?.mode,
 				}),
 				EVAL_USERS.LANGSMITH,
 				undefined, // abortSignal
 				tokenTracker ? [tokenTracker] : undefined, // externalCallbacks
+				datasetInputContext?.historicalMessages,
 			),
 		);
 
@@ -183,7 +190,7 @@ function createWorkflowGenerator(
 		// Report introspection events
 		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
 
-		return workflow;
+		return { workflow, agentTextResponse };
 	};
 }
 
@@ -195,8 +202,9 @@ function createEvaluators(params: {
 	judgeLlm: ResolvedStageLLMs['judge'];
 	parsedNodeTypes: Parameters<typeof createProgrammaticEvaluator>[0];
 	numJudges: number;
+	checks?: string[];
 }): Array<Evaluator<EvaluationContext>> {
-	const { suite, judgeLlm, parsedNodeTypes, numJudges } = params;
+	const { suite, judgeLlm, parsedNodeTypes, numJudges, checks } = params;
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
 	switch (suite) {
@@ -214,9 +222,90 @@ function createEvaluators(params: {
 		case 'similarity':
 			evaluators.push(createSimilarityEvaluator());
 			break;
+		case 'binary-checks':
+			evaluators.push(
+				createBinaryChecksEvaluator({
+					nodeTypes: parsedNodeTypes,
+					llm: judgeLlm,
+					checks,
+				}),
+			);
+			break;
 	}
 
 	return evaluators;
+}
+
+/**
+ * Convert raw LangChain messages from dataset into HistoryContext for the code builder.
+ * Pairs up human/AI messages as conversation entries.
+ */
+function buildHistoryContextFromMessages(messages: unknown[]): HistoryContext | undefined {
+	if (messages.length === 0) return undefined;
+
+	const entries: ConversationEntry[] = [];
+
+	for (let i = 0; i < messages.length; i++) {
+		const msg = messages[i];
+		if (!isUnknownRecord(msg)) continue;
+
+		const msgId = msg.id;
+		const isHuman = Array.isArray(msgId) && msgId.includes('HumanMessage');
+
+		if (!isHuman) continue;
+
+		const kwargs = msg.kwargs;
+		if (!isUnknownRecord(kwargs) || typeof kwargs.content !== 'string') continue;
+
+		const userContent = kwargs.content;
+
+		// Look for a following AI message to pair with
+		const nextMsg = i + 1 < messages.length ? messages[i + 1] : undefined;
+		const nextIsAI =
+			isUnknownRecord(nextMsg) && Array.isArray(nextMsg.id) && nextMsg.id.includes('AIMessage');
+
+		if (nextIsAI && isUnknownRecord(nextMsg)) {
+			const nextKwargs = nextMsg.kwargs;
+			const aiContent =
+				isUnknownRecord(nextKwargs) && typeof nextKwargs.content === 'string'
+					? nextKwargs.content
+					: '';
+			entries.push({
+				type: 'assistant-exchange',
+				userQuery: userContent,
+				assistantSummary: aiContent,
+			});
+			i++; // Skip the AI message
+		} else {
+			entries.push({ type: 'build-request', message: userContent });
+		}
+	}
+
+	return entries.length > 0 ? { conversationEntries: entries } : undefined;
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Process a single stream message from CodeWorkflowBuilder, extracting workflow updates and text response */
+function processCodeBuilderMessage(
+	message: StreamChunk,
+	state: { workflow: SimpleWorkflow | null; generatedCode?: string; textParts: string[] },
+) {
+	if (isWorkflowUpdateChunk(message)) {
+		try {
+			const parsed: unknown = JSON.parse(message.codeSnippet);
+			if (isSimpleWorkflow(parsed)) {
+				state.workflow = parsed;
+				state.generatedCode = message.sourceCode;
+			}
+		} catch {
+			// Invalid JSON in codeSnippet — skip this message
+		}
+	} else if (message.type === 'message' && 'text' in message && typeof message.text === 'string') {
+		state.textParts.push(message.text);
+	}
 }
 
 /**
@@ -234,9 +323,17 @@ function createCodeWorkflowBuilderGenerator(
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
 	nodeDefinitionDirs?: string[],
-): (prompt: string, collectors?: GenerationCollectors) => Promise<GenerationResult> {
+): (
+	prompt: string,
+	datasetInputContext?: DatasetInputContext,
+	collectors?: GenerationCollectors,
+) => Promise<GenerationResult> {
 	// Subgraph metrics are not applicable since CodeWorkflowBuilder doesn't use coordination logs.
-	return async (prompt: string, collectors?: GenerationCollectors): Promise<GenerationResult> => {
+	return async (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
 		// Accumulate token usage across all LLM calls
@@ -259,11 +356,21 @@ function createCodeWorkflowBuilderGenerator(
 			evalType: EVAL_TYPES.LANGSMITH,
 			message: prompt,
 			workflowId: runId,
-			featureFlags: { codeBuilder: true },
+			featureFlags: {},
+			workflowContext: datasetInputContext?.workflowContext,
+			mode: datasetInputContext?.mode,
 		});
 
-		let workflow: SimpleWorkflow | null = null;
-		let generatedCode: string | undefined;
+		// Build history context from dataset messages if available
+		const historyContext = datasetInputContext?.historicalMessages
+			? buildHistoryContextFromMessages(datasetInputContext.historicalMessages)
+			: undefined;
+
+		const streamState: {
+			workflow: SimpleWorkflow | null;
+			generatedCode?: string;
+			textParts: string[];
+		} = { workflow: null, textParts: [] };
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -282,15 +389,10 @@ function createCodeWorkflowBuilderGenerator(
 				payload,
 				EVAL_USERS.LANGSMITH,
 				abortController.signal,
+				historyContext,
 			)) {
 				for (const message of output.messages) {
-					if (isWorkflowUpdateChunk(message)) {
-						const parsed: unknown = JSON.parse(message.codeSnippet);
-						if (isSimpleWorkflow(parsed)) {
-							workflow = parsed;
-							generatedCode = message.sourceCode;
-						}
-					}
+					processCodeBuilderMessage(message, streamState);
 				}
 			}
 		} finally {
@@ -299,7 +401,7 @@ function createCodeWorkflowBuilderGenerator(
 			}
 		}
 
-		if (!workflow) {
+		if (!streamState.workflow) {
 			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
 		}
 
@@ -308,7 +410,11 @@ function createCodeWorkflowBuilderGenerator(
 			collectors.tokenUsage({ inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
 		}
 
-		return { workflow, generatedCode };
+		return {
+			workflow: streamState.workflow,
+			generatedCode: streamState.generatedCode,
+			agentTextResponse: streamState.textParts.join('') || undefined,
+		};
 	};
 }
 
@@ -362,102 +468,6 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 }
 
 /**
- * Handle subgraph evaluation mode (--subgraph flag).
- * Supports both local dataset files and LangSmith datasets.
- */
-async function handleSubgraphMode(
-	args: EvaluationArgs,
-	env: TestEnvironment,
-	lifecycle: EvaluationLifecycle,
-	logger: ReturnType<typeof createLogger>,
-): Promise<void> {
-	const { subgraph } = args;
-	if (!subgraph) throw new Error('subgraph is required');
-
-	const subgraphRunner = createSubgraphRunner({
-		subgraph,
-		llms: env.llms,
-	});
-
-	const evaluators: Array<Evaluator<EvaluationContext>> = [];
-	if (subgraph === 'responder') {
-		evaluators.push(createResponderEvaluator(env.llms.judge, { numJudges: args.numJudges }));
-	} else {
-		logger.warn(`Subgraph evaluation not supported for ${subgraph}`);
-	}
-
-	let summary: Awaited<ReturnType<typeof runSubgraphEvaluation>>;
-
-	if (args.datasetFile) {
-		const examples = loadSubgraphDatasetFile(args.datasetFile);
-		const slicedExamples = args.maxExamples ? examples.slice(0, args.maxExamples) : examples;
-
-		summary = await runLocalSubgraphEvaluation({
-			subgraph,
-			subgraphRunner,
-			evaluators,
-			examples: slicedExamples,
-			concurrency: args.concurrency,
-			lifecycle,
-			logger,
-			outputDir: args.outputDir,
-			timeoutMs: args.timeoutMs,
-			regenerate: args.regenerate,
-			writeBack: args.writeBack,
-			datasetFilePath: args.datasetFile,
-			llms: args.regenerate ? env.llms : undefined,
-			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
-		});
-	} else {
-		if (!args.datasetName) {
-			throw new Error('`--subgraph` requires `--dataset` or `--dataset-file`');
-		}
-		if (!env.lsClient) {
-			throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
-		}
-
-		summary = await runSubgraphEvaluation({
-			subgraph,
-			subgraphRunner,
-			evaluators,
-			datasetName: args.datasetName,
-			langsmithClient: env.lsClient,
-			langsmithOptions: {
-				experimentName: args.experimentName ?? `${subgraph}-eval`,
-				repetitions: args.repetitions,
-				concurrency: args.concurrency,
-				maxExamples: args.maxExamples,
-				filters: args.filters,
-				experimentMetadata: {
-					...buildCIMetadata(),
-					subgraph,
-				},
-			},
-			lifecycle,
-			logger,
-			outputDir: args.outputDir,
-			timeoutMs: args.timeoutMs,
-			regenerate: args.regenerate,
-			writeBack: args.writeBack,
-			llms: args.regenerate ? env.llms : undefined,
-			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
-		});
-	}
-
-	if (args.webhookUrl) {
-		await sendWebhookNotification({
-			webhookUrl: args.webhookUrl,
-			webhookSecret: args.webhookSecret,
-			summary,
-			dataset: args.datasetFile ?? args.datasetName ?? 'local-dataset',
-			suite: args.suite,
-			metadata: { ...buildCIMetadata(), subgraph },
-			logger,
-		});
-	}
-}
-
-/**
  * Main entry point for v2 evaluation CLI.
  */
 export async function runV2Evaluation(): Promise<void> {
@@ -471,19 +481,13 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
+
 	const env = await setupTestEnvironment(stageModels, logger);
 
 	// Validate LangSmith client early if langsmith backend is requested
 	if (args.backend === 'langsmith' && !env.lsClient) {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
-	}
-
-	// Subgraph evaluation mode
-	if (args.subgraph) {
-		await handleSubgraphMode(args, env, lifecycle, logger);
-		process.exit(0);
 	}
 
 	// Create workflow generator based on agent type
@@ -503,6 +507,7 @@ export async function runV2Evaluation(): Promise<void> {
 		judgeLlm: env.llms.judge,
 		parsedNodeTypes: env.parsedNodeTypes,
 		numJudges: args.numJudges,
+		checks: args.checks,
 	});
 
 	// Execution evaluator runs for all suites — validates workflows execute with pin data
@@ -541,7 +546,7 @@ export async function runV2Evaluation(): Promise<void> {
 		suite: args.suite,
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
-		passThreshold: args.suite === 'introspection' ? 0 : undefined,
+		passThreshold: args.suite === 'introspection' || args.suite === 'binary-checks' ? 0 : undefined,
 		pinDataGenerator,
 	};
 

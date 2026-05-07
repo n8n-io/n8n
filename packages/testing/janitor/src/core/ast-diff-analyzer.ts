@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Project, type SourceFile, SyntaxKind } from 'ts-morph';
+import { Project, type SourceFile } from 'ts-morph';
 
 export interface MethodChange {
 	className: string;
@@ -78,17 +78,14 @@ function extractMethods(sourceFile: SourceFile): Map<string, string> {
 			methods.set(key, hash);
 		}
 
-		// Also check property declarations that are arrow functions
+		// Track all property declarations (type-only, arrow functions, etc.)
 		const properties = classDecl.getProperties();
 		for (const prop of properties) {
-			const initializer = prop.getInitializer();
-			if (initializer && initializer.getKind() === SyntaxKind.ArrowFunction) {
-				const propName = prop.getName();
-				const key = `${className}.${propName}`;
-				const bodyText = initializer.getText();
-				const hash = crypto.createHash('md5').update(bodyText).digest('hex');
-				methods.set(key, hash);
-			}
+			const propName = prop.getName();
+			const key = `${className}.${propName}`;
+			const bodyText = prop.getText();
+			const hash = crypto.createHash('md5').update(bodyText).digest('hex');
+			methods.set(key, hash);
 		}
 	}
 

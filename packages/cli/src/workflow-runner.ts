@@ -7,11 +7,18 @@ import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { ErrorReporter, InstanceSettings, StorageConfig, WorkflowExecute } from 'n8n-core';
+import {
+	ErrorReporter,
+	establishExecutionContext,
+	InstanceSettings,
+	StorageConfig,
+	WorkflowExecute,
+} from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
+	INode,
 	IPinData,
 	IRun,
 	WorkflowExecuteMode,
@@ -46,6 +53,22 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { EventService } from './events/event.service';
+/** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
+const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+
+/** JSON chunk written periodically to keep the streaming connection alive through reverse proxies */
+const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
+
+/**
+ * Flush the response through the compression middleware.
+ * The `flush` method is added at runtime by the Express `compression` middleware
+ * and is not part of the standard Response type.
+ */
+function flushResponse(res: { flush?: () => void }) {
+	if (typeof res.flush === 'function') {
+		res.flush();
+	}
+}
 
 @Service()
 export class WorkflowRunner {
@@ -133,6 +156,28 @@ export class WorkflowRunner {
 		await hooks?.runHook('workflowExecuteAfter', [fullRunData]);
 	}
 
+	/**
+	 * Persist a failed execution record for an already-registered execution and
+	 * finalize it, so a pre-flight failure surfaces as a normal failed run.
+	 */
+	private async failExecution(
+		data: IWorkflowExecutionDataProcess,
+		executionId: string,
+		error: ExecutionError & { node?: INode },
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<void> {
+		const runData = this.failedRunFactory.generateFailedExecutionFromError(
+			data.executionMode,
+			error,
+			error.node,
+		);
+		const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
+		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+		await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
+		responsePromise?.reject(error);
+		this.activeExecutions.finalizeExecution(executionId);
+	}
+
 	/** Run the workflow
 	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
 	 */
@@ -143,29 +188,83 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		// Establish the execution context before persisting to the DB.
+		// activeExecutions.add() -> executionPersistence.create() writes
+		// data.executionData to the DB; any header masking or runtimeData
+		// population must happen before that write so the persisted record
+		// does not contain raw trigger-item data (e.g. Authorization headers).
+		// The runtimeData early-exit guard in establishExecutionContext keeps
+		// the subsequent worker-side call at workflow-execute.ts idempotent.
+		// Guard on the inner executionData: in queue mode with manual offload
+		// the outer IRunExecutionData is created with `executionData: null`
+		// so the trigger-item stack is undefined here; nothing to mask yet,
+		// the worker will establish context once it populates the stack.
+		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
+		if (data.executionData?.executionData) {
+			// Deliberately lightweight: no pinData, no staticData loading,
+			// no additionalData. establishExecutionContext only needs the
+			// workflow's settings (for redactionPolicy) and node lookups.
+			// runMainProcess() builds its own fully-configured Workflow for
+			// actual execution.
+			const contextWorkflow = new Workflow({
+				id: data.workflowData.id,
+				name: data.workflowData.name,
+				nodes: data.workflowData.nodes,
+				connections: data.workflowData.connections,
+				active: data.workflowData.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+				staticData: data.workflowData.staticData,
+				settings: data.workflowData.settings ?? {},
+			});
+			try {
+				await establishExecutionContext(
+					contextWorkflow,
+					data.executionData,
+					undefined,
+					data.executionMode,
+				);
+			} catch (error) {
+				// Masking may have failed partway through, so the trigger-item
+				// stack can still contain raw header data. Drop it before
+				// activeExecutions.add() persists the execution row.
+				data.executionData.executionData.nodeExecutionStack = [];
+				establishContextError = error as ExecutionError & { node?: INode };
+			}
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
+		if (establishContextError) {
+			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			return executionId;
+		}
+
 		const { id: workflowId, nodes } = data.workflowData;
+
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
-			// Create a failed execution with the data for the node, save it and abort execution
-			const runData = this.failedRunFactory.generateFailedExecutionFromError(
-				data.executionMode,
-				error,
-				error.node,
-			);
-			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
-			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
-			await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
-			responsePromise?.reject(error);
-			this.activeExecutions.finalizeExecution(executionId);
+			await this.failExecution(data, executionId, error, responsePromise);
 			return executionId;
 		}
 
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+		}
+
+		// Set up streaming heartbeat on the main process that holds the HTTP response.
+		// This must happen BEFORE the queue/local decision because in queue mode the
+		// execution runs on a worker process that has no access to the HTTP response.
+		let heartbeatInterval: NodeJS.Timeout | undefined;
+		if (data.streamingEnabled === true && data.httpResponse) {
+			const res = data.httpResponse;
+			heartbeatInterval = setInterval(() => {
+				if (!res.writableEnded) {
+					res.write(STREAMING_KEEPALIVE_CHUNK);
+					flushResponse(res);
+				}
+			}, STREAMING_HEARTBEAT_INTERVAL_MS);
 		}
 
 		// @TODO: Reduce to true branch once feature is stable
@@ -205,7 +304,18 @@ export class WorkflowRunner {
 					error,
 					executionId,
 					workflowId,
+					workflowName: data.workflowData.name,
+					...(data.projectId && { projectId: data.projectId }),
+					...(data.projectName && { projectName: data.projectName }),
 				});
+			});
+		}
+
+		// Clean up the streaming heartbeat when the execution finishes
+		if (heartbeatInterval) {
+			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+			void postExecutePromise.finally(() => {
+				clearInterval(heartbeatInterval);
 			});
 		}
 
@@ -284,7 +394,7 @@ export class WorkflowRunner {
 			if (data.streamingEnabled) {
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-					data.httpResponse?.flush?.();
+					if (data.httpResponse) flushResponse(data.httpResponse);
 				});
 			}
 
@@ -390,6 +500,8 @@ export class WorkflowRunner {
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
 			restartExecutionId,
+			projectId: data.projectId,
+			projectName: data.projectName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -483,7 +595,10 @@ export class WorkflowRunner {
 
 				let runData: IRun;
 
-				if (!jobResult || this.needsFullExecutionData(data.executionMode, executionId)) {
+				if (
+					!jobResult ||
+					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
+				) {
 					const fullExecutionData = await this.executionRepository.findSingleExecution(
 						executionId,
 						{
@@ -555,7 +670,12 @@ export class WorkflowRunner {
 	 * In all other cases we can skip the DB fetch and use the lightweight
 	 * result summary sent by the worker via the job progress message.
 	 */
-	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
+	private needsFullExecutionData(
+		executionMode: WorkflowExecuteMode,
+		executionId: string,
+		forceFullExecutionData?: boolean,
+	): boolean {
+		if (forceFullExecutionData) return true;
 		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (

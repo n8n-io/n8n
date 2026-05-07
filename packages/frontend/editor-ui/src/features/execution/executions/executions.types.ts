@@ -26,6 +26,7 @@ export type ExecutionFilterType = {
 	annotationTags: string[];
 	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
+	workflowVersionId: 'all' | string;
 };
 
 export type ExecutionsQueryFilter = {
@@ -39,6 +40,7 @@ export type ExecutionsQueryFilter = {
 	startedBefore?: string;
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
+	workflowVersionId?: string;
 };
 
 export interface IExecutionBase {

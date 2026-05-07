@@ -3,6 +3,11 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { setActivePinia } from 'pinia';
 import { useFloatingUiOffsets } from './useFloatingUiOffsets';
 import { reactive } from 'vue';
@@ -28,7 +33,12 @@ describe(useFloatingUiOffsets, () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		currentRouteName = '';
-		useWorkflowsStore().setNodes([createTestNode({ name: 'n0' })]);
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-workflow';
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setNodes([createTestNode({ name: 'n0' })]);
 	});
 
 	describe('toastBottomOffset', () => {
@@ -43,6 +53,18 @@ describe(useFloatingUiOffsets, () => {
 			useNDVStore().unsetActiveNodeName(); // close NDV
 
 			expect(toastBottomOffset.value).toBe('3px');
+		});
+
+		it('should not account for the height of log view when chat panel is open', () => {
+			useLogsStore().setHeight(300);
+
+			const { toastBottomOffset } = useFloatingUiOffsets();
+
+			expect(toastBottomOffset.value).toBe('300px');
+
+			useChatPanelStateStore().isOpen = true;
+
+			expect(toastBottomOffset.value).toBe('0px');
 		});
 
 		it.each(EDITABLE_CANVAS_VIEWS)(

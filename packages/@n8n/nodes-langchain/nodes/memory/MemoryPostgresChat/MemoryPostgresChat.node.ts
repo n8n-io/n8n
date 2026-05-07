@@ -13,14 +13,14 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryPostgresChat implements INodeType {
@@ -29,7 +29,7 @@ export class MemoryPostgresChat implements INodeType {
 		name: 'memoryPostgresChat',
 		icon: 'file:postgres.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Stores the chat history in Postgres table.',
 		defaults: {
 			name: 'Postgres Chat Memory',
@@ -64,6 +64,7 @@ export class MemoryPostgresChat implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			sessionIdOption,
 			expressionSessionKeyProperty(1.2),
+			scopedSessionHint(1.4),
 			sessionKeyProperty,
 			{
 				displayName: 'Table Name',

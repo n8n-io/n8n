@@ -16,7 +16,6 @@ import type {
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
-	Workflow,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -35,8 +34,6 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-
 import get from 'lodash/get';
 
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
@@ -48,19 +45,18 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import * as workflowHistoryApi from '@n8n/rest-api-client/api/workflowHistory';
-import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -96,18 +92,18 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	return await resolveParameterImpl(
 		parameter,
-		workflowsStore.workflowObject as Workflow,
-		workflowsStore.connectionsBySourceNode,
+		workflowDocumentStore.getWorkflowObjectAccessorSnapshot(),
+		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowDocumentStore?.getPinDataSnapshot(),
+		workflowDocumentStore.getPinDataSnapshot(),
 		opts,
 	);
 }
@@ -115,7 +111,7 @@ export async function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: Workflow,
+	workflowObject: WorkflowObjectAccessors,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
@@ -328,36 +324,8 @@ export async function resolveRequiredParameters(
 	return Object.fromEntries(resolvedEntries);
 }
 
-function getConnectedNodes(
-	direction: 'upstream' | 'downstream',
-	workflow: Workflow,
-	nodeName: string,
-): string[] {
-	let checkNodes: string[];
-	if (direction === 'downstream') {
-		checkNodes = workflow.getChildNodes(nodeName);
-	} else if (direction === 'upstream') {
-		checkNodes = workflow.getParentNodes(nodeName);
-	} else {
-		throw new Error(`The direction "${direction}" is not supported!`);
-	}
-
-	// Find also all nodes which are connected to the child nodes via a non-main input
-	let connectedNodes: string[] = [];
-	checkNodes.forEach((checkNode) => {
-		connectedNodes = [
-			...connectedNodes,
-			checkNode,
-			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
-		];
-	});
-
-	// Remove duplicates
-	return [...new Set(connectedNodes)];
-}
-
 function getNodeTypes(): INodeTypes {
-	return useWorkflowsStore().getNodeTypes();
+	return useNodeTypesStore().getAllNodeTypes();
 }
 
 // TODO: move to separate file
@@ -418,9 +386,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	return executeDataImpl(
 		connections,
@@ -428,7 +396,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowDocumentStore?.getPinDataSnapshot(),
+		workflowDocumentStore.getPinDataSnapshot(),
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
 	);
@@ -529,17 +497,18 @@ export function useWorkflowHelpers() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const workflowState = injectWorkflowState();
-	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
-	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
 
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+
 	function getNodeTypesMaxCount() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		const returnData: INodeTypesMaxCount = {};
 
@@ -565,7 +534,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getNodeTypeCount(nodeType: string) {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		let count = 0;
 
@@ -576,154 +545,6 @@ export function useWorkflowHelpers() {
 		}
 
 		return count;
-	}
-
-	async function getWorkflowDataToSave() {
-		const workflowNodes = workflowsStore.allNodes;
-		const workflowConnections = workflowsStore.allConnections;
-
-		let nodeData;
-
-		const nodes: INode[] = [];
-		for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-			nodeData = getNodeDataToSave(workflowNodes[nodeIndex]);
-
-			nodes.push(nodeData);
-		}
-
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-
-		const data: WorkflowData = {
-			name: workflowsStore.workflowName,
-			nodes,
-			pinData: workflowDocumentStore.getPinDataSnapshot(),
-			connections: workflowConnections,
-			active: workflowDocumentStore.active,
-			settings: workflowsStore.workflow.settings,
-			tags: [...workflowDocumentStore.tags],
-			versionId: workflowsStore.workflow.versionId,
-			meta: workflowDocumentStore.meta,
-		};
-
-		const workflowId = workflowsStore.workflowId;
-		// Always include workflow ID if it exists
-		if (workflowId) {
-			data.id = workflowId;
-		}
-
-		return data;
-	}
-
-	function getNodeDataToSave(node: INodeUi): INodeUi {
-		const skipKeys = [
-			'color',
-			'continueOnFail',
-			'credentials',
-			'disabled',
-			'issues',
-			'onError',
-			'notes',
-			'parameters',
-			'status',
-		];
-
-		// @ts-ignore
-		const nodeData: INodeUi = {
-			parameters: {},
-		};
-
-		for (const key in node) {
-			if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
-				// @ts-ignore
-				nodeData[key] = node[key];
-			}
-		}
-
-		// Get the data of the node type that we can get the default values
-		// TODO: Later also has to care about the node-type-version as defaults could be different
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-
-		if (nodeType !== null) {
-			const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
-
-			if (isCredentialOnly) {
-				nodeData.type = HTTP_REQUEST_NODE_TYPE;
-				nodeData.extendsCredential = getCredentialTypeName(nodeType.name);
-			}
-
-			// Node-Type is known so we can save the parameters correctly
-			const nodeParameters = NodeHelpers.getNodeParameters(
-				nodeType.properties,
-				node.parameters,
-				isCredentialOnly,
-				false,
-				node,
-				nodeType,
-			);
-			nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
-
-			// Add the node credentials if there are some set and if they should be displayed
-			if (node.credentials !== undefined && nodeType.credentials !== undefined) {
-				const saveCredentials: INodeCredentials = {};
-				for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-					if (
-						nodeHelpers.hasProxyAuth(node) ||
-						Object.keys(node.parameters).includes('genericAuthType')
-					) {
-						saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
-						continue;
-					}
-
-					const credentialTypeDescription = nodeType.credentials
-						// filter out credentials with same name in different node versions
-						.filter((c) => nodeHelpers.displayParameter(node.parameters, c, '', node))
-						.find((c) => c.name === nodeCredentialTypeName);
-
-					if (credentialTypeDescription === undefined) {
-						// Credential type is not know so do not save
-						continue;
-					}
-
-					if (!nodeHelpers.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
-						// Credential should not be displayed so do also not save
-						continue;
-					}
-
-					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
-				}
-
-				// Set credential property only if it has content
-				if (Object.keys(saveCredentials).length !== 0) {
-					nodeData.credentials = saveCredentials;
-				}
-			}
-		} else {
-			// Node-Type is not known so save the data as it is
-			nodeData.credentials = node.credentials;
-			nodeData.parameters = node.parameters;
-			if (nodeData.color !== undefined) {
-				nodeData.color = node.color;
-			}
-		}
-
-		// Save the disabled property, continueOnFail and onError only when is set
-		if (node.disabled === true) {
-			nodeData.disabled = true;
-		}
-		if (node.continueOnFail === true) {
-			nodeData.continueOnFail = true;
-		}
-		if (node.onError !== 'stopWorkflow') {
-			nodeData.onError = node.onError;
-		}
-		// Save the notes only if when they contain data
-		if (![undefined, ''].includes(node.notes)) {
-			nodeData.notes = node.notes;
-		}
-
-		return nodeData;
 	}
 
 	async function getWebhookExpressionValue(
@@ -841,7 +662,9 @@ export function useWorkflowHelpers() {
 		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
-			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
+			return workflowDocumentStore.value
+				?.getExpressionHandler()
+				.convertObjectValueToString(obj as object);
 		}
 		return obj;
 	}
@@ -852,11 +675,12 @@ export function useWorkflowHelpers() {
 	) {
 		let data: WorkflowDataUpdate = {};
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
 			data = partialData
-				? { versionId: workflowsStore.workflowVersionId }
-				: await getWorkflowDataToSave();
+				? { versionId: workflowDocumentStore.versionId }
+				: workflowDocumentStore.serialize();
 		} else {
 			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
 			data.versionId = versionId;
@@ -874,8 +698,6 @@ export function useWorkflowHelpers() {
 		if (isCurrentWorkflow) {
 			uiStore.markStateClean();
 		}
-
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
@@ -952,12 +774,13 @@ export function useWorkflowHelpers() {
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
-			workflow?.sharedWithProjects?.some(
+			workflowDocumentStore.sharedWithProjects?.some(
 				(project) => project.id === projectsStore.personalProject?.id,
 			)
 		) {
@@ -967,23 +790,18 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
-		const ws = overrideWorkflowState ?? workflowState;
+	async function initState(workflowData: IWorkflowDb) {
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setIsArchived(workflowData.isArchived);
-		workflowsStore.setDescription(workflowData.description);
-		ws.setWorkflowId(workflowData.id);
-		ws.setWorkflowName({
-			newName: workflowData.name,
-			setStateDirty: uiStore.stateIsDirty,
-		});
-		ws.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowVersionData({
+		workflowsStore.setWorkflowId(workflowData.id);
+		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+
+		initializedWorkflowDocumentStore.setVersionData({
 			versionId: workflowData.versionId,
 			name: null,
 			description: null,
 		});
-		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
@@ -992,54 +810,57 @@ export function useWorkflowHelpers() {
 		// Fetch current version details if versionId exists
 		if (workflowData.versionId) {
 			try {
-				const versionData = await workflowHistoryApi.getWorkflowVersion(
+				const fetchedVersionData = await workflowHistoryApi.getWorkflowVersion(
 					rootStore.restApiContext,
 					workflowData.id,
 					workflowData.versionId,
 				);
-				workflowsStore.setWorkflowVersionData({
-					versionId: versionData.versionId,
-					name: versionData.name,
-					description: versionData.description,
+				initializedWorkflowDocumentStore.setVersionData({
+					versionId: fetchedVersionData.versionId,
+					name: fetchedVersionData.name,
+					description: fetchedVersionData.description,
 				});
 			} catch {
 				// Do nothing
 			}
 		}
 
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
-		}
-
-		if (workflowData.sharedWithProjects) {
-			workflowsEEStore.setWorkflowSharedWith({
-				workflowId: workflowData.id,
-				sharedWithProjects: workflowData.sharedWithProjects,
-			});
-		}
-
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowData.id),
-		);
-		workflowDocumentStore.setTags(tagIds);
-		workflowDocumentStore.setActiveState({
+		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
+			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
+		});
+
+		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
+		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
+			workflowsStore.workflow.versionId = payload.versionId;
+		});
+
+		initializedWorkflowDocumentStore.setName(workflowData.name);
+		initializedWorkflowDocumentStore.setTags(tagIds);
+		initializedWorkflowDocumentStore.setActiveState({
 			activeVersionId: workflowData.activeVersionId,
 			activeVersion: workflowData.activeVersion ?? null,
 		});
-		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
-		workflowDocumentStore.setCreatedAt(workflowData.createdAt);
-		workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-		workflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		initializedWorkflowDocumentStore.setSettings(workflowData.settings ?? {});
+		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
+		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
+		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
+		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
 		if (workflowData.checksum) {
-			workflowDocumentStore.setChecksum(workflowData.checksum);
+			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
 		}
-		workflowDocumentStore.setMeta(workflowData.meta);
+		initializedWorkflowDocumentStore.setIsArchived(workflowData.isArchived);
+		initializedWorkflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
+		initializedWorkflowDocumentStore.setMeta(workflowData.meta);
+		initializedWorkflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
+		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
+		initializedWorkflowDocumentStore.setSharedWithProjects(workflowData.sharedWithProjects ?? []);
+		initializedWorkflowDocumentStore.setDescription(workflowData.description);
 		tagsStore.upsertTags(tags);
 
-		return { workflowDocumentStore };
+		return { workflowDocumentStore: initializedWorkflowDocumentStore };
 	}
 
 	/**
@@ -1076,7 +897,10 @@ export function useWorkflowHelpers() {
 	async function checkConflictingWebhooks(workflowId: string) {
 		let data;
 		if (uiStore.stateIsDirty) {
-			data = await getWorkflowDataToSave();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			data = workflowDocumentStore.serialize();
 		} else {
 			data = await workflowsListStore.fetchWorkflow(workflowId);
 		}
@@ -1109,14 +933,11 @@ export function useWorkflowHelpers() {
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
-		getConnectedNodes,
 		getNodeTypes,
 		connectionInputData,
 		executeData,
 		getNodeTypesMaxCount,
 		getNodeTypeCount,
-		getWorkflowDataToSave,
-		getNodeDataToSave,
 		getWebhookExpressionValue,
 		getWebhookUrl,
 		resolveExpression,

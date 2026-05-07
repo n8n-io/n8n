@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
@@ -41,9 +41,9 @@ jobs:
           BUILD_WITH_COVERAGE: 'true'
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: 'LRxcNt'
-          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
-          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
-          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Generate Coverage Report
         if: always() && steps.coverage-tests.outcome != 'skipped'
@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload Coverage Report Artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-report
           path: packages/testing/playwright/coverage/
@@ -59,10 +59,26 @@ jobs:
 
       - name: Upload E2E Coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: packages/testing/playwright/coverage/lcov.info
           flags: frontend-e2e
           name: playwright-e2e
           fail_ci_if_error: false
+
+      - name: Analyse Coverage Gaps
+        if: always() && steps.coverage-tests.outcome != 'skipped'
+        env:
+          CODECOV_API_TOKEN: ${{ secrets.CODECOV_API_TOKEN }}
+        run: |
+          node packages/testing/playwright/scripts/coverage-analysis.mjs \
+            --md --top=15 --out-json=coverage-gaps.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Gap Report
+        if: always() && steps.coverage-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-gap-report
+          path: coverage-gaps.json
+          retention-days: 21

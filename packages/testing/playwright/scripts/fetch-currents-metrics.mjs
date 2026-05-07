@@ -71,7 +71,9 @@ function getPlaywrightSpecs() {
 			encoding: 'utf-8',
 			stdio: ['pipe', 'pipe', 'pipe'],
 		});
-		const specs = new Set([...output.matchAll(/› (tests\/e2e\/[^\s:]+\.spec\.ts)/g)].map((m) => m[1]));
+		const specs = new Set(
+			[...output.matchAll(/› (tests\/e2e\/[^\s:]+\.spec\.ts)/g)].map((m) => m[1]),
+		);
 		console.log(`Found ${specs.size} specs in Playwright`);
 		return specs;
 	} catch (e) {
@@ -104,7 +106,8 @@ async function main() {
 			staleSpecs.push(item.spec);
 			continue;
 		}
-		const duration = item.metrics.avgDuration < 1000 ? DEFAULT_DURATION : Math.round(item.metrics.avgDuration);
+		const duration =
+			item.metrics.avgDuration < 1000 ? DEFAULT_DURATION : Math.round(item.metrics.avgDuration);
 		output.specs[item.spec] = {
 			avgDuration: duration,
 			testCount: item.metrics.suiteSize,
@@ -132,7 +135,9 @@ async function main() {
 		staleSpecs.forEach((s) => console.log(`  - ${s}`));
 	}
 	if (newSpecs.length) {
-		console.log(`\nNew specs (in Playwright but not Currents, using ${DEFAULT_DURATION / 1000}s default):`);
+		console.log(
+			`\nNew specs (in Playwright but not Currents, using ${DEFAULT_DURATION / 1000}s default):`,
+		);
 		newSpecs.forEach((s) => console.log(`  - ${s}`));
 	}
 }

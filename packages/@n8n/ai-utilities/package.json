@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.4.0",
+  "version": "0.14.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -36,24 +36,27 @@
     "jest-mock-extended": "^3.0.4",
     "@types/mime-types": "catalog:",
     "tsx": "catalog:",
-    "axios": "catalog:"
+    "axios": "catalog:",
+    "n8n-workflow": "workspace:*"
   },
   "dependencies": {
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/classic": "1.0.5",
+    "@langchain/classic": "1.0.27",
     "@langchain/community": "catalog:",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
-    "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
     "undici": "^6.21.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
   }
 }

@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -31,15 +32,10 @@ import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	NodeApiError,
-	PROJECT_ROOT,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-} from 'n8n-workflow';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { getErrorDescription, getErrorNodeId } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -47,9 +43,11 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -87,6 +85,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
@@ -252,6 +251,12 @@ export class WorkflowService {
 		);
 	}
 
+	private isWorkflowWithSharing(
+		workflow: ListQueryDb.Workflow.Plain,
+	): workflow is ListQueryDb.Workflow.WithSharing {
+		return 'shared' in workflow;
+	}
+
 	private cleanupSharedField(
 		workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 	): void {
@@ -261,7 +266,9 @@ export class WorkflowService {
 			though. So to avoid leaking the information we just delete it.
 		*/
 		workflows.forEach((workflow) => {
-			delete workflow.shared;
+			if (this.isWorkflowWithSharing(workflow)) {
+				delete workflow.shared;
+			}
 		});
 	}
 
@@ -299,6 +306,7 @@ export class WorkflowService {
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
 			autosaved?: boolean;
+			source?: WorkflowActionSource;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -310,6 +318,7 @@ export class WorkflowService {
 			publishIfActive = false,
 			aiBuilderAssisted = false,
 			autosaved = false,
+			source = 'ui',
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -334,10 +343,12 @@ export class WorkflowService {
 		}
 
 		// Update the workflow's version when changing nodes or connections
-		const saveNewVersion =
-			('nodes' in workflowUpdateData && !isEqual(workflowUpdateData.nodes, workflow.nodes)) ||
-			('connections' in workflowUpdateData &&
-				!isEqual(workflowUpdateData.connections, workflow.connections));
+		const hasNodesKey = 'nodes' in workflowUpdateData;
+		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
+		const connectionsChanged =
+			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
+		const saveNewVersion = nodesChanged || connectionsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -357,10 +368,25 @@ export class WorkflowService {
 			workflowUpdateData.versionId = workflow.versionId;
 		}
 
-		// check credentials for old format
-		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
+		// check credentials for old format - scope to the workflow's owner project
+		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
+		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
+		WorkflowHelpers.validateWorkflowStructure({
+			nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			connections: workflowUpdateData.connections ?? workflow.connections,
+		});
+
+		// Strip redactionPolicy if instance lacks data-redaction license
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
+			!this.licenseState.isDataRedactionLicensed()
+		) {
+			delete workflowUpdateData.settings.redactionPolicy;
+		}
 
 		// Strip redactionPolicy if user lacks scope and value is changing
 		if (
@@ -383,8 +409,6 @@ export class WorkflowService {
 			};
 		}
 
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
-
 		if (workflowUpdateData.settings) {
 			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
 				workflowUpdateData.settings,
@@ -403,6 +427,14 @@ export class WorkflowService {
 		if (workflowUpdateData.name) {
 			await validateEntity(workflowUpdateData);
 		}
+
+		// Validate pinData size after all mutations are applied
+		if ('pinData' in workflowUpdateData) {
+			WorkflowHelpers.validatePinDataSize({ ...workflow, ...workflowUpdateData });
+		}
+
+		// Run external hook after all validation has passed, right before persisting
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		const fieldsToUpdate = [
 			'name',
@@ -494,17 +526,16 @@ export class WorkflowService {
 			previousWorkflow: workflow,
 			aiBuilderAssisted,
 			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
+			source,
 		});
 
 		// Activate workflow if requested, or
 		// Reactivate workflow if settings changed and workflow has an active version
 		if (updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
-			await this.activateWorkflow(
-				user,
-				workflowId,
-				{ versionId: updatedWorkflow.activeVersionId },
-				publicApi,
-			);
+			await this.activateWorkflow(user, workflowId, {
+				versionId: updatedWorkflow.activeVersionId,
+				source,
+			});
 		}
 		return updatedWorkflow;
 	}
@@ -514,7 +545,7 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		publicApi: boolean = false,
+		tracking: { source: WorkflowActionSource } = { source: 'ui' },
 	): Promise<void> {
 		let didPublish = false;
 		try {
@@ -534,14 +565,27 @@ export class WorkflowService {
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			const message =
-				error instanceof NodeApiError
-					? (error.description ?? error.message)
-					: (error as Error).message;
-			throw new BadRequestError(message);
+			const message = (error as Error).message;
+			const description = getErrorDescription(error);
+
+			throw new WorkflowActivationBadRequestError(message, {
+				nodeId: getErrorNodeId(error),
+				description,
+			});
 		} finally {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);
+
+				// Temporary: In the future, the workflow publication service will
+				// manage this mapping. We set it here for now to support incremental
+				// development and testing.
+				if (this.globalConfig.workflows.useWorkflowPublicationService) {
+					await this.workflowPublishedVersionRepository.setPublishedVersion(
+						workflowId,
+						workflow.activeVersionId,
+					);
+				}
+
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
@@ -553,7 +597,8 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi,
+					publicApi: tracking.source === 'api',
+					source: tracking.source,
 				});
 			}
 		}
@@ -575,7 +620,12 @@ export class WorkflowService {
 			workflowId: workflow.id,
 		});
 
-		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+		await workflow.expression.acquireIsolate();
+		try {
+			return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	private async _detectWebhookConflicts(
@@ -613,9 +663,12 @@ export class WorkflowService {
 			name?: string;
 			description?: string;
 			expectedChecksum?: string;
+			source?: WorkflowActionSource;
 		},
-		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
+		const source = options?.source ?? 'ui';
+		const publicApi = source === 'api';
+
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
 		]);
@@ -661,6 +714,7 @@ export class WorkflowService {
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
+		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (previousActiveVersionId) {
@@ -672,6 +726,7 @@ export class WorkflowService {
 				workflow,
 				publicApi,
 				deactivatedVersionId: previousActiveVersionId,
+				source,
 			});
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
@@ -704,7 +759,7 @@ export class WorkflowService {
 			workflowId,
 			workflowForActivation,
 			activationMode,
-			publicApi,
+			{ source },
 		);
 
 		if (options?.name !== undefined || options?.description !== undefined) {
@@ -745,8 +800,13 @@ export class WorkflowService {
 	async deactivateWorkflow(
 		user: User,
 		workflowId: string,
-		options?: { expectedChecksum?: string; publicApi?: boolean },
+		options?: {
+			expectedChecksum?: string;
+			source?: WorkflowActionSource;
+		},
 	): Promise<WorkflowEntity> {
+		const source = options?.source ?? 'ui';
+		const publicApi = source === 'api';
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:unpublish',
 		]);
@@ -781,6 +841,11 @@ export class WorkflowService {
 
 		const deactivatedVersionId = workflow.activeVersionId;
 
+		// Temporary: will be removed when the workflow publication service manages this.
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+		}
+
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
 			versionId: deactivatedVersionId,
@@ -797,8 +862,9 @@ export class WorkflowService {
 			user,
 			workflowId,
 			workflow,
-			publicApi: options?.publicApi ?? false,
+			publicApi,
 			deactivatedVersionId,
+			source,
 		});
 
 		return workflow;
@@ -852,7 +918,7 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		options?: { skipArchived?: boolean; expectedChecksum?: string },
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -876,6 +942,12 @@ export class WorkflowService {
 
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
+
+			// Temporary: will be removed when the workflow publication service manages this.
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+			}
+
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId: workflow.activeVersionId,
@@ -900,13 +972,21 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-archived', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
 
 		return workflow;
 	}
 
-	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async unarchive(
+		user: User,
+		workflowId: string,
+		options?: { publicApi?: boolean },
+	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
@@ -927,10 +1007,22 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-unarchived', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
 
 		return workflow;
+	}
+
+	async archiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: true });
+	}
+
+	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		return await this.unarchive(user, workflowId, { publicApi: true });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
@@ -1029,9 +1121,8 @@ export class WorkflowService {
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {
-			throw new BadRequestError(
+			throw new ConflictError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
 			);
 		}
 	}
@@ -1054,6 +1145,28 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	private async _validateDynamicCredentials(
+		workflowId: string,
+		nodes: INode[],
+		workflowSettings?: IWorkflowSettings,
+	) {
+		const validation = await this.workflowValidationService.validateDynamicCredentials(
+			nodes,
+			this.nodeTypes,
+			workflowSettings,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed dynamic credentials validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Dynamic credentials validation failed',
+			);
 		}
 	}
 

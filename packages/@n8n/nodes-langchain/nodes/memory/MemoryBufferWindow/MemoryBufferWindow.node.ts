@@ -9,14 +9,14 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 class MemoryChatBufferSingleton {
@@ -76,10 +76,10 @@ export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
-		icon: 'fa:database',
+		icon: 'node:simple-memory',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
 			name: 'Simple Memory',
@@ -149,6 +149,7 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			expressionSessionKeyProperty(1.3),
+			scopedSessionHint(1.4),
 			sessionKeyProperty,
 			contextWindowLengthProperty,
 		],

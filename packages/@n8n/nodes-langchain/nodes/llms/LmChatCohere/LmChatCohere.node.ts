@@ -7,9 +7,11 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
@@ -120,6 +122,10 @@ export class LmChatCohere implements INodeType {
 					},
 				},
 				default: 'command-a-03-2025',
+				builderHint: {
+					message:
+						'Default to the latest Cohere Command A model (command-a-03-2025). Avoid command-r and command-light legacy variants.',
+				},
 			},
 			{
 				displayName: 'Options',

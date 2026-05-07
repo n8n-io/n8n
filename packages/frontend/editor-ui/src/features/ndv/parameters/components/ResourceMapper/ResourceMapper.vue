@@ -26,7 +26,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
@@ -47,7 +47,7 @@ type Props = {
 };
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
@@ -340,6 +340,7 @@ const createRequestParams = async (methodName: string) => {
 		methodName,
 		credentials: props.node.credentials,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowsStore.workflowId,
 	};
 
 	return requestParams;
@@ -350,7 +351,6 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields: ResourceMapperFields | null = null;
-
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = (await createRequestParams(
 			resourceMapperMethod,

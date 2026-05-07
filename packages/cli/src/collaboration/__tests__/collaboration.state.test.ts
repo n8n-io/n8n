@@ -119,5 +119,32 @@ describe('CollaborationState', () => {
 				userId: 'user1',
 			});
 		});
+
+		it('should gracefully ignore old cache format and clean it up', async () => {
+			// Arrange
+			const now = new Date().toISOString();
+
+			mockCacheService.getHash.mockResolvedValueOnce({
+				'old-user-uuid': '2026-02-26T21:23:36.318Z',
+				newClientId: `new-user-uuid|${now}`,
+			});
+
+			// Act
+			const users = await collaborationState.getCollaborators(workflowId);
+
+			// Assert
+			expect(users).toEqual([
+				{
+					clientId: 'newClientId',
+					lastSeen: now,
+					userId: 'new-user-uuid',
+				},
+			]);
+
+			expect(mockCacheService.deleteFromHash).toHaveBeenCalledWith(
+				'collaboration:workflow',
+				'old-user-uuid',
+			);
+		});
 	});
 });

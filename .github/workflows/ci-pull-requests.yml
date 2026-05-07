@@ -15,19 +15,25 @@ jobs:
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+      QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+      QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+      QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
     outputs:
       ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
+      dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
-      design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
+      performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
+      e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
+      instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # Use merge_group SHA when in merge queue, otherwise PR merge ref
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
@@ -53,15 +59,39 @@ jobs:
               !.github/**
             e2e:
               .github/workflows/test-e2e-*.yml
-              .github/scripts/cleanup-ghcr-images.mjs
+              .github/workflows/prepare-docker-reusable.yml
+              .github/actions/build-n8n-docker/**
+              .github/actions/load-n8n-docker/**
               packages/testing/playwright/**
               packages/testing/containers/**
+            dev-server-smoke:
+              packages/frontend/editor-ui/vite.config.mts
+              pnpm-workspace.yaml
+              packages/@n8n/*/package.json
+              packages/testing/playwright/tests/dev-server-smoke/**
+              packages/testing/playwright/playwright.config.ts
+              packages/testing/playwright/playwright-projects.ts
+              packages/testing/playwright/package.json
+              .github/workflows/test-dev-server-smoke-reusable.yml
+              .github/workflows/ci-pull-requests.yml
             workflows: .github/**
-            design-system:
-              packages/frontend/@n8n/design-system/**
-              packages/frontend/@n8n/chat/**
-              packages/frontend/@n8n/storybook/**
-              .github/workflows/test-visual-chromatic.yml
+            workflow-scripts: .github/scripts/**
+            performance:
+              packages/testing/performance/**
+              packages/workflow/src/**
+              packages/@n8n/expression-runtime/src/**
+              .github/workflows/test-bench-reusable.yml
+            e2e-performance:
+              packages/testing/playwright/tests/performance/**
+              packages/testing/playwright/utils/performance-helper.ts
+              packages/testing/containers/**
+              .github/workflows/test-e2e-performance-reusable.yml
+            instance-ai-workflow-eval:
+              packages/@n8n/instance-ai/src/**
+              packages/@n8n/instance-ai/evaluations/**
+              packages/cli/src/modules/instance-ai/**
+              packages/core/src/execution-engine/eval-mock-helpers.ts
+              .github/workflows/test-evals-instance-ai*.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -76,12 +106,25 @@ jobs:
               .github/workflows/test-db-reusable.yml
 
       - name: Setup and Build
-        if: fromJSON(steps.ci-filter.outputs.results).ci
+        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor' }}
 
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: pnpm format:check
+
+      - name: Generate shard matrix
+        id: generate-matrix
+        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
+        env:
+          CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+        run: |
+          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate --impact "--files=$FILES_CSV" --base=FETCH_HEAD)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
   unit-test:
     name: Unit tests
@@ -91,11 +134,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+    secrets: inherit
 
   typecheck:
     name: Typecheck
@@ -103,7 +142,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -120,13 +159,90 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
-  e2e-tests:
-    name: E2E Tests
+  check-packaging:
+    name: Check packaging
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
-    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n'
-    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check packaging
+        shell: bash
+        run: |
+          pnpm -r pack --dry-run
+
+  # Seeds the SHA-keyed Docker image cache once so that downstream e2e jobs
+  # (each of which invokes prepare-docker internally) short-circuit to a
+  # cache hit instead of racing to rebuild.
+  prepare-docker:
+    name: Prepare Docker
+    needs: install-and-build
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
+      (needs.install-and-build.outputs.ci == 'true'
+        || needs.install-and-build.outputs.e2e == 'true'
+        || needs.install-and-build.outputs.e2e_performance == 'true')
+    uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  # Internal-only 1-spec fail-fast sanity check on sqlite.
+  sqlite-sanity:
+    name: 'SQLite: Sanity Check'
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
+      github.event.pull_request.head.repo.fork != true
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
+      workers: '1'
+    secrets: inherit
+
+  # Full e2e run. Internal PRs run multi-main (postgres + redis + caddy + 2 mains + 1 worker).
+  # Fork PRs run sqlite-only and skip @licensed tests (no enterprise license secrets on forks).
+  e2e:
+    name: E2E
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      needs.install-and-build.outputs.skip_tests != 'true' &&
+      github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      test-mode: docker-artifact
+      test-command: ${{ github.event.pull_request.head.repo.fork == true && 'pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert=@licensed' || 'pnpm --filter=n8n-playwright test:container:multi-main:e2e' }}
+      workers: '1'
+      pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
+      upload-failure-artifacts: ${{ github.event.pull_request.head.repo.fork == true }}
+    secrets: inherit
+
+  # Boots the editor-ui against the Vite dev server and fails on any console
+  # or page error during load. Catches regressions in dev-mode module
+  # resolution (missing Vite alias, broken workspace package interop) that
+  # the production-bundle e2e job bundles around.
+  dev-server-smoke:
+    name: Dev-server boot smoke
+    needs: install-and-build
+    if: needs.install-and-build.outputs.dev_server_smoke == 'true' && github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-dev-server-smoke-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
   db-tests:
@@ -137,6 +253,25 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
+  performance:
+    name: Performance
+    needs: install-and-build
+    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-bench-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  e2e-performance:
+    name: E2E Performance
+    needs: [install-and-build, prepare-docker]
+    # Performance is internal-only (license secrets required, not available on forks).
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      needs.install-and-build.outputs.e2e_performance == 'true' &&
+      github.event.pull_request.head.repo.fork != true
+    uses: ./.github/workflows/test-e2e-performance-reusable.yml
+    secrets: inherit
+
   security-checks:
     name: Security Checks
     needs: install-and-build
@@ -146,24 +281,55 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
-  chromatic:
-    name: Chromatic
+  workflow-scripts:
+    name: Workflow scripts
     needs: install-and-build
-    if: needs.install-and-build.outputs.design_system == 'true'
-    uses: ./.github/workflows/test-visual-chromatic.yml
+    if: needs.install-and-build.outputs.workflow_scripts == 'true'
+    uses: ./.github/workflows/test-workflow-scripts-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  # Depends on prepare-docker so the eval workflow can load the SHA-keyed image cache.
+  # prepare-docker may be skipped (its filter excludes .github/**); the eval falls back to a local build.
+  instance-ai-workflow-evals:
+    name: Instance AI Workflow Evals
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      !cancelled() &&
+      needs.install-and-build.result == 'success' &&
+      (needs.prepare-docker.result == 'success' || needs.prepare-docker.result == 'skipped') &&
+      needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
+    uses: ./.github/workflows/test-evals-instance-ai.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
   # This job is required by GitHub branch protection rules.
   # PRs cannot be merged unless this job passes.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, security-checks, chromatic]
+    needs:
+      [
+        install-and-build,
+        unit-test,
+        typecheck,
+        lint,
+        check-packaging,
+        sqlite-sanity,
+        e2e,
+        dev-server-smoke,
+        db-tests,
+        performance,
+        security-checks,
+        workflow-scripts,
+      ]
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
@@ -172,3 +338,14 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+          
+  # Posts a QA metrics comparison comment on the PR.
+  # Runs after all checks so any job can emit metrics before this reports.
+  post-qa-metrics-comment:
+    name: QA Metrics
+    needs: [required-checks, e2e-performance]
+    if: always()
+    uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
+    with:
+      metrics: memory-heap-used-baseline,memory-rss-baseline,instance-ai-heap-used-baseline,instance-ai-rss-baseline,docker-image-size-n8n,docker-image-size-runners
+    secrets: inherit

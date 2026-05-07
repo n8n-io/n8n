@@ -12,10 +12,14 @@ import {
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { mergeCustomHeaders } from '@utils/helpers';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
@@ -28,6 +32,11 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	name: 'notice',
 	type: 'notice',
 	default: '',
+};
+
+const OPENAI_MODEL_BUILDER_HINT = {
+	message:
+		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 };
 
 const completionsResponseFormat: INodeProperties = {
@@ -187,7 +196,7 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-5-mini',
-				builderHint: { message: 'Always default to latest mini model gpt-5-mini' },
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -199,7 +208,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'gpt-5-mini' },
-				builderHint: { message: 'Always default to latest mini model gpt-5-mini' },
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{

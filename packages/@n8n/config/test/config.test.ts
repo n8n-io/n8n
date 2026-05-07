@@ -4,15 +4,29 @@ import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import type { UserManagementConfig } from '../src/configs/user-management.config';
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig } from '../src/index';
+import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 jest.mock('fs');
 const mockFs = mock<typeof fs>();
 fs.readFileSync = mockFs.readFileSync;
 
 const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+// Ignore the sanitize function from the GlobalConfig nested types
+type ConfigShape<T> = T extends ReadonlyArray<infer U>
+	? Array<ConfigShape<U>>
+	: T extends object
+		? {
+				[K in keyof T as K extends 'sanitize'
+					? never
+					: T[K] extends (...args: unknown[]) => unknown
+						? never
+						: K]: ConfigShape<T[K]>;
+			}
+		: T;
+
+type GlobalConfigShape = ConfigShape<GlobalConfig>;
 
 describe('GlobalConfig', () => {
 	beforeEach(() => {
@@ -25,7 +39,7 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	const defaultConfig: GlobalConfig = {
+	const defaultConfig = {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
@@ -54,6 +68,7 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
+		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
@@ -103,6 +118,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				skipTypes: [],
 			},
 		},
 		userManagement: {
@@ -110,6 +126,9 @@ describe('GlobalConfig', () => {
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
+			password: {
+				minLength: 8,
+			},
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -135,17 +154,21 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 				},
 			},
-		} as UserManagementConfig,
+		},
 		eventBus: {
 			checkUnsentInterval: 0,
 			crashRecoveryMode: 'extensive',
 			logWriter: {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
+				logFullPath: '',
 				maxFileSizeInKB: 10240,
+				maxMessagesPerParse: 10_000,
+				maxTotalMessagesPerFile: 500_000,
 			},
 		},
 		externalHooks: {
+			separator: ':',
 			files: [],
 		},
 		nodes: {
@@ -180,7 +203,9 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: true,
+			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			autosaveDisabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -198,6 +223,7 @@ describe('GlobalConfig', () => {
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
+				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
@@ -210,6 +236,8 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
+			mcpBuilderEnabled: true,
+			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -230,10 +258,42 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		chatTrigger: {
+			disablePublicChat: false,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
+		},
+		instanceAi: {
+			model: 'anthropic/claude-sonnet-4-6',
+			modelUrl: '',
+			modelApiKey: '',
+			maxContextWindowTokens: 500_000,
+			mcpServers: '',
+			localGatewayDisabled: false,
+			browserMcp: false,
+			lastMessages: 20,
+			embedderModel: '',
+			semanticRecallTopK: 5,
+			subAgentMaxSteps: 100,
+			sandboxEnabled: false,
+			sandboxProvider: 'daytona',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
+			n8nSandboxServiceUrl: '',
+			n8nSandboxServiceApiKey: '',
+			sandboxTimeout: 300000,
+			builderSandboxTtlMs: 600_000,
+			braveSearchApiKey: '',
+			searxngUrl: '',
+			gatewayApiKey: '',
+			threadTtlDays: 90,
+			snapshotPruneInterval: 3_600_000,
+			snapshotRetention: 86_400_000,
+			confirmationTimeout: 600_000,
 		},
 		queue: {
 			health: {
@@ -270,7 +330,6 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
@@ -282,6 +341,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
+			grantTokenTtl: 30,
 			insecureMode: false,
 		},
 		sentry: {
@@ -311,6 +371,10 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+			newLeaderElection: false,
+		},
+		evaluation: {
+			parallelExecutionEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -334,6 +398,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
+			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
@@ -367,14 +432,15 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
+			scheduledExecutionDeduplicationEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
 			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
-				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://us.i.posthog.com',
+				apiKey: 'phc_kMstNfAgBcBkWSh6KdsgN09heqqNe5VNmalHP1Ni9Q4',
+				apiHost: 'https://ph.n8n.io',
 			},
 		},
 		aiAssistant: {
@@ -409,7 +475,19 @@ describe('GlobalConfig', () => {
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
+				scopesUseExpressionMapping: false,
 			},
+		},
+		ssrfProtection: {
+			enabled: false,
+			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+			allowedIpRanges: [],
+			allowedHostnames: [],
+			dnsCacheMaxSize: 1024 * 1024,
+		},
+		httpRequest: {
+			enforceGlobalUserAgent: false,
+			globalUserAgentValue: '',
 		},
 		redis: {
 			prefix: 'n8n',
@@ -418,7 +496,6 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
-			persistBuilderSessions: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
 		},
@@ -427,11 +504,52 @@ describe('GlobalConfig', () => {
 			batchSize: 100,
 			optimizingMinimumAgeHours: 0.25,
 			optimizingTimeWindowHours: 2,
-			trimmingMinimumAgeDays: 7,
+			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
 		},
-	};
+		expressionEngine: {
+			engine: 'legacy',
+			poolSize: 1,
+			maxCodeCacheSize: 1024,
+			bridgeTimeout: 5000,
+			bridgeMemoryLimit: 128,
+			observabilityEnabled: true,
+			tracesEnabled: true,
+			slowEvaluationThresholdMs: 50,
+			tracesSampleRate: 0.0,
+		},
+		instanceSettingsLoader: {
+			ownerManagedByEnv: false,
+			ownerEmail: '',
+			ownerFirstName: 'Instance',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: '',
+			ssoManagedByEnv: false,
+			oidcClientId: '',
+			oidcClientSecret: '',
+			oidcDiscoveryEndpoint: '',
+			oidcLoginEnabled: false,
+			oidcPrompt: 'select_account',
+			oidcAcrValues: '',
+			ssoUserRoleProvisioning: 'disabled',
+			securityPolicyManagedByEnv: false,
+			mfaEnforcedEnabled: false,
+			personalSpacePublishingEnabled: true,
+			personalSpaceSharingEnabled: true,
+			samlMetadata: '',
+			samlMetadataUrl: '',
+			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
+			mcpManagedByEnv: false,
+			mcpAccessEnabled: false,
+		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+			modules: [],
+		},
+	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
@@ -456,6 +574,9 @@ describe('GlobalConfig', () => {
 			N8N_TEMPLATES_ENABLED: '0',
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+			N8N_PASSWORD_MIN_LENGTH: '12',
+			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
+			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -492,6 +613,16 @@ describe('GlobalConfig', () => {
 			dynamicBanners: {
 				endpoint: 'https://localhost:5678/api/banners',
 				enabled: false,
+			},
+			userManagement: {
+				...defaultConfig.userManagement,
+				password: {
+					minLength: 12,
+				},
+			},
+			httpRequest: {
+				enforceGlobalUserAgent: true,
+				globalUserAgentValue: 'AcmeCorp/1.0',
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -551,6 +682,18 @@ describe('GlobalConfig', () => {
 		);
 	});
 
+	it('should clamp password min length to valid range', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '100' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(64);
+	});
+
+	it('should floor password min length at 8', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '2' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(8);
+	});
+
 	describe('string unions', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
@@ -566,7 +709,6 @@ describe('GlobalConfig', () => {
 				),
 			);
 
-			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
 		});
 
@@ -615,6 +757,22 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
+		});
+	});
+
+	describe('ExecutionsConfig', () => {
+		it('should default scheduledExecutionDeduplicationEnabled to false', () => {
+			process.env = {};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(false);
+		});
+
+		it('should enable scheduledExecutionDeduplicationEnabled when env var is set to true', () => {
+			process.env = {
+				N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED: 'true',
+			};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
 		});
 	});
 });

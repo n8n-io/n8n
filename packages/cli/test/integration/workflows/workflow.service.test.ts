@@ -11,6 +11,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	ProjectRepository,
@@ -40,6 +41,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
+let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
@@ -54,6 +56,7 @@ beforeAll(async () => {
 
 	globalConfig = Container.get(GlobalConfig);
 	workflowRepository = Container.get(WorkflowRepository);
+	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
@@ -74,6 +77,7 @@ beforeAll(async () => {
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
+		workflowPublishedVersionRepository,
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
@@ -85,7 +89,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
+	webhookServiceMock.findWebhookConflicts.mockReset();
 	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
 
@@ -93,6 +99,7 @@ afterEach(async () => {
 	await testDb.truncate([
 		'SharedWorkflow',
 		'ProjectRelation',
+		'WorkflowPublishedVersion',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
@@ -141,7 +148,29 @@ describe('update()', () => {
 
 	test('should save workflow history version with backfilled data when connection change', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({}, owner);
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'uuid-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+						parameters: {},
+					},
+					{
+						id: 'uuid-2',
+						name: 'Code Node',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 1,
+						position: [500, 300],
+						parameters: {},
+					},
+				],
+			},
+			owner,
+		);
 
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
@@ -274,7 +303,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1',
 				name: 'test',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -283,7 +312,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1-2',
 				name: 'test2',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -301,9 +330,9 @@ describe('activateWorkflow()', () => {
 			{
 				id: '123',
 				webhookId: 'version2',
-				name: '',
+				name: 'updatedNode',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -323,7 +352,7 @@ describe('activateWorkflow()', () => {
 					webhookId: 'version2',
 					name: 'newNode',
 					typeVersion: 0,
-					type: '',
+					type: 'n8n-nodes-base.webhook',
 					position: [1, 2],
 					parameters: {},
 				},
@@ -347,7 +376,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1',
 				name: 'test',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -356,7 +385,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1-2',
 				name: 'test2',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -375,7 +404,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version2',
 				name: 'newNode',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -479,6 +508,107 @@ describe('deactivateWorkflow()', () => {
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
 		expect(workflowAfter?.active).toBe(true);
 		expect(workflowAfter?.activeVersionId).toBe(workflow.activeVersionId);
+	});
+});
+
+describe('workflow_published_version table population', () => {
+	describe('when feature flag is enabled', () => {
+		beforeEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = true;
+		});
+
+		afterEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		});
+
+		test('should write to workflow_published_version on activation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
+		});
+
+		test('should update workflow_published_version when activating a new version', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+			await workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: newVersionId,
+			});
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion?.publishedVersionId).toBe(newVersionId);
+		});
+
+		test('should remove workflow_published_version on deactivation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion).toBeNull();
+		});
+
+		test('should remove workflow_published_version on archive', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersionBefore = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersionBefore).not.toBeNull();
+
+			await workflowService.archive(owner, workflow.id);
+
+			const publishedVersionAfter = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersionAfter).toBeNull();
+		});
+	});
+
+	describe('when feature flag is disabled', () => {
+		test('should not write to workflow_published_version on activation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion).toBeNull();
+		});
+
+		test('should not write to workflow_published_version on deactivation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+
+			const count = await workflowPublishedVersionRepository.count();
+			expect(count).toBe(0);
+		});
 	});
 });
 

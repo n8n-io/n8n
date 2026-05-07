@@ -5,9 +5,30 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
-import { within } from '@testing-library/vue';
-import type { ICredentialType } from 'n8n-workflow';
+import { within, waitFor } from '@testing-library/vue';
+import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual('vue-router')),
+	useRouter: vi.fn(),
+	useRoute: () => ({
+		params: {},
+		query: {},
+		path: '',
+	}),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	}),
+}));
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -203,6 +224,11 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
+	beforeEach(() => {
+		const externalSecretsStore = mockedStore(useExternalSecretsStore);
+		externalSecretsStore.fetchSecretsForProject.mockResolvedValue(undefined);
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -364,8 +390,172 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 		await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
 
-		expect(
-			within(getByTestId('credential-edit-dialog')).getByTestId('oauth-connect-button'),
-		).toBeInTheDocument();
+		await retry(() =>
+			expect(
+				within(getByTestId('credential-edit-dialog')).getAllByLabelText('Sign in with Google')
+					.length,
+			).toBeGreaterThan(0),
+		);
+	});
+
+	describe('external secrets', () => {
+		it('should fetch secrets on mount', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
+			};
+
+			renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await waitFor(() => {
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledTimes(1);
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledWith(
+					'personal-project',
+				);
+			});
+		});
+
+		it('should not block modal mount when secrets fetch fails', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			externalSecretsStore.fetchSecretsForProject.mockRejectedValue(new Error('Network error'));
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
+			};
+
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
+			});
+		});
+	});
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const alphaCredType: ICredentialType = {
+			name: 'alphaApi',
+			displayName: 'Alpha API',
+			properties: [
+				{
+					displayName: 'Alpha Key',
+					name: 'alphaKey',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const betaCredType: ICredentialType = {
+			name: 'betaApi',
+			displayName: 'Beta API',
+			properties: [
+				{
+					displayName: 'Beta Token',
+					name: 'betaToken',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: {
+							open: true,
+							showAuthSelector: true,
+						},
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = mockedStore(useCredentialsStore);
+		credStore.state.credentialTypes = {
+			alphaApi: alphaCredType,
+			betaApi: betaCredType,
+		};
+		credStore.getNewCredentialName.mockResolvedValue('Beta API');
+
+		const ndvStore = mockedStore(useNDVStore);
+		ndvStore.activeNode = {
+			name: 'DualCredTest',
+			type: 'n8n-nodes-base.dualCredTest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const mockNodeType = {
+			displayName: 'Dual Credential Test',
+			name: 'n8n-nodes-base.dualCredTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Credential Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{ name: 'alphaApi', required: true },
+				{ name: 'betaApi', required: true },
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
 	});
 });

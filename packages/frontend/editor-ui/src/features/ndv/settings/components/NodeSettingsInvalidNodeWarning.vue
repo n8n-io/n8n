@@ -4,7 +4,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { CUSTOM_NODES_DOCS_URL } from '@/app/constants';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/settings/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,7 +24,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const usersStore = useUsersStore();
 
@@ -35,7 +35,7 @@ const isVerifiedCommunityNode = computed(
 		nodeTypesStore.communityNodeType(node.type)?.isOfficialNode,
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
-const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 
@@ -114,10 +114,10 @@ watch(isNodeDefined, () => {
 					<N8nText size="medium" bold>{{ npmPackage }}</N8nText>
 				</template>
 			</I18nT>
-			<div v-if="isOwner" :class="$style.communityNodeActionsContainer">
+			<div v-if="isAdminOrOwner" :class="$style.communityNodeActionsContainer">
 				<N8nButton
 					variant="solid"
-					v-if="isOwner"
+					v-if="isAdminOrOwner"
 					icon="hard-drive-download"
 					data-test-id="install-community-node-button"
 					:loading="loading"

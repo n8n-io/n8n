@@ -1,5 +1,5 @@
 import { AzureOpenAIEmbeddings } from '@langchain/openai';
-import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
+import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,8 +7,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {

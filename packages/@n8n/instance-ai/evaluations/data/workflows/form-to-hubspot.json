@@ -1,0 +1,20 @@
+{
+	"prompt": "Create a form that collects: name, email, company, and interest level (dropdown: starter, professional, enterprise). When submitted, create a new contact in HubSpot with firstname, lastname (split from name), email, company, and a custom property 'interest_level'. Then send a confirmation email via SendGrid to the submitted email address — the subject should be 'Thanks for reaching out, {name}!' and the body should mention their company. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "form-trigger", "hubspot", "sendgrid", "crm"],
+	"triggerType": "form",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "A complete form submission creates a HubSpot contact and sends confirmation",
+			"dataSetup": "The form receives: name='Sarah Chen', email='sarah@techstartup.io', company='TechStartup Inc', interest_level='enterprise'. The HubSpot node returns a success response with a contact ID. The SendGrid node returns a success response.",
+			"successCriteria": "The workflow executes without errors. A HubSpot contact is created with firstname='Sarah', lastname='Chen', email='sarah@techstartup.io', company='TechStartup Inc', interest_level='enterprise'. A confirmation email is sent via SendGrid to sarah@techstartup.io mentioning TechStartup Inc."
+		},
+		{
+			"name": "single-name",
+			"description": "The submitted name has no space (single name, no last name)",
+			"dataSetup": "The form receives: name='Ravi', email='ravi@example.com', company='Freelance', interest_level='starter'. The HubSpot and SendGrid nodes return success responses.",
+			"successCriteria": "The workflow handles a single name without crashing. The HubSpot contact is created with the name handled gracefully (either firstname='Ravi' with empty lastname, or the full name in firstname). The confirmation email is sent."
+		}
+	]
+}

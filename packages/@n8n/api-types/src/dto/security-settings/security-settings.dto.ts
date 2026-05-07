@@ -8,6 +8,7 @@ export class SecuritySettingsDto extends Z.class({
 	publishedPersonalWorkflowsCount: z.number(),
 	sharedPersonalWorkflowsCount: z.number(),
 	sharedPersonalCredentialsCount: z.number(),
+	managedByEnv: z.boolean(),
 }) {}
 
 export class UpdateSecuritySettingsDto extends Z.class({

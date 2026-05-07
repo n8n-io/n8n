@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
@@ -5,13 +6,13 @@ import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
-import { OAuthRequest } from '@/requests';
-import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
-import { Logger } from '@n8n/backend-common';
 import { ExternalHooks } from '@/external-hooks';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
+import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -19,6 +20,7 @@ export class OAuth2CredentialController {
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
+		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 	) {}
 
 	/** Get Authorization url */
@@ -50,23 +52,30 @@ export class OAuth2CredentialController {
 			const [credential, decryptedDataOriginal, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
-			let options: Partial<ClientOAuth2Options> = {};
-
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
-			if (oauthCredentials.grantType === 'pkce') {
-				options = {
-					body: { code_verifier: decryptedDataOriginal.codeVerifier },
-				};
-			} else if (oauthCredentials.authentication === 'body') {
-				options = {
-					body: {
-						...(oAuthOptions.body ?? {}),
-						client_id: oAuthOptions.clientId,
-						client_secret: oAuthOptions.clientSecret,
-					},
-				};
+			const isPkce = oauthCredentials.grantType === 'pkce';
+			const isBodyAuth = oauthCredentials.authentication === 'body';
+
+			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
+
+			if (isPkce) {
+				body.code_verifier = decryptedDataOriginal.codeVerifier as string;
+			}
+
+			if (isBodyAuth) {
+				body.client_id = oAuthOptions.clientId;
+				if (oAuthOptions.clientSecret) {
+					body.client_secret = oAuthOptions.clientSecret;
+				}
+				// Remove clientSecret so code-flow.ts won't also send it
+				// via the Authorization header
 				delete oAuthOptions.clientSecret;
+			}
+
+			let options: Partial<ClientOAuth2Options> = {};
+			if (isPkce || isBodyAuth) {
+				options = { body };
 			}
 
 			await this.externalHooks.run('oauth2.callback', [oAuthOptions]);
@@ -84,12 +93,18 @@ export class OAuth2CredentialController {
 				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
 
+			const rawTokenResponse = oauthToken.data as unknown as IDataObject;
+			const tokenResponse: IDataObject =
+				oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.decryptOAuth2TokenData(rawTokenResponse)
+					: rawTokenResponse;
+
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.
 			const { oauthTokenData: tokenData } = decryptedDataOriginal;
 			const oauthTokenData: ICredentialDataDecryptedObject = {
 				...(typeof tokenData === 'object' ? tokenData : {}),
-				...oauthToken.data,
+				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 
 			if (!state.origin || state.origin === 'static-credential') {

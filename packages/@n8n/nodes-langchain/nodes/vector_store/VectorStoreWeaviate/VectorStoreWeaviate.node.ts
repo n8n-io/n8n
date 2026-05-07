@@ -13,8 +13,8 @@ import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { weaviateCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
 type WeaviateLibArgs = OriginalWeaviateLibArgs & {

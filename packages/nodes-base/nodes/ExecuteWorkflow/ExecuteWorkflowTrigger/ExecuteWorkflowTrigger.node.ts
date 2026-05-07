@@ -24,7 +24,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow Trigger',
 		name: 'executeWorkflowTrigger',
-		icon: 'fa:sign-out-alt',
+		icon: 'node:sub-workflow-trigger',
+		iconColor: 'black',
 		group: ['trigger'],
 		version: [1, 1.1],
 		description:
@@ -33,7 +34,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'When Executed by Another Workflow',
-			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

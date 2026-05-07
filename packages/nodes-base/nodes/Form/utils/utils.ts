@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -133,13 +133,17 @@ export const prepareFormFields = (fields: FormFieldsParameter) => {
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
-	// Use sanitize-html with custom settings for CSS
-	return sanitize(css, {
-		allowedTags: [], // No HTML tags allowed
-		allowedAttributes: {}, // No attributes allowed
-		// Decode HTML entities that sanitize-html encodes, as they break CSS selectors like ">"
-		textFilter: (text) => text.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'),
+	const sanitized = sanitize(css, {
+		allowedTags: [],
+		allowedAttributes: {},
 	});
+
+	// Restore only the entities needed for valid CSS after tag stripping.
+	// &gt; → > is needed for CSS child combinator selectors (div > p).
+	// &amp; → & is needed for CSS values, but NOT when followed by lt;/gt;/amp;
+	// to prevent cascading decode of double-encoded entities.
+	// &lt; is never decoded — < is not valid in CSS and would enable tag injection.
+	return sanitized.replace(/&gt;/g, '>').replace(/&amp;(?!(?:lt|gt|amp);)/g, '&');
 }
 
 /**
@@ -563,7 +567,9 @@ export function renderForm({
 		authToken,
 	});
 
-	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+	if (!isFormHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	}
 	res.render('form-trigger', data);
 }
 

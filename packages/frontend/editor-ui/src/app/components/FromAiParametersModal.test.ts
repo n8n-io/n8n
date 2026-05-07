@@ -4,17 +4,31 @@ import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRouter } from 'vue-router';
-import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
-import { mock } from 'vitest-mock-extended';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		getNodeByName: vi.fn(),
+		getChildNodes: vi.fn().mockReturnValue([]),
+		allNodes: [] as Array<{ id: string; name: string; type: string }>,
+		workflowTriggerNodes: [] as Array<{ id: string; name: string; type: string }>,
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
 
 const ModalStub = {
 	template: `
@@ -76,11 +90,6 @@ const mockWorkflow = createTestWorkflow({
 	id: 'test-workflow',
 });
 
-const mockWorkflowObject = mock<Workflow>({
-	id: mockWorkflow.id,
-	getChildNodes: () => ['Parent Node'],
-});
-
 const mockTools = [
 	{
 		name: 'Test Tool',
@@ -98,7 +107,6 @@ const mockTools = [
 
 const renderModal = createComponentRenderer(FromAiParametersModal);
 let pinia: ReturnType<typeof createTestingPinia>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -120,13 +128,11 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
-					workflowObject: mockWorkflowObject,
 					workflowExecutionData: mockRunData,
 				},
 			},
 		});
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {
 				case 'Test Node':
 					return mockNode;

@@ -1,6 +1,7 @@
 import { ref, computed, shallowRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -12,7 +13,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -30,6 +30,10 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const route = useRoute();
@@ -45,7 +49,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const environmentsStore = useEnvironmentsStore();
-	const externalSecretsStore = useExternalSecretsStore();
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
 	const historyStore = useHistoryStore();
@@ -53,6 +56,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
+	const workflowId = useWorkflowId();
+	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
+	const currentNDVStore = shallowRef<ReturnType<typeof useNDVStore> | null>(null);
+
+	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
 
 	const {
 		resetWorkspace,
@@ -61,7 +69,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
 	} = useCanvasOperations();
-	const { fetchAndSetParentFolder } = useParentFolder();
 	// Pass workflowState to useExecutionDebugging since we're in the same component
 	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
 	const { applyExecutionData } = useExecutionDebugging(workflowState);
@@ -69,29 +76,26 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const isLoading = ref(true);
 	const initializedWorkflowId = ref<string | undefined>();
 
-	// Track the current workflow document store for cleanup and provide to children
-	const currentWorkflowDocumentStore = shallowRef<ReturnType<
-		typeof useWorkflowDocumentStore
-	> | null>(null);
+	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
-		if (currentWorkflowDocumentStore.value) {
-			const storeId = createWorkflowDocumentId(
-				currentWorkflowDocumentStore.value.workflowId,
-				currentWorkflowDocumentStore.value.workflowVersion,
-			);
-			disposeWorkflowDocumentStore(storeId);
-			currentWorkflowDocumentStore.value = null;
+		const ndvStore = currentNDVStore.value;
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+
+		if (ndvStore) {
+			disposeNDVStore(ndvStore);
 		}
+
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+		}
+
+		currentWorkflowDocumentStore.value = null;
+		currentNDVStore.value = null;
 	}
 
-	const workflowId = computed(() => {
-		const name = route.params.name;
-		return (Array.isArray(name) ? name[0] : name) ?? '';
-	});
-
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
-	const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+	const isDemoRoute = computed(() => DEMO_ROUTES.includes(route.name));
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
@@ -133,11 +137,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		try {
 			await Promise.all([loadCredentials(), credentialsStore.fetchCredentialTypes(true)]);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
@@ -153,6 +155,20 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				return true;
 			}
 
+			const templateValidation = safeParseWorkflowStructure({
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+			});
+
+			if (!templateValidation.success) {
+				toast.showError(
+					new WorkflowStructureValidationError(templateValidation.issues),
+					i18n.baseText('nodeView.showError.openWorkflow.title'),
+					{ message: i18n.baseText('openWorkflow.workflowDataInvalidError') },
+				);
+				return true;
+			}
+
 			await openWorkflowTemplateFromJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
@@ -164,6 +180,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			currentNDVStore.value = useNDVStore(workflowDocumentId);
 		}
 
 		return true;
@@ -176,13 +193,13 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	async function handleDebugModeRoute() {
 		if (!isDebugRoute.value) return;
 
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		if (!workflowsStore.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.isInDebugMode = true;
+				workflowsStore.setIsInDebugMode(true);
 			}
 		}
 	}
@@ -202,15 +219,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				promises.push(environmentsStore.fetchAllVariables());
 			}
 
-			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-				promises.push(externalSecretsStore.fetchGlobalSecrets());
-				const shouldFetchProjectSecrets =
-					projectsStore.currentProjectId !== projectsStore.personalProject?.id;
-				if (shouldFetchProjectSecrets && typeof projectsStore.currentProjectId === 'string') {
-					promises.push(externalSecretsStore.fetchProjectSecrets(projectsStore.currentProjectId));
-				}
-			}
-
 			return promises;
 		})();
 
@@ -228,15 +236,26 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			}
 			await Promise.all(loadPromises);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 	}
 
 	async function openWorkflow(data: IWorkflowDb) {
+		const validationResult = safeParseWorkflowStructure({
+			nodes: data.nodes,
+			connections: data.connections,
+		});
+
+		if (!validationResult.success) {
+			toast.showError(
+				new WorkflowStructureValidationError(validationResult.issues),
+				i18n.baseText('nodeView.showError.openWorkflow.title'),
+				{ message: i18n.baseText('openWorkflow.workflowDataInvalidError') },
+			);
+		}
+
 		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 
@@ -246,8 +265,33 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			documentTitle.setDocumentTitle(data.name, 'IDLE');
 		}
 
-		const { workflowDocumentStore } = await initializeWorkspace(data);
-		currentWorkflowDocumentStore.value = workflowDocumentStore;
+		try {
+			const { workflowDocumentStore } = await initializeWorkspace(data);
+			currentWorkflowDocumentStore.value = workflowDocumentStore;
+			currentNDVStore.value = useNDVStore(
+				createWorkflowDocumentId(
+					workflowDocumentStore.workflowId,
+					workflowDocumentStore.workflowVersion,
+				),
+			);
+		} catch (error) {
+			// Using error instead of warn so that unexpected errors are captured by Sentry
+			console.error('Failed to initialize workspace for workflow', {
+				workflowId: data.id,
+				error,
+			});
+			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+
+			// Set up a minimal document store so the UI stays functional
+			workflowsStore.setWorkflowId(data.id);
+			const workflowDocumentId = createWorkflowDocumentId(data.id);
+			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowDocumentStore.value.setName(data.name);
+			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
+			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
+			currentNDVStore.value = useNDVStore(workflowDocumentId);
+			return;
+		}
 
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,
@@ -263,22 +307,35 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowDataAndMakeShareable(
+		workflowsStore.setWorkflowId(workflowId.value);
+
+		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
+		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentNDVStore.value = useNDVStore(workflowDocumentId);
+
+		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
+		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
+			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
+		});
+
+		const workflowData = await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
 		);
-
-		workflowState.setWorkflowId(workflowId.value);
-
-		// Create document store for new workflow
-		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
-		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
-		await fetchAndSetParentFolder(parentFolderId);
+
+		const { currentProject, personalProject } = projectsStore;
+		currentWorkflowDocumentStore.value.setScopes(
+			currentProject?.scopes ?? personalProject?.scopes ?? [],
+		);
+
+		const parentFolder = await fetchParentFolder(parentFolderId);
+		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
@@ -291,10 +348,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
-
-			if (workflowData.parentFolder) {
-				workflowsStore.setParentFolder(workflowData.parentFolder);
-			}
 
 			// Track telemetry for onboarding and experiment workflows
 			if (workflowData.meta?.onboardingId) {
@@ -426,6 +479,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		initializedWorkflowId,
 		workflowId,
 		currentWorkflowDocumentStore,
+		currentNDVStore,
 		isNewWorkflowRoute,
 		isDemoRoute,
 		isTemplateRoute,
