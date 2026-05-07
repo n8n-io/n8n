@@ -207,6 +207,33 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
 		});
 
+		it('accepts a checksum when the version is embedded in the name', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementation((name?: string) => {
+				const raw = name ?? '';
+				const at = raw.lastIndexOf('@');
+				const hasVersion = at > 0;
+				return {
+					packageName: hasVersion ? raw.slice(0, at) : raw,
+					scope: undefined,
+					version: hasVersion ? raw.slice(at + 1) : undefined,
+					rawString: raw,
+				};
+			});
+
+			const loader = createLoader({
+				communityPackages: JSON.stringify([
+					{ name: 'n8n-nodes-foo@1.2.3', checksum: 'sha512-from-env' },
+				]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'n8n-nodes-foo',
+				'1.2.3',
+				'sha512-from-env',
+			);
+		});
+
 		it('updates when name suffix version differs from installed version', async () => {
 			communityPackagesService.parseNpmPackageName.mockImplementation((name?: string) => {
 				const raw = name ?? '';

@@ -21,10 +21,7 @@ const envPackageSchema = z
 		version: z.string().min(1).optional(),
 		checksum: z.string().min(1).optional(),
 	})
-	.strict()
-	.refine((data) => !data.checksum || data.version, {
-		message: 'checksum requires a version',
-	});
+	.strict();
 
 const envPackagesSchema = z.array(envPackageSchema);
 
@@ -289,6 +286,12 @@ export class CommunityPackagesInstanceSettingsLoader {
 				);
 			}
 			seenNames.add(name);
+
+			if (item.checksum !== undefined && version === undefined) {
+				throw new Error(
+					`N8N_COMMUNITY_PACKAGES has a checksum but no version for package "${name}" at index ${index}: checksum requires a version`,
+				);
+			}
 
 			return { name, version, checksum: item.checksum };
 		});
