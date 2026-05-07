@@ -76,9 +76,6 @@ export class ExecutionEntity {
 	@Column({ nullable: true })
 	workflowId: string;
 
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	threadId: string | null;
-
 	@DateTimeColumn({ nullable: true })
 	waitTill: Date | null;
 
