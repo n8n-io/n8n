@@ -198,8 +198,8 @@ packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
 packages/@n8n/decorators/                               @n8n-io/nodes
 packages/node-dev/                                      @n8n-io/nodes
-packages/@n8n/create-node/                              @n8n-io/iam
-packages/@n8n/node-cli/                                 @n8n-io/iam
+packages/@n8n/create-node/                              @n8n-io/nodes
+packages/@n8n/node-cli/                                 @n8n-io/nodes
 packages/@n8n/imap/                                     @n8n-io/iam
 packages/@n8n/syslog-client/                            @n8n-io/iam
 packages/@n8n/scan-community-package/                   @n8n-io/nodes
