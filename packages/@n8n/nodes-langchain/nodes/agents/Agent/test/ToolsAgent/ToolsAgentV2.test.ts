@@ -363,6 +363,13 @@ describe('toolsAgentExecute', () => {
 		);
 
 		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Test error');
+		expect(mockContext.setMetadata).toHaveBeenCalledWith({
+			tracing: expect.objectContaining({
+				'ai.agent.version': 'v2',
+				'ai.agent.items.failed': 1,
+				'ai.agent.execution.succeeded': false,
+			}),
+		});
 	});
 
 	it('should fetch output parser with correct item index', async () => {

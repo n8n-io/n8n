@@ -409,8 +409,8 @@ export async function toolsAgentExecute(
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
 					const error = result.reason as Error;
+					failedItems++;
 					if (this.continueOnFail()) {
-						failedItems++;
 						returnData.push({
 							json: { error: error.message },
 							pairedItem: { item: itemIndex },
