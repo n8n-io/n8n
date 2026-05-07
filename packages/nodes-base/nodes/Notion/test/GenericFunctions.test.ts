@@ -480,7 +480,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 		);
 
 		expect(query).not.toHaveProperty('limit');
-		expect(result.length).toBeGreaterThanOrEqual(3);
+		expect(result).toHaveLength(3);
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
 

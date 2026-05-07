@@ -64,7 +64,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 	});
 
 	it('block getAll: should paginate with limit and slice results', async () => {
-		const mockData = Array.from({ length: 200 }, (_, i) => ({
+		const mockData = Array.from({ length: 150 }, (_, i) => ({
 			object: 'block',
 			id: `block-${i}`,
 		}));
@@ -93,7 +93,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 	});
 
 	it('database getAll: should paginate with limit and slice results', async () => {
-		const mockData = Array.from({ length: 200 }, (_, i) => ({
+		const mockData = Array.from({ length: 150 }, (_, i) => ({
 			object: 'database',
 			id: `db-${i}`,
 		}));
@@ -123,7 +123,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 	});
 
 	it('databasePage getAll: should paginate with limit and slice results', async () => {
-		const mockData = Array.from({ length: 200 }, (_, i) => ({
+		const mockData = Array.from({ length: 150 }, (_, i) => ({
 			object: 'page',
 			id: `page-${i}`,
 		}));

@@ -108,11 +108,11 @@ export async function notionApiRequestAllItems(
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		if (limit && limit <= returnData.length) {
-			return returnData;
+			return returnData.slice(0, limit);
 		}
 	} while (responseData.has_more !== false);
 
-	return returnData;
+	return limit ? returnData.slice(0, limit) : returnData;
 }
 
 export async function notionApiRequestGetBlockChildrens(

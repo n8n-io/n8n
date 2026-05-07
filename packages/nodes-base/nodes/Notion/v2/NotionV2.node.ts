@@ -126,7 +126,6 @@ export class NotionV2 implements INodeType {
 								{},
 								{ page_size: Math.min(limit, 100), limit },
 							);
-							responseData = responseData.slice(0, limit);
 
 							if (fetchNestedBlocks) {
 								responseData = await notionApiRequestGetBlockChildrens.call(
@@ -229,7 +228,6 @@ export class NotionV2 implements INodeType {
 								body,
 								{ limit },
 							);
-							responseData = responseData.slice(0, limit);
 						}
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
@@ -500,7 +498,6 @@ export class NotionV2 implements INodeType {
 								body,
 								{ limit },
 							);
-							responseData = responseData.slice(0, limit);
 						}
 						if (download) {
 							responseData = await downloadFiles.call(this, responseData as FileRecord[], [
