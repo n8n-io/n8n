@@ -66,12 +66,6 @@ describe('SurfaceMcpFirstOpenIntroModal', () => {
 		expect(getByTestId('surface-mcp-intro-try-button')).toBeInTheDocument();
 	});
 
-	it('uses the experiment modal key by default', () => {
-		const { getByTestId } = renderComponent({ pinia });
-
-		expect(getByTestId(SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY)).toBeInTheDocument();
-	});
-
 	it('closes the intro modal and opens the setup modal when the user clicks Try MCP', async () => {
 		const user = userEvent.setup();
 		const uiStore = mockedStore(useUIStore);

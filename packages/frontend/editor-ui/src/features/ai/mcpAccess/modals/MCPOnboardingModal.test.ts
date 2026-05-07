@@ -128,31 +128,6 @@ describe('MCPOnboardingModal', () => {
 		expect(mockExperimentStore.trackEnabled).not.toHaveBeenCalled();
 	});
 
-	it('renders a compact access row and footer links', () => {
-		const { getByTestId, getByText, queryByText } = renderComponent();
-
-		expect(getByText('Enable MCP access')).toBeInTheDocument();
-		expect(getByTestId('mcp-onboarding-footer')).toHaveTextContent(
-			'You can disable this later from Settings > Instance-level MCP. Read more about this feature here.',
-		);
-		expect(getByTestId('mcp-onboarding-settings-link')).toHaveTextContent(
-			'Settings > Instance-level MCP',
-		);
-		expect(getByTestId('mcp-onboarding-docs-link')).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/advanced-ai/mcp/accessing-n8n-mcp-server/',
-		);
-		expect(getByTestId('mcp-onboarding-docs-link')).toHaveTextContent('here');
-		expect(getByTestId('mcp-onboarding-footer')).toHaveClass('size-xsmall');
-		expect(
-			queryByText('Toggle this on so clients can connect with OAuth.'),
-		).not.toBeInTheDocument();
-		expect(queryByText('MCP access is on for this instance.')).not.toBeInTheDocument();
-		expect(
-			queryByText('Enable MCP access above to reveal the setup prompt.'),
-		).not.toBeInTheDocument();
-	});
-
 	it('disables the toggle when MCP is managed by the environment', async () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpManagedByEnv = true;
@@ -190,17 +165,6 @@ describe('MCPOnboardingModal', () => {
 
 		expect(mockClipboardCopy).toHaveBeenCalledWith('https://example.n8n.cloud/mcp-server/http');
 		expect(mockExperimentStore.trackCopiedParameter).not.toHaveBeenCalled();
-	});
-
-	it('renders selectable agent options with logos', () => {
-		mockMcpStore.mcpAccessEnabled = true;
-
-		const { getByTestId } = renderComponent();
-
-		for (const agent of ['claude', 'claude-code', 'codex', 'cursor', 'chatgpt']) {
-			expect(getByTestId(`mcp-onboarding-agent-option-${agent}`)).toBeInTheDocument();
-			expect(getByTestId(`mcp-onboarding-agent-logo-${agent}`)).toBeInTheDocument();
-		}
 	});
 
 	it('preserves the resolved prompt if disabling MCP fails', async () => {

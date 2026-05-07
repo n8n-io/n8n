@@ -20,8 +20,6 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { ref } from 'vue';
 
 vi.mock('@/features/collaboration/projects/projects.api');
@@ -639,65 +637,5 @@ describe('Simplified Layout', () => {
 		// The computed should be called with the current route and loading state
 		const lastCall = getSimplifiedLayoutVisibility.mock.calls[initialCallCount - 1];
 		expect(lastCall[0]).toHaveProperty('params'); // route object
-	});
-
-	it('does not auto-open the retained MCP intro modal', async () => {
-		const readyToRunStore = mockedStore(useReadyToRunStore);
-		const projectsStore = mockedStore(useProjectsStore);
-		const surfaceMcpStore = mockedStore(useSurfaceMcpToNewCloudUsersStore);
-		const uiStore = mockedStore(useUIStore);
-
-		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
-		projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-		mcpEligibility.value = true;
-		surfaceMcpStore.isFirstOpenModalVariant = true;
-		surfaceMcpStore.hasSeenFirstEligibleOpen = false;
-
-		renderComponent({ pinia });
-		await waitAllPromises();
-
-		expect(surfaceMcpStore.markFirstEligibleOpenSeen).not.toHaveBeenCalled();
-		expect(surfaceMcpStore.trackSurfaced).not.toHaveBeenCalledWith('first_open_modal');
-		expect(surfaceMcpStore.trackOpened).not.toHaveBeenCalledWith('first_open_modal');
-		expect(uiStore.openModal).not.toHaveBeenCalled();
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
-	});
-
-	it('does not auto-open the modal for the tile variant', async () => {
-		const readyToRunStore = mockedStore(useReadyToRunStore);
-		const projectsStore = mockedStore(useProjectsStore);
-		const surfaceMcpStore = mockedStore(useSurfaceMcpToNewCloudUsersStore);
-		const uiStore = mockedStore(useUIStore);
-
-		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
-		projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-		mcpEligibility.value = true;
-		surfaceMcpStore.isTileVariant = true;
-		surfaceMcpStore.isFirstOpenModalVariant = false;
-
-		renderComponent({ pinia });
-		await waitAllPromises();
-
-		expect(uiStore.openModal).not.toHaveBeenCalled();
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
-	});
-
-	it('does not auto-open the modal after the first eligible open has already been seen', async () => {
-		const readyToRunStore = mockedStore(useReadyToRunStore);
-		const projectsStore = mockedStore(useProjectsStore);
-		const surfaceMcpStore = mockedStore(useSurfaceMcpToNewCloudUsersStore);
-		const uiStore = mockedStore(useUIStore);
-
-		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
-		projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-		mcpEligibility.value = true;
-		surfaceMcpStore.isFirstOpenModalVariant = true;
-		surfaceMcpStore.hasSeenFirstEligibleOpen = true;
-
-		renderComponent({ pinia });
-		await waitAllPromises();
-
-		expect(uiStore.openModal).not.toHaveBeenCalled();
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 });

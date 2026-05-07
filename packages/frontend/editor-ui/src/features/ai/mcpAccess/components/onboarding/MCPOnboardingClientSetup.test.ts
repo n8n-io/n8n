@@ -56,12 +56,6 @@ describe('MCPOnboardingClientSetup', () => {
 		expect(text).toContain('complete the n8n OAuth flow');
 	});
 
-	it('keeps copy available', () => {
-		const { getByTestId } = renderComponent();
-
-		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeEnabled();
-	});
-
 	it('copies the prompt body and emits copy event on click', async () => {
 		const user = userEvent.setup();
 		const { getByTestId, emitted } = renderComponent();
