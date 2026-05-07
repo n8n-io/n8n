@@ -1,12 +1,22 @@
-import type { IHookFunctions, IDataObject } from 'n8n-workflow';
+import { randomBytes } from 'crypto';
+
+import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
 
 import { CalendlyTrigger } from '../CalendlyTrigger.node';
+import { verifySignature } from '../CalendlyTriggerHelpers';
+
+jest.mock('../CalendlyTriggerHelpers');
+jest.mock('crypto', () => ({
+	...jest.requireActual('crypto'),
+	randomBytes: jest.fn(),
+}));
 
 describe('CalendlyTrigger', () => {
 	const webhookUrl = 'https://example.com/webhook/calendly';
 	const organizationUri = 'https://api.calendly.com/organizations/ORGANIZATION_ID';
 	const userUri = 'https://api.calendly.com/users/USER_ID';
 	const webhookUri = 'https://api.calendly.com/webhook_subscriptions/WEBHOOK_ID';
+	const webhookSecret = 'a'.repeat(64);
 
 	let trigger: CalendlyTrigger;
 	let requestWithAuthentication: jest.Mock;
@@ -14,9 +24,15 @@ describe('CalendlyTrigger', () => {
 	let mockHookFunctions: jest.Mocked<IHookFunctions>;
 
 	beforeEach(() => {
+		jest.clearAllMocks();
+
 		trigger = new CalendlyTrigger();
 		requestWithAuthentication = jest.fn();
 		webhookData = {};
+
+		(randomBytes as jest.Mock).mockReturnValue({
+			toString: jest.fn().mockReturnValue(webhookSecret),
+		});
 
 		mockHookFunctions = {
 			getNode: jest.fn().mockReturnValue({ name: 'Calendly Trigger', type: 'calendlyTrigger' }),
@@ -71,6 +87,7 @@ describe('CalendlyTrigger', () => {
 
 			expect(result).toBe(true);
 			expect(webhookData.webhookURI).toBe(webhookUri);
+			expect(webhookData.webhookSecret).toBe(webhookSecret);
 			expect(requestWithAuthentication).toHaveBeenLastCalledWith(
 				'calendlyApi',
 				expect.objectContaining({
@@ -81,6 +98,7 @@ describe('CalendlyTrigger', () => {
 						events: ['invitee.created'],
 						organization: organizationUri,
 						scope: 'user',
+						signing_key: webhookSecret,
 						user: userUri,
 					},
 				}),
@@ -98,6 +116,7 @@ describe('CalendlyTrigger', () => {
 			const result = await trigger.webhookMethods.default.create.call(mockHookFunctions);
 
 			expect(result).toBe(true);
+			expect(webhookData.webhookSecret).toBe(webhookSecret);
 			expect(requestWithAuthentication).toHaveBeenLastCalledWith(
 				'calendlyApi',
 				expect.objectContaining({
@@ -108,6 +127,7 @@ describe('CalendlyTrigger', () => {
 						events: ['invitee.created', 'invitee.canceled'],
 						organization: organizationUri,
 						scope: 'organization',
+						signing_key: webhookSecret,
 					},
 				}),
 			);
@@ -196,6 +216,7 @@ describe('CalendlyTrigger', () => {
 	describe('webhookMethods.default.delete', () => {
 		it('should delete webhook subscription by stored URI', async () => {
 			webhookData.webhookURI = webhookUri;
+			webhookData.webhookSecret = webhookSecret;
 
 			const result = await trigger.webhookMethods.default.delete.call(mockHookFunctions);
 
@@ -208,6 +229,7 @@ describe('CalendlyTrigger', () => {
 				}),
 			);
 			expect(webhookData.webhookURI).toBeUndefined();
+			expect(webhookData.webhookSecret).toBeUndefined();
 		});
 
 		it('should return true when no webhook subscription is stored', async () => {
@@ -215,6 +237,40 @@ describe('CalendlyTrigger', () => {
 
 			expect(result).toBe(true);
 			expect(requestWithAuthentication).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('webhook', () => {
+		it('should return 401 when signature verification fails', async () => {
+			const mockRes = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn().mockReturnThis(),
+				end: jest.fn(),
+			};
+			(verifySignature as jest.Mock).mockReturnValue(false);
+
+			const mockFn = {
+				getResponseObject: jest.fn().mockReturnValue(mockRes),
+			} as unknown as IWebhookFunctions;
+
+			const result = await trigger.webhook.call(mockFn);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockRes.status).toHaveBeenCalledWith(401);
+		});
+
+		it('should process the webhook when signature is valid', async () => {
+			const bodyData = { event: 'invitee.created', payload: { foo: 'bar' } };
+			(verifySignature as jest.Mock).mockReturnValue(true);
+
+			const mockFn = {
+				getBodyData: jest.fn().mockReturnValue(bodyData),
+				helpers: { returnJsonArray: jest.fn((data) => data) },
+			} as unknown as IWebhookFunctions;
+
+			const result = await trigger.webhook.call(mockFn);
+
+			expect(result).toEqual({ workflowData: [bodyData] });
 		});
 	});
 });

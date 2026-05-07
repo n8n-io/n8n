@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -8,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { verifySignature } from './CalendlyTriggerHelpers';
 import { calendlyApiRequest } from './GenericFunctions';
 
 function isDataObject(value: unknown): value is IDataObject {
@@ -216,11 +219,13 @@ export class CalendlyTrigger implements INodeType {
 
 				if (organization === undefined || (scope === 'user' && userUri === undefined)) return false;
 
+				const webhookSecret = randomBytes(32).toString('hex');
 				const body: IDataObject = {
 					url: webhookUrl,
 					events,
 					organization,
 					scope,
+					signing_key: webhookSecret,
 				};
 
 				if (scope === 'user') {
@@ -237,6 +242,7 @@ export class CalendlyTrigger implements INodeType {
 				if (subscriptionUri === undefined) return false;
 
 				webhookData.webhookURI = subscriptionUri;
+				webhookData.webhookSecret = webhookSecret;
 
 				return true;
 			},
@@ -252,6 +258,7 @@ export class CalendlyTrigger implements INodeType {
 					}
 
 					delete webhookData.webhookURI;
+					delete webhookData.webhookSecret;
 				}
 				delete webhookData.webhookId;
 
@@ -261,6 +268,14 @@ export class CalendlyTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

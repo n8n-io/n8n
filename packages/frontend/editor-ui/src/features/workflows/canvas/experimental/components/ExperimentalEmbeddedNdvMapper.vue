@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import InputPanel from '@/features/ndv/panel/components/InputPanel.vue';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
 import { useStyles } from '@/app/composables/useStyles';
 import {
@@ -36,7 +36,7 @@ const {
 
 const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
