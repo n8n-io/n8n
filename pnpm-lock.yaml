@@ -2139,12 +2139,24 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../typeorm
       express:
         specifier: 'catalog:'
         version: 5.1.0
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.8
+      pg:
+        specifier: 8.21.0
+        version: 8.21.0(pg-native@3.8.0)
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2152,15 +2164,24 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.20.0
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
       supertest:
         specifier: ^7.1.1
         version: 7.1.1
+      testcontainers:
+        specifier: 'catalog:'
+        version: 11.13.0
       typescript:
         specifier: catalog:typescript
         version: 7.0.2

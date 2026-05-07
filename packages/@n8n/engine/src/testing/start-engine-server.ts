@@ -1,12 +1,12 @@
 import type { Server } from 'node:http';
 
-import { createEngineServer } from '../server';
+import { createEngineServer, type EngineServerDeps } from '../server';
 
-export async function startEngineServer(): Promise<{
+export async function startEngineServer(deps: EngineServerDeps = {}): Promise<{
 	url: string;
 	stop: () => Promise<void>;
 }> {
-	const { app } = createEngineServer();
+	const { app } = createEngineServer(deps);
 
 	const server = await new Promise<Server>((resolve, reject) => {
 		const s = app.listen(0, '127.0.0.1', () => resolve(s));
