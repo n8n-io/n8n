@@ -1,6 +1,19 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { Collection, MongoClient } from 'mongodb';
-import type { INodeParameters, WorkflowTestData } from 'n8n-workflow';
+import { mockDeep } from 'jest-mock-extended';
+import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
+import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	INode,
+	INodeParameters,
+	NodeParameterValueType,
+	WorkflowTestData,
+} from 'n8n-workflow';
+
+import { MongoDb } from '../MongoDb.node';
+
+const manualTriggerName = 'When clicking "Execute Workflow"';
+const searchIndexName = 'my-index';
 
 MongoClient.connect = async function () {
 	const driverInfo = {
@@ -8,7 +21,7 @@ MongoClient.connect = async function () {
 		version: '1.2',
 	};
 	const client = new MongoClient('mongodb://localhost:27017', { driverInfo });
-	return client;
+	return await Promise.resolve(client);
 };
 
 function buildWorkflow({
@@ -23,7 +36,7 @@ function buildWorkflow({
 					{
 						parameters: {},
 						id: '8b7bb389-e4ef-424a-bca1-e7ead60e43eb',
-						name: 'When clicking "Execute Workflow"',
+						name: manualTriggerName,
 						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [740, 380],
@@ -44,7 +57,7 @@ function buildWorkflow({
 					},
 				],
 				connections: {
-					'When clicking "Execute Workflow"': {
+					[manualTriggerName]: {
 						main: [
 							[
 								{
@@ -69,14 +82,208 @@ function buildWorkflow({
 	return test;
 }
 
+const inputItems = [
+	{ json: { id: '1', value: 'first', collection: 'collection-1' } },
+	{ json: { id: '2', value: 'second', collection: 'collection-2' } },
+	{ json: { id: '3', value: 'third', collection: 'collection-3' } },
+];
+
+function mockExecuteFunctions(typeVersion: number, operation: string) {
+	const executeFunctions = mockDeep<IExecuteFunctions>();
+
+	executeFunctions.getCredentials.mockResolvedValue({
+		configurationType: 'connectionString',
+		connectionString: 'mongodb://localhost:27017',
+		database: 'test',
+	});
+	executeFunctions.getNode.mockReturnValue({ typeVersion } as INode);
+	executeFunctions.getInputData.mockReturnValue(inputItems);
+	executeFunctions.continueOnFail.mockReturnValue(false);
+	executeFunctions.helpers.returnJsonArray.mockImplementation(returnJsonArray);
+	executeFunctions.helpers.constructExecutionMetaData.mockImplementation(
+		constructExecutionMetaData,
+	);
+	executeFunctions.getNodeParameter.mockImplementation(
+		(parameterName: string, itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+			switch (parameterName) {
+				case 'operation':
+					return operation;
+				case 'collection':
+					return inputItems[itemIndex].json.collection;
+				case 'fields':
+					return 'id,value';
+				case 'updateKey':
+					return 'id';
+				case 'upsert':
+					return false;
+				case 'options.useDotNotation':
+					return false;
+				case 'options.dateFields':
+					return '';
+				default:
+					return fallbackValue;
+			}
+		},
+	);
+
+	return executeFunctions;
+}
+
+function collectionNames(collectionSpy: jest.SpyInstance): string[] {
+	return collectionSpy.mock.calls.reduce<string[]>((names, call) => {
+		const [collectionName] = call as unknown[];
+
+		if (typeof collectionName === 'string') {
+			names.push(collectionName);
+		}
+
+		return names;
+	}, []);
+}
+
+function searchIndexOperationResult(indexName: string) {
+	return { json: { [indexName]: true } };
+}
+
 describe('MongoDB CRUD Node', () => {
 	const testHarness = new NodeTestHarness();
+
+	describe('document operations in version 1.3', () => {
+		let collectionSpy: jest.SpyInstance;
+		const node = new MongoDb();
+
+		beforeEach(() => {
+			collectionSpy = jest.spyOn(Db.prototype, 'collection');
+		});
+
+		afterEach(() => {
+			collectionSpy.mockRestore();
+			jest.clearAllMocks();
+		});
+
+		it('resolves insert collections against each input item', async () => {
+			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
+			insertOneSpy
+				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
+				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
+				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() });
+
+			await node.execute.call(mockExecuteFunctions(1.3, 'insert'));
+
+			expect(collectionNames(collectionSpy)).toEqual([
+				'collection-1',
+				'collection-2',
+				'collection-3',
+			]);
+			expect(insertOneSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('resolves update collections against each input item', async () => {
+			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			updateOneSpy.mockResolvedValue({
+				acknowledged: true,
+				matchedCount: 1,
+				modifiedCount: 1,
+				upsertedCount: 0,
+				upsertedId: null,
+			});
+
+			await node.execute.call(mockExecuteFunctions(1.3, 'update'));
+
+			expect(collectionNames(collectionSpy)).toEqual([
+				'collection-1',
+				'collection-2',
+				'collection-3',
+			]);
+			expect(updateOneSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('resolves find-and-update collections against each input item', async () => {
+			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			findOneAndUpdateSpy.mockResolvedValue(null);
+
+			await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndUpdate'));
+
+			expect(collectionNames(collectionSpy)).toEqual([
+				'collection-1',
+				'collection-2',
+				'collection-3',
+			]);
+			expect(findOneAndUpdateSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('resolves find-and-replace collections against each input item', async () => {
+			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			findOneAndReplaceSpy.mockResolvedValue(null);
+
+			await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndReplace'));
+
+			expect(collectionNames(collectionSpy)).toEqual([
+				'collection-1',
+				'collection-2',
+				'collection-3',
+			]);
+			expect(findOneAndReplaceSpy).toHaveBeenCalledTimes(3);
+		});
+	});
+
+	describe('document operations in version 1.2', () => {
+		let collectionSpy: jest.SpyInstance;
+		const node = new MongoDb();
+
+		beforeEach(() => {
+			collectionSpy = jest.spyOn(Db.prototype, 'collection');
+		});
+
+		afterEach(() => {
+			collectionSpy.mockRestore();
+			jest.clearAllMocks();
+		});
+
+		it('keeps insert using the first item collection', async () => {
+			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
+			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			insertManySpy.mockResolvedValue({
+				acknowledged: true,
+				insertedCount: 3,
+				insertedIds: Object.fromEntries(
+					[new ObjectId(), new ObjectId(), new ObjectId()].map((id, index) => [index, id]),
+				),
+			});
+
+			await node.execute.call(mockExecuteFunctions(1.2, 'insert'));
+
+			expect(collectionNames(collectionSpy)).toEqual(['collection-1']);
+			expect(insertManySpy).toHaveBeenCalledTimes(1);
+			expect(insertOneSpy).not.toHaveBeenCalled();
+		});
+
+		it('keeps update using the first item collection', async () => {
+			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			updateOneSpy.mockResolvedValue({
+				acknowledged: true,
+				matchedCount: 1,
+				modifiedCount: 1,
+				upsertedCount: 0,
+				upsertedId: null,
+			});
+
+			await node.execute.call(mockExecuteFunctions(1.2, 'update'));
+
+			expect(collectionNames(collectionSpy)).toEqual([
+				'collection-1',
+				'collection-1',
+				'collection-1',
+			]);
+			expect(updateOneSpy).toHaveBeenCalledTimes(3);
+		});
+	});
 
 	describe('createSearchIndex operation', () => {
 		const spy: jest.SpyInstance = jest.spyOn(Collection.prototype, 'createSearchIndex');
 		afterAll(() => jest.restoreAllMocks());
 		beforeAll(() => {
-			spy.mockResolvedValueOnce('my-index');
+			spy.mockResolvedValueOnce(searchIndexName);
 		});
 
 		testHarness.setupTest(
@@ -87,15 +294,15 @@ describe('MongoDB CRUD Node', () => {
 					collection: 'foo',
 					indexType: 'vectorSearch',
 					indexDefinition: JSON.stringify({ mappings: {} }),
-					indexNameRequired: 'my-index',
+					indexNameRequired: searchIndexName,
 				},
-				expectedResult: [{ json: { indexName: 'my-index' } }],
+				expectedResult: [{ json: { indexName: searchIndexName } }],
 			}),
 		);
 
 		it('calls the spy with the expected arguments', function () {
 			expect(spy).toBeCalledWith({
-				name: 'my-index',
+				name: searchIndexName,
 				definition: { mappings: {} },
 				type: 'vectorSearch',
 			});
@@ -108,7 +315,7 @@ describe('MongoDB CRUD Node', () => {
 			beforeAll(() => {
 				spy = jest.spyOn(Collection.prototype, 'listSearchIndexes');
 				const mockCursor = {
-					toArray: async () => [],
+					toArray: async () => await Promise.resolve([]),
 				};
 				spy.mockReturnValue(mockCursor);
 			});
@@ -136,7 +343,7 @@ describe('MongoDB CRUD Node', () => {
 			beforeAll(() => {
 				spy = jest.spyOn(Collection.prototype, 'listSearchIndexes');
 				const mockCursor = {
-					toArray: async () => [],
+					toArray: async () => await Promise.resolve([]),
 				};
 				spy.mockReturnValue(mockCursor);
 			});
@@ -149,14 +356,14 @@ describe('MongoDB CRUD Node', () => {
 						resource: 'searchIndexes',
 						operation: 'listSearchIndexes',
 						collection: 'foo',
-						indexName: 'my-index',
+						indexName: searchIndexName,
 					},
 					expectedResult: [],
 				}),
 			);
 
 			it('calls the spy with the expected arguments', function () {
-				expect(spy).toHaveBeenCalledWith('my-index');
+				expect(spy).toHaveBeenCalledWith(searchIndexName);
 			});
 		});
 
@@ -165,7 +372,8 @@ describe('MongoDB CRUD Node', () => {
 			beforeAll(() => {
 				spy = jest.spyOn(Collection.prototype, 'listSearchIndexes');
 				const mockCursor = {
-					toArray: async () => [{ name: 'my-index' }, { name: 'my-index-2' }],
+					toArray: async () =>
+						await Promise.resolve([{ name: searchIndexName }, { name: 'my-index-2' }]),
 				};
 				spy.mockReturnValue(mockCursor);
 			});
@@ -178,11 +386,11 @@ describe('MongoDB CRUD Node', () => {
 						operation: 'listSearchIndexes',
 						resource: 'searchIndexes',
 						collection: 'foo',
-						indexName: 'my-index',
+						indexName: searchIndexName,
 					},
 					expectedResult: [
 						{
-							json: { name: 'my-index' },
+							json: { name: searchIndexName },
 						},
 						{
 							json: { name: 'my-index-2' },
@@ -207,14 +415,14 @@ describe('MongoDB CRUD Node', () => {
 					operation: 'dropSearchIndex',
 					resource: 'searchIndexes',
 					collection: 'foo',
-					indexNameRequired: 'my-index',
+					indexNameRequired: searchIndexName,
 				},
-				expectedResult: [{ json: { 'my-index': true } }],
+				expectedResult: [searchIndexOperationResult(searchIndexName)],
 			}),
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith('my-index');
+			expect(spy).toBeCalledWith(searchIndexName);
 		});
 	});
 
@@ -232,19 +440,19 @@ describe('MongoDB CRUD Node', () => {
 					operation: 'updateSearchIndex',
 					resource: 'searchIndexes',
 					collection: 'foo',
-					indexNameRequired: 'my-index',
+					indexNameRequired: searchIndexName,
 					indexDefinition: JSON.stringify({
 						mappings: {
 							dynamic: true,
 						},
 					}),
 				},
-				expectedResult: [{ json: { 'my-index': true } }],
+				expectedResult: [searchIndexOperationResult(searchIndexName)],
 			}),
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith('my-index', { mappings: { dynamic: true } });
+			expect(spy).toBeCalledWith(searchIndexName, { mappings: { dynamic: true } });
 		});
 	});
 });
