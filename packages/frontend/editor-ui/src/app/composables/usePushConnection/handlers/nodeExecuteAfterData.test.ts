@@ -3,6 +3,7 @@ import { nodeExecuteAfterData } from './nodeExecuteAfterData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { createRunExecutionData } from 'n8n-workflow';
+import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
@@ -23,32 +24,30 @@ describe('nodeExecuteAfterData', () => {
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-		executionDataStore.setExecution({
-			id: 'exec-1',
-			finished: false,
-			mode: 'manual',
-			status: 'running',
-			createdAt: new Date(),
-			startedAt: new Date(),
-			workflowData: { id: 'test-wf', name: 'Test', nodes: [], connections: {} } as never,
-			data: createRunExecutionData({
-				resultData: {
-					runData: {
-						'Test Node': [
-							{
-								executionTime: 0,
-								startTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									main: [[{ json: { placeholder: true } }]],
+		executionDataStore.setExecution(
+			createTestWorkflowExecutionResponse({
+				id: 'exec-1',
+				finished: false,
+				status: 'running',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									executionTime: 0,
+									startTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										main: [[{ json: { placeholder: true } }]],
+									},
 								},
-							},
-						],
+							],
+						},
 					},
-				},
+				}),
 			}),
-		});
+		);
 
 		stateStore.setActiveExecutionId('exec-1');
 	});

@@ -7,13 +7,12 @@ import userEvent from '@testing-library/user-event';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRouter } from 'vue-router';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
-import { createTestWorkflow } from '@/__tests__/mocks';
+import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -70,8 +69,8 @@ const mockParentNode = {
 	name: 'Parent Node',
 };
 
-const mockRunData = {
-	data: {
+const mockExecutionResponse = createTestWorkflowExecutionResponse({
+	data: createRunExecutionData({
 		resultData: {
 			runData: {
 				['Test Node']: [
@@ -85,8 +84,8 @@ const mockRunData = {
 				],
 			},
 		},
-	},
-};
+	}),
+});
 
 const mockWorkflow = createTestWorkflow({
 	id: 'test-workflow',
@@ -134,10 +133,7 @@ describe('FromAiParametersModal', () => {
 				},
 			},
 		});
-		useWorkflowsStore().setWorkflowExecutionData({
-			...mockRunData,
-			id: 'test-exec',
-		} as unknown as IExecutionResponse);
+		useWorkflowsStore().setWorkflowExecutionData(mockExecutionResponse);
 
 		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {
