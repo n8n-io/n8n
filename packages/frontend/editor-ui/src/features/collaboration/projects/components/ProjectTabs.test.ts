@@ -69,4 +69,16 @@ describe('ProjectTabs', () => {
 
 		expect(getByText('Variables')).toBeInTheDocument();
 	});
+
+	it('should render preview tabs with the preview tag component', () => {
+		const { container, getByText } = renderComponent({
+			props: {
+				additionalTabs: [{ label: 'Agents', value: 'agents', preview: true }],
+			},
+		});
+
+		expect(getByText('Agents')).toBeInTheDocument();
+		expect(getByText('Preview')).toBeInTheDocument();
+		expect(container.querySelector('.preview')).toBeInTheDocument();
+	});
 });

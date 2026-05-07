@@ -9,6 +9,10 @@ export function formatWorkflowLoopGuidance(
 	options: WorkflowLoopGuidanceOptions = {},
 ): string {
 	switch (action.type) {
+		case 'ignored':
+			return `STALE REPORT IGNORED: ${action.reason}`;
+		case 'continue_building':
+			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
 		case 'done': {
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
@@ -34,7 +38,8 @@ export function formatWorkflowLoopGuidance(
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
 				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
-				'(no plan — this is a single-task rebuild, and the `workflowId` parameter is required ' +
+				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
+				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
 				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
 			);
@@ -44,7 +49,8 @@ export function formatWorkflowLoopGuidance(
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
 				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
-				'(no plan — this is a single-task patch, and the `workflowId` parameter is required ' +
+				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
+				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
 				'In the `task` parameter, describe the targeted fix to apply.'
 			);

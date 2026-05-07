@@ -1,15 +1,16 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/generate.operation';
+import type { Mocked } from 'vitest';
 
-jest.mock('../../../../transport');
+vi.mock('../../../../transport');
 
 describe('Image Generate Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
 
 	const makeNode = (typeVersion: number): INode =>
 		mock<INode>({
@@ -33,11 +34,11 @@ describe('Image Generate Operation', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockExecuteFunctions.helpers.prepareBinaryData = jest.fn().mockResolvedValue(mockBinaryData);
+		mockExecuteFunctions.helpers.prepareBinaryData = vi.fn().mockResolvedValue(mockBinaryData);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('v2.1 (static model field)', () => {

@@ -402,7 +402,7 @@ onMounted(async () => {
 			node.parameters = resolved ?? {};
 		}
 
-		previousWorkflow = { ...workflowsStore.workflow };
+		previousWorkflow = { ...workflowDocumentStore.value.getSnapshot() };
 		const targetDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowData.id));
 		targetDocStore.hydrate(workflowData);
 	} catch (error) {
@@ -1077,6 +1077,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .card {
 	width: 100%;
 	display: flex;
@@ -1199,16 +1201,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 .loading {
 	color: var(--color--text--tint-1);
-	animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+	@include motion.spin;
 }
 
 .submitted {

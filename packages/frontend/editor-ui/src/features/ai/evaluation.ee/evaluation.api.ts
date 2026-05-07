@@ -1,3 +1,4 @@
+import type { StartTestRunPayload } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { JsonObject } from 'n8n-workflow';
@@ -58,13 +59,25 @@ export const getTestRun = async (context: IRestApiContext, params: GetTestRunPar
 	);
 };
 
+// FE alias of the shared payload contract from @n8n/api-types. Re-exporting
+// instead of duplicating the shape avoids silent drift between FE and BE.
+export type StartTestRunOptions = StartTestRunPayload;
+
 // Start a new test run
-export const startTestRun = async (context: IRestApiContext, workflowId: string) => {
+export const startTestRun = async (
+	context: IRestApiContext,
+	workflowId: string,
+	options?: StartTestRunOptions,
+) => {
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `/workflows/${workflowId}/test-runs/new`,
 		headers: { 'push-ref': context.pushRef },
+		// `data: undefined` sends an empty POST body. Express's body-parser
+		// normalises that to `req.body = {}`, which the controller's zod parse
+		// resolves to `concurrency: undefined`, defaulting to sequential.
+		data: options?.concurrency !== undefined ? { concurrency: options.concurrency } : undefined,
 	});
 	// CLI is returning the response without wrapping it in `data` key
 	return response as { success: boolean };

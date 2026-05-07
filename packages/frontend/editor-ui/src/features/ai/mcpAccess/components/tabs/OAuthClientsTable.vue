@@ -9,7 +9,7 @@ import {
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -23,6 +23,24 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const page = ref(0);
+const itemsPerPage = ref(10);
+
+const visibleClients = computed(() => {
+	const start = page.value * itemsPerPage.value;
+	return props.clients.slice(start, start + itemsPerPage.value);
+});
+
+watch(
+	() => props.clients.length,
+	(length) => {
+		const maxPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
+		if (page.value > maxPage) {
+			page.value = maxPage;
+		}
+	},
+);
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
@@ -81,9 +99,11 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 		</div>
 		<div v-else class="mt-s mb-xl">
 			<N8nDataTableServer
+				v-model:page="page"
+				v-model:items-per-page="itemsPerPage"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
-				:items="props.clients"
+				:items="visibleClients"
 				:items-length="props.clients.length"
 			>
 				<template v-if="props.clients.length === 0" #cover>
