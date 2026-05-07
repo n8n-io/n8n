@@ -70,14 +70,12 @@ export type {
 export type {
 	BuiltObservationStore,
 	CompactFn,
-	FormatContextFn,
 	NewObservation,
 	Observation,
 	ObservationCursor,
 	ObservationLockHandle,
 	ObservationalMemoryConfig,
 	ObserveFn,
-	ResolveObservationalScope,
 	ScopeKind,
 } from './sdk/observation';
 export { OBSERVATION_SCHEMA_VERSION } from './sdk/observation';
