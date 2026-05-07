@@ -125,6 +125,8 @@ export default {
 	'markdownEditor.heading1': 'Heading 1',
 	'markdownEditor.heading2': 'Heading 2',
 	'markdownEditor.heading3': 'Heading 3',
+	'markdownEditor.rawMarkdownView': 'Raw markdown',
+	'markdownEditor.formattedMarkdownView': 'Formatted view',
 	'markdownEditor.slashCommandMenuLabel': 'Markdown commands',
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',
 	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',

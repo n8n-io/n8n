@@ -14,6 +14,7 @@ export interface N8nDropdownOption<V = string | number> {
 	label: string;
 	value: V;
 	disabled?: boolean;
+	active?: boolean;
 }
 
 export interface Props<T extends string | number> {
@@ -114,7 +115,7 @@ defineExpose({
 						v-for="option in options"
 						:key="option.value"
 						:disabled="option.disabled"
-						:class="$style.item"
+						:class="[$style.item, option.active ? $style.activeItem : '']"
 						:data-test-id="`dropdown-option-${option.value}`"
 						@select="handleSelect(option)"
 					>
@@ -297,6 +298,10 @@ defineExpose({
 		color: var(--color--text--tint-2);
 		pointer-events: none;
 	}
+}
+
+.activeItem {
+	background-color: var(--background--active);
 }
 
 .itemText {

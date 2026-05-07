@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core';
 import { EditorContent } from '@tiptap/vue-3';
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
 import { useMarkdownEditor } from './composables/useMarkdownEditor';
+import { setEditorContent } from './markdownEditorUtils';
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	modelValue: '',
@@ -30,17 +31,84 @@ const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 
 const shouldPadContent = computed(() => props.showToolbar === 'always');
 
 const editor = useMarkdownEditor(props, emit);
+const isRawMode = ref(false);
+const rawMarkdown = ref(props.modelValue);
+const container = ref<HTMLElement>();
+const rawEditor = ref<HTMLTextAreaElement>();
+const rawContentHeight = ref<string>();
+
+watch(
+	() => props.modelValue,
+	(value) => {
+		if (isRawMode.value) {
+			rawMarkdown.value = value ?? '';
+		}
+	},
+);
+
+function getRenderedContentHeight() {
+	const renderedContent = container.value?.querySelector<HTMLElement>('.n8n-markdown');
+
+	return renderedContent ? `${renderedContent.clientHeight}px` : undefined;
+}
+
+async function toggleRawMode(value: boolean) {
+	if (value) {
+		rawMarkdown.value = editor.value?.getMarkdown() ?? props.modelValue;
+		rawContentHeight.value = getRenderedContentHeight();
+		isRawMode.value = true;
+		await nextTick();
+		rawEditor.value?.focus();
+		return;
+	}
+
+	if (editor.value) {
+		setEditorContent(editor.value, rawMarkdown.value);
+	}
+
+	isRawMode.value = false;
+	rawContentHeight.value = undefined;
+	await nextTick();
+	editor.value?.commands.focus();
+}
+
+function updateRawMarkdown(event: Event) {
+	const value = (event.target as HTMLTextAreaElement).value;
+
+	rawMarkdown.value = value;
+	emit('update:modelValue', value);
+	emit('input', value);
+	emit('change', value);
+}
+
+function handleRawFocus(event: FocusEvent) {
+	emit('focus', event);
+}
+
+function handleRawBlur(event: FocusEvent) {
+	emit('blur', rawMarkdown.value, event);
+}
 
 function focus() {
+	if (isRawMode.value) {
+		rawEditor.value?.focus();
+		return;
+	}
+
 	editor.value?.commands.focus();
 }
 
 function blur() {
+	if (isRawMode.value) {
+		rawEditor.value?.blur();
+		return;
+	}
+
 	editor.value?.commands.blur();
 }
 
 function getMarkdown() {
-	return editor.value?.getMarkdown() ?? '';
+	return isRawMode.value ? rawMarkdown.value : (editor.value?.getMarkdown() ?? '');
 }
 
 function getEditor(): Editor | undefined {
@@ -56,6 +124,7 @@ defineExpose({
 </script>
 <template>
 	<div
+		ref="container"
 		:class="[
 			'n8n-markdown-editor-container',
 			$style.container,
@@ -66,7 +135,23 @@ defineExpose({
 		:style="maxHeightStyle"
 		data-test-id="n8n-markdown-editor"
 	>
+		<div v-if="isRawMode" :class="[$style.content, shouldPadContent ? $style.padBottom : '']">
+			<textarea
+				ref="rawEditor"
+				:value="rawMarkdown"
+				:class="$style.rawContent"
+				:style="{ '--markdown-editor-raw-height': rawContentHeight }"
+				:placeholder="props.placeholder"
+				:disabled="props.disabled"
+				:readonly="props.readonly"
+				data-test-id="n8n-markdown-editor-raw-content"
+				@input="updateRawMarkdown"
+				@focus="handleRawFocus"
+				@blur="handleRawBlur"
+			/>
+		</div>
 		<EditorContent
+			v-else
 			:editor="editor"
 			:class="[$style.content, shouldPadContent ? $style.padBottom : '']"
 		/>
@@ -74,8 +159,10 @@ defineExpose({
 			v-if="shouldShowToolbar && editor"
 			:editor="editor"
 			:disabled="props.disabled || props.readonly"
+			:is-raw-mode="isRawMode"
 			:mode="toolbarMode"
 			:variant="props.variant"
+			@update:is-raw-mode="toggleRawMode"
 		/>
 	</div>
 </template>
@@ -180,6 +267,35 @@ defineExpose({
 
 	:global(.n8n-markdown > *:last-child) {
 		margin-bottom: 0;
+	}
+}
+
+.rawContent {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: var(--markdown-editor-raw-height, auto);
+	min-height: var(--spacing--3xl);
+	max-height: var(--markdown-editor-max-height);
+	padding: var(--spacing--xs);
+	border: 0;
+	outline: none;
+	resize: none;
+	overflow-y: scroll;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
+	background-color: transparent;
+	color: inherit;
+	font-family: inherit;
+	font-size: var(--input--font-size, inherit);
+	line-height: 1.5em;
+
+	&::placeholder {
+		color: var(--text-color--subtler);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
 	}
 }
 </style>

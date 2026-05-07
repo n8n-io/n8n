@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import N8nButton from '../N8nButton';
 import N8nDropdown, { type N8nDropdownOption } from '../N8nDropdown';
 import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import { t } from '../../locale';
@@ -20,8 +21,13 @@ type ToolbarControl = Pick<MarkdownSlashCommand, 'id' | 'label' | 'icon' | 'comm
 const props = defineProps<{
 	editor: Editor;
 	disabled?: boolean;
+	isRawMode?: boolean;
 	mode: Exclude<MarkdownEditorToolbarMode, 'never'>;
 	variant: MarkdownEditorVariant;
+}>();
+
+const emit = defineEmits<{
+	'update:isRawMode': [value: boolean];
 }>();
 
 const markdownCommands = computed(() => createMarkdownSlashCommands());
@@ -58,6 +64,7 @@ const textStyleOptions = computed<Array<N8nDropdownOption<string>>>(() =>
 	getCommands(['paragraph', 'heading-1', 'heading-2', 'heading-3']).map((command) => ({
 		label: command.label,
 		value: command.id,
+		active: command.id === activeTextStyle.value,
 	})),
 );
 
@@ -87,14 +94,16 @@ const activeTextStyleLabel = computed(
 		translate('markdownEditor.text'),
 );
 
+const activeTextStyleIcon = computed(() => getCommand(activeTextStyle.value)?.icon ?? 'type');
+
 const runControl = (control: ToolbarControl) => {
-	if (props.disabled) return;
+	if (props.disabled || props.isRawMode) return;
 
 	control.command({ editor: props.editor });
 };
 
 const setTextStyle = (value: string | number) => {
-	if (props.disabled) return;
+	if (props.disabled || props.isRawMode) return;
 
 	getCommand(String(value))?.command({ editor: props.editor });
 };
@@ -106,33 +115,36 @@ const setTextStyle = (value: string | number) => {
 		data-test-id="markdown-editor-toolbar"
 	>
 		<div :class="[$style.toolbarInner, variant === 'textbox' ? $style.textboxToolbar : '']">
-			<N8nDropdown
-				:options="textStyleOptions"
-				:placeholder="activeTextStyleLabel"
-				size="small"
-				:disabled="disabled"
-				:class="$style.textStyleDropdown"
-				@select="setTextStyle"
-			>
-				<template #trigger>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:disabled="disabled"
-						:class="$style.textStyleTrigger"
-					>
-						<span>{{ activeTextStyleLabel }}</span>
-						<N8nIcon icon="chevron-down" size="small" />
-					</N8nButton>
-				</template>
-			</N8nDropdown>
+			<N8nTooltip :content="activeTextStyleLabel">
+				<N8nDropdown
+					:options="textStyleOptions"
+					:placeholder="activeTextStyleLabel"
+					size="small"
+					:disabled="disabled || isRawMode"
+					:class="$style.textStyleDropdown"
+					@select="setTextStyle"
+				>
+					<template #trigger>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:disabled="disabled || isRawMode"
+							:class="$style.textStyleTrigger"
+							:aria-label="activeTextStyleLabel"
+						>
+							<N8nIcon :icon="activeTextStyleIcon" size="small" />
+							<N8nIcon icon="chevron-down" size="small" />
+						</N8nButton>
+					</template>
+				</N8nDropdown>
+			</N8nTooltip>
 
 			<N8nToggleGroup
 				:model-value="activeMarks"
 				type="multiple"
 				variant="ghost"
 				size="small"
-				:disabled="disabled"
+				:disabled="disabled || isRawMode"
 				:class="$style.toolbarGroup"
 			>
 				<template #default="slotProps">
@@ -142,7 +154,7 @@ const setTextStyle = (value: string | number) => {
 						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
-						:disabled="disabled"
+						:disabled="disabled || isRawMode"
 						v-bind="slotProps"
 						@click="runControl(control)"
 					/>
@@ -154,7 +166,7 @@ const setTextStyle = (value: string | number) => {
 				type="multiple"
 				variant="ghost"
 				size="small"
-				:disabled="disabled"
+				:disabled="disabled || isRawMode"
 				:class="$style.toolbarGroup"
 			>
 				<template #default="slotProps">
@@ -164,7 +176,7 @@ const setTextStyle = (value: string | number) => {
 						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
-						:disabled="disabled"
+						:disabled="disabled || isRawMode"
 						v-bind="slotProps"
 						@click="runControl(control)"
 					/>
@@ -176,7 +188,7 @@ const setTextStyle = (value: string | number) => {
 				type="multiple"
 				variant="ghost"
 				size="small"
-				:disabled="disabled"
+				:disabled="disabled || isRawMode"
 				:class="$style.toolbarGroup"
 			>
 				<template #default="slotProps">
@@ -186,12 +198,28 @@ const setTextStyle = (value: string | number) => {
 						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
-						:disabled="disabled"
+						:disabled="disabled || isRawMode"
 						v-bind="slotProps"
 						@click="runControl(control)"
 					/>
 				</template>
 			</N8nToggleGroup>
+
+			<div :class="[$style.toolbarGroup, $style.rawToggleGroup]">
+				<N8nToggle
+					:model-value="isRawMode"
+					:label="
+						isRawMode
+							? translate('markdownEditor.formattedMarkdownView')
+							: translate('markdownEditor.rawMarkdownView')
+					"
+					icon="file-code"
+					variant="ghost"
+					size="small"
+					:disabled="disabled"
+					@update:model-value="emit('update:isRawMode', $event)"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -238,7 +266,8 @@ const setTextStyle = (value: string | number) => {
 }
 
 .textStyleTrigger {
-	justify-content: space-between;
+	gap: var(--spacing--4xs);
+	padding-inline: var(--spacing--2xs);
 }
 
 .toolbarGroup {
@@ -249,5 +278,10 @@ const setTextStyle = (value: string | number) => {
 		margin-inline-start: var(--spacing--3xs);
 		background-color: var(--border-color);
 	}
+}
+
+.rawToggleGroup {
+	display: inline-flex;
+	align-items: center;
 }
 </style>

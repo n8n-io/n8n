@@ -23,7 +23,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'An icon-only two-state button built on Reka UI Toggle and styled with N8nButton variants and sizes. The label renders as both the accessible name and tooltip content.',
+					'An icon-only two-state button built on Reka UI Toggle and styled to match N8nButton variants and sizes. The label renders as both the accessible name and tooltip content.',
 			},
 			source: { type: 'dynamic' },
 		},
