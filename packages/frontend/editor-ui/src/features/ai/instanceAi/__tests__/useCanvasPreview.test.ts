@@ -277,7 +277,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.userSentMessage.value).toBe(false);
 		});
 
-		test('preserves wasCanvasOpenBeforeSwitch when preview was visible', async () => {
+		test('does not auto-restore preview after thread switch — historical artifacts stay closed', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
@@ -286,13 +286,12 @@ describe('useCanvasPreview', () => {
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
-			// Preview was cleared by thread switch
+			// Preview was cleared by thread switch.
 			expect(ctx.isPreviewVisible.value).toBe(false);
 
-			// Register the restored workflow so activeWorkflowId can derive
-			registerWorkflow(ctx.store, 'wf-restored');
-
-			// But if a build result appears, it should auto-open because canvas was open before
+			// A build result that arrives without a fresh user-send / streaming
+			// signal is treated as historical — the panel stays closed.
+			registerWorkflow(ctx.store, 'wf-historical');
 			ctx.store.messages = [
 				makeMessage({
 					agentTree: makeAgentNode({
@@ -300,7 +299,7 @@ describe('useCanvasPreview', () => {
 							makeToolCall({
 								toolCallId: 'tc-build',
 								toolName: 'build-workflow',
-								result: { success: true, workflowId: 'wf-restored' },
+								result: { success: true, workflowId: 'wf-historical' },
 							}),
 						],
 					}),
@@ -308,7 +307,7 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeWorkflowId.value).toBe('wf-restored');
+			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
 
