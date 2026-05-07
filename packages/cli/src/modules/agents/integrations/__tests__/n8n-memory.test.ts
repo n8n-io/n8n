@@ -543,6 +543,37 @@ describe('N8nMemory', () => {
 	});
 
 	describe('locks', () => {
+		const mockLockWrite = ({
+			updateAffected,
+			claimed,
+		}: {
+			updateAffected: number;
+			claimed?: AgentObservationLockEntity | null;
+		}) => {
+			const updateQueryBuilder = {
+				update: jest.fn().mockReturnThis(),
+				set: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				setParameters: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ affected: updateAffected }),
+			};
+			const insertQueryBuilder = {
+				insert: jest.fn().mockReturnThis(),
+				into: jest.fn().mockReturnThis(),
+				values: jest.fn().mockReturnThis(),
+				orIgnore: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+			};
+
+			observationLockRepository.createQueryBuilder
+				.mockReturnValueOnce(updateQueryBuilder as never)
+				.mockReturnValueOnce(insertQueryBuilder as never);
+			observationLockRepository.findOneBy.mockResolvedValue(claimed ?? null);
+
+			return { updateQueryBuilder, insertQueryBuilder };
+		};
+
 		beforeEach(() => {
 			observationLockRepository.create.mockImplementation(
 				(input) => ({ ...input }) as AgentObservationLockEntity,
@@ -553,7 +584,16 @@ describe('N8nMemory', () => {
 		});
 
 		it('grants the lock when the row is missing', async () => {
-			observationLockRepository.findOneBy.mockResolvedValue(null);
+			const { insertQueryBuilder } = mockLockWrite({
+				updateAffected: 0,
+				claimed: {
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					holderId: 'A',
+					heldUntil: new Date(Date.now() + 60_000),
+				} as AgentObservationLockEntity,
+			});
+
 			const handle = await memory.acquireObservationLock('thread', 't-1', {
 				ttlMs: 60_000,
 				holderId: 'A',
@@ -561,16 +601,24 @@ describe('N8nMemory', () => {
 
 			expect(handle).not.toBeNull();
 			expect(handle?.holderId).toBe('A');
-			expect(observationLockRepository.save).toHaveBeenCalledTimes(1);
+			expect(insertQueryBuilder.orIgnore).toHaveBeenCalled();
+			expect(observationLockRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('attempts a conditional write before reading the lock row', async () => {
+			mockLockWrite({ updateAffected: 1 });
+
+			const handle = await memory.acquireObservationLock('thread', 't-1', {
+				ttlMs: 60_000,
+				holderId: 'A',
+			});
+
+			expect(handle).not.toBeNull();
+			expect(observationLockRepository.findOneBy).not.toHaveBeenCalled();
 		});
 
 		it('refuses a different holder while the lock is live', async () => {
-			observationLockRepository.findOneBy.mockResolvedValue({
-				scopeKind: 'resource',
-				scopeId: 't-1',
-				holderId: 'A',
-				heldUntil: new Date(Date.now() + 60_000),
-			} as AgentObservationLockEntity);
+			mockLockWrite({ updateAffected: 0 });
 
 			const handle = await memory.acquireObservationLock('thread', 't-1', {
 				ttlMs: 60_000,
@@ -581,12 +629,7 @@ describe('N8nMemory', () => {
 		});
 
 		it('reclaims the lock for a new holder once the prior one has expired', async () => {
-			observationLockRepository.findOneBy.mockResolvedValue({
-				scopeKind: 'resource',
-				scopeId: 't-1',
-				holderId: 'A',
-				heldUntil: new Date(Date.now() - 1_000),
-			} as AgentObservationLockEntity);
+			const { updateQueryBuilder } = mockLockWrite({ updateAffected: 1 });
 
 			const handle = await memory.acquireObservationLock('thread', 't-1', {
 				ttlMs: 60_000,
@@ -594,23 +637,21 @@ describe('N8nMemory', () => {
 			});
 			expect(handle).not.toBeNull();
 			expect(handle?.holderId).toBe('B');
-			expect(observationLockRepository.save).toHaveBeenCalledTimes(1);
+			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
+				'("holderId" = :holderId OR "heldUntil" <= :now)',
+			);
+			expect(observationLockRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('lets the same holder refresh the TTL while still held', async () => {
-			observationLockRepository.findOneBy.mockResolvedValue({
-				scopeKind: 'resource',
-				scopeId: 't-1',
-				holderId: 'A',
-				heldUntil: new Date(Date.now() + 30_000),
-			} as AgentObservationLockEntity);
+			mockLockWrite({ updateAffected: 1 });
 
 			const handle = await memory.acquireObservationLock('thread', 't-1', {
 				ttlMs: 60_000,
 				holderId: 'A',
 			});
 			expect(handle).not.toBeNull();
-			expect(observationLockRepository.save).toHaveBeenCalledTimes(1);
+			expect(observationLockRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('release deletes only the matching holder', async () => {

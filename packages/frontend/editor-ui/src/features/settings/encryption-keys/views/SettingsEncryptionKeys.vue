@@ -76,7 +76,7 @@ const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 		minWidth: 220,
 	},
 	{
-		title: i18n.baseText('settings.encryptionKeys.column.type'),
+		title: i18n.baseText('settings.encryptionKeys.column.status'),
 		key: 'status',
 		value: (row) => row.status,
 		minWidth: 120,

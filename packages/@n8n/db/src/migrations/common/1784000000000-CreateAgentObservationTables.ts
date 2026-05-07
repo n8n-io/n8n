@@ -30,7 +30,8 @@ export class CreateAgentObservationTables1784000000000 implements ReversibleMigr
 				column('durationMs').bigint,
 				column('schemaVersion').int.notNull,
 			)
-			.withIndexOn(['scopeKind', 'scopeId', 'kind', 'createdAt']).withTimestamps;
+			.withIndexOn(['scopeKind', 'scopeId', 'kind', 'createdAt'])
+			.withIndexOn(['scopeKind', 'scopeId', 'createdAt', 'id']).withTimestamps;
 
 		await createTable('agents_observation_cursors').withColumns(
 			column('scopeKind')

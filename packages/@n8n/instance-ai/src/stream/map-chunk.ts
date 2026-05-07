@@ -250,6 +250,13 @@ export function mapMastraChunkToEvent(
 				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
 				: undefined;
 
+		// Extract optional webSearch metadata (for the web-search action of the research tool)
+		const rawWebSearch = isRecord(suspendPayload.webSearch) ? suspendPayload.webSearch : undefined;
+		const webSearch =
+			rawWebSearch && typeof rawWebSearch.query === 'string'
+				? { query: rawWebSearch.query }
+				: undefined;
+
 		// Extract optional credentialFlow for credential setup stage
 		const rawCredentialFlow = isRecord(suspendPayload.credentialFlow)
 			? suspendPayload.credentialFlow
@@ -308,6 +315,7 @@ export function mapMastraChunkToEvent(
 				...(projectId ? { projectId } : {}),
 				...(inputType ? { inputType } : {}),
 				...(domainAccess ? { domainAccess } : {}),
+				...(webSearch ? { webSearch } : {}),
 				...(credentialFlow ? { credentialFlow } : {}),
 				...(setupRequests ? { setupRequests } : {}),
 				...(workflowId ? { workflowId } : {}),
