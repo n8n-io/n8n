@@ -167,6 +167,7 @@
       "dist/credentials/GrafanaApi.credentials.js",
       "dist/credentials/GSuiteAdminOAuth2Api.credentials.js",
       "dist/credentials/GumroadApi.credentials.js",
+      "dist/credentials/GumroadOAuth2Api.credentials.js",
       "dist/credentials/HaloPSAApi.credentials.js",
       "dist/credentials/HarvestApi.credentials.js",
       "dist/credentials/HarvestOAuth2Api.credentials.js",

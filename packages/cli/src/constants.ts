@@ -101,6 +101,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'highLevelOAuth2Api',
 	'mcpOAuth2Api',
 	'wordpressOAuth2Api',
+	'gumroadOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {
