@@ -107,6 +107,30 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('setRunning()', () => {
+		test('should clear waitTill when marking execution as running', async () => {
+			const executionId = '1';
+			const txCallback = jest.fn();
+			entityManager.transaction.mockImplementation(async (cb) => {
+				// @ts-expect-error Mock
+				await cb(entityManager);
+				txCallback();
+			});
+			entityManager.findOneBy.mockResolvedValue(null);
+			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			entityManager.update.mockClear();
+			await executionRepository.setRunning(executionId);
+
+			expect(txCallback).toHaveBeenCalledTimes(1);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				expect.objectContaining({ status: 'running', waitTill: null }),
+			);
+		});
+	});
+
 	describe('stopBeforeRun()', () => {
 		test('should clear waitTill when stopping execution before run', async () => {
 			const execution = mock<IExecutionResponse>({

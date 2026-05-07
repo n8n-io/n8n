@@ -383,7 +383,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await manager.update(
 				ExecutionEntity,
 				{ id: executionId },
-				{ status: 'running', startedAt: effectiveStartedAt },
+				{ status: 'running', startedAt: effectiveStartedAt, waitTill: null },
 			);
 
 			return effectiveStartedAt;

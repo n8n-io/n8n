@@ -427,7 +427,7 @@ describe('ExecutionRepository', () => {
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
 				{ id: executionId },
-				{ status: 'running', startedAt: expect.any(Date) },
+				{ status: 'running', startedAt: expect.any(Date), waitTill: null },
 			);
 			expect(result).toBeInstanceOf(Date);
 		});
@@ -444,7 +444,7 @@ describe('ExecutionRepository', () => {
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
 				{ id: executionId },
-				{ status: 'running', startedAt: existingStartedAt },
+				{ status: 'running', startedAt: existingStartedAt, waitTill: null },
 			);
 			expect(result).toBe(existingStartedAt);
 		});
