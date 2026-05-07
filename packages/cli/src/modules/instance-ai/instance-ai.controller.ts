@@ -631,9 +631,13 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
+		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const ttlSeconds = expiresAt
+			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
+			: null;
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command };
+		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
