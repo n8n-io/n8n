@@ -684,6 +684,14 @@ const saveSettings = async () => {
 	data.settings.executionTimeout =
 		data.settings.executionTimeout !== -1 ? hours * 3600 + minutes * 60 + seconds : -1;
 
+	if (data.settings.langsmithCredentialId && !data.settings.langsmithProject?.trim()) {
+		toast.showError(
+			new Error(i18n.baseText('workflowSettings.showError.langsmithProjectRequired.errorMessage')),
+			i18n.baseText('workflowSettings.showError.langsmithProjectRequired.title'),
+		);
+		return;
+	}
+
 	if (data.settings.executionTimeout === 0) {
 		toast.showError(
 			new Error(i18n.baseText('workflowSettings.showError.saveSettings1.errorMessage')),

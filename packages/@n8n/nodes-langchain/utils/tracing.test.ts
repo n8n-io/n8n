@@ -7,11 +7,15 @@ import { mock } from 'vitest-mock-extended';
 import { buildTracingMetadata, getTracingConfig } from './tracing';
 
 vi.mock('@langchain/core/tracers/tracer_langchain', () => ({
-	LangChainTracer: vi.fn().mockImplementation(() => ({ mocked: true })),
+	LangChainTracer: vi.fn().mockImplementation(function () {
+		return { mocked: true };
+	}),
 }));
 
 vi.mock('langsmith', () => ({
-	Client: vi.fn().mockImplementation(() => ({ mockedClient: true })),
+	Client: vi.fn().mockImplementation(function () {
+		return { mockedClient: true };
+	}),
 }));
 
 describe('getTracingConfig', () => {
@@ -172,7 +176,10 @@ describe('getTracingConfig', () => {
 			expect(result.callbacks).toEqual([{ mocked: true }]);
 		});
 
-		it('should use "default" project name when project is not specified', () => {
+		it('should fall back to LANGSMITH_PROJECT env var when project is not specified', () => {
+			const original = process.env.LANGSMITH_PROJECT;
+			process.env.LANGSMITH_PROJECT = 'env-project';
+
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
@@ -194,8 +201,41 @@ describe('getTracingConfig', () => {
 			});
 			expect(LangChainTracer).toHaveBeenCalledWith({
 				client: { mockedClient: true },
-				projectName: 'default',
+				projectName: 'env-project',
 			});
+
+			process.env.LANGSMITH_PROJECT = original;
+		});
+
+		it('should pass undefined project name when neither project nor env var is set', () => {
+			const original = process.env.LANGSMITH_PROJECT;
+			delete process.env.LANGSMITH_PROJECT;
+
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: 'ls-test-key-123',
+					},
+				};
+
+			getTracingConfig(mockContext);
+
+			expect(Client).toHaveBeenCalledWith({
+				apiKey: 'ls-test-key-123',
+				apiUrl: undefined,
+			});
+			expect(LangChainTracer).toHaveBeenCalledWith({
+				client: { mockedClient: true },
+				projectName: undefined,
+			});
+
+			process.env.LANGSMITH_PROJECT = original;
 		});
 
 		it('should include both parent callback manager and tracer when both exist', () => {
@@ -223,7 +263,10 @@ describe('getTracingConfig', () => {
 			expect(result.callbacks).toEqual([mockCallbackManager, { mocked: true }]);
 		});
 
-		it('should not create tracer when apiKey is empty string', () => {
+		it('should not create tracer when apiKey is empty string and no env var', () => {
+			const original = process.env.LANGSMITH_API_KEY;
+			delete process.env.LANGSMITH_API_KEY;
+
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
@@ -242,9 +285,50 @@ describe('getTracingConfig', () => {
 
 			expect(LangChainTracer).not.toHaveBeenCalled();
 			expect(result.callbacks).toBeUndefined();
+
+			process.env.LANGSMITH_API_KEY = original;
 		});
 
-		it('should not create tracer when langsmithConfig is undefined', () => {
+		it('should fall back to LANGSMITH_API_KEY env var when config apiKey is empty', () => {
+			const originalKey = process.env.LANGSMITH_API_KEY;
+			const originalProject = process.env.LANGSMITH_PROJECT;
+			process.env.LANGSMITH_API_KEY = 'env-api-key';
+			process.env.LANGSMITH_PROJECT = 'env-project';
+
+			const mockContext = mock<IExecuteFunctions>();
+			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
+			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
+			mockContext.getExecutionId.mockReturnValue('exec-456');
+			mockContext.getParentCallbackManager.mockReturnValue(undefined);
+
+			(mockContext as unknown as { additionalData: { langsmithConfig: unknown } }).additionalData =
+				{
+					langsmithConfig: {
+						apiKey: '',
+						project: '',
+					},
+				};
+
+			const result = getTracingConfig(mockContext);
+
+			expect(Client).toHaveBeenCalledWith({
+				apiKey: 'env-api-key',
+				apiUrl: undefined,
+			});
+			expect(LangChainTracer).toHaveBeenCalledWith({
+				client: { mockedClient: true },
+				projectName: 'env-project',
+			});
+			expect(result.callbacks).toEqual([{ mocked: true }]);
+
+			process.env.LANGSMITH_API_KEY = originalKey;
+			process.env.LANGSMITH_PROJECT = originalProject;
+		});
+
+		it('should not create tracer when langsmithConfig is undefined and no env var', () => {
+			const original = process.env.LANGSMITH_API_KEY;
+			delete process.env.LANGSMITH_API_KEY;
+
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
@@ -260,9 +344,14 @@ describe('getTracingConfig', () => {
 
 			expect(LangChainTracer).not.toHaveBeenCalled();
 			expect(result.callbacks).toBeUndefined();
+
+			process.env.LANGSMITH_API_KEY = original;
 		});
 
-		it('should not create tracer when additionalData is missing', () => {
+		it('should not create tracer when additionalData is missing and no env var', () => {
+			const original = process.env.LANGSMITH_API_KEY;
+			delete process.env.LANGSMITH_API_KEY;
+
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
@@ -273,6 +362,8 @@ describe('getTracingConfig', () => {
 
 			expect(LangChainTracer).not.toHaveBeenCalled();
 			expect(result.callbacks).toBeUndefined();
+
+			process.env.LANGSMITH_API_KEY = original;
 		});
 
 		it('should emit execution hint when langsmithConfigError is set', () => {
