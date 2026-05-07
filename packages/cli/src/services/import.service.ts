@@ -500,6 +500,11 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
+			// Postgres IDENTITY sequences don't auto-advance when explicit ids are
+			// inserted, so subsequent implicit inserts would collide. Reset each
+			// imported table's sequence to MAX(col).
+			await this.advanceIdentitySequences(transactionManager, tableNames);
+
 			// After the data_table / data_table_column registry rows are imported,
 			// recreate the dynamic backing tables (empty) so the imported tables work.
 			await this.recreateDataTableUserTablesFromRegistry(transactionManager);
@@ -766,6 +771,50 @@ export class ImportService {
 		}
 
 		this.logger.info(`✅ Recreated ${dataTables.length} data-table backing table(s)`);
+	}
+
+	/**
+	 * Advance Postgres IDENTITY sequences to MAX(col) for every identity column
+	 * in the given tables. No-op on SQLite, where INTEGER PRIMARY KEY auto-bumps
+	 * its rowid sequence on inserts with explicit ids.
+	 */
+	async advanceIdentitySequences(
+		transactionManager: EntityManager,
+		tableNames: string[],
+	): Promise<void> {
+		if (this.dataSource.options.type !== 'postgres') return;
+		if (tableNames.length === 0) return;
+
+		this.logger.info('\n🔢 Advancing Postgres IDENTITY sequences...');
+		let advanced = 0;
+
+		for (const tableName of tableNames) {
+			const identityColumns: Array<{ column_name: string }> = await transactionManager.query(
+				`SELECT column_name FROM information_schema.columns
+					WHERE table_schema = current_schema()
+						AND table_name = $1
+						AND identity_generation IS NOT NULL`,
+				[tableName],
+			);
+
+			if (identityColumns.length === 0) continue;
+
+			const escapedTable = this.dataSource.driver.escape(tableName);
+			for (const { column_name: columnName } of identityColumns) {
+				const escapedCol = this.dataSource.driver.escape(columnName);
+				await transactionManager.query(
+					`SELECT setval(
+						pg_get_serial_sequence($1, $2),
+						COALESCE((SELECT MAX(${escapedCol}) FROM ${escapedTable}), 1),
+						(SELECT MAX(${escapedCol}) FROM ${escapedTable}) IS NOT NULL
+					)`,
+					[escapedTable, columnName],
+				);
+				advanced++;
+			}
+		}
+
+		this.logger.info(`✅ Advanced ${advanced} sequence(s) across ${tableNames.length} table(s)`);
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {
