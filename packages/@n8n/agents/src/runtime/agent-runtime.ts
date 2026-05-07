@@ -69,6 +69,7 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
+import { Telemetry } from '../sdk/telemetry';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
 import type {
@@ -748,14 +749,7 @@ export class AgentRuntime {
 
 	/** Best-effort flush of telemetry provider. Never throws. */
 	private async flushTelemetry(options?: ExecutionOptions): Promise<void> {
-		try {
-			const resolved = this.resolveTelemetry(options);
-			if (resolved?.provider) {
-				await resolved.provider.forceFlush();
-			}
-		} catch {
-			// Telemetry flush is best-effort — never block the response or mask the real error.
-		}
+		await Telemetry.forceFlush(this.resolveTelemetry(options));
 	}
 
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
