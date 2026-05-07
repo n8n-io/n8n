@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nToggle from '../N8nToggle/Toggle.vue';
 import N8nToggleGroup from './ToggleGroup.vue';
+import N8nToggle from '../N8nToggle/Toggle.vue';
 
 const meta = {
 	title: 'Core/ToggleGroup',
