@@ -100,7 +100,7 @@ export class AgentV3 implements INodeType {
 					noDataExpression: true,
 					builderHint: {
 						message:
-							'Connection-changing parameter. `true` enables the `ai_outputParser` input — pair with an `outputParserStructured` subnode in the agent config.',
+							'Set to `true` when you need structured JSON output. The agent then requires an `outputParser` entry in its `subnodes` config (typically an `outputParserStructured` node defined via the `outputParser({...})` SDK factory). With `hasOutputParser: false` the agent returns a plain string in `$json.output`.',
 					},
 				},
 				{
