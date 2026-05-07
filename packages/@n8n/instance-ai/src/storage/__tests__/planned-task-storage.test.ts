@@ -1,10 +1,12 @@
 import type { PlannedTaskGraph } from '../../types';
 import { PlannedTaskStorage } from '../planned-task-storage';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
-import type * as ThreadPatchModule from '../thread-patch';
+import type * as ThreadPatch from '../thread-patch';
 
 jest.mock('../thread-patch', () => {
-	const actual = jest.requireActual<typeof ThreadPatchModule>('../thread-patch');
+	const actual =
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		jest.requireActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,

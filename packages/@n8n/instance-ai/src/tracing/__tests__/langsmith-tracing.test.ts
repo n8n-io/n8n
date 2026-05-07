@@ -245,15 +245,15 @@ type LangSmithMockModule = {
 };
 
 interface ExecutableTool {
-	execute: (input: unknown, context: unknown) => Promise<unknown>;
+	handler: (input: unknown, context: unknown) => Promise<unknown>;
 }
 
 function isExecutableTool(value: unknown): value is ExecutableTool {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		'execute' in value &&
-		typeof value.execute === 'function'
+		'handler' in value &&
+		typeof value.handler === 'function'
 	);
 }
 
@@ -608,16 +608,14 @@ describe('createInstanceAiTraceContext', () => {
 		}
 
 		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			await wrappedAskUser.execute(
+			await wrappedAskUser.handler(
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},
 				{
-					agent: {
-						suspend: async () => {
-							await Promise.resolve();
-							return undefined;
-						},
+					suspend: async () => {
+						await Promise.resolve();
+						return undefined;
 					},
 				},
 			);
@@ -687,26 +685,24 @@ describe('createInstanceAiTraceContext', () => {
 		}
 
 		const result = await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			return await wrappedAskUser.execute(
+			return await wrappedAskUser.handler(
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},
 				{
-					agent: {
-						resumeData: {
-							approved: true,
-							answers: [
-								{
-									questionId: 'q1',
-									selectedOptions: [],
-									customText: 'Need Slack notifications',
-								},
-							],
-						},
-						suspend: async () => {
-							await Promise.resolve();
-							return undefined;
-						},
+					resumeData: {
+						approved: true,
+						answers: [
+							{
+								questionId: 'q1',
+								selectedOptions: [],
+								customText: 'Need Slack notifications',
+							},
+						],
+					},
+					suspend: async () => {
+						await Promise.resolve();
+						return undefined;
 					},
 				},
 			);

@@ -3,6 +3,8 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns('instance_ai_run_snapshots', [
+			column('traceId').varchar(64).comment('OpenTelemetry trace ID for the root Instance AI run.'),
+			column('spanId').varchar(64).comment('OpenTelemetry span ID for the root Instance AI run.'),
 			column('langsmithRunId')
 				.varchar(36)
 				.comment('LangSmith run ID (UUID v4, e.g. "f47ac10b-58cc-4372-a567-0e02b2c3d479").'),
@@ -13,6 +15,11 @@ export class AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 implements Rev
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('instance_ai_run_snapshots', ['langsmithRunId', 'langsmithTraceId']);
+		await dropColumns('instance_ai_run_snapshots', [
+			'traceId',
+			'spanId',
+			'langsmithRunId',
+			'langsmithTraceId',
+		]);
 	}
 }

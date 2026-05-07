@@ -1,5 +1,7 @@
-import type { ToolsInput } from '@mastra/core/agent';
+import type { BuiltTool } from '@n8n/agents';
 import { isSafeObjectKey } from '@n8n/api-types';
+
+type McpToolRegistry = Record<string, BuiltTool>;
 
 export class McpToolNameValidationError extends Error {
 	constructor(
@@ -50,8 +52,8 @@ export function createClaimedToolNames(names: Iterable<string>): Map<string, str
 }
 
 export function addSafeMcpTools(
-	target: ToolsInput,
-	sourceTools: ToolsInput,
+	target: McpToolRegistry,
+	sourceTools: McpToolRegistry,
 	options: {
 		source: string;
 		claimedToolNames: Map<string, string>;

@@ -1,9 +1,5 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
-
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
 
 const { createPlanTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -33,7 +29,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model' as OrchestrationContext['modelId'],
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),
@@ -85,7 +80,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute({ tasks: validTasks() }, {});
+		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('`create-tasks` is for replanning only');
@@ -104,7 +99,8 @@ describe('createPlanTool — replan-only guard', () => {
 		const tool = createPlanTool(context) as unknown as Executable;
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute(
+		const out = await executeTool(
+			tool,
 			{
 				tasks: validTasks(),
 				skipPlannerDiscovery: true,
@@ -113,8 +109,8 @@ describe('createPlanTool — replan-only guard', () => {
 			{ agent: { suspend } },
 		);
 
-		// Reaches suspend path → returns the "Awaiting approval" short-circuit
-		expect(out.result).toBe('Awaiting approval');
+		// Reaches native suspend path.
+		expect(out).toBeUndefined();
 		const warnMock = context.logger.warn as jest.Mock<void, [string, Record<string, unknown>?]>;
 		const bypassCall = warnMock.mock.calls.find(
 			(call) => call[0] === 'create-tasks bypassing planner with skipPlannerDiscovery=true',
@@ -129,7 +125,7 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({ currentUserMessage: 'Create a table' });
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute({ tasks: validTasks(), skipPlannerDiscovery: true }, {});
+		const out = await executeTool(tool, { tasks: validTasks(), skipPlannerDiscovery: true }, {});
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('requires a one-sentence `reason`');
@@ -149,9 +145,9 @@ describe('createPlanTool — replan-only guard', () => {
 		const tool = createPlanTool(context) as unknown as Executable;
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { agent: { suspend } });
 
-		expect(out.result).toBe('Awaiting approval');
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
@@ -171,7 +167,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend: jest.fn() } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { agent: { suspend: jest.fn() } });
 
 		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -185,9 +181,9 @@ describe('createPlanTool — replan-only guard', () => {
 		const tool = createPlanTool(context) as unknown as Executable;
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { agent: { suspend } });
 
-		expect(out.result).toBe('Awaiting approval');
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
@@ -201,7 +197,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute({ tasks: validTasks() }, {});
+		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain('`create-tasks` is for replanning only');
@@ -213,10 +209,10 @@ describe('createPlanTool — replan-only guard', () => {
 		const tool = createPlanTool(context) as unknown as Executable;
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { agent: { suspend } });
 
-		// No guard rejection — reaches suspend path
-		expect(out.result).toBe('Awaiting approval');
+		// No guard rejection — reaches native suspend path.
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
@@ -224,7 +220,8 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({ currentUserMessage: 'ordinary message' });
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute(
+		const out = await executeTool(
+			tool,
 			{ tasks: validTasks() },
 			{ agent: { resumeData: { approved: true } } },
 		);
@@ -237,7 +234,7 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({ currentUserMessage: 'ordinary message' });
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		await tool.execute({ tasks: validTasks() }, { agent: { resumeData: { approved: true } } });
+		await executeTool(tool, { tasks: validTasks() }, { agent: { resumeData: { approved: true } } });
 
 		expect(context.plannedTaskService!.approvePlan).toHaveBeenCalledWith('test-thread');
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
@@ -257,7 +254,8 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute(
+		const out = await executeTool(
+			tool,
 			{ tasks: validTasks() },
 			{ agent: { resumeData: { approved: false, userInput: 'try again' } } },
 		);
@@ -279,7 +277,8 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({ currentUserMessage: 'ordinary message' });
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute(
+		const out = await executeTool(
+			tool,
 			{ tasks: validTasks() },
 			{ agent: { resumeData: { approved: false, userInput: 'not what I wanted' } } },
 		);
@@ -319,9 +318,9 @@ describe('createPlanTool — replan-only guard', () => {
 		const tool = createPlanTool(context) as unknown as Executable;
 		const suspend = jest.fn().mockResolvedValue(undefined);
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { agent: { suspend } });
 
-		expect(out.result).toBe('Awaiting approval');
+		expect(out).toBeUndefined();
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
@@ -343,7 +342,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context) as unknown as Executable;
 
-		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend: jest.fn() } });
+		const out = await executeTool(tool, { tasks: validTasks() }, { agent: { suspend: jest.fn() } });
 
 		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();

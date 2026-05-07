@@ -170,6 +170,7 @@ import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/17
 import { AddRunIndexToTestCaseExecution1777996709110 } from '../common/1777996709110-AddRunIndexToTestCaseExecution';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateInstanceAiCheckpointTable1778050000000 } from '../common/1778050000000-CreateInstanceAiCheckpointTable';
+import { ResetInstanceAiNativePersistence1778060000000 } from '../common/1778060000000-ResetInstanceAiNativePersistence';
 import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
@@ -352,6 +353,7 @@ export const postgresMigrations: Migration[] = [
 	AddRunIndexToTestCaseExecution1777996709110,
 	AddExecutionDeduplicationKey1778000000000,
 	CreateInstanceAiCheckpointTable1778050000000,
+	ResetInstanceAiNativePersistence1778060000000,
 	CreateEvaluationConfig1778100000000,
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,

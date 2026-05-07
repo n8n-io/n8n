@@ -1,18 +1,6 @@
-import type { ToolsInput } from '@mastra/core/agent';
-
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
-import type { OrchestrationContext, TaskStorage } from '../../../types';
-
-// Mock all heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn(),
-}));
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn(),
-}));
-jest.mock('../../../stream/map-chunk', () => ({
-	mapMastraChunkToEvent: jest.fn(),
-}));
+import type { InstanceAiToolRegistry, OrchestrationContext, TaskStorage } from '../../../types';
 
 const { createResearchWithAgentTool, researchWithAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -34,9 +22,13 @@ function createMockEventBus(): InstanceAiEventBus {
 }
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
-	const domainTools: ToolsInput = {
-		research: { id: 'research' } as never,
-		'list-workflows': { id: 'list-workflows' } as never,
+	const domainTools: InstanceAiToolRegistry = {
+		research: { name: 'research', description: 'research', handler: jest.fn() },
+		'list-workflows': {
+			name: 'list-workflows',
+			description: 'list-workflows',
+			handler: jest.fn(),
+		},
 	};
 
 	return {
@@ -45,7 +37,6 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'agent-001',
 		modelId: 'anthropic/claude-sonnet-4-5',
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 10,
 		eventBus: createMockEventBus(),
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
@@ -94,10 +85,11 @@ describe('research-with-agent tool', () => {
 			const context = createMockContext();
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ goal: 'How does Stripe webhook verification work?' },
 				{} as never,
-			)) as { result: string };
+			);
 
 			expect(result.result).toContain('Research started');
 			expect(result.result).toMatch(/task: research-/);
@@ -108,7 +100,7 @@ describe('research-with-agent tool', () => {
 			const context = createMockContext();
 			const tool = createResearchWithAgentTool(context);
 
-			await tool.execute!({ goal: 'test research' }, {} as never);
+			await executeTool(tool, { goal: 'test research' }, {} as never);
 
 			expect(context.eventBus.publish).toHaveBeenCalledWith(
 				'thread-123',
@@ -132,7 +124,7 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
 
 			expect(result.result).toBe('Error: research tool not available.');
 			expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
@@ -144,7 +136,7 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
 
 			expect(result.result).toBe('Error: background task support not available.');
 		});
@@ -164,10 +156,7 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
-				result: string;
-				taskId: string;
-			};
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
 
 			expect(result.result).toContain('Research already in progress');
 			expect(result.taskId).toBe('task-existing');
@@ -180,10 +169,7 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
-				result: string;
-				taskId: string;
-			};
+			const result = await executeTool(tool, { goal: 'test' }, {} as never);
 
 			expect(result.result).toContain('limit reached');
 			expect(result.taskId).toBe('');

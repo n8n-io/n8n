@@ -1,7 +1,7 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext } from '../types';
+import type { InstanceAiTraceContext, ModelConfig } from '../types';
 import type { InstanceAiLivenessPolicy } from './liveness-policy';
 
 export interface ActiveRunState {
@@ -9,6 +9,7 @@ export interface ActiveRunState {
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
 }
@@ -262,6 +263,7 @@ export class RunStateRegistry<TUser = unknown> {
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
+			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
 		});
@@ -365,14 +367,49 @@ export class RunStateRegistry<TUser = unknown> {
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
 	 * Does NOT mutate state — the caller is responsible for cancelling.
 	 */
+	sweepTimedOut(maxAgeMs: number): {
+		suspendedThreadIds: string[];
+		confirmationRequestIds: string[];
+	};
 	sweepTimedOut(
 		policy: InstanceAiLivenessPolicy,
-		now = Date.now(),
+		now?: number,
 	): {
 		activeThreadIds: string[];
 		suspendedThreadIds: string[];
 		confirmationRequestIds: string[];
-	} {
+	};
+	sweepTimedOut(
+		policyOrMaxAgeMs: InstanceAiLivenessPolicy | number,
+		now = Date.now(),
+	):
+		| {
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+		  }
+		| {
+				activeThreadIds: string[];
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+		  } {
+		if (typeof policyOrMaxAgeMs === 'number') {
+			const maxAgeMs = policyOrMaxAgeMs;
+			const suspendedThreadIds: string[] = [];
+			for (const [threadId, run] of this.suspendedRuns) {
+				if (now - run.createdAt >= maxAgeMs) {
+					suspendedThreadIds.push(threadId);
+				}
+			}
+			const confirmationRequestIds: string[] = [];
+			for (const [reqId, pending] of this.pendingConfirmations) {
+				if (now - pending.createdAt >= maxAgeMs) {
+					confirmationRequestIds.push(reqId);
+				}
+			}
+			return { suspendedThreadIds, confirmationRequestIds };
+		}
+
+		const policy = policyOrMaxAgeMs;
 		const activeThreadIds: string[] = [];
 		for (const [threadId, run] of this.activeRuns) {
 			if (this.hasPendingConfirmationForThread(threadId)) continue;

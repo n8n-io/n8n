@@ -1,6 +1,7 @@
 import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX } from '@n8n/api-types';
 import type { McpTool, McpToolCallResult } from '@n8n/api-types';
 
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { LocalMcpServer } from '../../../types';
 import { createToolsFromLocalMcpServer } from '../create-tools-from-mcp-server';
 
@@ -85,11 +86,9 @@ function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): jest.Mocked<LocalMcpS
 function getExecute(server: LocalMcpServer, toolName = 'write_file') {
 	const tools = createToolsFromLocalMcpServer(server);
 	const tool = tools[toolName];
-	if (!tool?.execute) throw new Error(`Tool '${toolName}' has no execute function`);
-	return tool.execute.bind(tool) as (
-		args: Record<string, unknown>,
-		ctx: unknown,
-	) => Promise<McpToolCallResult>;
+	if (!tool) throw new Error(`Tool '${toolName}' was not created`);
+	return async (args: Record<string, unknown>, ctx: unknown) =>
+		await executeTool<McpToolCallResult>(tool, args, ctx);
 }
 
 /** Build a ctx object with suspend/resumeData for use in execute calls. */

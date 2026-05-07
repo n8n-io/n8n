@@ -16,8 +16,7 @@
 // API spend.
 // ---------------------------------------------------------------------------
 
-import type { ToolsInput } from '@mastra/core/agent';
-import { InMemoryStore, type MastraCompositeStore } from '@mastra/core/storage';
+import { Memory } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -32,6 +31,7 @@ import { executeResumableStream } from '../../src/runtime/resumable-stream-execu
 import { createAllTools } from '../../src/tools';
 import type {
 	InstanceAiContext,
+	InstanceAiToolRegistry,
 	LocalGatewayStatus,
 	ModelConfig,
 	OrchestrationContext,
@@ -91,7 +91,7 @@ export async function runDiscoveryScenario(
 		const context = applyInstanceState(services.context, options.scenario);
 
 		const mcpManager = new McpClientManager();
-		const storage = new InMemoryStore({ id: 'discovery-' + nanoid(6) });
+		const memory = new Memory().build();
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
@@ -118,7 +118,6 @@ export async function runDiscoveryScenario(
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
-			storage,
 			eventBus,
 			threadId,
 			runId,
@@ -130,7 +129,8 @@ export async function runDiscoveryScenario(
 			context,
 			orchestrationContext,
 			mcpManager,
-			memoryConfig: { storage },
+			memory,
+			memoryConfig: { lastMessages: 20 },
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,
@@ -240,7 +240,6 @@ function silentLogger(): Logger {
 interface StubOrchestrationContextOptions {
 	context: InstanceAiContext;
 	modelId: ModelConfig;
-	storage: MastraCompositeStore;
 	eventBus: InstanceAiEventBus;
 	threadId: string;
 	runId: string;
@@ -255,7 +254,7 @@ function createStubOrchestrationContext(
 	// execution is out of scope. We still populate domainTools faithfully so any sub-agent
 	// that does spawn has a coherent toolset (avoids hitting "no tools" errors that would
 	// confuse the diagnostic comment).
-	const domainTools: ToolsInput = createAllTools(opts.context);
+	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
 
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
@@ -270,7 +269,6 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
-		storage: opts.storage,
 		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),

@@ -6,7 +6,7 @@ import { getThread, patchThread, type PatchableThreadMemory } from './thread-pat
 
 const TASKS_METADATA_KEY = 'instanceAiTasks';
 
-export class MastraTaskStorage implements TaskStorage {
+export class ThreadTaskStorage implements TaskStorage {
 	constructor(private readonly memory: PatchableThreadMemory) {}
 
 	async get(threadId: string): Promise<TaskList | null> {

@@ -49,10 +49,8 @@
   "dependencies": {
     "@daytonaio/sdk": "0.149.0",
     "@joplin/turndown-plugin-gfm": "^1.0.12",
-    "@mastra/core": "catalog:",
-    "@mastra/mcp": "catalog:",
-    "@mastra/memory": "catalog:",
     "langsmith": "catalog:",
+    "@opentelemetry/api": "^1.9.0",
     "@mozilla/readability": "^0.6.0",
     "@n8n/api-types": "workspace:*",
     "@n8n/sandbox-client": "0.0.1",

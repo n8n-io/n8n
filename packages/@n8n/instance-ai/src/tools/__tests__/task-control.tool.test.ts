@@ -1,3 +1,4 @@
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { OrchestrationContext } from '../../types';
 import { createTaskControlTool } from '../task-control.tool';
 
@@ -10,7 +11,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'user-1',
 		orchestratorAgentId: 'orchestrator-1',
 		modelId: 'test-model',
-		storage: {} as never,
 		subAgentMaxSteps: 10,
 		eventBus: {
 			publish: jest.fn(),
@@ -43,7 +43,8 @@ describe('task-control tool', () => {
 			];
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'update-checklist' as const, tasks },
 				{} as never,
 			);
@@ -62,7 +63,8 @@ describe('task-control tool', () => {
 			const context = createMockContext();
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'update-checklist' as const, tasks: [] },
 				{} as never,
 			);
@@ -80,7 +82,8 @@ describe('task-control tool', () => {
 			const context = createMockContext();
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'cancel-task' as const, taskId: 'build-ABC123' },
 				{} as never,
 			);
@@ -95,7 +98,8 @@ describe('task-control tool', () => {
 			});
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'cancel-task' as const, taskId: 'build-XYZ' },
 				{} as never,
 			);
@@ -114,7 +118,8 @@ describe('task-control tool', () => {
 			(context.sendCorrectionToTask as jest.Mock).mockReturnValue('queued');
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'correct-task' as const,
 					taskId: 'build-ABC',
@@ -139,7 +144,8 @@ describe('task-control tool', () => {
 			(context.sendCorrectionToTask as jest.Mock).mockReturnValue('task-not-found');
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'correct-task' as const,
 					taskId: 'build-GONE',
@@ -158,7 +164,8 @@ describe('task-control tool', () => {
 			(context.sendCorrectionToTask as jest.Mock).mockReturnValue('task-completed');
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'correct-task' as const,
 					taskId: 'build-DONE',
@@ -180,7 +187,8 @@ describe('task-control tool', () => {
 			});
 
 			const tool = createTaskControlTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'correct-task' as const,
 					taskId: 'build-ABC',

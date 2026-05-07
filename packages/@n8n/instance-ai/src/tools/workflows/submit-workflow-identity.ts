@@ -14,9 +14,9 @@
  * cross-module coordinator, eviction hook, or TTL sweep is required.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 
-import type { CredentialEntry } from './resolve-credentials';
+import type { CredentialMap } from './resolve-credentials';
 import {
 	createSubmitWorkflowTool,
 	resolveSandboxWorkflowFilePath,
@@ -26,7 +26,7 @@ import {
 	type SubmitWorkflowInput,
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
-import type { InstanceAiContext, InstanceAiTraceRun } from '../../types';
+import type { InstanceAiContext } from '../../types';
 import {
 	MAX_PRE_SAVE_SUBMIT_FAILURES,
 	createRemediation,
@@ -118,7 +118,7 @@ export function createPreSaveBudgetTracker(): SubmitBudgetTracker {
  * - On dispatch failure, the map entry is cleared and waiters see a failure result.
  *
  * Exposed separately from the tool factory so it can be unit-tested without
- * constructing a Mastra tool or a sandbox workspace.
+ * constructing a tool or a sandbox workspace.
  */
 export function wrapSubmitExecuteWithIdentity(
 	underlying: SubmitExecute,
@@ -135,6 +135,7 @@ export function wrapSubmitExecuteWithIdentity(
 			terminalRemediationFromState(await options.getWorkflowLoopState?.(), options.currentRunId);
 		if (!terminalRemediation) return undefined;
 
+		options.onTerminalRemediation?.(terminalRemediation);
 		options.onGuardFired?.({
 			workflowId,
 			category: terminalRemediation.category,
@@ -146,14 +147,6 @@ export function wrapSubmitExecuteWithIdentity(
 			errors: [terminalRemediation.guidance],
 			remediation: terminalRemediation,
 		};
-	}
-
-	function applyOutputGuards(path: string, output: SubmitWorkflowOutput): SubmitWorkflowOutput {
-		const guardedOutput = options.budgetTracker?.applyToOutput(path, output) ?? output;
-		if (guardedOutput.remediation?.shouldEdit === false) {
-			options.onTerminalRemediation?.(guardedOutput.remediation);
-		}
-		return guardedOutput;
 	}
 
 	return async (input) => {
@@ -168,9 +161,6 @@ export function wrapSubmitExecuteWithIdentity(
 			try {
 				boundId = await existing;
 			} catch (error) {
-				const terminalAfterFailure = await blockedByTerminalRemediation(input.workflowId);
-				if (terminalAfterFailure) return terminalAfterFailure;
-
 				const message = error instanceof Error ? error.message : String(error);
 				return {
 					success: false,
@@ -188,7 +178,7 @@ export function wrapSubmitExecuteWithIdentity(
 			if (terminalAfterWait) return terminalAfterWait;
 
 			const result = await underlying({ ...input, workflowId: boundId });
-			return applyOutputGuards(resolvedPath, result);
+			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
 		}
 
 		let resolveFn: ((id: string) => void) | undefined;
@@ -210,7 +200,7 @@ export function wrapSubmitExecuteWithIdentity(
 				rejectFn?.(new Error(result.errors?.join(' ') ?? 'submit-workflow failed'));
 				pending.delete(resolvedPath);
 			}
-			return applyOutputGuards(resolvedPath, result);
+			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
 		} catch (error) {
 			rejectFn?.(error);
 			pending.delete(resolvedPath);
@@ -220,36 +210,32 @@ export function wrapSubmitExecuteWithIdentity(
 }
 
 /**
- * Build a submit-workflow Mastra tool wired with identity enforcement.
+ * Build a submit-workflow tool wired with identity enforcement.
  * Convenience factory used at the builder-agent callsite.
  */
 export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	context: InstanceAiContext;
 	workspace: SandboxWorkspace;
-	availableCredentials?: CredentialEntry[];
+	credentialMap?: CredentialMap;
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
 	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
-	getTerminalRemediation?: SubmitGuardOptions['getTerminalRemediation'];
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
-	onTerminalRemediation?: SubmitGuardOptions['onTerminalRemediation'];
-	tracingRoot?: InstanceAiTraceRun;
 }) {
 	const budgetTracker = createPreSaveBudgetTracker();
 	const underlying = createSubmitWorkflowTool(
 		args.context,
 		args.workspace,
+		args.credentialMap,
 		async (attempt) => {
 			await args.onAttempt(budgetTracker.recordAttempt(attempt));
 		},
-		args.availableCredentials,
-		args.tracingRoot,
 	);
 
-	const underlyingExecute = underlying.execute as SubmitExecute | undefined;
+	const underlyingExecute = underlying.handler as SubmitExecute | undefined;
 	if (!underlyingExecute) {
-		throw new Error('createSubmitWorkflowTool returned a tool without an execute handler');
+		throw new Error('createSubmitWorkflowTool returned a tool without a handler');
 	}
 
 	const wrappedExecute = wrapSubmitExecuteWithIdentity(
@@ -259,17 +245,14 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			budgetTracker,
 			currentRunId: args.currentRunId,
 			getWorkflowLoopState: args.getWorkflowLoopState,
-			getTerminalRemediation: args.getTerminalRemediation,
 			onGuardFired: args.onGuardFired,
-			onTerminalRemediation: args.onTerminalRemediation,
 		},
 	);
 
-	return createTool({
-		id: 'submit-workflow',
-		description: underlying.description ?? '',
-		inputSchema: submitWorkflowInputSchema,
-		outputSchema: submitWorkflowOutputSchema,
-		execute: wrappedExecute,
-	});
+	return new Tool('submit-workflow')
+		.description(underlying.description)
+		.input(submitWorkflowInputSchema)
+		.output(submitWorkflowOutputSchema)
+		.handler(wrappedExecute)
+		.build();
 }

@@ -1,18 +1,16 @@
-import type { Memory } from '@mastra/memory';
-
 jest.mock('../thread-patch', () => ({
+	getThread: jest.fn(),
 	patchThread: jest.fn(),
 }));
 
 import { TerminalOutcomeStorage, type TerminalOutcome } from '../terminal-outcome-storage';
-import { patchThread } from '../thread-patch';
+import { getThread, patchThread, type PatchableThreadMemory } from '../thread-patch';
 
+const mockedGetThread = jest.mocked(getThread);
 const mockedPatchThread = jest.mocked(patchThread);
 
-function makeMemory(): Memory {
-	return {
-		getThreadById: jest.fn(),
-	} as unknown as Memory;
+function makeMemory(): PatchableThreadMemory {
+	return {};
 }
 
 function makeOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
@@ -29,8 +27,19 @@ function makeOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome 
 	};
 }
 
+function makeThread(metadata: Record<string, unknown>): Awaited<ReturnType<typeof getThread>> {
+	return {
+		id: 'thread-1',
+		title: 'Thread',
+		metadata,
+		resourceId: 'resource-1',
+		createdAt: new Date('2026-05-02T00:00:00.000Z'),
+		updatedAt: new Date('2026-05-02T00:00:00.000Z'),
+	};
+}
+
 describe('TerminalOutcomeStorage', () => {
-	let memory: Memory;
+	let memory: PatchableThreadMemory;
 	let storage: TerminalOutcomeStorage;
 
 	beforeEach(() => {
@@ -42,14 +51,14 @@ describe('TerminalOutcomeStorage', () => {
 	describe('getUndelivered()', () => {
 		it('returns valid undelivered outcomes when one stored entry is malformed', async () => {
 			const valid = makeOutcome({ id: 'outcome-valid' });
-			(memory.getThreadById as jest.Mock).mockResolvedValue({
-				metadata: {
+			mockedGetThread.mockResolvedValue(
+				makeThread({
 					instanceAiTerminalOutcomes: {
 						'outcome-valid': valid,
 						'outcome-broken': { id: 'outcome-broken' },
 					},
-				},
-			});
+				}),
+			);
 
 			const result = await storage.getUndelivered('thread-1');
 
@@ -57,7 +66,7 @@ describe('TerminalOutcomeStorage', () => {
 		});
 
 		it('returns empty list when metadata is missing', async () => {
-			(memory.getThreadById as jest.Mock).mockResolvedValue({ metadata: {} });
+			mockedGetThread.mockResolvedValue(makeThread({}));
 
 			const result = await storage.getUndelivered('thread-1');
 
@@ -70,14 +79,14 @@ describe('TerminalOutcomeStorage', () => {
 				id: 'delivered',
 				deliveredAt: '2026-05-02T00:00:01.000Z',
 			});
-			(memory.getThreadById as jest.Mock).mockResolvedValue({
-				metadata: {
+			mockedGetThread.mockResolvedValue(
+				makeThread({
 					instanceAiTerminalOutcomes: {
 						undelivered,
 						delivered,
 					},
-				},
-			});
+				}),
+			);
 
 			const result = await storage.getUndelivered('thread-1');
 

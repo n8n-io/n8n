@@ -1,3 +1,4 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
@@ -8,12 +9,24 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 type Executable = {
 	execute: (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
+};
+
+type VerifyBuiltWorkflowOutput = {
+	success: boolean;
+	error?: string;
+	executionId?: string;
+	status?: string;
+	nodesExecuted?: string[];
+	nodePreviews?: Array<{
+		nodeName: string;
+		itemCount?: number;
+		preview: string;
+		truncated: boolean;
+		chars: number;
+	}>;
+	data?: Record<string, unknown>;
 };
 
 function createContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
@@ -39,7 +52,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		userId: 'user_1',
 		orchestratorAgentId: 'agent_1',
 		modelId: 'test-model',
-		storage: {} as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {} as OrchestrationContext['eventBus'],
 		logger: {
@@ -95,7 +107,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.remediation).toMatchObject({
 			category: 'needs_setup',
@@ -132,7 +144,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.remediation).toMatchObject({
 			category: 'code_fixable',
@@ -168,7 +180,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.success).toBe(false);
 		expect(result.remediation).toMatchObject({
@@ -208,8 +220,8 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
-		const repeatedResult = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+		const repeatedResult = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.success).toBe(false);
 		expect(result.remediation).toMatchObject({ reason: 'post_submit_budget_exhausted' });
@@ -241,7 +253,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.success).toBe(true);
 		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
@@ -269,7 +281,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.success).toBe(true);
 		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
@@ -303,7 +315,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.success).toBe(false);
 		expect(result.remediation).toMatchObject({
@@ -330,7 +342,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		});
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
-		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.remediation).toMatchObject({
 			category: 'code_fixable',
@@ -502,33 +514,7 @@ async function runTool(
 	},
 ) {
 	const tool = createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext);
-	// createTool's execute signature wraps the user function; invoke directly via internal handler
-	const handler = (
-		tool as unknown as {
-			execute: (input: {
-				workItemId: string;
-				workflowId: string;
-				inputData?: Record<string, unknown>;
-				includeData?: boolean;
-				maxDataChars?: number;
-			}) => Promise<{
-				success: boolean;
-				error?: string;
-				executionId?: string;
-				status?: string;
-				nodesExecuted?: string[];
-				nodePreviews?: Array<{
-					nodeName: string;
-					itemCount?: number;
-					preview: string;
-					truncated: boolean;
-					chars: number;
-				}>;
-				data?: Record<string, unknown>;
-			}>;
-		}
-	).execute;
-	return await handler(input);
+	return await executeTool<VerifyBuiltWorkflowOutput>(tool, input);
 }
 
 describe('verify-built-workflow tool', () => {

@@ -31,10 +31,6 @@ export class InstanceAiModule implements ModuleInterface {
 		void Container.get(InstanceAiMemoryService)
 			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
 			.catch(() => undefined);
-
-		// Initialize snapshot pruning — lifecycle decorators handle multi-main start/stop
-		const { SnapshotPruningService } = await import('./snapshot-pruning.service');
-		Container.get(SnapshotPruningService).init();
 	}
 
 	async settings() {
@@ -58,12 +54,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity');
-		const { InstanceAiObservationalMemory } = await import(
-			'./entities/instance-ai-observational-memory.entity'
-		);
-		const { InstanceAiWorkflowSnapshot } = await import(
-			'./entities/instance-ai-workflow-snapshot.entity'
-		);
 		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
@@ -72,8 +62,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiObservationalMemory,
-			InstanceAiWorkflowSnapshot,
 			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,

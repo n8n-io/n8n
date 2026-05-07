@@ -32,12 +32,7 @@ export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 	return { toolCallId: tcId, requestId: reqId, toolName };
 }
 
-/** Type for Mastra's resumeStream method (not exported by the framework). */
 export interface Resumable {
-	resumeStream?: (
-		data: Record<string, unknown>,
-		options: Record<string, unknown>,
-	) => Promise<unknown>;
 	resume?: (
 		method: 'stream',
 		data: Record<string, unknown>,
@@ -45,24 +40,12 @@ export interface Resumable {
 	) => Promise<unknown>;
 }
 
-function hasResumeStream(agent: Record<string, unknown>): agent is {
-	resumeStream: NonNullable<Resumable['resumeStream']>;
-} {
-	return typeof agent.resumeStream === 'function';
-}
-
-function hasResume(agent: Record<string, unknown>): agent is {
-	resume: NonNullable<Resumable['resume']>;
-} {
-	return typeof agent.resume === 'function';
-}
-
 /** Cast an agent to Resumable for suspend/resume operations. */
 export function asResumable(agent: unknown): Resumable {
 	return agent as Resumable;
 }
 
-export async function resumeStream(
+export async function resumeAgentStream(
 	agent: unknown,
 	data: Record<string, unknown>,
 	options: Record<string, unknown>,
@@ -71,12 +54,10 @@ export async function resumeStream(
 		throw new Error('Agent does not support stream resume');
 	}
 
-	if (hasResumeStream(agent)) {
-		return await agent.resumeStream(data, options);
-	}
+	const resumable = asResumable(agent);
 
-	if (hasResume(agent)) {
-		return await agent.resume('stream', data, options);
+	if (typeof resumable.resume === 'function') {
+		return await resumable.resume('stream', data, options);
 	}
 
 	throw new Error('Agent does not support stream resume');

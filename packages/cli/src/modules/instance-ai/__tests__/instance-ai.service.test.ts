@@ -33,8 +33,6 @@ jest.mock('@n8n/instance-ai', () => {
 		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		createMemory: jest.fn(),
-		mapMastraChunkToEvent: jest.fn(),
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -112,15 +110,6 @@ jest.mock('@n8n/instance-ai', () => {
 		},
 	};
 });
-jest.mock('../storage/typeorm-composite-store', () => ({
-	TypeORMCompositeStore: class TypeORMCompositeStore {},
-}));
-jest.mock('../storage/typeorm-memory-storage', () => ({
-	TypeORMMemoryStorage: class TypeORMMemoryStorage {},
-}));
-jest.mock('../storage/typeorm-workflows-storage', () => ({
-	TypeORMWorkflowsStorage: class TypeORMWorkflowsStorage {},
-}));
 
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
@@ -547,7 +536,7 @@ type TerminalGuardOrderServiceInternals = {
 		resumeData: unknown,
 		opts: {
 			runId: string;
-			mastraRunId: string;
+			agentRunId: string;
 			threadId: string;
 			user: User;
 			toolCallId: string;
@@ -1280,7 +1269,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			{},
 			{
 				runId: 'run-1',
-				mastraRunId: 'mastra-1',
+				agentRunId: 'agent-run-1',
 				threadId: 'thread-a',
 				user: fakeUser,
 				toolCallId: 'tool-call-1',
