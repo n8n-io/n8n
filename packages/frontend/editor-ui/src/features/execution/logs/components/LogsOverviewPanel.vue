@@ -13,6 +13,7 @@ import { getScrollbarWidth } from '@/app/utils/htmlUtils';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const {
 	isOpen,
@@ -47,7 +48,8 @@ const emit = defineEmits<{
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
-const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
+const workflowId = useInjectWorkflowId();
+const isClearExecutionButtonVisible = useClearExecutionButtonVisible(workflowId);
 const isEmpty = computed(() => flatLogEntries.length === 0 || execution === undefined);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },

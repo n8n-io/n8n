@@ -13,6 +13,7 @@ import {
 import Modal from '@/app/components/Modal.vue';
 import { N8nButton, N8nInput, N8nLink, N8nInputLabel, N8nText } from '@n8n/design-system';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 interface Props {
 	modalName: string;
@@ -28,7 +29,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const modalBus = createEventBus();

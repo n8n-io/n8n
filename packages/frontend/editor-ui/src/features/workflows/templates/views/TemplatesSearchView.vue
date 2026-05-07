@@ -19,6 +19,7 @@ import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nButton, N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 interface ISearchEvent {
 	search_string: string;
 	workflow_results_count: number;
@@ -37,7 +38,8 @@ const searchEventToTrack = ref<ISearchEvent | null>(null);
 const errorLoadingWorkflows = ref(false);
 
 const { callDebounced } = useDebounce();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const documentTitle = useDocumentTitle();
 
 const settingsStore = useSettingsStore();

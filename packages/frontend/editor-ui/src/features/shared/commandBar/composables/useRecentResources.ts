@@ -5,7 +5,6 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import { VIEWS } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { N8nIcon } from '@n8n/design-system';
@@ -15,6 +14,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types';
 
 const MAX_RECENT_ITEMS = 5;
 const MAX_RECENT_WORKFLOWS_TO_DISPLAY = 3;
@@ -33,16 +33,15 @@ interface RecentNode {
 
 type RecentNodesMap = Record<string, RecentNode[]>;
 
-export function useRecentResources() {
+export function useRecentResources(workflowId: RefOrComputedRef<string>) {
 	const i18n = useI18n();
 	const router = useRouter();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const { setNodeActive } = useCanvasOperations();
+	const { setNodeActive } = useCanvasOperations(workflowId);
 
 	const recentWorkflows = useLocalStorage<RecentWorkflow[]>(RECENT_WORKFLOWS_STORAGE_KEY, []);
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});

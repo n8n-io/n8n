@@ -17,6 +17,7 @@ import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type ContextMenuAction =
@@ -44,6 +45,7 @@ export type ContextMenuAction =
 type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
+	const workflowId = useInjectWorkflowId();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -223,7 +225,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						? i18n.baseText('contextMenu.unpin', i18nOptions)
 						: i18n.baseText('contextMenu.pin', i18nOptions),
 					shortcut: { keys: ['p'] },
-					disabled: isReadOnly.value || !nodes.every((n) => usePinnedData(n).canPinNode(true)),
+					disabled:
+						isReadOnly.value || !nodes.every((n) => usePinnedData(workflowId, n).canPinNode(true)),
 				},
 				{
 					id: 'copy',

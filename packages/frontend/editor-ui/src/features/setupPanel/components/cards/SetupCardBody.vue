@@ -18,6 +18,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -53,8 +54,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),

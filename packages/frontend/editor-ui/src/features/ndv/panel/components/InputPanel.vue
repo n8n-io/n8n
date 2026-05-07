@@ -112,8 +112,8 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const router = useRouter();
-const { runWorkflow } = useRunWorkflow({ router });
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const { runWorkflow } = useRunWorkflow(workflowId, { router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction(workflowId);
 const uiStore = useUIStore();
 
 const openWorkflowSettings = () => {

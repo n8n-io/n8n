@@ -8,6 +8,7 @@ import { watch } from 'vue';
 import { nextTick } from 'vue';
 import { computed, toRef } from 'vue';
 import { useRouter } from 'vue-router';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const {
 	isReadOnly,
@@ -35,7 +36,8 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const runWorkflow = useRunWorkflow({ router });
+const workflowId = useInjectWorkflowId();
+const runWorkflow = useRunWorkflow(workflowId, { router });
 
 const isExpanded = computed(() =>
 	flatLogEntries.reduce<Record<string, boolean>>((acc, entry, index, arr) => {

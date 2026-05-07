@@ -44,6 +44,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { isVariableResource } from '@/app/utils/typeGuards';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -61,7 +62,8 @@ const projectsStore = useProjectsStore();
 
 const layoutRef = useTemplateRef<ComponentExposed<typeof ResourcesListLayout>>('layoutRef');
 
-const { showError, showMessage } = useToast();
+const workflowId = useWorkflowId();
+const { showError, showMessage } = useToast(workflowId);
 
 const projectId = route.params.projectId;
 

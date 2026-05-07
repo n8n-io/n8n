@@ -166,16 +166,17 @@ const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowSaving = useWorkflowSaving({
+const workflowSaving = useWorkflowSaving(workflowId, {
 	router,
 	onSaved: (isFirstSave) => {
 		canvasEventBus.emit('saved:workflow', { isFirstSave });
 	},
 });
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
@@ -202,7 +203,7 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
-const workflowHelpers = useWorkflowHelpers();
+const workflowHelpers = useWorkflowHelpers(workflowId);
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -212,7 +213,7 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebhook } =
-	useRunWorkflow({ router });
+	useRunWorkflow(workflowId, { router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -251,8 +252,8 @@ const {
 	startChat,
 	addNodesAndConnections,
 	fitView,
-} = useCanvasOperations();
-const { extractWorkflow } = useWorkflowExtraction();
+} = useCanvasOperations(workflowId);
+const { extractWorkflow } = useWorkflowExtraction(workflowId);
 
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
@@ -263,7 +264,6 @@ const isLoading = ref(true);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
 const fallbackNodes = ref<INodeUi[]>([]);
 
-const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;

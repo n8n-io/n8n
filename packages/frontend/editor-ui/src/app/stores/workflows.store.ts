@@ -42,6 +42,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -78,7 +79,8 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const workflowHelpers = useWorkflowHelpers();
+	const helpersWorkflowId = useWorkflowId();
+	const workflowHelpers = useWorkflowHelpers(helpersWorkflowId);
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();

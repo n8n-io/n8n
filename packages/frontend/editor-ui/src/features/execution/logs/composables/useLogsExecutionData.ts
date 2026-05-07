@@ -22,6 +22,7 @@ import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { RefOrComputedRef } from '@/app/types';
 
 interface UseLogsExecutionDataOptions {
 	/**
@@ -31,15 +32,18 @@ interface UseLogsExecutionDataOptions {
 	filter?: ComputedRef<LogTreeFilter>;
 }
 
-export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
-	const nodeHelpers = useNodeHelpers();
+export function useLogsExecutionData(
+	workflowId: RefOrComputedRef<string>,
+	{ isEnabled, filter }: UseLogsExecutionDataOptions = {},
+) {
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = injectWorkflowState();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 
 	const state = ref<
 		| { response: IExecutionResponse; startData: { [nodeName: string]: ITaskStartedData[] } }
@@ -175,7 +179,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	);
 
 	watch(
-		() => workflowsStore.workflowId,
+		() => workflowId.value,
 		() => {
 			resetExecutionData();
 		},

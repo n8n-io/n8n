@@ -11,6 +11,8 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import type { RefOrComputedRef } from '@/app/types';
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(
@@ -59,6 +61,7 @@ function createWorkflowRefs(
 }
 
 function createWorkflowDiff(
+	workflowId: RefOrComputedRef<string>,
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	workflowConnections: Ref<IConnections>,
@@ -66,7 +69,7 @@ function createWorkflowDiff(
 ) {
 	// Call useCanvasMapping at setup time, not inside computed
 	// This is required because useCanvasMapping uses inject() internally
-	const { nodes, connections } = useCanvasMapping({
+	const { nodes, connections } = useCanvasMapping(workflowId, {
 		nodes: workflowNodes,
 		connections: workflowConnections,
 		workflowObject: workflowObjectRef,
@@ -110,6 +113,7 @@ export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
+	const workflowId = useInjectWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
@@ -120,6 +124,7 @@ export const useWorkflowDiff = (
 	const targetRefs = createWorkflowRefs(targetWorkflow, workflowDocumentStore.createWorkflowObject);
 
 	const sourceDiff = createWorkflowDiff(
+		workflowId,
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		sourceRefs.workflowConnections,
@@ -127,6 +132,7 @@ export const useWorkflowDiff = (
 	);
 
 	const targetDiff = createWorkflowDiff(
+		workflowId,
 		targetRefs.workflowRef,
 		targetRefs.workflowNodes,
 		targetRefs.workflowConnections,

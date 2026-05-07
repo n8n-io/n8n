@@ -27,6 +27,7 @@ import {
 	N8nRadioButtons,
 	N8nText,
 } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -57,7 +58,8 @@ const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
 	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),

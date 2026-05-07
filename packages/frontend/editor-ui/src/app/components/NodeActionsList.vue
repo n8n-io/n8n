@@ -4,6 +4,7 @@ import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/u
 import { CUSTOM_API_CALL_KEY } from '@/app/constants';
 import type { ActionCreateElement, INodeCreateElement, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { type INodeParameters } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
@@ -19,8 +20,9 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
+const workflowId = useInjectWorkflowId();
 const { generateMergedNodesAndActions } = useActionsGenerator();
-const { parseCategoryActions, getActionData } = useActions();
+const { parseCategoryActions, getActionData } = useActions(workflowId);
 const i18n = useI18n();
 
 const selectedActionRef = ref<HTMLElement>();

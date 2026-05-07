@@ -54,7 +54,8 @@ export type Column =
 export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
 
 const router = useRouter();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const evaluationStore = useEvaluationStore();
 const workflowsListStore = useWorkflowsListStore();
 const locale = useI18n();
@@ -65,7 +66,6 @@ const testCases = ref<TestCaseExecutionRecord[]>([]);
 const hasFailedTestCases = ref<boolean>(false);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
-const workflowId = useInjectWorkflowId();
 const workflowName = computed(
 	() => workflowsListStore.getWorkflowById(workflowId.value)?.name ?? '',
 );

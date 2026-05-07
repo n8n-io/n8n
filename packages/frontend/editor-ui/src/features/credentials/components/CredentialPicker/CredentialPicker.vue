@@ -15,6 +15,7 @@ import { useToast } from '@/app/composables/useToast';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = defineProps<{
 	appName: string;
@@ -39,7 +40,8 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 
 const wasModalOpenedFromHere = ref(false);

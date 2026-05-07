@@ -31,11 +31,13 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type MCPTabs = 'workflows' | 'oauth';
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
 const telemetry = useTelemetry();

@@ -15,6 +15,7 @@ import { nextTick, watch } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = defineProps<{
 	tabs: ArtifactTab[];
@@ -27,7 +28,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const clipboard = useClipboard();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 // Bring the active tab into view when the selection changes (e.g. auto-switch
 // on execution). scrollIntoView walks up to the nearest scroll container.

@@ -79,9 +79,9 @@ const route = useRoute();
 const locale = useI18n();
 const telemetry = useTelemetry();
 const message = useMessage();
-const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isTagsEditEnabled = ref(false);

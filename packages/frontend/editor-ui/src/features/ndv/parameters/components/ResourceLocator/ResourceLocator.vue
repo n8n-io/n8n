@@ -71,6 +71,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 /**
  * Regular expression to check if the error message contains credential-related phrases.
  */
@@ -138,7 +139,8 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 }>();
 
-const workflowHelpers = useWorkflowHelpers();
+const workflowId = useInjectWorkflowId();
+const workflowHelpers = useWorkflowHelpers(workflowId);
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
 const telemetry = useTelemetry();

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
 import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
@@ -26,21 +27,26 @@ if (window !== window.parent) {
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
 
+const workflowId = useWorkflowId();
+
 const {
 	initializeData,
 	initializeWorkflow,
 	currentWorkflowDocumentStore,
 	currentNDVStore,
 	cleanup: cleanupInitialization,
-} = useWorkflowInitialization(workflowState);
+} = useWorkflowInitialization(workflowId, workflowState);
 
 provide(NDVStoreKey, currentNDVStore);
 
-const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-	currentNDVStore,
-});
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler(
+	workflowId,
+	{
+		workflowState,
+		currentWorkflowDocumentStore,
+		currentNDVStore,
+	},
+);
 
 // Initialize push event handlers so relayed execution events (via postMessage
 // from the parent) are processed for node highlighting, execution state, etc.

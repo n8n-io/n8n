@@ -17,6 +17,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nText } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const { nodeId, isReadOnly } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
@@ -61,7 +62,8 @@ const subTitle = computed(() =>
 
 const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
 
-const expressionResolveCtx = useExpressionResolveCtx(node);
+const workflowId = useInjectWorkflowId();
+const expressionResolveCtx = useExpressionResolveCtx(workflowId, node);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);

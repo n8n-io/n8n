@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -13,7 +14,7 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
  */
 export async function executionStarted(
 	{ data }: ExecutionStarted,
-	options: { workflowState: WorkflowState },
+	options: { workflowState: WorkflowState; workflowId: ComputedRef<string> },
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const isIframe = window !== window.parent;
@@ -39,7 +40,7 @@ export async function executionStarted(
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
 	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(options.workflowId.value),
 		);
 
 		options.workflowState.setWorkflowExecutionData({

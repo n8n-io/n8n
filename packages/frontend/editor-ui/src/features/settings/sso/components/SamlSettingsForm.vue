@@ -16,11 +16,13 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 const clipboard = useClipboard();
 const redirectUrlCopied = ref(false);

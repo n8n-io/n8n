@@ -41,6 +41,7 @@ import type { WorkflowVersionFormModalEventBusEvents } from '../components/Workf
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { getPublishedVersionId } from '../utils';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -63,14 +64,15 @@ const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
-const toast = useToast();
+const toastWorkflowId = useWorkflowId();
+const toast = useToast(toastWorkflowId);
 const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const workflowActivate = useWorkflowActivate();
+const workflowActivate = useWorkflowActivate(toastWorkflowId);
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],

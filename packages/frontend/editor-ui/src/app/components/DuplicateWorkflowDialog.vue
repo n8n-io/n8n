@@ -14,6 +14,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
 import { N8nButton, N8nInput } from '@n8n/design-system';
@@ -31,9 +32,10 @@ const props = defineProps<{
 
 const router = useRouter();
 
-const workflowSaving = useWorkflowSaving({ router });
-const workflowHelpers = useWorkflowHelpers();
-const { showMessage, showError } = useToast();
+const workflowId = useInjectWorkflowId();
+const workflowSaving = useWorkflowSaving(workflowId, { router });
+const workflowHelpers = useWorkflowHelpers(workflowId);
+const { showMessage, showError } = useToast(workflowId);
 const i18n = useI18n();
 const telemetry = useTelemetry();
 

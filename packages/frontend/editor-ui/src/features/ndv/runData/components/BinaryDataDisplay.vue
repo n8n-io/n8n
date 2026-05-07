@@ -7,6 +7,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const props = defineProps<{
 	displayData: IBinaryData;
 	windowVisible: boolean;
@@ -16,7 +17,8 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();

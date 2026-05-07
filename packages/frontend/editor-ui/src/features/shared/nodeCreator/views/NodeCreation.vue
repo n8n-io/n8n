@@ -27,6 +27,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 type Props = {
 	nodeViewScale: number;
@@ -58,7 +59,8 @@ const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
 
-const { getAddedNodesAndConnections } = useActions();
+const workflowId = useInjectWorkflowId();
+const { getAddedNodesAndConnections } = useActions(workflowId);
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
 
 const sidePanelTooltip = computed(() => {

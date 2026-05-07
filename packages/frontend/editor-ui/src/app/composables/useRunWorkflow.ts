@@ -63,13 +63,17 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
+import type { RefOrComputedRef } from '@/app/types';
 
-export function useRunWorkflow(useRunWorkflowOpts: {
-	router: ReturnType<typeof useRouter>;
-}) {
-	const workflowHelpers = useWorkflowHelpers();
+export function useRunWorkflow(
+	workflowId: RefOrComputedRef<string>,
+	useRunWorkflowOpts: {
+		router: ReturnType<typeof useRouter>;
+	},
+) {
+	const workflowHelpers = useWorkflowHelpers(workflowId);
 	const i18n = useI18n();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
@@ -82,16 +86,16 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
-	const nodeHelpers = useNodeHelpers();
-	const workflowSaving = useWorkflowSaving({
+	const nodeHelpers = useNodeHelpers(workflowId);
+	const workflowSaving = useWorkflowSaving(workflowId, {
 		router: useRunWorkflowOpts.router,
 	});
 	const executionsStore = useExecutionsStore();
-	const { dirtinessByName } = useNodeDirtiness();
-	const { startChat } = useCanvasOperations();
+	const { dirtinessByName } = useNodeDirtiness(workflowId);
+	const { startChat } = useCanvasOperations(workflowId);
 	const chatStore = useChat();
 
 	function sortNodesByYPosition(nodes: string[]) {
@@ -167,7 +171,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowId.value]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
@@ -400,7 +404,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					},
 				}),
 				workflowData: {
-					id: workflowsStore.workflowId,
+					id: workflowId.value,
 					name: workflowData.name!,
 					active: workflowData.active!,
 					createdAt: 0,
@@ -578,7 +582,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowId.value);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
 			return;

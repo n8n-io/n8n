@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
 	nodeId: string;
@@ -25,8 +26,9 @@ const emit = defineEmits<{
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
-const { renameNode } = useCanvasOperations();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const { renameNode } = useCanvasOperations(workflowId);
+const nodeHelpers = useNodeHelpers(workflowId);
 const ndvStore = injectNDVStore();
 
 const activeNode = computed(() => workflowDocumentStore?.value?.getNodeById(nodeId));

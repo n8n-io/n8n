@@ -17,10 +17,12 @@ const props = defineProps<{
 	workflowId: string;
 }>();
 
+const workflowIdRef = computed(() => props.workflowId);
+
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
 const telemetry = useTelemetry();
-const toast = useToast();
+const toast = useToast(workflowIdRef);
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 

@@ -60,7 +60,6 @@ import { ElCol, ElRow, ElSwitch } from 'element-plus';
 const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
-const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
 const { trackMcpAccessEnabledForWorkflow } = useMcp();
@@ -194,6 +193,7 @@ const readOnlyEnv = computed(
 );
 const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
 const workflowId = computed(() => workflowsStore.workflowId);
+const toast = useToast(workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],

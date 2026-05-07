@@ -15,13 +15,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { shallowRef, watch } from 'vue';
 import { computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types';
 
 export function useLogsSelection(
+	workflowId: RefOrComputedRef<string>,
 	execution: ComputedRef<IExecutionResponse | undefined>,
 	tree: Ref<LogEntry[]>,
 	flatLogEntries: ComputedRef<LogEntry[]>,
@@ -37,9 +38,8 @@ export function useLogsSelection(
 	const logsStore = useLogsStore();
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {

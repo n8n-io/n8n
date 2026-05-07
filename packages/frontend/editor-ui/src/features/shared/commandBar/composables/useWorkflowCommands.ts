@@ -30,6 +30,7 @@ import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
+import type { RefOrComputedRef } from '@/app/types';
 
 const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
@@ -51,7 +52,7 @@ const ITEM_ID = {
 	UNPUBLISH_WORKFLOW: 'unpublish-workflow',
 } as const;
 
-export function useWorkflowCommands(): CommandGroup {
+export function useWorkflowCommands(workflowId: RefOrComputedRef<string>): CommandGroup {
 	const i18n = useI18n();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
@@ -61,12 +62,12 @@ export function useWorkflowCommands(): CommandGroup {
 	const collaborationStore = useCollaborationStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const router = useRouter();
 
-	const runWorkflow = useRunWorkflow({ router });
+	const runWorkflow = useRunWorkflow(workflowId, { router });
 
 	const telemetry = useTelemetry();
 
@@ -81,7 +82,7 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value) ||
-		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+		!workflowsStore.isWorkflowSaved[workflowId.value];
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
@@ -285,7 +286,7 @@ export function useWorkflowCommands(): CommandGroup {
 							uiStore.openModalWithData({
 								name: DUPLICATE_MODAL_KEY,
 								data: {
-									id: workflowsStore.workflowId,
+									id: workflowId.value,
 									name: workflowDocumentStore.value.name,
 									tags: workflowDocumentStore.value.tags,
 								},

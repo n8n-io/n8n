@@ -34,10 +34,9 @@ const props = withDefaults(
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
-const workflowSaving = useWorkflowSaving({ router });
-const locale = useI18n();
-
 const workflowId = useInjectWorkflowId();
+const workflowSaving = useWorkflowSaving(workflowId, { router });
+const locale = useI18n();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();

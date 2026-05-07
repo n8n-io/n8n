@@ -19,13 +19,15 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 defineProps<{ isCollapsed: boolean }>();
 
 const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();

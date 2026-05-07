@@ -20,12 +20,14 @@ import { ElCol, ElRow } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 import ApiKeyCard from '../components/ApiKeyCard.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
 
-const { showError, showMessage } = useToast();
+const workflowId = useWorkflowId();
+const { showError, showMessage } = useToast(workflowId);
 const { confirm } = useMessage();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();

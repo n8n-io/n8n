@@ -5,9 +5,11 @@ import { useToast } from '@/app/composables/useToast';
 import { useClipboard } from '@/app/composables/useClipboard';
 
 import { N8nTooltip } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const i18n = useI18n();
 const clipboard = useClipboard();
-const { showMessage } = useToast();
+const workflowId = useWorkflowId();
+const { showMessage } = useToast(workflowId);
 
 const props = defineProps<{
 	name: string;

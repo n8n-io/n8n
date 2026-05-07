@@ -14,6 +14,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
 import ResolverDeleteConfirmMessage from '@/features/resolvers/components/ResolverDeleteConfirmMessage.vue';
@@ -24,10 +25,11 @@ export interface ModalCallbacks {
 }
 
 export function useCredentialResolvers() {
+	const workflowId = useInjectWorkflowId();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const message = useMessage();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const i18n = useI18n();
 
 	const resolvers = ref<CredentialResolver[]>([]);

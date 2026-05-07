@@ -6,9 +6,11 @@ import { useTagsStore } from '../../tags.store';
 import TagsManager from './TagsManager.vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { TAGS_MANAGER_MODAL_KEY } from '../../tags.constants';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
-const { showError, showMessage } = useToast();
+const workflowId = useWorkflowId();
+const { showError, showMessage } = useToast(workflowId);
 const tagsStore = useTagsStore();
 
 const tags = computed(() => tagsStore.allTags);

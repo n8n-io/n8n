@@ -3,11 +3,13 @@ import { useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 export function useAiGateway() {
+	const workflowId = useInjectWorkflowId();
 	const settingsStore = useSettingsStore();
 	const router = useRouter();
-	const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+	const { saveCurrentWorkflow } = useWorkflowSaving(workflowId, { router });
 	const aiGatewayStore = useAiGatewayStore();
 
 	const balance = computed(() => aiGatewayStore.balance);

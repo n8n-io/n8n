@@ -9,7 +9,6 @@ import {
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -22,6 +21,7 @@ import { AI_BUILDER_DIFF_MODAL_KEY, AI_BUILDER_REVIEW_CHANGES_EXPERIMENT } from 
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { SimplifiedNodeType } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 
 const AI_DIFF_CLASS_MAP: Partial<Record<NodeDiffStatus, string>> = {
 	[NodeDiffStatus.Added]: 'ai-diff-added',
@@ -34,9 +34,8 @@ export interface NodeChangeEntry {
 	nodeType: SimplifiedNodeType | null;
 }
 
-export function useReviewChanges() {
+export function useReviewChanges(workflowId: RefOrComputedRef<string>) {
 	const builderStore = useBuilderStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowHistoryStore = useWorkflowHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
@@ -45,7 +44,7 @@ export function useReviewChanges() {
 	const i18n = useI18n();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const isLoadingDiff = ref(false);
 	const cachedVersionNodes = computed<INode[]>(() => {
@@ -77,13 +76,13 @@ export function useReviewChanges() {
 		() => builderStore.versionCardMessages,
 		async (cards) => {
 			if (!cards?.length) return;
-			const workflowId = workflowsStore.workflowId;
+			const currentWorkflowId = workflowId.value;
 			for (const card of cards) {
 				const vid = card.data.versionId;
 				if (versionDataCache.value.has(vid) || fetchingVersionIds.value.has(vid)) continue;
 				fetchingVersionIds.value.add(vid);
 				try {
-					const v = await workflowHistoryStore.getWorkflowVersion(workflowId, vid);
+					const v = await workflowHistoryStore.getWorkflowVersion(currentWorkflowId, vid);
 					versionDataCache.value.set(vid, { nodes: v.nodes, connections: v.connections });
 					fetchRetryCounts.value.delete(vid);
 				} catch (err) {

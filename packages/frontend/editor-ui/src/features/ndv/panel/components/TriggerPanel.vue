@@ -59,7 +59,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = injectNDVStore();
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers();
+const workflowHelpers = useWorkflowHelpers(workflowId);
 const i18n = useI18n();
 const telemetry = useTelemetry();
 

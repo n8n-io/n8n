@@ -30,8 +30,9 @@ import { useToast } from '@/app/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
+const workflowId = useInjectWorkflowId();
 const pushConnection = usePushConnection({ router });
-const toast = useToast();
+const toast = useToast(workflowId);
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
@@ -69,7 +70,6 @@ const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
-const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);

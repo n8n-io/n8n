@@ -6,6 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
+import { computed } from 'vue';
 import { generateNanoId } from '@n8n/utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -1179,7 +1180,11 @@ router.afterEach((to, from) => {
 		}
 		telemetry.page(to);
 
-		const { trackResourceOpened } = useRecentResources();
+		const workflowIdParam = computed(() => {
+			const id = to.params.workflowId;
+			return (Array.isArray(id) ? id[0] : id) ?? '';
+		});
+		const { trackResourceOpened } = useRecentResources(workflowIdParam);
 		trackResourceOpened(to);
 	} catch (failure) {
 		if (isNavigationFailure(failure)) {

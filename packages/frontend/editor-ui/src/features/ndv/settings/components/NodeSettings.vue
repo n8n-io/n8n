@@ -33,6 +33,7 @@ import { useInstalledCommunityPackage } from '@/features/settings/communityNodes
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -130,11 +131,12 @@ const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
 const telemetry = useTelemetry();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const route = useRoute();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
 const shouldShowStaticScrollbar = ref(false);
@@ -491,7 +493,7 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
-const iconSource = useNodeIconSource(nodeType, node);
+const iconSource = useNodeIconSource(workflowId, nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);

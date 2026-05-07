@@ -27,7 +27,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { RefOrComputedRef } from '@/app/types';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
@@ -35,13 +35,12 @@ interface PostMessageHandlerDeps {
 	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>;
 }
 
-export function usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-	currentNDVStore,
-}: PostMessageHandlerDeps) {
+export function usePostMessageHandler(
+	workflowId: RefOrComputedRef<string>,
+	{ workflowState, currentWorkflowDocumentStore, currentNDVStore }: PostMessageHandlerDeps,
+) {
 	const i18n = useI18n();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const canvasStore = useCanvasStore();
 	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
@@ -50,11 +49,10 @@ export function usePostMessageHandler({
 	const rootStore = useRootStore();
 	const externalHooks = useExternalHooks();
 	const telemetry = useTelemetry();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers(workflowId);
 
 	const route = useRoute();
-	const workflowsStore = useWorkflowsStore();
-	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
+	const { resetWorkspace, openExecution, fitView } = useCanvasOperations(workflowId);
 	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore, currentNDVStore);
 
 	function emitPostMessageReady() {
@@ -139,7 +137,7 @@ export function usePostMessageHandler({
 
 		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
 
-		const wfId = workflowsStore.workflowId;
+		const wfId = workflowId.value;
 		if (wfId) {
 			const workflowDocumentId = createWorkflowDocumentId(wfId);
 			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(workflowDocumentId);

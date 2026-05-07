@@ -95,6 +95,7 @@ import {
 	chunkFilesBySize,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
@@ -107,7 +108,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const credentialsStore = useCredentialsStore();
-	const toast = useToast();
+	const workflowId = useWorkflowId();
+	const toast = useToast(workflowId);
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
 

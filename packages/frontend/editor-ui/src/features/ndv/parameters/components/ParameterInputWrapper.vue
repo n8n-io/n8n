@@ -22,6 +22,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
 
 import { N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -65,6 +66,7 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
+const workflowId = useInjectWorkflowId();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 
 const isExpression = computed(() => {
@@ -118,7 +120,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	};
 });
 
-const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
+const { resolvedExpression, resolvedExpressionString } = useResolvedExpression(workflowId, {
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,

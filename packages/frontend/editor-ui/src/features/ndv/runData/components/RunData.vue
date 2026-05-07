@@ -235,19 +235,19 @@ const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
-const toast = useToast();
+const toast = useToast(workflowId);
 const route = useRoute();
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const router = useRouter();
 
-const { runWorkflow } = useRunWorkflow({ router });
+const { runWorkflow } = useRunWorkflow(workflowId, { router });
 
 const node = toRef(props, 'node');
 
-const pinnedData = usePinnedData(node, {
+const pinnedData = usePinnedData(workflowId, node, {
 	runIndex: props.runIndex,
 	displayMode: props.displayMode,
 });

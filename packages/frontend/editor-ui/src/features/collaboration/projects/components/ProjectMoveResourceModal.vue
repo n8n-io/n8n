@@ -38,6 +38,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -50,7 +51,8 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const projectsStore = useProjectsStore();
 const searchFn = useAvailableProjectSearch();
 const workflowsListStore = useWorkflowsListStore();

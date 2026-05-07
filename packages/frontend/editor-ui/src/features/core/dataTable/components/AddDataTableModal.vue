@@ -23,6 +23,7 @@ import {
 import Modal from '@/app/components/Modal.vue';
 import { ElUpload, ElRadio, ElRadioGroup } from 'element-plus';
 import type { UploadFile } from 'element-plus';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type Props = {
 	modalName: string;
@@ -49,7 +50,8 @@ const uiStore = useUIStore();
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const telemetry = useTelemetry();
 
 const creationMode = ref<CreationMode>('select');

@@ -19,22 +19,26 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/app/utils/typeGuards';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import type { RefOrComputedRef } from '@/app/types';
 
 /**
  * @param providedWorkflowState - Optional workflow state to use instead of injecting.
  *   This is needed when called from the same component that provides WorkflowStateKey
  *   (e.g., WorkflowLayout), since Vue's provide/inject works parent-to-child only.
  */
-export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => {
+export const useExecutionDebugging = (
+	workflowId: RefOrComputedRef<string>,
+	providedWorkflowState?: WorkflowState,
+) => {
 	const telemetry = useTelemetry();
 
 	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();

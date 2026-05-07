@@ -25,6 +25,7 @@ import {
 	N8nTooltip,
 	N8nUsersList,
 } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -39,7 +40,8 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const clipboard = useClipboard();
-const { showMessage, showError } = useToast();
+const workflowId = useWorkflowId();
+const { showMessage, showError } = useToast(workflowId);
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 

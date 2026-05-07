@@ -1,14 +1,16 @@
+import type { ComputedRef } from 'vue';
 import type { WorkflowActivated } from '@n8n/api-types/push/workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
-export async function workflowActivated({ data }: WorkflowActivated) {
-	const { initializeWorkspace } = useCanvasOperations();
-	const workflowsStore = useWorkflowsStore();
+export async function workflowActivated(
+	{ data }: WorkflowActivated,
+	options: { workflowId: ComputedRef<string> },
+) {
+	const { initializeWorkspace } = useCanvasOperations(options.workflowId);
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const bannersStore = useBannersStore();
@@ -16,7 +18,7 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 
 	const { workflowId, activeVersionId } = data;
 
-	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
+	const workflowIsBeingViewed = options.workflowId.value === workflowId;
 	const activeVersionChanged = workflowDocumentStore?.value?.activeVersionId !== activeVersionId;
 	if (workflowIsBeingViewed && activeVersionChanged) {
 		// Only update workflow if there are no unsaved changes

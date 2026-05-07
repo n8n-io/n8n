@@ -57,6 +57,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
+import type { RefOrComputedRef } from '@/app/types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -492,7 +493,7 @@ function executeDataImpl(
 	return executeData;
 }
 
-export function useWorkflowHelpers() {
+export function useWorkflowHelpers(workflowId: RefOrComputedRef<string>) {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -504,7 +505,7 @@ export function useWorkflowHelpers() {
 	const i18n = useI18n();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	function getNodeTypesMaxCount() {
@@ -591,7 +592,6 @@ export function useWorkflowHelpers() {
 			},
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
-		const workflowId = workflowsStore.workflowId;
 		const path = (await getWebhookExpressionValue(webhookData, 'path', true, node.name)) ?? '';
 		const isFullPath =
 			((await getWebhookExpressionValue(
@@ -601,7 +601,7 @@ export function useWorkflowHelpers() {
 				node.name,
 			)) as unknown as boolean) || false;
 
-		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
+		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId.value, node, path, isFullPath);
 	}
 
 	/**
@@ -670,19 +670,21 @@ export function useWorkflowHelpers() {
 	}
 
 	async function updateWorkflow(
-		{ workflowId, active }: { workflowId: string; active?: boolean },
+		{ workflowId: targetWorkflowId, active }: { workflowId: string; active?: boolean },
 		partialData = false,
 	) {
 		let data: WorkflowDataUpdate = {};
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(targetWorkflowId),
+		);
+		const isCurrentWorkflow = targetWorkflowId === workflowId.value;
 		if (isCurrentWorkflow) {
 			data = partialData
 				? { versionId: workflowDocumentStore.versionId }
 				: workflowDocumentStore.serialize();
 		} else {
-			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
+			const { versionId } = await workflowsListStore.fetchWorkflow(targetWorkflowId);
 			data.versionId = versionId;
 		}
 
@@ -690,7 +692,7 @@ export function useWorkflowHelpers() {
 			data.active = active;
 		}
 
-		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
+		const workflow = await workflowsStore.updateWorkflow(targetWorkflowId, data);
 		if (!workflow.checksum) {
 			throw new Error('Failed to update workflow');
 		}
@@ -700,13 +702,13 @@ export function useWorkflowHelpers() {
 		}
 
 		if (workflow.activeVersion) {
-			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			workflowsStore.setWorkflowActive(targetWorkflowId, workflow.activeVersion, isCurrentWorkflow);
 			workflowDocumentStore.setActiveState({
 				activeVersionId: workflow.activeVersion.versionId,
 				activeVersion: workflow.activeVersion,
 			});
 		} else {
-			workflowsStore.setWorkflowInactive(workflowId);
+			workflowsStore.setWorkflowInactive(targetWorkflowId);
 			workflowDocumentStore.setActiveState({
 				activeVersionId: null,
 				activeVersion: null,
@@ -894,15 +896,15 @@ export function useWorkflowHelpers() {
 		return `${trigger.webhookId}/webhook`;
 	}
 
-	async function checkConflictingWebhooks(workflowId: string) {
+	async function checkConflictingWebhooks(targetWorkflowId: string) {
 		let data;
 		if (uiStore.stateIsDirty) {
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(workflowId.value),
 			);
 			data = workflowDocumentStore.serialize();
 		} else {
-			data = await workflowsListStore.fetchWorkflow(workflowId);
+			data = await workflowsListStore.fetchWorkflow(targetWorkflowId);
 		}
 
 		const triggers = data.nodes.filter(
@@ -921,7 +923,7 @@ export function useWorkflowHelpers() {
 					method,
 				});
 
-				if (conflict && conflict.workflowId !== workflowId) {
+				if (conflict && conflict.workflowId !== targetWorkflowId) {
 					return { trigger, conflict };
 				}
 			}

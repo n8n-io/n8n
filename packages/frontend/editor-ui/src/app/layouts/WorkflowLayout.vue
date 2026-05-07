@@ -2,6 +2,7 @@
 import { provide, watch, onMounted, onBeforeUnmount } from 'vue';
 import BaseLayout from './BaseLayout.vue';
 import { useLayoutProps } from '@/app/composables/useLayoutProps';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
@@ -27,9 +28,10 @@ const isCanvasOnly = settingsStore.isCanvasOnly;
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
 
+const workflowId = useWorkflowId();
+
 const {
 	isLoading,
-	workflowId,
 	currentWorkflowDocumentStore,
 	currentNDVStore,
 	isDebugRoute,
@@ -37,15 +39,18 @@ const {
 	initializeWorkflow,
 	handleDebugModeRoute,
 	cleanup,
-} = useWorkflowInitialization(workflowState);
+} = useWorkflowInitialization(workflowId, workflowState);
 
 provide(NDVStoreKey, currentNDVStore);
 
-const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-	currentNDVStore,
-});
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler(
+	workflowId,
+	{
+		workflowState,
+		currentWorkflowDocumentStore,
+		currentNDVStore,
+	},
+);
 
 onMounted(async () => {
 	pushConnectionStore.pushConnect();

@@ -37,6 +37,7 @@ import { useToast } from '@/app/composables/useToast';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
  */
@@ -73,7 +74,8 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);

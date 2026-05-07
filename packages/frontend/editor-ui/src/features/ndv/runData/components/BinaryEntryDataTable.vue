@@ -8,6 +8,7 @@ import { computed } from 'vue';
 import type { BinaryMetadata } from '@/Interface';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const BYTES_THRESHOLD = 1048576; // 1MB
 
@@ -20,6 +21,8 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 const tablePreview = computed(() => {
 	if (!fileUrl.value) return false;
@@ -54,7 +57,7 @@ const downloadBinaryData = async () => {
 		const blob = await response.blob();
 		saveAs(blob, fileName.value);
 	} catch (error) {
-		useToast().showMessage({
+		toast.showMessage({
 			title: i18n.baseText('runData.downloadBinaryData.error.title'),
 			message: i18n.baseText('runData.downloadBinaryData.error.message'),
 			type: 'error',

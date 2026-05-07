@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useActivationError } from '@/app/composables/useActivationError';
@@ -8,21 +9,21 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
-	_options: { workflowState: WorkflowState },
+	options: { workflowState: WorkflowState; workflowId: ComputedRef<string> },
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	if (workflowsStore.workflowId !== data.workflowId) {
+	if (options.workflowId.value !== data.workflowId) {
 		return;
 	}
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
 	workflowDocumentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
 
-	const toast = useToast();
+	const toast = useToast(options.workflowId);
 	const i18n = useI18n();
-	const { errorMessage } = useActivationError(() => data.nodeId);
+	const { errorMessage } = useActivationError(options.workflowId, () => data.nodeId);
 	const title = i18n.baseText('workflowActivator.showError.title', {
 		interpolate: { newStateName: 'activated' },
 	});

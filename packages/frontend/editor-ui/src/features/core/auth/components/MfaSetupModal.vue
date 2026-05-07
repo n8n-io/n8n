@@ -19,6 +19,7 @@ import router from '@/app/router';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------
@@ -46,7 +47,8 @@ const clipboard = useClipboard();
 const userStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 
 // #endregion
 

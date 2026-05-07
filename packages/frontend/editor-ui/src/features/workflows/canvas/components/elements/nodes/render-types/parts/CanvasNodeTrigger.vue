@@ -15,6 +15,7 @@ import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const {
 	name,
 	type,
@@ -50,8 +51,9 @@ const workflowDocumentStore = computed(() =>
 );
 const logsStore = useLogsStore();
 const chatHubPanelStore = useChatHubPanelStore();
-const { runEntireWorkflow } = useRunWorkflow({ router });
-const { startChat } = useCanvasOperations();
+const workflowId = useInjectWorkflowId();
+const { runEntireWorkflow } = useRunWorkflow(workflowId, { router });
+const { startChat } = useCanvasOperations(workflowId);
 
 const chatTriggerNode = computed(() =>
 	(workflowDocumentStore.value?.allNodes ?? []).find(

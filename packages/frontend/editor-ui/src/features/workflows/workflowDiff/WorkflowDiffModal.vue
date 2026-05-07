@@ -17,6 +17,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = defineProps<{
 	data: {
@@ -27,7 +28,8 @@ const props = defineProps<{
 	};
 }>();
 
-const toast = useToast();
+const workflowIdRef = useWorkflowId();
+const toast = useToast(workflowIdRef);
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();

@@ -3,6 +3,7 @@ import { computed, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -52,7 +53,8 @@ const props = defineProps<{
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const locale = useI18n();
 const route = useRoute();
 const projectsStore = useProjectsStore();

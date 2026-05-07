@@ -46,6 +46,7 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -56,12 +57,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 
-const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
+const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers(workflowId);
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
-const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
+const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } =
+	useActions(workflowId);
 
 const { registerKeyHook } = useKeyboardNavigation();
 

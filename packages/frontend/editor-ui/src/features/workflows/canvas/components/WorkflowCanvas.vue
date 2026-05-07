@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 defineOptions({
 	inheritAttrs: false,
@@ -44,6 +45,7 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
@@ -61,7 +63,7 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(workflowId, {
 	nodes,
 	connections,
 	workflowObject,

@@ -9,9 +9,11 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();

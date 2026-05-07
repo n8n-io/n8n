@@ -18,14 +18,16 @@ import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 interface Props {
 	rootNode: INodeUi;
 }
 
 const props = defineProps<Props>();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const i18n = useI18n();
 const { debounce } = useDebounce();
 const emit = defineEmits<{

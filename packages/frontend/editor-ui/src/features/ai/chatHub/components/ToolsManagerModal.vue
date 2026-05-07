@@ -28,6 +28,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { hasRole } from '@/app/utils/rbac/checks/hasRole';
 import nodePopularity from 'virtual:node-popularity-data';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = defineProps<{
 	modalName: string;
@@ -63,7 +64,8 @@ function hasInputs(nodeType: INodeTypeDescription): boolean {
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const chatStore = useChatStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));

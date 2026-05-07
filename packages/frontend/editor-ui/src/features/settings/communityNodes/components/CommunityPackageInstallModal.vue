@@ -21,6 +21,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 interface ModalData {
 	packageName?: string;
@@ -31,7 +32,8 @@ interface ModalData {
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { installNode, loading } = useInstallNode();
+const workflowId = useWorkflowId();
+const { installNode, loading } = useInstallNode(workflowId);
 const uiStore = useUIStore();
 
 const modalBus = createEventBus();

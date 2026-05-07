@@ -17,6 +17,7 @@ import { removeExpressionPrefix } from '@/app/utils/expressions';
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { typeFromExpression } from '../../utils/assignmentCollection.utils';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 interface Props {
 	path: string;
@@ -45,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const ndvStore = injectNDVStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
@@ -102,7 +104,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	return { $vars: environmentsStore.variablesAsObject };
 });
 
-const { resolvedExpressionString, isExpression } = useResolvedExpression({
+const { resolvedExpressionString, isExpression } = useResolvedExpression(workflowId, {
 	expression: value,
 	additionalData: resolvedAdditionalExpressionData,
 });

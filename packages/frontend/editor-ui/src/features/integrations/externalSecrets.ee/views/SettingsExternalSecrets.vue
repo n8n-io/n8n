@@ -10,9 +10,11 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { I18nT } from 'vue-i18n';
 
 import { N8nActionBox, N8nCallout, N8nHeading } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 

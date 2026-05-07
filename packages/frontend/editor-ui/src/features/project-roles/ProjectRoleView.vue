@@ -26,11 +26,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
 
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
 const router = useRouter();
-const { showError, showMessage } = useToast();
+const workflowId = useWorkflowId();
+const { showError, showMessage } = useToast(workflowId);
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();

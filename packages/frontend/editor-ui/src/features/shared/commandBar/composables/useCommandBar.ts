@@ -21,6 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,
@@ -29,6 +30,7 @@ import {
 } from '@/features/ai/chatHub/constants';
 
 export function useCommandBar() {
+	const workflowId = useInjectWorkflowId();
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -52,11 +54,11 @@ export function useCommandBar() {
 		return projectsStore.myProjects.find((p) => p.id === projectId)?.name ?? 'Personal';
 	});
 
-	const nodeCommandGroup = useNodeCommands({
+	const nodeCommandGroup = useNodeCommands(workflowId, {
 		lastQuery,
 		activeNodeId,
 	});
-	const workflowCommandGroup = useWorkflowCommands();
+	const workflowCommandGroup = useWorkflowCommands(workflowId);
 	const executionCommandGroup = useExecutionCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
@@ -79,7 +81,7 @@ export function useCommandBar() {
 		activeNodeId,
 	});
 	const genericCommandGroup = useGenericCommands();
-	const recentResourcesGroup = useRecentResources();
+	const recentResourcesGroup = useRecentResources(workflowId);
 	const chatHubCommandGroup = useChatHubCommands({
 		lastQuery,
 	});

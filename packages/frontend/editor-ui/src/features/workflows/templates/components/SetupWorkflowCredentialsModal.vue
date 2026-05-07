@@ -10,10 +10,12 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowStore = useWorkflowsStore();
 const uiStore = useUIStore();
+const workflowId = useInjectWorkflowId();
 
 export type SetupCredentialsModalSource = 'template' | 'builder';
 
@@ -41,7 +43,7 @@ const {
 	setInitialCredentialSelection,
 	setCredential,
 	unsetCredential,
-} = useSetupWorkflowCredentialsModalState();
+} = useSetupWorkflowCredentialsModalState(workflowId);
 
 onMounted(() => {
 	setInitialCredentialSelection();

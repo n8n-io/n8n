@@ -6,11 +6,13 @@ import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, ref } from 'vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const locale = useI18n();
 
 const loading = ref(false);

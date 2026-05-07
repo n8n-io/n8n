@@ -65,14 +65,14 @@ const props = withDefaults(
 
 const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const { activeNode } = storeToRefs(ndvStore);
-const pinnedData = usePinnedData(activeNode);
+const pinnedData = usePinnedData(workflowId, activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
-const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();

@@ -39,15 +39,15 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const locale = useI18n();
-const { showError } = useToast();
+const workflowId = useInjectWorkflowId();
+const { showError } = useToast(workflowId);
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
-const executionDebugging = useExecutionDebugging();
+const executionDebugging = useExecutionDebugging(workflowId);
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
-const workflowId = useInjectWorkflowId();
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,

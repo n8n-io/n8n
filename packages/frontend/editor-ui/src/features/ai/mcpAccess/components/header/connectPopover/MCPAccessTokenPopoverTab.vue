@@ -10,6 +10,7 @@ import {
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown, N8nNotice } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type Props = {
 	serverUrl: string;
@@ -22,7 +23,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const mcpStore = useMCPStore();
 
 const loadingApiKey = ref(true);

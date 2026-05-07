@@ -25,6 +25,7 @@ import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
 import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -60,7 +61,8 @@ const selectedItems = ref<Record<string, boolean>>({});
 const isInitialLoad = ref(true);
 
 const message = useMessage();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 
 const selectedCount = computed(() => {
 	if (allExistingSelected.value) {

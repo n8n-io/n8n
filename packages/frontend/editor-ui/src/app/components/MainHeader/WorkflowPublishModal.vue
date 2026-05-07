@@ -18,6 +18,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -41,8 +42,9 @@ const workflowDocumentStore = computed(() =>
 );
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
-const { showMessage } = useToast();
-const workflowActivate = useWorkflowActivate();
+const workflowId = useInjectWorkflowId();
+const { showMessage } = useToast(workflowId);
+const workflowActivate = useWorkflowActivate(workflowId);
 const publishing = ref(false);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');

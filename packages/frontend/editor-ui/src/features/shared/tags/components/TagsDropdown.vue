@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { useToast } from '@/app/composables/useToast';
 
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 interface TagsDropdownProps {
 	placeholder: string;
@@ -25,8 +26,8 @@ interface TagsDropdownProps {
 }
 
 const i18n = useI18n();
-
-const { showError } = useToast();
+const workflowId = useWorkflowId();
+const { showError } = useToast(workflowId);
 
 const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	placeholder: '',

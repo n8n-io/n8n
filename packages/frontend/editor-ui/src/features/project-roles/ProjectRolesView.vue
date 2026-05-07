@@ -22,8 +22,10 @@ import type { Role } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { onMounted, ref, useCssModule } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
-const { showError, showMessage } = useToast();
+const workflowId = useWorkflowId();
+const { showError, showMessage } = useToast(workflowId);
 
 const rolesStore = useRolesStore();
 const router = useRouter();

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
@@ -21,10 +22,11 @@ const props = defineProps<{
 const DEFAULT_WORKFLOW_NAME = 'My Sub-workflow';
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const modalBus = createEventBus();
 
-const workflowExtraction = useWorkflowExtraction();
+const workflowExtraction = useWorkflowExtraction(workflowId);
 const workflowName = ref(DEFAULT_WORKFLOW_NAME);
 const initiatedExtraction = ref(false);
 

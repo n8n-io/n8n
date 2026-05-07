@@ -10,12 +10,14 @@ import { computed, ref } from 'vue';
 
 import { ElTag } from 'element-plus';
 import { N8nButton } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const props = defineProps<{
 	execution: ExecutionSummary;
 }>();
 const locale = useI18n();
 const telemetry = useTelemetry();
-const { showError } = useToast();
+const workflowId = useInjectWorkflowId();
+const { showError } = useToast(workflowId);
 const executionsStore = useExecutionsStore();
 
 const tagIds = computed(() => props.execution.annotation?.tags.map((tag) => tag.id) ?? []);

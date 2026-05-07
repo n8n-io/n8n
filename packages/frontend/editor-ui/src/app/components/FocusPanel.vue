@@ -69,20 +69,20 @@ const emit = defineEmits<{
 const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 
 const locale = useI18n();
-const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = injectNDVStore();
 const vueFlow = useVueFlow(workflowId.value);
-const { renameNode } = useCanvasOperations();
+const { renameNode } = useCanvasOperations(workflowId);
 
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
@@ -242,7 +242,7 @@ const emptySubtitle = computed(() =>
 		: locale.baseText('nodeView.focusPanel.noParameters.subtitle'),
 );
 
-const { resolvedExpression } = useResolvedExpression({
+const { resolvedExpression } = useResolvedExpression(workflowId, {
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	stringifyObject:

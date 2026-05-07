@@ -48,6 +48,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 type SourceControlledFileType = SourceControlledFile['type'];
 type SourceControlledFileWithProject = SourceControlledFile & {
 	project?: ProjectListItem;
@@ -59,7 +60,8 @@ const props = defineProps<{
 
 const telemetry = useTelemetry();
 const loadingService = useLoadingService();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();

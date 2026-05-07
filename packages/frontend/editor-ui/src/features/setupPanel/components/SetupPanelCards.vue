@@ -26,7 +26,7 @@ const telemetry = useTelemetry();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
-	useWorkflowSetupState();
+	useWorkflowSetupState(workflowId);
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {

@@ -29,11 +29,13 @@ import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const locale = useI18n();
 const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const { activeNode } = storeToRefs(ndvStore);
 
 export type Props = {

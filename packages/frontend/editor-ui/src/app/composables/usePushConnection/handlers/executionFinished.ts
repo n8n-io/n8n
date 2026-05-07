@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -56,6 +57,7 @@ export type SimplifiedExecution = Pick<
 export type ExecutionFinishedOptions = {
 	router: ReturnType<typeof useRouter>;
 	workflowState: WorkflowState;
+	workflowId: ComputedRef<string>;
 };
 
 /**
@@ -124,11 +126,12 @@ export async function executionFinished(
 			options.workflowState,
 			data.status,
 			successToastAlreadyShown,
+			options.workflowId,
 		);
 		successToastAlreadyShown = true;
 	}
 
-	const execution = await fetchExecutionData(data.executionId);
+	const execution = await fetchExecutionData(data.executionId, options.workflowId);
 
 	/**
 	 * This accounts for the case where the execution is not stored.
@@ -147,16 +150,17 @@ export async function executionFinished(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options.workflowId);
 	} else {
 		handleExecutionFinishedWithSuccessOrOther(
 			options.workflowState,
 			execution.status,
 			successToastAlreadyShown,
+			options.workflowId,
 		);
 	}
 
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	setRunExecutionData(execution, runExecutionData, options.workflowState, options.workflowId);
 
 	continueEvaluationLoop(execution, options);
 }
@@ -190,7 +194,7 @@ export function continueEvaluationLoop(
 	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
 
 	if (rowsLeft && rowsLeft > 0) {
-		const { runWorkflow } = useRunWorkflow(opts);
+		const { runWorkflow } = useRunWorkflow(opts.workflowId, opts);
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,
 			// pass output of previous node run to trigger next run
@@ -205,10 +209,11 @@ export function continueEvaluationLoop(
  */
 export async function fetchExecutionData(
 	executionId: string,
+	workflowId: ComputedRef<string>,
 ): Promise<SimplifiedExecution | undefined> {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId.value),
 	);
 
 	try {
@@ -274,11 +279,12 @@ export function handleExecutionFinishedWithWaitTill(
 	workflowId: string,
 	options: {
 		router: ReturnType<typeof useRouter>;
+		workflowId: ComputedRef<string>;
 	},
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
-	const workflowSaving = useWorkflowSaving(options);
+	const workflowSaving = useWorkflowSaving(options.workflowId, options);
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	const workflowSettings = workflowDocumentStore.settings;
@@ -291,7 +297,7 @@ export function handleExecutionFinishedWithWaitTill(
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId])
+				if (!workflowsStore.isWorkflowSaved[options.workflowId.value])
 					await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
@@ -308,16 +314,16 @@ export function handleExecutionFinishedWithWaitTill(
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	workflowId: ComputedRef<string>,
 ) {
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId.value),
 	);
 	const documentTitle = useDocumentTitle();
-	const workflowHelpers = useWorkflowHelpers();
+	const workflowHelpers = useWorkflowHelpers(workflowId);
 
 	documentTitle.setDocumentTitle(workflowDocumentStore.name, 'ERROR');
 
@@ -339,7 +345,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					workflowHelpers.getNodeTypes(),
 				).nodeGraph,
 			),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 		};
 
 		if (
@@ -389,8 +395,9 @@ function handleExecutionFinishedSuccessfully(
 	workflowName: string,
 	message: string,
 	workflowState: WorkflowState,
+	workflowId: ComputedRef<string>,
 ) {
-	const toast = useToast();
+	const toast = useToast(workflowId);
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 	workflowState.setActiveExecutionId(undefined);
@@ -407,14 +414,15 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	workflowState: WorkflowState,
 	executionStatus: ExecutionStatus,
 	successToastAlreadyShown: boolean,
+	workflowId: ComputedRef<string>,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId.value),
 	);
 	const workflowName = workflowDocumentStore.name;
 
@@ -452,6 +460,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 				workflowName,
 				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
 				workflowState,
+				workflowId,
 			);
 		}
 	} else if (!successToastAlreadyShown) {
@@ -459,6 +468,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			workflowName,
 			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 			workflowState,
+			workflowId,
 		);
 	}
 
@@ -473,9 +483,10 @@ export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
 	workflowState: WorkflowState,
+	workflowId: ComputedRef<string>,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 

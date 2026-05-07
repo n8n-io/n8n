@@ -73,6 +73,7 @@ import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type Props = {
 	modalName: string;
@@ -91,9 +92,10 @@ const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 const externalSecretsStore = useExternalSecretsStore();
 
-const nodeHelpers = useNodeHelpers();
+const workflowId = useWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const externalHooks = useExternalHooks();
-const toast = useToast();
+const toast = useToast(workflowId);
 const message = useMessage();
 const i18n = useI18n();
 const telemetry = useTelemetry();

@@ -10,6 +10,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 type Props = {
 	title?: string;
 	path?: string;
@@ -36,6 +37,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 async function downloadBinaryData() {
 	if (!props.binaryData) return;
@@ -51,7 +54,7 @@ async function downloadBinaryData() {
 		const blob = await response.blob();
 		saveAs(blob, name);
 	} catch (error) {
-		useToast().showMessage({
+		toast.showMessage({
 			title: i18n.baseText('runData.downloadBinaryData.error.title'),
 			message: i18n.baseText('runData.downloadBinaryData.error.message'),
 			type: 'error',

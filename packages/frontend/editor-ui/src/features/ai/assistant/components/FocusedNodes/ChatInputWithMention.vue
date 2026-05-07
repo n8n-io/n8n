@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import { useFocusedNodesChipUI } from '../../composables/useFocusedNodesChipUI';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeMentionDropdown from './NodeMentionDropdown.vue';
 import FocusedNodeChip from './FocusedNodeChip.vue';
@@ -41,6 +42,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const focusedNodesStore = useFocusedNodesStore();
 const isFeatureEnabled = computed(() => focusedNodesStore.isFeatureEnabled);
 
@@ -58,7 +60,7 @@ const {
 	getNodeType,
 	handleChipClick,
 	handleRemove,
-} = useFocusedNodesChipUI();
+} = useFocusedNodesChipUI(workflowId);
 
 const inputRef = ref<InstanceType<typeof N8nPromptInput> | null>(null);
 const textValue = ref(props.modelValue);
@@ -86,7 +88,7 @@ const {
 	selectNode,
 	closeDropdown,
 	openDropdown,
-} = useNodeMention();
+} = useNodeMention(workflowId);
 
 const confirmedNodeIds = computed(() => focusedNodesStore.confirmedNodeIds);
 const hasConfirmedNodes = computed(() => confirmedNodes.value.length > 0);

@@ -9,7 +9,6 @@ import {
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/app/constants';
 import { stringSizeInBytes, toMegaBytes } from '@/app/utils/typesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	injectWorkflowDocumentStore,
@@ -19,6 +18,7 @@ import {
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
@@ -45,6 +45,7 @@ export type UnpinDataSource =
 	| 'unpin-and-send-chat-message-modal';
 
 export function usePinnedData(
+	workflowId: RefOrComputedRef<string>,
 	node: MaybeRef<INodeUi | null>,
 	options: {
 		displayMode?: MaybeRef<IRunDataDisplayMode>;
@@ -52,16 +53,15 @@ export function usePinnedData(
 	} = {},
 ) {
 	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const workflowDocumentStore =
 		injectWorkflowDocumentStore() ??
-		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)));
-	const toast = useToast();
+		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)));
+	const toast = useToast(workflowId);
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
-	const { getInputDataWithPinned } = useDataSchema();
+	const { getInputDataWithPinned } = useDataSchema(workflowId);
 
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,
@@ -231,7 +231,7 @@ export function usePinnedData(
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			node_id: targetNode?.id,
 		};
 

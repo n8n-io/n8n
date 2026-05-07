@@ -12,6 +12,7 @@ import type {
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
@@ -48,8 +49,9 @@ export function useChatMessaging({
 	ws,
 	onNewMessage,
 }: ChatMessagingDependencies) {
+	const workflowId = useInjectWorkflowId();
 	const locale = useI18n();
-	const { showError } = useToast();
+	const { showError } = useToast(workflowId);
 	const previousMessageIndex = ref(0);
 	const isLoading = ref(false);
 
@@ -162,7 +164,7 @@ export function useChatMessaging({
 			return;
 		}
 
-		const pinnedChatData = usePinnedData(chatTrigger.value);
+		const pinnedChatData = usePinnedData(workflowId, chatTrigger.value);
 		if (pinnedChatData.hasData.value) {
 			const confirmResult = await useMessage().confirm(
 				locale.baseText('chat.window.chat.unpinAndExecute.description'),

@@ -19,6 +19,7 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const {
 	title,
 	logEntry,
@@ -41,7 +42,8 @@ const emit = defineEmits<{
 const locale = useI18n();
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const workflowId = useInjectWorkflowId();
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction(workflowId);
 
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 

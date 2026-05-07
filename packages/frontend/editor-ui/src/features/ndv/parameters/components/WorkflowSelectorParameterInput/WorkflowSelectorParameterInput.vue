@@ -41,6 +41,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
@@ -86,7 +87,8 @@ const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
 const telemetry = useTelemetry();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();

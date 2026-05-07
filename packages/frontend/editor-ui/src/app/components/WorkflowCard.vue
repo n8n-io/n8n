@@ -9,6 +9,7 @@ import {
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -104,7 +105,8 @@ const emit = defineEmits<{
 	];
 }>();
 
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 const locale = useI18n();
 const router = useRouter();
@@ -122,7 +124,7 @@ const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
 const favoritesStore = useFavoritesStore();
-const workflowActivate = useWorkflowActivate();
+const workflowActivate = useWorkflowActivate(workflowId);
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 

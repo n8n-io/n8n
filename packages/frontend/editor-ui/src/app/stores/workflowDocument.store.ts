@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -133,9 +133,10 @@ export function getWorkflowDocumentStoreId(id: string) {
 export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
+		const workflowIdRef = computed(() => workflowId);
 
 		const nodeTypesStore = useNodeTypesStore();
-		const nodeHelpers = useNodeHelpers();
+		const nodeHelpers = useNodeHelpers(workflowIdRef);
 
 		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
 			useWorkflowDocumentWorkflowObject({ workflowId });

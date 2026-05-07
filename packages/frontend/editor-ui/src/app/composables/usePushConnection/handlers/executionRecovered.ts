@@ -10,11 +10,16 @@ import {
 } from './executionFinished';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { useRouter } from 'vue-router';
+import type { ComputedRef } from 'vue';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 export async function executionRecovered(
 	{ data }: ExecutionRecovered,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
+	options: {
+		router: ReturnType<typeof useRouter>;
+		workflowState: WorkflowState;
+		workflowId: ComputedRef<string>;
+	},
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
@@ -26,7 +31,7 @@ export async function executionRecovered(
 
 	uiStore.setProcessingExecutionResults(true);
 
-	const execution = await fetchExecutionData(data.executionId);
+	const execution = await fetchExecutionData(data.executionId, options.workflowId);
 	if (!execution) {
 		uiStore.setProcessingExecutionResults(false);
 		return;
@@ -38,10 +43,15 @@ export async function executionRecovered(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options.workflowId);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
+		handleExecutionFinishedWithSuccessOrOther(
+			options.workflowState,
+			execution.status,
+			false,
+			options.workflowId,
+		);
 	}
 
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	setRunExecutionData(execution, runExecutionData, options.workflowState, options.workflowId);
 }

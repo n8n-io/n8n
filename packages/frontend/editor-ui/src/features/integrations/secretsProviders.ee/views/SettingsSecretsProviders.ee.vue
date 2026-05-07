@@ -32,13 +32,15 @@ import SecretsProviderConnectionCard from '../components/SecretsProviderConnecti
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
 import { useSecretsProviderConnection } from '../composables/useSecretsProviderConnection.ee';
 import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const rootStore = useRootStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();

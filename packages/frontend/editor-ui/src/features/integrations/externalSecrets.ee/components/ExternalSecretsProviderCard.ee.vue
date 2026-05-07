@@ -20,6 +20,7 @@ import {
 	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	provider: ExternalSecretsProvider;
 }>();
@@ -27,7 +28,8 @@ const props = defineProps<{
 const externalSecretsStore = useExternalSecretsStore();
 const i18n = useI18n();
 const uiStore = useUIStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 
 const provider = toRef(props, 'provider');
 const providerData = computed(() => provider.value.data ?? {});

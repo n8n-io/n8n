@@ -10,11 +10,13 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();

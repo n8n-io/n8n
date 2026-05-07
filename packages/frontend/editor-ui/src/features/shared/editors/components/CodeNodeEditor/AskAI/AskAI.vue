@@ -29,6 +29,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -46,7 +47,8 @@ const props = withDefaults(
 	},
 );
 
-const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+const workflowIdRef = useInjectWorkflowId();
+const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema(workflowIdRef);
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
 
@@ -154,7 +156,7 @@ function stopLoading() {
 async function onSubmit() {
 	const { restApiContext } = useRootStore();
 	const { activeNode } = ndvStore;
-	const { showMessage } = useToast();
+	const { showMessage } = useToast(workflowIdRef);
 	const { alert } = useMessage();
 	if (!activeNode) return;
 	const schemas = getSchemas();

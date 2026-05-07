@@ -11,6 +11,7 @@ import { createSearchHighlightPlugin } from '@/features/ndv/runData/components/a
 
 import { N8nIconButton } from '@n8n/design-system';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const {
 	content,
@@ -26,7 +27,8 @@ const {
 
 const i18n = useI18n();
 const clipboard = useClipboard();
-const { showMessage } = useToast();
+const workflowId = useInjectWorkflowId();
+const { showMessage } = useToast(workflowId);
 
 const vueMarkdownPlugins = computed(() => [createSearchHighlightPlugin(search)]);
 

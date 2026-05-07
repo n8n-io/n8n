@@ -7,6 +7,7 @@ import { ElCollapseTransition } from 'element-plus';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type { WebhookDisplayData } from '@/features/setupPanel/composables/useWebhookUrls';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 defineProps<{
 	urls: WebhookDisplayData[];
@@ -14,7 +15,8 @@ defineProps<{
 
 const i18n = useI18n();
 const clipboard = useClipboard();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 const isCollapsed = ref(false);
 

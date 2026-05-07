@@ -12,6 +12,7 @@ import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,6 +42,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const workflowId = useInjectWorkflowId();
 const setupPanelStore = useSetupPanelStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -77,7 +79,7 @@ const {
 	execute,
 	isInListeningState,
 	listeningHint,
-} = useTriggerExecution(executableNodeRef);
+} = useTriggerExecution(workflowId, executableNodeRef);
 
 const { webhookUrls } = useWebhookUrls(executableNodeRef);
 

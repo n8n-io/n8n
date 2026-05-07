@@ -25,6 +25,7 @@ import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/ut
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -33,13 +34,15 @@ import {
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
-export function useWorkflowInitialization(workflowState: WorkflowState) {
+export function useWorkflowInitialization(
+	workflowId: RefOrComputedRef<string>,
+	workflowState: WorkflowState,
+) {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const documentTitle = useDocumentTitle();
 	const externalHooks = useExternalHooks();
 
@@ -56,7 +59,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
-	const workflowId = useWorkflowId();
 	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
 	const currentNDVStore = shallowRef<ReturnType<typeof useNDVStore> | null>(null);
 
@@ -68,10 +70,10 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		fitView,
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
-	} = useCanvasOperations();
+	} = useCanvasOperations(workflowId);
 	// Pass workflowState to useExecutionDebugging since we're in the same component
 	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
-	const { applyExecutionData } = useExecutionDebugging(workflowState);
+	const { applyExecutionData } = useExecutionDebugging(workflowId, workflowState);
 
 	const isLoading = ref(true);
 	const initializedWorkflowId = ref<string | undefined>();
@@ -176,7 +178,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		// Create document store for template workflow (empty tags initially)
 		// The workflow ID was set during the template import
-		const currentWorkflowId = workflowsStore.workflowId;
+		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);

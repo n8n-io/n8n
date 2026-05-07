@@ -25,6 +25,7 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch }
 import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = defineProps<{
 	initialNode: INode;
@@ -37,10 +38,11 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const environmentsStore = useEnvironmentsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);

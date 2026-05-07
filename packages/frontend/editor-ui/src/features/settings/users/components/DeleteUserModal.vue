@@ -12,6 +12,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { ElRadio } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -66,7 +67,8 @@ const filterFn = (project: ProjectListItem) =>
 	project.name !==
 	`${userToDelete.value?.firstName} ${userToDelete.value?.lastName} <${userToDelete.value?.email}>`;
 
-const { showMessage, showError } = useToast();
+const workflowId = useWorkflowId();
+const { showMessage, showError } = useToast(workflowId);
 
 async function onSubmit() {
 	if (!enabled.value) {

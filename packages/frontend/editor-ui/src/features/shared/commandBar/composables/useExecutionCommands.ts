@@ -31,11 +31,11 @@ export function useExecutionCommands(): CommandGroup {
 	const executionsStore = useExecutionsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const settingsStore = useSettingsStore();
-	const toast = useToast();
 	const message = useMessage();
 	const telemetry = useTelemetry();
 
 	const workflowId = computed(() => route.params.workflowId as string);
+	const toast = useToast(workflowId);
 
 	const activeExecution = computed(() => {
 		return executionsStore.activeExecution as ExecutionSummary & {

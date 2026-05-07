@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
 import { isObj } from '@/app/utils/typeGuards';
@@ -31,7 +32,7 @@ import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
 
-export function useDataSchema() {
+export function useDataSchema(workflowId: RefOrComputedRef<string>) {
 	function getSchema(
 		input: Optional<Primitives | object>,
 		path = '',
@@ -211,9 +212,8 @@ export function useDataSchema() {
 	): INodeExecutionData[] {
 		if (!node) return [];
 
-		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		const pinnedData = workflowDocumentStore.getNodePinData(node.name)?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
@@ -395,7 +395,7 @@ const isEmptySchema = (schema: Schema) => {
 
 const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${title}]` : title);
 
-export const useFlattenSchema = () => {
+export const useFlattenSchema = (workflowId: RefOrComputedRef<string>) => {
 	const closedNodes = ref<Set<string>>(new Set());
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
@@ -555,9 +555,8 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
-			const workflowsStore = useWorkflowsStore();
 			const workflowDocumentStore = computed(() =>
-				useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 			);
 
 			acc = acc.concat(

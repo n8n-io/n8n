@@ -17,9 +17,11 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const $style = useCssModule();
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
@@ -57,7 +59,7 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 		connections,
 	});
 
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 

@@ -22,6 +22,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const container = useTemplateRef('container');
@@ -32,6 +33,7 @@ const popOutContent = useTemplateRef('popOutContent');
 const logsStore = useLogsStore();
 const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
@@ -58,13 +60,15 @@ const {
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const { currentSessionId, chatOptions, refreshSession, displayExecution } = useChatState(
+	workflowId,
 	props.isReadOnly,
 );
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData({ isEnabled: isOpen });
+	useLogsExecutionData(workflowId, { isEnabled: isOpen });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
+	workflowId,
 	execution,
 	entries,
 	flatLogEntries,

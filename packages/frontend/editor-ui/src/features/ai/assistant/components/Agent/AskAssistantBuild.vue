@@ -96,11 +96,11 @@ const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
-const toast = useToast();
-const { runWorkflow } = useRunWorkflow({ router });
+const toast = useToast(workflowId);
+const { runWorkflow } = useRunWorkflow(workflowId, { router });
 const nodeTypesStore = useNodeTypesStore();
 const logsStore = useLogsStore();
-const { updateWorkflow } = useWorkflowUpdate();
+const { updateWorkflow } = useWorkflowUpdate(workflowId);
 const { handleError } = useErrorHandler({
 	source: 'ai-builder',
 	titleKey: 'aiAssistant.builder.error.title',
@@ -236,7 +236,7 @@ const {
 	isExpanded,
 	toggleExpanded,
 	openDiffView,
-} = useReviewChanges();
+} = useReviewChanges(workflowId);
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });

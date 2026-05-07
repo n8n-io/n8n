@@ -98,12 +98,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import { N8nButton, N8nFormInputs } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const SURVEY_VERSION = 'v4';
 
 const externalHooks = useExternalHooks();
 const modalBus = createEventBus();
 const formBus = createFormEventBus();
-const { showError } = useToast();
+const workflowId = useWorkflowId();
+const { showError } = useToast(workflowId);
 const i18n = useI18n();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();

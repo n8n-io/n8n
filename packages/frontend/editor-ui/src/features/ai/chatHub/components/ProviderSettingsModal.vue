@@ -28,6 +28,7 @@ import { useToast } from '@/app/composables/useToast';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import TagsDropdown from '@/features/shared/tags/components/TagsDropdown.vue';
 import { type ITag } from '@n8n/rest-api-client';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 interface IModel extends ITag {
 	isManual?: boolean;
@@ -118,7 +119,8 @@ async function addManualModel(name: string): Promise<IModel> {
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const chatStore = useChatStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 
 const credentialType = computed(() => {
 	return PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider];

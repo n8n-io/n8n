@@ -20,6 +20,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
 import ImportCsvModal from './ImportCsvModal.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 type Props = {
 	dataTable: DataTable;
 	isReadOnly?: boolean;
@@ -47,7 +48,8 @@ const favoritesStore = useFavoritesStore();
 
 const i18n = useI18n();
 const message = useMessage();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const telemetry = useTelemetry();
 
 const downloadModalKey = computed(() => `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${props.dataTable.id}`);

@@ -31,15 +31,14 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const { callDebounced } = useDebounce();
 
 const loading = ref(false);
 const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
-
-const workflowId = useInjectWorkflowId();
 
 const executionId = computed(() => {
 	const id = route.params.executionId;

@@ -23,12 +23,14 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { providerDisplayNames, vectorStoreProviderDisplayNames } from './constants';
 import { DEFAULT_SEMANTIC_SEARCH_SETTINGS, EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import { deepCopy } from 'n8n-workflow';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
 const message = useMessage();
 const rootStore = useRootStore();
 const chatStore = useChatStore();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 

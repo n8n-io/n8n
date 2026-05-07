@@ -38,12 +38,14 @@ import { useQuickConnect } from '@/features/credentials/quickConnect/composables
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
+const workflowId = useInjectWorkflowId();
 const usersStore = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
@@ -54,10 +56,10 @@ const {
 	getPlaceholderTriggerActions,
 	parseCategoryActions,
 	actionsCategoryLocales,
-} = useActions();
+} = useActions(workflowId);
 
 const nodeCreatorStore = useNodeCreatorStore();
-const { openSampleWorkflowTemplate } = useCalloutHelpers();
+const { openSampleWorkflowTemplate } = useCalloutHelpers(workflowId);
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>

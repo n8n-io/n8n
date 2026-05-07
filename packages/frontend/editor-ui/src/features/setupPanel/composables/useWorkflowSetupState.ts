@@ -42,14 +42,17 @@ import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
+import type { RefOrComputedRef } from '@/app/types';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
  * Cards are grouped by credential type (one card per unique credential type)
  * with trigger nodes getting their own dedicated cards (test button only).
+ * @param workflowId The workflow ID to scope state to.
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
 export const useWorkflowSetupState = (
+	workflowId: RefOrComputedRef<string>,
 	nodes?: Ref<INodeUi[]>,
 	options?: {
 		/** Additional parameter names per node that should be shown in setup cards
@@ -60,11 +63,11 @@ export const useWorkflowSetupState = (
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const environmentsStore = useEnvironmentsStore();
 	const templatesStore = useTemplatesStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);

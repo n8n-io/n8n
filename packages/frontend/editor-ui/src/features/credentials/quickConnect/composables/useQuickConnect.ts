@@ -10,6 +10,7 @@ import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
 import { useToast } from '@/app/composables/useToast';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,17 +18,19 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 export function useQuickConnect() {
+	const workflowId = useInjectWorkflowId();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const message = useMessage();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const i18n = useI18n();
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const loading = ref(false);
-	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
+	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } =
+		useCredentialOAuth(workflowId);
 	const cleanUpHandlers: Array<() => void> = [];
 
 	const optionsByCredentialType = computed(() => {

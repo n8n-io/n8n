@@ -9,6 +9,7 @@ import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, shallowRef, watch } from 'vue';
 import RunDataAiContent from './RunDataAiContent.vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 export interface Props {
 	node: INodeUi;
@@ -23,9 +24,13 @@ const filter = computed<LogTreeFilter>(() => ({
 	rootNodeId: node.id,
 	rootNodeRunIndex: runIndex,
 }));
-const { entries, execution, latestNodeNameById, loadSubExecution } = useLogsExecutionData({
-	filter,
-});
+const workflowId = useInjectWorkflowId();
+const { entries, execution, latestNodeNameById, loadSubExecution } = useLogsExecutionData(
+	workflowId,
+	{
+		filter,
+	},
+);
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const selected = shallowRef<LogEntry>();
 

@@ -14,6 +14,7 @@ import WorkflowHistoryVersionSelect from '../components/WorkflowHistoryVersionSe
 import { useWorkflowHistoryVersionOptions } from '../useWorkflowHistoryVersionOptions';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const props = defineProps<{
 	workflowId: string;
@@ -27,7 +28,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowIdRef = useWorkflowId();
+const toast = useToast(workflowIdRef);
 const workflowHistoryStore = useWorkflowHistoryStore();
 const rootStore = useRootStore();
 const workflowsListStore = useWorkflowsListStore();

@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -7,11 +8,11 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
  */
 export async function testWebhookReceived(
 	{ data }: TestWebhookReceived,
-	options: { workflowState: WorkflowState },
+	options: { workflowState: WorkflowState; workflowId: ComputedRef<string> },
 ) {
 	const workflowsStore = useWorkflowsStore();
 
-	if (data.workflowId === workflowsStore.workflowId) {
+	if (data.workflowId === options.workflowId.value) {
 		workflowsStore.setExecutionWaitingForWebhook(false);
 		options.workflowState.setActiveExecutionId(data.executionId ?? null);
 	}

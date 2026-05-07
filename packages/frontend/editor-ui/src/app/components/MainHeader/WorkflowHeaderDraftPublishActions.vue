@@ -37,6 +37,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -69,11 +70,12 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const router = useRouter();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 const saveStore = useWorkflowSaveStore();
-const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
-const workflowActivate = useWorkflowActivate();
+const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving(workflowId, { router });
+const workflowActivate = useWorkflowActivate(workflowId);
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],

@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	fetchSettings,
 	updateSettings,
@@ -30,7 +31,8 @@ import { i18n } from '@n8n/i18n';
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const toast = useToast();
+	const workflowId = useWorkflowId();
+	const toast = useToast(workflowId);
 
 	const isLoading = ref(false);
 	const isSaving = ref(false);

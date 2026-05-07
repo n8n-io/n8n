@@ -86,7 +86,7 @@ const workflowState = injectWorkflowState();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
-const { dirtinessByName } = useNodeDirtiness();
+const { dirtinessByName } = useNodeDirtiness(workflowId);
 const uiStore = useUIStore();
 
 // Composables
@@ -94,7 +94,7 @@ const uiStore = useUIStore();
 const { isSubNodeType } = useNodeType({
 	node: activeNode,
 });
-const pinnedData = usePinnedData(activeNode, {
+const pinnedData = usePinnedData(workflowId, activeNode, {
 	runIndex: props.runIndex,
 	displayMode: props.displayMode,
 });
@@ -115,7 +115,7 @@ const node = computed(() => {
 	return ndvStore.activeNode ?? undefined;
 });
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction(workflowId);
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);

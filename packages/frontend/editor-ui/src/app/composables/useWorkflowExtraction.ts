@@ -24,6 +24,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useCanvasOperations } from './useCanvasOperations';
 
 import type { AddedNode, INodeUi, IWorkflowDb } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
@@ -38,20 +39,20 @@ const CANVAS_HISTORY_OPTIONS = {
 	trackHistory: true,
 };
 
-export function useWorkflowExtraction() {
+export function useWorkflowExtraction(workflowId: RefOrComputedRef<string>) {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() => {
-		if (workflowsStore.workflowId) {
-			return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		if (workflowId.value) {
+			return useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value));
 		}
 		return null;
 	});
 	const nodeTypesStore = useNodeTypesStore();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const router = useRouter();
 	const historyStore = useHistoryStore();
-	const canvasOperations = useCanvasOperations();
+	const canvasOperations = useCanvasOperations(workflowId);
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 

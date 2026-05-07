@@ -27,6 +27,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const MIN_IO_PANEL_WIDTH = 200;
 
 const {
@@ -64,7 +65,9 @@ const nodeTypeStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
-const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const workflowId = useInjectWorkflowId();
+const { isRedacted, canReveal, isDynamicCredentials, revealData } =
+	useExecutionRedaction(workflowId);
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));

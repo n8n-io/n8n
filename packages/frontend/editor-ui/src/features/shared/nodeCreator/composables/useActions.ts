@@ -38,13 +38,13 @@ import {
 import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import type { RefOrComputedRef } from '@/app/types';
 
 import {
 	removePreviewToken,
@@ -56,10 +56,9 @@ import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
-export const useActions = () => {
-	const workflowsStore = useWorkflowsStore();
+export const useActions = (workflowId: RefOrComputedRef<string>) => {
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -258,10 +257,8 @@ export const useActions = () => {
 
 	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
-		const { workflowId } = useWorkflowsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const hasTrigger = addedNodes.some((node) => useNodeTypesStore().isTriggerNode(node.type));
-		const workflowContainsTrigger = workflowDocumentStore.workflowTriggerNodes.length > 0;
+		const workflowContainsTrigger = workflowDocumentStore.value.workflowTriggerNodes.length > 0;
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 

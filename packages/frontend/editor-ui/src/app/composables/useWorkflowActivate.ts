@@ -18,12 +18,13 @@ import { useActivationError } from '@/app/composables/useActivationError';
 import type { INode } from 'n8n-workflow';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
 import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
+import type { RefOrComputedRef } from '@/app/types';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
-export function useWorkflowActivate() {
+export function useWorkflowActivate(workflowId: RefOrComputedRef<string>) {
 	const updatingWorkflowActivation = ref(false);
 	const activationErrorNodeId = ref<string | undefined>();
 
@@ -31,10 +32,13 @@ export function useWorkflowActivate() {
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const i18n = useI18n();
 	const collaborationStore = useCollaborationStore();
-	const { errorMessage: activationErrorMessage } = useActivationError(activationErrorNodeId);
+	const { errorMessage: activationErrorMessage } = useActivationError(
+		workflowId,
+		activationErrorNodeId,
+	);
 
 	const parseWebhookConflictError = (error: ResponseError) => {
 		try {
@@ -83,7 +87,7 @@ export function useWorkflowActivate() {
 	};
 
 	const publishWorkflow = async (
-		workflowId: string,
+		targetWorkflowId: string,
 		versionId: string,
 		options?: { name?: string; description?: string },
 	) => {
@@ -91,12 +95,12 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const workflow = workflowsListStore.getWorkflowById(targetWorkflowId);
 		const hadPublishedVersion = !!workflow.activeVersion;
 
 		if (!hadPublishedVersion) {
 			const telemetryPayload = {
-				workflow_id: workflowId,
+				workflow_id: targetWorkflowId,
 				is_active: true,
 				previous_status: false,
 				ndv_input: false,
@@ -104,13 +108,15 @@ export function useWorkflowActivate() {
 			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 		}
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(targetWorkflowId),
+		);
 
 		try {
 			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+				targetWorkflowId === workflowId.value ? workflowDocumentStore.checksum : undefined;
 
-			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
+			const updatedWorkflow = await workflowsStore.publishWorkflow(targetWorkflowId, {
 				versionId,
 				name: options?.name,
 				description: options?.description,
@@ -120,13 +126,13 @@ export function useWorkflowActivate() {
 			if (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum) {
 				throw new Error('Failed to publish workflow');
 			}
-			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
+			workflowsStore.setWorkflowActive(targetWorkflowId, updatedWorkflow.activeVersion, true);
 			workflowDocumentStore.setActiveState({
 				activeVersionId: updatedWorkflow.activeVersion.versionId,
 				activeVersion: updatedWorkflow.activeVersion,
 			});
 
-			if (workflowId === workflowsStore.workflowId) {
+			if (targetWorkflowId === workflowId.value) {
 				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
 					name: workflowDocumentStore.versionData?.name ?? null,
@@ -138,7 +144,7 @@ export function useWorkflowActivate() {
 			}
 
 			void useExternalHooks().run('workflow.published', {
-				workflowId,
+				workflowId: targetWorkflowId,
 				versionId: updatedWorkflow.activeVersion.versionId,
 			});
 
@@ -162,7 +168,7 @@ export function useWorkflowActivate() {
 
 				// Only update workflow state to inactive if this is not a validation error
 				if (!error.meta?.validationError) {
-					workflowsStore.setWorkflowInactive(workflowId);
+					workflowsStore.setWorkflowInactive(targetWorkflowId);
 					workflowDocumentStore.setActiveState({
 						activeVersionId: null,
 						activeVersion: null,
@@ -175,16 +181,16 @@ export function useWorkflowActivate() {
 		}
 	};
 
-	const unpublishWorkflowFromHistory = async (workflowId: string) => {
+	const unpublishWorkflowFromHistory = async (targetWorkflowId: string) => {
 		updatingWorkflowActivation.value = true;
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const workflow = workflowsListStore.getWorkflowById(targetWorkflowId);
 		const wasPublished = !!workflow.activeVersion;
 
 		const telemetryPayload = {
-			workflow_id: workflowId,
+			workflow_id: targetWorkflowId,
 			is_active: false,
 			previous_status: wasPublished,
 			ndv_input: false,
@@ -192,19 +198,21 @@ export function useWorkflowActivate() {
 
 		telemetry.track('User set workflow active status', telemetryPayload);
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(targetWorkflowId),
+		);
 		try {
 			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+				targetWorkflowId === workflowId.value ? workflowDocumentStore.checksum : undefined;
 
-			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
+			await workflowsStore.deactivateWorkflow(targetWorkflowId, expectedChecksum);
 			workflowDocumentStore.setActiveState({
 				activeVersionId: null,
 				activeVersion: null,
 			});
 
 			void useExternalHooks().run('workflow.unpublished', {
-				workflowId,
+				workflowId: targetWorkflowId,
 			});
 
 			return true;

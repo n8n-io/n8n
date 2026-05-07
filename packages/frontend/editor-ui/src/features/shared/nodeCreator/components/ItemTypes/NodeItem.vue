@@ -29,6 +29,7 @@ import {
 } from '../../nodeCreator.utils';
 
 import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	subcategory?: string;
@@ -43,8 +44,9 @@ const props = withDefaults(defineProps<Props>(), {
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
+const workflowId = useInjectWorkflowId();
 const { actions } = useNodeCreatorStore();
-const { getAddedNodesAndConnections } = useActions();
+const { getAddedNodesAndConnections } = useActions(workflowId);
 const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,

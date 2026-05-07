@@ -16,6 +16,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -31,7 +32,8 @@ const ssoStore = useSSOStore();
 const route = useRoute();
 const router = useRouter();
 
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const locale = useI18n();
 const telemetry = useTelemetry();
 

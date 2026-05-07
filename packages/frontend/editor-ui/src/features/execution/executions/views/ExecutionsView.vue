@@ -16,6 +16,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { storeToRefs } from 'pinia';
 import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -26,7 +27,8 @@ const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const overview = useProjectPages();
 
 const {

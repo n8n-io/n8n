@@ -98,6 +98,7 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
@@ -166,10 +167,11 @@ const emit = defineEmits<{
 
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const { debounce } = useDebounce();
-const workflowHelpers = useWorkflowHelpers();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const workflowHelpers = useWorkflowHelpers(workflowId);
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();

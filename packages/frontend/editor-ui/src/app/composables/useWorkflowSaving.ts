@@ -39,14 +39,18 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { RefOrComputedRef } from '@/app/types';
 
-export function useWorkflowSaving({
-	router,
-	onSaved,
-}: {
-	router: ReturnType<typeof useRouter>;
-	onSaved?: (isFirstSave: boolean) => void;
-}) {
+export function useWorkflowSaving(
+	workflowId: RefOrComputedRef<string>,
+	{
+		router,
+		onSaved,
+	}: {
+		router: ReturnType<typeof useRouter>;
+		onSaved?: (isFirstSave: boolean) => void;
+	},
+) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const message = useMessage();
@@ -54,13 +58,13 @@ export function useWorkflowSaving({
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const focusPanelStore = useFocusPanelStore();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const telemetry = useTelemetry();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
 
-	const { checkConflictingWebhooks, getWorkflowProjectRole } = useWorkflowHelpers();
+	const { checkConflictingWebhooks, getWorkflowProjectRole } = useWorkflowHelpers(workflowId);
 
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
@@ -77,7 +81,7 @@ export function useWorkflowSaving({
 		} = {},
 	) {
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 
 		if (
@@ -124,7 +128,7 @@ export function useWorkflowSaving({
 				return;
 			case MODAL_CLOSE:
 				// For new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+				if (workflowsStore.isWorkflowSaved[workflowId.value]) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -137,7 +141,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { workflowId: workflowsStore.workflowId },
+				params: { workflowId: workflowId.value },
 			}),
 		);
 	}
@@ -387,7 +391,7 @@ export function useWorkflowSaving({
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const currentDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(workflowId.value),
 			);
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
 			const changedNodes = {} as IDataObject;

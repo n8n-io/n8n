@@ -6,14 +6,18 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import type { RefOrComputedRef } from '@/app/types';
 import { computed, type ComputedRef } from 'vue';
 
-export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
+export function useExpressionResolveCtx(
+	workflowId: RefOrComputedRef<string>,
+	node: ComputedRef<INodeUi | null | undefined>,
+) {
 	const environmentsStore = useEnvironmentsStore();
 	const workflowsStore = useWorkflowsStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {

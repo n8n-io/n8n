@@ -21,6 +21,7 @@ import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const selectedOption = ref<string | undefined>(undefined);
 
@@ -40,7 +41,8 @@ const emit = defineEmits<{
 const props = defineProps<Props>();
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 
 const { activeNode } = storeToRefs(ndvStore);
 

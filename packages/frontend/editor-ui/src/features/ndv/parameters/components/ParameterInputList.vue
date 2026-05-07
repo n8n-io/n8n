@@ -42,6 +42,7 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
@@ -106,9 +107,10 @@ const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const message = useMessage();
-const nodeSettingsParameters = useNodeSettingsParameters();
+const workflowId = useInjectWorkflowId();
+const nodeSettingsParameters = useNodeSettingsParameters(workflowId);
 const asyncLoadingError = ref(false);
-const workflowHelpers = useWorkflowHelpers();
+const workflowHelpers = useWorkflowHelpers(workflowId);
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const {
@@ -116,7 +118,7 @@ const {
 	isCalloutDismissed,
 	openSampleWorkflowTemplate,
 	isRagStarterCalloutVisible,
-} = useCalloutHelpers();
+} = useCalloutHelpers(workflowId);
 const aiGateway = useAiGateway();
 
 const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);

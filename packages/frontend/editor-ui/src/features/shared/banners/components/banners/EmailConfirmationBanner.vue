@@ -7,7 +7,9 @@ import { computed } from 'vue';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 
 import { N8nButton } from '@n8n/design-system';
-const toast = useToast();
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const cloudPlanStore = useCloudPlanStore();
 
 const userEmail = computed(() => {

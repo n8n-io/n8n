@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 import type { WorkflowSettingsUpdated } from '@n8n/api-types/push/workflow';
 import type { IWorkflowSettings } from '@/Interface';
 
@@ -6,12 +7,11 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-export async function workflowSettingsUpdated({
-	data: { workflowId, settings, checksum },
-}: WorkflowSettingsUpdated) {
-	const workflowsStore = useWorkflowsStore();
+export async function workflowSettingsUpdated(
+	{ data: { workflowId, settings, checksum } }: WorkflowSettingsUpdated,
+	options: { workflowId: ComputedRef<string> },
+) {
 	const workflowsListStore = useWorkflowsListStore();
 
 	// Keep the list entry in sync so other views (workflow cards, MCP
@@ -29,7 +29,7 @@ export async function workflowSettingsUpdated({
 	}
 
 	// Only the editor tab needs to resync the document store + checksum.
-	if (workflowId !== workflowsStore.workflowId) return;
+	if (workflowId !== options.workflowId.value) return;
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	workflowDocumentStore.mergeSettings(settings);

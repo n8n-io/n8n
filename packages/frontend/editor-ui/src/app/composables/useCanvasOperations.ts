@@ -12,6 +12,7 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -172,7 +173,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	actionName?: string;
 };
 
-export function useCanvasOperations() {
+export function useCanvasOperations(workflowId: RefOrComputedRef<string>) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
@@ -193,13 +194,13 @@ export function useCanvasOperations() {
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const i18n = useI18n();
-	const toast = useToast();
-	const workflowHelpers = useWorkflowHelpers();
-	const nodeHelpers = useNodeHelpers();
+	const toast = useToast(workflowId);
+	const workflowHelpers = useWorkflowHelpers(workflowId);
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
@@ -529,13 +530,13 @@ export function useCanvasOperations() {
 
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });
 			telemetry.track('User deleted node', {
 				node_type: node.type,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 			});
 		}
 	}
@@ -702,7 +703,7 @@ export function useCanvasOperations() {
 
 		// Filter to only pinnable nodes
 		const pinnableNodesWithPinnedData = nodes
-			.map((node) => ({ node, pinnedData: usePinnedData(node) }))
+			.map((node) => ({ node, pinnedData: usePinnedData(workflowId, node) }))
 			.filter(({ pinnedData }) => pinnedData.canPinNode(true));
 
 		const nextStatePinned = pinnableNodesWithPinnedData.some(
@@ -711,7 +712,7 @@ export function useCanvasOperations() {
 
 		for (const { node, pinnedData: pinnedDataForNode } of pinnableNodesWithPinnedData) {
 			if (nextStatePinned) {
-				const dataToPin = useDataSchema().getInputDataWithPinned(node);
+				const dataToPin = useDataSchema(workflowId).getInputDataWithPinned(node);
 				if (dataToPin.length !== 0) {
 					pinnedDataForNode.setData(dataToPin, source);
 				}
@@ -1080,7 +1081,7 @@ export function useCanvasOperations() {
 
 	function trackAddStickyNoteNode() {
 		telemetry.track('User inserted workflow note', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 		});
 	}
 
@@ -1101,7 +1102,7 @@ export function useCanvasOperations() {
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			drag_and_drop: options.dragAndDrop,
 			input_node_type: uiStore.lastInteractedWithNode
 				? uiStore.lastInteractedWithNode.type
@@ -2310,7 +2311,7 @@ export function useCanvasOperations() {
 		// Make sure that if there is a waiting test-webhook, it gets removed
 		if (workflowsStore.executionWaitingForWebhook) {
 			try {
-				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+				void workflowsStore.removeTestWebhook(workflowId.value);
 			} catch (error) {}
 		}
 
@@ -2554,7 +2555,7 @@ export function useCanvasOperations() {
 				const node = tempWorkflow.nodes[nodeNameTable[nodeName] ?? nodeName];
 				if (node) {
 					try {
-						const pinnedDataForNode = usePinnedData(node);
+						const pinnedDataForNode = usePinnedData(workflowId, node);
 						pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
 						pinDataSuccess = true;
 					} catch (error) {
@@ -2719,18 +2720,18 @@ export function useCanvasOperations() {
 
 					if (source === 'paste') {
 						telemetry.track('User pasted nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowId.value,
 							node_graph_string: nodeGraph,
 						});
 					} else if (source === 'duplicate') {
 						telemetry.track('User duplicated nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowId.value,
 							node_graph_string: nodeGraph,
 						});
 					} else {
 						telemetry.track('User imported workflow', {
 							source,
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowId.value,
 							node_graph_string: nodeGraph,
 						});
 					}
@@ -2955,7 +2956,7 @@ export function useCanvasOperations() {
 
 		telemetry.track('User copied nodes', {
 			node_types: workflowData.nodes.map((node) => node.type),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 		});
 	}
 

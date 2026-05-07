@@ -27,6 +27,7 @@ import ChatGreetings from './ChatGreetings.vue';
 import ChatAgentAvatar from './ChatAgentAvatar.vue';
 import CanvasChatSessionDropdown from './CanvasChatSessionDropdown.vue';
 import type { ChatMessage as ChatMessageType } from '../chat.types';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = withDefaults(
 	defineProps<{
@@ -47,7 +48,8 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const telemetry = useTelemetry();
 const clipboard = useClipboard();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 const canPopOut = computed(() => window.parent === window);
 const isPoppedOut = computed(() => chatHubPanelStore.isPoppedOut);

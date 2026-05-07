@@ -23,6 +23,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
+import type { RefOrComputedRef } from '@/app/types';
 
 interface ChatState {
 	currentSessionId: ComputedRef<string>;
@@ -42,22 +43,23 @@ interface ChatState {
 }
 
 export function useChatState(
+	workflowId: RefOrComputedRef<string>,
 	isReadOnly: boolean,
 	sessionId?: Ref<string | undefined> | (() => string | undefined),
 ): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = injectWorkflowState();
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const nodeTypesStore = useNodeTypesStore();
 	const pushConnectionStore = usePushConnectionStore();
-	const { runWorkflow } = useRunWorkflow({ router });
+	const { runWorkflow } = useRunWorkflow(workflowId, { router });
 
 	const webhookRegistered = ref(false);
 	const isRegistering = ref(false);
@@ -144,7 +146,7 @@ export function useChatState(
 		}
 
 		// Must have a valid workflow ID (for new workflows, this might not be set until saved)
-		if (!workflowsStore.workflowId && !workflowsStore.isNewWorkflow) {
+		if (!workflowId.value && !workflowsStore.isNewWorkflow) {
 			return false;
 		}
 
@@ -156,12 +158,12 @@ export function useChatState(
 			return '';
 		}
 
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
+		const currentWorkflowId = workflowId.value;
+		if (!currentWorkflowId) {
 			return '';
 		}
 
-		const url = `${rootStore.webhookTestUrl}/${workflowId}/${effectiveSessionId.value}`;
+		const url = `${rootStore.webhookTestUrl}/${currentWorkflowId}/${effectiveSessionId.value}`;
 
 		return url;
 	});
@@ -347,13 +349,13 @@ export function useChatState(
 	function displayExecution(executionId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { workflowId: workflowsStore.workflowId, executionId },
+			params: { workflowId: workflowId.value, executionId },
 		});
 		window.open(route.href, '_blank');
 	}
 
 	watch(
-		() => workflowsStore.workflowId,
+		() => workflowId.value,
 		(_newWorkflowId, prevWorkflowId) => {
 			if (!prevWorkflowId) {
 				return;

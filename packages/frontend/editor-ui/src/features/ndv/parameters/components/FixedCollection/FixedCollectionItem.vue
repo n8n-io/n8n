@@ -15,8 +15,10 @@ import {
 import ParameterInputList from '../ParameterInputList.vue';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const locale = useI18n();
+const workflowId = useInjectWorkflowId();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 export type Props = {
@@ -64,7 +66,7 @@ const pickerDropdownItems = computed(
 
 const defaultTitle = computed(() => `${props.property.displayName} ${props.stableIndex + 1}`);
 
-const { resolvedExpression } = useResolvedExpression({
+const { resolvedExpression } = useResolvedExpression(workflowId, {
 	expression: () => props.titleTemplate ?? '',
 	additionalData: () => ({
 		$collection: {

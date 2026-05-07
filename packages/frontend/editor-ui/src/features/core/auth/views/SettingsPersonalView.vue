@@ -24,6 +24,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
 import { confirmPasswordEventBus } from '../auth.eventBus';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 import {
 	N8nAvatar,
@@ -58,7 +59,8 @@ type RoleContent = {
 };
 
 const i18n = useI18n();
-const { showToast, showError } = useToast();
+const workflowId = useWorkflowId();
+const { showToast, showError } = useToast(workflowId);
 const documentTitle = useDocumentTitle();
 
 const hasAnyBasicInfoChanges = ref<boolean>(false);

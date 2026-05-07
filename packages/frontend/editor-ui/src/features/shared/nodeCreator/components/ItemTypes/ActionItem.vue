@@ -9,6 +9,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useActions } from '../../composables/useActions';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { N8nNodeCreatorNode } from '@n8n/design-system';
 export interface Props {
@@ -18,8 +19,10 @@ export interface Props {
 
 const props = defineProps<Props>();
 const telemetry = useTelemetry();
+const workflowId = useInjectWorkflowId();
 
-const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions();
+const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } =
+	useActions(workflowId);
 const { activeViewStack } = useViewStacks();
 
 const state = reactive({

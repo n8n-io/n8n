@@ -11,6 +11,7 @@ import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const { node, nodeIds, isReadOnly } = defineProps<{
 	node: INodeUi;
 	nodeIds: string[];
@@ -23,7 +24,11 @@ const emit = defineEmits<{
 	contextMenuAction: [ContextMenuAction, nodeIds: string[]];
 }>();
 
-const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
+const workflowId = useInjectWorkflowId();
+const expressionResolveCtx = useExpressionResolveCtx(
+	workflowId,
+	computed(() => node),
+);
 const contextMenuItems = useContextMenuItems(computed(() => nodeIds));
 const ndvStore = injectNDVStore();
 

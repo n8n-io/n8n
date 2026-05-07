@@ -1,3 +1,4 @@
+import { computed } from 'vue';
 import {
 	deepCopy,
 	isAssignmentCollectionValue,
@@ -17,6 +18,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
@@ -41,10 +43,11 @@ const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
 const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
 
 export const useAIAssistantHelpers = () => {
+	const workflowId = useInjectWorkflowId();
 	const ndvStore = useNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const workflowHelpers = useWorkflowHelpers();
+	const workflowHelpers = useWorkflowHelpers(workflowId);
 	const locale = useI18n();
 
 	/**
@@ -305,6 +308,7 @@ export const useAIAssistantHelpers = () => {
 	 */
 	function getNodesSchemas(workflowId: string, nodeNames: string[], excludeValues?: boolean) {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowIdRef = computed(() => workflowId);
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
@@ -315,7 +319,7 @@ export const useAIAssistantHelpers = () => {
 			if (workflowDocumentStore.pinData?.[node.name]) {
 				pinnedNodeNames.push(node.name);
 			}
-			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema(workflowIdRef);
 			const schema = getSchemaForExecutionData(
 				executionDataToJson(getInputDataWithPinned(node)),
 				excludeValues,

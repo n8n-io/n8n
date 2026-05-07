@@ -2,11 +2,13 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { CommandGroup } from '../types';
 
 export function useTemplateCommands(): CommandGroup {
+	const workflowId = useInjectWorkflowId();
 	const i18n = useI18n();
-	const { openWorkflowTemplate } = useCanvasOperations();
+	const { openWorkflowTemplate } = useCanvasOperations(workflowId);
 	const templatesStore = useTemplatesStore();
 
 	const importTemplateCommands = computed(() => {

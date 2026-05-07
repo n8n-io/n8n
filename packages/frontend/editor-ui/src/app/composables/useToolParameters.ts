@@ -19,6 +19,7 @@ import { type IFormInput } from '@n8n/design-system';
 import { type JSONSchema7 } from 'json-schema';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 import { TOOL_NODE_TYPES_NEED_INPUT } from '../utils/nodes/nodeTransforms';
+import type { RefOrComputedRef } from '@/app/types';
 
 export type FieldMetadata = {
 	nodeName: string;
@@ -28,7 +29,10 @@ interface GetToolParametersProps {
 	node: Ref<INode | undefined | null>;
 }
 
-export function useToolParameters({ node }: GetToolParametersProps) {
+export function useToolParameters(
+	workflowId: RefOrComputedRef<string>,
+	{ node }: GetToolParametersProps,
+) {
 	const parameters = ref<IFormInput[]>([]);
 	const workflowsStore = useWorkflowsStore();
 	const projectsStore = useProjectsStore();
@@ -36,7 +40,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const agentRequestStore = useAgentRequestStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const selectedToolMap = reactive<Record<string, string | undefined>>({});
@@ -114,7 +118,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			currentNodeParameters: newNode.parameters,
 			credentials: newNode.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 		});
 
 		// Load available tools
@@ -271,7 +275,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const initialValue = inputQuery?.[value.key]
 				? inputQuery[value.key]
 				: (agentRequestStore.getQueryValue(
-						workflowsStore.workflowId,
+						workflowId.value,
 						toolNode.id,
 						toolNode.name,
 						value.key,
@@ -300,12 +304,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const inputQuery = inputOverrides?.[key];
 			const queryValue =
 				inputQuery ??
-				agentRequestStore.getQueryValue(
-					workflowsStore.workflowId,
-					toolNode.id,
-					toolNode.name,
-					key,
-				) ??
+				agentRequestStore.getQueryValue(workflowId.value, toolNode.id, toolNode.name, key) ??
 				'';
 
 			result.unshift({

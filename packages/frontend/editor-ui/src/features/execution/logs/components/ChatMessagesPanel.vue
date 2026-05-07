@@ -43,7 +43,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const clipboard = useClipboard();
 const workflowId = useInjectWorkflowId();
-const toast = useToast();
+const toast = useToast(workflowId);
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
 // Use the chat state composable
@@ -54,7 +54,7 @@ const {
 	allowedFilesMimeTypes,
 	isWorkflowReadyForChat,
 	chatOptions,
-} = useChatState(props.isReadOnly, () => props.sessionId);
+} = useChatState(workflowId, props.isReadOnly, () => props.sessionId);
 
 let chatApp: App | null = null;
 

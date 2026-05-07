@@ -15,11 +15,13 @@ import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const message = useMessage();
 
 const savingForm = ref<boolean>(false);

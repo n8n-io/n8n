@@ -56,6 +56,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -89,6 +90,7 @@ const emit = defineEmits<{
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const workflowId = useWorkflowId();
 const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
 const credentialsStore = useCredentialsStore();
@@ -107,7 +109,7 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { hasManagedOAuthCredentials } = useCredentialOAuth();
+const { hasManagedOAuthCredentials } = useCredentialOAuth(workflowId);
 
 const aiGateway = useAiGateway();
 
@@ -118,8 +120,8 @@ const canCreateCredentials = computed(
 		).credential.create,
 );
 
-const nodeHelpers = useNodeHelpers();
-const toast = useToast();
+const nodeHelpers = useNodeHelpers(workflowId);
+const toast = useToast(workflowId);
 
 const subscribedToCredentialType = ref('');
 const filter = ref('');

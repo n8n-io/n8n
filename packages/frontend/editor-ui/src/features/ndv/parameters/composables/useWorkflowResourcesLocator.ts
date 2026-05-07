@@ -7,11 +7,13 @@ import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 export function useWorkflowResourcesLocator(router: Router) {
+	const workflowId = useInjectWorkflowId();
 	const workflowsListStore = useWorkflowsListStore();
 	const ndvStore = useNDVStore();
-	const { renameNode } = useCanvasOperations();
+	const { renameNode } = useCanvasOperations(workflowId);
 
 	const workflowsResources = ref<
 		Array<{ name: string; value: string; url: string; isArchived: boolean; active: boolean }>

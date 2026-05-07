@@ -49,19 +49,19 @@ const workflowsEEStore = useWorkflowsEEStore();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 
-const toast = useToast();
+const workflowId = computed(() => data.id);
+const toast = useToast(workflowId);
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
-const workflowSaving = useWorkflowSaving({ router });
+const workflowSaving = useWorkflowSaving(workflowId, { router });
 
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(data.id)),
 );
 const workflowListEntry = computed(() => workflowsListStore.workflowsById[data.id]);
-const workflowId = computed(() => data.id);
 const workflowName = computed(
 	() => workflowListEntry.value?.name ?? workflowDocumentStore.value.name,
 );

@@ -1,4 +1,5 @@
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -33,7 +34,8 @@ export function useNodeCredentialOptions(
 	overrideCredType: MaybeRef<NodeParameterValueType | undefined>,
 	displayAllOptions: MaybeRefOrGetter<boolean> = false,
 ) {
-	const nodeHelpers = useNodeHelpers();
+	const workflowId = useInjectWorkflowId();
+	const nodeHelpers = useNodeHelpers(workflowId);
 	const credentialsStore = useCredentialsStore();
 	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
 

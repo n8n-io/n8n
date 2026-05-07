@@ -46,11 +46,11 @@ const props = defineProps<Props>();
 
 const router = useRouter();
 const clipboard = useClipboard();
-const toast = useToast();
 const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
 const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();

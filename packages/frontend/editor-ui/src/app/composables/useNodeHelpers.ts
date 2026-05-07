@@ -35,6 +35,7 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import type { AddedNode, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
+import type { RefOrComputedRef } from '@/app/types';
 
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
@@ -63,7 +64,7 @@ declare namespace HttpRequestNode {
 	}
 }
 
-export function useNodeHelpers() {
+export function useNodeHelpers(workflowId: RefOrComputedRef<string>) {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -73,7 +74,7 @@ export function useNodeHelpers() {
 	const canvasStore = useCanvasStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const isInsertingNodes = ref(false);
@@ -155,7 +156,7 @@ export function useNodeHelpers() {
 		}
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		const usedCredentials = workflowDocumentStore.usedCredentials;
 
@@ -193,7 +194,7 @@ export function useNodeHelpers() {
 		ignoreIssues?: string[],
 	): INodeIssues | null {
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		const pinDataNodeNames = Object.keys(workflowDocumentStore.pinData);
 
@@ -430,7 +431,7 @@ export function useNodeHelpers() {
 	): INodeIssues | null {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (node.disabled) {
 			// Node is disabled
@@ -746,7 +747,7 @@ export function useNodeHelpers() {
 			telemetry.track('User set node enabled status', {
 				node_type: node.type,
 				is_enabled: node.disabled,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 			});
 
 			workflowDocumentStore.value.updateNodeProperties(updateInformation);

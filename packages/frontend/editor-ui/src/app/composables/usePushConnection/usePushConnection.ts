@@ -24,6 +24,7 @@ import {
 	workflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
 
@@ -35,9 +36,11 @@ export function usePushConnection({
 	workflowState?: WorkflowState;
 }) {
 	const pushStore = usePushConnectionStore();
+	const workflowId = useInjectWorkflowId();
 	const options = {
 		router,
 		workflowState: workflowState ?? injectWorkflowState(),
+		workflowId,
 	};
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
@@ -90,13 +93,13 @@ export function usePushConnection({
 			case 'executionRecovered':
 				return await executionRecovered(event, options);
 			case 'workflowActivated':
-				return await workflowActivated(event);
+				return await workflowActivated(event, options);
 			case 'workflowDeactivated':
-				return await workflowDeactivated(event);
+				return await workflowDeactivated(event, options);
 			case 'workflowAutoDeactivated':
-				return await workflowAutoDeactivated(event);
+				return await workflowAutoDeactivated(event, options);
 			case 'workflowSettingsUpdated':
-				return await workflowSettingsUpdated(event);
+				return await workflowSettingsUpdated(event, options);
 			case 'updateBuilderCredits':
 				return await builderCreditsUpdated(event);
 		}

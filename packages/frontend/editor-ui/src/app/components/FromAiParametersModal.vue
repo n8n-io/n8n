@@ -17,6 +17,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { ElCol, ElRow } from 'element-plus';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToolParameters } from '../composables/useToolParameters';
 
 type Value = string | number | boolean | null | undefined;
@@ -45,7 +46,8 @@ const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 const router = useRouter();
-const { runWorkflow } = useRunWorkflow({ router });
+const workflowId = useInjectWorkflowId();
+const { runWorkflow } = useRunWorkflow(workflowId, { router });
 const agentRequestStore = useAgentRequestStore();
 
 const node = computed(() =>
@@ -59,7 +61,9 @@ const parentNode = computed(() => {
 	return workflowDocumentStore.value.getNodeByName(parentNodes[0])?.name;
 });
 
-const { getToolName, parameters, error, updateSelectedTool } = useToolParameters({ node });
+const { getToolName, parameters, error, updateSelectedTool } = useToolParameters(workflowId, {
+	node,
+});
 
 const onClose = () => {
 	modalBus.emit('close');

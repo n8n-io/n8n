@@ -13,6 +13,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types';
 import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
@@ -121,12 +122,12 @@ function findLoop(
 /**
  * Determines the subgraph that is affected by changes made after the last (partial) execution
  */
-export function useNodeDirtiness() {
+export function useNodeDirtiness(workflowId: RefOrComputedRef<string>) {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	function getIncomingConnections(nodeName: string): INodeConnections {

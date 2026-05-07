@@ -9,6 +9,7 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const {
 	size = 'large',
 	spinnerScrim = false,
@@ -19,7 +20,8 @@ const {
 	spinnerLayout?: 'absolute' | 'static';
 }>();
 
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const i18n = useI18n();
 const $style = useCssModule();
 

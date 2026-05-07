@@ -41,6 +41,7 @@ import { dedupe } from 'n8n-workflow';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
@@ -262,7 +263,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const telemetry = useTelemetry();
 	const uiStore = useUIStore();
 	const router = useRouter();
-	const workflowSaver = useWorkflowSaving({ router });
+	const workflowId = useWorkflowId();
+	const workflowSaver = useWorkflowSaving(workflowId, { router });
 	const posthogStore = usePostHog();
 	const focusedNodesStore = useFocusedNodesStore();
 
@@ -279,7 +281,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getRunningTools,
 	} = useBuilderMessages();
 
-	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
+	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } =
+		useBuilderTodos(workflowId);
 
 	const { applyCodeDiff, undoCodeDiff } = useCodeDiff({
 		chatMessages,

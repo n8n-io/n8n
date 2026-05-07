@@ -17,6 +17,7 @@ import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -39,7 +40,8 @@ const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 
-const { installNode, loading } = useInstallNode();
+const workflowId = useInjectWorkflowId();
+const { installNode, loading } = useInstallNode(workflowId);
 
 const isNodeDefined = computed(() => !!nodeTypesStore.nodeTypes[node.type]);
 

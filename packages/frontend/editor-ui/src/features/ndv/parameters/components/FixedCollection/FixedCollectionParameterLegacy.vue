@@ -31,9 +31,11 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const locale = useI18n();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 
 export type Props = {
 	nodeValues: INodeParameters;

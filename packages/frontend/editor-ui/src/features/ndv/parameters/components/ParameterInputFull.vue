@@ -38,6 +38,7 @@ import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/ap
 import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 type Props = {
 	parameter: INodeProperties;
@@ -77,7 +78,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 
 const eventBus = ref(createEventBus());
 const focused = ref(false);

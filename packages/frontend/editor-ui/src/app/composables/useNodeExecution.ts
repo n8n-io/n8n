@@ -10,6 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -77,10 +78,12 @@ export type NodeExecutionActions = {
 /**
  * Composable that provides node execution state and actions.
  * Used by both NodeExecuteButton component and SetupPanel.
+ * @param workflowId - The workflow id (ref or computed) to scope execution to
  * @param node - The node to execute (can be a ref, computed, or raw value; may be null/undefined)
  * @param options - Configuration options for execution behavior
  */
 export function useNodeExecution(
+	workflowId: RefOrComputedRef<string>,
 	node: MaybeRef<INodeUi | null | undefined>,
 	options: UseNodeExecutionOptions = {},
 ): NodeExecutionState & NodeExecutionActions {
@@ -93,7 +96,7 @@ export function useNodeExecution(
 	const router = useRouter();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 	const message = useMessage();
 	const externalHooks = useExternalHooks();
 
@@ -104,17 +107,17 @@ export function useNodeExecution(
 	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
-	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
-	const nodeHelpers = useNodeHelpers();
+	const { runWorkflow, stopCurrentExecution } = useRunWorkflow(workflowId, { router });
+	const nodeHelpers = useNodeHelpers(workflowId);
 
 	const codeGenerationInProgress = ref(false);
 
 	const nodeRef = computed(() => toValue(node) ?? null);
 
-	const pinnedData = usePinnedData(nodeRef);
+	const pinnedData = usePinnedData(workflowId, nodeRef);
 
 	const nodeType = computed(() =>
 		nodeRef.value
@@ -267,7 +270,7 @@ export function useNodeExecution(
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowId.value);
 		} catch (error) {
 			toast.showError(error, 'Error stopping webhook');
 		}
@@ -417,7 +420,7 @@ export function useNodeExecution(
 			// Normal execution
 			const telemetryPayload = {
 				node_type: nodeType.value ? nodeType.value.name : null,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 				source: telemetrySource,
 				push_ref: ndvStore.pushRef,
 			};

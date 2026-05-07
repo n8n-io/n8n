@@ -19,6 +19,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 import type { INodeUi, SimplifiedNodeType } from '@/Interface';
+import type { RefOrComputedRef } from '@/app/types';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',
@@ -26,14 +27,17 @@ const ITEM_ID = {
 	ADD_STICKY: 'add-sticky',
 } as const;
 
-export function useNodeCommands(options: {
-	lastQuery: Ref<string>;
-	activeNodeId: Ref<string | null>;
-}): CommandGroup {
+export function useNodeCommands(
+	workflowId: RefOrComputedRef<string>,
+	options: {
+		lastQuery: Ref<string>;
+		activeNodeId: Ref<string | null>;
+	},
+): CommandGroup {
 	const i18n = useI18n();
 	const { lastQuery } = options;
 
-	const { addNodes, setNodeActive } = useCanvasOperations();
+	const { addNodes, setNodeActive } = useCanvasOperations(workflowId);
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
@@ -42,7 +46,7 @@ export function useNodeCommands(options: {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const isReadOnly = computed(
@@ -56,7 +60,7 @@ export function useNodeCommands(options: {
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
-		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+		!workflowsStore.isWorkflowSaved[workflowId.value];
 
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;

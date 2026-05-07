@@ -1,5 +1,6 @@
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useDebounce } from '@/app/composables/useDebounce';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
@@ -31,7 +32,8 @@ export function useTypescript(
 	id: MaybeRefOrGetter<string>,
 	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
 ) {
-	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
+	const workflowId = useInjectWorkflowId();
+	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema(workflowId);
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -68,7 +70,7 @@ export function useTypescript(
 					const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
 					const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
 					const execution = workflowsStore.getWorkflowExecution;
-					const binaryData = useNodeHelpers()
+					const binaryData = useNodeHelpers(workflowId)
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
 							node.name,

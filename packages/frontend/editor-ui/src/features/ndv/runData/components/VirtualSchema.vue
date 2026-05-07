@@ -52,6 +52,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
 import { N8nCallout, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 type Props = {
 	nodes?: IConnectedNode[];
 	node?: INodeUi | null;
@@ -83,6 +84,7 @@ const props = withDefaults(defineProps<Props>(), {
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -91,10 +93,11 @@ const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
-	useDataSchema();
-const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
-const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHelpers();
-const { dismissCallout, isCalloutDismissed } = useCalloutHelpers();
+	useDataSchema(workflowId);
+const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } =
+	useFlattenSchema(workflowId);
+const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHelpers(workflowId);
+const { dismissCallout, isCalloutDismissed } = useCalloutHelpers(workflowId);
 
 const emit = defineEmits<{
 	'clear:search': [];

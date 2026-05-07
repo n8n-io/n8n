@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import type { IWorkflowDb } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -49,7 +50,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const executionsStore = useExecutionsStore();
 const projectsStore = useProjectsStore();
 

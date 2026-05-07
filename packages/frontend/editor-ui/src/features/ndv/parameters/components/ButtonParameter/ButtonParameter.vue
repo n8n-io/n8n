@@ -17,6 +17,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{
@@ -33,6 +34,7 @@ const props = defineProps<Props>();
 
 const ndvStore = injectNDVStore();
 const activeNode = computed(() => ndvStore.activeNode);
+const workflowId = useInjectWorkflowId();
 
 const i18n = useI18n();
 
@@ -78,7 +80,7 @@ function getPath(parameter: string) {
 }
 
 async function onSubmit() {
-	const { showMessage } = useToast();
+	const { showMessage } = useToast(workflowId);
 	const action: string | NodePropertyAction | undefined =
 		props.parameter.typeOptions?.buttonConfig?.action;
 

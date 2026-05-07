@@ -48,10 +48,10 @@ const ndvStore = injectNDVStore();
 const clipboard = useClipboard();
 
 const i18n = useI18n();
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const { activeNode } = ndvStore;
-const pinnedData = usePinnedData(activeNode);
-const { showToast } = useToast();
+const pinnedData = usePinnedData(workflowId, activeNode);
+const { showToast } = useToast(workflowId);
 const telemetry = useTelemetry();
 
 const route = useRoute();

@@ -12,6 +12,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -21,18 +22,21 @@ const RUNNING_STATES: string[] = ['running', 'waiting'];
  *
  * @param isReady - When false, the execute button is disabled and trigger dropdown is hidden.
  */
-export function useBuilderExecution(isReady: ComputedRef<boolean>) {
+export function useBuilderExecution(
+	workflowId: RefOrComputedRef<string>,
+	isReady: ComputedRef<boolean>,
+) {
 	const router = useRouter();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
-	const toast = useToast();
+	const toast = useToast(workflowId);
 
-	const { runWorkflow } = useRunWorkflow({ router });
+	const { runWorkflow } = useRunWorkflow(workflowId, { router });
 
 	const triggerNodes = computed(() =>
 		workflowDocumentStore.value.allNodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),

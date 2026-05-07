@@ -3,6 +3,7 @@ import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -38,9 +39,10 @@ export function getParentNodes() {
 }
 
 export function getSchemas() {
+	const workflowId = useInjectWorkflowId();
 	const parentNodes = getParentNodes();
 	const parentNodesNames = parentNodes.map((node) => node?.name);
-	const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+	const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema(workflowId);
 	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes
 		.map((node) => {
 			const inputData: INodeExecutionData[] = getInputDataWithPinned(node);

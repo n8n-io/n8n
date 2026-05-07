@@ -28,6 +28,7 @@ import {
 	type ResolveParameterOptions,
 	useWorkflowHelpers,
 } from '@/app/composables/useWorkflowHelpers';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '../plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/app/types/expressions';
@@ -75,9 +76,10 @@ export const useExpressionEditor = ({
 	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
+	const workflowId = useInjectWorkflowId();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers();
+	const workflowHelpers = useWorkflowHelpers(workflowId);
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
 	const editor = ref<EditorView>();

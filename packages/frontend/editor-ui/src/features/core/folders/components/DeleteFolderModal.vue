@@ -13,6 +13,7 @@ import type { ChangeLocationSearchResult, WorkflowListEventMap } from '../folder
 
 import { ElRadio } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	modalName: string;
 	activeId: string;
@@ -26,7 +27,8 @@ const props = defineProps<{
 }>();
 
 const modalBus = createEventBus();
-const { showMessage, showError } = useToast();
+const workflowId = useWorkflowId();
+const { showMessage, showError } = useToast(workflowId);
 const i18n = useI18n();
 const route = useRoute();
 

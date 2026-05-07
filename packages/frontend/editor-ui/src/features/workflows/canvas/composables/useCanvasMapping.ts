@@ -66,26 +66,29 @@ import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import type { WorkflowObjectAccessors } from '@/app/types';
+import type { RefOrComputedRef, WorkflowObjectAccessors } from '@/app/types';
 
-export function useCanvasMapping({
-	nodes,
-	connections,
-	workflowObject,
-}: {
-	nodes: Ref<INodeUi[]>;
-	connections: Ref<IConnections>;
-	workflowObject: Ref<WorkflowObjectAccessors>;
-}) {
+export function useCanvasMapping(
+	workflowId: RefOrComputedRef<string>,
+	{
+		nodes,
+		connections,
+		workflowObject,
+	}: {
+		nodes: Ref<INodeUi[]>;
+		connections: Ref<IConnections>;
+		workflowObject: Ref<WorkflowObjectAccessors>;
+	},
+) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
-	const nodeHelpers = useNodeHelpers();
-	const { dirtinessByName } = useNodeDirtiness();
+	const nodeHelpers = useNodeHelpers(workflowId);
+	const { dirtinessByName } = useNodeDirtiness(workflowId);
 
 	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
 		return {

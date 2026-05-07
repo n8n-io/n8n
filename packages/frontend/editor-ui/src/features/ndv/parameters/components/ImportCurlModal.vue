@@ -10,8 +10,10 @@ import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const telemetry = useTelemetry();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const toast = useToast(workflowId);
 const i18n = useI18n();
 
 const uiStore = useUIStore();

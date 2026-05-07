@@ -19,6 +19,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -33,9 +34,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers(workflowId);
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 

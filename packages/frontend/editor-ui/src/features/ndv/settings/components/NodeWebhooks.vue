@@ -18,14 +18,16 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
 import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
 }>();
 
 const clipboard = useClipboard();
-const workflowHelpers = useWorkflowHelpers();
-const toast = useToast();
+const workflowId = useInjectWorkflowId();
+const workflowHelpers = useWorkflowHelpers(workflowId);
+const toast = useToast(workflowId);
 const i18n = useI18n();
 const telemetry = useTelemetry();
 

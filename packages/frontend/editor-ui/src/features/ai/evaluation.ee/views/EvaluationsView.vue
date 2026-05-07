@@ -15,8 +15,10 @@ const props = defineProps<{
 	workflowId: string;
 }>();
 
+const workflowIdRef = computed(() => props.workflowId);
+
 const locale = useI18n();
-const toast = useToast();
+const toast = useToast(workflowIdRef);
 
 const evaluationStore = useEvaluationStore();
 const parallelEvalStore = useParallelEvalStore();

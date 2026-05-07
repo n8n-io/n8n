@@ -12,6 +12,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	modalName: string;
 	data?: {
@@ -21,7 +22,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const toast = useToast();
+const workflowId = useWorkflowId();
+const toast = useToast(workflowId);
 const usageStore = useUsageStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();

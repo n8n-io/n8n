@@ -21,6 +21,7 @@ import {
 	useNodeGroupSections,
 	sectionHasParameters,
 } from '@/features/setupPanel/composables/useNodeGroupSections';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = defineProps<{
 	nodeGroup: NodeGroupItem;
@@ -33,7 +34,8 @@ const emit = defineEmits<{
 	credentialDeselected: [payload: CredentialDeselectedPayload];
 }>();
 
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const setupPanelStore = useSetupPanelStore();

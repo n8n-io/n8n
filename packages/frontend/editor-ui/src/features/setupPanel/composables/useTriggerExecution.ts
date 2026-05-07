@@ -12,6 +12,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import type { RefOrComputedRef } from '@/app/types';
 
 /**
  * Wraps `useNodeExecution` with listening-hint logic for setup-panel cards.
@@ -19,6 +20,7 @@ import {
  * hint text for the callout.
  */
 export function useTriggerExecution(
+	workflowId: RefOrComputedRef<string>,
 	node: MaybeRef<INodeUi | null>,
 	options?: UseNodeExecutionOptions,
 ) {
@@ -26,7 +28,7 @@ export function useTriggerExecution(
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const logsStore = useLogsStore();
 
@@ -39,7 +41,7 @@ export function useTriggerExecution(
 		disabledReason,
 		hasIssues,
 		execute,
-	} = useNodeExecution(node, options);
+	} = useNodeExecution(workflowId, node, options);
 
 	const nodeValue = computed(() => toValue(node));
 

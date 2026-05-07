@@ -30,6 +30,7 @@ import {
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 export interface Props {
 	hideDelete?: boolean;
@@ -53,7 +54,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useInjectWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 
 const { activeNode } = storeToRefs(ndvStore);
 
