@@ -120,7 +120,7 @@ describe('usePinnedData', () => {
 			const telemetry = useTelemetry();
 			const trackSpy = vi.spyOn(telemetry, 'track');
 			const node = ref({ name: 'testNode' } as INodeUi);
-			const { setData } = usePinnedData(node);
+			const { setData } = usePinnedData(ref('test-workflow'), node);
 			const trimmedData = [
 				{
 					json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },

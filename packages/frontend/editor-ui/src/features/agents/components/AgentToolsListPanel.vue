@@ -21,6 +21,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -66,7 +67,8 @@ function setNodeToolsEnabled(enabled: boolean) {
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 
 interface NodeRow {
 	index: number;

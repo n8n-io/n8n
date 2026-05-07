@@ -58,7 +58,7 @@ describe('NodeIcon.vue', () => {
 		});
 
 		expect(useNodeIconSourceMock).toHaveBeenCalledTimes(1);
-		const [nodeTypeArg, nodeArg] = useNodeIconSourceMock.mock.calls[0];
+		const [, nodeTypeArg, nodeArg] = useNodeIconSourceMock.mock.calls[0];
 
 		expect(typeof nodeTypeArg).toBe('function');
 		expect(typeof nodeArg).toBe('function');
@@ -76,7 +76,7 @@ describe('NodeIcon.vue', () => {
 			},
 		});
 
-		const [nodeTypeGetter] = useNodeIconSourceMock.mock.calls[0];
+		const [, nodeTypeGetter] = useNodeIconSourceMock.mock.calls[0];
 		expect((nodeTypeGetter as () => SimplifiedNodeType)()).toEqual(setNodeType);
 
 		await wrapper.setProps({ nodeType: calendarNodeType });

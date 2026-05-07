@@ -44,16 +44,14 @@ const props = defineProps<{
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowState = useWorkflowState();
-const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
 const SYNTHETIC_ID = '__tool_io__';
 const INPUT_NODE_NAME = '__tool_io_input__';
+const workflowId = computed(() => SYNTHETIC_ID);
+const workflowHelpers = useWorkflowHelpers(workflowId);
 
-provide(
-	WorkflowIdKey,
-	computed(() => SYNTHETIC_ID),
-);
+provide(WorkflowIdKey, workflowId);
 provide(ChatSymbol, null as unknown as Chat);
 
 function wrap(value: unknown): INodeExecutionData[] {

@@ -31,16 +31,14 @@ const i18n = useI18n();
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = useWorkflowState();
-const workflowHelpers = useWorkflowHelpers();
+const workflowId = computed(() => props.workflowId);
+const workflowHelpers = useWorkflowHelpers(workflowId);
 const nodeTypesStore = useNodeTypesStore();
 
 // `RunData` (rendered inside `LogsViewRunData`) reads the workflow id via
 // `useInjectWorkflowId()`, which throws when nothing is provided. Provide it
 // here so the editor's run-data renderer works inside this side panel.
-provide(
-	WorkflowIdKey,
-	computed(() => props.workflowId),
-);
+provide(WorkflowIdKey, workflowId);
 
 // `RunData` -> `useRunWorkflow` -> `useChat` injects `ChatSymbol`. Outside the
 // chat-enabled layout it's missing and Vue logs a noisy "injection 'Chat' not

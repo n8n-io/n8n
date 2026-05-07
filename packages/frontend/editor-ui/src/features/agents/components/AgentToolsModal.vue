@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -54,7 +55,8 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
+const workflowId = useWorkflowId();
+const nodeHelpers = useNodeHelpers(workflowId);
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const rootStore = useRootStore();
