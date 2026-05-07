@@ -93,6 +93,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
+		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
+		const { AgentObservationCursorEntity } = await import(
+			'./entities/agent-observation-cursor.entity'
+		);
+		const { AgentObservationLockEntity } = await import('./entities/agent-observation-lock.entity');
 
 		return [
 			Agent,
@@ -103,6 +108,9 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentPublishedVersion,
+			AgentObservationEntity,
+			AgentObservationCursorEntity,
+			AgentObservationLockEntity,
 		];
 	}
 
