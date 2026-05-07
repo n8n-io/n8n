@@ -154,7 +154,8 @@
       "brace-expansion@<=2.1.0": "2.1.0",
       "axios": "1.16.0",
       "zod": "3.25.67",
-      "fast-xml-parser": "5.7.2"
+      "fast-xml-parser": "5.7.2",
+      "openai": "6.21.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
