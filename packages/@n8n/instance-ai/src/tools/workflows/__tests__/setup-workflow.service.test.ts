@@ -24,7 +24,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),
 			archive: jest.fn(),
-			delete: jest.fn(),
+			unarchive: jest.fn(),
 			publish: jest.fn(),
 			unpublish: jest.fn(),
 			clearAiTemporary: jest.fn(),

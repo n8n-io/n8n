@@ -432,7 +432,7 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	credentials?: Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>;
 	name?: string;
 	position?: [number, number];
 	webhookId?: string;
@@ -533,9 +533,12 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
 	 *
+	 * Index is **0-based**: `.input(0)` is the FIRST input, `.input(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect to input 1 of a merge node
-	 * nodeA.to(mergeNode.input(1))
+	 * // Wire two sources to a merge node — first source to input 0, second to input 1
+	 * sourceA.to(mergeNode.input(0)) // first input
+	 * sourceB.to(mergeNode.input(1)) // second input
 	 */
 	input(index: number): InputTarget;
 
@@ -543,9 +546,11 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create an output selector for connecting from a specific output index.
 	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
 	 *
+	 * Index is **0-based**: `.output(0)` is the FIRST output, `.output(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect from output 1 of a classifier
-	 * classifier.output(1).to(categoryB)
+	 * classifier.output(0).to(categoryA) // first output
+	 * classifier.output(1).to(categoryB) // second output
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
@@ -780,7 +785,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -792,10 +798,12 @@ export type IfElseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -807,7 +815,8 @@ export type SwitchCaseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
  * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,

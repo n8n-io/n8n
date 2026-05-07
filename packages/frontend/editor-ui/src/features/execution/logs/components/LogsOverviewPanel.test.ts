@@ -23,6 +23,7 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		workflowId: 'test-workflow-id',
 		name: 'Test Workflow',
 		allNodes: [],
+		workflowTriggerNodes: [],
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),

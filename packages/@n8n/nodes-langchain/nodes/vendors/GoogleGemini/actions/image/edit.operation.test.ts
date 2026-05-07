@@ -1,5 +1,5 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IBinaryData, ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { execute } from './edit.operation';
 

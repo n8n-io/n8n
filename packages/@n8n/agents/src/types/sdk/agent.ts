@@ -4,6 +4,7 @@ import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
 import type { BuiltTool } from './tool';
+import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
 import type { AgentEvent, AgentEventHandler } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
@@ -27,12 +28,20 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	additionalMetadata?: T;
 };
 
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string */
+/**
+ * Typed model config for known providers — gives IDE autocompletion for
+ * provider-specific credential fields based on the model id prefix.
+ */
+export type TypedModelConfig = {
+	[P in ProviderId]: { id: `${P}/${string}` } & ProviderCredentials<P>;
+}[ProviderId];
+
 export type ModelConfig =
 	| string
-	| { id: string; apiKey?: string; url?: string; headers?: Record<string, string> }
+	| TypedModelConfig
+	| { id: string; [k: string]: unknown }
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
 	| LanguageModel;
-/* eslint-enable @typescript-eslint/no-redundant-type-constituents */
 
 export interface AgentResult {
 	id?: string;
@@ -53,6 +62,47 @@ export interface AgentResult {
 
 export type StreamChunk = ContentMetadata &
 	(
+		| { type: 'start-step' }
+		| { type: 'finish-step' }
+		| { type: 'text-start'; id: string }
+		| { type: 'text-delta'; id: string; delta: string }
+		| { type: 'text-end'; id: string }
+		| { type: 'reasoning-start'; id: string }
+		| { type: 'reasoning-delta'; id: string; delta: string }
+		| { type: 'reasoning-end'; id: string }
+		| { type: 'tool-input-start'; toolCallId: string; toolName: string }
+		| { type: 'tool-input-delta'; toolCallId: string; delta: string }
+		| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+		| {
+				/**
+				 * Emitted just before a tool handler starts executing. Bridged from
+				 * the runtime event bus (not part of the AI SDK fullStream). Pairs
+				 * with the subsequent `tool-result` to let consumers show a
+				 * mid-flight indicator between "LLM picked a tool" and "result arrived".
+				 */
+				type: 'tool-execution-start';
+				toolCallId: string;
+				toolName: string;
+		  }
+		| {
+				type: 'tool-result';
+				toolCallId: string;
+				toolName: string;
+				output: unknown;
+				isError?: boolean;
+		  }
+		| {
+				type: 'tool-call-suspended';
+				runId: string;
+				toolCallId: string;
+				toolName: string;
+				input?: unknown;
+				suspendPayload?: unknown;
+				/** JSON Schema describing the shape of data to send when resuming. */
+				resumeSchema?: JsonSchema7Type;
+		  }
+		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
+		| { type: 'message'; message: AgentMessage }
 		| {
 				type: 'finish';
 				finishReason: FinishReason;
@@ -62,41 +112,7 @@ export type StreamChunk = ContentMetadata &
 				subAgentUsage?: SubAgentUsage[];
 				totalCost?: number;
 		  }
-		| {
-				type: 'text-delta';
-				id?: string;
-				delta: string;
-		  }
-		| {
-				type: 'reasoning-delta';
-				id?: string;
-				delta: string;
-		  }
-		| {
-				type: 'tool-call-delta';
-				id?: string;
-				name?: string;
-				argumentsDelta?: string;
-		  }
-		| {
-				type: 'error';
-				error: unknown;
-		  }
-		| {
-				type: 'message';
-				message: AgentMessage;
-				id?: string;
-		  }
-		| {
-				type: 'tool-call-suspended';
-				runId?: string;
-				toolCallId?: string;
-				toolName?: string;
-				input?: unknown;
-				suspendPayload?: unknown;
-				/** JSON Schema describing the shape of data to send when resuming. */
-				resumeSchema?: JsonSchema7Type;
-		  }
+		| { type: 'error'; error: unknown }
 	);
 
 export interface RunOptions {
@@ -167,8 +183,6 @@ export interface GenerateResult {
 	 * callers can handle them without try/catch.
 	 */
 	error?: unknown;
-	/** Return a snapshot of the agent state at the end of this run. */
-	getState(): SerializableAgentState;
 }
 
 export interface StreamResult {
@@ -176,12 +190,6 @@ export interface StreamResult {
 	runId: string;
 	/** The readable stream of chunks. */
 	stream: ReadableStream<StreamChunk>;
-	/**
-	 * Return the current agent state for this run.
-	 * May be called at any time — during streaming to observe live status,
-	 * or after the stream closes to confirm the terminal state.
-	 */
-	getState(): SerializableAgentState;
 }
 
 export interface ResumeOptions {
@@ -204,6 +212,8 @@ export interface BuiltAgent {
 	on(event: AgentEvent, handler: AgentEventHandler): void;
 
 	asTool(description: string): BuiltTool;
+
+	getState(): SerializableAgentState;
 
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;
@@ -256,6 +266,7 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			runId: string;
 	  }
 	| {
 			suspended: false;

@@ -645,6 +645,7 @@ export interface NewCredentialsModal extends ModalState {
 	suggestedName?: string;
 	nodeName?: string;
 	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

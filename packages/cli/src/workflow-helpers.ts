@@ -12,7 +12,11 @@ import type {
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
-import { resolveNodeWebhookId } from 'n8n-workflow';
+import {
+	formatWorkflowStructureIssuePath,
+	resolveNodeWebhookId,
+	safeParseWorkflowStructure,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -119,6 +123,24 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 			// node type not found, skip
 		}
 	}
+}
+
+export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
+	const result = safeParseWorkflowStructure(workflow);
+
+	if (result.success) return;
+
+	const details = result.issues
+		.map(({ path, message, code }) => {
+			const formattedPath = Array.isArray(path)
+				? formatWorkflowStructureIssuePath(path)
+				: 'workflow';
+
+			return `${formattedPath} (${code}): ${message}`;
+		})
+		.join('; ');
+
+	throw new BadRequestError(`Workflow structure is invalid. ${details}`);
 }
 
 /**

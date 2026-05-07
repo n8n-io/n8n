@@ -39,6 +39,7 @@ const mockWorkflowDocumentStore = {
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
 	connectionsByDestinationNode: {},
+	workflowTriggerNodes: [] as INodeUi[],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {

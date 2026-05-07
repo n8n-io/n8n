@@ -44,6 +44,14 @@ describe('createInspectionTools', () => {
 			it('accepts pageId', () => {
 				expect(() => getTool().inputSchema.parse({ pageId: 'p1' })).not.toThrow();
 			});
+
+			it('accepts interactive: true', () => {
+				expect(() => getTool().inputSchema.parse({ interactive: true })).not.toThrow();
+			});
+
+			it('accepts interactive: false', () => {
+				expect(() => getTool().inputSchema.parse({ interactive: false })).not.toThrow();
+			});
 		});
 
 		describe('execute', () => {
@@ -56,14 +64,30 @@ describe('createInspectionTools', () => {
 				const result = await getTool().execute({}, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined);
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, undefined);
 				expect(data.snapshot).toBe('- heading "Test" [ref=e1]\n- button "Click" [ref=e2]');
 			});
 
 			it('passes scope to adapter', async () => {
 				await getTool().execute({ scope: { ref: 'e3' } }, TOOL_CONTEXT);
 
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', { ref: 'e3' });
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e3' },
+					undefined,
+				);
+			});
+
+			it('passes interactive: true to adapter', async () => {
+				await getTool().execute({ interactive: true }, TOOL_CONTEXT);
+
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, true);
+			});
+
+			it('passes interactive: false to adapter', async () => {
+				await getTool().execute({ interactive: false }, TOOL_CONTEXT);
+
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, false);
 			});
 		});
 	});

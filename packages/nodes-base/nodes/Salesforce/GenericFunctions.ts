@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
@@ -12,6 +13,8 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+import { resolveAuthUrl } from '../../credentials/SalesforceJwtApi.credentials';
 
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -42,13 +45,10 @@ function getOptions(
 
 async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: IDataObject,
+	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
-	const authUrl =
-		credentials.environment === 'sandbox'
-			? 'https://test.salesforce.com'
-			: 'https://login.salesforce.com';
+	const authUrl = resolveAuthUrl(credentials);
 
 	const signature = jwt.sign(
 		{

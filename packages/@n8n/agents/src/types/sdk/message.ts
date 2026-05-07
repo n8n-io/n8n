@@ -8,7 +8,6 @@ export type MessageContent =
 	| ContentText
 	| ContentToolCall
 	| ContentInvalidToolCall
-	| ContentToolResult
 	| ContentReasoning
 	| ContentFile
 	| ContentCitation
@@ -90,7 +89,7 @@ export type ContentToolCall = ContentMetadata & {
 	/**
 	 * The identifier of the tool call. It must be unique across all tool calls.
 	 */
-	toolCallId?: string;
+	toolCallId: string;
 
 	/**
 	 * The name of the tool that should be called.
@@ -104,31 +103,11 @@ export type ContentToolCall = ContentMetadata & {
 	input: JSONValue;
 
 	providerExecuted?: boolean;
-};
-
-export type ContentToolResult = ContentMetadata & {
-	type: 'tool-result';
-
-	/**
-	 * The name of the tool that was called.
-	 */
-	toolName: string;
-
-	/**
-	 * The ID of the tool call that this result is associated with.
-	 */
-	toolCallId: string;
-
-	/**
-	 * Result of the tool call. This is a JSON-serializable object.
-	 */
-	result: JSONValue;
-
-	/**
-	 * Optional flag if the result is an error or an error message.
-	 */
-	isError?: boolean;
-};
+} & (
+		| { state: 'pending' }
+		| { state: 'resolved'; output: JSONValue }
+		| { state: 'rejected'; error: string }
+	);
 
 export type ContentInvalidToolCall = ContentMetadata & {
 	type: 'invalid-tool-call';
