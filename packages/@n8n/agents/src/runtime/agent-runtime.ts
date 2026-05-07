@@ -10,7 +10,6 @@ import type {
 	AnthropicThinkingConfig,
 	AttributeValue,
 	BuiltMemory,
-	BuiltObservationStore,
 	BuiltProviderTool,
 	BuiltTelemetry,
 	BuiltTool,
@@ -39,6 +38,7 @@ import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
+import { hasObservationStore } from './observation-store';
 import { runObservationalCycle, type RunObservationalCycleOpts } from './observational-cycle';
 import { generateRunId, RunStateManager } from './run-state';
 import {
@@ -2106,12 +2106,10 @@ export class AgentRuntime {
 		const memory = this.config.memory;
 		const workingMemory = this.config.workingMemory;
 		if (!obsConfig || !memory || !workingMemory || !persistence) return null;
-		if (typeof (memory as Partial<BuiltObservationStore>).appendObservations !== 'function') {
-			return null;
-		}
+		if (!hasObservationStore(memory)) return null;
 		if (!memory.saveWorkingMemory) return null;
 		return {
-			memory: memory as BuiltMemory & BuiltObservationStore,
+			memory,
 			threadId: persistence.threadId,
 			resourceId: persistence.resourceId,
 			model: this.config.model,
