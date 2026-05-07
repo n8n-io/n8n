@@ -24,6 +24,7 @@ export interface RecordMessageParams {
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+	workingMemory: string | null;
 }
 
 export interface ThreadListItem extends AgentExecutionThread {
@@ -229,8 +230,15 @@ export class AgentExecutionService {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
 
-		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		return { thread, executions };
+		const [executions, workingMemory] = await Promise.all([
+			this.agentExecutionRepository.findByThreadIdOrdered(threadId),
+			this.n8nMemory.getWorkingMemory({
+				threadId,
+				resourceId: threadId,
+				scope: 'thread',
+			}),
+		]);
+		return { thread, executions, workingMemory };
 	}
 
 	/**

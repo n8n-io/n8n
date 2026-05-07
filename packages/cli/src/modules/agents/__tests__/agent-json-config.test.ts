@@ -90,3 +90,84 @@ describe('isNodeToolsEnabled', () => {
 		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
 	});
 });
+
+describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
+	const memoryBase = { enabled: true, storage: 'n8n' as const };
+
+	it('accepts a memory config without observationalMemory', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({ ...baseConfig, memory: memoryBase });
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts observationalMemory: { enabled: true } alone', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: { ...memoryBase, observationalMemory: { enabled: true } },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts observationalMemory with trigger and compaction cadence set', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: {
+					enabled: true,
+					trigger: { type: 'idle-timer', idleMs: 60_000, gapThresholdMs: 300_000 },
+					compactionThreshold: 5,
+					gapThresholdMs: 3_600_000,
+					lockTtlMs: 30_000,
+					sync: true,
+					observerPrompt: 'Observe this.',
+					compactorPrompt: 'Compact this.',
+				},
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects negative idle timer values', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { enabled: true, trigger: { type: 'idle-timer', idleMs: -1 } },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects a compaction threshold below one', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { enabled: true, compactionThreshold: 0 },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects a negative gap threshold', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { enabled: true, gapThresholdMs: -1 },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('accepts observationalMemory without enabled because the writer defaults on', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { trigger: { type: 'per-turn' } },
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+});

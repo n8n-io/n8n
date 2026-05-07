@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nText, N8nSelect, N8nSwitch } from '@n8n/design-system';
-import N8nOption from '@n8n/design-system/components/N8nOption';
+import { N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentJsonConfig } from '../types';
-
-type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
-
-const RECENT_MESSAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
-type RecentMessageOption = (typeof RECENT_MESSAGE_OPTIONS)[number];
 
 const props = withDefaults(
 	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
@@ -21,21 +15,6 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
-
-/** Persistent storage types that support semantic recall. */
-function patchMemory(patch: Partial<MemoryConfig>) {
-	if (!memory.value) return;
-	emit('update:config', { memory: { ...memory.value, ...patch } });
-}
-
-function isRecentMessageOption(value: number): value is RecentMessageOption {
-	return RECENT_MESSAGE_OPTIONS.some((option) => option === value);
-}
-
-function onLastMessagesChange(value: unknown) {
-	const count = typeof value === 'number' ? value : Number(value);
-	if (isRecentMessageOption(count)) patchMemory({ lastMessages: count });
-}
 
 function onEnableMemory() {
 	emit('update:config', {
@@ -63,38 +42,20 @@ function onMemoryToggle(enabled: boolean) {
 		:class="[$style.container, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
-		<div :class="$style.header">
-			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.memory.title') }}</N8nText>
-			<N8nSwitch
-				:model-value="memory !== null"
-				:disabled="props.disabled"
-				data-testid="agent-memory-toggle"
-				@update:model-value="onMemoryToggle"
-			/>
-		</div>
-
-		<!-- Configured + enabled state -->
-		<template v-if="memory !== null">
-			<div :class="$style.row">
-				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.memory.recentMessages.label')
-				}}</N8nText>
-				<N8nSelect
-					:model-value="memory.lastMessages ?? 10"
-					size="small"
-					:class="$style.inlineSelect"
-					data-testid="agent-last-messages-select"
-					@update:model-value="onLastMessagesChange"
-				>
-					<N8nOption
-						v-for="option in RECENT_MESSAGE_OPTIONS"
-						:key="option"
-						:value="option"
-						:label="String(option)"
-					/>
-				</N8nSelect>
+		<div :class="$style.titleGroup">
+			<div :class="$style.header">
+				<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.memory.title') }}</N8nText>
+				<N8nSwitch
+					:model-value="memory !== null"
+					:disabled="props.disabled"
+					data-testid="agent-memory-toggle"
+					@update:model-value="onMemoryToggle"
+				/>
 			</div>
-		</template>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.builder.memory.description') }}
+			</N8nText>
+		</div>
 	</div>
 </template>
 
@@ -108,6 +69,12 @@ function onMemoryToggle(enabled: boolean) {
 	overflow-y: auto;
 }
 
+.titleGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
 .header {
 	display: flex;
 	align-items: center;
@@ -115,17 +82,10 @@ function onMemoryToggle(enabled: boolean) {
 	gap: var(--spacing--sm);
 }
 
-/* Scoped overlay — header stays interactive so the heading and toggle can render. */
-.container.disabled > :not(.header) {
+/* Scoped overlay — title group stays interactive so the heading and toggle can render. */
+.container.disabled > :not(.titleGroup) {
 	pointer-events: none;
 	opacity: 0.6;
-}
-
-.row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	min-height: var(--spacing--xl);
 }
 
 .inlineInput {
@@ -143,10 +103,6 @@ function onMemoryToggle(enabled: boolean) {
 
 .inlineInput:focus {
 	border-color: var(--background--brand);
-}
-
-.inlineSelect {
-	width: 160px;
 }
 
 .divider {

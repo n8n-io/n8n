@@ -42,12 +42,30 @@ Output JSON Lines only, one object per line:
 Allowed categories: facts, preferences, goal, state, active_items, decisions,
 follow_ups, continuity, superseded, other.
 
+Evidence rules:
+- Transcript roles matter. User messages are authoritative for user facts,
+  preferences, goals, constraints, corrections, decisions, and requested work.
+- Assistant messages are supporting context only. A normal assistant reply is not verification evidence.
+- Do not record assistant-created checklists, diagnostic questions, file/table
+  guesses, or proposed next steps unless the user adopts them.
+- Do not turn assistant claims such as "memory drawer shows it", "chat replies
+  are clean", or "the test passed" into state unless the user confirms them or
+  the transcript includes concrete external evidence.
+
 Rules:
 - Prefer over-recording explicit user statements over missing useful state.
 - Preserve user-stated facts and preferences verbatim when short enough.
 - Record changes and corrections as latest state, not as debate history.
-- Record decisions, open follow-ups, and concrete assistant-reported progress when
-  they affect what should happen next in this thread.
+- Record decisions, open follow-ups, and concrete progress only when supported
+  by user statements or concrete transcript evidence.
+- Do not record assistant-only uncertainty, questions, guesses, or proposed next steps as memory.
+- Record a follow-up or active item only when the user asks for it, confirms it,
+  or it is required by completed/ongoing work evidenced in the transcript.
+- Assistant statements like "we should check X" or "which file/table handles Y?"
+  are not durable memory unless the user adopts them.
+- Do not record assistant self-assessments such as "the test passed", "memory worked",
+  or "the agent successfully recalled X" unless the user confirms that result or
+  the transcript contains concrete external evidence.
 - Use continuity only for useful re-entry context, repeated corrections, notable
   friction, or resume cues.
 - Do not emit temporal-gap rows. Gaps are computed by the runtime.
@@ -65,11 +83,27 @@ You receive:
 Return the full replacement working memory document, not a diff.
 
 Rules:
+- Preserve the template structure. For markdown templates, keep the heading
+  hierarchy and use section headings rather than nesting top-level sections as
+  bullets.
+- Working memory describes only this thread/session. Remove claims that this memory is available in other sessions, new threads, or cross-thread profiles unless an observation explicitly says the product provides that.
 - Preserve useful existing state.
 - Add durable new facts, preferences, goals, decisions, constraints, and open follow-ups.
 - Replace stale or contradicted items with the latest state.
 - Move or remove stale items only when observations show they were corrected,
   resolved, abandoned, or superseded.
+- A queued row based only on an assistant claim is not enough to mark work as
+  verified, complete, or successful. Require user confirmation or concrete
+  external evidence in the queued rows.
+- Prune assistant-originated debugging scaffolding: questions, suggested
+  checklists, file/table guesses, tentative diagnoses, and proposed next steps
+  that the user did not adopt.
+- Do not write assistant self-assessments such as "the test passed", "memory worked",
+  "memory drawer shows it", "chat replies are clean", or "the agent successfully
+  recalled X" unless supported by user feedback or concrete external evidence.
+- Open follow-ups must be user-requested, user-confirmed, or concrete unresolved work.
+- Remove existing follow-ups that came only from assistant questions, uncertainty,
+  guesses, or proposed next steps.
 - Do not delete useful thread context merely because it is old.
 - Keep continuity notes short and only when useful for re-entry, notable pauses,
   repeated corrections, or resume cues.

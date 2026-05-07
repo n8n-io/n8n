@@ -11,18 +11,26 @@ describe('buildWorkingMemoryInstruction', () => {
 		const result = buildWorkingMemoryInstruction('# Context\n- Name:', false);
 
 		expect(result).toContain('out-of-band observer');
-		expect(result).toContain('Do not try to edit working memory directly');
+		expect(result).toContain('only to this same session/thread');
+		expect(result).toContain('different session');
+		expect(result).toContain('new thread');
+		expect(result).toContain('cross-thread profile');
+		expect(result).toContain('Do not try to edit, summarize, refresh, or maintain working memory');
+		expect(result).toContain('Treat working memory as internal context');
+		expect(result).toContain('instead of dumping the document');
 	});
 
-	it('includes the template in the instruction', () => {
+	it('does not include the template in the main-agent instruction', () => {
 		const template = '# Context\n- Name:\n- City:';
 		const result = buildWorkingMemoryInstruction(template, false);
-		expect(result).toContain(template);
+		expect(result).not.toContain(template);
+		expect(result).not.toContain('Current template');
 	});
 
-	it('mentions JSON for structured variant', () => {
+	it('keeps structured memory read-only', () => {
 		const result = buildWorkingMemoryInstruction('{"name": ""}', true);
-		expect(result).toContain('JSON');
+		expect(result).toContain('internal context');
+		expect(result).not.toContain('{"name": ""}');
 	});
 
 	it('replaces the default instruction body when provided', () => {

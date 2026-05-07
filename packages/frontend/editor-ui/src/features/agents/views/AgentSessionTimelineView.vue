@@ -19,6 +19,7 @@ import SessionTimelineChart from '@/features/agents/components/SessionTimelineCh
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
 import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
+import SessionMemoryPanel from '@/features/agents/components/SessionMemoryPanel.vue';
 import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
@@ -52,9 +53,11 @@ const threadId = computed(() => route.params.threadId as string);
 
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
+const workingMemory = ref<string | null>(null);
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
+const memoryPanelOpen = ref(false);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
 let loadThreadDetailRequestId = 0;
@@ -75,10 +78,6 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
-		case 'working-memory-updated':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
 		case 'suspension-waiting':
@@ -218,17 +217,33 @@ function moveSelectedIndexToBoundary(direction: 1 | -1) {
 }
 
 function selectTimelineItem(index: number | null) {
+	if (index !== null) {
+		memoryPanelOpen.value = false;
+	}
 	selectedIndex.value = index;
 	highlightedIndex.value = index;
+}
+
+function openMemoryPanel() {
+	selectTimelineItem(null);
+	memoryPanelOpen.value = true;
+}
+
+function closeMemoryPanel() {
+	memoryPanelOpen.value = false;
 }
 
 function onKeyDown(event: KeyboardEvent) {
 	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
 
 	if (event.key === 'Escape') {
-		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
+		if (memoryPanelOpen.value || selectedIndex.value !== null || highlightedIndex.value !== null) {
 			event.preventDefault();
-			selectTimelineItem(null);
+			if (memoryPanelOpen.value) {
+				closeMemoryPanel();
+			} else {
+				selectTimelineItem(null);
+			}
 		}
 		return;
 	}
@@ -257,7 +272,7 @@ function onKeyUp(event: KeyboardEvent) {
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
-	selectedIndex.value = highlightedIndex.value;
+	selectTimelineItem(highlightedIndex.value);
 }
 
 useEventListener(document, 'keyup', onKeyUp);
@@ -270,9 +285,11 @@ async function loadThreadDetail() {
 
 	thread.value = null;
 	executions.value = [];
+	workingMemory.value = null;
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
 	selectTimelineItem(null);
+	closeMemoryPanel();
 	loading.value = true;
 
 	void sessionsStore.fetchThreads(currentProjectId, currentAgentId);
@@ -286,6 +303,7 @@ async function loadThreadDetail() {
 		if (requestId !== loadThreadDetailRequestId) return;
 		thread.value = result.thread;
 		executions.value = result.executions;
+		workingMemory.value = result.workingMemory;
 	} catch (error) {
 		if (requestId !== loadThreadDetailRequestId) return;
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
@@ -422,6 +440,14 @@ function onSessionSelect(nextThreadId: string) {
 				:selected="selectedFilters"
 				@update="(next) => (selectedFilters = next)"
 			/>
+			<N8nButton
+				variant="outline"
+				icon="brain"
+				data-test-id="session-memory-trigger"
+				@click="openMemoryPanel"
+			>
+				<span>{{ i18n.baseText('agentSessions.timeline.memory') }}</span>
+			</N8nButton>
 		</div>
 
 		<div v-if="!loading && items.length > 0" :class="$style.chartRow">
@@ -450,8 +476,13 @@ function onSessionSelect(nextThreadId: string) {
 				/>
 			</div>
 			<Transition name="session-detail-panel">
-				<div v-if="selectedItem" :class="$style.detailPanel">
-					<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
+				<div v-if="memoryPanelOpen || selectedItem" :class="$style.detailPanel">
+					<SessionMemoryPanel
+						v-if="memoryPanelOpen"
+						:memory="workingMemory"
+						@close="closeMemoryPanel"
+					/>
+					<SessionDetailPanel v-else :item="selectedItem" @close="selectTimelineItem(null)" />
 				</div>
 			</Transition>
 		</div>

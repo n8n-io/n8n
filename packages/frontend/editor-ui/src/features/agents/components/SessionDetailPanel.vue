@@ -132,7 +132,6 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'working-memory') return i18n.baseText('agentSessions.timeline.memory');
 	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	return i18n.baseText('agentSessions.timeline.suspended');
@@ -144,7 +143,6 @@ const headerIcon = computed((): IconName => {
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
-	if (item.kind === 'working-memory') return 'brain';
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
 	return 'clock';
@@ -329,34 +327,6 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							:node-type-version="item.nodeTypeVersion"
 							:node-parameters="item.nodeParameters"
 						/>
-					</template>
-
-					<template v-else-if="item.kind === 'working-memory'">
-						<div :class="$style.codeBlock">
-							<div :class="$style.codeBlockCopy">
-								<N8nTooltip
-									:content="
-										copiedBlock === 'working-memory'
-											? i18n.baseText('agents.builder.addTrigger.copied')
-											: i18n.baseText('agents.builder.addTrigger.copy')
-									"
-								>
-									<N8nButton
-										variant="outline"
-										size="small"
-										icon-only
-										:icon="copiedBlock === 'working-memory' ? 'check' : 'copy'"
-										:aria-label="
-											copiedBlock === 'working-memory'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
-										"
-										@click="copyJsonBlock('working-memory', item.content)"
-									/>
-								</N8nTooltip>
-							</div>
-							<pre :class="$style.json">{{ item.content }}</pre>
-						</div>
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">

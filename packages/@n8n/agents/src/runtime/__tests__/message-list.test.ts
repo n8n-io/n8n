@@ -111,6 +111,87 @@ describe('AgentMessageList — preserving DB timestamps', () => {
 });
 
 // ---------------------------------------------------------------------------
+// LLM context assembly
+// ---------------------------------------------------------------------------
+
+function systemContent(list: AgentMessageList): string {
+	const [system] = list.forLlm('Base instructions');
+	expect(system.role).toBe('system');
+	return system.content as string;
+}
+
+describe('AgentMessageList — forLlm working memory', () => {
+	it('does not inject the working-memory template when no state has been saved', () => {
+		const list = new AgentMessageList();
+		list.workingMemory = {
+			template: '# Thread memory\n- User facts:',
+			structured: false,
+			state: null,
+		};
+		list.addInput([makeUserMsg('hello')]);
+
+		const messages = list.forLlm('Base instructions');
+		const prompt = messages[0].content as string;
+
+		expect(prompt).toContain('Base instructions');
+		expect(prompt).not.toContain('# Thread memory');
+		expect(prompt).not.toContain('Current template');
+		expect(prompt).not.toContain('Current working memory state');
+		expect(messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'user',
+					content: [expect.objectContaining({ type: 'text', text: 'hello' })],
+				}),
+			]),
+		);
+	});
+
+	it('injects saved working memory as private read-only context without the template', () => {
+		const list = new AgentMessageList();
+		list.workingMemory = {
+			template: '# Thread memory\n- Template-only field:',
+			structured: false,
+			state: 'Saved memory: user prefers concise debugging answers.',
+		};
+
+		const prompt = systemContent(list);
+
+		expect(prompt).toContain('private');
+		expect(prompt).toContain('read-only');
+		expect(prompt).toContain('Saved memory: user prefers concise debugging answers.');
+		expect(prompt).not.toContain('Template-only field');
+		expect(prompt).not.toContain('Current template');
+	});
+
+	it('keeps recent history messages in LLM context when working memory is empty', () => {
+		const list = new AgentMessageList();
+		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);
+		list.workingMemory = {
+			template: '# Thread memory\n- User facts:',
+			structured: false,
+			state: null,
+		};
+		list.addInput([makeUserMsg('new request')]);
+
+		const messages = list.forLlm('Base instructions');
+
+		expect(messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'user',
+					content: [expect.objectContaining({ type: 'text', text: 'recent history' })],
+				}),
+				expect.objectContaining({
+					role: 'user',
+					content: [expect.objectContaining({ type: 'text', text: 'new request' })],
+				}),
+			]),
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Input / response messages use existing createdAt as a hint
 // ---------------------------------------------------------------------------
 
