@@ -59,7 +59,9 @@ export const description: INodeProperties[] = [
 				builderHint: {
 					message:
 						'Row IDs are auto-generated. Do NOT define a custom `id` column or seed `id` on insert. The built-in row `id` is valid for filtering update/delete but is not part of the user-defined table schema.',
-					extraTypeDefContent: `<patterns>
+					extraTypeDefContent: [
+						{
+							content: `<patterns>
 <pattern title="Insert with explicit schema">
 const storeData = node({
   type: 'n8n-nodes-base.dataTable',
@@ -86,6 +88,8 @@ const storeData = node({
 });
 </pattern>
 </patterns>`,
+						},
+					],
 				},
 			},
 			{

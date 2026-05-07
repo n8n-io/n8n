@@ -9,7 +9,9 @@ import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	message:
 		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation.",
-	extraTypeDefContent: `<patterns>
+	extraTypeDefContent: [
+		{
+			content: `<patterns>
 <pattern title="autoMapInputData — maps $json fields to sheet columns automatically">
 columns: {
   mappingMode: 'autoMapInputData',
@@ -31,6 +33,8 @@ columns: {
 }
 </pattern>
 </patterns>`,
+		},
+	],
 };
 
 export const dataLocationOnSheet: INodeProperties = {

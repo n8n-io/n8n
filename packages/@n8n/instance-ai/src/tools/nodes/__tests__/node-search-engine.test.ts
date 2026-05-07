@@ -50,8 +50,12 @@ const agentNode = makeNode({
 			ai_memory: { required: false },
 			ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
 		},
-		extraTypeDefContent:
-			'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
+		extraTypeDefContent: [
+			{
+				content:
+					'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
+			},
+		],
 	},
 });
 

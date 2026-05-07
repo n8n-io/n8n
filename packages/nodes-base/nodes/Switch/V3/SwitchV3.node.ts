@@ -131,7 +131,9 @@ export class SwitchV3 implements INodeType {
 					builderHint: {
 						message:
 							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF.",
-						extraTypeDefContent: `<patterns>
+						extraTypeDefContent: [
+							{
+								content: `<patterns>
 <pattern title="Switch with two cases plus a default branch">
 const routeByPriority = switchCase({
   version: 3.2,
@@ -170,6 +172,8 @@ export default workflow('id', 'name')
     .onDefault(archive));
 </pattern>
 </patterns>`,
+							},
+						],
 					},
 					typeOptions: {
 						multipleValues: true,

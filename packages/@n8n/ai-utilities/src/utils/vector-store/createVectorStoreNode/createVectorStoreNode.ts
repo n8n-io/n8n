@@ -78,6 +78,57 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			},
 			builderHint: {
 				...args.meta.builderHint,
+				message:
+					'Mode picks both the SDK factory and the required subnodes. Read the per-mode example in this type to see the canonical shape.',
+				extraTypeDefContent: [
+					{
+						displayOptions: { show: { mode: ['insert'] } },
+						content: `<patterns>
+<pattern title="Insert mode — upsert documents into the store">
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+  version: 1.2,
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'insert', options: {}, pineconeIndex: { __rl: true, mode: 'list', value: 'kb' } },
+    subnodes: { embedding: embeddingsOpenAi, documentLoader: defaultDataLoader }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+					{
+						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+						content: `<patterns>
+<pattern title="retrieve-as-tool mode — RAG via AI Agent">
+const knowledgeBase = tool({
+  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+  version: 1.2,
+  config: {
+    name: 'Knowledge Base',
+    parameters: {
+      mode: 'retrieve-as-tool',
+      toolDescription: 'Search the product knowledge base',
+      pineconeIndex: { __rl: true, mode: 'list', value: 'kb' },
+      options: {}
+    },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+
+const agent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Support Agent',
+    parameters: { promptType: 'define', text: expr('{{ $json.question }}') },
+    subnodes: { model: openAiModel, tools: [knowledgeBase] }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+				],
 				inputs: {
 					ai_embedding: { required: true },
 					ai_document: {

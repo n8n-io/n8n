@@ -18,10 +18,18 @@ import type * as GenerateTypesModule from '../generate-types/generate-types';
 // Type Definitions (Expected interfaces from the implementation)
 // =============================================================================
 
+interface BuilderHintVariation {
+	content: string;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
 interface ParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
-	extraTypeDefContent?: string;
+	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 interface NestedOption {
@@ -77,6 +85,7 @@ interface NodeTypeDescription {
 	hidden?: boolean;
 	schemaPath?: string;
 	builderHint?: {
+		message?: string;
 		inputs?: Record<
 			string,
 			{
@@ -87,6 +96,7 @@ interface NodeTypeDescription {
 				};
 			}
 		>;
+		extraTypeDefContent?: BuilderHintVariation[];
 	};
 }
 
@@ -1364,35 +1374,34 @@ describe('generate-types', () => {
 			expect(result).not.toContain('GmailV21Params');
 		});
 
-		it('should emit option-level builderHint as JSDoc above the discriminator literal in narrowed types', () => {
-			const vectorStoreLikeNode: NodeTypeDescription = {
+		it('should route node-level extraTypeDefContent variations into matching narrowed types only', () => {
+			const vectorStoreLikeNode: NodeTypeDescription & { builderHint?: unknown } = {
 				name: 'n8n-nodes-test.vectorStoreLike',
 				displayName: 'Vector Store Like',
 				group: ['transform'],
 				version: 1,
 				inputs: ['main'],
 				outputs: ['main'],
+				builderHint: {
+					extraTypeDefContent: [
+						{
+							displayOptions: { show: { mode: ['insert'] } },
+							content: '<patterns>\n<pattern>insert example</pattern>\n</patterns>',
+						},
+						{
+							displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+							content: '<patterns>\n<pattern>RAG example</pattern>\n</patterns>',
+						},
+					],
+				},
 				properties: [
 					{
 						displayName: 'Operation Mode',
 						name: 'mode',
 						type: 'options',
 						options: [
-							{
-								name: 'Insert',
-								value: 'insert',
-								builderHint: {
-									message: 'Wires with documentLoader subnode',
-									extraTypeDefContent: '<patterns>\n<pattern>insert example</pattern>\n</patterns>',
-								},
-							},
-							{
-								name: 'Retrieve as Tool',
-								value: 'retrieve-as-tool',
-								builderHint: {
-									message: 'Use the tool() factory, plug into agent.subnodes.tools',
-								},
-							},
+							{ name: 'Insert', value: 'insert' },
+							{ name: 'Retrieve as Tool', value: 'retrieve-as-tool' },
 						],
 						default: 'insert',
 					},
@@ -1415,18 +1424,7 @@ describe('generate-types', () => {
 
 			const result = generateTypes.generateDiscriminatedUnion(vectorStoreLikeNode);
 
-			// Insert-narrowed type should carry the insert option's hint and pattern.
-			expect(result).toMatch(
-				/@builderHint Wires with documentLoader subnode[\s\S]*?<patterns>[\s\S]*?<pattern>insert example<\/pattern>[\s\S]*?<\/patterns>[\s\S]*?mode: 'insert'/,
-			);
-
-			// Retrieve-as-tool narrowed type should carry only its own hint (no insert pattern).
-			expect(result).toMatch(
-				/@builderHint Use the tool\(\) factory, plug into agent\.subnodes\.tools[\s\S]*?mode: 'retrieve-as-tool'/,
-			);
-
-			// Each pattern stays inside its own narrowed type — no cross-bleed.
-			// Split on the type-name boundary so each section contains exactly one type's body.
+			// Each variation must land in its own narrowed type body — no cross-bleed.
 			const sections = result.split(/export type /);
 			const insertSection = sections.find((s) => s.startsWith('VectorStoreLikeInsertParams'));
 			const retrieveSection = sections.find((s) =>
@@ -1434,8 +1432,53 @@ describe('generate-types', () => {
 			);
 			expect(insertSection).toBeDefined();
 			expect(retrieveSection).toBeDefined();
-			expect(insertSection!).not.toContain('Use the tool() factory');
+
+			expect(insertSection!).toContain('<pattern>insert example</pattern>');
+			expect(insertSection!).not.toContain('RAG example');
+
+			expect(retrieveSection!).toContain('<pattern>RAG example</pattern>');
 			expect(retrieveSection!).not.toContain('insert example');
+		});
+
+		it('should skip variations whose displayOptions do not match the combo', () => {
+			const node: NodeTypeDescription & { builderHint?: unknown } = {
+				name: 'n8n-nodes-test.partialMatch',
+				displayName: 'Partial Match',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				builderHint: {
+					extraTypeDefContent: [
+						{
+							displayOptions: { show: { mode: ['unknownMode'] } },
+							content: 'should NOT appear',
+						},
+					],
+				},
+				properties: [
+					{
+						displayName: 'Operation Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Insert', value: 'insert' },
+							{ name: 'Retrieve', value: 'retrieve' },
+						],
+						default: 'insert',
+					},
+					{
+						displayName: 'Insert Field',
+						name: 'insertField',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(node);
+			expect(result).not.toContain('should NOT appear');
 		});
 
 		it('should generate simple interface for HTTP Request (no discriminators)', () => {
@@ -1822,7 +1865,7 @@ describe('generate-types', () => {
 			expect(result).toContain('&lt;a href=');
 		});
 
-		it('should include extraTypeDefContent below @builderHint, preserving line breaks and tags verbatim', () => {
+		it('should include unconditional extraTypeDefContent variation below @builderHint, preserving line breaks and tags verbatim', () => {
 			const prop: NodeProperty = {
 				name: 'columns',
 				displayName: 'Columns',
@@ -1830,26 +1873,29 @@ describe('generate-types', () => {
 				description: 'Column mapping',
 				builderHint: {
 					message: 'Pass the full resourceMapper object',
-					extraTypeDefContent:
-						'<patterns>\n<pattern title="autoMap">\ncolumns: { mappingMode: \'autoMapInputData\' }\n</pattern>\n</patterns>',
+					extraTypeDefContent: [
+						{
+							content:
+								'<patterns>\n<pattern title="autoMap">\ncolumns: { mappingMode: \'autoMapInputData\' }\n</pattern>\n</patterns>',
+						},
+					],
 				},
 				default: {},
 			};
 			const result = generateTypes.generatePropertyJSDoc(prop);
-			// Each line of extraTypeDefContent should appear on its own JSDoc line.
 			expect(result).toContain('@builderHint Pass the full resourceMapper object');
 			expect(result).toContain(' * <patterns>');
 			expect(result).toContain(' * <pattern title="autoMap">');
 			expect(result).toContain(" * columns: { mappingMode: 'autoMapInputData' }");
 			expect(result).toContain(' * </pattern>');
 			expect(result).toContain(' * </patterns>');
-			// Angle brackets in extraTypeDefContent must NOT be HTML-escaped — the LLM
+			// Angle brackets in variation content must NOT be HTML-escaped — the LLM
 			// must see the tags verbatim so it can use them as structural cues.
 			expect(result).not.toContain('&lt;patterns&gt;');
 			expect(result).not.toContain('&lt;pattern title=');
 		});
 
-		it('should escape closing JSDoc sequences inside extraTypeDefContent', () => {
+		it('should escape closing JSDoc sequences inside variation content', () => {
 			const prop: NodeProperty = {
 				name: 'foo',
 				displayName: 'Foo',
@@ -1857,7 +1903,7 @@ describe('generate-types', () => {
 				description: 'Foo',
 				builderHint: {
 					message: 'msg',
-					extraTypeDefContent: 'block end */ inside example',
+					extraTypeDefContent: [{ content: 'block end */ inside example' }],
 				},
 				default: '',
 			};
@@ -1865,6 +1911,29 @@ describe('generate-types', () => {
 			// The literal "*/" would terminate the JSDoc block early; it must be escaped.
 			expect(result).not.toContain('block end */ inside');
 			expect(result).toContain('block end *\\/ inside');
+		});
+
+		it('should skip param-level variations whose displayOptions cannot be evaluated at file/property scope', () => {
+			// Param-level emission (generatePropertyJSDoc, generateNestedPropertyJSDoc) has
+			// no discriminator combo, so any gated variation is dropped — those belong on the
+			// node-level builderHint where the codegen can route them per narrowed type.
+			const prop: NodeProperty = {
+				name: 'foo',
+				displayName: 'Foo',
+				type: 'string',
+				description: 'Foo',
+				builderHint: {
+					message: 'msg',
+					extraTypeDefContent: [
+						{ displayOptions: { show: { mode: ['insert'] } }, content: 'gated content' },
+						{ content: 'always shown' },
+					],
+				},
+				default: '',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			expect(result).toContain('always shown');
+			expect(result).not.toContain('gated content');
 		});
 	});
 
@@ -1880,20 +1949,35 @@ describe('generate-types', () => {
 			expect(result).toContain('Node Types');
 		});
 
-		it('should emit node-level builderHint message and extraTypeDefContent', () => {
+		it('should emit node-level @builderHint message at the file header', () => {
 			const node = {
 				...mockGmailNode,
 				builderHint: {
 					message: 'AI Agent — wire subnodes via the config object',
-					extraTypeDefContent: '<patterns>\n<pattern>example body</pattern>\n</patterns>',
 				},
 			};
 			const result = generateTypes.generateNodeJSDoc(node);
 			expect(result).toContain('@builderHint AI Agent — wire subnodes via the config object');
-			expect(result).toContain(' * <patterns>');
-			expect(result).toContain(' * <pattern>example body</pattern>');
-			expect(result).toContain(' * </patterns>');
-			expect(result).not.toContain('&lt;patterns&gt;');
+		});
+
+		it('should emit unconditional extraTypeDefContent variations at the file header but skip gated ones', () => {
+			const node = {
+				...mockGmailNode,
+				builderHint: {
+					extraTypeDefContent: [
+						{ content: '<patterns>\n<pattern>always</pattern>\n</patterns>' },
+						{
+							displayOptions: { show: { mode: ['insert'] } },
+							content: '<patterns>\n<pattern>insert-only</pattern>\n</patterns>',
+						},
+					],
+				},
+			};
+			const result = generateTypes.generateNodeJSDoc(node);
+			// Unconditional variation lands at file header.
+			expect(result).toContain(' * <pattern>always</pattern>');
+			// Gated variation does NOT — it's emitted per-combo via emitNodeHintForCombo.
+			expect(result).not.toContain('insert-only');
 		});
 	});
 

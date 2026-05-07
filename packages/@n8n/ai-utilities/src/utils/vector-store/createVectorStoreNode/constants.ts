@@ -29,19 +29,6 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		builderHint: {
 			message:
 				'Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding, documentLoader }`. Sits on the main flow — pipe the documents you want to embed into this node.',
-			extraTypeDefContent: `<patterns>
-<pattern title="Insert mode — upsert documents into the store">
-const store = vectorStore({
-  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-  version: 1.2,
-  config: {
-    name: 'Knowledge Base',
-    parameters: { mode: 'insert', options: {}, pineconeIndex: { __rl: true, mode: 'list', value: 'kb' } },
-    subnodes: { embedding: embeddingsOpenAi, documentLoader: defaultDataLoader }
-  }
-});
-</pattern>
-</patterns>`,
 		},
 	},
 	{
@@ -64,34 +51,6 @@ const store = vectorStore({
 		builderHint: {
 			message:
 				"Declare with the `tool({...})` factory (NOT `vectorStore`). Required subnodes: `{ embedding }`. Set `toolDescription` so the agent knows when to call it. Plug into an AI Agent's `subnodes.tools` array — this is the canonical RAG pattern.",
-			extraTypeDefContent: `<patterns>
-<pattern title="retrieve-as-tool mode — RAG via AI Agent">
-const knowledgeBase = tool({
-  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-  version: 1.2,
-  config: {
-    name: 'Knowledge Base',
-    parameters: {
-      mode: 'retrieve-as-tool',
-      toolDescription: 'Search the product knowledge base',
-      pineconeIndex: { __rl: true, mode: 'list', value: 'kb' },
-      options: {}
-    },
-    subnodes: { embedding: embeddingsOpenAi }
-  }
-});
-
-const agent = node({
-  type: '@n8n/n8n-nodes-langchain.agent',
-  version: 3.1,
-  config: {
-    name: 'Support Agent',
-    parameters: { promptType: 'define', text: expr('{{ $json.question }}') },
-    subnodes: { model: openAiModel, tools: [knowledgeBase] }
-  }
-});
-</pattern>
-</patterns>`,
 		},
 	},
 	{

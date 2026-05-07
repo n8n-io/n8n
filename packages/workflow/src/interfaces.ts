@@ -1902,15 +1902,28 @@ export interface INodePropertyCollection {
 	builderHint?: IParameterBuilderHint;
 }
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`
+ * so per-mode / per-resource / per-operation examples land only in their
+ * corresponding narrowed type without cross-bleed.
+ */
+export interface IBuilderHintVariation {
+	content: string;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
 export interface IParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
 	/**
 	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
 	 * emitted into the generated workflow-sdk `.d.ts` JSDoc but NOT surfaced in
-	 * `nodes(action="search")` results. Use for examples too long for `message`.
+	 * `nodes(action="search")` results.
 	 */
-	extraTypeDefContent?: string;
+	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
 export interface INodePropertyValueExtractorBase {
@@ -2539,10 +2552,12 @@ export interface IBuilderHint {
 	relatedNodes?: IRelatedNode[];
 	/**
 	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
-	 * emitted into the generated workflow-sdk `.d.ts` node-level JSDoc but NOT
-	 * surfaced in `nodes(action="search")` results.
+	 * emitted into the generated workflow-sdk `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type.
 	 */
-	extraTypeDefContent?: string;
+	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {

@@ -243,15 +243,31 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 // Type Definitions
 // =============================================================================
 
+/**
+ * One variation of `extraTypeDefContent`, optionally gated by `displayOptions`.
+ * Variations with `displayOptions` are emitted only in narrowed discriminator
+ * types (e.g. per-mode or per-resource/operation files) whose combo matches.
+ * Variations without `displayOptions` are emitted unconditionally.
+ */
+export interface BuilderHintVariation {
+	content: string;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
 export interface ParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
 	/**
 	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
-	 * that is emitted into the generated `.d.ts` JSDoc but NOT surfaced in
-	 * `nodes(action="search")` results. Use for examples too long for `message`.
+	 * emitted into the generated `.d.ts` JSDoc but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type without cross-bleed.
 	 */
-	extraTypeDefContent?: string;
+	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 export interface NodeProperty {
@@ -364,10 +380,43 @@ export interface JsonSchema {
  * as `<patterns>` must round-trip into the `.d.ts` verbatim so the LLM sees them
  * as structural cues. Only `*\/` is escaped to keep the JSDoc block well-formed.
  */
+/**
+ * True when a variation has no `displayOptions` (always emit) or its
+ * `displayOptions` match `combo`. Variations gated by a key not present in the
+ * combo are excluded — they're meant for narrowed contexts.
+ */
+function variationApplies(
+	variation: BuilderHintVariation,
+	combo: DiscriminatorCombination | undefined,
+): boolean {
+	const opts = variation.displayOptions;
+	if (!opts) return true;
+
+	// Without a combo (file-level emission), only unconditional variations apply.
+	if (!combo) return false;
+
+	if (opts.show) {
+		for (const [key, conditions] of Object.entries(opts.show)) {
+			const value = combo[key];
+			if (value === undefined) return false;
+			if (!checkConditions(conditions, [value])) return false;
+		}
+	}
+	if (opts.hide) {
+		for (const [key, conditions] of Object.entries(opts.hide)) {
+			const value = combo[key];
+			if (value === undefined) continue;
+			if (checkConditions(conditions, [value])) return false;
+		}
+	}
+	return true;
+}
+
 function emitBuilderHint(
 	lines: string[],
 	indent: string,
-	hint: ParameterBuilderHint | { message?: string; extraTypeDefContent?: string },
+	hint: ParameterBuilderHint | { message?: string; extraTypeDefContent?: BuilderHintVariation[] },
+	combo?: DiscriminatorCombination,
 ): void {
 	if (hint.message) {
 		const safeMessage = hint.message
@@ -377,8 +426,11 @@ function emitBuilderHint(
 		lines.push(`${indent} * @builderHint ${safeMessage}`);
 	}
 
-	if (hint.extraTypeDefContent) {
-		const safe = hint.extraTypeDefContent.replace(/\*\//g, '*\\/');
+	if (!hint.extraTypeDefContent) return;
+
+	for (const variation of hint.extraTypeDefContent) {
+		if (!variationApplies(variation, combo)) continue;
+		const safe = variation.content.replace(/\*\//g, '*\\/');
 		for (const line of safe.split('\n')) {
 			lines.push(`${indent} * ${line}`);
 		}
@@ -386,31 +438,31 @@ function emitBuilderHint(
 }
 
 /**
- * Emit the discriminator literal fields for a single discriminator combination
- * (e.g. `mode: 'insert';`). When the matching option of the source property
- * carries a `builderHint`, surface it as JSDoc above the literal — this is the
- * only place per-option hints can reach the narrowed type, since
- * `getPropertiesForCombination` excludes the discriminator property itself.
+ * `builderHint` is an extended n8n property not part of the upstream
+ * `NodeTypeDescription`. Centralized cast keeps the rest of the file clean.
  */
-function emitDiscriminatorFields(
+function getNodeBuilderHint(node: NodeTypeDescription): NodeBuilderHint | undefined {
+	return (node as NodeTypeDescription & { builderHint?: NodeBuilderHint }).builderHint;
+}
+
+/**
+ * Emit a JSDoc block for the node-level builderHint scoped to a single
+ * discriminator combination — only variations whose `displayOptions` match the
+ * combo are rendered. The `message` is intentionally not re-emitted per combo
+ * (it already lands in the file-level node header).
+ */
+function emitNodeHintForCombo(
 	lines: string[],
+	node: NodeTypeDescription,
 	combo: DiscriminatorCombination,
-	properties: NodeProperty[],
 ): void {
-	for (const [key, value] of Object.entries(combo)) {
-		if (value === undefined) continue;
+	const hint = getNodeBuilderHint(node);
+	if (!hint?.extraTypeDefContent?.some((v) => variationApplies(v, combo))) return;
 
-		const discProp = properties.find((p) => p.name === key);
-		const matchingOpt = discProp?.options?.find((o) => String(o.value) === value);
-		if (matchingOpt?.builderHint) {
-			const hintLines: string[] = [`${INDENT}/**`];
-			emitBuilderHint(hintLines, INDENT, matchingOpt.builderHint);
-			hintLines.push(`${INDENT} */`);
-			lines.push(...hintLines);
-		}
-
-		lines.push(`${INDENT}${key}: '${value}';`);
-	}
+	const hintLines: string[] = [`${INDENT}/**`];
+	emitBuilderHint(hintLines, INDENT, { extraTypeDefContent: hint.extraTypeDefContent }, combo);
+	hintLines.push(`${INDENT} */`);
+	lines.push(...hintLines);
 }
 
 // =============================================================================
@@ -1908,7 +1960,14 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 		lines.push(`export type ${configName} = {`);
 
-		emitDiscriminatorFields(lines, combo, node.properties);
+		emitNodeHintForCombo(lines, node, combo);
+
+		// Discriminator literal fields for this combo.
+		for (const [key, value] of Object.entries(combo)) {
+			if (value !== undefined) {
+				lines.push(`${INDENT}${key}: '${value}';`);
+			}
+		}
 
 		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
 		// so the emitted type def reflects the OR of variants accurately.
@@ -2059,12 +2118,12 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 		lines.push(` * @subnodeType ${subnodeType}`);
 	}
 
-	// Node-level builder hint — message and/or extraTypeDefContent.
-	// (`relatedNodes` and `inputs` are consumed elsewhere — search engine and
-	// subnode-extraction respectively — and are intentionally not emitted here.)
-	const nodeWithBuilderHint = node as NodeTypeDescription & { builderHint?: NodeBuilderHint };
-	const nodeHint = nodeWithBuilderHint.builderHint;
-	if (nodeHint && (nodeHint.message || nodeHint.extraTypeDefContent)) {
+	// Node-level builder hint — message and unconditional extraTypeDefContent.
+	// `relatedNodes` and `inputs` are consumed elsewhere (search engine, subnode
+	// extraction). Variations with `displayOptions` are skipped here — they're
+	// emitted per-combo in narrowed config types via `emitNodeHintForCombo`.
+	const nodeHint = getNodeBuilderHint(node);
+	if (nodeHint && (nodeHint.message || nodeHint.extraTypeDefContent?.length)) {
 		emitBuilderHint(lines, '', nodeHint);
 	}
 
@@ -2568,7 +2627,9 @@ export function generateDiscriminatorFile(
 	}
 	lines.push(`export type ${configName} = {`);
 
-	// Add discriminator fields
+	emitNodeHintForCombo(lines, node, combo);
+
+	// Discriminator literal fields for this combo.
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
 			lines.push(`${INDENT}${key}: '${value}';`);
@@ -3425,7 +3486,14 @@ function generateDiscriminatedUnionForEntry(
 
 		lines.push(`export type ${configName} = {`);
 
-		emitDiscriminatorFields(lines, combo, node.properties);
+		emitNodeHintForCombo(lines, node, combo);
+
+		// Discriminator literal fields for this combo.
+		for (const [key, value] of Object.entries(combo)) {
+			if (value !== undefined) {
+				lines.push(`${INDENT}${key}: '${value}';`);
+			}
+		}
 
 		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
 		// so the emitted type def reflects the OR of variants accurately.
@@ -3595,10 +3663,13 @@ interface NodeBuilderHint {
 	inputs?: Record<string, BuilderHintInput>;
 	/**
 	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
-	 * that is emitted into the generated `.d.ts` node-level JSDoc but NOT surfaced in
-	 * `nodes(action="search")` results.
+	 * emitted into the generated `.d.ts` but NOT surfaced in
+	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
+	 * so per-mode / per-resource / per-operation examples land only in their
+	 * corresponding narrowed type. Variations with no `displayOptions` emit
+	 * once at the file-level node header.
 	 */
-	extraTypeDefContent?: string;
+	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 /**

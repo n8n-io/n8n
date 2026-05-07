@@ -52,7 +52,9 @@ export class Agent extends VersionedNodeType {
 							'Required for conversational workflows - connect memory to every agent that needs to recall previous messages in the conversation',
 					},
 				],
-				extraTypeDefContent: `<patterns>
+				extraTypeDefContent: [
+					{
+						content: `<patterns>
 <pattern title="Agent with model, memory, structured output parser">
 const chatTrigger = trigger({
   type: '@n8n/n8n-nodes-langchain.chatTrigger',
@@ -115,6 +117,8 @@ const agent = node({
 });
 </pattern>
 </patterns>`,
+					},
+				],
 			},
 		};
 
