@@ -42,6 +42,12 @@ describe('templateFromSchema', () => {
 		const result = templateFromSchema(schema);
 		expect(result).toContain('userName');
 		expect(result).toContain('favoriteColor');
-		expect(JSON.parse(result)).toHaveProperty('userName');
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(result) as unknown;
+		} catch (error) {
+			throw new Error(`Expected schema template to be valid JSON: ${String(error)}`);
+		}
+		expect(parsed).toHaveProperty('userName');
 	});
 });
