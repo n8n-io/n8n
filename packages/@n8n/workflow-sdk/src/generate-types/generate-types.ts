@@ -3681,6 +3681,12 @@ interface NodeBuilderHint {
 	 * once at the file-level node header.
 	 */
 	extraTypeDefContent?: BuilderHintVariation[];
+	/**
+	 * Counterpart to `extraTypeDefContent`: extra content surfaced only in
+	 * search results, never in the generated `.d.ts`. The codegen does not
+	 * read this field — it's consumed by the instance-ai search engine.
+	 */
+	searchHint?: string;
 }
 
 /**

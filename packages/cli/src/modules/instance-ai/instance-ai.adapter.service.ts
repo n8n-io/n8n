@@ -1708,6 +1708,9 @@ export class InstanceAiAdapterService {
 						if (n.builderHint.message) {
 							result.builderHint.message = n.builderHint.message;
 						}
+						if (n.builderHint.searchHint) {
+							result.builderHint.searchHint = n.builderHint.searchHint;
+						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
 								string,

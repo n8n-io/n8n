@@ -454,6 +454,7 @@ function coerceBuilderHint(value: unknown): SearchableNodeDescription['builderHi
 	if (!isRecord(value)) return undefined;
 	const hint: NonNullable<SearchableNodeDescription['builderHint']> = {};
 	if (typeof value.message === 'string') hint.message = value.message;
+	if (typeof value.searchHint === 'string') hint.searchHint = value.searchHint;
 	const inputs = coerceHintPortMap(value.inputs);
 	if (inputs) hint.inputs = inputs;
 	const outputs = coerceHintPortMap(value.outputs);

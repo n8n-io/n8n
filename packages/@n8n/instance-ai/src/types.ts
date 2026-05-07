@@ -350,6 +350,11 @@ export interface SearchableNodeDescription {
 		message?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
+		/**
+		 * Extra content surfaced only in `nodes(action="search")` results.
+		 * Not emitted into the generated `.d.ts`.
+		 */
+		searchHint?: string;
 	};
 }
 
