@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import { JSONPath } from 'jsonpath-plus';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
 import type { INodeUi, Schema, IWorkflowDb } from '@/Interface';
@@ -23,7 +24,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 describe('useDataSchema', () => {
-	const getSchema = useDataSchema().getSchema;
+	const getSchema = useDataSchema(ref('test-workflow-id')).getSchema;
 
 	describe('getSchema', () => {
 		test.each([
@@ -554,7 +555,7 @@ describe('useDataSchema', () => {
 	});
 
 	describe('filterSchema', () => {
-		const filterSchema = useDataSchema().filterSchema;
+		const filterSchema = useDataSchema(ref('test-workflow-id')).filterSchema;
 		it('should correctly filter a flat schema', () => {
 			const flatSchema: Schema = {
 				type: 'object',
@@ -726,7 +727,7 @@ describe('useDataSchema', () => {
 	});
 
 	describe('getNodeInputData', () => {
-		const getNodeInputData = useDataSchema().getNodeInputData;
+		const getNodeInputData = useDataSchema(ref('test-workflow-id')).getNodeInputData;
 
 		beforeEach(() => {
 			setActivePinia(createTestingPinia());
@@ -854,7 +855,7 @@ describe('useDataSchema', () => {
 	});
 
 	describe('getSchemaForJsonSchema', () => {
-		const getSchemaForJsonSchema = useDataSchema().getSchemaForJsonSchema;
+		const getSchemaForJsonSchema = useDataSchema(ref('test-workflow-id')).getSchemaForJsonSchema;
 
 		it('should convert JSON schema to Schema type', () => {
 			const jsonSchema: JSONSchema7 = {
@@ -1010,7 +1011,7 @@ describe('useFlattenSchema', () => {
 				],
 			};
 			expect(
-				useFlattenSchema().flattenSchema({
+				useFlattenSchema(ref('test-workflow-id')).flattenSchema({
 					schema,
 					isDataEmpty: false,
 					truncateLimit: 600,
@@ -1019,7 +1020,7 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('items ids should be unique', () => {
-			const { flattenSchema } = useFlattenSchema();
+			const { flattenSchema } = useFlattenSchema(ref('test-workflow-id'));
 			const schema: Schema = {
 				path: '',
 				type: 'object',
@@ -1053,7 +1054,7 @@ describe('useFlattenSchema', () => {
 
 	describe('flattenMultipleSchemas', () => {
 		it('should handle empty data', () => {
-			const { flattenMultipleSchemas } = useFlattenSchema();
+			const { flattenMultipleSchemas } = useFlattenSchema(ref('test-workflow-id'));
 
 			const result = flattenMultipleSchemas(
 				[
@@ -1075,7 +1076,7 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should handle unexecuted nodes', () => {
-			const { flattenMultipleSchemas } = useFlattenSchema();
+			const { flattenMultipleSchemas } = useFlattenSchema(ref('test-workflow-id'));
 
 			const result = flattenMultipleSchemas(
 				[
@@ -1097,7 +1098,7 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should not show executeSchema empty item when node is unexecuted but has lastSuccessfulPreview', () => {
-			const { flattenMultipleSchemas } = useFlattenSchema();
+			const { flattenMultipleSchemas } = useFlattenSchema(ref('test-workflow-id'));
 
 			const result = flattenMultipleSchemas(
 				[
@@ -1127,7 +1128,7 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should handle empty schema', () => {
-			const { flattenMultipleSchemas } = useFlattenSchema();
+			const { flattenMultipleSchemas } = useFlattenSchema(ref('test-workflow-id'));
 
 			const result = flattenMultipleSchemas(
 				[
@@ -1149,7 +1150,7 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should handle empty schema with binary', () => {
-			const { flattenMultipleSchemas } = useFlattenSchema();
+			const { flattenMultipleSchemas } = useFlattenSchema(ref('test-workflow-id'));
 
 			const result = flattenMultipleSchemas(
 				[
@@ -1193,7 +1194,7 @@ describe('useFlattenSchema', () => {
 				} as IWorkflowDb,
 			});
 
-			const { flattenMultipleSchemas } = useFlattenSchema();
+			const { flattenMultipleSchemas } = useFlattenSchema(ref('test-workflow-id'));
 			const schema: Schema = {
 				path: '',
 				type: 'object',

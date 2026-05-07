@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
@@ -169,7 +170,7 @@ describe('useWorkflowSaving', () => {
 				},
 			};
 
-			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({
+			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving(ref('test-workflow-id'), {
 				router: mockRouter as never,
 			});
 
@@ -196,7 +197,7 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CANCEL);
 
-			const workflowSaving = useWorkflowSaving({ router });
+			const workflowSaving = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
 
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
@@ -230,7 +231,7 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
 
-			const workflowSaving = useWorkflowSaving({ router });
+			const workflowSaving = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
@@ -263,7 +264,7 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
 
-			const workflowSaving = useWorkflowSaving({ router });
+			const workflowSaving = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
@@ -285,7 +286,7 @@ describe('useWorkflowSaving', () => {
 			const uiStore = useUIStore();
 			uiStore.markStateClean();
 
-			const workflowSaving = useWorkflowSaving({ router });
+			const workflowSaving = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
@@ -338,7 +339,9 @@ describe('useWorkflowSaving', () => {
 				},
 			};
 
-			const workflowSaving = useWorkflowSaving({ router: mockRouter as never });
+			const workflowSaving = useWorkflowSaving(ref('test-workflow-id'), {
+				router: mockRouter as never,
+			});
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 
 			expect(modalConfirmSpy).toHaveBeenCalled();
@@ -357,7 +360,7 @@ describe('useWorkflowSaving', () => {
 			if (!workflow.nodes) {
 				throw new Error('Missing nodes in test workflow');
 			}
-			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			const { saveAsNewWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
 			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
 
@@ -379,7 +382,7 @@ describe('useWorkflowSaving', () => {
 			if (!workflow.nodes) {
 				throw new Error('Missing nodes in test workflow');
 			}
-			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			const { saveAsNewWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
 			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
 
@@ -429,7 +432,7 @@ describe('useWorkflowSaving', () => {
 				connections: {},
 			};
 
-			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			const { saveAsNewWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			const expressionPath = workflow.nodes![0].parameters.path;
 			const staticPath = workflow.nodes![1].parameters.path;
 
@@ -462,7 +465,7 @@ describe('useWorkflowSaving', () => {
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			setDocumentStoreActive(workflow.id);
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			await saveCurrentWorkflow({ id: 'w0' });
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w0',
@@ -485,7 +488,7 @@ describe('useWorkflowSaving', () => {
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			await saveCurrentWorkflow({ id: 'w1' });
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w1',
@@ -509,7 +512,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.isWorkflowSaved = { w2: true };
 			setDocumentStoreActive(workflow.id);
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w2',
@@ -533,7 +536,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.isWorkflowSaved = { w3: true };
 			setDocumentStoreActive(workflow.id);
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w3',
@@ -574,7 +577,7 @@ describe('useWorkflowSaving', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 			workflowDocumentStore.setTags(tagIds);
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -596,7 +599,7 @@ describe('useWorkflowSaving', () => {
 			const mockPendingSave = new Promise<boolean>(() => {});
 			saveStore.setPendingSave(mockPendingSave);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 
 			// Try to schedule autosave
 			autoSaveWorkflow();
@@ -612,7 +615,7 @@ describe('useWorkflowSaving', () => {
 			saveStore.reset();
 			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 
 			// Schedule autosave
 			autoSaveWorkflow();
@@ -644,7 +647,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 			const initialDirtyCount = uiStore.dirtyStateSetCount;
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -684,7 +687,7 @@ describe('useWorkflowSaving', () => {
 			// Mark state as dirty
 			uiStore.markStateDirty();
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -714,7 +717,7 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -773,7 +776,7 @@ describe('useWorkflowSaving', () => {
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -827,7 +830,7 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -884,7 +887,7 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -957,7 +960,7 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -1016,7 +1019,7 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const { saveCurrentWorkflow } = useWorkflowSaving({
+			const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 				router,
 			});
 
@@ -1047,7 +1050,7 @@ describe('useWorkflowSaving', () => {
 				const saveStore = useWorkflowSaveStore();
 				const initialRetryCount = saveStore.retryCount;
 
-				const { saveCurrentWorkflow } = useWorkflowSaving({
+				const { saveCurrentWorkflow } = useWorkflowSaving(ref('test-workflow-id'), {
 					router,
 				});
 
@@ -1070,7 +1073,7 @@ describe('useWorkflowSaving', () => {
 			backendConnectionStore.setOnline(false);
 			saveStore.reset();
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 
 			autoSaveWorkflow();
 
@@ -1087,7 +1090,7 @@ describe('useWorkflowSaving', () => {
 			autosaveStore.reset();
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 
 			// Try to schedule autosave while disabled
 			autoSaveWorkflow();
@@ -1106,7 +1109,7 @@ describe('useWorkflowSaving', () => {
 			autosaveStore.reset();
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving(ref('test-workflow-id'), { router });
 
 			// Schedule autosave
 			autoSaveWorkflow();

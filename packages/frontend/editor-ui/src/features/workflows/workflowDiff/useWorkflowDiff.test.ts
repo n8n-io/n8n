@@ -393,7 +393,7 @@ describe('useWorkflowDiff', () => {
 			useWorkflowDiff(sourceWorkflow, undefined);
 
 			// Verify useCanvasMapping was called with nodes that have IDs
-			const firstCall = mockUseCanvasMapping.mock.calls[0][0];
+			const firstCall = mockUseCanvasMapping.mock.calls[0][1];
 			const passedNodes = firstCall.nodes.value;
 
 			expect(passedNodes).toHaveLength(2);

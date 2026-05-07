@@ -17,7 +17,7 @@ import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type ContextMenuAction =
@@ -45,7 +45,7 @@ export type ContextMenuAction =
 type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();

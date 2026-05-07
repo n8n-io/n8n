@@ -1,5 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useActions } from './useActions';
@@ -54,7 +55,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
 				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
@@ -74,7 +75,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: HTTP_REQUEST_NODE_TYPE }])).toEqual({
 				connections: [],
@@ -86,7 +87,7 @@ describe('useActions', () => {
 			mockWorkflowTriggerNodes = [];
 			mockAllNodes = [];
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [
@@ -110,7 +111,7 @@ describe('useActions', () => {
 			mockWorkflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
 			mockAllNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [
@@ -137,7 +138,7 @@ describe('useActions', () => {
 				{ type: HTTP_REQUEST_NODE_TYPE } as INodeUi,
 			];
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [],
@@ -149,7 +150,7 @@ describe('useActions', () => {
 			mockWorkflowTriggerNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as never];
 			mockAllNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as INodeUi];
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [],
@@ -166,7 +167,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(getAddedNodesAndConnections([{ type: SPLIT_IN_BATCHES_NODE_TYPE }])).toEqual({
 				connections: [
@@ -212,7 +213,7 @@ describe('useActions', () => {
 					},
 				},
 			};
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(
 				getAddedNodesAndConnections([
@@ -249,7 +250,7 @@ describe('useActions', () => {
 					},
 				},
 			};
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			expect(
 				getAddedNodesAndConnections([
@@ -265,7 +266,7 @@ describe('useActions', () => {
 
 	describe('actionDataToNodeTypeSelectedPayload', () => {
 		test('should include actionName from ActionData', () => {
-			const { actionDataToNodeTypeSelectedPayload } = useActions();
+			const { actionDataToNodeTypeSelectedPayload } = useActions(ref('test-workflow-id'));
 
 			const actionData = {
 				name: 'Create Contact',
@@ -289,7 +290,7 @@ describe('useActions', () => {
 		});
 
 		test('should include actionName even when parameters are undefined', () => {
-			const { actionDataToNodeTypeSelectedPayload } = useActions();
+			const { actionDataToNodeTypeSelectedPayload } = useActions(ref('test-workflow-id'));
 
 			const actionData = {
 				name: 'Send Message',
@@ -306,7 +307,7 @@ describe('useActions', () => {
 		});
 
 		test('should preserve existing resource and operation alongside actionName', () => {
-			const { actionDataToNodeTypeSelectedPayload } = useActions();
+			const { actionDataToNodeTypeSelectedPayload } = useActions(ref('test-workflow-id'));
 
 			const actionData = {
 				name: 'Update Record',
@@ -341,7 +342,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			const result = getAddedNodesAndConnections([
 				{ type: HTTP_REQUEST_NODE_TYPE, actionName: 'Make API Call' },
@@ -365,7 +366,7 @@ describe('useActions', () => {
 			);
 			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			const result = getAddedNodesAndConnections([
 				{ type: SLACK_NODE_TYPE, actionName: 'Post Message' },
@@ -385,7 +386,7 @@ describe('useActions', () => {
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
 
-			const { getAddedNodesAndConnections } = useActions();
+			const { getAddedNodesAndConnections } = useActions(ref('test-workflow-id'));
 
 			const result = getAddedNodesAndConnections([
 				{ type: WEBHOOK_NODE_TYPE, openDetail: true, actionName: 'Receive Webhook' },

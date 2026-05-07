@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import { h, defineComponent } from 'vue';
+import { h, defineComponent, ref } from 'vue';
 import { useToast } from './useToast';
 import { useTelemetry } from './useTelemetry';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,7 +24,7 @@ describe('useToast', () => {
 			track: telemetryTrackSpy,
 		} as unknown as ReturnType<typeof useTelemetry>);
 
-		toast = useToast();
+		toast = useToast(ref('test-workflow-id'));
 	});
 
 	afterEach(() => {

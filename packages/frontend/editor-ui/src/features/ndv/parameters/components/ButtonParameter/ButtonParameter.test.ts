@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
@@ -149,7 +150,7 @@ describe('ButtonParameter', () => {
 
 		await submitButton.trigger('click');
 
-		expect(useToast().showMessage).toHaveBeenCalled();
+		expect(useToast(ref('test-workflow-id')).showMessage).toHaveBeenCalled();
 	});
 
 	it('disables input and button when in read only mode', async () => {

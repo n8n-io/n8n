@@ -13,7 +13,7 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import type { IUpdateInformation } from '@/Interface';
@@ -26,7 +26,7 @@ export interface UseCodeDiffOptions {
 }
 
 export function useCodeDiff(options: UseCodeDiffOptions) {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const rootStore = useRootStore();
 	const ndvStore = useNDVStore();
 	const locale = useI18n();

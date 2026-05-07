@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { computed } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import {
 	continueEvaluationLoop,
@@ -27,6 +28,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 const opts = {
 	workflowState: mock<WorkflowState>(),
 	router: mock<Router>(),
+	workflowId: computed(() => 'test-workflow-id'),
 };
 
 const mockShowMessage = vi.fn();
@@ -262,6 +264,7 @@ describe('executionFinished', () => {
 			{
 				router: mock<Router>(),
 				workflowState,
+				workflowId: computed(() => '1'),
 			},
 		);
 
@@ -307,6 +310,7 @@ describe('executionFinished', () => {
 				{
 					router: mock<Router>(),
 					workflowState,
+					workflowId: computed(() => '1'),
 				},
 			);
 
@@ -348,6 +352,7 @@ describe('executionFinished', () => {
 				{
 					router: mock<Router>(),
 					workflowState,
+					workflowId: computed(() => '1'),
 				},
 			);
 
@@ -392,6 +397,7 @@ describe('executionFinished', () => {
 				{
 					router: mock<Router>(),
 					workflowState,
+					workflowId: computed(() => '1'),
 				},
 			);
 
@@ -433,6 +439,7 @@ describe('executionFinished', () => {
 				{
 					router: mock<Router>(),
 					workflowState,
+					workflowId: computed(() => '1'),
 				},
 			);
 
@@ -478,6 +485,7 @@ describe('executionFinished', () => {
 				{
 					router: mock<Router>(),
 					workflowState,
+					workflowId: computed(() => '1'),
 				},
 			);
 
@@ -537,6 +545,7 @@ describe('executionFinished', () => {
 			{
 				router: mock<Router>(),
 				workflowState,
+				workflowId: computed(() => '1'),
 			},
 		);
 
@@ -598,6 +607,7 @@ describe('executionFinished', () => {
 			{
 				router: mock<Router>(),
 				workflowState,
+				workflowId: computed(() => '1'),
 			},
 		);
 
@@ -634,6 +644,7 @@ describe('executionFinished', () => {
 			{
 				router: mock<Router>(),
 				workflowState,
+				workflowId: computed(() => '1'),
 			},
 		);
 
@@ -656,7 +667,12 @@ describe('manual execution stats tracking', () => {
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther(
+				mock<WorkflowState>(),
+				'success',
+				false,
+				computed(() => 'test-workflow-id'),
+			);
 
 			expect(incrementSpy).toHaveBeenCalledWith('success');
 		});
@@ -668,7 +684,12 @@ describe('manual execution stats tracking', () => {
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+			handleExecutionFinishedWithSuccessOrOther(
+				mock<WorkflowState>(),
+				'success',
+				true,
+				computed(() => 'test-workflow-id'),
+			);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
@@ -680,7 +701,12 @@ describe('manual execution stats tracking', () => {
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'error', false);
+			handleExecutionFinishedWithSuccessOrOther(
+				mock<WorkflowState>(),
+				'error',
+				false,
+				computed(() => 'test-workflow-id'),
+			);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
@@ -717,7 +743,12 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther(
+				mock<WorkflowState>(),
+				'success',
+				false,
+				computed(() => 'test-workflow-id'),
+			);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
@@ -746,7 +777,12 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther(
+				mock<WorkflowState>(),
+				'success',
+				false,
+				computed(() => 'test-workflow-id'),
+			);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		});
@@ -775,7 +811,12 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+			handleExecutionFinishedWithSuccessOrOther(
+				mock<WorkflowState>(),
+				'success',
+				true,
+				computed(() => 'test-workflow-id'),
+			);
 
 			expect(mockShowMessage).not.toHaveBeenCalled();
 		});
@@ -801,6 +842,7 @@ describe('manual execution stats tracking', () => {
 			handleExecutionFinishedWithErrorOrCanceled(
 				execution,
 				mock<IRunExecutionData>({ resultData: { error: { message: 'test', name: 'Error' } } }),
+				computed(() => 'test-workflow-id'),
 			);
 
 			expect(incrementSpy).toHaveBeenCalledWith('error');
@@ -820,6 +862,7 @@ describe('manual execution stats tracking', () => {
 			handleExecutionFinishedWithErrorOrCanceled(
 				execution,
 				mock<IRunExecutionData>({ resultData: {} }),
+				computed(() => 'test-workflow-id'),
 			);
 
 			expect(incrementSpy).not.toHaveBeenCalled();

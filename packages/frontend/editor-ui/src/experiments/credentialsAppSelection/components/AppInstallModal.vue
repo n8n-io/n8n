@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nText, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -30,7 +31,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const nodeTypesStore = useNodeTypesStore();
-const { installNode, loading } = useInstallNode();
+const workflowId = useWorkflowId();
+const { installNode, loading } = useInstallNode(workflowId);
 
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 

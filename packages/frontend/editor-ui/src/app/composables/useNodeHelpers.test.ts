@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import type {
 	ExecutionStatus,
@@ -59,14 +60,14 @@ describe('useNodeHelpers()', () => {
 
 	describe('isNodeExecutable()', () => {
 		it('should return true if the node is null but explicitly executable', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const result = isNodeExecutable(null, true, []);
 			expect(result).toBe(true);
 		});
 
 		it('should return false if node has no Main input and is not trigger or tool', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const node: INodeUi = {
 				id: 'node-id',
@@ -100,7 +101,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return true if node has Main input and is marked executable', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const node: INodeUi = {
 				id: 'node-id',
@@ -122,7 +123,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return true if node has foreign credentials even if not marked executable', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const node: INodeUi = {
 				id: 'node-id',
@@ -144,7 +145,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return true for trigger nodes regardless of inputs', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const triggerNode: INodeUi = {
 				id: 'node-id',
@@ -166,7 +167,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return true for tool nodes regardless of inputs', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const toolNode: INodeUi = {
 				id: 'node-id',
@@ -188,7 +189,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return true if node is structurally valid and has foreign credentials, even if not executable', () => {
-			const { isNodeExecutable } = useNodeHelpers();
+			const { isNodeExecutable } = useNodeHelpers(ref('test-workflow-id'));
 
 			const node: INodeUi = {
 				id: 'node-id',
@@ -212,7 +213,7 @@ describe('useNodeHelpers()', () => {
 
 	describe('getForeignCredentialsIfSharingEnabled()', () => {
 		it('should return an empty array when user has the wrong license', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers(ref('test-workflow-id'));
 
 			const credentialWithoutAccess: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
@@ -238,7 +239,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when credentials are undefined', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers(ref('test-workflow-id'));
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
@@ -249,7 +250,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when user has access to all credentials', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers(ref('test-workflow-id'));
 
 			const credentialWithAccess1: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
@@ -287,7 +288,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an array of foreign credentials', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers(ref('test-workflow-id'));
 
 			const credentialWithAccess: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
@@ -330,7 +331,9 @@ describe('useNodeHelpers()', () => {
 			const nodeValues = {
 				parameters: { resource: CUSTOM_API_CALL_KEY },
 			};
-			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(true);
+			expect(useNodeHelpers(ref('test-workflow-id')).isCustomApiCallSelected(nodeValues)).toBe(
+				true,
+			);
 		});
 
 		test('should return `true` when operation includes `CUSTOM_API_CALL_KEY`', () => {
@@ -339,7 +342,9 @@ describe('useNodeHelpers()', () => {
 					operation: CUSTOM_API_CALL_KEY,
 				},
 			};
-			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(true);
+			expect(useNodeHelpers(ref('test-workflow-id')).isCustomApiCallSelected(nodeValues)).toBe(
+				true,
+			);
 		});
 
 		test('should return `false` when neither resource nor operation includes `CUSTOM_API_CALL_KEY`', () => {
@@ -349,13 +354,15 @@ describe('useNodeHelpers()', () => {
 					operation: 'get',
 				},
 			};
-			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(false);
+			expect(useNodeHelpers(ref('test-workflow-id')).isCustomApiCallSelected(nodeValues)).toBe(
+				false,
+			);
 		});
 	});
 
 	describe('getNodeInputData()', () => {
 		it('should return an empty array when node is null', () => {
-			const { getNodeInputData } = useNodeHelpers();
+			const { getNodeInputData } = useNodeHelpers(ref('test-workflow-id'));
 
 			const result = getNodeInputData(null);
 			expect(result).toEqual([]);
@@ -363,7 +370,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when runData is not available', () => {
 			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
-			const { getNodeInputData } = useNodeHelpers();
+			const { getNodeInputData } = useNodeHelpers(ref('test-workflow-id'));
 			const node = createTestNode({
 				name: 'test',
 				type: 'test',
@@ -378,7 +385,7 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [],
 			});
-			const { getNodeInputData } = useNodeHelpers();
+			const { getNodeInputData } = useNodeHelpers(ref('test-workflow-id'));
 			const node = createTestNode({
 				name: nodeName,
 				type: 'test',
@@ -393,7 +400,7 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [{ data: undefined }],
 			});
-			const { getNodeInputData } = useNodeHelpers();
+			const { getNodeInputData } = useNodeHelpers(ref('test-workflow-id'));
 			const node = createTestNode({
 				name: nodeName,
 				type: 'test',
@@ -415,7 +422,7 @@ describe('useNodeHelpers()', () => {
 					},
 				],
 			});
-			const { getNodeInputData } = useNodeHelpers();
+			const { getNodeInputData } = useNodeHelpers(ref('test-workflow-id'));
 			const node = createTestNode({
 				name: nodeName,
 				type: 'test',
@@ -432,7 +439,7 @@ describe('useNodeHelpers()', () => {
 				mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 					[nodeName]: [{ data: { main: [data] } }],
 				});
-				const { getNodeInputData } = useNodeHelpers();
+				const { getNodeInputData } = useNodeHelpers(ref('test-workflow-id'));
 				const node = createTestNode({
 					name: nodeName,
 					type: 'test',
@@ -448,7 +455,7 @@ describe('useNodeHelpers()', () => {
 		const mockData = [{ json: { hello: 'world' } }];
 		it('should return the last runIndex with data', () => {
 			const nodeName = 'Test Node';
-			const { getLastRunIndexWithData } = useNodeHelpers();
+			const { getLastRunIndexWithData } = useNodeHelpers(ref('test-workflow-id'));
 
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [{ data: { main: [mockData] } }, { data: { main: [mockData] } }],
@@ -458,7 +465,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return -1 when there are no runs', () => {
 			const nodeName = 'Test Node';
-			const { getLastRunIndexWithData } = useNodeHelpers();
+			const { getLastRunIndexWithData } = useNodeHelpers(ref('test-workflow-id'));
 
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [],
@@ -468,7 +475,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return -1 when there is no runData', () => {
 			const nodeName = 'Test Node';
-			const { getLastRunIndexWithData } = useNodeHelpers();
+			const { getLastRunIndexWithData } = useNodeHelpers(ref('test-workflow-id'));
 
 			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
@@ -476,7 +483,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should work with custom outputIndex', () => {
 			const nodeName = 'Test Node';
-			const { getLastRunIndexWithData } = useNodeHelpers();
+			const { getLastRunIndexWithData } = useNodeHelpers(ref('test-workflow-id'));
 
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [
@@ -492,7 +499,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should work with custom connectionType', () => {
 			const nodeName = 'Test Node';
-			const { getLastRunIndexWithData } = useNodeHelpers();
+			const { getLastRunIndexWithData } = useNodeHelpers(ref('test-workflow-id'));
 
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [
@@ -509,7 +516,7 @@ describe('useNodeHelpers()', () => {
 		it('should return false when runData is not available', () => {
 			const nodeName = 'Test Node';
 			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
-			const { hasNodeExecuted } = useNodeHelpers();
+			const { hasNodeExecuted } = useNodeHelpers(ref('test-workflow-id'));
 			expect(hasNodeExecuted(nodeName)).toBe(false);
 		});
 
@@ -525,14 +532,14 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [{ executionStatus: status }],
 			});
-			const { hasNodeExecuted } = useNodeHelpers();
+			const { hasNodeExecuted } = useNodeHelpers(ref('test-workflow-id'));
 			expect(hasNodeExecuted(nodeName)).toBe(expected);
 		});
 	});
 
 	describe('assignNodeId()', () => {
 		it('should assign a unique id to the node', () => {
-			const { assignNodeId } = useNodeHelpers();
+			const { assignNodeId } = useNodeHelpers(ref('test-workflow-id'));
 			const node = createTestNode({
 				id: '',
 			});
@@ -545,7 +552,7 @@ describe('useNodeHelpers()', () => {
 
 	describe('assignWebhookId', () => {
 		it('should assign a unique id to the webhook', () => {
-			const { assignWebhookId } = useNodeHelpers();
+			const { assignWebhookId } = useNodeHelpers(ref('test-workflow-id'));
 			const webhook = createTestNode({
 				id: '',
 			});
@@ -559,7 +566,7 @@ describe('useNodeHelpers()', () => {
 	describe('isSingleExecution', () => {
 		let isSingleExecution: ReturnType<typeof useNodeHelpers>['isSingleExecution'];
 		beforeEach(() => {
-			isSingleExecution = useNodeHelpers().isSingleExecution;
+			isSingleExecution = useNodeHelpers(ref('test-workflow-id')).isSingleExecution;
 		});
 
 		test('should determine based on node parameters if it would be executed once', () => {
@@ -592,7 +599,7 @@ describe('useNodeHelpers()', () => {
 	describe('getNodeHints', () => {
 		let getNodeHints: ReturnType<typeof useNodeHelpers>['getNodeHints'];
 		beforeEach(() => {
-			getNodeHints = useNodeHelpers().getNodeHints;
+			getNodeHints = useNodeHelpers(ref('test-workflow-id')).getNodeHints;
 		});
 
 		//TODO: Add more tests here when hints are added to some node types
@@ -708,7 +715,7 @@ describe('useNodeHelpers()', () => {
 			});
 
 			const mockWorkflow = mock<Workflow>();
-			const { getNodeIssues } = useNodeHelpers();
+			const { getNodeIssues } = useNodeHelpers(ref('test-workflow-id'));
 			const result = getNodeIssues(nodeTypeWithCreds, node, mockWorkflow, ['parameters']);
 
 			expect(result?.credentials).toBeUndefined();
@@ -723,7 +730,7 @@ describe('useNodeHelpers()', () => {
 			});
 
 			const mockWorkflow = mock<Workflow>();
-			const { getNodeIssues } = useNodeHelpers();
+			const { getNodeIssues } = useNodeHelpers(ref('test-workflow-id'));
 			const result = getNodeIssues(nodeTypeWithCreds, node, mockWorkflow, ['parameters']);
 
 			expect(result?.credentials?.googlePalmApi).toBeDefined();
@@ -774,7 +781,7 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithFeatures);
 			const getNodeParametersIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
-			const { updateNodeParameterIssues } = useNodeHelpers();
+			const { updateNodeParameterIssues } = useNodeHelpers(ref('test-workflow-id'));
 
 			updateNodeParameterIssues(node);
 

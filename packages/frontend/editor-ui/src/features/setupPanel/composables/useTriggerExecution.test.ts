@@ -69,7 +69,7 @@ describe('useTriggerExecution', () => {
 	describe('label', () => {
 		it('should return button label from useNodeExecution when not listening', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { label } = useTriggerExecution(node);
+			const { label } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(label.value).toBe('Test node');
 		});
@@ -77,7 +77,7 @@ describe('useTriggerExecution', () => {
 		it('should return stop listening label when in listening state', () => {
 			mockExecutionState.isListening = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { label } = useTriggerExecution(node);
+			const { label } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(label.value).toContain('Stop');
 		});
@@ -85,7 +85,7 @@ describe('useTriggerExecution', () => {
 		it('should return stop listening label when listening for workflow events', () => {
 			mockExecutionState.isListeningForWorkflowEvents = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { label } = useTriggerExecution(node);
+			const { label } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(label.value).toContain('Stop');
 		});
@@ -94,7 +94,7 @@ describe('useTriggerExecution', () => {
 	describe('isInListeningState', () => {
 		it('should be false when not listening', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { isInListeningState } = useTriggerExecution(node);
+			const { isInListeningState } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isInListeningState.value).toBe(false);
 		});
@@ -102,7 +102,7 @@ describe('useTriggerExecution', () => {
 		it('should be true when isListening is true', () => {
 			mockExecutionState.isListening = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { isInListeningState } = useTriggerExecution(node);
+			const { isInListeningState } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isInListeningState.value).toBe(true);
 		});
@@ -110,7 +110,7 @@ describe('useTriggerExecution', () => {
 		it('should be true when isListeningForWorkflowEvents is true', () => {
 			mockExecutionState.isListeningForWorkflowEvents = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { isInListeningState } = useTriggerExecution(node);
+			const { isInListeningState } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isInListeningState.value).toBe(true);
 		});
@@ -130,7 +130,7 @@ describe('useTriggerExecution', () => {
 			workflowsStore.chatPartialExecutionDestinationNode = 'When chat message received';
 
 			const node = ref<INodeUi | null>(chatNode);
-			const { isInListeningState } = useTriggerExecution(node);
+			const { isInListeningState } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isInListeningState.value).toBe(true);
 		});
@@ -150,7 +150,7 @@ describe('useTriggerExecution', () => {
 			workflowsStore.chatPartialExecutionDestinationNode = 'When chat message received';
 
 			const node = ref<INodeUi | null>(chatNode);
-			const { isInListeningState } = useTriggerExecution(node);
+			const { isInListeningState } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isInListeningState.value).toBe(false);
 		});
@@ -170,7 +170,7 @@ describe('useTriggerExecution', () => {
 			workflowsStore.chatPartialExecutionDestinationNode = 'Some Other Node';
 
 			const node = ref<INodeUi | null>(chatNode);
-			const { isInListeningState } = useTriggerExecution(node);
+			const { isInListeningState } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isInListeningState.value).toBe(false);
 		});
@@ -179,7 +179,7 @@ describe('useTriggerExecution', () => {
 	describe('isButtonDisabled', () => {
 		it('should be false when no issues and not executing', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { isButtonDisabled } = useTriggerExecution(node);
+			const { isButtonDisabled } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isButtonDisabled.value).toBe(false);
 		});
@@ -187,7 +187,7 @@ describe('useTriggerExecution', () => {
 		it('should be true when executing', () => {
 			mockExecutionState.isExecuting = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { isButtonDisabled } = useTriggerExecution(node);
+			const { isButtonDisabled } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isButtonDisabled.value).toBe(true);
 		});
@@ -195,7 +195,7 @@ describe('useTriggerExecution', () => {
 		it('should be true when node has issues', () => {
 			mockExecutionState.hasIssues = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { isButtonDisabled } = useTriggerExecution(node);
+			const { isButtonDisabled } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isButtonDisabled.value).toBe(true);
 		});
@@ -203,7 +203,7 @@ describe('useTriggerExecution', () => {
 		it('should be true when there is a disabled reason', () => {
 			mockExecutionState.disabledReason = 'Workflow not saved';
 			const node = ref<INodeUi | null>(createNode());
-			const { isButtonDisabled } = useTriggerExecution(node);
+			const { isButtonDisabled } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(isButtonDisabled.value).toBe(true);
 		});
@@ -212,7 +212,7 @@ describe('useTriggerExecution', () => {
 	describe('tooltipItems', () => {
 		it('should return empty array when no issues and no disabled reason', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipItems } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(tooltipItems.value).toEqual([]);
 		});
@@ -220,7 +220,7 @@ describe('useTriggerExecution', () => {
 		it('should return generic message when node has issues but no issue details', () => {
 			mockExecutionState.hasIssues = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipItems } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(tooltipItems.value).toHaveLength(1);
 			expect(tooltipItems.value[0]).toBeTruthy();
@@ -237,7 +237,7 @@ describe('useTriggerExecution', () => {
 					},
 				}),
 			);
-			const { tooltipItems } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(tooltipItems.value).toEqual(['Credentials for Slack are not set.']);
 		});
@@ -253,7 +253,7 @@ describe('useTriggerExecution', () => {
 					},
 				}),
 			);
-			const { tooltipItems } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(tooltipItems.value).toEqual(['Parameter "Channel" is required.']);
 		});
@@ -272,7 +272,7 @@ describe('useTriggerExecution', () => {
 					},
 				}),
 			);
-			const { tooltipItems } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(tooltipItems.value).toEqual([
 				'Credentials for Slack are not set.',
@@ -283,7 +283,7 @@ describe('useTriggerExecution', () => {
 		it('should return disabled reason as single-item array when provided', () => {
 			mockExecutionState.disabledReason = 'Workflow not saved';
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipItems } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(tooltipItems.value).toEqual(['Workflow not saved']);
 		});
@@ -292,7 +292,7 @@ describe('useTriggerExecution', () => {
 	describe('listeningHint', () => {
 		it('should return empty string when not listening', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { listeningHint } = useTriggerExecution(node);
+			const { listeningHint } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(listeningHint.value).toBe('');
 		});
@@ -307,7 +307,7 @@ describe('useTriggerExecution', () => {
 				}),
 			);
 			const node = ref<INodeUi | null>(createNode());
-			const { listeningHint } = useTriggerExecution(node);
+			const { listeningHint } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(listeningHint.value).toBe('Go to Slack and send a message');
 		});
@@ -321,7 +321,7 @@ describe('useTriggerExecution', () => {
 				}),
 			);
 			const node = ref<INodeUi | null>(createNode());
-			const { listeningHint } = useTriggerExecution(node);
+			const { listeningHint } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(listeningHint.value).toContain('Slack');
 		});
@@ -329,7 +329,7 @@ describe('useTriggerExecution', () => {
 		it('should return empty string when listening but node is null', () => {
 			mockExecutionState.isListening = true;
 			const node = ref<INodeUi | null>(null);
-			const { listeningHint } = useTriggerExecution(node);
+			const { listeningHint } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			expect(listeningHint.value).toBe('');
 		});
@@ -338,7 +338,7 @@ describe('useTriggerExecution', () => {
 	describe('execute', () => {
 		it('should delegate to useNodeExecution execute', async () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { execute } = useTriggerExecution(node);
+			const { execute } = useTriggerExecution(ref('test-workflow-id'), node);
 
 			await execute();
 

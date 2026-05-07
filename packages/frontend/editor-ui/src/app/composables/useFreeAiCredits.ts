@@ -6,11 +6,11 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 
 export function useFreeAiCredits() {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const settingsStore = useSettingsStore();

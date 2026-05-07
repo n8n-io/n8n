@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useToast } from '@/app/composables/useToast';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
@@ -47,7 +47,7 @@ export const useGlobalEntityCreation = () => {
 	const CREDENTIALS_MENU_ID = 'credential';
 	const DEFAULT_ICON: IconName = 'layers';
 
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();

@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, nextTick, reactive } from 'vue';
+import { defineComponent, nextTick, reactive, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useReviewChanges } from './useReviewChanges';
 import type { INode, IConnections } from 'n8n-workflow';
@@ -136,7 +136,7 @@ function withSetup() {
 	let result!: ReturnType<typeof useReviewChanges>;
 	const comp = defineComponent({
 		setup() {
-			result = useReviewChanges();
+			result = useReviewChanges(ref('test-workflow-id'));
 			return () => null;
 		},
 	});

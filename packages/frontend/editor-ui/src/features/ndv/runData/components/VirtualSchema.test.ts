@@ -26,7 +26,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,
@@ -218,7 +218,7 @@ function pinData(node: { name: string }, data: INodeExecutionData[]) {
 }
 
 function mockNodeOutputData(nodeName: string, data: INodeExecutionData[], outputIndex = 0) {
-	const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+	const originalNodeHelpers = nodeHelpers.useNodeHelpers(ref('test-workflow-id'));
 	vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 		return {
 			...originalNodeHelpers,
@@ -472,7 +472,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders schema for specific output branch when outputIndex is specified', async () => {
-		const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+		const originalNodeHelpers = nodeHelpers.useNodeHelpers(ref('test-workflow-id'));
 		vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 			return {
 				...originalNodeHelpers,
@@ -828,7 +828,7 @@ describe('VirtualSchema.vue', () => {
 	it('does not filter single-output connected nodes by outputIndex', async () => {
 		// This test verifies the fix for the issue where nodes with single output connections
 		// were incorrectly being filtered by the current node's outputIndex
-		const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+		const originalNodeHelpers = nodeHelpers.useNodeHelpers(ref('test-workflow-id'));
 		vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 			return {
 				...originalNodeHelpers,
@@ -884,7 +884,7 @@ describe('VirtualSchema.vue', () => {
 
 		// Mock SplitInBatches node processing the loop with multiple items on output 0 (loop branch)
 		// and final completion signal on output 1 (done branch)
-		const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+		const originalNodeHelpers = nodeHelpers.useNodeHelpers(ref('test-workflow-id'));
 		vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 			return {
 				...originalNodeHelpers,
@@ -965,7 +965,7 @@ describe('VirtualSchema.vue', () => {
 				},
 			};
 
-			const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+			const originalNodeHelpers = nodeHelpers.useNodeHelpers(ref('test-workflow-id'));
 			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 				return {
 					...originalNodeHelpers,

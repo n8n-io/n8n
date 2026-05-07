@@ -41,13 +41,13 @@ describe('usePinnedData', () => {
 
 	describe('isValidJSON()', () => {
 		it('should return true for valid JSON', () => {
-			const { isValidJSON } = usePinnedData(ref(null));
+			const { isValidJSON } = usePinnedData(ref('test-workflow-id'), ref(null));
 
 			expect(isValidJSON('{"key":"value"}')).toBe(true);
 		});
 
 		it('should return false for invalid JSON', () => {
-			const { isValidJSON } = usePinnedData(ref(null));
+			const { isValidJSON } = usePinnedData(ref('test-workflow-id'), ref(null));
 			const result = isValidJSON('invalid json');
 
 			expect(result).toBe(false);
@@ -56,14 +56,20 @@ describe('usePinnedData', () => {
 
 	describe('isValidSize()', () => {
 		it('should return true when data size is at upper limit', () => {
-			const { isValidSize } = usePinnedData(ref({ name: 'testNode' } as INodeUi));
+			const { isValidSize } = usePinnedData(
+				ref('test-workflow-id'),
+				ref({ name: 'testNode' } as INodeUi),
+			);
 			const largeData = new Array(MAX_PINNED_DATA_SIZE + 1).join('a');
 
 			expect(isValidSize(largeData)).toBe(true);
 		});
 
 		it('should return false when data size is too large', () => {
-			const { isValidSize } = usePinnedData(ref({ name: 'testNode' } as INodeUi));
+			const { isValidSize } = usePinnedData(
+				ref('test-workflow-id'),
+				ref({ name: 'testNode' } as INodeUi),
+			);
 			const largeData = new Array(MAX_PINNED_DATA_SIZE + 2).join('a');
 
 			expect(isValidSize(largeData)).toBe(false);
@@ -72,13 +78,19 @@ describe('usePinnedData', () => {
 
 	describe('setData()', () => {
 		it('should throw if data is not valid JSON', () => {
-			const { setData } = usePinnedData(ref({ name: 'testNode' } as INodeUi));
+			const { setData } = usePinnedData(
+				ref('test-workflow-id'),
+				ref({ name: 'testNode' } as INodeUi),
+			);
 
 			expect(() => setData('invalid json', 'pin-icon-click')).toThrow();
 		});
 
 		it('should throw if data size is too large', () => {
-			const { setData } = usePinnedData(ref({ name: 'testNode' } as INodeUi));
+			const { setData } = usePinnedData(
+				ref('test-workflow-id'),
+				ref({ name: 'testNode' } as INodeUi),
+			);
 			const largeData = new Array(MAX_PINNED_DATA_SIZE + 2).join('a');
 
 			expect(() => setData(largeData, 'pin-icon-click')).toThrow();
@@ -88,7 +100,7 @@ describe('usePinnedData', () => {
 			const workflowsStore = useWorkflowsStore();
 			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
-			const { setData } = usePinnedData(node);
+			const { setData } = usePinnedData(ref('test-workflow'), node);
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
@@ -104,7 +116,7 @@ describe('usePinnedData', () => {
 			const workflowsStore = useWorkflowsStore();
 			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
-			const { setData, unsetData } = usePinnedData(node);
+			const { setData, unsetData } = usePinnedData(ref('test-workflow'), node);
 			const testData = [{ json: { key: 'value' } }];
 
 			setData(testData, 'pin-icon-click');
@@ -129,7 +141,7 @@ describe('usePinnedData', () => {
 				type: 'n8n-nodes-base.httpRequest',
 				id: 'test-node-id',
 			} as INodeUi);
-			const pinnedData = usePinnedData(node, {
+			const pinnedData = usePinnedData(ref('test-workflow-id'), node, {
 				displayMode: ref('json'),
 				runIndex: ref(2),
 			});
@@ -154,10 +166,14 @@ describe('usePinnedData', () => {
 		it('should trigger telemetry tracking on error in data setting', () => {
 			const telemetry = useTelemetry();
 			const spy = vi.spyOn(telemetry, 'track');
-			const pinnedData = usePinnedData(ref({ name: 'testNode', type: 'someType' } as INodeUi), {
-				displayMode: ref('json'),
-				runIndex: ref(0),
-			});
+			const pinnedData = usePinnedData(
+				ref('test-workflow-id'),
+				ref({ name: 'testNode', type: 'someType' } as INodeUi),
+				{
+					displayMode: ref('json'),
+					runIndex: ref(0),
+				},
+			);
 
 			pinnedData.onSetDataError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 			expect(spy).toHaveBeenCalled();
@@ -168,10 +184,14 @@ describe('usePinnedData', () => {
 		it('should trigger telemetry on successful data unsetting', async () => {
 			const telemetry = useTelemetry();
 			const spy = vi.spyOn(telemetry, 'track');
-			const pinnedData = usePinnedData(ref({ name: 'testNode', type: 'someType' } as INodeUi), {
-				displayMode: ref('json'),
-				runIndex: ref(0),
-			});
+			const pinnedData = usePinnedData(
+				ref('test-workflow-id'),
+				ref({ name: 'testNode', type: 'someType' } as INodeUi),
+				{
+					displayMode: ref('json'),
+					runIndex: ref(0),
+				},
+			);
 
 			pinnedData.onUnsetData({ source: 'context-menu' });
 			expect(spy).toHaveBeenCalled();
@@ -199,7 +219,7 @@ describe('usePinnedData', () => {
 			} as INodeUi);
 			getNodeType.mockReturnValue(makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE));
 
-			const { canPinNode } = usePinnedData(node);
+			const { canPinNode } = usePinnedData(ref('test-workflow'), node);
 
 			expect(canPinNode()).toBe(true);
 			expect(canPinNode(false, 0)).toBe(true);
@@ -218,7 +238,7 @@ describe('usePinnedData', () => {
 			} as INodeUi);
 			getNodeType.mockReturnValue(makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE));
 
-			const { canPinNode } = usePinnedData(node);
+			const { canPinNode } = usePinnedData(ref('test-workflow'), node);
 
 			expect(canPinNode()).toBe(true);
 			expect(canPinNode(false, 0)).toBe(true);
@@ -240,7 +260,7 @@ describe('usePinnedData', () => {
 				makeNodeType([NodeConnectionTypes.Main, NodeConnectionTypes.Main], IF_NODE_TYPE),
 			);
 
-			const { canPinNode } = usePinnedData(node);
+			const { canPinNode } = usePinnedData(ref('test-workflow'), node);
 
 			expect(canPinNode()).toBe(false);
 			expect(canPinNode(false, 0)).toBe(false);
@@ -256,7 +276,7 @@ describe('usePinnedData', () => {
 				typeVersion: 1,
 				type: STICKY_NODE_TYPE,
 			} as INodeUi);
-			const { canPinNode } = usePinnedData(node);
+			const { canPinNode } = usePinnedData(ref('test-workflow'), node);
 
 			expect(canPinNode()).toBe(false);
 			expect(canPinNode(false, 0)).toBe(false);
@@ -270,7 +290,7 @@ describe('usePinnedData', () => {
 			} as INodeUi);
 			getNodeType.mockReturnValue(makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE));
 
-			const { canPinNode } = usePinnedData(node);
+			const { canPinNode } = usePinnedData(ref('test-workflow'), node);
 
 			expect(canPinNode(true)).toBe(false);
 			expect(canPinNode(true, 0)).toBe(false);
@@ -284,7 +304,7 @@ describe('usePinnedData', () => {
 			} as INodeUi);
 			getNodeType.mockReturnValue(makeNodeType([], 'n8n-nodes-base.stopAndError'));
 
-			const { canPinNode } = usePinnedData(node);
+			const { canPinNode } = usePinnedData(ref('test-workflow'), node);
 
 			expect(canPinNode()).toBe(false);
 			expect(canPinNode(false, 0)).toBe(false);

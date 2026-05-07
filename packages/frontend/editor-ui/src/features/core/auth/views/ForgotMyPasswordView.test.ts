@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import ForgotMyPasswordView from './ForgotMyPasswordView.vue';
 import { useToast } from '@/app/composables/useToast';
@@ -56,7 +57,7 @@ describe('ForgotMyPasswordView', () => {
 
 		createTestingPinia();
 
-		toast = useToast();
+		toast = useToast(ref('test-workflow-id'));
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 	});

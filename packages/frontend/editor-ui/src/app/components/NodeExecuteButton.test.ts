@@ -1,4 +1,4 @@
-import { reactive, shallowRef, computed } from 'vue';
+import { reactive, ref, shallowRef, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
@@ -153,10 +153,10 @@ describe('NodeExecuteButton', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		ndvStore = mockedStore(useNDVStore);
 
-		runWorkflow = useRunWorkflow({ router: useRouter() });
+		runWorkflow = useRunWorkflow(ref('test-workflow-id'), { router: useRouter() });
 		externalHooks = useExternalHooks();
 		message = useMessage();
-		toast = useToast();
+		toast = useToast(ref('test-workflow-id'));
 	});
 
 	afterEach(() => {

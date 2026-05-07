@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
@@ -146,7 +147,7 @@ describe('useGlobalEntityCreation', () => {
 		});
 
 		it('creates a new project', async () => {
-			const toast = useToast();
+			const toast = useToast(ref('test-workflow-id'));
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
@@ -164,7 +165,7 @@ describe('useGlobalEntityCreation', () => {
 		});
 
 		it('handles create project error', async () => {
-			const toast = useToast();
+			const toast = useToast(ref('test-workflow-id'));
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;

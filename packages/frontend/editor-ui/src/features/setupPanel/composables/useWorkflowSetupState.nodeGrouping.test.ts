@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 
 import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -172,7 +173,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 			},
 		};
 
-		const { setupCards } = useWorkflowSetupState();
+		const { setupCards } = useWorkflowSetupState(ref('test-workflow-id'));
 
 		// Should have ONE item which is a nodeGroup
 		expect(setupCards.value).toHaveLength(1);
@@ -217,7 +218,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 			},
 		};
 
-		const { setupCards } = useWorkflowSetupState();
+		const { setupCards } = useWorkflowSetupState(ref('test-workflow-id'));
 
 		// Should have ONE item which is a nodeGroup
 		expect(setupCards.value).toHaveLength(1);
@@ -278,7 +279,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 			},
 		};
 
-		const { setupCards } = useWorkflowSetupState();
+		const { setupCards } = useWorkflowSetupState(ref('test-workflow-id'));
 
 		// Should have ONE group with Chain as parent, containing Retriever, VectorStore, and Embedding
 		expect(setupCards.value).toHaveLength(1);
@@ -342,7 +343,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 			},
 		};
 
-		const { setupCards } = useWorkflowSetupState();
+		const { setupCards } = useWorkflowSetupState(ref('test-workflow-id'));
 
 		// Should produce ONE group under Agent, not separate groups for Tool Code and Vector Store
 		const nodeGroupCards = setupCards.value.filter((c) => c.nodeGroup);
@@ -387,7 +388,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 			},
 		};
 
-		const { setupCards } = useWorkflowSetupState();
+		const { setupCards } = useWorkflowSetupState(ref('test-workflow-id'));
 
 		// Should have a regular card for Slack (with state, no nodeGroup)
 		const regularCards = setupCards.value.filter((c) => c.state && !c.nodeGroup);
@@ -426,7 +427,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 			},
 		};
 
-		const { setupCards } = useWorkflowSetupState();
+		const { setupCards } = useWorkflowSetupState(ref('test-workflow-id'));
 
 		// No node group should be created (tool has no setup needs)
 		const nodeGroupCards = setupCards.value.filter((c) => c.nodeGroup);

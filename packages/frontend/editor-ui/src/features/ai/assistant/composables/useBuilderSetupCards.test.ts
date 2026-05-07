@@ -110,7 +110,7 @@ let currentScope: EffectScope | undefined;
 function getComposable() {
 	currentScope?.stop();
 	currentScope = effectScope();
-	return currentScope.run(() => useBuilderSetupCards())!;
+	return currentScope.run(() => useBuilderSetupCards(ref('test-workflow-id')))!;
 }
 
 describe('useBuilderSetupCards', () => {

@@ -20,7 +20,7 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 vi.mock('@/app/composables/useToast');
 
@@ -63,14 +63,18 @@ describe(useLogsExecutionData, () => {
 		});
 
 		it('should not calculate entries isEnabled is false', async () => {
-			const { entries } = useLogsExecutionData({ isEnabled: computed(() => false) });
+			const { entries } = useLogsExecutionData(ref('test-workflow-id'), {
+				isEnabled: computed(() => false),
+			});
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(0);
 		});
 
 		it('should calculate entries if isEnabled is true', async () => {
-			const { entries } = useLogsExecutionData({ isEnabled: computed(() => true) });
+			const { entries } = useLogsExecutionData(ref('test-workflow-id'), {
+				isEnabled: computed(() => true),
+			});
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(1);
@@ -122,7 +126,7 @@ describe(useLogsExecutionData, () => {
 				}),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData(ref('test-workflow-id'));
 
 			await waitFor(() => expect(entries.value).toHaveLength(2));
 			expect(entries.value[1].children).toHaveLength(0);
@@ -153,7 +157,7 @@ describe(useLogsExecutionData, () => {
 				new Error('test execution fetch fail'),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData(ref('test-workflow-id'));
 
 			await waitFor(() => expect(entries.value).toHaveLength(2));
 			await loadSubExecution(entries.value[1]);

@@ -1,12 +1,12 @@
 import { computed, onScopeDispose, ref } from 'vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 export const NODE_CREATOR_SHORTCUT_COACHMARK_KEY = 'node-creator-shortcut-coachmark';
 
 export function useNodeCreatorShortcutCoachmark() {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const { isCalloutDismissed, dismissCallout } = useCalloutHelpers(workflowId);
 
 	const isTabPressed = ref(false);

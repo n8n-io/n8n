@@ -9,7 +9,7 @@ import { renderComponent, type RenderOptions } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
-import { shallowRef } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	injectWorkflowDocumentStore,
@@ -51,7 +51,7 @@ const nodes = [
 const mockResolveExpression = () => {
 	const mock = vi.fn();
 	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-		...workflowHelpers.useWorkflowHelpers(),
+		...workflowHelpers.useWorkflowHelpers(ref('test-workflow-id')),
 		resolveExpression: mock,
 	});
 

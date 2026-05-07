@@ -398,7 +398,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should still show logs for a removed node', async () => {
-		const operations = useCanvasOperations();
+		const operations = useCanvasOperations(ref('test-workflow-id'));
 
 		workflowsStore.workflow = deepCopy(aiChatWorkflow);
 		logsStore.toggleOpen(true);
@@ -494,7 +494,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should show new name when a node is renamed', async () => {
-		const canvasOperations = useCanvasOperations();
+		const canvasOperations = useCanvasOperations(ref('test-workflow-id'));
 
 		logsStore.toggleOpen(true);
 
@@ -582,7 +582,7 @@ describe('LogsPanel', () => {
 		});
 
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
-			const canvasOperations = useCanvasOperations();
+			const canvasOperations = useCanvasOperations(ref('test-workflow-id'));
 
 			const workflow = deepCopy(aiChatWorkflow);
 			workflow.id = 'test-workflow-id';
@@ -667,7 +667,7 @@ describe('LogsPanel', () => {
 				expect(typeof copiedSessionId).toBe('string');
 
 				// Verify toast was shown
-				const toast = useToast();
+				const toast = useToast(ref('test-workflow-id'));
 				expect(toast.showMessage).toHaveBeenCalledWith({
 					message: '',
 					title: 'Copied to clipboard',

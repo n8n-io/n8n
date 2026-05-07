@@ -6,7 +6,7 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export interface WebhookDisplayData {
 	url: string;
@@ -20,7 +20,7 @@ export interface WebhookDisplayData {
  * while the trigger is in a listening state.
  */
 export function useWebhookUrls(node: MaybeRef<INodeUi | null>) {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowHelpers = useWorkflowHelpers(workflowId);
 

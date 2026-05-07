@@ -71,6 +71,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				ref('test-workflow-id'),
 				setupRequests,
 				() => null,
 				() => false,
@@ -94,6 +95,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				ref('test-workflow-id'),
 				setupRequests,
 				() => null,
 				() => false,
@@ -129,6 +131,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				ref('test-workflow-id'),
 				setupRequests,
 				() => null,
 				() => false,
@@ -156,6 +159,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				ref('test-workflow-id'),
 				setupRequests,
 				() => null,
 				() => false,
@@ -180,6 +184,7 @@ describe('useSetupCards', () => {
 			]);
 
 			const { cards } = useSetupCards(
+				ref('test-workflow-id'),
 				setupRequests,
 				() => null,
 				() => false,

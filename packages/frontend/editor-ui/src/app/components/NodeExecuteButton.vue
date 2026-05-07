@@ -8,6 +8,7 @@ import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -53,6 +54,7 @@ defineOptions({
 });
 
 const i18n = useI18n();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = injectNDVStore();
 
@@ -69,7 +71,7 @@ const {
 	hasIssues,
 	shouldGenerateCode,
 	execute,
-} = useNodeExecution(node, {
+} = useNodeExecution(workflowId, node, {
 	telemetrySource: props.telemetrySource,
 	executionMode: computed(() => props.executionMode),
 	source: 'RunData.ExecuteNodeButton',

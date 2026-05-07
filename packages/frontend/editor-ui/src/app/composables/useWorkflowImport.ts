@@ -1,7 +1,7 @@
 import { computed, type ShallowRef } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { VIEWS } from '@/app/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -17,7 +17,7 @@ export function useWorkflowImport(
 	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>,
 	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>,
 ) {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const route = useRoute();
 	const { resetWorkspace, initializeWorkspace, fitView } = useCanvasOperations(workflowId);
 

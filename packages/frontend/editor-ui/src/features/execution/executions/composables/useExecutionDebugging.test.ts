@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -64,12 +65,12 @@ describe('useExecutionDebugging()', () => {
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.workflow.id = 'test-workflow';
 
-		toast = useToast();
+		toast = useToast(ref('test-workflow-id'));
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
-		executionDebugging = useExecutionDebugging();
+		executionDebugging = useExecutionDebugging(ref('test-workflow-id'));
 	});
 
 	it('should not throw when runData node is an empty array', async () => {

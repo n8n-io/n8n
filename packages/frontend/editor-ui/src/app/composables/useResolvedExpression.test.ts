@@ -19,13 +19,18 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
-async function renderTestComponent(...options: Parameters<typeof useResolvedExpression>) {
+const TEST_WORKFLOW_ID = 'test-workflow-id';
+
+async function renderTestComponent(
+	options: Parameters<typeof useResolvedExpression>[1],
+	workflowId: Parameters<typeof useResolvedExpression>[0] = ref(TEST_WORKFLOW_ID),
+) {
 	let resolvedExpression!: ReturnType<typeof useResolvedExpression>;
 
 	const renderResult = renderComponent(
 		defineComponent({
 			setup() {
-				resolvedExpression = useResolvedExpression(...options);
+				resolvedExpression = useResolvedExpression(workflowId, options);
 				return () => h('div');
 			},
 		}),
@@ -37,7 +42,7 @@ async function renderTestComponent(...options: Parameters<typeof useResolvedExpr
 const mockResolveExpression = () => {
 	const mock = vi.fn();
 	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-		...workflowHelpers.useWorkflowHelpers(),
+		...workflowHelpers.useWorkflowHelpers(ref(TEST_WORKFLOW_ID)),
 		resolveExpression: mock,
 	});
 
@@ -131,9 +136,12 @@ describe('useResolvedExpression', () => {
 
 		workflowDocumentStore.setName('Old Name');
 
-		const { resolvedExpressionString } = await renderTestComponent({
-			expression: '={{ $workflow.name }}',
-		});
+		const { resolvedExpressionString } = await renderTestComponent(
+			{
+				expression: '={{ $workflow.name }}',
+			},
+			ref('test-workflow'),
+		);
 
 		// Initial resolve - need multiple nextTick calls to handle async resolution
 		await nextTick();

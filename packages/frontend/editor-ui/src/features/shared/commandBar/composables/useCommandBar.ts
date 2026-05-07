@@ -21,7 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,
@@ -30,7 +30,7 @@ import {
 } from '@/features/ai/chatHub/constants';
 
 export function useCommandBar() {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();

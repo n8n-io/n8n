@@ -1,3 +1,4 @@
+import { computed, type ComputedRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { executionStarted } from './executionStarted';
@@ -13,7 +14,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
 
 describe('executionStarted', () => {
-	let mockOptions: { workflowState: Mocked<WorkflowState> };
+	let mockOptions: { workflowState: Mocked<WorkflowState>; workflowId: ComputedRef<string> };
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 	function makeEvent(executionId = 'exec-1'): ExecutionStarted {
@@ -31,6 +32,7 @@ describe('executionStarted', () => {
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>(),
+			workflowId: computed(() => 'wf-123'),
 		};
 	});
 

@@ -10,7 +10,7 @@ import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
 import { useToast } from '@/app/composables/useToast';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -18,7 +18,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 export function useQuickConnect() {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const message = useMessage();

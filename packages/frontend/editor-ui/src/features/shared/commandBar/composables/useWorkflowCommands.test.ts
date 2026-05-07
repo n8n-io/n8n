@@ -141,7 +141,7 @@ describe('useWorkflowCommands', () => {
 	describe('credential commands', () => {
 		it('should return empty array when no credentials exist', () => {
 			mockWorkflow.value.nodes = [];
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const credentialCommands = commands.value.filter((cmd) => cmd.id === 'open-credential');
 			expect(credentialCommands).toHaveLength(0);
 		});
@@ -162,7 +162,7 @@ describe('useWorkflowCommands', () => {
 			mockWorkflow.value.nodes = nodes;
 			mockWorkflowDocumentStore.setNodes(nodes);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const credentialCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
 
 			expect(credentialCommand).toBeDefined();
@@ -186,7 +186,7 @@ describe('useWorkflowCommands', () => {
 			mockWorkflow.value.nodes = nodes;
 			mockWorkflowDocumentStore.setNodes(nodes);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const credentialCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
 			await credentialCommand?.children?.[0].handler?.();
 
@@ -196,14 +196,14 @@ describe('useWorkflowCommands', () => {
 
 	describe('canvas actions', () => {
 		it('should include test workflow command', () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const testCommand = commands.value.find((cmd) => cmd.id === 'test-workflow');
 
 			expect(testCommand).toBeDefined();
 		});
 
 		it('should handle tidy up command', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const tidyUpCommand = commands.value.find((cmd) => cmd.id === 'tidy-up-workflow');
 
 			expect(tidyUpCommand).toBeDefined();
@@ -213,7 +213,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle rename workflow', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const renameCommand = commands.value.find((cmd) => cmd.id === 'rename-workflow');
 
 			await renameCommand?.handler?.();
@@ -222,7 +222,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle add tag', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const addTagCommand = commands.value.find((cmd) => cmd.id === 'add-tag');
 
 			await addTagCommand?.handler?.();
@@ -231,7 +231,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle select all', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const selectAllCommand = commands.value.find((cmd) => cmd.id === 'select-all');
 
 			await selectAllCommand?.handler?.();
@@ -240,7 +240,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle open workflow settings', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const settingsCommand = commands.value.find((cmd) => cmd.id === 'open-workflow-settings');
 
 			await settingsCommand?.handler?.();
@@ -253,7 +253,7 @@ describe('useWorkflowCommands', () => {
 		it('should not include duplicate command when user lacks create permission', () => {
 			mockWorkflowDocumentStore.setScopes(['workflow:read', 'workflow:update']);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const duplicateCommand = commands.value.find((cmd) => cmd.id === 'duplicate-workflow');
 
 			expect(duplicateCommand).toBeUndefined();
@@ -263,7 +263,7 @@ describe('useWorkflowCommands', () => {
 			mockWorkflow.value.tags = ['tag1'];
 			mockWorkflowDocumentStore.setTags(['tag1']);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const duplicateCommand = commands.value.find((cmd) => cmd.id === 'duplicate-workflow');
 
 			await duplicateCommand?.handler?.();
@@ -281,14 +281,14 @@ describe('useWorkflowCommands', () => {
 
 	describe('publish/unpublish commands', () => {
 		it('should show publish command when user has update permission and workflow is not archived', () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 
 			expect(publishCommand).toBeDefined();
 		});
 
 		it('should show unpublish command when user has update permission and workflow is not archived', () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
 			expect(unpublishCommand).toBeDefined();
@@ -297,7 +297,7 @@ describe('useWorkflowCommands', () => {
 		it('should not show publish/unpublish commands when workflow is archived', () => {
 			mockWorkflowDocumentStore.setIsArchived(true);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
@@ -306,7 +306,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle publish workflow', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 
 			await publishCommand?.handler?.();
@@ -315,7 +315,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle unpublish workflow', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
 			await unpublishCommand?.handler?.();
@@ -326,7 +326,7 @@ describe('useWorkflowCommands', () => {
 
 	describe('subworkflow commands', () => {
 		it('should return empty array when no subworkflows exist', () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const subworkflowCommand = commands.value.find((cmd) => cmd.id === 'open-sub-workflow');
 
 			expect(subworkflowCommand).toBeUndefined();
@@ -352,7 +352,7 @@ describe('useWorkflowCommands', () => {
 			mockWorkflow.value.nodes = nodes;
 			mockWorkflowDocumentStore.setNodes(nodes);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const subworkflowCommand = commands.value.find((cmd) => cmd.id === 'open-sub-workflow');
 
 			expect(subworkflowCommand).toBeDefined();
@@ -363,7 +363,7 @@ describe('useWorkflowCommands', () => {
 
 	describe('export commands', () => {
 		it('should handle download workflow', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const downloadCommand = commands.value.find((cmd) => cmd.id === 'download-workflow');
 
 			await downloadCommand?.handler?.();
@@ -378,7 +378,7 @@ describe('useWorkflowCommands', () => {
 
 	describe('import commands', () => {
 		it('should handle import from URL', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const importCommand = commands.value.find((cmd) => cmd.id === 'import-workflow-from-url');
 
 			await importCommand?.handler?.();
@@ -387,7 +387,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle import from file', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const importCommand = commands.value.find((cmd) => cmd.id === 'import-workflow-from-file');
 
 			await importCommand?.handler?.();
@@ -400,7 +400,7 @@ describe('useWorkflowCommands', () => {
 		it('should show archive command when workflow is not archived', () => {
 			mockWorkflowDocumentStore.setIsArchived(false);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
 			const unarchiveCommand = commands.value.find((cmd) => cmd.id === 'unarchive-workflow');
 
@@ -411,7 +411,7 @@ describe('useWorkflowCommands', () => {
 		it('should show unarchive and delete commands when workflow is archived', () => {
 			mockWorkflowDocumentStore.setIsArchived(true);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
 			const unarchiveCommand = commands.value.find((cmd) => cmd.id === 'unarchive-workflow');
 			const deleteCommand = commands.value.find((cmd) => cmd.id === 'delete-workflow');
@@ -424,7 +424,7 @@ describe('useWorkflowCommands', () => {
 		it('should not show lifecycle commands without delete permission', () => {
 			mockWorkflowDocumentStore.setScopes(['workflow:read', 'workflow:update']);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
 			const deleteCommand = commands.value.find((cmd) => cmd.id === 'delete-workflow');
 
@@ -433,7 +433,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle archive workflow', async () => {
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
 
 			await archiveCommand?.handler?.();
@@ -444,7 +444,7 @@ describe('useWorkflowCommands', () => {
 		it('should handle unarchive workflow', async () => {
 			mockWorkflowDocumentStore.setIsArchived(true);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const unarchiveCommand = commands.value.find((cmd) => cmd.id === 'unarchive-workflow');
 
 			await unarchiveCommand?.handler?.();
@@ -455,7 +455,7 @@ describe('useWorkflowCommands', () => {
 		it('should handle delete workflow', async () => {
 			mockWorkflowDocumentStore.setIsArchived(true);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const deleteCommand = commands.value.find((cmd) => cmd.id === 'delete-workflow');
 
 			await deleteCommand?.handler?.();
@@ -468,7 +468,7 @@ describe('useWorkflowCommands', () => {
 		it('should respect read-only branch mode', () => {
 			mockSourceControlStore.preferences.branchReadOnly = true;
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
 
 			expect(activateCommand).toBeUndefined();
@@ -479,7 +479,7 @@ describe('useWorkflowCommands', () => {
 			mockWorkflowsListStore.workflowsById = {};
 			mockWorkflowDocumentStore.setScopes(['workflow:read']);
 
-			const { commands } = useWorkflowCommands();
+			const { commands } = useWorkflowCommands(ref('test-workflow-id'));
 			const saveCommand = commands.value.find((cmd) => cmd.id === 'rename-workflow');
 
 			expect(saveCommand).toBeDefined();

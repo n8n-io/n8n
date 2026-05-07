@@ -12,7 +12,7 @@ import type {
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
@@ -49,7 +49,7 @@ export function useChatMessaging({
 	ws,
 	onNewMessage,
 }: ChatMessagingDependencies) {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const locale = useI18n();
 	const { showError } = useToast(workflowId);
 	const previousMessageIndex = ref(0);

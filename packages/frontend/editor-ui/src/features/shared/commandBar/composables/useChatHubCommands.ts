@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import type { CommandGroup, CommandBarItem } from '../types';
@@ -29,7 +29,7 @@ const ITEM_ID = {
 export function useChatHubCommands(options: {
 	lastQuery: Ref<string>;
 }): CommandGroup {
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const i18n = useI18n();
 	const { lastQuery } = options;
 	const router = useRouter();

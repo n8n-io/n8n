@@ -62,7 +62,7 @@ describe('useToolParameters', () => {
 				parameters: {},
 			});
 
-			const { getToolName } = useToolParameters({ node });
+			const { getToolName } = useToolParameters(ref('test-workflow'), { node });
 			expect(getToolName('Test Node Name')).toBe('Test_Node_Name');
 		});
 
@@ -77,7 +77,7 @@ describe('useToolParameters', () => {
 			};
 			const node = ref<INode>(testNode);
 
-			const { getToolName } = useToolParameters({ node });
+			const { getToolName } = useToolParameters(ref('test-workflow'), { node });
 			expect(getToolName(testNode)).toBe('My_Tool');
 		});
 	});
@@ -97,7 +97,7 @@ describe('useToolParameters', () => {
 			};
 			const node = ref<INode>(testNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value).toHaveLength(2);
@@ -130,7 +130,7 @@ describe('useToolParameters', () => {
 			};
 			const node = ref<INode>(testNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value).toHaveLength(1);
@@ -176,7 +176,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(testNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value[0].initialValue).toBe('test query value');
@@ -198,7 +198,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(testNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value[0].initialValue).toBe('value from agent request store');
@@ -217,7 +217,7 @@ describe('useToolParameters', () => {
 			};
 			const node = ref<INode>(testNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value[0]).toMatchObject({
@@ -263,7 +263,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(mcpNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			// Wait for the watcher to trigger and async operations to complete
 			await waitFor(() => expect(parameters.value.length).toBeGreaterThan(0));
 
@@ -322,7 +322,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(mcpNode);
 
-			const { parameters, updateSelectedTool } = useToolParameters({ node });
+			const { parameters, updateSelectedTool } = useToolParameters(ref('test-workflow'), { node });
 			// Wait for the watcher to trigger and async operations to complete
 			await waitFor(() => expect(parameters.value.length).toBeGreaterThan(0));
 
@@ -355,7 +355,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(mcpNode);
 
-			const { parameters, error } = useToolParameters({ node });
+			const { parameters, error } = useToolParameters(ref('test-workflow'), { node });
 			// Wait for the watcher to trigger and async operations to complete
 			await waitFor(() => expect(error.value).toBeDefined());
 
@@ -397,7 +397,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(hitlNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			// Wait for the watcher to trigger and async operations to complete
 			await waitFor(() => expect(parameters.value.length).toBeGreaterThan(0));
 
@@ -446,7 +446,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(hitlNode);
 
-			const { parameters, updateSelectedTool } = useToolParameters({ node });
+			const { parameters, updateSelectedTool } = useToolParameters(ref('test-workflow'), { node });
 			// Wait for the watcher to trigger and async operations to complete
 			await waitFor(() => expect(parameters.value.length).toBeGreaterThan(0));
 
@@ -495,7 +495,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(vectorStoreNode);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value[0]).toMatchObject({
@@ -539,7 +539,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(node1);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value[0].name).toBe('query.param1');
@@ -554,7 +554,7 @@ describe('useToolParameters', () => {
 		it('should handle null node', async () => {
 			const node = ref<INode | null>(null);
 
-			const { parameters } = useToolParameters({ node });
+			const { parameters } = useToolParameters(ref('test-workflow'), { node });
 			await nextTick();
 
 			expect(parameters.value).toHaveLength(0);
@@ -576,7 +576,7 @@ describe('useToolParameters', () => {
 
 			const node = ref<INode>(mcpNode);
 
-			const { error } = useToolParameters({ node });
+			const { error } = useToolParameters(ref('test-workflow'), { node });
 			// Wait for the watcher to trigger and async operations to complete
 			await waitFor(() => expect(error.value).toBeDefined());
 

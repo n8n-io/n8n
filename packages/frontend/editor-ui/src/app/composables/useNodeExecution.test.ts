@@ -233,7 +233,7 @@ describe('useNodeExecution', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
 			const node = ref(createTestNode({ type: WEBHOOK_NODE_TYPE }));
 
-			const { isTriggerNode } = useNodeExecution(node);
+			const { isTriggerNode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isTriggerNode.value).toBe(true);
 			expect(mockNodeTypesStore.isTriggerNode).toHaveBeenCalledWith(WEBHOOK_NODE_TYPE);
@@ -242,7 +242,7 @@ describe('useNodeExecution', () => {
 		it('should return false when the node is not a trigger node', () => {
 			const node = ref(createTestNode());
 
-			const { isTriggerNode } = useNodeExecution(node);
+			const { isTriggerNode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isTriggerNode.value).toBe(false);
 		});
@@ -250,7 +250,7 @@ describe('useNodeExecution', () => {
 		it('should return false when node is null', () => {
 			const node = ref<INodeUi | null>(null);
 
-			const { isTriggerNode } = useNodeExecution(node);
+			const { isTriggerNode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isTriggerNode.value).toBe(false);
 		});
@@ -264,7 +264,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { hasIssues } = useNodeExecution(node);
+			const { hasIssues } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(hasIssues.value).toBe(true);
 		});
@@ -276,7 +276,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { hasIssues } = useNodeExecution(node);
+			const { hasIssues } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(hasIssues.value).toBe(true);
 		});
@@ -284,7 +284,7 @@ describe('useNodeExecution', () => {
 		it('should return false when node has no issues', () => {
 			const node = ref(createTestNode());
 
-			const { hasIssues } = useNodeExecution(node);
+			const { hasIssues } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(hasIssues.value).toBe(false);
 		});
@@ -296,7 +296,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
-			const { isListening } = useNodeExecution(node);
+			const { isListening } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListening.value).toBe(true);
 		});
@@ -306,7 +306,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: true }));
 
-			const { isListening } = useNodeExecution(node);
+			const { isListening } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListening.value).toBe(false);
 		});
@@ -315,7 +315,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode());
 
-			const { isListening } = useNodeExecution(node);
+			const { isListening } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListening.value).toBe(false);
 		});
@@ -324,7 +324,7 @@ describe('useNodeExecution', () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
 			const node = ref(createTestNode());
 
-			const { isListening } = useNodeExecution(node);
+			const { isListening } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListening.value).toBe(false);
 		});
@@ -335,7 +335,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Other Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { isListening } = useNodeExecution(node);
+			const { isListening } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListening.value).toBe(false);
 		});
@@ -352,7 +352,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { isListeningForWorkflowEvents } = useNodeExecution(node);
+			const { isListeningForWorkflowEvents } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListeningForWorkflowEvents.value).toBe(true);
 		});
@@ -367,7 +367,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { isListeningForWorkflowEvents } = useNodeExecution(node);
+			const { isListeningForWorkflowEvents } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListeningForWorkflowEvents.value).toBe(false);
 		});
@@ -382,7 +382,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { isListeningForWorkflowEvents } = useNodeExecution(node);
+			const { isListeningForWorkflowEvents } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isListeningForWorkflowEvents.value).toBe(false);
 		});
@@ -394,7 +394,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { isExecuting } = useNodeExecution(node);
+			const { isExecuting } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isExecuting.value).toBe(true);
 		});
@@ -402,7 +402,7 @@ describe('useNodeExecution', () => {
 		it('should return false when workflow is not running', () => {
 			const node = ref(createTestNode());
 
-			const { isExecuting } = useNodeExecution(node);
+			const { isExecuting } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(isExecuting.value).toBe(false);
 		});
@@ -414,7 +414,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
-			const { disabledReason } = useNodeExecution(node);
+			const { disabledReason } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(disabledReason.value).toBe('');
 		});
@@ -422,7 +422,7 @@ describe('useNodeExecution', () => {
 		it('should return disabled message when node is disabled', () => {
 			const node = ref(createTestNode({ disabled: true }));
 
-			const { disabledReason } = useNodeExecution(node);
+			const { disabledReason } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(disabledReason.value).toBe('ndv.execute.nodeIsDisabled');
 		});
@@ -435,7 +435,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { disabledReason } = useNodeExecution(node);
+			const { disabledReason } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(disabledReason.value).toBe('ndv.execute.requiredFieldsMissing');
 		});
@@ -445,7 +445,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Other Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { disabledReason } = useNodeExecution(node);
+			const { disabledReason } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(disabledReason.value).toBe('ndv.execute.workflowAlreadyRunning');
 		});
@@ -453,7 +453,7 @@ describe('useNodeExecution', () => {
 		it('should return empty string when no disabled condition applies', () => {
 			const node = ref(createTestNode());
 
-			const { disabledReason } = useNodeExecution(node);
+			const { disabledReason } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(disabledReason.value).toBe('');
 		});
@@ -465,7 +465,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('ndv.execute.stopListening');
 		});
@@ -477,7 +477,7 @@ describe('useNodeExecution', () => {
 			} as INodeTypeDescription);
 			const node = ref(createTestNode({ type: CHAT_TRIGGER_NODE_TYPE }));
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('chat.open');
 		});
@@ -489,7 +489,7 @@ describe('useNodeExecution', () => {
 			} as INodeTypeDescription);
 			const node = ref(createTestNode({ type: WEBHOOK_NODE_TYPE }));
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('ndv.execute.listenForTestEvent');
 		});
@@ -501,7 +501,7 @@ describe('useNodeExecution', () => {
 			} as INodeTypeDescription);
 			const node = ref(createTestNode({ type: FORM_TRIGGER_NODE_TYPE }));
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('ndv.execute.testStep');
 		});
@@ -514,7 +514,7 @@ describe('useNodeExecution', () => {
 			} as unknown as INodeTypeDescription);
 			const node = ref(createTestNode());
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('ndv.execute.fetchEvent');
 		});
@@ -527,7 +527,7 @@ describe('useNodeExecution', () => {
 			} as unknown as INodeTypeDescription);
 			const node = ref(createTestNode());
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('ndv.execute.fetchEvent');
 		});
@@ -539,7 +539,7 @@ describe('useNodeExecution', () => {
 			} as INodeTypeDescription);
 			const node = ref(createTestNode());
 
-			const { buttonLabel } = useNodeExecution(node);
+			const { buttonLabel } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonLabel.value).toBe('ndv.execute.testNode');
 		});
@@ -549,7 +549,7 @@ describe('useNodeExecution', () => {
 		it('should return flask-conical when not listening', () => {
 			const node = ref(createTestNode());
 
-			const { buttonIcon } = useNodeExecution(node);
+			const { buttonIcon } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonIcon.value).toBe('flask-conical');
 		});
@@ -559,7 +559,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
-			const { buttonIcon } = useNodeExecution(node);
+			const { buttonIcon } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonIcon.value).toBeUndefined();
 		});
@@ -572,7 +572,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { buttonIcon } = useNodeExecution(node);
+			const { buttonIcon } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(buttonIcon.value).toBe('terminal');
 		});
@@ -582,7 +582,7 @@ describe('useNodeExecution', () => {
 		it('should return false for non-AI transform nodes', () => {
 			const node = ref(createTestNode());
 
-			const { shouldGenerateCode } = useNodeExecution(node);
+			const { shouldGenerateCode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(shouldGenerateCode.value).toBe(false);
 		});
@@ -595,7 +595,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { shouldGenerateCode } = useNodeExecution(node);
+			const { shouldGenerateCode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(shouldGenerateCode.value).toBe(false);
 		});
@@ -608,7 +608,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { shouldGenerateCode } = useNodeExecution(node);
+			const { shouldGenerateCode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(shouldGenerateCode.value).toBe(true);
 		});
@@ -625,7 +625,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { shouldGenerateCode } = useNodeExecution(node);
+			const { shouldGenerateCode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(shouldGenerateCode.value).toBe(false);
 		});
@@ -642,7 +642,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { shouldGenerateCode } = useNodeExecution(node);
+			const { shouldGenerateCode } = useNodeExecution(ref('test-workflow-id'), node);
 
 			expect(shouldGenerateCode.value).toBe(true);
 		});
@@ -652,7 +652,7 @@ describe('useNodeExecution', () => {
 		it('should return noop when node is null', async () => {
 			const node = ref<INodeUi | null>(null);
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('noop');
@@ -665,7 +665,7 @@ describe('useNodeExecution', () => {
 			} as INodeTypeDescription);
 			const node = ref(createTestNode({ name: 'Chat Node', type: CHAT_TRIGGER_NODE_TYPE }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('opened-chat');
@@ -684,7 +684,7 @@ describe('useNodeExecution', () => {
 			mockNodeHelpers.getNodeInputData.mockReturnValue([]);
 			const node = ref(createTestNode({ name: 'Child Node' }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('opened-chat');
@@ -695,7 +695,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('stopped-webhook');
@@ -712,7 +712,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('stopped-execution');
@@ -723,7 +723,7 @@ describe('useNodeExecution', () => {
 			vi.mocked(needsAgentInput).mockReturnValue(true);
 			const node = ref(createTestNode({ name: 'Agent Node' }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('opened-modal');
@@ -736,7 +736,7 @@ describe('useNodeExecution', () => {
 		it('should run workflow for normal execution', async () => {
 			const node = ref(createTestNode({ name: 'Set Node' }));
 
-			const { execute } = useNodeExecution(node, {
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node, {
 				telemetrySource: 'ndv',
 				executionMode: 'inclusive',
 				source: 'RunData.ExecuteNodeButton',
@@ -755,7 +755,7 @@ describe('useNodeExecution', () => {
 			mockMessage.confirm.mockResolvedValue(MODAL_CONFIRM);
 			const node = ref(createTestNode({ name: 'Set Node' }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(mockMessage.confirm).toHaveBeenCalled();
@@ -768,7 +768,7 @@ describe('useNodeExecution', () => {
 			mockMessage.confirm.mockResolvedValue('cancel');
 			const node = ref(createTestNode({ name: 'Set Node' }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('cancelled');
@@ -788,7 +788,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(generateCodeForAiTransform).toHaveBeenCalled();
@@ -811,7 +811,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { execute } = useNodeExecution(node, { onCodeGenerated });
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node, { onCodeGenerated });
 			await execute();
 
 			expect(onCodeGenerated).toHaveBeenCalledTimes(2);
@@ -835,7 +835,7 @@ describe('useNodeExecution', () => {
 				}),
 			);
 
-			const { execute } = useNodeExecution(node);
+			const { execute } = useNodeExecution(ref('test-workflow-id'), node);
 			const result = await execute();
 
 			expect(result).toBe('cancelled');
@@ -848,7 +848,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executionWaitingForWebhook = true;
 			const node = ref(createTestNode({ disabled: false }));
 
-			const { stopExecution } = useNodeExecution(node);
+			const { stopExecution } = useNodeExecution(ref('test-workflow-id'), node);
 			await stopExecution();
 
 			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
@@ -864,7 +864,7 @@ describe('useNodeExecution', () => {
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
-			const { stopExecution } = useNodeExecution(node);
+			const { stopExecution } = useNodeExecution(ref('test-workflow-id'), node);
 			await stopExecution();
 
 			expect(mockRunWorkflow.stopCurrentExecution).toHaveBeenCalled();

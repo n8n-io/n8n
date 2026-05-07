@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -116,91 +117,91 @@ describe('useCredentialOAuth', () => {
 
 	describe('getParentTypes', () => {
 		it('should return empty array for types with no extends', () => {
-			const { getParentTypes } = useCredentialOAuth();
+			const { getParentTypes } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(getParentTypes('oAuth2Api')).toEqual([]);
 			expect(getParentTypes('openAiApi')).toEqual([]);
 		});
 
 		it('should return parent types for single-level inheritance', () => {
-			const { getParentTypes } = useCredentialOAuth();
+			const { getParentTypes } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(getParentTypes('googleOAuth2Api')).toEqual(['oAuth2Api']);
 		});
 
 		it('should return all ancestors for multi-level inheritance', () => {
-			const { getParentTypes } = useCredentialOAuth();
+			const { getParentTypes } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(getParentTypes('googleSheetsOAuth2Api')).toEqual(['googleOAuth2Api', 'oAuth2Api']);
 		});
 
 		it('should handle unknown credential types gracefully', () => {
-			const { getParentTypes } = useCredentialOAuth();
+			const { getParentTypes } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(getParentTypes('unknownType')).toEqual([]);
 		});
 	});
 
 	describe('isOAuthCredentialType', () => {
 		it('should return true for oAuth2Api directly', () => {
-			const { isOAuthCredentialType } = useCredentialOAuth();
+			const { isOAuthCredentialType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isOAuthCredentialType('oAuth2Api')).toBe(true);
 		});
 
 		it('should return true for oAuth1Api directly', () => {
-			const { isOAuthCredentialType } = useCredentialOAuth();
+			const { isOAuthCredentialType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isOAuthCredentialType('oAuth1Api')).toBe(true);
 		});
 
 		it('should return true for types extending oAuth2Api', () => {
-			const { isOAuthCredentialType } = useCredentialOAuth();
+			const { isOAuthCredentialType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isOAuthCredentialType('googleOAuth2Api')).toBe(true);
 			expect(isOAuthCredentialType('slackOAuth2Api')).toBe(true);
 		});
 
 		it('should return true for multi-level OAuth descendants', () => {
-			const { isOAuthCredentialType } = useCredentialOAuth();
+			const { isOAuthCredentialType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isOAuthCredentialType('googleSheetsOAuth2Api')).toBe(true);
 		});
 
 		it('should return false for non-OAuth types', () => {
-			const { isOAuthCredentialType } = useCredentialOAuth();
+			const { isOAuthCredentialType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isOAuthCredentialType('openAiApi')).toBe(false);
 		});
 
 		it('should return false for unknown types', () => {
-			const { isOAuthCredentialType } = useCredentialOAuth();
+			const { isOAuthCredentialType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isOAuthCredentialType('unknownType')).toBe(false);
 		});
 	});
 
 	describe('isGoogleOAuthType', () => {
 		it('should return true for googleOAuth2Api directly', () => {
-			const { isGoogleOAuthType } = useCredentialOAuth();
+			const { isGoogleOAuthType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isGoogleOAuthType('googleOAuth2Api')).toBe(true);
 		});
 
 		it('should return true for types extending googleOAuth2Api', () => {
-			const { isGoogleOAuthType } = useCredentialOAuth();
+			const { isGoogleOAuthType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isGoogleOAuthType('googleSheetsOAuth2Api')).toBe(true);
 		});
 
 		it('should return false for non-Google OAuth types', () => {
-			const { isGoogleOAuthType } = useCredentialOAuth();
+			const { isGoogleOAuthType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isGoogleOAuthType('slackOAuth2Api')).toBe(false);
 			expect(isGoogleOAuthType('oAuth2Api')).toBe(false);
 		});
 
 		it('should return false for non-OAuth types', () => {
-			const { isGoogleOAuthType } = useCredentialOAuth();
+			const { isGoogleOAuthType } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(isGoogleOAuthType('openAiApi')).toBe(false);
 		});
 	});
 
 	describe('hasManagedOAuthCredentials', () => {
 		it('should return false for non-OAuth types', () => {
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('openAiApi')).toBe(false);
 		});
 
 		it('should return false when no overwritten properties', () => {
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
 		});
 
@@ -211,7 +212,7 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['someOtherProp'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
 		});
 
@@ -222,7 +223,7 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
 		});
 
@@ -243,7 +244,7 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
 		});
 
@@ -272,12 +273,12 @@ describe('useCredentialOAuth', () => {
 				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('dropboxOAuth2Api')).toBe(true);
 		});
 
 		it('should return false for unknown credential types', () => {
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('unknownType')).toBe(false);
 		});
 
@@ -289,7 +290,7 @@ describe('useCredentialOAuth', () => {
 				__skipManagedCreation: true,
 			};
 
-			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			const { hasManagedOAuthCredentials } = useCredentialOAuth(ref('test-workflow-id'));
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
 		});
 	});
@@ -360,7 +361,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const result = await authorize(mockCredential);
 
 			expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledWith(mockCredential);
@@ -375,7 +376,7 @@ describe('useCredentialOAuth', () => {
 			};
 			credentialsStore.oAuth1Authorize.mockResolvedValue('https://oauth1.example.com/auth');
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const result = await authorize(oauth1Credential);
 
 			expect(credentialsStore.oAuth1Authorize).toHaveBeenCalledWith(oauth1Credential);
@@ -386,7 +387,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockRejectedValue(new Error('API error'));
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const result = await authorize(mockCredential);
 
 			expect(result).toBe(false);
@@ -397,7 +398,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('ftp://bad-protocol.com');
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const result = await authorize(mockCredential);
 
 			expect(result).toBe(false);
@@ -409,7 +410,7 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 			vi.stubGlobal('open', vi.fn().mockReturnValue(null));
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const result = await authorize(mockCredential);
 
 			expect(result).toBe(false);
@@ -421,7 +422,7 @@ describe('useCredentialOAuth', () => {
 
 			MockBroadcastChannel.failOauth = true;
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const result = await authorize(mockCredential);
 
 			expect(result).toBe(false);
@@ -432,7 +433,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await authorize(mockCredential);
 
 			expect(MockBroadcastChannel.closeCalled).toBeTruthy();
@@ -455,7 +456,7 @@ describe('useCredentialOAuth', () => {
 			});
 
 			const controller = new AbortController();
-			const { authorize } = useCredentialOAuth();
+			const { authorize } = useCredentialOAuth(ref('test-workflow-id'));
 			const promise = authorize(mockCredential, controller.signal);
 
 			// Give it a tick to enter waitForOAuthCallback
@@ -535,7 +536,7 @@ describe('useCredentialOAuth', () => {
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();
 
-			const { createAndAuthorize } = useCredentialOAuth();
+			const { createAndAuthorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await createAndAuthorize('slackOAuth2Api');
 
 			expect(mockTrack).toHaveBeenCalledWith('User created credentials', {
@@ -548,7 +549,7 @@ describe('useCredentialOAuth', () => {
 		it('should track "User saved credentials" with is_valid true on OAuth success', async () => {
 			setupSuccessfulOAuthFlow();
 
-			const { createAndAuthorize } = useCredentialOAuth();
+			const { createAndAuthorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await createAndAuthorize('slackOAuth2Api');
 
 			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
@@ -565,7 +566,7 @@ describe('useCredentialOAuth', () => {
 		it('should track "User saved credentials" with is_valid false on OAuth failure', async () => {
 			setupFailedOAuthFlow();
 
-			const { createAndAuthorize } = useCredentialOAuth();
+			const { createAndAuthorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await createAndAuthorize('slackOAuth2Api');
 
 			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
@@ -582,7 +583,7 @@ describe('useCredentialOAuth', () => {
 		it('should include node_type in tracking when provided', async () => {
 			setupSuccessfulOAuthFlow();
 
-			const { createAndAuthorize } = useCredentialOAuth();
+			const { createAndAuthorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await createAndAuthorize('slackOAuth2Api', 'n8n-nodes-base.slack');
 
 			expect(mockTrack).toHaveBeenCalledWith(
@@ -596,7 +597,7 @@ describe('useCredentialOAuth', () => {
 		it('should not include node_type in tracking when not provided', async () => {
 			setupSuccessfulOAuthFlow();
 
-			const { createAndAuthorize } = useCredentialOAuth();
+			const { createAndAuthorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await createAndAuthorize('slackOAuth2Api');
 
 			const savedCall = mockTrack.mock.calls.find((call) => call[0] === 'User saved credentials');
@@ -606,7 +607,7 @@ describe('useCredentialOAuth', () => {
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {
 			setupSuccessfulOAuthFlow();
 
-			const { createAndAuthorize } = useCredentialOAuth();
+			const { createAndAuthorize } = useCredentialOAuth(ref('test-workflow-id'));
 			await createAndAuthorize('slackOAuth2Api');
 
 			const createdIndex = mockTrack.mock.calls.findIndex(

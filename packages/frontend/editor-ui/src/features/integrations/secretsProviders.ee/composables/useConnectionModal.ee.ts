@@ -9,7 +9,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useToast } from '@/app/composables/useToast';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -39,7 +39,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const { providerTypes } = options;
 
 	// Composables
-	const workflowId = useInjectWorkflowId();
+	const workflowId = useWorkflowId();
 	const rbacStore = useRBACStore();
 	const toast = useToast(workflowId);
 	const projectsStore = useProjectsStore();

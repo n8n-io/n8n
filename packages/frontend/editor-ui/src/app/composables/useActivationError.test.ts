@@ -31,14 +31,14 @@ describe('useActivationError', () => {
 	});
 
 	it('should return undefined when nodeId is undefined', () => {
-		const { errorMessage } = useActivationError(undefined);
+		const { errorMessage } = useActivationError(ref(TEST_WF_ID), undefined);
 		expect(errorMessage.value).toBeUndefined();
 	});
 
 	it('should return undefined when node is not found', () => {
 		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(undefined);
 
-		const { errorMessage } = useActivationError('missing-id');
+		const { errorMessage } = useActivationError(ref(TEST_WF_ID), 'missing-id');
 		expect(errorMessage.value).toBeUndefined();
 	});
 
@@ -48,7 +48,7 @@ describe('useActivationError', () => {
 		} as never);
 		mocks.baseText.mockReturnValue('Error in node "My HTTP Node"');
 
-		const { errorMessage } = useActivationError('node-123');
+		const { errorMessage } = useActivationError(ref(TEST_WF_ID), 'node-123');
 
 		expect(errorMessage.value).toBe('Error in node "My HTTP Node"');
 		expect(mocks.baseText).toHaveBeenCalledWith('workflowActivator.showError.nodeError', {
@@ -65,7 +65,7 @@ describe('useActivationError', () => {
 			return undefined;
 		});
 
-		const { errorMessage } = useActivationError(nodeIdRef);
+		const { errorMessage } = useActivationError(ref(TEST_WF_ID), nodeIdRef);
 
 		expect(errorMessage.value).toBeUndefined();
 
@@ -81,7 +81,7 @@ describe('useActivationError', () => {
 		} as never);
 		mocks.baseText.mockReturnValue('Error in node "Slack"');
 
-		const { errorMessage } = useActivationError(() => 'node-789');
+		const { errorMessage } = useActivationError(ref(TEST_WF_ID), () => 'node-789');
 
 		expect(errorMessage.value).toBe('Error in node "Slack"');
 	});

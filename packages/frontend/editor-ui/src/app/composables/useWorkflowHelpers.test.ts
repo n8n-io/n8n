@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
@@ -69,7 +70,7 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 				infoMessage: '',
 			};
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			const resolvedParameters =
 				await workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
@@ -93,7 +94,7 @@ describe('useWorkflowHelpers', () => {
 				includeOtherFields: false,
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			const resolvedParameters =
 				await workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters).toHaveProperty('assignments');
@@ -134,7 +135,7 @@ describe('useWorkflowHelpers', () => {
 				looseTypeValidation: false,
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			const resolvedParameters = (await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			)) as typeof nodeParameters;
@@ -163,7 +164,7 @@ describe('useWorkflowHelpers', () => {
 				combineFilters: 'AND',
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			const resolvedParameters = (await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			)) as typeof nodeParameters;
@@ -202,7 +203,7 @@ describe('useWorkflowHelpers', () => {
 				combineFilters: 'AND',
 				options: {},
 			};
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			const resolvedParameters = (await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
 			)) as typeof nodeParameters;
@@ -214,7 +215,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('initState', () => {
 		it('should initialize workflow state with provided data', async () => {
-			const { initState } = useWorkflowHelpers();
+			const { initState } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -250,7 +251,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', async () => {
-			const { initState } = useWorkflowHelpers();
+			const { initState } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -269,7 +270,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should handle missing `tags` gracefully', async () => {
-			const { initState } = useWorkflowHelpers();
+			const { initState } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const workflowData = createTestWorkflow({
 				id: '1',
@@ -290,7 +291,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('checkConflictingWebhooks', () => {
 		it('should return null if no conflicts', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [],
@@ -299,7 +300,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return conflicting webhook data and workflow id is different', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -338,7 +339,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return conflicting webhook data and workflow id is different in trigger', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -371,7 +372,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return conflicting webhook data and workflow id is different in chat', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -404,7 +405,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return null if webhook already exist but workflow id is the same', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -430,7 +431,7 @@ describe('useWorkflowHelpers', () => {
 		it('should call workflowDocumentStore.serialize if state is dirty', async () => {
 			const workflowId = '12345';
 			workflowsStore.workflowId = workflowId;
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref(workflowId));
 			const stateIsDirtySpy = vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 			vi.mocked(workflowDocumentStore.serialize).mockReturnValue({
@@ -441,7 +442,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return null if no conflicts with FORM_TRIGGER_NODE_TYPE', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			const uiStore = mockedStore(useUIStore);
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
@@ -462,7 +463,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return conflicting webhook data and workflow id is different with FORM_TRIGGER_NODE_TYPE', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -503,7 +504,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return null if webhook already exist but workflow id is the same with FORM_TRIGGER_NODE_TYPE', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -528,7 +529,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return trigger.parameters.path when both trigger.parameters.path and trigger.webhookId are strings', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -553,7 +554,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return trigger.webhookId when trigger.parameters.path is an empty string', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -578,7 +579,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should find conflicting webhook data with multiple methods', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -619,7 +620,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return null if no conflicts with multiple methods', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			uiStore.markStateClean();
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
@@ -639,7 +640,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -665,7 +666,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
-			const workflowHelpers = useWorkflowHelpers();
+			const workflowHelpers = useWorkflowHelpers(ref('test-workflow-id'));
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -688,7 +689,7 @@ describe('useWorkflowHelpers', () => {
 
 	describe('executeData', () => {
 		it('should return empty execute data if no parent nodes', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes: string[] = [];
 			const currentNode = 'Set';
@@ -705,7 +706,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with one parent node', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['Start'];
 			const currentNode = 'Set';
@@ -779,7 +780,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with multiple parent nodes, only one with execution data', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['Parent A', 'Parent B'];
 			const currentNode = 'Set';
@@ -853,7 +854,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return the correct execution data with multiple parent nodes, all with execution data', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['Parent A', 'Parent B'];
 			const currentNode = 'Set';
@@ -953,7 +954,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return data from pinnedWorkflowData if available', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -975,7 +976,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return data from getWorkflowRunData if pinnedWorkflowData is not available', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -1013,7 +1014,7 @@ describe('useWorkflowHelpers', () => {
 			});
 		});
 		it('should use provided parentRunIndex ', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -1055,7 +1056,7 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should return empty data if neither pinnedWorkflowData nor getWorkflowRunData is available', () => {
-			const { executeData } = useWorkflowHelpers();
+			const { executeData } = useWorkflowHelpers(ref('test-workflow-id'));
 
 			const parentNodes = ['ParentNode'];
 			const currentNode = 'CurrentNode';
@@ -1100,7 +1101,7 @@ describe('useWorkflowHelpers', () => {
 
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType);
 
-			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const nodeTypes = useWorkflowHelpers(ref('test-workflow-id')).getNodeTypes();
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
 
 			expect(result).toBeDefined();
@@ -1133,7 +1134,7 @@ describe('useWorkflowHelpers', () => {
 				isInstalled: false,
 			});
 
-			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const nodeTypes = useWorkflowHelpers(ref('test-workflow-id')).getNodeTypes();
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
 
 			expect(result).toBeDefined();
@@ -1145,7 +1146,7 @@ describe('useWorkflowHelpers', () => {
 
 			nodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
 
-			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const nodeTypes = useWorkflowHelpers(ref('test-workflow-id')).getNodeTypes();
 			const result = nodeTypes.getByNameAndVersion('non-existent-node');
 
 			expect(result).toBeUndefined();
@@ -1179,7 +1180,7 @@ describe('useWorkflowHelpers', () => {
 				isInstalled: true,
 			});
 
-			const nodeTypes = useWorkflowHelpers().getNodeTypes();
+			const nodeTypes = useWorkflowHelpers(ref('test-workflow-id')).getNodeTypes();
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
 
 			expect(result).toBeDefined();
