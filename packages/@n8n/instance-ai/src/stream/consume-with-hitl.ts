@@ -1,5 +1,3 @@
-import type { Agent } from '@mastra/core/agent';
-
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
 import type { Logger } from '../logger';
 import {
@@ -10,7 +8,7 @@ import {
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
 export interface ConsumeWithHitlOptions {
-	agent: Agent;
+	agent: unknown;
 	stream: ResumableStreamSource & { text: Promise<string> };
 	runId: string;
 	agentId: string;
@@ -71,8 +69,8 @@ export async function consumeStreamWithHitl(
 			waitForCorrection: options.waitForCorrection,
 			...(options.maxSteps
 				? {
-						buildResumeOptions: ({ mastraRunId, suspension }) => ({
-							runId: mastraRunId,
+						buildResumeOptions: ({ agentRunId, suspension }) => ({
+							runId: agentRunId,
 							toolCallId: suspension.toolCallId,
 							maxSteps: options.maxSteps,
 							...(options.resumeOptions ?? {}),

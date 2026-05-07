@@ -1,5 +1,4 @@
-import type { Workspace } from '@mastra/core/workspace';
-
+import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import { writeFileViaSandbox } from '../../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../../workspace/sandbox-setup';
 import { createWriteSandboxFileTool } from '../write-sandbox-file.tool';
@@ -23,12 +22,12 @@ const mockGetRoot = getWorkspaceRoot as jest.MockedFunction<typeof getWorkspaceR
 // Helpers
 // ---------------------------------------------------------------------------
 
-function createMockWorkspace(): Workspace {
+function createMockWorkspace(): SandboxWorkspace {
 	return {
 		sandbox: {
 			executeCommand: jest.fn(),
 		},
-	} as unknown as Workspace;
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -36,7 +35,7 @@ function createMockWorkspace(): Workspace {
 // ---------------------------------------------------------------------------
 
 describe('createWriteSandboxFileTool', () => {
-	let workspace: Workspace;
+	let workspace: SandboxWorkspace;
 
 	beforeEach(() => {
 		jest.clearAllMocks();

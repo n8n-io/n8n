@@ -1,18 +1,21 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { StreamResult } from '@n8n/agents';
 import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
-import { mapMastraChunkToEvent } from '../stream/map-chunk';
+import { mapAgentChunkToEvent, mapMastraChunkToEvent } from '../stream/map-chunk';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
-import { asResumable, parseSuspension } from '../utils/stream-helpers';
+import { parseSuspension, resumeStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+export type ResumableStreamFormat = 'mastra' | 'agent';
 
 export interface ResumableStreamSource {
 	runId?: string;
+	streamFormat?: ResumableStreamFormat;
 	fullStream: AsyncIterable<unknown>;
 	text?: Promise<string>;
 	steps?: Promise<unknown[]>;
@@ -45,7 +48,7 @@ export interface AutoResumeControl {
 	waitForCorrection?: () => Promise<void>;
 	onSuspension?: (suspension: SuspensionInfo) => void;
 	buildResumeOptions?: (input: {
-		mastraRunId: string;
+		agentRunId: string;
 		suspension: SuspensionInfo;
 	}) => Record<string, unknown>;
 }
@@ -57,7 +60,7 @@ export interface ExecuteResumableStreamOptions {
 	stream: ResumableStreamSource;
 	context: ResumableStreamContext;
 	control: ResumableStreamControl;
-	initialMastraRunId?: string;
+	initialAgentRunId?: string;
 	llmStepTraceHooks?: LlmStepTraceHooks;
 }
 
@@ -65,7 +68,7 @@ export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
 
 export interface ExecuteResumableStreamResult {
 	status: TraceStatus;
-	mastraRunId: string;
+	agentRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: ConfirmationRequestEvent;
@@ -163,6 +166,119 @@ const SYNTHETIC_TOOL_TRACE_NAMES = new Set<string>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, Symbol.asyncIterator) === 'function'
+	);
+}
+
+function isReadableStream(value: unknown): value is ReadableStream<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'getReader') === 'function'
+	);
+}
+
+function isResumableStreamSource(value: unknown): value is ResumableStreamSource {
+	return isRecord(value) && isAsyncIterable(value.fullStream);
+}
+
+function isNativeStreamResult(value: unknown): value is StreamResult {
+	return isRecord(value) && isReadableStream(value.stream);
+}
+
+function extractContentText(content: unknown): string {
+	if (typeof content === 'string') {
+		return content;
+	}
+
+	if (!Array.isArray(content)) {
+		return '';
+	}
+
+	return content
+		.map((part) => {
+			if (!isRecord(part) || part.type !== 'text') {
+				return '';
+			}
+
+			return typeof part.text === 'string' ? part.text : '';
+		})
+		.join('');
+}
+
+async function collectNativeStreamText(stream: ReadableStream<unknown>): Promise<string> {
+	const reader = stream.getReader();
+	let deltaText = '';
+	let messageText = '';
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) return deltaText || messageText;
+
+			if (!isRecord(value)) {
+				continue;
+			}
+
+			if (value.type === 'text-delta' && typeof value.delta === 'string') {
+				deltaText += value.delta;
+				continue;
+			}
+
+			if (value.type !== 'message' || !isRecord(value.message)) {
+				continue;
+			}
+
+			if (value.message.role === 'assistant') {
+				messageText += extractContentText(value.message.content);
+			}
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
+
+async function* readableStreamToAsyncIterable(stream: ReadableStream<unknown>) {
+	const reader = stream.getReader();
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) return;
+			yield value;
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
+
+export function normalizeStreamSource(
+	result: unknown,
+	options?: { streamFormat?: ResumableStreamFormat },
+): ResumableStreamSource {
+	if (isResumableStreamSource(result)) {
+		return options?.streamFormat && !result.streamFormat
+			? { ...result, streamFormat: options.streamFormat }
+			: result;
+	}
+
+	if (isNativeStreamResult(result)) {
+		const [eventStream, textStream] = result.stream.tee();
+
+		return {
+			runId: result.runId,
+			streamFormat: 'agent',
+			fullStream: readableStreamToAsyncIterable(eventStream),
+			text: collectNativeStreamText(textStream),
+		};
+	}
+
+	throw new Error('Unsupported agent stream result');
 }
 
 function getFiniteNumber(value: unknown): number | undefined {
@@ -1818,7 +1934,7 @@ export async function executeResumableStream(
 ): Promise<ExecuteResumableStreamResult> {
 	let activeSource = options.stream;
 	let activeStream = options.stream.fullStream;
-	let activeMastraRunId = options.stream.runId ?? options.initialMastraRunId ?? '';
+	let activeAgentRunId = options.stream.runId ?? options.initialAgentRunId ?? '';
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
 
@@ -1853,7 +1969,7 @@ export async function executeResumableStream(
 				});
 				return {
 					status: 'cancelled',
-					mastraRunId: activeMastraRunId,
+					agentRunId: activeAgentRunId,
 					text,
 					workSummary: workSummaryAccumulator.toSummary(),
 				};
@@ -1917,12 +2033,20 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
-			const event = mapMastraChunkToEvent(
-				options.context.runId,
-				options.context.agentId,
-				chunk,
-				currentResponseId,
-			);
+			const event =
+				activeSource.streamFormat === 'agent'
+					? mapAgentChunkToEvent(
+							options.context.runId,
+							options.context.agentId,
+							chunk,
+							currentResponseId,
+						)
+					: mapMastraChunkToEvent(
+							options.context.runId,
+							options.context.agentId,
+							chunk,
+							currentResponseId,
+						);
 			if (event) {
 				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
@@ -1973,7 +2097,7 @@ export async function executeResumableStream(
 		if (options.context.signal.aborted) {
 			return {
 				status: 'cancelled',
-				mastraRunId: activeMastraRunId,
+				agentRunId: activeAgentRunId,
 				text,
 				workSummary: workSummaryAccumulator.toSummary(),
 			};
@@ -1982,7 +2106,7 @@ export async function executeResumableStream(
 		if (!suspension) {
 			return {
 				status: hasError ? 'errored' : 'completed',
-				mastraRunId: activeMastraRunId,
+				agentRunId: activeAgentRunId,
 				text,
 				workSummary: workSummaryAccumulator.toSummary(),
 			};
@@ -1991,7 +2115,7 @@ export async function executeResumableStream(
 		if (options.control.mode === 'manual') {
 			return {
 				status: 'suspended',
-				mastraRunId: activeMastraRunId,
+				agentRunId: activeAgentRunId,
 				text,
 				suspension,
 				workSummary: workSummaryAccumulator.toSummary(),
@@ -2008,22 +2132,25 @@ export async function executeResumableStream(
 			options.context,
 		);
 		const resumeOptions = options.control.buildResumeOptions?.({
-			mastraRunId: activeMastraRunId,
+			agentRunId: activeAgentRunId,
 			suspension,
 		}) ?? {
-			runId: activeMastraRunId,
+			runId: activeAgentRunId,
 			toolCallId: suspension.toolCallId,
 		};
-		const resumed = await asResumable(options.agent).resumeStream(resumeData, {
+		const resumed = await resumeStream(options.agent, resumeData, {
 			...resumeOptions,
 			...(options.llmStepTraceHooks?.executionOptions ?? {}),
 		});
+		const resumedSource = normalizeStreamSource(resumed, {
+			streamFormat: activeSource.streamFormat,
+		});
 
-		activeMastraRunId =
-			(typeof resumed.runId === 'string' ? resumed.runId : '') || activeMastraRunId;
-		activeSource = resumed;
-		activeStream = resumed.fullStream;
-		text = resumed.text;
+		activeAgentRunId =
+			(typeof resumedSource.runId === 'string' ? resumedSource.runId : '') || activeAgentRunId;
+		activeSource = resumedSource;
+		activeStream = resumedSource.fullStream;
+		text = resumedSource.text;
 	}
 }
 

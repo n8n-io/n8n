@@ -898,7 +898,7 @@ export async function startBuildWorkflowAgentTask(
 								},
 								model: context.modelId,
 								tools: tracedBuilderTools,
-								workspace,
+								workspace: workspace as never,
 								memory: shouldUseBuilderMemory ? context.memory : undefined,
 							});
 							mergeTraceRunInputs(

@@ -84,9 +84,6 @@ catalogs:
     '@mastra/core':
       specifier: 1.17.0
       version: 1.17.0
-    '@mastra/daytona':
-      specifier: 0.2.0
-      version: 0.2.0
     '@mastra/mcp':
       specifier: 1.3.1
       version: 1.3.1
@@ -882,7 +879,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1056,7 +1053,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1707,9 +1704,6 @@ importers:
       '@mastra/core':
         specifier: 'catalog:'
         version: 1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67)
-      '@mastra/daytona':
-        specifier: 'catalog:'
-        version: 0.2.0(@mastra/core@1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@mastra/mcp':
         specifier: 'catalog:'
         version: 1.3.1(@mastra/core@1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(@types/json-schema@7.0.15)(zod@3.25.67)
@@ -1815,7 +1809,7 @@ importers:
         version: 7.0.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2303,7 +2297,7 @@ importers:
         version: 0.9.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -2331,7 +2325,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2396,7 +2390,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -2489,7 +2483,7 @@ importers:
         version: 20.19.21
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       nodemon:
         specifier: ^2.0.20
         version: 2.0.22
@@ -3329,7 +3323,7 @@ importers:
         version: 5.2.4(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       unplugin-icons:
         specifier: ^0.19.0
         version: 0.19.0(@vue/compiler-sfc@3.5.26)
@@ -3769,7 +3763,7 @@ importers:
         version: 4.0.16(bufferutil@4.0.9)(playwright@1.58.0)(utf-8-validate@5.0.10)(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.1)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -4136,7 +4130,7 @@ importers:
         version: 5.2.4(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
@@ -4561,7 +4555,7 @@ importers:
         version: link:../../@n8n/vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -4625,7 +4619,7 @@ importers:
         version: 20.19.21
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -4757,7 +4751,7 @@ importers:
         version: link:../../@n8n/vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -6744,20 +6738,11 @@ packages:
     resolution: {integrity: sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==}
     engines: {node: '>17.0.0'}
 
-  '@daytonaio/api-client@0.143.0':
-    resolution: {integrity: sha512-LcrvExGcwyngt1JnVoxuBMD19fL9F+vwGnp18Hav5HJEbICM0pbrJc2FJ242sQJquNIF5mq+5jgznWg6wshZJA==}
-
   '@daytonaio/api-client@0.149.0':
     resolution: {integrity: sha512-tlqVFnJll4JUAY3Ictwl7kGI3jo6HP+AcHl8FsZg/lSG7t/SdlZVO9iPPt6kjxmY3WN8BYRI1NYtIFFh8SJolw==}
 
-  '@daytonaio/sdk@0.143.0':
-    resolution: {integrity: sha512-itQ409W+WuuqLd8edIRVUWeRUyujSlOKInnN6GeC3OqyOWT27wyD/KzkesXDJtQ6HthGtqa4uRtHqnayd5wRCQ==}
-
   '@daytonaio/sdk@0.149.0':
     resolution: {integrity: sha512-yu228ZVj0FFlas/VmoirqZ/QJNKuvSf5AiDVkPUdejEYHyh98s8owSEFKgOwajtBwtrNn+ETSunkWroMRbzvQg==}
-
-  '@daytonaio/toolbox-api-client@0.143.0':
-    resolution: {integrity: sha512-E6+yHPnFygNqRIctoDheISHCpzQkHydAU7fiBfsA5pnElfB/yLTOXQlnZfP8gfvOmUkRNU8QCXKzaualRTlI7w==}
 
   '@daytonaio/toolbox-api-client@0.149.0':
     resolution: {integrity: sha512-6IiZ+RDDQSRjjKMbmmiQj1uG0u8CxCHxX8YwWVq2Oc/6ACPVBLdNlh4p/xBXUGgxbcPo2ewH1F2y1P2FSUU8aA==}
@@ -8265,12 +8250,6 @@ packages:
     engines: {node: '>=22.13.0'}
     peerDependencies:
       zod: 3.25.67
-
-  '@mastra/daytona@0.2.0':
-    resolution: {integrity: sha512-RUcYZ3jUfiRxsNN1O8WWbKb4lrkLRuiVw972Jvsyz0pYpzxVsQr5cNfze24zKdD41aJ+4jdehelYGLTsRtVMDg==}
-    engines: {node: '>=22.13.0'}
-    peerDependencies:
-      '@mastra/core': '>=1.12.0-0 <2.0.0-0'
 
   '@mastra/mcp@1.3.1':
     resolution: {integrity: sha512-eCbOm9Hu15UFOwPTJ4bvn/wJP0gUZdjoQkOIcq5CGWo/WIM6afCo7rXSNYg2k4gN2vR0u9ZwJHXwzXjcTHFcjQ==}
@@ -26319,7 +26298,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.16.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.16.0)
+      axios-retry: 4.5.0(axios@1.16.0(debug@4.4.3))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -26367,48 +26346,11 @@ snapshots:
 
   '@dagrejs/graphlib@2.2.4': {}
 
-  '@daytonaio/api-client@0.143.0':
-    dependencies:
-      axios: 1.16.0
-    transitivePeerDependencies:
-      - debug
-
   '@daytonaio/api-client@0.149.0':
     dependencies:
       axios: 1.16.0
     transitivePeerDependencies:
       - debug
-
-  '@daytonaio/sdk@0.143.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@aws-sdk/client-s3': 3.808.0
-      '@aws-sdk/lib-storage': 3.1019.0(@aws-sdk/client-s3@3.808.0)
-      '@daytonaio/api-client': 0.143.0
-      '@daytonaio/toolbox-api-client': 0.143.0
-      '@iarna/toml': 2.2.5
-      '@opentelemetry/api': 1.9.0
-      '@opentelemetry/exporter-trace-otlp-http': 0.207.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/instrumentation-http': 0.207.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/otlp-exporter-base': 0.207.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-node': 0.207.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-base': 2.6.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.40.0
-      axios: 1.16.0
-      busboy: 1.6.0
-      dotenv: 17.2.3
-      expand-tilde: 2.0.2
-      fast-glob: 3.3.3
-      form-data: 4.0.4
-      isomorphic-ws: 5.0.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      pathe: 2.0.3
-      shell-quote: 1.8.3
-      tar: 7.5.11
-    transitivePeerDependencies:
-      - aws-crt
-      - debug
-      - supports-color
-      - ws
 
   '@daytonaio/sdk@0.149.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
     dependencies:
@@ -26440,12 +26382,6 @@ snapshots:
       - debug
       - supports-color
       - ws
-
-  '@daytonaio/toolbox-api-client@0.143.0':
-    dependencies:
-      axios: 1.16.0
-    transitivePeerDependencies:
-      - debug
 
   '@daytonaio/toolbox-api-client@0.149.0':
     dependencies:
@@ -28052,16 +27988,6 @@ snapshots:
       - openapi-types
       - supports-color
       - utf-8-validate
-
-  '@mastra/daytona@0.2.0(@mastra/core@1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@daytonaio/sdk': 0.143.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@mastra/core': 1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67)
-    transitivePeerDependencies:
-      - aws-crt
-      - debug
-      - supports-color
-      - ws
 
   '@mastra/mcp@1.3.1(@mastra/core@1.17.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(@types/json-schema@7.0.15)(zod@3.25.67)':
     dependencies:
@@ -32810,7 +32736,7 @@ snapshots:
       tinyrainbow: 3.0.3
       vitest: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  '@vitest/coverage-v8@4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))':
+  '@vitest/coverage-v8@4.1.1(vitest@4.1.1)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.1.1
@@ -33708,6 +33634,11 @@ snapshots:
   aws4fetch@1.0.20: {}
 
   axe-core@4.7.2: {}
+
+  axios-retry@4.5.0(axios@1.16.0(debug@4.4.3)):
+    dependencies:
+      axios: 1.16.0(debug@4.4.3)
+      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.16.0):
     dependencies:

@@ -1,5 +1,3 @@
-import type { ToolsInput } from '@mastra/core/agent';
-
 import {
 	createDetachedSubAgentTraceContext,
 	mergeCurrentTraceMetadata,
@@ -10,6 +8,8 @@ import type {
 	InstanceAiTraceRunFinishOptions,
 	OrchestrationContext,
 } from '../../types';
+
+type ToolRegistry = OrchestrationContext['domainTools'];
 
 interface StartSubAgentTraceOptions {
 	agentId: string;
@@ -100,9 +100,9 @@ export async function createDetachedSubAgentTracing(
 
 export function traceSubAgentTools(
 	context: OrchestrationContext,
-	tools: ToolsInput,
+	tools: ToolRegistry,
 	role: string,
-): ToolsInput {
+): ToolRegistry {
 	return (
 		context.tracing?.wrapTools(tools, {
 			agentRole: role,

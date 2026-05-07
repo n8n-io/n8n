@@ -1,19 +1,25 @@
-import type { Memory } from '@mastra/memory';
+jest.mock('../thread-patch', () => {
+	const actual =
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		jest.requireActual<typeof import('../thread-patch')>('../thread-patch');
 
-jest.mock('../thread-patch', () => ({
-	patchThread: jest.fn(),
-}));
+	return {
+		...actual,
+		patchThread: jest.fn(),
+	};
+});
 
 import type { WorkflowLoopState, AttemptRecord } from '../../workflow-loop/workflow-loop-state';
-import { patchThread } from '../thread-patch';
+import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import { WorkflowLoopStorage } from '../workflow-loop-storage';
 
 const mockedPatchThread = jest.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThreadById: jest.Mock };
 
-function makeMemory(): Memory {
+function makeMemory(): TestMemory {
 	return {
 		getThreadById: jest.fn(),
-	} as unknown as Memory;
+	};
 }
 
 function makeState(overrides: Partial<WorkflowLoopState> = {}): WorkflowLoopState {
@@ -49,7 +55,7 @@ const baseThread = {
 };
 
 describe('WorkflowLoopStorage', () => {
-	let memory: Memory;
+	let memory: TestMemory;
 	let storage: WorkflowLoopStorage;
 
 	beforeEach(() => {

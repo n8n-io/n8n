@@ -21,12 +21,16 @@
  *       *.ts                          # reusable node/workflow modules
  */
 
-import type { Workspace } from '@mastra/core/workspace';
 import { createRequire } from 'node:module';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
-import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
+import {
+	runInSandbox,
+	readFileViaSandbox,
+	escapeSingleQuotes,
+	type SandboxWorkspace,
+} from './sandbox-fs';
 
 const hostRequire = createRequire(__filename);
 
@@ -255,7 +259,7 @@ function buildBatchWriteScript(root: string, files: Map<string, string>): string
 }
 
 async function writeWorkspaceFiles(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	root: string,
 	files: Map<string, string>,
 ): Promise<void> {
@@ -288,9 +292,9 @@ async function writeWorkspaceFiles(
  * Resolve the absolute workspace root by querying $HOME from the sandbox.
  * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
  */
-const workspaceRootCache = new WeakMap<Workspace, string>();
+const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
 
-function getLocalFilesystemRoot(workspace: Workspace): string | null {
+function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
 	const filesystem = workspace.filesystem;
 	if (!filesystem || filesystem.provider !== 'local') return null;
 
@@ -298,7 +302,7 @@ function getLocalFilesystemRoot(workspace: Workspace): string | null {
 	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
 }
 
-export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
+export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
 
@@ -324,7 +328,7 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  * @returns true if initialization ran, false if already initialized
  */
 export async function setupSandboxWorkspace(
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
 ): Promise<boolean> {
 	const root = await getWorkspaceRoot(workspace);

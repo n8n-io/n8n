@@ -11,7 +11,7 @@ export interface ActiveRunState {
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
-	mastraRunId: string;
+	agentRunId: string;
 	agent: unknown;
 	threadId: string;
 	user: TUser;
@@ -25,7 +25,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 }
 
 /**
- * Flat confirmation payload consumed by Mastra tool `resumeSchema`s and sub-agent HITL.
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
  * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
  * union sent by the frontend — only one subset of fields is populated per call, matching
  * the confirmation kind that was originally requested.

@@ -5,3 +5,4 @@ export { InstanceAiObservationalMemory } from './instance-ai-observational-memor
 export { InstanceAiWorkflowSnapshot } from './instance-ai-workflow-snapshot.entity';
 export { InstanceAiRunSnapshot } from './instance-ai-run-snapshot.entity';
 export { InstanceAiIterationLog } from './instance-ai-iteration-log.entity';
+export { InstanceAiCheckpoint } from './instance-ai-checkpoint.entity';

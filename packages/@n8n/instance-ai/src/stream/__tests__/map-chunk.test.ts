@@ -1,4 +1,6 @@
-import { mapMastraChunkToEvent } from '../map-chunk';
+import type { StreamChunk } from '@n8n/agents';
+
+import { mapAgentChunkToEvent, mapMastraChunkToEvent } from '../map-chunk';
 
 describe('mapMastraChunkToEvent', () => {
 	const runId = 'run-1';
@@ -1184,5 +1186,75 @@ describe('mapMastraChunkToEvent', () => {
 			const chunk = { type: 'something-new', payload: {} };
 			expect(mapMastraChunkToEvent(runId, agentId, chunk)).toBeNull();
 		});
+	});
+});
+
+describe('mapAgentChunkToEvent', () => {
+	const runId = 'run-1';
+	const agentId = 'agent-1';
+
+	it('maps native text delta chunks', () => {
+		const chunk = { type: 'text-delta', id: 'text-1', delta: 'hello' } satisfies StreamChunk;
+
+		expect(mapAgentChunkToEvent(runId, agentId, chunk)).toEqual({
+			type: 'text-delta',
+			runId,
+			agentId,
+			payload: { text: 'hello' },
+		});
+	});
+
+	it('maps native tool result messages', () => {
+		const chunk = {
+			type: 'tool-result',
+			toolCallId: 'tc-1',
+			toolName: 'lookup',
+			output: { ok: true },
+		} satisfies StreamChunk;
+
+		expect(mapAgentChunkToEvent(runId, agentId, chunk)).toEqual({
+			type: 'tool-result',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				result: { ok: true },
+			},
+		});
+	});
+
+	it('maps native suspended tool calls to confirmation requests', () => {
+		const chunk = {
+			type: 'tool-call-suspended',
+			runId: 'agent-run-1',
+			toolCallId: 'tc-1',
+			toolName: 'delete-workflow',
+			input: { id: 'wf-1' },
+			suspendPayload: {
+				requestId: 'req-1',
+				message: 'Delete this workflow?',
+				severity: 'destructive',
+			},
+		} satisfies StreamChunk;
+
+		expect(mapAgentChunkToEvent(runId, agentId, chunk)).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				toolName: 'delete-workflow',
+				args: { id: 'wf-1' },
+				severity: 'destructive',
+				message: 'Delete this workflow?',
+			},
+		});
+	});
+
+	it('ignores native finish chunks', () => {
+		const chunk = { type: 'finish', finishReason: 'stop' } satisfies StreamChunk;
+
+		expect(mapAgentChunkToEvent(runId, agentId, chunk)).toBeNull();
 	});
 });
