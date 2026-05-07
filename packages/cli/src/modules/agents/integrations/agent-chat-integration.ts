@@ -13,6 +13,12 @@ export interface AgentChatIntegrationContext {
 	webhookUrlFor: (platform: string) => string;
 }
 
+/** Response shape returned by `handleUnauthenticatedWebhook`. */
+export interface UnauthenticatedWebhookResponse {
+	status: number;
+	body: unknown;
+}
+
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
@@ -63,6 +69,23 @@ export abstract class AgentChatIntegration {
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Handle a webhook request that arrives before an integration is connected
+	 * (i.e. before credentials are configured). The canonical case is Slack's
+	 * `url_verification` challenge — sent when the user creates a Slack app
+	 * from the manifest, before they have pasted bot token / signing secret
+	 * into n8n. Without this hook, the standard handler returns 404 and the
+	 * user has to manually re-verify URLs after configuring the credential.
+	 *
+	 * Implementations inspect the parsed JSON body; return a response to send
+	 * back, or undefined to fall through to the standard 404.
+	 *
+	 * Security note: this hook bypasses signature verification, so it must
+	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
+	 * in the request itself).
+	 */
+	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Optional hook run BEFORE the adapter is built. Use it to reject the
