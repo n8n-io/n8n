@@ -215,7 +215,7 @@ const openMcpOnboardingFromTile = () => {
 					>
 						<N8nCard
 							v-if="showMcpTile"
-							:class="[$style.actionCard, $style.mcpCard]"
+							:class="$style.actionCard"
 							hoverable
 							data-test-id="mcp-onboarding-card"
 							@click="openMcpOnboardingFromTile"
@@ -377,6 +377,7 @@ const openMcpOnboardingFromTile = () => {
 }
 
 .actionCard {
+	position: relative;
 	width: 192px;
 	height: 230px;
 	text-align: center;
@@ -415,17 +416,6 @@ const openMcpOnboardingFromTile = () => {
 }
 
 // --- MCP tile (experiment) ------------------------------------------------
-
-.mcpCard {
-	position: relative;
-	overflow: hidden;
-	background: var(--background--surface);
-	border: 1px solid var(--border-color--subtle);
-
-	&:hover {
-		border-color: var(--border-color--strong);
-	}
-}
 
 .mcpCardContent {
 	display: flex;

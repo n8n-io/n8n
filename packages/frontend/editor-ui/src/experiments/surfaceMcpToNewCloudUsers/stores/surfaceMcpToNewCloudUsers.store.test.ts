@@ -97,11 +97,11 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1);
 		expectTypeOf<CopiedParameter>().toEqualTypeOf<'agent-prompt'>();
 
-		store.trackCopiedParameter('tile', 'cursor', 'agent-prompt');
+		store.trackCopiedParameter('tile', 'chatgpt', 'agent-prompt');
 
 		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding copied parameter', {
 			surface: 'tile',
-			client: 'cursor',
+			client: 'chatgpt',
 			parameter: 'agent-prompt',
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1,
 		});

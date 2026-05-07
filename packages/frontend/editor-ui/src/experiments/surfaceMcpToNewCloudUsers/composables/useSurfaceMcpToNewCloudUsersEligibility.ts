@@ -5,10 +5,10 @@ import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composab
 import { computed } from 'vue';
 
 export function useSurfaceMcpToNewCloudUsersEligibility() {
-	const settingsStore = useSettingsStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const usersStore = useUsersStore();
 	const { isTrulyEmpty } = useEmptyStateDetection();
+	const settingsStore = useSettingsStore();
+	const cloudPlanStore = useCloudPlanStore();
 
 	const isEligible = computed(
 		() =>

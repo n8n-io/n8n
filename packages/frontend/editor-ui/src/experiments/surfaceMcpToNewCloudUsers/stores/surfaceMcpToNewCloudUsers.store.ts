@@ -10,7 +10,7 @@ const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OP
 const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
 
 type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
-type SurfaceMcpOnboardingClient = 'claude_code' | 'cursor' | 'codex';
+type SurfaceMcpOnboardingClient = 'claude' | 'claude_code' | 'codex' | 'cursor' | 'chatgpt';
 type SurfaceMcpOnboardingParameter = 'agent-prompt';
 
 export const useSurfaceMcpToNewCloudUsersStore = defineStore(

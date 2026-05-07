@@ -4,18 +4,30 @@ import { useToast } from '@/app/composables/useToast';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/McpAccessToggle.vue';
+import MCPOnboardingAgentPicker from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingAgentPicker.vue';
 import MCPOnboardingClientSetup from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingClientSetup.vue';
-import { MCP_ENDPOINT, MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import MCPOnboardingCopyBlock from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingCopyBlock.vue';
+import type {
+	MCPOnboardingClient,
+	MCPOnboardingClientOption,
+} from '@/features/ai/mcpAccess/components/onboarding/types';
+import {
+	MCP_ENDPOINT,
+	MCP_ONBOARDING_MODAL_KEY,
+	MCP_SETTINGS_VIEW,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { N8nIcon, N8nNotice, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
-type MCPOnboardingClient = 'claude_code' | 'cursor' | 'codex';
 type MCPOnboardingSurface = 'tile' | 'first_open_modal';
+
+const MCP_ONBOARDING_DOCS_URL = 'https://docs.n8n.io/advanced-ai/mcp/accessing-n8n-mcp-server/';
 
 const props = defineProps<{
 	data?: {
@@ -30,83 +42,52 @@ const mcpStore = useMCPStore();
 const experimentStore = useSurfaceMcpToNewCloudUsersStore();
 const modalBus = createEventBus();
 
-const activeClient = ref<MCPOnboardingClient>('claude_code');
+const activeClient = ref<MCPOnboardingClient>('claude');
 const isToggling = ref(false);
 const enabledDuringThisOpen = ref(false);
-const accessToken = ref('');
-const isKeyRedacted = ref(false);
-const hasResolvedAccessToken = ref(false);
 
 const surface = computed<MCPOnboardingSurface>(() => props.data?.surface ?? 'tile');
 
-const clientOptions = computed(() => [
+const clientOptions = computed<MCPOnboardingClientOption[]>(() => [
+	{
+		value: 'claude',
+		slug: 'claude',
+		label: i18n.baseText('settings.mcp.onboarding.client.claude' as BaseTextKey),
+	},
 	{
 		value: 'claude_code',
+		slug: 'claude-code',
 		label: i18n.baseText('settings.mcp.onboarding.client.claudeCode'),
 	},
 	{
+		value: 'codex',
+		slug: 'codex',
+		label: i18n.baseText('settings.mcp.onboarding.client.codex'),
+	},
+	{
 		value: 'cursor',
+		slug: 'cursor',
 		label: i18n.baseText('settings.mcp.onboarding.client.cursor' as BaseTextKey),
 	},
 	{
-		value: 'codex',
-		label: i18n.baseText('settings.mcp.onboarding.client.codex'),
+		value: 'chatgpt',
+		slug: 'chatgpt',
+		label: i18n.baseText('settings.mcp.onboarding.client.chatgpt' as BaseTextKey),
 	},
 ]);
 
 const serverUrl = computed(() => `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
-
-function resetAccessTokenState() {
-	accessToken.value = '';
-	isKeyRedacted.value = false;
-	hasResolvedAccessToken.value = false;
-}
-
-function setAccessTokenState(apiKey: string | null | undefined) {
-	accessToken.value = apiKey ?? '';
-	isKeyRedacted.value = accessToken.value.includes('******');
-	hasResolvedAccessToken.value = Boolean(accessToken.value) && !isKeyRedacted.value;
-}
-
-function restoreAccessTokenState(state: {
-	accessToken: string;
-	isKeyRedacted: boolean;
-	hasResolvedAccessToken: boolean;
-}) {
-	accessToken.value = state.accessToken;
-	isKeyRedacted.value = state.isKeyRedacted;
-	hasResolvedAccessToken.value = state.hasResolvedAccessToken;
-}
-
-async function resolveAccessToken() {
-	const apiKey = await mcpStore.getOrCreateApiKey();
-
-	// If the server only retains a hashed token, rotate to get a usable one —
-	// the whole point of this modal is to copy the token into the setup prompt,
-	// so a redacted token here is useless to the user.
-	if (apiKey.apiKey.includes('******')) {
-		try {
-			const rotated = await mcpStore.generateNewApiKey();
-			setAccessTokenState(rotated.apiKey);
-			return;
-		} catch (error) {
-			// Rotation failed — fall back to surfacing the redacted state so the
-			// user can recover via Settings > MCP.
-			toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
-		}
-	}
-
-	setAccessTokenState(apiKey.apiKey);
-}
-
-async function resolveAccessTokenSafely() {
-	try {
-		await resolveAccessToken();
-	} catch (error) {
-		resetAccessTokenState();
-		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
-	}
-}
+const showServerUrlStep = computed(() => activeClient.value === 'claude');
+const activeClientLabel = computed(
+	() =>
+		clientOptions.value.find((option) => option.value === activeClient.value)?.label ??
+		activeClient.value,
+);
+const promptSectionTitle = computed(() =>
+	i18n.baseText('settings.mcp.onboarding.section.prompt.title', {
+		interpolate: { assistant: activeClientLabel.value },
+	}),
+);
 
 async function handleToggleMcpAccess() {
 	const nextValue = !mcpStore.mcpAccessEnabled;
@@ -124,25 +105,11 @@ async function handleToggleMcpAccess() {
 
 			enabledDuringThisOpen.value = true;
 			experimentStore.trackEnabled(surface.value);
-			await resolveAccessTokenSafely();
 			return;
 		}
 
-		const previousAccessTokenState = {
-			accessToken: accessToken.value,
-			isKeyRedacted: isKeyRedacted.value,
-			hasResolvedAccessToken: hasResolvedAccessToken.value,
-		};
-
-		try {
-			await mcpStore.setMcpAccessEnabled(false);
-			resetAccessTokenState();
-		} catch (error) {
-			restoreAccessTokenState(previousAccessTokenState);
-			toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
-		}
+		await mcpStore.setMcpAccessEnabled(false);
 	} catch (error) {
-		resetAccessTokenState();
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
 		isToggling.value = false;
@@ -158,13 +125,10 @@ function handleModalClosed() {
 		experimentStore.dismissFirstOpenModal();
 		experimentStore.trackDismissed(surface.value);
 	}
-
-	mcpStore.resetCurrentUserMCPKey();
-	resetAccessTokenState();
 }
 
-function handleClientChange(value: string) {
-	activeClient.value = value as MCPOnboardingClient;
+function handleClientChange(value: MCPOnboardingClient) {
+	activeClient.value = value;
 	experimentStore.trackClientSelected(activeClient.value);
 }
 
@@ -174,16 +138,10 @@ function handleClientSetupCopy(parameter: 'agent-prompt') {
 
 onMounted(() => {
 	modalBus.on('closed', handleModalClosed);
-
-	if (mcpStore.mcpAccessEnabled) {
-		void resolveAccessTokenSafely();
-	}
 });
 
 onBeforeUnmount(() => {
 	modalBus.off('closed', handleModalClosed);
-	mcpStore.resetCurrentUserMCPKey();
-	resetAccessTokenState();
 });
 </script>
 
@@ -220,30 +178,26 @@ onBeforeUnmount(() => {
 			<div :class="$style.content" data-test-id="mcp-onboarding-modal-content">
 				<!-- Step 1: Enable MCP access -->
 				<section :class="$style.section">
-					<header :class="$style.sectionHeader">
-						<span
-							:class="[$style.sectionStep, { [$style.sectionStepDone]: mcpStore.mcpAccessEnabled }]"
-						>
-							<N8nIcon
-								v-if="mcpStore.mcpAccessEnabled"
-								icon="check"
-								size="xsmall"
-								:stroke-width="2.5"
-							/>
-							<template v-else>1</template>
-						</span>
-						<h2 :class="$style.sectionTitle">
-							{{ i18n.baseText('settings.mcp.onboarding.section.access.title') }}
-						</h2>
-					</header>
-					<div :class="[$style.sectionBody, $style.accessRow]">
-						<N8nText size="small" color="text-base" :class="$style.accessHelper">
-							{{
-								mcpStore.mcpAccessEnabled
-									? i18n.baseText('settings.mcp.onboarding.section.access.enabled')
-									: i18n.baseText('settings.mcp.onboarding.section.access.helper')
-							}}
-						</N8nText>
+					<header :class="[$style.sectionHeader, $style.accessHeader]">
+						<div :class="$style.accessTitleRow">
+							<span
+								:class="[
+									$style.sectionStep,
+									{ [$style.sectionStepDone]: mcpStore.mcpAccessEnabled },
+								]"
+							>
+								<N8nIcon
+									v-if="mcpStore.mcpAccessEnabled"
+									icon="check"
+									size="xsmall"
+									:stroke-width="2.5"
+								/>
+								<template v-else>1</template>
+							</span>
+							<h2 :class="$style.sectionTitle">
+								{{ i18n.baseText('settings.mcp.onboarding.section.access.title') }}
+							</h2>
+						</div>
 						<MCPAccessToggle
 							:model-value="mcpStore.mcpAccessEnabled"
 							:disabled="mcpStore.mcpManagedByEnv"
@@ -251,7 +205,7 @@ onBeforeUnmount(() => {
 							:managed-by-env="mcpStore.mcpManagedByEnv"
 							@disable-mcp-access="handleToggleMcpAccess"
 						/>
-					</div>
+					</header>
 				</section>
 
 				<!-- Steps 2 & 3 reveal once MCP is enabled -->
@@ -265,57 +219,84 @@ onBeforeUnmount(() => {
 							</h2>
 						</header>
 						<div :class="$style.sectionBody">
-							<div :class="$style.radioWrap">
-								<N8nRadioButtons
-									data-test-id="mcp-onboarding-client-switcher"
-									:model-value="activeClient"
-									:options="clientOptions"
-									@update:model-value="handleClientChange"
-								/>
-							</div>
+							<MCPOnboardingAgentPicker
+								:model-value="activeClient"
+								:options="clientOptions"
+								@update:model-value="handleClientChange"
+							/>
 						</div>
 					</section>
 
-					<!-- Step 3: Run the setup prompt -->
+					<!-- Step 3: Paste the prompt -->
 					<section :class="[$style.section, $style.revealSection]">
 						<header :class="$style.sectionHeader">
 							<span :class="$style.sectionStep">3</span>
 							<h2 :class="$style.sectionTitle">
-								{{ i18n.baseText('settings.mcp.onboarding.section.prompt.title') }}
+								{{ promptSectionTitle }}
 							</h2>
 						</header>
 						<div :class="$style.sectionBody">
-							<N8nNotice
-								v-if="isKeyRedacted"
-								theme="warning"
-								data-test-id="mcp-onboarding-redacted-notice"
-								:class="$style.inlineNotice"
-							>
-								{{ i18n.baseText('settings.mcp.onboarding.redacted.notice') }}
-							</N8nNotice>
 							<MCPOnboardingClientSetup
 								:client="activeClient"
 								:server-url="serverUrl"
-								:access-token="accessToken"
-								:is-token-ready="hasResolvedAccessToken"
 								@copy="handleClientSetupCopy"
 							/>
 						</div>
 					</section>
-				</template>
 
-				<!-- Inline pending hint when MCP is off -->
-				<N8nText
-					v-else
-					size="small"
-					color="text-light"
-					align="center"
-					data-test-id="mcp-onboarding-pending-notice"
-					:class="$style.pendingHint"
-				>
-					{{ i18n.baseText('settings.mcp.onboarding.section.prompt.disabled') }}
-				</N8nText>
+					<section v-if="showServerUrlStep" :class="[$style.section, $style.revealSection]">
+						<header :class="$style.sectionHeader">
+							<span :class="$style.sectionStep">4</span>
+							<h2 :class="$style.sectionTitle">
+								{{
+									i18n.baseText('settings.mcp.onboarding.section.serverUrl.title' as BaseTextKey)
+								}}
+							</h2>
+						</header>
+						<div :class="$style.sectionBody">
+							<MCPOnboardingCopyBlock
+								:content="serverUrl"
+								copy-button-test-id="mcp-onboarding-copy-server-url-button"
+								data-test-id="mcp-onboarding-claude-server-url"
+							/>
+						</div>
+					</section>
+				</template>
 			</div>
+		</template>
+
+		<template #footer>
+			<N8nText
+				tag="p"
+				size="xsmall"
+				color="text-light"
+				align="center"
+				:class="$style.footer"
+				data-test-id="mcp-onboarding-footer"
+			>
+				<I18nT keypath="settings.mcp.onboarding.footer" tag="span" scope="global">
+					<template #settingsLink>
+						<N8nLink
+							:to="{ name: MCP_SETTINGS_VIEW }"
+							size="xsmall"
+							data-test-id="mcp-onboarding-settings-link"
+						>
+							{{ i18n.baseText('settings.mcp.onboarding.intro.settingsLink' as BaseTextKey) }}
+						</N8nLink>
+					</template>
+					<template #docsLink>
+						<N8nLink
+							:href="MCP_ONBOARDING_DOCS_URL"
+							target="_blank"
+							rel="noopener noreferrer"
+							size="xsmall"
+							data-test-id="mcp-onboarding-docs-link"
+						>
+							{{ i18n.baseText('settings.mcp.onboarding.footer.docsLink' as BaseTextKey) }}
+						</N8nLink>
+					</template>
+				</I18nT>
+			</N8nText>
 		</template>
 	</Modal>
 </template>
@@ -333,6 +314,11 @@ onBeforeUnmount(() => {
 
 	:global(.el-dialog__body) {
 		padding-top: var(--spacing--lg);
+		padding-bottom: var(--spacing--sm);
+
+		> :last-child {
+			margin-top: var(--spacing--sm);
+		}
 	}
 }
 
@@ -398,15 +384,6 @@ onBeforeUnmount(() => {
 	}
 }
 
-.pendingHint {
-	display: block;
-	padding: var(--spacing--xs) var(--spacing--md);
-	border: 1px dashed var(--border-color--subtle);
-	border-radius: var(--radius);
-	background: var(--background--surface);
-	line-height: 1.5;
-}
-
 .sectionHeader {
 	display: flex;
 	align-items: center;
@@ -455,13 +432,24 @@ onBeforeUnmount(() => {
 	padding-left: calc(22px + var(--spacing--2xs));
 }
 
-// --- Section 1: agent picker ----------------------------------------------
+// --- Section 2: access toggle row -----------------------------------------
 
-.radioWrap {
-	display: inline-flex;
+.accessHeader {
+	justify-content: space-between;
+	gap: var(--spacing--md);
+	width: 100%;
+
+	@media (max-width: 600px) {
+		align-items: flex-start;
+		flex-direction: column;
+	}
 }
 
-// --- Section 2: access toggle row -----------------------------------------
+.accessTitleRow {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
 
 .accessRow {
 	flex-direction: row;
@@ -476,16 +464,10 @@ onBeforeUnmount(() => {
 	}
 }
 
-.accessHelper {
-	flex: 1;
-	min-width: 0;
-	line-height: 1.5;
-}
-
-// --- Section 3: prompt ----------------------------------------------------
-
-.inlineNotice {
+.footer {
 	margin: 0;
-	width: 100%;
+	padding: 0 var(--spacing--md);
+	color: var(--text-color--subtler);
+	line-height: 1.35;
 }
 </style>

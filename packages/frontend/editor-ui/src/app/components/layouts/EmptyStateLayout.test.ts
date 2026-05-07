@@ -235,6 +235,35 @@ describe('EmptyStateLayout', () => {
 			expect(getByTestId('mcp-onboarding-badge')).toHaveTextContent('Enabled');
 		});
 
+		it('uses the same card shell as the other empty-state cards', () => {
+			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-onboarding-card').className).toBe(
+				getByTestId('new-workflow-card').className,
+			);
+		});
+
+		it('renders the Claude logo in the MCP tile logo row', () => {
+			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-tile-claude-logo')).toBeInTheDocument();
+		});
+
+		it('renders the OpenAI logo in the MCP tile logo row', () => {
+			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-tile-openai-logo')).toBeInTheDocument();
+		});
+
 		it('opens the onboarding modal when the MCP card is clicked', async () => {
 			surfaceMcpStore.isTileVariant = true;
 			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;

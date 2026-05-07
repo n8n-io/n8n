@@ -16,8 +16,6 @@ const renderComponent = createComponentRenderer(MCPOnboardingClientSetup, {
 	props: {
 		client: 'claude_code',
 		serverUrl: 'https://example.n8n.cloud/mcp-server/http',
-		accessToken: 'n8n-real-token',
-		isTokenReady: true,
 	},
 });
 
@@ -26,15 +24,26 @@ describe('MCPOnboardingClientSetup', () => {
 		mockClipboardCopy.mockReset();
 	});
 
-	it('renders the Claude Code prompt with the resolved token, server URL, and literal placeholder', () => {
+	it('renders the Claude Code prompt with the server URL and OAuth instructions', () => {
 		const { container } = renderComponent();
 		const text = container.textContent ?? '';
 
 		expect(text).toContain('claude mcp add --scope user --transport http n8n');
 		expect(text).toContain('https://example.n8n.cloud/mcp-server/http');
-		expect(text).toContain('export N8N_MCP_TOKEN="n8n-real-token"');
-		expect(text).toContain("'Authorization: Bearer ${N8N_MCP_TOKEN}'");
+		expect(text).toContain('complete the n8n OAuth flow');
 		expect(text).not.toContain('claude mcp list');
+	});
+
+	it('renders the Claude connector prompt', () => {
+		const { container, queryByTestId } = renderComponent({
+			props: { client: 'claude' },
+		});
+		const text = container.textContent ?? '';
+
+		expect(text).toContain('Find the official n8n connector and show it in this chat.');
+		expect(text).not.toContain("When it's ready, ask me for the server URL.");
+		expect(text).not.toContain('claude mcp add --scope user --transport http n8n');
+		expect(queryByTestId('mcp-onboarding-claude-server-url')).not.toBeInTheDocument();
 	});
 
 	it('renders the Codex prompt with the TOML section and home-dir path', () => {
@@ -43,18 +52,22 @@ describe('MCPOnboardingClientSetup', () => {
 
 		expect(text).toContain('[mcp_servers.n8n]');
 		expect(text).toContain('~/.codex/config.toml');
-		expect(text).toContain('bearer_token_env_var = "N8N_MCP_TOKEN"');
 		expect(text).toContain('https://example.n8n.cloud/mcp-server/http');
+		expect(text).toContain('complete the n8n OAuth flow');
 	});
 
-	it('renders the placeholder and disables copy when the token is not ready', () => {
-		const { container, getByTestId } = renderComponent({
-			props: { isTokenReady: false, accessToken: '' },
-		});
+	it('reuses the Codex prompt for ChatGPT', () => {
+		const { container } = renderComponent({ props: { client: 'chatgpt' } });
 		const text = container.textContent ?? '';
 
-		expect(text).toContain('<your-access-token>');
-		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeDisabled();
+		expect(text).toContain('[mcp_servers.n8n]');
+		expect(text).toContain('~/.codex/config.toml');
+	});
+
+	it('keeps copy available', () => {
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('mcp-onboarding-copy-prompt-button')).toBeEnabled();
 	});
 
 	it('copies the prompt body and emits copy event on click', async () => {
@@ -66,7 +79,7 @@ describe('MCPOnboardingClientSetup', () => {
 		expect(mockClipboardCopy).toHaveBeenCalledTimes(1);
 		const copiedText = mockClipboardCopy.mock.calls[0][0] as string;
 		expect(copiedText).toContain('claude mcp add --scope user');
-		expect(copiedText).toContain('n8n-real-token');
+		expect(copiedText).toContain('complete the n8n OAuth flow');
 
 		expect(emitted('copy')).toEqual([['agent-prompt']]);
 	});
