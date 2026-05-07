@@ -62,6 +62,7 @@ packages/cli/src/commands/export/outputs
 .claude/settings.local.json
 .claude/plans/
 .claude/worktrees/
+.claude/specs/
 .cursor/plans/
 .superset
 .conductor

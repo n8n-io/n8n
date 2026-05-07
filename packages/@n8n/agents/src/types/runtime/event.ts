@@ -1,5 +1,4 @@
-import type { AgentPersistenceOptions } from '../sdk/agent';
-import type { AgentMessage, ContentToolResult } from '../sdk/message';
+import type { AgentMessage, ContentToolCall } from '../sdk/message';
 
 export const enum AgentEvent {
 	AgentStart = 'agent_start',
@@ -11,16 +10,11 @@ export const enum AgentEvent {
 	Error = 'error',
 }
 
-export type SharedAgentEventData = {
-	runId: string;
-	persistence?: AgentPersistenceOptions;
-};
-
-export type AgentEventSpecificData =
+export type AgentEventData =
 	| { type: AgentEvent.AgentStart }
 	| { type: AgentEvent.AgentEnd; messages: AgentMessage[] }
 	| { type: AgentEvent.TurnStart }
-	| { type: AgentEvent.TurnEnd; message: AgentMessage; toolResults: ContentToolResult[] }
+	| { type: AgentEvent.TurnEnd; message: AgentMessage; toolResults: ContentToolCall[] }
 	| { type: AgentEvent.ToolExecutionStart; toolCallId: string; toolName: string; args: unknown }
 	| {
 			type: AgentEvent.ToolExecutionEnd;
@@ -30,8 +24,6 @@ export type AgentEventSpecificData =
 			isError: boolean;
 	  }
 	| { type: AgentEvent.Error; message: string; error: unknown };
-
-export type AgentEventData = SharedAgentEventData & AgentEventSpecificData;
 
 export type AgentEventHandler = (data: AgentEventData) => void;
 
