@@ -1092,6 +1092,7 @@ export function useNodeHelpers(workflowId: RefOrComputedRef<string>) {
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
+		getNodeCredentialIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
