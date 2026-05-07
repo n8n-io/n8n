@@ -16,17 +16,6 @@ function isExecuteFunctions(
 	return 'getExecuteData' in context;
 }
 
-function countIntermediateSteps(returnData: INodeExecutionData[]): number {
-	let total = 0;
-	for (const item of returnData) {
-		const json = item.json as { intermediateSteps?: unknown };
-		if (Array.isArray(json.intermediateSteps)) {
-			total += json.intermediateSteps.length;
-		}
-	}
-	return total;
-}
-
 function countFailedItems(returnData: INodeExecutionData[]): number {
 	let failed = 0;
 	for (const item of returnData) {
@@ -63,7 +52,11 @@ export async function toolsAgentExecute(
 
 	const returnData: INodeExecutionData[] = [];
 	let requestedToolCalls = 0;
-	let completedToolCalls = 0;
+	// Tool calls that completed before this invocation are surfaced through the inbound
+	// EngineResponse — V3 routes tool execution through the engine, so we count
+	// `actionResponses` directly rather than relying on the optional `intermediateSteps`
+	// payload (which is only populated when `returnIntermediateSteps` is enabled).
+	const completedToolCalls = response?.actionResponses?.length ?? 0;
 	let failedItems = 0;
 	let iterationCount = 0;
 	let itemsTotal = 0;
@@ -94,7 +87,6 @@ export async function toolsAgentExecute(
 			memoryLoads += memoryHits.loads;
 			memorySaves += memoryHits.saves;
 			returnData.push.apply(returnData, batchReturnData);
-			completedToolCalls += countIntermediateSteps(batchReturnData);
 			failedItems += countFailedItems(batchReturnData);
 
 			// Collect requests from batch

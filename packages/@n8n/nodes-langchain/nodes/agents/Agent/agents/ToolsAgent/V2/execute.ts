@@ -1,9 +1,3 @@
-import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
-import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
 import {
 	AgentExecutor,
 	type AgentRunnableSequence,
@@ -11,11 +5,14 @@ import {
 } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import omit from 'lodash/omit';
-import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
-import assert from 'node:assert';
-
+import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
+import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
+import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
+import { ChatOpenAI } from '@langchain/openai';
 import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
@@ -23,6 +20,10 @@ import {
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
+import omit from 'lodash/omit';
+import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import {
 	fixEmptyContentMessage,
@@ -34,7 +35,6 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
-import { ChatOpenAI } from '@langchain/openai';
 
 /**
  * Creates an agent executor with the given configuration
@@ -86,6 +86,21 @@ function isExecuteFunctions(
 	context: IExecuteFunctions | ISupplyDataFunctions,
 ): context is IExecuteFunctions {
 	return 'getExecuteData' in context;
+}
+
+/**
+ * Counts completed tool invocations across an agent run. Used so that tool-call
+ * telemetry stays accurate when `returnIntermediateSteps` is disabled (in which
+ * case `intermediateSteps` is not surfaced on the agent response).
+ */
+class ToolCallCounterCallback extends BaseCallbackHandler {
+	name = 'ToolCallCounterCallback';
+
+	count = 0;
+
+	handleToolEnd(): void {
+		this.count++;
+	}
 }
 
 function applyAgentTracingMetadata(
@@ -341,7 +356,11 @@ export async function toolsAgentExecute(
 					formatting_instructions:
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 				};
-				const executeOptions = { signal: this.getExecutionCancelSignal() };
+				const toolCounter = new ToolCallCounterCallback();
+				const executeOptions = {
+					signal: this.getExecutionCancelSignal(),
+					callbacks: [toolCounter],
+				};
 
 				// Check if streaming is actually available
 				const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
@@ -368,15 +387,17 @@ export async function toolsAgentExecute(
 						},
 					);
 
-					return await processEventStream(
+					const response = await processEventStream(
 						this,
 						eventStream,
 						itemIndex,
 						options.returnIntermediateSteps,
 					);
+					return { response, toolCallsCounted: toolCounter.count };
 				} else {
 					// Handle regular execution
-					return await executorWithTracing.invoke(invokeParams, executeOptions);
+					const response = await executorWithTracing.invoke(invokeParams, executeOptions);
+					return { response, toolCallsCounted: toolCounter.count };
 				}
 			});
 
@@ -399,11 +420,8 @@ export async function toolsAgentExecute(
 						throw new NodeOperationError(this.getNode(), error);
 					}
 				}
-				const response = result.value;
-				const intermediateSteps = response?.intermediateSteps;
-				if (Array.isArray(intermediateSteps)) {
-					toolCalls += intermediateSteps.length;
-				}
+				const { response, toolCallsCounted } = result.value;
+				toolCalls += toolCallsCounted;
 				// If memory and outputParser are connected, parse the output.
 				if (memory && outputParser) {
 					const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
