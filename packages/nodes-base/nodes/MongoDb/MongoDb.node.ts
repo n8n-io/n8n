@@ -240,9 +240,6 @@ export class MongoDb implements INodeType {
 			if (operation === 'findOneAndReplace') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 				if (nodeVersion >= 1.3) {
-					const updateItems: IDataObject[] = [];
-					const pairedItems: IPairedItemData[] = [];
-
 					for (let i = 0; i < itemsLength; i++) {
 						const fields = prepareFields(this.getNodeParameter('fields', i) as string);
 						const useDotNotation = this.getNodeParameter(
@@ -278,22 +275,18 @@ export class MongoDb implements INodeType {
 								.collection(this.getNodeParameter('collection', i) as string)
 								.findOneAndReplace(filter, item, updateOptions as FindOneAndReplaceOptions);
 
-							updateItems.push(item);
-							pairedItems.push({ item: i });
+							returnData.push({ json: item, pairedItem: { item: i } });
 						} catch (error) {
 							if (this.continueOnFail()) {
-								updateItems.push({ error: (error as JsonObject).message });
-								pairedItems.push({ item: i });
+								returnData.push({
+									json: { error: (error as JsonObject).message },
+									pairedItem: { item: i },
+								});
 								continue;
 							}
 							throw error;
 						}
 					}
-
-					returnData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(updateItems),
-						{ itemData: pairedItems },
-					);
 				} else {
 					const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 					const useDotNotation = this.getNodeParameter(
@@ -349,9 +342,6 @@ export class MongoDb implements INodeType {
 			if (operation === 'findOneAndUpdate') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 				if (nodeVersion >= 1.3) {
-					const updateItems: IDataObject[] = [];
-					const pairedItems: IPairedItemData[] = [];
-
 					for (let i = 0; i < itemsLength; i++) {
 						const fields = prepareFields(this.getNodeParameter('fields', i) as string);
 						const useDotNotation = this.getNodeParameter(
@@ -388,22 +378,18 @@ export class MongoDb implements INodeType {
 								.collection(this.getNodeParameter('collection', i) as string)
 								.findOneAndUpdate(filter, { $set: item }, updateOptions as FindOneAndUpdateOptions);
 
-							updateItems.push(item);
-							pairedItems.push({ item: i });
+							returnData.push({ json: item, pairedItem: { item: i } });
 						} catch (error) {
 							if (this.continueOnFail()) {
-								updateItems.push({ error: (error as JsonObject).message });
-								pairedItems.push({ item: i });
+								returnData.push({
+									json: { error: (error as JsonObject).message },
+									pairedItem: { item: i },
+								});
 								continue;
 							}
 							throw error;
 						}
 					}
-
-					returnData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(updateItems),
-						{ itemData: pairedItems },
-					);
 				} else {
 					const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 					const useDotNotation = this.getNodeParameter(
@@ -459,54 +445,48 @@ export class MongoDb implements INodeType {
 
 			if (operation === 'insert') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
-				let responseData: IDataObject[] = [];
-				try {
-					if (nodeVersion >= 1.3) {
-						const pairedItems: IPairedItemData[] = [];
+				if (nodeVersion >= 1.3) {
+					for (let i = 0; i < itemsLength; i++) {
+						try {
+							const fields = prepareFields(this.getNodeParameter('fields', i) as string);
+							const useDotNotation = this.getNodeParameter(
+								'options.useDotNotation',
+								i,
+								false,
+							) as boolean;
+							const dateFields = prepareFields(
+								this.getNodeParameter('options.dateFields', i, '') as string,
+							);
+							const [insertItem] = prepareItems({
+								items: [items[i]],
+								fields,
+								updateKey: '',
+								useDotNotation,
+								dateFields,
+							});
 
-						for (let i = 0; i < itemsLength; i++) {
-							try {
-								const fields = prepareFields(this.getNodeParameter('fields', i) as string);
-								const useDotNotation = this.getNodeParameter(
-									'options.useDotNotation',
-									i,
-									false,
-								) as boolean;
-								const dateFields = prepareFields(
-									this.getNodeParameter('options.dateFields', i, '') as string,
-								);
-								const [insertItem] = prepareItems({
-									items: [items[i]],
-									fields,
-									updateKey: '',
-									useDotNotation,
-									dateFields,
+							const { insertedId } = await mdb
+								.collection(this.getNodeParameter('collection', i) as string)
+								.insertOne(insertItem);
+
+							returnData.push({
+								json: { ...insertItem, id: insertedId as unknown as string },
+								pairedItem: { item: i },
+							});
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData.push({
+									json: { error: (error as JsonObject).message },
+									pairedItem: { item: i },
 								});
-
-								const { insertedId } = await mdb
-									.collection(this.getNodeParameter('collection', i) as string)
-									.insertOne(insertItem);
-
-								responseData.push({
-									...insertItem,
-									id: insertedId as unknown as string,
-								});
-								pairedItems.push({ item: i });
-							} catch (error) {
-								if (this.continueOnFail()) {
-									responseData.push({ error: (error as JsonObject).message });
-									pairedItems.push({ item: i });
-									continue;
-								}
-								throw error;
+								continue;
 							}
+							throw error;
 						}
-
-						returnData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: pairedItems },
-						);
-					} else {
+					}
+				} else {
+					let responseData: IDataObject[] = [];
+					try {
 						// Prepare the data to insert and copy it to be returned
 						const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 						const useDotNotation = this.getNodeParameter(
@@ -537,16 +517,14 @@ export class MongoDb implements INodeType {
 								id: insertedIds[parseInt(i, 10)] as unknown as string,
 							});
 						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							responseData = [{ error: (error as JsonObject).message }];
+						} else {
+							throw error;
+						}
 					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						responseData = [{ error: (error as JsonObject).message }];
-					} else {
-						throw error;
-					}
-				}
 
-				if (nodeVersion < 1.3) {
 					returnData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: fallbackPairedItems },
@@ -557,9 +535,6 @@ export class MongoDb implements INodeType {
 			if (operation === 'update') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 				if (nodeVersion >= 1.3) {
-					const updateItems: IDataObject[] = [];
-					const pairedItems: IPairedItemData[] = [];
-
 					for (let i = 0; i < itemsLength; i++) {
 						const fields = prepareFields(this.getNodeParameter('fields', i) as string);
 						const useDotNotation = this.getNodeParameter(
@@ -596,22 +571,18 @@ export class MongoDb implements INodeType {
 								.collection(this.getNodeParameter('collection', i) as string)
 								.updateOne(filter, { $set: item }, updateOptions as UpdateOptions);
 
-							updateItems.push(item);
-							pairedItems.push({ item: i });
+							returnData.push({ json: item, pairedItem: { item: i } });
 						} catch (error) {
 							if (this.continueOnFail()) {
-								updateItems.push({ error: (error as JsonObject).message });
-								pairedItems.push({ item: i });
+								returnData.push({
+									json: { error: (error as JsonObject).message },
+									pairedItem: { item: i },
+								});
 								continue;
 							}
 							throw error;
 						}
 					}
-
-					returnData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(updateItems),
-						{ itemData: pairedItems },
-					);
 				} else {
 					const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 					const useDotNotation = this.getNodeParameter(

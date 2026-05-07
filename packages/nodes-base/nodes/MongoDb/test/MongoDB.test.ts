@@ -178,6 +178,20 @@ describe('MongoDB CRUD Node', () => {
 			expect(insertOneSpy).toHaveBeenCalledTimes(3);
 		});
 
+		it('pairs each insert output item to its input item', async () => {
+			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
+			insertOneSpy
+				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
+				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
+				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() });
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'insert'));
+
+			expect(items[0].pairedItem).toEqual({ item: 0 });
+			expect(items[1].pairedItem).toEqual({ item: 1 });
+			expect(items[2].pairedItem).toEqual({ item: 2 });
+		});
+
 		it('resolves update collections against each input item', async () => {
 			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
@@ -198,6 +212,23 @@ describe('MongoDB CRUD Node', () => {
 			expect(updateOneSpy).toHaveBeenCalledTimes(3);
 		});
 
+		it('pairs each update output item to its input item', async () => {
+			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			updateOneSpy.mockResolvedValue({
+				acknowledged: true,
+				matchedCount: 1,
+				modifiedCount: 1,
+				upsertedCount: 0,
+				upsertedId: null,
+			});
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'update'));
+
+			expect(items[0].pairedItem).toEqual({ item: 0 });
+			expect(items[1].pairedItem).toEqual({ item: 1 });
+			expect(items[2].pairedItem).toEqual({ item: 2 });
+		});
+
 		it('resolves find-and-update collections against each input item', async () => {
 			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
 			findOneAndUpdateSpy.mockResolvedValue(null);
@@ -212,6 +243,17 @@ describe('MongoDB CRUD Node', () => {
 			expect(findOneAndUpdateSpy).toHaveBeenCalledTimes(3);
 		});
 
+		it('pairs each find-and-update output item to its input item', async () => {
+			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			findOneAndUpdateSpy.mockResolvedValue(null);
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndUpdate'));
+
+			expect(items[0].pairedItem).toEqual({ item: 0 });
+			expect(items[1].pairedItem).toEqual({ item: 1 });
+			expect(items[2].pairedItem).toEqual({ item: 2 });
+		});
+
 		it('resolves find-and-replace collections against each input item', async () => {
 			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
 			findOneAndReplaceSpy.mockResolvedValue(null);
@@ -224,6 +266,17 @@ describe('MongoDB CRUD Node', () => {
 				'collection-3',
 			]);
 			expect(findOneAndReplaceSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('pairs each find-and-replace output item to its input item', async () => {
+			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			findOneAndReplaceSpy.mockResolvedValue(null);
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'findOneAndReplace'));
+
+			expect(items[0].pairedItem).toEqual({ item: 0 });
+			expect(items[1].pairedItem).toEqual({ item: 1 });
+			expect(items[2].pairedItem).toEqual({ item: 2 });
 		});
 	});
 
@@ -258,6 +311,24 @@ describe('MongoDB CRUD Node', () => {
 			expect(insertOneSpy).not.toHaveBeenCalled();
 		});
 
+		it('pairs all insert output items to all input items as fallback', async () => {
+			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			insertManySpy.mockResolvedValue({
+				acknowledged: true,
+				insertedCount: 3,
+				insertedIds: Object.fromEntries(
+					[new ObjectId(), new ObjectId(), new ObjectId()].map((id, index) => [index, id]),
+				),
+			});
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'insert'));
+
+			const fallbackPairedItems = [{ item: 0 }, { item: 1 }, { item: 2 }];
+			expect(items[0].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[1].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[2].pairedItem).toEqual(fallbackPairedItems);
+		});
+
 		it('keeps update using the first item collection', async () => {
 			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
@@ -276,6 +347,48 @@ describe('MongoDB CRUD Node', () => {
 				'collection-1',
 			]);
 			expect(updateOneSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('pairs all update output items to all input items as fallback', async () => {
+			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+			updateOneSpy.mockResolvedValue({
+				acknowledged: true,
+				matchedCount: 1,
+				modifiedCount: 1,
+				upsertedCount: 0,
+				upsertedId: null,
+			});
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'update'));
+
+			const fallbackPairedItems = [{ item: 0 }, { item: 1 }, { item: 2 }];
+			expect(items[0].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[1].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[2].pairedItem).toEqual(fallbackPairedItems);
+		});
+
+		it('pairs all find-and-update output items to all input items as fallback', async () => {
+			const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+			findOneAndUpdateSpy.mockResolvedValue(null);
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'findOneAndUpdate'));
+
+			const fallbackPairedItems = [{ item: 0 }, { item: 1 }, { item: 2 }];
+			expect(items[0].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[1].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[2].pairedItem).toEqual(fallbackPairedItems);
+		});
+
+		it('pairs all find-and-replace output items to all input items as fallback', async () => {
+			const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+			findOneAndReplaceSpy.mockResolvedValue(null);
+
+			const [items] = await node.execute.call(mockExecuteFunctions(1.2, 'findOneAndReplace'));
+
+			const fallbackPairedItems = [{ item: 0 }, { item: 1 }, { item: 2 }];
+			expect(items[0].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[1].pairedItem).toEqual(fallbackPairedItems);
+			expect(items[2].pairedItem).toEqual(fallbackPairedItems);
 		});
 	});
 
