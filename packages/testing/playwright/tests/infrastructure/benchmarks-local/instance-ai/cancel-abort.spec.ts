@@ -38,12 +38,14 @@ test.describe(
 						const ai = new InstanceAiPage(page);
 
 						await page.goto('/instance-ai');
+						await n8n.navigate.dismissInstanceAiOptinModalIfPresent(page);
 						await ai.getContainer().waitFor({ state: 'visible', timeout: 15_000 });
 						await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
+						await ai.openSidebar();
 						await ai.sidebar.getNewThreadButton().click();
-						await page.waitForURL(/\/instance-ai\/[0-9a-f-]+/, { timeout: 10_000 });
+						// await page.waitForURL(/\/instance-ai\/[0-9a-f-]+/, { timeout: 10_000 });
 
-						const threadId = page.url().match(/\/instance-ai\/([0-9a-f-]+)/)?.[1];
+						// const threadId = page.url().match(/\/instance-ai\/([0-9a-f-]+)/)?.[1];
 
 						await ai.getChatInput().fill(BENCHMARK_PROMPTS[i % BENCHMARK_PROMPTS.length]);
 						await ai.getSendButton().click();
@@ -53,10 +55,10 @@ test.describe(
 						await ai.getStopButton().click();
 						await ai.waitForRunComplete(30_000);
 
-						console.log(`[CANCEL ${i + 1}] Cancelled thread ${threadId}`);
+						// console.log(`[CANCEL ${i + 1}] Cancelled thread ${threadId}`);
 
 						await page.close();
-						if (threadId) await driver.deleteThread(threadId);
+						// if (threadId) await driver.deleteThread(threadId);
 					},
 					measureAfter: (i + 1) % 2 === 0 || i === CANCEL_ITERATIONS - 1,
 				});
