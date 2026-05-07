@@ -106,7 +106,7 @@ const agent = node({
     name: 'AI Agent',
     parameters: {
       promptType: 'define',
-      text: '={{ $json.prompt }}',
+      text: expr('{{ $json.prompt }}'),
       hasOutputParser: true,
       options: { systemMessage: 'You are an expert...' }
     },

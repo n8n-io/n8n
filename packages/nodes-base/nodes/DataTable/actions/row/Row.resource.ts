@@ -73,8 +73,8 @@ const storeData = node({
       columns: {
         mappingMode: 'defineBelow',
         value: {
-          name: '={{ $json.name }}',
-          email: '={{ $json.email }}'
+          name: expr('{{ $json.name }}'),
+          email: expr('{{ $json.email }}')
         },
         schema: [
           { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },

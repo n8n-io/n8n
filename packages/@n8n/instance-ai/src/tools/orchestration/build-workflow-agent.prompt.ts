@@ -253,8 +253,8 @@ const fetchWeather = node({
     name: 'Fetch Weather',
     parameters: {
       locationSelection: 'cityName',
-      cityName: '={{ $json.city }}',
-      format: '={{ $json.units }}'
+      cityName: expr('{{ $json.city }}'),
+      format: expr('{{ $json.units }}')
     },
     credentials: { openWeatherMapApi: { id: 'credId', name: 'OpenWeatherMap account' } }
   }

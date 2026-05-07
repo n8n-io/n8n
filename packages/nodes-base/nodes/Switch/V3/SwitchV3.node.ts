@@ -144,7 +144,7 @@ const routeByPriority = switchCase({
             outputKey: 'urgent',
             conditions: {
               options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
-              conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }],
+              conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }],
               combinator: 'and'
             }
           },
@@ -152,7 +152,7 @@ const routeByPriority = switchCase({
             outputKey: 'normal',
             conditions: {
               options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
-              conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }],
+              conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }],
               combinator: 'and'
             }
           }

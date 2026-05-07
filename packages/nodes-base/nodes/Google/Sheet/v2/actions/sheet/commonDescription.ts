@@ -23,7 +23,7 @@ columns: {
 <pattern title="defineBelow — explicit expression mapping">
 columns: {
   mappingMode: 'defineBelow',
-  value: { name: '={{ $json.name }}', email: '={{ $json.email }}' },
+  value: { name: expr('{{ $json.name }}'), email: expr('{{ $json.email }}') },
   schema: [
     { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
     { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
