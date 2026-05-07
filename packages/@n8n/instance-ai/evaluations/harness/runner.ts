@@ -12,6 +12,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { SSE_SETTLE_DELAY_MS, startSseConnection, waitForAllActivity } from './chat-loop';
 import { type EvalLogger } from './logger';
+import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
@@ -49,6 +50,9 @@ interface WorkflowTestCaseConfig {
 	keepWorkflows: boolean;
 	/** Optional " [lane N/M]" suffix appended to per-build log lines. */
 	laneTag?: string;
+	/** When set, skip the orchestrator build and verify this existing workflow
+	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
+	prebuiltWorkflowId?: string;
 }
 
 /**
@@ -68,15 +72,17 @@ export async function runWorkflowTestCase(
 		scenarioResults: [],
 	};
 
-	const build = await buildWorkflow({
-		client,
-		prompt: testCase.prompt,
-		timeoutMs,
-		preRunWorkflowIds: config.preRunWorkflowIds,
-		claimedWorkflowIds: config.claimedWorkflowIds,
-		logger,
-		laneTag: config.laneTag,
-	});
+	const build = config.prebuiltWorkflowId
+		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
+		: await buildWorkflow({
+				client,
+				prompt: testCase.prompt,
+				timeoutMs,
+				preRunWorkflowIds: config.preRunWorkflowIds,
+				claimedWorkflowIds: config.claimedWorkflowIds,
+				logger,
+				laneTag: config.laneTag,
+			});
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;

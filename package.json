@@ -73,7 +73,7 @@
     "jest-mock-extended": "^3.0.4",
     "lefthook": "^1.7.15",
     "license-checker": "^25.0.1",
-    "nock": "^14.0.13",
+    "nock": "^14.0.14",
     "nodemon": "^3.0.1",
     "npm-run-all2": "^7.0.2",
     "p-limit": "^3.1.0",
@@ -103,7 +103,6 @@
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@types/node": "^20.17.50",
-      "axios": "1.15.0",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
       "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
@@ -140,7 +139,6 @@
       "undici@6": "^6.24.0",
       "undici@7": "^7.24.0",
       "tar": "^7.5.11",
-      "hono": "4.12.14",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
       "ajv@8": "8.18.0",
@@ -167,10 +165,11 @@
       "@xmldom/xmldom": "0.8.13",
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
-      "fast-xml-parser": "5.7.0"
+      "hono": "4.12.16",
+      "axios": "1.16.0",
+      "fast-xml-parser": "5.7.2"
     },
     "patchedDependencies": {
-      "axios@1.15.0": "patches/axios@1.15.0.patch",
       "bull@4.16.4": "patches/bull@4.16.4.patch",
       "pdfjs-dist@5.3.31": "patches/pdfjs-dist@5.3.31.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
