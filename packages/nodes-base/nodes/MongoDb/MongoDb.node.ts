@@ -446,6 +446,9 @@ export class MongoDb implements INodeType {
 			if (operation === 'insert') {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 				if (nodeVersion >= 1.3) {
+					// Phase 1: prepare items and group by collection name
+					const groups = new Map<string, Array<{ item: IDataObject; originalIndex: number }>>();
+
 					for (let i = 0; i < itemsLength; i++) {
 						try {
 							const fields = prepareFields(this.getNodeParameter('fields', i) as string);
@@ -465,20 +468,46 @@ export class MongoDb implements INodeType {
 								dateFields,
 							});
 
-							const { insertedId } = await mdb
-								.collection(this.getNodeParameter('collection', i) as string)
-								.insertOne(insertItem);
+							if (!insertItem) continue;
 
-							returnData.push({
-								json: { ...insertItem, id: insertedId as unknown as string },
-								pairedItem: { item: i },
-							});
+							const collection = this.getNodeParameter('collection', i) as string;
+							const group = groups.get(collection) ?? [];
+							groups.set(collection, group);
+							group.push({ item: insertItem, originalIndex: i });
 						} catch (error) {
 							if (this.continueOnFail()) {
 								returnData.push({
 									json: { error: (error as JsonObject).message },
 									pairedItem: { item: i },
 								});
+							} else {
+								throw error;
+							}
+						}
+					}
+
+					// Phase 2: insertMany per collection group
+					for (const [collection, groupItems] of groups) {
+						try {
+							const { insertedIds } = await mdb
+								.collection(collection)
+								.insertMany(groupItems.map((g) => g.item));
+
+							for (const [idx, insertedId] of Object.entries(insertedIds)) {
+								const g = groupItems[parseInt(idx, 10)];
+								returnData.push({
+									json: { ...g.item, id: insertedId as unknown as string },
+									pairedItem: { item: g.originalIndex },
+								});
+							}
+						} catch (error) {
+							if (this.continueOnFail()) {
+								for (const g of groupItems) {
+									returnData.push({
+										json: { error: (error as JsonObject).message },
+										pairedItem: { item: g.originalIndex },
+									});
+								}
 								continue;
 							}
 							throw error;

@@ -161,29 +161,70 @@ describe('MongoDB CRUD Node', () => {
 			jest.clearAllMocks();
 		});
 
-		it('resolves insert collections against each input item', async () => {
+		it('groups insert items by collection and uses insertMany per group', async () => {
 			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
-			insertOneSpy
-				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
-				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
-				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() });
+			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			insertManySpy.mockResolvedValue({
+				acknowledged: true,
+				insertedCount: 1,
+				insertedIds: { 0: new ObjectId() },
+			});
 
 			await node.execute.call(mockExecuteFunctions(1.3, 'insert'));
 
+			// Each item goes to a different collection → 3 groups → 3 insertMany calls
 			expect(collectionNames(collectionSpy)).toEqual([
 				'collection-1',
 				'collection-2',
 				'collection-3',
 			]);
-			expect(insertOneSpy).toHaveBeenCalledTimes(3);
+			expect(insertManySpy).toHaveBeenCalledTimes(3);
+			expect(insertOneSpy).not.toHaveBeenCalled();
+		});
+
+		it('uses a single insertMany when all items share the same collection', async () => {
+			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			insertManySpy.mockResolvedValue({
+				acknowledged: true,
+				insertedCount: 3,
+				insertedIds: Object.fromEntries(
+					[new ObjectId(), new ObjectId(), new ObjectId()].map((id, index) => [index, id]),
+				),
+			});
+
+			const sameCollectionMock = mockExecuteFunctions(1.3, 'insert');
+			sameCollectionMock.getNodeParameter.mockImplementation(
+				(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+					switch (parameterName) {
+						case 'operation':
+							return 'insert';
+						case 'collection':
+							return 'shared-collection';
+						case 'fields':
+							return 'id,value';
+						case 'options.useDotNotation':
+							return false;
+						case 'options.dateFields':
+							return '';
+						default:
+							return fallbackValue;
+					}
+				},
+			);
+
+			await node.execute.call(sameCollectionMock);
+
+			expect(insertManySpy).toHaveBeenCalledTimes(1);
+			expect(insertManySpy).toHaveBeenCalledWith(expect.arrayContaining([expect.any(Object)]));
 		});
 
 		it('pairs each insert output item to its input item', async () => {
-			const insertOneSpy = jest.spyOn(Collection.prototype, 'insertOne');
-			insertOneSpy
-				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
-				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() })
-				.mockResolvedValueOnce({ acknowledged: true, insertedId: new ObjectId() });
+			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			insertManySpy.mockResolvedValue({
+				acknowledged: true,
+				insertedCount: 1,
+				insertedIds: { 0: new ObjectId() },
+			});
 
 			const [items] = await node.execute.call(mockExecuteFunctions(1.3, 'insert'));
 
