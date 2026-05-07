@@ -530,7 +530,9 @@ export class OauthService {
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
 				scope,
-				...(await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.jweEnabled === true)),
+				...(oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+					: {}),
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);

@@ -45,19 +45,10 @@ describe('OAuthJweServiceProxy', () => {
 		it('returns an empty object when no handler is registered (feature off)', async () => {
 			const proxy = new OAuthJweServiceProxy();
 
-			await expect(proxy.getDcrJweFields(true)).resolves.toEqual({});
-		});
-
-		it('returns an empty object when the credential has not opted in', async () => {
-			const handler = mock<OAuthJweHandler>();
-			const proxy = new OAuthJweServiceProxy();
-			proxy.setHandler(handler);
-
 			await expect(proxy.getDcrJweFields(false)).resolves.toEqual({});
-			expect(handler.getDcrJweFields).not.toHaveBeenCalled();
 		});
 
-		it('delegates to the registered handler when both gates are open', async () => {
+		it('delegates with inlineJwks=false to the registered handler', async () => {
 			const fields = {
 				jwks_uri: 'http://localhost:5678/rest/.well-known/jwks.json',
 				id_token_encrypted_response_alg: 'RSA-OAEP-256',
@@ -67,9 +58,25 @@ describe('OAuthJweServiceProxy', () => {
 			const proxy = new OAuthJweServiceProxy();
 			proxy.setHandler(handler);
 
+			const result = await proxy.getDcrJweFields(false);
+
+			expect(handler.getDcrJweFields).toHaveBeenCalledWith(false);
+			expect(result).toEqual(fields);
+		});
+
+		it('delegates with inlineJwks=true to the registered handler', async () => {
+			const fields = {
+				jwks: { keys: [{ kty: 'RSA', alg: 'RSA-OAEP-256', kid: 'kid-1' }] },
+				id_token_encrypted_response_alg: 'RSA-OAEP-256',
+			};
+			const handler = mock<OAuthJweHandler>();
+			handler.getDcrJweFields.mockResolvedValue(fields);
+			const proxy = new OAuthJweServiceProxy();
+			proxy.setHandler(handler);
+
 			const result = await proxy.getDcrJweFields(true);
 
-			expect(handler.getDcrJweFields).toHaveBeenCalled();
+			expect(handler.getDcrJweFields).toHaveBeenCalledWith(true);
 			expect(result).toEqual(fields);
 		});
 	});

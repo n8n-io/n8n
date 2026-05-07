@@ -24,13 +24,16 @@ export class OAuthJweDecryptService {
 		private readonly urlService: UrlService,
 	) {}
 
-	async getDcrJweFields(): Promise<DcrJweFields> {
+	async getDcrJweFields(inlineJwks: boolean): Promise<DcrJweFields> {
 		const publicJwk = await this.keyService.getPublicJwk();
 		if (typeof publicJwk.alg !== 'string' || publicJwk.alg.length === 0) {
 			throw new UnexpectedError('OAuth JWE public key is missing an "alg" field');
 		}
+		const keyDistribution: Pick<DcrJweFields, 'jwks' | 'jwks_uri'> = inlineJwks
+			? { jwks: { keys: [publicJwk] } }
+			: { jwks_uri: this.urlService.getInstanceJwksUri() };
 		return {
-			jwks_uri: this.urlService.getInstanceJwksUri(),
+			...keyDistribution,
 			id_token_encrypted_response_alg: publicJwk.alg,
 		};
 	}

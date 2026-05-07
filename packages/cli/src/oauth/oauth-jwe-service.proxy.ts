@@ -1,19 +1,22 @@
 import { Service } from '@n8n/di';
+import type { JWK } from 'jose';
 import type { IDataObject, OauthJweProxyProvider } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 /**
  * JWE-related fields of an RFC 7591 dynamic client registration payload.
- * Empty when the JWE feature is not in play for a given registration.
+ * Per RFC 7591 §2, `jwks_uri` and `jwks` are mutually exclusive. Empty
+ * when the JWE feature is not in play for a given registration.
  */
 export type DcrJweFields = {
 	jwks_uri?: string;
+	jwks?: { keys: JWK[] };
 	id_token_encrypted_response_alg?: string;
 };
 
 export interface OAuthJweHandler {
 	decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject>;
-	getDcrJweFields(): Promise<DcrJweFields>;
+	getDcrJweFields(inlineJwks: boolean): Promise<DcrJweFields>;
 }
 
 /**
@@ -49,13 +52,15 @@ export class OAuthJweServiceProxy implements OauthJweProxyProvider {
 	}
 
 	/**
-	 * Lenient: returns an empty object when either the JWE feature is off on
-	 * the instance or the credential has not opted in. The OAuth service
-	 * always asks for the fields and lets this method produce a no-op when
-	 * appropriate.
+	 * Lenient: returns an empty object when the JWE feature is off on this
+	 * instance. The per-credential opt-in (`jweEnabled`) is checked by the
+	 * caller — reaching this method means the credential has asked for JWE.
+	 * When `inlineJwks` is true the handler returns the JWKS by value
+	 * (`jwks`) instead of by reference (`jwks_uri`) per RFC 7591 §2, for
+	 * IdPs that cannot reach this instance's JWKS endpoint.
 	 */
-	async getDcrJweFields(jweEnabledOnCredential: boolean): Promise<DcrJweFields> {
-		if (!jweEnabledOnCredential || !this.handler) return {};
-		return await this.handler.getDcrJweFields();
+	async getDcrJweFields(inlineJwks: boolean): Promise<DcrJweFields> {
+		if (!this.handler) return {};
+		return await this.handler.getDcrJweFields(inlineJwks);
 	}
 }
