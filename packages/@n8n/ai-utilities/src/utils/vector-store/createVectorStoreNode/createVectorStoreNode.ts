@@ -77,19 +77,25 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				},
 			},
 			builderHint: {
+				message:
+					"Pick mode by where data flows: `insert` upserts documents into the store on the main flow; `load` runs a one-shot similarity search on the main flow; `retrieve-as-tool` is the canonical RAG mode — plug into an AI Agent's `subnodes.tools`; `retrieve` exposes the store as a subnode for another node's `subnodes.vectorStore`; `update` updates a single document by ID.",
 				...args.meta.builderHint,
 				extraTypeDefContent: [
 					{
 						displayOptions: { show: { mode: ['insert'] } },
-						content: `Declare with the \`vectorStore({...})\` factory. Required subnodes: \`{ embedding, documentLoader }\`. Sits on the main flow — pipe the documents you want to embed into this node.
+						content: `Sits on the main flow — pipe the documents you want to embed into this node. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\` and \`documentLoader\`. If the goal is letting an LLM query the store, use \`mode: 'retrieve-as-tool'\` instead.
 <patterns>
-<pattern title="Insert mode — upsert documents into the store">
+<pattern title="insert mode — upsert documents (generic, works for any vectorStore* node)">
+// Substitute the type literal and provider-specific parameters (e.g. pineconeIndex,
+// qdrantCollection, supabaseTableName) — see the rest of this file for the exact shape.
 const store = vectorStore({
-  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-  version: 1.2,
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
   config: {
     name: 'Knowledge Base',
-    parameters: { mode: 'insert', options: {}, pineconeIndex: { __rl: true, mode: 'list', value: 'kb' } },
+    parameters: {
+      mode: 'insert',
+      // ...provider-specific parameters
+    },
     subnodes: { embedding: embeddingsOpenAi, documentLoader: defaultDataLoader }
   }
 });
@@ -98,19 +104,19 @@ const store = vectorStore({
 					},
 					{
 						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
-						content: `Declare with the \`tool({...})\` factory (NOT \`vectorStore\`). Required subnodes: \`{ embedding }\`. Set \`toolDescription\` so the agent knows when to call it. Plug into an AI Agent's \`subnodes.tools\` array — this is the canonical RAG pattern.
+						content: `Canonical RAG mode — declare with the \`tool({...})\` factory (NOT \`vectorStore\`) and plug into an AI Agent's \`subnodes.tools\`. Required subnodes: \`embedding\`. Set \`toolDescription\` so the agent knows when to call it.
 <patterns>
-<pattern title="retrieve-as-tool mode — RAG via AI Agent">
+<pattern title="retrieve-as-tool mode — RAG via AI Agent (generic, works for any vectorStore* node)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file
+// for the exact shape (e.g. pineconeIndex, qdrantCollection, supabaseTableName).
 const knowledgeBase = tool({
-  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-  version: 1.2,
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
   config: {
     name: 'Knowledge Base',
     parameters: {
       mode: 'retrieve-as-tool',
       toolDescription: 'Search the product knowledge base',
-      pineconeIndex: { __rl: true, mode: 'list', value: 'kb' },
-      options: {}
+      // ...provider-specific parameters
     },
     subnodes: { embedding: embeddingsOpenAi }
   }
@@ -118,7 +124,6 @@ const knowledgeBase = tool({
 
 const agent = node({
   type: '@n8n/n8n-nodes-langchain.agent',
-  version: 3.1,
   config: {
     name: 'Support Agent',
     parameters: { promptType: 'define', text: expr('{{ $json.question }}') },
@@ -130,18 +135,67 @@ const agent = node({
 					},
 					{
 						displayOptions: { show: { mode: ['load'] } },
-						content:
-							"Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Performs a one-shot similarity search on the main flow using the `prompt` parameter — use this when you need a lookup outside an agent's tool-calling loop.",
+						content: `One-shot similarity search on the main flow using the \`prompt\` parameter. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. For LLM-driven querying (RAG), use \`mode: 'retrieve-as-tool'\` instead.
+<patterns>
+<pattern title="load mode — one-shot similarity search (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const lookup = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: {
+      mode: 'load',
+      prompt: expr('{{ $json.query }}'),
+      // ...provider-specific parameters
+    },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+</pattern>
+</patterns>`,
 					},
 					{
 						displayOptions: { show: { mode: ['retrieve'] } },
-						content:
-							"Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Plug the resulting node into another node's `subnodes` (e.g. a `toolVectorStore` node's `subnodes: { vectorStore }`).",
+						content: `Exposes the store as an \`ai_vectorStore\` subnode for another node (e.g. \`toolVectorStore\`). Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. For RAG with an AI Agent directly, prefer \`mode: 'retrieve-as-tool'\`.
+<patterns>
+<pattern title="retrieve mode — feed another node as a subnode (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'retrieve' /* + provider-specific parameters */ },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+
+const retrieverTool = tool({
+  type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+  config: {
+    name: 'KB Retriever',
+    parameters: { description: 'Search the product knowledge base' },
+    subnodes: { vectorStore: store, model: openAiModel }
+  }
+});
+</pattern>
+</patterns>`,
 					},
 					{
 						displayOptions: { show: { mode: ['update'] } },
-						content:
-							'Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Updates documents by ID — only available on stores whose `operationModes` explicitly enables it.',
+						content: `Updates a single document by \`id\`. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. Only available on stores whose \`operationModes\` enables it — most providers omit this mode.
+<patterns>
+<pattern title="update mode — update document by ID (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'update', id: expr('{{ $json.docId }}') },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+</pattern>
+</patterns>`,
 					},
 				],
 				inputs: {
