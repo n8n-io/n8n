@@ -17,6 +17,29 @@ import { McpClientManager } from '../mcp-client-manager';
 const { MCPClient: mockedMcpClient } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('@mastra/mcp') as { MCPClient: jest.Mock };
+const { sanitizeMcpToolSchemas: mockedSanitizeMcpToolSchemas } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../../agent/sanitize-mcp-schemas') as {
+		sanitizeMcpToolSchemas: jest.Mock;
+	};
+
+interface LoggerMock {
+	warn: jest.Mock;
+}
+
+interface SanitizeOptions {
+	onError?: (error: {
+		message: string;
+		details: {
+			toolName?: string;
+			path: string;
+			depth: number;
+			maxDepth: number;
+			limitType?: string;
+			limit?: number;
+		};
+	}) => void;
+}
 
 function createValidatorMock(): jest.Mocked<SsrfUrlValidator> {
 	return {
@@ -80,6 +103,93 @@ describe('McpClientManager', () => {
 				]),
 			).resolves.toBeDefined();
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('server and schema filtering', () => {
+		it('skips external MCP servers with unsafe names', async () => {
+			const logger: LoggerMock = { warn: jest.fn() };
+			const manager = new McpClientManager();
+
+			await manager.getRegularTools(
+				[
+					{ name: 'bad name', url: 'https://bad.example.com/mcp' },
+					{ name: 'safe_server', url: 'https://safe.example.com/mcp' },
+				],
+				logger as never,
+			);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
+			const mcpClientCalls = mockedMcpClient.mock.calls as Array<
+				[{ servers: Record<string, unknown> }]
+			>;
+			const [mcpClientConfig] = mcpClientCalls[0];
+			expect(mcpClientConfig.servers).not.toHaveProperty('bad name');
+			expect(mcpClientConfig.servers).toHaveProperty('safe_server');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP server with unsafe name',
+				expect.objectContaining({
+					serverName: 'bad name',
+					source: 'external MCP',
+				}),
+			);
+		});
+
+		it('skips browser MCP configs with unsafe names', async () => {
+			const logger: LoggerMock = { warn: jest.fn() };
+			const manager = new McpClientManager();
+
+			await expect(
+				manager.getBrowserTools(
+					{ name: 'bad name', url: 'https://browser.example.com/mcp' },
+					logger as never,
+				),
+			).resolves.toEqual({});
+
+			expect(mockedMcpClient).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP server with unsafe name',
+				expect.objectContaining({
+					serverName: 'bad name',
+					source: 'browser MCP',
+				}),
+			);
+		});
+
+		it('logs tools skipped during schema sanitization', async () => {
+			const logger: LoggerMock = { warn: jest.fn() };
+			mockedSanitizeMcpToolSchemas.mockImplementationOnce(
+				(_tools: Record<string, unknown>, options?: SanitizeOptions) => {
+					options?.onError?.({
+						message: 'MCP schema exceeds maximum depth of 32',
+						details: {
+							toolName: 'deep_tool',
+							path: '$.input',
+							depth: 33,
+							maxDepth: 32,
+							limitType: 'depth',
+							limit: 32,
+						},
+					});
+					return {};
+				},
+			);
+
+			const manager = new McpClientManager();
+			await manager.getRegularTools(
+				[{ name: 'safe_server', url: 'https://safe.example.com/mcp' }],
+				logger as never,
+			);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP tool with unsupported schema',
+				expect.objectContaining({
+					toolName: 'deep_tool',
+					source: 'external MCP',
+					path: '$.input',
+					limitType: 'depth',
+				}),
+			);
 		});
 	});
 

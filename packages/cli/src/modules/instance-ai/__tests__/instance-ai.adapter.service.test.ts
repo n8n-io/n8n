@@ -1308,6 +1308,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		id: 'wf-new',
 		name: 'Test Workflow',
 		active: false,
+		versionId: 'version-id',
+		activeVersionId: null,
+		isArchived: false,
 		createdAt: new Date('2026-01-01'),
 		updatedAt: new Date('2026-01-01'),
 		nodes: [],
@@ -1348,7 +1351,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 
 	const mockWorkflowService = {
-		archive: jest.fn().mockResolvedValue(undefined),
+		getMany: jest.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
+		archive: jest.fn().mockResolvedValue(savedWorkflow),
+		unarchive: jest.fn().mockResolvedValue(savedWorkflow),
 		activateWorkflow: jest.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
@@ -1437,6 +1442,50 @@ describe('createWorkflowAdapter', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	it('lists active workflows by default', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		const result = await adapter.list({ limit: 10, query: 'Test' });
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 10,
+			filter: {
+				isArchived: false,
+				query: 'Test',
+			},
+		});
+		expect(result).toEqual([
+			expect.objectContaining({
+				id: 'wf-new',
+				isArchived: false,
+			}),
+		]);
+	});
+
+	it('lists archived workflows when requested', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ status: 'archived' });
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: {
+				isArchived: true,
+			},
+		});
+	});
+
+	it('omits the archived filter when listing all workflows', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ status: 'all' });
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: {},
+		});
 	});
 
 	it('defaults to personal project when no projectId provided', async () => {
@@ -1575,6 +1624,35 @@ describe('createWorkflowAdapter', () => {
 		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-archived');
 	});
 
+	it('unarchives a workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.unarchive('wf-1');
+
+		expect(mockWorkflowService.unarchive).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			'wf-1',
+		);
+	});
+
+	it('throws when archive cannot find or access the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.archive.mockResolvedValueOnce(undefined);
+
+		await expect(adapter.archive('wf-missing')).rejects.toThrow(
+			'Workflow wf-missing not found or not accessible',
+		);
+	});
+
+	it('throws when unarchive cannot find or access the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.unarchive.mockResolvedValueOnce(undefined);
+
+		await expect(adapter.unarchive('wf-missing')).rejects.toThrow(
+			'Workflow wf-missing not found or not accessible',
+		);
+	});
+
 	describe('instance read-only mode', () => {
 		it('blocks createFromWorkflowJSON when branchReadOnly is true', async () => {
 			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
@@ -1592,10 +1670,10 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 
-		it('blocks delete when branchReadOnly is true', async () => {
+		it('blocks unarchive when branchReadOnly is true', async () => {
 			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
 
-			await expect(adapter.delete('wf-1')).rejects.toThrow(
+			await expect(adapter.unarchive('wf-1')).rejects.toThrow(
 				'Cannot modify workflows on a protected instance',
 			);
 		});

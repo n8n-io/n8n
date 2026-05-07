@@ -325,7 +325,7 @@ export async function resolveRequiredParameters(
 }
 
 function getNodeTypes(): INodeTypes {
-	return useWorkflowsStore().getNodeTypes();
+	return useNodeTypesStore().getAllNodeTypes();
 }
 
 // TODO: move to separate file
