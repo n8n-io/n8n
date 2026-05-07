@@ -38,6 +38,7 @@ export class LangchainChatModelAdapter<
 										completionTokens,
 										promptTokens,
 										totalTokens: completionTokens + promptTokens,
+										cost: undefined,
 									};
 								},
 							}),

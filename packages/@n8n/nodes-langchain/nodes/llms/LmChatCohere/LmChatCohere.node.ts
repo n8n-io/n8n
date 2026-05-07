@@ -17,6 +17,7 @@ export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
+	cost: number | undefined;
 } {
 	let totalInputTokens = 0;
 	let totalOutputTokens = 0;
@@ -35,6 +36,7 @@ export function tokensUsageParser(result: LLMResult): {
 		completionTokens: totalOutputTokens,
 		promptTokens: totalInputTokens,
 		totalTokens: totalInputTokens + totalOutputTokens,
+		cost: undefined,
 	};
 }
 

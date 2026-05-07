@@ -19,6 +19,7 @@ type TokensUsageParser = (result: LLMResult) => {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
+	cost?: number;
 };
 
 type RunDetail = {
@@ -28,6 +29,20 @@ type RunDetail = {
 };
 
 const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
+
+type TracingWriter = {
+	setMetadata: (metadata: { tracing: Record<string, string | number | boolean> }) => void;
+};
+
+function canWriteTracingMetadata(context: unknown): context is TracingWriter {
+	return (
+		typeof context === 'object' &&
+		context !== null &&
+		'setMetadata' in context &&
+		typeof context.setMetadata === 'function'
+	);
+}
+
 export class N8nLlmTracing extends BaseCallbackHandler {
 	name = 'N8nLlmTracing';
 
@@ -51,16 +66,30 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	 */
 	runsMap: Record<string, RunDetail> = {};
 
-	options = {
+	options: {
+		tokensUsageParser: TokensUsageParser;
+		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
+	} = {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
-			const completionTokens = (result?.llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
-			const promptTokens = (result?.llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
+			const tokenUsage = result?.llmOutput?.tokenUsage as
+				| {
+						completionTokens?: number;
+						promptTokens?: number;
+						totalTokens?: number;
+						cost?: number;
+						totalCost?: number;
+				  }
+				| undefined;
+			const completionTokens = tokenUsage?.completionTokens ?? 0;
+			const promptTokens = tokenUsage?.promptTokens ?? 0;
+			const cost = tokenUsage?.cost ?? tokenUsage?.totalCost;
 
 			return {
 				completionTokens,
 				promptTokens,
 				totalTokens: completionTokens + promptTokens,
+				cost,
 			};
 		},
 		errorDescriptionMapper: (error: NodeError) => error.description,
@@ -70,7 +99,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
 			tokensUsageParser?: TokensUsageParser;
-			errorDescriptionMapper?: (error: NodeError) => string;
+			errorDescriptionMapper?: (error: NodeError) => string | null | undefined;
 		},
 	) {
 		super();
@@ -85,6 +114,28 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	async estimateTokensFromStringList(list: string[]) {
 		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
 		return await estimateTokensFromStringList(list, embeddingModel);
+	}
+
+	private applyTracingTokenMetadata(params: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		isEstimated: boolean;
+		cost?: number;
+	}) {
+		if (!canWriteTracingMetadata(this.executionFunctions)) return;
+
+		const tracing: Record<string, string | number | boolean> = {
+			'llm.tokens.in': params.promptTokens,
+			'llm.tokens.out': params.completionTokens,
+			'llm.tokens.total': params.totalTokens,
+			'llm.tokens.estimated': params.isEstimated,
+		};
+		if (typeof params.cost === 'number' && Number.isFinite(params.cost)) {
+			tracing['llm.cost.total'] = params.cost;
+		}
+
+		this.executionFunctions.setMetadata({ tracing });
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
@@ -123,8 +174,21 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
 		if (tokenUsage.completionTokens > 0) {
 			response.tokenUsage = tokenUsage;
+			this.applyTracingTokenMetadata({
+				promptTokens: tokenUsage.promptTokens,
+				completionTokens: tokenUsage.completionTokens,
+				totalTokens: tokenUsage.totalTokens,
+				isEstimated: false,
+				cost: tokenUsage.cost,
+			});
 		} else {
 			response.tokenUsageEstimate = tokenUsageEstimate;
+			this.applyTracingTokenMetadata({
+				promptTokens: tokenUsageEstimate.promptTokens,
+				completionTokens: tokenUsageEstimate.completionTokens,
+				totalTokens: tokenUsageEstimate.totalTokens,
+				isEstimated: true,
+			});
 		}
 
 		const parsedMessages =
