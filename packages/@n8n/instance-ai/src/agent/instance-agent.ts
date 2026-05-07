@@ -70,6 +70,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		orchestrationContext?.browserMcpConfig,
 		context.logger,
 	);
+	const rawLocalMcpTools = context.localMcpServer
+		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
+		: {};
 
 	// Browser tool names — used to exclude them from the orchestrator's direct toolset.
 	// Browser tools are only accessible via browser-credential-setup (sub-agent) to prevent
@@ -100,40 +103,20 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		...Object.keys(domainTools),
 		...Object.keys(orchestrationTools),
 	]);
-	const reservedSuffixToolNames = createClaimedToolNames(reservedToolNames);
 	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
+	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
+		source: 'local gateway MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
 	addSafeMcpTools(allMcpTools, mcpTools, {
 		source: 'external MCP',
 		claimedToolNames: mcpContextToolNames,
-		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 	addSafeMcpTools(allMcpTools, browserMcpTools, {
 		source: 'browser MCP',
 		claimedToolNames: mcpContextToolNames,
-		reservedSuffixToolNames,
-		warn: warnSkippedMcpTool,
-	});
-
-	const safeMcpTools: ToolsInput = {};
-	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
-	addSafeMcpTools(safeMcpTools, mcpTools, {
-		source: 'external MCP',
-		claimedToolNames: claimedOrchestratorToolNames,
-		reservedSuffixToolNames,
-		warn: warnSkippedMcpTool,
-	});
-
-	// ── Tool search: split tools into always-loaded core vs deferred ────────
-	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
-	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
-	const rawLocalMcpTools = context.localMcpServer
-		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
-		: {};
-	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
-		source: 'local gateway MCP',
-		claimedToolNames: mcpContextToolNames,
-		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 
@@ -144,19 +127,28 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		orchestrationContext.mcpTools = allMcpTools;
 	}
 
+	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools: ToolsInput = {};
 	addSafeMcpTools(safeLocalMcpTools, orchestratorLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
-		reservedSuffixToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	const safeMcpTools: ToolsInput = {};
+	addSafeMcpTools(safeMcpTools, mcpTools, {
+		source: 'external MCP',
+		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
 
+	// ── Tool search: split tools into always-loaded core vs deferred ────────
+	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
+	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
 	const allOrchestratorTools: ToolsInput = {
 		...orchestratorDomainTools,
 		...orchestrationTools,
-		...safeMcpTools, // external MCP only — browser tools excluded
 		...safeLocalMcpTools, // gateway tools — browser tools excluded via browserToolNames
+		...safeMcpTools, // external MCP only — browser tools excluded
 	};
 	const tracedOrchestratorTools =
 		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {

@@ -41,19 +41,6 @@ export function validateMcpToolName(name: string, source: string): string {
 	return normalizeMcpToolName(name);
 }
 
-function findReservedSuffix(name: string, reservedToolNames: Map<string, string>): string | null {
-	for (let index = 0; index < name.length; index++) {
-		const char = name[index];
-		if (char !== '_' && char !== '-') continue;
-
-		const reservedName = reservedToolNames.get(normalizeMcpToolName(name.slice(index + 1)));
-		if (reservedName) {
-			return reservedName;
-		}
-	}
-	return null;
-}
-
 export function createClaimedToolNames(names: Iterable<string>): Map<string, string> {
 	const claimed = new Map<string, string>();
 	for (const name of names) {
@@ -68,7 +55,6 @@ export function addSafeMcpTools(
 	options: {
 		source: string;
 		claimedToolNames: Map<string, string>;
-		reservedSuffixToolNames?: Map<string, string>;
 		warn?: (error: McpToolNameValidationError) => void;
 	},
 ): void {
@@ -79,16 +65,6 @@ export function addSafeMcpTools(
 			if (claimedBy) {
 				throw new McpToolNameValidationError(
 					`MCP tool "${name}" from ${options.source} conflicts with "${claimedBy}"`,
-					name,
-					options.source,
-				);
-			}
-			const reservedSuffix = options.reservedSuffixToolNames
-				? findReservedSuffix(name, options.reservedSuffixToolNames)
-				: null;
-			if (reservedSuffix) {
-				throw new McpToolNameValidationError(
-					`MCP tool "${name}" from ${options.source} uses reserved suffix "${reservedSuffix}"`,
 					name,
 					options.source,
 				);
