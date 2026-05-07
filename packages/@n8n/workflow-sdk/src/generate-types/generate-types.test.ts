@@ -21,6 +21,7 @@ import type * as GenerateTypesModule from '../generate-types/generate-types';
 interface ParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
+	extraTypeDefContent?: string;
 }
 
 interface NestedOption {
@@ -1746,6 +1747,51 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint');
 			expect(result).toContain('&lt;a href=');
 		});
+
+		it('should include extraTypeDefContent below @builderHint, preserving line breaks and tags verbatim', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				description: 'Column mapping',
+				builderHint: {
+					message: 'Pass the full resourceMapper object',
+					extraTypeDefContent:
+						'<patterns>\n<pattern title="autoMap">\ncolumns: { mappingMode: \'autoMapInputData\' }\n</pattern>\n</patterns>',
+				},
+				default: {},
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Each line of extraTypeDefContent should appear on its own JSDoc line.
+			expect(result).toContain('@builderHint Pass the full resourceMapper object');
+			expect(result).toContain(' * <patterns>');
+			expect(result).toContain(' * <pattern title="autoMap">');
+			expect(result).toContain(" * columns: { mappingMode: 'autoMapInputData' }");
+			expect(result).toContain(' * </pattern>');
+			expect(result).toContain(' * </patterns>');
+			// Angle brackets in extraTypeDefContent must NOT be HTML-escaped — the LLM
+			// must see the tags verbatim so it can use them as structural cues.
+			expect(result).not.toContain('&lt;patterns&gt;');
+			expect(result).not.toContain('&lt;pattern title=');
+		});
+
+		it('should escape closing JSDoc sequences inside extraTypeDefContent', () => {
+			const prop: NodeProperty = {
+				name: 'foo',
+				displayName: 'Foo',
+				type: 'string',
+				description: 'Foo',
+				builderHint: {
+					message: 'msg',
+					extraTypeDefContent: 'block end */ inside example',
+				},
+				default: '',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// The literal "*/" would terminate the JSDoc block early; it must be escaped.
+			expect(result).not.toContain('block end */ inside');
+			expect(result).toContain('block end *\\/ inside');
+		});
 	});
 
 	describe('generateNodeJSDoc', () => {
@@ -1758,6 +1804,22 @@ describe('generate-types', () => {
 		it('should include Node Types label', () => {
 			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
 			expect(result).toContain('Node Types');
+		});
+
+		it('should emit node-level builderHint message and extraTypeDefContent', () => {
+			const node = {
+				...mockGmailNode,
+				builderHint: {
+					message: 'AI Agent — wire subnodes via the config object',
+					extraTypeDefContent: '<patterns>\n<pattern>example body</pattern>\n</patterns>',
+				},
+			};
+			const result = generateTypes.generateNodeJSDoc(node);
+			expect(result).toContain('@builderHint AI Agent — wire subnodes via the config object');
+			expect(result).toContain(' * <patterns>');
+			expect(result).toContain(' * <pattern>example body</pattern>');
+			expect(result).toContain(' * </patterns>');
+			expect(result).not.toContain('&lt;patterns&gt;');
 		});
 	});
 

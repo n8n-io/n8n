@@ -34,6 +34,10 @@ export const description: INodeProperties[] = [
 				value: get.FIELD,
 				description: 'Get row(s)',
 				action: 'Get row(s)',
+				builderHint: {
+					message:
+						"There is no `getAll` operation. To fetch many rows, use `operation: 'get'` with `returnAll: true`.",
+				},
 			},
 			{
 				name: 'If Row Exists',
@@ -52,6 +56,37 @@ export const description: INodeProperties[] = [
 				value: insert.FIELD,
 				description: 'Insert a new row',
 				action: 'Insert row',
+				builderHint: {
+					message:
+						'Row IDs are auto-generated. Do NOT define a custom `id` column or seed `id` on insert. The built-in row `id` is valid for filtering update/delete but is not part of the user-defined table schema.',
+					extraTypeDefContent: `<patterns>
+<pattern title="Insert with explicit schema">
+const storeData = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Store Data',
+    parameters: {
+      resource: 'row',
+      operation: 'insert',
+      dataTableId: { __rl: true, mode: 'name', value: 'my-table' },
+      columns: {
+        mappingMode: 'defineBelow',
+        value: {
+          name: '={{ $json.name }}',
+          email: '={{ $json.email }}'
+        },
+        schema: [
+          { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+          { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
+        ]
+      }
+    }
+  }
+});
+</pattern>
+</patterns>`,
+				},
 			},
 			{
 				name: 'Update',

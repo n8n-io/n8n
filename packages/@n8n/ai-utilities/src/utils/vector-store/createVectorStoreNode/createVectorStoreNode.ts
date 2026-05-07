@@ -154,6 +154,10 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					noDataExpression: true,
 					default: 'retrieve',
 					options: getOperationModeOptions(args),
+					builderHint: {
+						message:
+							"Connection-changing parameter. `insert` exposes an `ai_document` input — wire a Document Loader. `retrieve` exposes `ai_vectorStore` output for use as a retriever. `retrieve-as-tool` exposes `ai_tool` output so an AI Agent can call this vector store directly (RAG pattern: `mode: 'retrieve-as-tool'` → AI Agent via ai_tool).",
+					},
 				},
 				{
 					...getConnectionHintNoticeField([NodeConnectionTypes.AiRetriever]),

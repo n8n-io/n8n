@@ -246,6 +246,12 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 export interface ParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * that is emitted into the generated `.d.ts` JSDoc but NOT surfaced in
+	 * `nodes(action="search")` results. Use for examples too long for `message`.
+	 */
+	extraTypeDefContent?: string;
 }
 
 export interface NodeProperty {
@@ -341,6 +347,42 @@ export interface JsonSchema {
 	enum?: unknown[];
 	const?: unknown;
 	$ref?: string;
+}
+
+// =============================================================================
+// JSDoc emission helpers
+// =============================================================================
+
+/**
+ * Emit `@builderHint` JSDoc plus optional multi-line `extraTypeDefContent` lines.
+ *
+ * `message` is HTML-escaped (`<` / `>` → entities) because it round-trips through
+ * the search engine's `<builder_hint>...</builder_hint>` XML envelope, where bare
+ * angle brackets would corrupt the wrapping tag.
+ *
+ * `extraTypeDefContent` does NOT escape angle brackets — author-written tags such
+ * as `<patterns>` must round-trip into the `.d.ts` verbatim so the LLM sees them
+ * as structural cues. Only `*\/` is escaped to keep the JSDoc block well-formed.
+ */
+function emitBuilderHint(
+	lines: string[],
+	indent: string,
+	hint: ParameterBuilderHint | { message?: string; extraTypeDefContent?: string },
+): void {
+	if (hint.message) {
+		const safeMessage = hint.message
+			.replace(/\*\//g, '*\\/')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		lines.push(`${indent} * @builderHint ${safeMessage}`);
+	}
+
+	if (hint.extraTypeDefContent) {
+		const safe = hint.extraTypeDefContent.replace(/\*\//g, '*\\/');
+		for (const line of safe.split('\n')) {
+			lines.push(`${indent} * ${line}`);
+		}
+	}
 }
 
 // =============================================================================
@@ -875,11 +917,7 @@ function generateNestedPropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+		emitBuilderHint(lines, indent, prop.builderHint);
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -1041,14 +1079,10 @@ function generateFixedCollectionType(
 				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${desc}`);
 			}
 			if (group.builderHint) {
-				const safeBuilderHint = group.builderHint.message
-					.replace(/\*\//g, '*\\/')
-					.replace(/</g, '&lt;')
-					.replace(/>/g, '&gt;');
 				if (groupJsDocLines.length === 0) {
 					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
 				}
-				groupJsDocLines.push(`${INDENT.repeat(2)} * @builderHint ${safeBuilderHint}`);
+				emitBuilderHint(groupJsDocLines, INDENT.repeat(2), group.builderHint);
 			}
 			if (isMultipleValues && hasMinRequired) {
 				if (groupJsDocLines.length === 0) {
@@ -1901,11 +1935,7 @@ export function generatePropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(` * @builderHint ${safeBuilderHint}`);
+		emitBuilderHint(lines, '', prop.builderHint);
 	}
 
 	// Search/load method annotations — signals to the builder agent that
@@ -2004,6 +2034,15 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	const subnodeType = getSubnodeOutputType(node);
 	if (subnodeType) {
 		lines.push(` * @subnodeType ${subnodeType}`);
+	}
+
+	// Node-level builder hint — message and/or extraTypeDefContent.
+	// (`relatedNodes` and `inputs` are consumed elsewhere — search engine and
+	// subnode-extraction respectively — and are intentionally not emitted here.)
+	const nodeWithBuilderHint = node as NodeTypeDescription & { builderHint?: NodeBuilderHint };
+	const nodeHint = nodeWithBuilderHint.builderHint;
+	if (nodeHint && (nodeHint.message || nodeHint.extraTypeDefContent)) {
+		emitBuilderHint(lines, '', nodeHint);
 	}
 
 	lines.push(' */');
@@ -3533,7 +3572,15 @@ interface BuilderHintInput {
 }
 
 interface NodeBuilderHint {
+	message?: string;
+	relatedNodes?: Array<{ nodeType: string; relationHint: string }>;
 	inputs?: Record<string, BuilderHintInput>;
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * that is emitted into the generated `.d.ts` node-level JSDoc but NOT surfaced in
+	 * `nodes(action="search")` results.
+	 */
+	extraTypeDefContent?: string;
 }
 
 /**

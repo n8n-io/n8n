@@ -7,11 +7,6 @@
  */
 
 import {
-	AI_TOOL_PATTERNS,
-	CONNECTION_CHANGING_PARAMETERS,
-	BASELINE_FLOW_CONTROL,
-} from '@n8n/workflow-sdk/prompts/node-selection';
-import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
@@ -60,221 +55,19 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
 - If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
-// The AI Agent subnode example below differs by mode:
-//   tool mode  → `newCredential('OpenAI')`
-//   sandbox    → raw `{ id, name }` object (newCredential() serializes to undefined)
-function buildBuilderSpecificPatterns(mode: 'tool' | 'sandbox'): string {
-	const openAiCredExample =
-		mode === 'sandbox' ? "{ id: 'credId', name: 'OpenAI account' }" : "newCredential('OpenAI')";
-	return `## Critical Patterns (Common Mistakes)
+// Node-specific configuration examples used to live here. They have moved
+// onto the nodes themselves as `@builderHint` annotations and `<patterns>...</patterns>`
+// blocks in the generated `.d.ts` — fetch them on-demand via `nodes(action="type-definition")`.
+const BUILDER_SPECIFIC_PATTERNS = `## Critical Patterns (Common Mistakes)
 
-**Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
+**Pay attention to @builderHint annotations in search results and type definitions** — they contain node-specific configuration rules and code examples. Read them carefully when configuring any node — they prevent common mistakes.
 
 ### Self-check: conditional nodes and routing
 
 After writing any workflow with IF, Switch, or Filter nodes, verify:
-1. **Every \`conditions\` object has \`options\`, \`conditions\` array, and \`combinator\`** — missing any of these crashes the node at runtime.
-2. **Switch uses \`rules.values\`** (not \`rules.rules\`) — the wrong key crashes during workflow loading.
-3. **Each branch reaches the correct destination** — trace the data flow from the condition through \`.onTrue()\`/\`.onFalse()\`/\`.onCase()\` to the target node. Verify the routing matches the user's requirements.
-4. **Condition expressions reference the right fields** — check that \`leftValue\` expressions use fields that actually exist in the upstream node's output.
-5. **Merge nodes use the correct mode** — \`append\` to concatenate items from branches, \`combineBySql\` or \`combineByPosition\` only when matching items across inputs. Wrong mode silently drops or duplicates data.
-
-### AI Agent with Subnodes — use factory functions in subnodes config
-\`\`\`javascript
-const chatTrigger = trigger({
-  type: '@n8n/n8n-nodes-langchain.chatTrigger',
-  version: 1.3,
-  config: {
-    name: 'Chat Trigger',
-    parameters: { public: false },
-    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
-  }
-});
-
-const model = languageModel({
-  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-  version: 1.3,
-  config: {
-    name: 'OpenAI Chat Model',
-    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
-    credentials: { openAiApi: ${openAiCredExample} }
-  }
-});
-
-const parser = outputParser({
-  type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-  version: 1.3,
-  config: {
-    name: 'Output Parser',
-    parameters: {
-      schemaType: 'fromJson',
-      jsonSchemaExample: '{ "score": 75, "tier": "hot" }'
-    }
-  }
-});
-
-const memoryNode = memory({
-  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-  version: 1.3,
-  config: {
-    name: 'Conversation Memory',
-    parameters: {
-      sessionIdType: 'customKey',
-      sessionKey: nodeJson(chatTrigger, 'sessionId'),
-      contextWindowLength: 10
-    }
-  }
-});
-
-const agent = node({
-  type: '@n8n/n8n-nodes-langchain.agent',
-  version: 3.1,
-  config: {
-    name: 'AI Agent',
-    parameters: {
-      promptType: 'define',
-      text: '={{ $json.prompt }}',
-      hasOutputParser: true,
-      options: { systemMessage: 'You are an expert...' }
-    },
-    subnodes: { model: model, memory: memoryNode, outputParser: parser }
-  }
-});
-\`\`\`
-WRONG: \`.to(agent, { connectionType: 'ai_languageModel' })\` — subnodes MUST be in the config object.
-For values inside AI subnodes, use explicit references such as \`nodeJson(triggerNode, 'sessionId')\` instead of \`$json.sessionId\`. For Chat Trigger memory specifically, \`sessionIdType: 'fromInput'\` is also valid.
-
-### Code Node
-\`\`\`javascript
-const codeNode = node({
-  type: 'n8n-nodes-base.code',
-  version: 2,
-  config: {
-    name: 'Process Data',
-    parameters: {
-      mode: 'runOnceForAllItems',
-      jsCode: \\\`
-const items = $input.all();
-return items.map(item => ({
-  json: { ...item.json, processed: true }
-}));
-\\\`.trim()
-    }
-  }
-});
-\`\`\`
-
-### Data Table (built-in n8n storage)
-\`\`\`javascript
-const storeData = node({
-  type: 'n8n-nodes-base.dataTable',
-  version: 1.1,
-  config: {
-    name: 'Store Data',
-    parameters: {
-      resource: 'row',
-      operation: 'insert',
-      dataTableId: { __rl: true, mode: 'name', value: 'my-table' },
-      columns: {
-        mappingMode: 'defineBelow',
-        value: {
-          name: '={{ $json.name }}',
-          email: '={{ $json.email }}'
-        },
-        schema: [
-          { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
-          { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
-        ]
-      }
-    }
-  }
-});
-\`\`\`
-
-**Data Table rules**
-- Row IDs are auto-generated by Data Tables. Do NOT create a custom \`id\` column and do NOT seed an \`id\` value on insert.
-- To fetch many rows, use \`operation: 'get'\` with \`returnAll: true\`. Do NOT invent \`getAll\`.
-- When filtering rows for update/delete, it is valid to match on the built-in row \`id\`, but that is not part of the user-defined table schema.
-
-### Google Sheets — Column Mapping
-The \`columns\` parameter requires a schema object, never a string:
-\`\`\`javascript
-// autoMapInputData — maps $json fields to sheet columns automatically
-columns: {
-  mappingMode: 'autoMapInputData',
-  value: {},
-  schema: [
-    { id: 'Name', displayName: 'Name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
-    { id: 'Email', displayName: 'Email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: false },
-  ]
-}
-
-// defineBelow — explicit expression mapping
-columns: {
-  mappingMode: 'defineBelow',
-  value: { name: '={{ $json.name }}', email: '={{ $json.email }}' },
-  schema: [
-    { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
-    { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
-  ]
-}
-\`\`\`
-WRONG: \`columns: 'autoMapInputData'\` — this is a string, not a schema object. Will fail validation.
-
-### Parallel Branches + Merge
-When multiple paths must converge, include the full downstream chain in EACH branch.
-There is NO fan-in primitive — shared nodes must be duplicated or use sub-workflows.
-
-### Batch Processing — splitInBatches with loop
-\`\`\`javascript
-const batch = node({
-  type: 'n8n-nodes-base.splitInBatches',
-  version: 3,
-  config: { name: 'Batch', parameters: { batchSize: 50 } }
-});
-// Connect: trigger -> batch -> processNode -> batch (loop back)
-// The batch node automatically outputs to "done" when all items are processed.
-\`\`\`
-
-### Multiple Triggers
-Independent entry points can feed into shared downstream nodes. Each trigger starts its own branch:
-\`\`\`javascript
-export default workflow('id', 'name')
-  .add(webhookTrigger).to(processNode).to(storeNode)
-  .add(scheduleTrigger).to(processNode);
-\`\`\`
-
-### Google Sheets — documentId and sheetName (RLC fields)
-
-These are Resource Locator fields that require the \`__rl\` object format:
-\`\`\`typescript
-// CORRECT — RLC object with discovered ID
-documentId: { __rl: true, mode: 'id', value: '1abc123...' },
-sheetName: { __rl: true, mode: 'name', value: 'Sheet1' },
-
-// CORRECT — RLC with name-based lookup
-documentId: { __rl: true, mode: 'name', value: 'Sales Pipeline' },
-
-// WRONG — plain string
-documentId: 'YOUR_SPREADSHEET_ID',  // Not an RLC object
-
-// WRONG — expr() wrapper
-documentId: expr('{{ "spreadsheetId" }}'),  // RLC fields don't use expressions
-\`\`\`
-Always use the IDs from \`nodes(action="explore-resources")\` results inside the RLC \`value\` field.
-
-### AI Tool Connection Patterns
-${AI_TOOL_PATTERNS}
-
-### Connection-Changing Parameters
-${CONNECTION_CHANGING_PARAMETERS}
-
-### Baseline Flow Control Nodes
-${BASELINE_FLOW_CONTROL}`;
-}
-
-const BUILDER_SPECIFIC_PATTERNS_TOOL = buildBuilderSpecificPatterns('tool');
-const BUILDER_SPECIFIC_PATTERNS_SANDBOX = buildBuilderSpecificPatterns('sandbox');
+1. **Each branch reaches the correct destination** — trace the data flow from the condition through \`.onTrue()\`/\`.onFalse()\`/\`.onCase()\` to the target node. Verify the routing matches the user's requirements.
+2. **Condition expressions reference the right fields** — check that \`leftValue\` expressions use fields that actually exist in the upstream node's output.
+3. **Merge nodes use the correct mode** — \`append\` to concatenate items from branches, \`combineBySql\` or \`combineByPosition\` only when matching items across inputs. Wrong mode silently drops or duplicates data.`;
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
@@ -329,7 +122,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
 		NODE_CONFIGURATION_SAFETY_RULES,
-		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
+		BUILDER_SPECIFIC_PATTERNS,
 	].join('\n\n');
 }
 

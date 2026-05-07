@@ -1905,6 +1905,12 @@ export interface INodePropertyCollection {
 export interface IParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated workflow-sdk `.d.ts` JSDoc but NOT surfaced in
+	 * `nodes(action="search")` results. Use for examples too long for `message`.
+	 */
+	extraTypeDefContent?: string;
 }
 
 export interface INodePropertyValueExtractorBase {
@@ -2531,6 +2537,12 @@ export interface IBuilderHint {
 	message?: string;
 	/** Related nodes that work together with this node */
 	relatedNodes?: IRelatedNode[];
+	/**
+	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
+	 * emitted into the generated workflow-sdk `.d.ts` node-level JSDoc but NOT
+	 * surfaced in `nodes(action="search")` results.
+	 */
+	extraTypeDefContent?: string;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
