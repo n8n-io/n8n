@@ -36,15 +36,17 @@ const Wrapper = defineComponent({
 	props: {
 		tabs: { type: Array as () => ArtifactTab[], required: true },
 		activeTabId: { type: String, default: undefined },
+		isExpanded: { type: Boolean, default: false },
 	},
-	emits: ['close'],
+	emits: ['toggleExpanded'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
 				h(InstanceAiPreviewTabBar, {
 					tabs: props.tabs,
 					activeTabId: props.activeTabId,
-					onClose: () => emit('close'),
+					isExpanded: props.isExpanded,
+					onToggleExpanded: () => emit('toggleExpanded'),
 				}),
 			);
 	},
@@ -83,17 +85,31 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(inactive?.getAttribute('data-state')).toBe('inactive');
 	});
 
-	it('emits close when the collapse button is clicked', async () => {
+	it('emits toggleExpanded when the expand button is clicked', async () => {
 		const { container, emitted } = renderComponent({
 			props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 		});
 
-		const collapseButton = container.querySelector<HTMLButtonElement>(
-			'[data-test-id="instance-ai-preview-close"]',
+		const expandButton = container.querySelector<HTMLButtonElement>(
+			'[data-test-id="instance-ai-preview-expand-toggle"]',
 		);
-		expect(collapseButton).not.toBeNull();
-		await fireEvent.click(collapseButton!);
+		expect(expandButton).not.toBeNull();
+		expect(expandButton).toHaveAttribute('aria-label', 'Expand panel');
+		await fireEvent.click(expandButton!);
 
-		expect(emitted().close).toBeTruthy();
+		expect(emitted().toggleExpanded).toBeTruthy();
+	});
+
+	it('labels the size toggle as collapse when the panel is expanded', () => {
+		const { container } = renderComponent({
+			props: { tabs: [workflowTab], activeTabId: 'wf-1', isExpanded: true },
+		});
+
+		const collapseButton = container.querySelector<HTMLButtonElement>(
+			'[data-test-id="instance-ai-preview-expand-toggle"]',
+		);
+
+		expect(collapseButton).not.toBeNull();
+		expect(collapseButton).toHaveAttribute('aria-label', 'Collapse panel');
 	});
 });

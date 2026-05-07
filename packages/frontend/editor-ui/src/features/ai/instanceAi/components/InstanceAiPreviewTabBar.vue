@@ -11,23 +11,34 @@ import {
 	TabsList,
 	TabsTrigger,
 } from 'reka-ui';
-import { nextTick, watch } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-const props = defineProps<{
-	tabs: ArtifactTab[];
-	activeTabId?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		tabs: ArtifactTab[];
+		activeTabId?: string;
+		isExpanded?: boolean;
+	}>(),
+	{
+		isExpanded: false,
+	},
+);
 
 const emit = defineEmits<{
-	close: [];
+	toggleExpanded: [];
 }>();
 
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
+const sizeToggleLabel = computed(() =>
+	i18n.baseText(
+		props.isExpanded ? 'instanceAi.previewTabBar.collapse' : 'instanceAi.previewTabBar.expand',
+	),
+);
 
 // Bring the active tab into view when the selection changes (e.g. auto-switch
 // on execution). scrollIntoView walks up to the nearest scroll container.
@@ -68,13 +79,13 @@ async function handleCopyLink(tab: ArtifactTab) {
 <template>
 	<div :class="$style.header">
 		<N8nIconButton
-			icon="chevrons-right"
+			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"
 			size="medium"
-			:aria-label="i18n.baseText('instanceAi.previewTabBar.collapse')"
-			:title="i18n.baseText('instanceAi.previewTabBar.collapse')"
-			data-test-id="instance-ai-preview-close"
-			@click="emit('close')"
+			:aria-label="sizeToggleLabel"
+			:title="sizeToggleLabel"
+			data-test-id="instance-ai-preview-expand-toggle"
+			@click="emit('toggleExpanded')"
 		/>
 		<TabsList
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
@@ -139,6 +150,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 .header {
 	flex-shrink: 0;
+	height: 44px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
@@ -149,6 +161,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 .tabList {
 	flex: 1 1 0;
 	min-width: 0;
+	height: 100%;
 	display: flex;
 	overflow-x: auto;
 	scrollbar-width: none;
@@ -176,7 +189,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	background-color: transparent;
 	border: none;
 	font-size: var(--font-size--2xs);
-	padding: var(--spacing--sm) var(--spacing--xs);
+	padding: 0 var(--spacing--xs);
 	cursor: pointer;
 
 	&:hover {

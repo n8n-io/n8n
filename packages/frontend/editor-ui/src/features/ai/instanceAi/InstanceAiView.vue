@@ -13,6 +13,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
+	N8nCallout,
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
@@ -20,7 +21,6 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import { useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
-import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -31,12 +31,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
-import {
-	INSTANCE_AI_VIEW,
-	INSTANCE_AI_SETTINGS_VIEW,
-	INSTANCE_AI_THREAD_VIEW,
-	NEW_CONVERSATION_TITLE,
-} from './constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -70,10 +65,6 @@ const route = useRoute();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { goToUpgrade } = usePageRedirectionHelper();
-
-function goToSettings() {
-	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
-}
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
@@ -132,6 +123,9 @@ watch(
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
 const showEmptyStateLayout = computed(() => !props.threadId);
 
+// --- Chat input ref for auto-focus ---
+const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	void store.loadThreads().then((loaded) => {
@@ -178,9 +172,121 @@ watch(
 );
 
 // --- Side panels ---
-const showArtifactsPanel = ref(true);
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
+const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
+const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
+const isArtifactsPanelRevealed = ref(false);
+const canShowArtifactsPanel = computed(
+	() => store.hasMessages || (Boolean(props.threadId) && store.isHydratingThread),
+);
+const isArtifactsPanelTransitionEnabled = ref(true);
+const artifactsPreviewToggleLabel = computed(() =>
+	i18n.baseText(
+		preview.isPreviewVisible.value
+			? 'instanceAi.artifactsPanel.hidePreview'
+			: 'instanceAi.artifactsPanel.showPreview',
+	),
+);
+const showArtifactsPanelEdge = computed(
+	() =>
+		canShowArtifactsPanel.value && !preview.isPreviewVisible.value && !isArtifactsPanelPinned.value,
+);
+const showArtifactsPanel = computed(
+	() =>
+		canShowArtifactsPanel.value &&
+		!preview.isPreviewVisible.value &&
+		(isArtifactsPanelPinned.value || isArtifactsPanelRevealed.value),
+);
+
+function toggleArtifactsPreview() {
+	if (preview.isPreviewVisible.value) {
+		preview.closePreview();
+		return;
+	}
+
+	const firstTab = preview.allArtifactTabs.value[0];
+	if (firstTab) {
+		preview.selectTab(firstTab.id);
+	}
+}
+
+function revealArtifactsPanel() {
+	if (
+		!canShowArtifactsPanel.value ||
+		isArtifactsPanelPinned.value ||
+		preview.isPreviewVisible.value
+	) {
+		return;
+	}
+	isArtifactsPanelRevealed.value = true;
+}
+
+function hideArtifactsPanel(event?: FocusEvent) {
+	if (isArtifactsPanelPinned.value) return;
+	if (
+		event?.currentTarget instanceof HTMLElement &&
+		event.relatedTarget instanceof Node &&
+		event.currentTarget.contains(event.relatedTarget)
+	) {
+		return;
+	}
+	isArtifactsPanelRevealed.value = false;
+}
+
+function toggleArtifactsPanelPinned() {
+	const nextPinned = !isArtifactsPanelPinned.value;
+	isArtifactsPanelPinned.value = nextPinned;
+	isArtifactsPanelRevealed.value = !nextPinned;
+}
+
+function suppressArtifactsPanelTransitionUntilStableRender() {
+	isArtifactsPanelTransitionEnabled.value = false;
+	void nextTick(() => {
+		if (!store.isHydratingThread) {
+			isArtifactsPanelTransitionEnabled.value = true;
+		}
+	});
+}
+
+watch(preview.isPreviewVisible, (visible) => {
+	if (visible) {
+		isArtifactsPanelRevealed.value = false;
+	}
+});
+
+watch(canShowArtifactsPanel, (canShow) => {
+	if (!canShow) {
+		isArtifactsPanelRevealed.value = false;
+	}
+});
+
+watch(
+	() => props.threadId,
+	(threadId, previousThreadId) => {
+		if (threadId && threadId !== previousThreadId) {
+			suppressArtifactsPanelTransitionUntilStableRender();
+		}
+	},
+);
+
+watch(
+	() => store.currentThreadId,
+	() => {
+		suppressArtifactsPanelTransitionUntilStableRender();
+	},
+);
+
+watch(
+	() => store.isHydratingThread,
+	(isHydrating) => {
+		if (isHydrating) {
+			isArtifactsPanelTransitionEnabled.value = false;
+			return;
+		}
+		suppressArtifactsPanelTransitionUntilStableRender();
+	},
+);
 
 // --- Sidebar collapse & resize ---
 // Session-scoped: survives page refresh, resets when the user navigates away
@@ -216,7 +322,15 @@ function handleSidebarResize({ width }: { width: number }) {
 const { width: windowWidth } = useWindowSize();
 const previewPanelWidth = ref(Math.round((windowWidth.value - sidebarWidth.value) / 2));
 const isResizingPreview = ref(false);
+const isPreviewExpanded = ref(false);
 const previewMaxWidth = computed(() => Math.round((windowWidth.value - sidebarWidth.value) / 2));
+const previewPanelStyle = computed(() =>
+	isPreviewExpanded.value ? undefined : { width: `${previewPanelWidth.value}px` },
+);
+
+function togglePreviewExpanded() {
+	isPreviewExpanded.value = !isPreviewExpanded.value;
+}
 
 // Clamp preview width when the window shrinks
 watch(previewMaxWidth, (max) => {
@@ -298,9 +412,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-// --- Chat input ref for auto-focus ---
-const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
 // Focus input on initial render (ref rebinds when messages load and layout switches)
 watch(chatInputRef, (el) => {
@@ -479,14 +590,6 @@ function handleStop() {
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 					/>
 					<N8nIconButton
-						icon="cog"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						data-test-id="instance-ai-settings-button"
-						@click="goToSettings"
-					/>
-					<N8nIconButton
 						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
@@ -498,14 +601,23 @@ function handleStop() {
 							store.debugMode = showDebugPanel;
 						"
 					/>
-					<N8nIconButton
-						v-if="!preview.isPreviewVisible.value"
-						icon="panel-right"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						@click="showArtifactsPanel = !showArtifactsPanel"
-					/>
+					<N8nTooltip
+						:content="artifactsPreviewToggleLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="panel-right"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							data-test-id="instance-ai-artifacts-preview-toggle"
+							:aria-label="artifactsPreviewToggleLabel"
+							:aria-pressed="preview.isPreviewVisible.value"
+							:disabled="!hasPreviewTabs"
+							@click="toggleArtifactsPreview"
+						/>
+					</N8nTooltip>
 				</div>
 			</div>
 
@@ -614,7 +726,38 @@ function handleStop() {
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
-				<InstanceAiArtifactsPanel v-if="showArtifactsPanel && !preview.isPreviewVisible.value" />
+				<div
+					v-if="showArtifactsPanelEdge"
+					:class="$style.artifactsPanelEdge"
+					role="button"
+					tabindex="0"
+					:aria-label="i18n.baseText('instanceAi.artifactsPanel.showPanel')"
+					data-test-id="instance-ai-artifacts-sidebar-edge"
+					@click="revealArtifactsPanel"
+					@mouseenter="revealArtifactsPanel"
+					@focusin="revealArtifactsPanel"
+					@keydown.enter.prevent="revealArtifactsPanel"
+					@keydown.space.prevent="revealArtifactsPanel"
+				/>
+				<Transition name="artifacts-panel-fade" :css="isArtifactsPanelTransitionEnabled">
+					<div
+						v-if="showArtifactsPanel"
+						:class="[
+							$style.artifactsPanelSlot,
+							{ [$style.artifactsPanelFloating]: !isArtifactsPanelPinned },
+						]"
+						data-test-id="instance-ai-artifacts-sidebar-slot"
+						@mouseenter="revealArtifactsPanel"
+						@mouseleave="hideArtifactsPanel()"
+						@focusin="revealArtifactsPanel"
+						@focusout="hideArtifactsPanel"
+					>
+						<InstanceAiArtifactsPanel
+							:is-pinned="isArtifactsPanelPinned"
+							@toggle-pinned="toggleArtifactsPanelPinned"
+						/>
+					</div>
+				</Transition>
 
 				<!-- Overlay panels -->
 				<InstanceAiDebugPanel
@@ -628,55 +771,63 @@ function handleStop() {
 		</div>
 
 		<!-- Resizable preview panel (workflow OR datatable) -->
-		<N8nResizeWrapper
-			v-show="preview.isPreviewVisible.value"
-			:class="$style.canvasArea"
-			:width="previewPanelWidth"
-			:style="{ width: `${previewPanelWidth}px` }"
-			:min-width="400"
-			:max-width="previewMaxWidth"
-			:supported-directions="['left']"
-			:is-resizing-enabled="true"
-			:grid-size="8"
-			:outset="true"
-			@resize="handlePreviewResize"
-			@resizestart="isResizingPreview = true"
-			@resizeend="isResizingPreview = false"
-		>
-			<TabsRoot
-				v-model="preview.activeTabId.value"
-				orientation="horizontal"
-				:class="$style.previewPanel"
+		<Transition name="preview-panel-slide" @after-leave="isPreviewExpanded = false">
+			<div
+				v-show="preview.isPreviewVisible.value"
+				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
+				:style="previewPanelStyle"
+				:data-expanded="isPreviewExpanded"
+				data-test-id="instance-ai-preview-panel"
 			>
-				<InstanceAiPreviewTabBar
-					:tabs="preview.allArtifactTabs.value"
-					:active-tab-id="preview.activeTabId.value"
-					@close="preview.closePreview()"
-				/>
-				<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
-				     workflows via openWorkflow postMessage instead of remounting. -->
-				<div :class="$style.previewContent">
-					<InstanceAiWorkflowPreview
-						ref="workflowPreview"
-						:class="[
-							$style.previewSlot,
-							{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
-						]"
-						:workflow-id="preview.activeWorkflowId.value"
-						:refresh-key="preview.workflowRefreshKey.value"
-						@iframe-ready="eventRelay.handleIframeReady"
-						@workflow-loaded="eventRelay.handleWorkflowLoaded"
-					/>
-					<InstanceAiDataTablePreview
-						v-if="preview.activeDataTableId.value"
-						:class="$style.previewSlot"
-						:data-table-id="preview.activeDataTableId.value"
-						:project-id="preview.activeDataTableProjectId.value"
-						:refresh-key="preview.dataTableRefreshKey.value"
-					/>
-				</div>
-			</TabsRoot>
-		</N8nResizeWrapper>
+				<N8nResizeWrapper
+					:width="previewPanelWidth"
+					:min-width="400"
+					:max-width="previewMaxWidth"
+					:supported-directions="['left']"
+					:is-resizing-enabled="!isPreviewExpanded"
+					:grid-size="8"
+					:outset="true"
+					@resize="handlePreviewResize"
+					@resizestart="isResizingPreview = true"
+					@resizeend="isResizingPreview = false"
+				>
+					<TabsRoot
+						v-model="preview.activeTabId.value"
+						orientation="horizontal"
+						:class="$style.previewPanel"
+					>
+						<InstanceAiPreviewTabBar
+							:tabs="preview.allArtifactTabs.value"
+							:active-tab-id="preview.activeTabId.value"
+							:is-expanded="isPreviewExpanded"
+							@toggle-expanded="togglePreviewExpanded"
+						/>
+						<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
+						     workflows via openWorkflow postMessage instead of remounting. -->
+						<div :class="$style.previewContent">
+							<InstanceAiWorkflowPreview
+								ref="workflowPreview"
+								:class="[
+									$style.previewSlot,
+									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
+								]"
+								:workflow-id="preview.activeWorkflowId.value"
+								:refresh-key="preview.workflowRefreshKey.value"
+								@iframe-ready="eventRelay.handleIframeReady"
+								@workflow-loaded="eventRelay.handleWorkflowLoaded"
+							/>
+							<InstanceAiDataTablePreview
+								v-if="preview.activeDataTableId.value"
+								:class="$style.previewSlot"
+								:data-table-id="preview.activeDataTableId.value"
+								:project-id="preview.activeDataTableProjectId.value"
+								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+						</div>
+					</TabsRoot>
+				</N8nResizeWrapper>
+			</div>
+		</Transition>
 	</div>
 </template>
 
@@ -751,6 +902,14 @@ function handleStop() {
 	}
 }
 
+.canvasAreaExpanded {
+	position: absolute;
+	inset: 0;
+	z-index: 4;
+	border-left: none;
+	background-color: var(--color--background--light-2);
+}
+
 .header {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	flex-shrink: 0;
@@ -788,10 +947,43 @@ function handleStop() {
 }
 
 .contentArea {
+	--instance-ai-artifacts-panel-width: 280px;
+
 	display: flex;
 	flex: 1;
 	min-height: 0;
 	position: relative;
+}
+
+.artifactsPanelEdge {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 3;
+	width: var(--spacing--xl);
+	cursor: default;
+	outline: none;
+
+	&:focus-visible {
+		box-shadow: inset calc(-1 * var(--spacing--5xs)) 0 0 var(--color--primary);
+	}
+}
+
+.artifactsPanelSlot {
+	flex: 0 0 var(--instance-ai-artifacts-panel-width);
+	width: var(--instance-ai-artifacts-panel-width);
+	min-width: var(--instance-ai-artifacts-panel-width);
+	display: flex;
+	overflow: hidden;
+}
+
+.artifactsPanelFloating {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 4;
 }
 
 .chatContent {
@@ -905,6 +1097,8 @@ function handleStop() {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .message-slide-enter-from {
 	opacity: 0;
 	transform: translateY(8px);
@@ -922,6 +1116,68 @@ function handleStop() {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.preview-panel-slide-enter-active,
+.preview-panel-slide-leave-active {
+	--preview-panel-slide-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+	transition:
+		width var(--duration--snappy) var(--preview-panel-slide-easing),
+		min-width var(--duration--snappy) var(--preview-panel-slide-easing),
+		opacity var(--duration--snappy) var(--preview-panel-slide-easing);
+	overflow: hidden;
+	will-change: width, opacity, transform;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
+}
+
+.preview-panel-slide-enter-active {
+	--animation--fade-in-right--easing: var(--preview-panel-slide-easing);
+	--animation--fade-in-right--translate: var(--spacing--sm);
+
+	@include motion.fade-in-right;
+}
+
+.preview-panel-slide-leave-active {
+	--animation--fade-out-right--easing: var(--preview-panel-slide-easing);
+	--animation--fade-out-right--translate: var(--spacing--sm);
+
+	@include motion.fade-out-right;
+}
+
+.preview-panel-slide-enter-from,
+.preview-panel-slide-leave-to {
+	width: 0 !important;
+	min-width: 0 !important;
+	opacity: 0;
+}
+
+.artifacts-panel-fade-enter-active,
+.artifacts-panel-fade-leave-active {
+	--artifacts-panel-fade-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--animation--fade-in-right--easing: var(--artifacts-panel-fade-easing);
+	--animation--fade-in-right--translate: 100%;
+	--animation--fade-out-right--easing: var(--artifacts-panel-fade-easing);
+	--animation--fade-out-right--translate: 100%;
+
+	will-change: opacity, transform;
+
+	@media (prefers-reduced-motion: reduce) {
+		will-change: auto;
+	}
+}
+
+.artifacts-panel-fade-enter-active {
+	@include motion.fade-in-right;
+}
+
+.artifacts-panel-fade-leave-active {
+	@include motion.fade-out-right;
+	pointer-events: none;
 }
 
 .sidebar-slide-enter-active,

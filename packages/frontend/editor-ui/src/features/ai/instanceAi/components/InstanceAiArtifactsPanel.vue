@@ -1,12 +1,24 @@
 <script lang="ts" setup>
 import { computed, inject } from 'vue';
-import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
+
+const props = withDefaults(defineProps<{ isPinned?: boolean }>(), {
+	isPinned: true,
+});
+
+const emit = defineEmits<{ togglePinned: [] }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
@@ -17,39 +29,30 @@ const openDataTablePreview = inject<((id: string, projectId: string) => void) | 
 );
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
 	if (artifact.type === 'workflow' && artifact.id) {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(`/workflow/${artifact.id}`, '_blank');
-			return;
-		}
-		openPreview?.(artifact.id);
+		if (!openPreview) return;
+		e.preventDefault();
+		openPreview(artifact.id);
 	} else if (artifact.type === 'data-table' && artifact.id) {
-		if (e.metaKey || e.ctrlKey) {
-			window.open('/data-tables', '_blank');
-			return;
-		}
-		if (artifact.projectId) {
-			openDataTablePreview?.(artifact.id, artifact.projectId);
-		}
+		if (!artifact.projectId || !openDataTablePreview) return;
+		e.preventDefault();
+		openDataTablePreview(artifact.id, artifact.projectId);
 	}
 }
 
 // --- Tasks ---
 const tasks = computed(() => store.currentTasks);
 
-const doneCount = computed(() => {
-	if (!tasks.value) return 0;
-	return tasks.value.tasks.filter((t) => t.status === 'done').length;
-});
-
 const statusIconMap: Record<
 	TaskItem['status'],
-	{ icon: string; spin: boolean; className: string }
+	{ icon: IconName; spin: boolean; className: string }
 > = {
 	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
 	done: { icon: 'check', spin: false, className: 'doneIcon' },
-	failed: { icon: 'x-circle', spin: false, className: 'failedIcon' },
+	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
 	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
@@ -68,80 +71,125 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 };
+
+function artifactHref(artifact: ResourceEntry) {
+	if (artifact.type === 'workflow') return `/workflow/${artifact.id}`;
+	if (artifact.type === 'data-table') {
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
+			: '/data-tables';
+	}
+	return '#';
+}
+
+function openArtifactLabel(name: string) {
+	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
+}
+
+const pinButtonLabel = computed(() =>
+	i18n.baseText(
+		props.isPinned ? 'instanceAi.artifactsPanel.unpinPanel' : 'instanceAi.artifactsPanel.pinPanel',
+	),
+);
 </script>
 
 <template>
-	<div :class="$style.panel">
-		<!-- Artifacts section -->
-		<div :class="[$style.section, $style.card]">
-			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
-				{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
-			</N8nHeading>
-
-			<div v-if="artifacts.length > 0" :class="$style.artifactList">
-				<div
-					v-for="artifact in artifacts"
-					:key="artifact.id"
-					:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
-					@click="handleArtifactClick(artifact, $event)"
-				>
-					<span :class="$style.artifactIconWrap">
-						<N8nIcon
-							:icon="artifactIconMap[artifact.type] ?? 'file'"
-							size="large"
-							:class="$style.artifactIcon"
+	<aside :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
+			<!-- Artifacts section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" bold>
+						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
+					</N8nHeading>
+					<N8nTooltip :content="pinButtonLabel" placement="left" :show-after="TOOLTIP_DELAY_MS">
+						<N8nIconButton
+							icon="pin"
+							variant="ghost"
+							size="small"
+							icon-size="medium"
+							:aria-label="pinButtonLabel"
+							:aria-pressed="props.isPinned"
+							:class="[$style.pinButton, { [$style.pinButtonPinned]: props.isPinned }]"
+							data-test-id="instance-ai-artifacts-sidebar-pin"
+							@click="emit('togglePinned')"
 						/>
-					</span>
-					<span :class="$style.artifactName">{{ artifact.name }}</span>
-					<span v-if="artifact.archived" :class="$style.archivedBadge">
-						{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
-					</span>
+					</N8nTooltip>
+				</div>
+
+				<div v-if="artifacts.length > 0" :class="$style.artifactList">
+					<a
+						v-for="artifact in artifacts"
+						:key="artifact.id"
+						:href="artifactHref(artifact)"
+						:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
+						:title="artifact.name"
+						:aria-label="openArtifactLabel(artifact.name)"
+						@click="handleArtifactClick(artifact, $event)"
+					>
+						<span :class="$style.artifactIconWrap">
+							<N8nIcon
+								:icon="artifactIconMap[artifact.type] ?? 'file'"
+								size="large"
+								:class="$style.artifactIcon"
+							/>
+						</span>
+						<span :class="$style.artifactName">{{ artifact.name }}</span>
+						<span v-if="artifact.archived" :class="$style.archivedBadge">
+							{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+						</span>
+					</a>
+				</div>
+
+				<div v-else :class="$style.emptyState">
+					<div :class="$style.emptyIcons">
+						<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
+						<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
+					</div>
+					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
 				</div>
 			</div>
 
-			<div v-else :class="$style.emptyState">
-				<div :class="$style.emptyIcons">
-					<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
-					<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
+			<!-- Tasks section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" bold>
+						{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
+					</N8nHeading>
 				</div>
-				<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
+
+				<div v-if="tasks" :class="$style.taskList">
+					<div
+						v-for="task in tasks.tasks"
+						:key="task.id"
+						:class="[
+							$style.task,
+							task.status === 'done' ? $style.doneTask : '',
+							task.status === 'failed' ? $style.failedTask : '',
+							task.status === 'cancelled' ? $style.cancelledTask : '',
+						]"
+					>
+						<N8nIcon
+							:icon="statusIconMap[task.status].icon"
+							:class="$style[statusIconMap[task.status].className]"
+							:spin="statusIconMap[task.status].spin"
+							size="medium"
+						/>
+						<span :class="$style.taskDescription" :title="task.description">{{
+							task.description
+						}}</span>
+					</div>
+				</div>
+				<div v-else :class="$style.emptyState">
+					<N8nIcon icon="list-checks" :size="30" :class="$style.emptyIcon" />
+					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noTasks') }}</span>
+				</div>
 			</div>
+
+			<!-- Connections section -->
+			<ConnectionsCard />
 		</div>
-
-		<!-- Tasks section -->
-		<div v-if="tasks" :class="[$style.section, $style.card]">
-			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
-				{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
-				<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
-			</N8nHeading>
-
-			<div :class="$style.taskList">
-				<div
-					v-for="task in tasks.tasks"
-					:key="task.id"
-					:class="[
-						$style.task,
-						task.status === 'done' ? $style.doneTask : '',
-						task.status === 'failed' ? $style.failedTask : '',
-						task.status === 'cancelled' ? $style.cancelledTask : '',
-					]"
-				>
-					<N8nIcon
-						:icon="statusIconMap[task.status].icon as IconName"
-						:class="$style[statusIconMap[task.status].className]"
-						:spin="statusIconMap[task.status].spin"
-						size="medium"
-					/>
-					<span :class="$style.taskDescription" :title="task.description">{{
-						task.description
-					}}</span>
-				</div>
-			</div>
-		</div>
-
-		<!-- Connections section -->
-		<ConnectionsCard />
-	</div>
+	</aside>
 </template>
 
 <style lang="scss" module>
@@ -150,34 +198,47 @@ const artifactIconMap: Record<string, IconName> = {
 	flex-shrink: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 	overflow-y: auto;
+}
+
+.group {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--color--background--light-3);
+	box-shadow: var(--shadow--xs);
+	overflow: hidden;
 }
 
 .section {
 	display: flex;
 	flex-direction: column;
-}
-
-.card {
-	border: var(--border);
-	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
-	background: var(--color--background--light-2);
+
+	& + & {
+		border-top: var(--border);
+	}
 }
 
-.sectionTitle {
+.sectionHeader {
 	margin-bottom: var(--spacing--2xs);
 	display: flex;
-	align-items: baseline;
+	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--3xs);
 }
 
-.progress {
-	font-size: var(--font-size--2xs);
+.pinButton {
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--regular);
+
+	&:hover,
+	&:focus-visible {
+		color: var(--color--text--shade-1);
+	}
+}
+
+.pinButtonPinned {
+	color: var(--color--text--shade-1);
 }
 
 /* Artifact list */
@@ -190,13 +251,20 @@ const artifactIconMap: Record<string, IconName> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--2xs);
 	cursor: pointer;
 	border-radius: var(--radius);
-	transition: background-color 0.2s ease;
+	color: var(--color--text);
+	text-decoration: none;
+	transition:
+		background-color var(--animation--duration--snappy) var(--animation--easing),
+		color var(--animation--duration--snappy) var(--animation--easing);
 
-	&:hover {
+	&:hover,
+	&:focus-visible {
 		background: var(--color--foreground--tint-2);
+		outline: none;
+		text-decoration: none;
 
 		.artifactName {
 			color: var(--color--primary);
@@ -205,6 +273,10 @@ const artifactIconMap: Record<string, IconName> = {
 		.artifactIcon {
 			color: var(--color--primary);
 		}
+	}
+
+	&:visited {
+		color: var(--color--text);
 	}
 }
 

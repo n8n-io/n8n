@@ -21,12 +21,6 @@ const store = useInstanceAiSettingsStore();
 
 const connections = computed(() => store.connections);
 
-const isVisible = computed(
-	() =>
-		!store.isLocalGatewayDisabledByAdmin &&
-		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
-);
-
 const ICON_MAP: Record<ConnectionType, IconName> = {
 	'computer-use': 'mouse-pointer',
 	'browser-use': 'globe',
@@ -90,19 +84,20 @@ async function handleRemove(type: ConnectionType) {
 </script>
 
 <template>
-	<div v-if="isVisible" :class="[$style.section, $style.card]">
+	<div :class="$style.section">
 		<div :class="$style.header">
 			<N8nHeading tag="h3" size="small" bold>
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
-			<N8nDropdownMenu
-				v-if="hasAddableConnection"
-				:items="addItems"
-				:activator-icon="{ type: 'icon', value: 'plus' }"
-				placement="bottom-end"
-				data-test-id="instance-ai-connections-add"
-				@select="openModal"
-			/>
+			<div v-if="hasAddableConnection" :class="$style.headerActions">
+				<N8nDropdownMenu
+					:items="addItems"
+					:activator-icon="{ type: 'icon', value: 'plus' }"
+					placement="bottom-end"
+					data-test-id="instance-ai-connections-add"
+					@select="openModal"
+				/>
+			</div>
 		</div>
 
 		<div v-if="connections.length > 0" :class="$style.list">
@@ -140,13 +135,8 @@ async function handleRemove(type: ConnectionType) {
 .section {
 	display: flex;
 	flex-direction: column;
-}
-
-.card {
-	border: var(--border);
-	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
-	background: var(--color--background--light-2);
+	border-top: var(--border);
 }
 
 .header {
@@ -155,6 +145,12 @@ async function handleRemove(type: ConnectionType) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .list {
