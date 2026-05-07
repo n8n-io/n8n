@@ -1,0 +1,518 @@
+{
+	"id": "wf-3647",
+	"name": "📥 Transform Google Drive documents into vector embeddings",
+	"nodes": [
+		{
+			"id": "6652e41a-d14a-4e17-9dcd-34df114d219a",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [1240, 1100],
+			"parameters": {
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "filename",
+								"value": "={{ $('Download File').item.json.name }}"
+							},
+							{
+								"name": "id",
+								"value": "={{ $('Download File').item.json.id }}"
+							},
+							{
+								"name": "gold",
+								"value": "false"
+							}
+						]
+					}
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8ae38b72-52fd-46bc-ab47-50bebe5ac4ee",
+			"name": "Recursive Character Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [1320, 1300],
+			"parameters": {
+				"options": {},
+				"chunkOverlap": 50
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e6bed8bc-f629-41fd-aa6e-9158b1cbc323",
+			"name": "Postgres PGVector Store",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+			"position": [1140, 880],
+			"parameters": {
+				"mode": "insert",
+				"options": {
+					"collection": {
+						"values": {
+							"useCollection": true,
+							"collectionName": "workflow_generator",
+							"collectionTableName": "embedding_collections"
+						}
+					}
+				},
+				"tableName": "collection_vectors"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "96fbc1f3-920d-44c9-9314-742efa3a698a",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-500, 740],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "4cd7a934-04cc-47b5-a771-db554680ba77",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [100, 740],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "778593d8-fe1c-4eb9-865a-e6ce9ed5f900",
+			"name": "Move File",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1700, 1280],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Loop Over Items').item.json.id }}"
+				},
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1Re6vg-PZxBoUU6sTRDbGs-77bAJ40u8F",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1Re6vg-PZxBoUU6sTRDbGs-77bAJ40u8F",
+					"cachedResultName": "vectorized"
+				},
+				"operation": "move"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "3a6584f5-ed86-4900-9177-40ffe82d0ad3",
+			"name": "Download File",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [320, 680],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.id }}"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "e1931ab6-4391-46c3-9d7d-22cbfbf90327",
+			"name": "Search Folder",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [-280, 740],
+			"parameters": {
+				"filter": {
+					"folderId": {
+						"__rl": true,
+						"mode": "list",
+						"value": "1mBHrP8UzUnfn3dj_3QS1r0XhQQyVPAGX",
+						"cachedResultUrl": "https://drive.google.com/drive/folders/1mBHrP8UzUnfn3dj_3QS1r0XhQQyVPAGX",
+						"cachedResultName": "n8n Workflow JSON Files"
+					},
+					"whatToSearch": "files"
+				},
+				"options": {
+					"fields": ["name", "id"]
+				},
+				"resource": "fileFolder",
+				"returnAll": true
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "95134ab4-806f-4c47-96a6-e261b3176ebf",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-500, 940],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 4
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "0fe604ed-e886-4aa3-856f-c46fb79ce0de",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-520, 1180],
+			"parameters": {
+				"color": 7,
+				"width": 380,
+				"height": 240,
+				"content": "## Creative Commons License\n*License*: **Creative Commons Attribution-ShareAlike 4.0 International** (CC BY-SA 4.0)\n\n*Author*: **AlexK1919**\nYou are free to use, adapt, and share this workflow—even commercially—under the terms of this license.\n\nFull license details: https://creativecommons.org/licenses/by-sa/4.0/"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f8055452-b487-46c7-92fe-14b3c88d193f",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [500, 680],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "pdf",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "7b4e792b-ab6d-4b9b-88a1-d8e51bea6853",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{$binary[\"data\"].mimeType}}",
+										"rightValue": "application/pdf"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "text",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "09b7d7c5-5353-4719-b4e2-072e4da39948",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{$binary[\"data\"].mimeType}}",
+										"rightValue": "text/plain"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "json",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "d2763a45-a592-47c8-868f-59dfcd17a71c",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{$binary[\"data\"].mimeType}}",
+										"rightValue": "application/json"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "c704f48e-a1f5-4539-bde2-545862d21bc6",
+			"name": "Extract from PDF",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [780, 480],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "63b3a751-5726-4821-8379-72af15226584",
+			"name": "Extract from Text",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [780, 680],
+			"parameters": {
+				"options": {},
+				"operation": "text"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "44a5980a-17aa-4a09-8040-a7d9804c7998",
+			"name": "Extract from JSON",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [780, 880],
+			"parameters": {
+				"options": {},
+				"operation": "fromJson"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "435f8016-43d1-4a2c-b507-50480867946b",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [1060, 1100],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		}
+	],
+	"connections": {
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Extract from PDF",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Extract from Text",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Extract from JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Move File": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download File": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Folder": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Download File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from PDF": {
+			"main": [
+				[
+					{
+						"node": "Postgres PGVector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Search Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Postgres PGVector Store",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from JSON": {
+			"main": [
+				[
+					{
+						"node": "Postgres PGVector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from Text": {
+			"main": [
+				[
+					{
+						"node": "Postgres PGVector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Postgres PGVector Store",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Postgres PGVector Store": {
+			"main": [
+				[
+					{
+						"node": "Move File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Search Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"timezone": "America/Los_Angeles",
+		"callerPolicy": "workflowsFromSameOwner",
+		"errorWorkflow": "lYgdNzdEapw2W8gK",
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

@@ -51,8 +51,23 @@ const DEFAULT_CANDIDATES = 1000;
  * the main bucket-pick loop, any of these missing from the manifest gets a
  * coverage patch: we force-include the highest-scoring eligible candidate
  * containing that type. Extends the manifest beyond `target`.
+ *
+ * If a must-cover type's candidates didn't make the top-K catalog cohort, the
+ * patch step falls back to fetching detail for the type's highest-scoring
+ * catalog entries on demand.
  */
-const MUST_COVER_NODE_TYPES = ['n8n-nodes-base.postgres'] as const;
+const MUST_COVER_NODE_TYPES = [
+	'n8n-nodes-base.postgres',
+	'@n8n/n8n-nodes-langchain.vectorStorePinecone',
+	'@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+	'@n8n/n8n-nodes-langchain.vectorStoreQdrant',
+	'@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+	'@n8n/n8n-nodes-langchain.vectorStorePGVector',
+	'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+	'@n8n/n8n-nodes-langchain.vectorStoreWeaviate',
+	'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
+	'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+] as const;
 
 interface CliArgs {
 	target: number;
@@ -308,7 +323,8 @@ async function main() {
 	for (const mustType of MUST_COVER_NODE_TYPES) {
 		if (acceptedTypes.has(mustType)) continue;
 
-		const candidates = scored
+		// First-tier: try scored candidates already in our pool.
+		const fromScored = scored
 			.map((cand) => {
 				const types = (cand.detail.data.attributes.workflow.nodes ?? []).map((n) =>
 					String(n.type ?? ''),
@@ -320,7 +336,8 @@ async function main() {
 			.filter((x): x is { cand: ScoredCandidate; score: number } => x !== null)
 			.sort((a, b) => b.score - a.score);
 
-		for (const { cand, score } of candidates) {
+		let added = false;
+		for (const { cand, score } of fromScored) {
 			const valid = validateRoundtrip(cand.detail);
 			if (!valid.ok) {
 				logFailure(cand.entry.id, cand.entry.name, `coverage-patch validation: ${valid.reason}`);
@@ -336,6 +353,50 @@ async function main() {
 			}
 			console.log(
 				`  coverage patch (+1 for ${mustType}): id=${cand.entry.id} score=${score.toFixed(2)} ${cand.entry.name.slice(0, 60)}`,
+			);
+			patchedCount++;
+			added = true;
+			break;
+		}
+		if (added) continue;
+
+		// Second-tier: type wasn't in the top-K candidate pool. Scan the full
+		// catalog for entries whose sparse list contains the type, fetch detail
+		// on demand (cached after first hit), and accept the first that passes
+		// gate + roundtrip. Ranked by catalog-stage score so we try the
+		// strongest candidate first.
+		const catalogCandidates = catalog
+			.filter((entry) => (entry.nodes ?? []).some((n) => n.name === mustType))
+			.filter((entry) => mechanicalGateCatalog(entry).ok)
+			.map((entry) => ({ entry, score: scoreCatalogEntry(entry).total }))
+			.sort((a, b) => b.score - a.score)
+			.slice(0, 25); // bounded — don't go fetching the whole tail
+
+		for (const { entry } of catalogCandidates) {
+			const detail = await fetchDetail(entry.id);
+			if (!detail) continue;
+			if (!mechanicalGateDetail(detail).ok) continue;
+			const valid = validateRoundtrip(detail);
+			if (!valid.ok) {
+				logFailure(entry.id, entry.name, `coverage-patch fallback validation: ${valid.reason}`);
+				continue;
+			}
+			const bucket = bucketKey(detail);
+			const fresh = scoreDetailedTemplate(entry, detail, acceptedBuckets);
+			const cand: ScoredCandidate = {
+				entry,
+				detail,
+				bucket,
+				bucketStr: bucketKeyToString(bucket),
+				scoreAtPick: fresh,
+			};
+			accepted.push(cand);
+			acceptedBuckets.push(bucket);
+			for (const node of detail.data.attributes.workflow.nodes ?? []) {
+				acceptedTypes.add(String(node.type ?? ''));
+			}
+			console.log(
+				`  coverage patch fallback (+1 for ${mustType}): id=${entry.id} score=${fresh.total.toFixed(2)} ${entry.name.slice(0, 60)}`,
 			);
 			patchedCount++;
 			break;

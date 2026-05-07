@@ -1,0 +1,1026 @@
+{
+	"id": "wf-12400",
+	"name": "Handle customer support queries with cache-first RAG using Redis, LangCache and OpenAI",
+	"nodes": [
+		{
+			"id": "af6e85ef-2255-454f-8281-517b17a112c0",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-80, 736],
+			"webhookId": "29621de8-bddd-4314-80fd-4716072e4342",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "f5884164-83b2-48d0-806d-381c1ba9b802",
+			"name": "decompose_query",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [496, 736],
+			"parameters": {
+				"text": "={{ $('When chat message received').item.json.chatInput }}",
+				"options": {
+					"systemMessage": "=Analyze this customer support query and determine if it needs to be broken down into sub-questions.\n        \n        Original query: {{ $('When chat message received').item.json.chatInput }}\n        \n        Rules:\n        - If the query is simple and focused on ONE topic, respond with: SINGLE_QUESTION\n        - If the query has multiple distinct aspects that would benefit from separate research, break it into 2-4 specific sub-questions\n        - Each sub-question should be self-contained and cacheable\n        \n        If breaking down, provide ONLY the sub-questions, one per line, no numbering.\n        If keeping as single question, respond with exactly: SINGLE_QUESTION\n---\noutput should be json object with the follwoing structure:\n{\n\"questions\": [\"Q1\", \"Q2\", \"Q3\",\"Q4\"]\n}"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "2c48cfdb-bba2-4d9e-88c5-72176c0d9595",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [704, 1040],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"questions\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"List of generated questions.\"\n    }\n  },\n  \"required\": [\"questions\"]\n}\n"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "0c52729a-53e9-4f18-a4b4-845cc2384bec",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [800, 736],
+			"parameters": {
+				"options": {
+					"disableDotNotation": false,
+					"destinationFieldName": "question"
+				},
+				"fieldToSplitOut": "output.questions"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6410933e-dde4-4de5-9f72-5444f0f51891",
+			"name": "Search LangCache",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueErrorOutput",
+			"position": [1248, 528],
+			"parameters": {
+				"url": "={{ $('LangCache Config').item.json.langcacheBaseUrl }}/v1/caches/{{ $('LangCache Config').item.json.langcacheCacheId }}/entries/search",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "prompt",
+							"value": "={{ $('Loop Over Items').item.json.question }}"
+						},
+						{
+							"name": "similarityThreshold",
+							"value": "={{ $('LangCache Config').item.json.similarityThreshold }}"
+						}
+					]
+				},
+				"genericAuthType": "httpBearerAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "T6ZNH7eIULGzsb4u",
+					"name": "Bearer Auth account"
+				}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "65f6963c-6faf-46a4-971d-bf162a2cf49d",
+			"name": "Is Cache Hit?",
+			"type": "n8n-nodes-base.if",
+			"position": [1488, 448],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 3,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "a84a9a1c-f13b-465c-abc2-f27b9e24f605",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.data?.[0]?.similarity >= $('LangCache Config').item.json.similarityThreshold }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "0f16f03d-6fe1-4da8-9cc5-1fbba5012f30",
+			"name": "LangCache Config",
+			"type": "n8n-nodes-base.set",
+			"position": [224, 736],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "79a40928-d50d-4998-90d8-cea319e9a1b7",
+							"name": "langcacheBaseUrl",
+							"type": "string",
+							"value": "https://aws-us-east-1.langcache.redis.io"
+						},
+						{
+							"id": "b9f02205-4a11-4814-9971-ee840b32537f",
+							"name": "langcacheCacheId",
+							"type": "string",
+							"value": "b83aa61d58be484ebc37c64f1f30c2fa"
+						},
+						{
+							"id": "cdc69c29-a34f-40e1-a9dd-193aacae9c69",
+							"name": "similarityThreshold",
+							"type": "number",
+							"value": 0.75
+						},
+						{
+							"id": "2bebfa5b-9f31-4a60-8121-422ce9a5b846",
+							"name": "max_iterations",
+							"type": "string",
+							"value": "2"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b142939c-814c-4b36-87bd-45a955f3c564",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [1024, 880],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "ea1352da-745e-4a86-8365-5ddfe8ed93ab",
+			"name": "synthesize_response_node",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1408, 864],
+			"parameters": {
+				"text": "=- Original query: \n        {{ $('When chat message received').item.json.chatInput }}\n- Information gathered:\n{{ $json.data.toJsonString() }}",
+				"options": {
+					"systemMessage": "= You are a helpful customer support assistant. Combine the following question-answer pairs \ninto a single, coherent, and comprehensive response to the user's original query.\n        \n1- If information gathered is enough to answer the question, Provide a natural, conversational response that:\n  - Directly addresses the user's question\n  - Integrates all relevant information smoothly\n  - Is helpful and actionable\n  - Maintains a professional, friendly tone.\n\n2- If information gathered is not enough or accurate to answer the question reply with: \n\"I apologize, but I couldn't find answers to your question. Please try rephrasing or contact support directly.\""
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "7548562c-2a2a-4c4b-8aae-5ed08d5dfb25",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [1248, 864],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aecc43ec-bb69-4d13-a7a4-00bb91453172",
+			"name": "Redis Vector Store",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreRedis",
+			"position": [1440, -112],
+			"parameters": {
+				"mode": "insert",
+				"options": {},
+				"redisIndex": {
+					"__rl": true,
+					"mode": "list",
+					"value": "kb-3accd7ed",
+					"cachedResultName": "kb-3accd7ed"
+				}
+			},
+			"credentials": {
+				"redis": {
+					"id": "SjtIYT12MzDqYkT5",
+					"name": "Redis account"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "2344ea11-5412-4d6d-9d59-005d5748a475",
+			"name": "Redis Vector Store2",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreRedis",
+			"position": [2128, 672],
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"options": {},
+				"redisIndex": {
+					"__rl": true,
+					"mode": "list",
+					"value": "kb-3accd7ed",
+					"cachedResultName": "kb-3accd7ed"
+				},
+				"toolDescription": "Using search_knowledge_base tool for query"
+			},
+			"credentials": {
+				"redis": {
+					"id": "SjtIYT12MzDqYkT5",
+					"name": "Redis account"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "84e92cea-0cf7-45c8-b346-d87126052efc",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [2112, 816],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "fLyAfLmAnGMwfIoV",
+					"name": "n8n free OpenAI API credits"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "7a76f285-d661-4fd7-83cc-f20f050dbcc9",
+			"name": "Embeddings OpenAI1",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [1120, 144],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "fLyAfLmAnGMwfIoV",
+					"name": "n8n free OpenAI API credits"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "bfe94569-e5c7-4282-b2f9-c710a076907d",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [1408, 144],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "27cd82d3-d938-49bc-92f2-213d80000e43",
+			"name": "example Data",
+			"type": "n8n-nodes-base.set",
+			"position": [1216, -112],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "8da432e2-ebc9-454b-b9b1-0968df56a715",
+							"name": "raw_docs",
+							"type": "array",
+							"value": "=[     \"Our premium support plan includes 24/7 phone support, priority email response within 2 hours, and dedicated account management. Premium support costs $49/month.\",     \"Account upgrade process: Go to Account Settings → Plan & Billing → Select Upgrade. Available plans: Basic $9/month, Pro $29/month, Enterprise $99/month.\",     \"API rate limits by plan: Free tier 100 requests/hour, Basic 1,000 requests/hour, Pro 10,000 requests/hour, Enterprise unlimited with fair-use policy.\",     \"Data export options: CSV, JSON, XML formats supported. Large exports (>1GB) may take up to 24 hours to process.\",     \"Third-party integrations: Native support for Slack, Microsoft Teams, Zoom, Salesforce, HubSpot. 200+ additional integrations available via Zapier.\",     \"Security features: SOC2 compliance, end-to-end encryption, GDPR compliance, SSO integration, audit logs, IP whitelisting.\",     \"Billing and payments: We accept all major credit cards, PayPal, and ACH transfers. Enterprise customers can pay by invoice with NET30 terms.\",     \"Account recovery: Use forgot password link, verify email, or contact support with account verification details. Response within 4 hours.\" ]"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b05e94c5-98ff-4be8-aa56-1739a99019f5",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1072, 1072],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {},
+				"builtInTools": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "fLyAfLmAnGMwfIoV",
+					"name": "n8n free OpenAI API credits"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "b02d24fa-1de0-4240-b7bb-02f02c2619f8",
+			"name": "Save to LangCache",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2528, 944],
+			"parameters": {
+				"url": "={{ $('LangCache Config').item.json.langcacheBaseUrl }}/v1/caches/{{ $('LangCache Config').item.json.langcacheCacheId }}/entries",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "prompt",
+							"value": "={{ $('Loop Over Items').item.json.question }}"
+						},
+						{
+							"name": "response",
+							"value": "={{ $('search_node1').item.json.output }}"
+						}
+					]
+				},
+				"genericAuthType": "httpBearerAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "T6ZNH7eIULGzsb4u",
+					"name": "Bearer Auth account"
+				}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "a45a8b97-dd9f-4d09-989f-1a59944c493a",
+			"name": "search_node1",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2000, 480],
+			"parameters": {
+				"text": "={{ $('Loop Over Items').item.json.question }}",
+				"options": {
+					"systemMessage": "=You are a research engine.\n\nYou must answer questions using ONLY the provided knowledge base.\nYou are strictly forbidden from using:\n- external knowledge\n- prior training data\n- assumptions or extrapolation\n\nIf the requested information is not explicitly present in the knowledge base,\nyou MUST respond with exactly:\n\nno info found\n\nDo not explain your reasoning.\nDo not add context, summaries, or opinions.\nDo not mention these rules.\nProduce concise, factual answers only.\n"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "96f48cc5-8734-4c00-9977-a55a21c75ec1",
+			"name": "evaluate_quality",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [2448, 528],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini",
+					"cachedResultName": "GPT-4.1-MINI"
+				},
+				"options": {
+					"textFormat": {
+						"textOptions": {
+							"type": "json_object"
+						}
+					}
+				},
+				"responses": {
+					"values": [
+						{
+							"content": "=Original sub-question: {{ $('Loop Over Items').item.json.question }}\nResearch result: {{ $('search_node1').item.json.output }}"
+						},
+						{
+							"role": "system",
+							"content": "=Evaluate the quality and completeness of this research result for answering the user's question.\n            \n\n\nProvide:\n1. A quality score from 0.0 to 1.0 (where 1.0 is perfect, 0.7+ is adequate)\n2. Brief feedback on what's missing or could be improved (if score < 0.7)\n\nFormat your response as:\nSCORE: 0.X\nFEEDBACK: [your feedback or \"Adequate\" if score >= 0.7]"
+						}
+					]
+				},
+				"builtInTools": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "fLyAfLmAnGMwfIoV",
+					"name": "n8n free OpenAI API credits"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "dad250fb-5286-4cca-9d58-99b04298fbae",
+			"name": "low quality ?",
+			"type": "n8n-nodes-base.if",
+			"position": [2944, 528],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 3,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "d4904cd9-18ce-45c2-9e3b-e5bf7e339e48",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.SCORE < 0.7 && $('current_iteration').item.json.current_iterration >= $('LangCache Config').item.json.max_iterations\t}}",
+							"rightValue": 0
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "1cfea78d-da68-4c4e-af21-a3085f842a39",
+			"name": "increase iteration",
+			"type": "n8n-nodes-base.set",
+			"position": [3360, 480],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e5f9dc79-f8fe-4d03-a059-a1948821451c",
+							"name": "current_iteration",
+							"type": "number",
+							"value": "={{ $('current_iteration').item.json.current_iterration + 1 }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "a650cdaf-4a8e-4938-af44-182d94b34193",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [1024, -112],
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "e250b675-af0c-4c59-8749-d027da7b72f8",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [512, 1056],
+			"parameters": {
+				"sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+				"sessionIdType": "customKey",
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "726bfd01-9dac-42ff-816c-151cbe58f897",
+			"name": "Simple Memory1",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [1952, 784],
+			"parameters": {
+				"sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+				"sessionIdType": "customKey",
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "0677630f-5809-408c-8233-85d734f2a732",
+			"name": "Simple Memory2",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [1328, 1056],
+			"parameters": {
+				"sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+				"sessionIdType": "customKey",
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "5f9e7ddc-9454-451d-8f19-28a145aaa9b2",
+			"name": "current_iteration",
+			"type": "n8n-nodes-base.set",
+			"position": [1840, 464],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d7da9a5-ff39-4e6a-9105-6ac8d3a06cde",
+							"name": "current_iteration",
+							"type": "number",
+							"value": "={{ $json.current_iteration ?? 1 }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fdf91552-525c-4b3d-8e0f-de910525e648",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [48, -800],
+			"parameters": {
+				"width": 880,
+				"height": 1120,
+				"content": "# Customer support RAG workflow:\n## Workflow Overview\nCache-first **RAG** workflow for customer support.\n\n**Flow:**  \nChat → Decompose → Cache → Redis Search → Quality Check → Cache → Respond\n\n**Goals:** Fast, accurate, no hallucinations, cost-controlled.\n\n\nThis workflow provides an end-to-end Retrieval-Augmented Generation (RAG) solution for customer support use cases using n8n. It combines a cache-first strategy with semantic search to deliver fast, accurate answers from a structured knowledge base.\n\nIncoming chat messages are analyzed and, when needed, decomposed into smaller sub-questions. Each sub-question is first checked against LangCache to reuse previously generated answers and reduce repeated LLM calls. If no suitable cached result is found, the workflow retrieves relevant documents from a Redis vector store powered by OpenAI embeddings.\n\nTo improve answer reliability, retrieved results are evaluated for quality. If the quality score does not meet the configured threshold, the workflow can re-run retrieval with adjusted context for a limited number of iterations. Once sufficient information is gathered, all results are consolidated into a single, concise response suitable for customer-facing communication.\n\nThis template is ideal for support chatbots, internal help desks, and knowledge-base-driven assistants where performance, cost control, and answer consistency are critical.\n\n## How it works\n\nWhen a chat message is received, the workflow determines whether it contains a single question or multiple topics. If necessary, the message is split into a small number of focused sub-questions.\n\nEach sub-question is first checked against LangCache using a similarity threshold. High-confidence cache hits are reused immediately to minimize latency and API cost. If no cache hit is found, the workflow queries a Redis vector store containing embedded knowledge-base documents. Retrieved results are then evaluated for quality and relevance.\n\nIf the quality score is below the defined threshold, the workflow retries retrieval for a limited number of iterations. Once acceptable results are available, all responses are merged and synthesized into one clear final answer that is returned to the user.\n\n## Setup steps\n\n1- Create and configure credentials in n8n for OpenAI, Redis, and LangCache.\n\n2- Open the LangCache Config node and set the cache ID, base URL, similarity threshold, and maximum iterations.\n\n3- Ensure your Redis vector index is populated with knowledge-base documents (or use the provided example loader).\n\n4- Review the OpenAI model and embedding nodes and adjust them to match your performance and cost requirements.\n\n5- Test the workflow using the chat trigger and verify cache hits, vector retrieval, and final response output."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7994e6ea-45d6-44b6-8a1b-fc9b347f32eb",
+			"name": "getScore",
+			"type": "n8n-nodes-base.set",
+			"position": [2768, 528],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "9da210db-b091-44b8-b936-d6263d78b512",
+							"name": "SCORE",
+							"type": "number",
+							"value": "={{ $json.output[0].content[0].text.SCORE }}"
+						},
+						{
+							"id": "d6f96594-6a30-4899-8bdf-388ba695c779",
+							"name": "FEEDBACK",
+							"type": "string",
+							"value": "={{ $json.output[0].content[0].text.FEEDBACK }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "e6978f27-8803-4851-b148-fdbf9911648c",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [112, 512],
+			"parameters": {
+				"width": 320,
+				"height": 656,
+				"content": "#### Configuration (Edit First)\nUpdate in **LangCache Config**:\n- `langcacheBaseUrl`\n- `langcacheCacheId`\n- `similarityThreshold` (default `0.75`)\n- `max_iterations` (default `2`)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d44f3c0c-fb23-4bd1-97b4-96d32f446e8c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [464, 512],
+			"parameters": {
+				"width": 464,
+				"height": 656,
+				"content": "## Query Decomposition\nSplits complex user input into focused questions to improve retrieval and caching.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "981cbf1e-7179-4c77-8a79-b46d50dfdf90",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [992, 384],
+			"parameters": {
+				"width": 704,
+				"height": 352,
+				"content": "#### Cache-First Strategy\nEach question is checked in **LangCache** first.\n- Hit → reuse answer  \n- Miss → search Redis\n\nReduces latency and API cost."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8c35a870-1f2b-4207-9827-6c8aeae2550b",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1728, 384],
+			"parameters": {
+				"width": 688,
+				"height": 784,
+				"content": "#### Redis Vector Retrieval\nRuns only on cache miss.\nUses embeddings to retrieve relevant knowledge from Redis."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bb7f7b45-eee6-41ac-89d7-7b39062d04af",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2432, 384],
+			"parameters": {
+				"width": 704,
+				"height": 384,
+				"content": "## Quality Evaluation\nEach answer is scored (`0.0 – 1.0`).\n- ≥ `0.7` → accept  \n- < `0.7` → retry if allowed"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8b0d0a12-df24-4a78-a8f2-5d987c8da340",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3168, 384],
+			"parameters": {
+				"width": 384,
+				"height": 784,
+				"content": "## Retry Control\nRetries are limited by `max_iterations` to avoid loops and high cost."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f1a6f21c-fba8-42eb-b479-b6e10b2c8339",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2432, 800],
+			"parameters": {
+				"width": 704,
+				"height": 368,
+				"content": "## ## Save to Cache\nOnly high-quality answers are saved to **LangCache** for future reuse."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "da62019e-6e0e-41cd-9918-fe295ddc9659",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [992, 768],
+			"parameters": {
+				"width": 704,
+				"height": 400,
+				"content": "## Generate the respoonse"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "70286448-0f9d-44d6-ba62-666efd454d5b",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1024, -192],
+			"parameters": {
+				"width": 752,
+				"height": 480,
+				"content": "## Prepare the Knowledge Base -  Example Data"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"getScore": {
+			"main": [
+				[
+					{
+						"node": "low quality ?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "synthesize_response_node",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"example Data": {
+			"main": [
+				[
+					{
+						"node": "Redis Vector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"search_node1": {
+			"main": [
+				[
+					{
+						"node": "evaluate_quality",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is Cache Hit?": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "current_iteration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "decompose_query",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"low quality ?": {
+			"main": [
+				[
+					{
+						"node": "increase iteration",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Save to LangCache",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory1": {
+			"ai_memory": [
+				[
+					{
+						"node": "search_node1",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory2": {
+			"ai_memory": [
+				[
+					{
+						"node": "synthesize_response_node",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Search LangCache",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"decompose_query": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LangCache Config": {
+			"main": [
+				[
+					{
+						"node": "decompose_query",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "example Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search LangCache": {
+			"main": [
+				[
+					{
+						"node": "Is Cache Hit?",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "current_iteration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"evaluate_quality": {
+			"main": [
+				[
+					{
+						"node": "getScore",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Redis Vector Store2",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "decompose_query",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "synthesize_response_node",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "search_node1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Save to LangCache": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"current_iteration": {
+			"main": [
+				[
+					{
+						"node": "search_node1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI1": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Redis Vector Store",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"increase iteration": {
+			"main": [
+				[
+					{
+						"node": "current_iteration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Redis Vector Store",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Redis Vector Store2": {
+			"ai_tool": [
+				[
+					{
+						"node": "search_node1",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "decompose_query",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "LangCache Config",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

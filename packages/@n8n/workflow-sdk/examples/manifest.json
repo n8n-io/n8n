@@ -1,5 +1,5 @@
 {
-	"generatedAt": "2026-05-07T14:04:52.110Z",
+	"generatedAt": "2026-05-07T14:34:49.852Z",
 	"workflows": [
 		{
 			"id": 6270,
@@ -3317,6 +3317,174 @@
 			},
 			"source": "https://n8n.io/workflows/13651",
 			"author": "oneclick-ai",
+			"success": true
+		},
+		{
+			"id": 3675,
+			"slug": "mcp-supabase-server-for-ai-agent-with-rag-multi-tenant-crud-3675",
+			"name": "MCP Supabase Server for AI Agent with RAG & Multi-Tenant CRUD",
+			"description": "# Supabase AI Agent with RAG & Multi-Tenant CRUD  \n**Version**: 1.0.0  \n**n8n Version**: 1.88.0+  \n**Author**: Koresolucoes \n**License**: MIT  \n\n---\n\n## Description  \nA stateful AI agent workflow powered by **Supabase** and **Retrieval-Augmented Generation (RAG)**. Enables persistent memory, dynamic CRUD operations, and multi-tenant data isolation for AI-driven applications like customer support, task orchestration, and knowledge management.  \n\n**Key Features**:  \n- 🧠 **RAG Integration**: Leverages OpenAI embeddings and Supabase vector search for context-aware responses.  \n- 🗃️ **Full CRUD**: Manage `agent_messages`, `agent_tasks`, `agent_status`, and `agent_knowledge` in real time.  \n- 📤 **Multi-Tenant Ready**: Supports per-user/organization data isolation via dynamic table names and webhooks.  \n- 🔒 **Secure**: Role-based access control via Supabase Row Level Security (RLS).  \n\n---\n\n## Use Cases  \n1. **Customer Support Chatbots**: Persist conversation history and resolve queries using institutional knowledge.  \n2. **Automated Task Management**: Track and update task statuses dynamically.  \n3. **Knowledge Repositories**: Store and retrieve domain-specific information for AI agents.  \n\n---\n\n## Instructions  \n### 1. Import Template  \n- Go to **n8n &gt; Templates &gt; Import from File** and upload this workflow.  \n\n### 2. Configure Credentials  \n- Add your **Supabase** and **OpenAI** API keys under **Settings &gt; Credentials**.  \n\n### 3. Set Up Multi-Tenancy (Optional)  \n- **Dynamic Webhook Path**:  \n  Replace the default webhook path with `/mcp/tool/supabase/:userId` to enable per-user routing.  \n- **Table Names**:  \n  Use a **Set Node** to dynamically generate table names (e.g., `agent_messages_{{userId}}`).  \n\n### 4. Activate & Test  \n- Enable the workflow and send test requests to the webhook URL.  \n\n---\n\n## Tags  \n`AI Agent` `RAG` `Supabase` `CRUD` `Multi-Tenant` `OpenAI` `Automation`  \n\n---\n\n## Screenshots  \n![Captura de tela 20250423 124013.png](fileId:1158)\n![Captura de tela 20250423 123954.png](fileId:1159)\n\n---\n\n## License  \nThis template is licensed under the MIT License.  ",
+			"nodes": [
+				"@n8n/n8n-nodes-langchain.mcpTrigger",
+				"@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+				"@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+				"n8n-nodes-base.stickyNote",
+				"n8n-nodes-base.supabaseTool"
+			],
+			"tags": ["trigger:other", "flow:linear", "ai", "integration:supabaseTool"],
+			"triggerType": "other",
+			"hasAI": true,
+			"score": 82.03,
+			"scoreBreakdown": {
+				"traction": 0.558,
+				"recency": 1,
+				"coverage": 1,
+				"aiAgent": 0.6,
+				"clarity": 1,
+				"density": 0.174
+			},
+			"source": "https://n8n.io/workflows/3675",
+			"author": "koresoluciones",
+			"success": true
+		},
+		{
+			"id": 12400,
+			"slug": "handle-customer-support-queries-with-cache-first-rag-using-r-12400",
+			"name": "Handle customer support queries with cache-first RAG using Redis, LangCache and OpenAI",
+			"description": "\nAn end-to-end **Retrieval-Augmented Generation (RAG)** customer support workflow for **n8n**, using a **cache-first strategy (LangCache)** combined with a **Redis vector store** powered by **OpenAI embeddings**.  \nThis template is designed for fast, accurate, and cost-efficient customer support chatbots, internal help desks, and knowledge-base assistants.\n\n---\n\n## Overview\n\nThis workflow implements a **production-ready RAG architecture** optimized for customer support use cases. Incoming chat messages are processed through a structured pipeline that prioritizes cached answers, falls back to semantic vector search when needed, and validates response quality before returning a final answer.\n\nThe workflow supports:\n- Multi-question user inputs\n- Intelligent query decomposition\n- Cache reuse to reduce latency and cost\n- High-precision retrieval from a Redis vector database\n- Quality evaluation and controlled retries\n- Final answer synthesis into a single, coherent response\n\n---\n\n## Key Features\n\n- **Chat-based RAG pipeline** using n8n’s Chat Trigger\n- **Query decomposition** for multi-topic questions\n- **LangCache integration** (search + save)\n- **Redis Vector Store** for semantic retrieval\n- **OpenAI embeddings and chat models**\n- **Quality scoring** with retry logic\n- **Session memory buffers** for contextual continuity\n- **Fallback-safe behavior** (no hallucinations)\n\n---\n\n## How the Workflow Works\n\n### 1. Chat Trigger\nThe workflow starts when a new chat message is received.\n\n### 2. Configuration Setup\nA centralized configuration node defines:\n- LangCache base URL\n- Cache ID\n- Similarity threshold (default: `0.75`)\n- Maximum retrieval iterations (default: `2`)\n\n### 3. Query Decomposition\nThe user message is analyzed and decomposed into:\n- A single focused question, or\n- Multiple independent sub-questions\n\nThis improves retrieval accuracy and cache reuse.\n\n### 4. Cache-First Retrieval\nEach sub-question is processed independently:\n- The workflow first searches **LangCache**\n- If a high-similarity cached answer is found, it is reused immediately\n\n### 5. Vector Retrieval (Cache Miss)\nIf no cache hit exists:\n- The query is embedded using OpenAI embeddings\n- A semantic search is executed against the **Redis vector index**\n- Retrieved knowledge-base documents are passed to a research-only agent\n\n### 6. Knowledge-Only Answering\nThe research agent:\n- Answers **strictly from the retrieved knowledge**\n- Returns `\"no info found\"` if no relevant data exists\n\n### 7. Quality Evaluation\nEach generated answer is evaluated by a dedicated quality-check node:\n- Outputs a numerical `SCORE` (0.0 – 1.0)\n- Provides textual feedback\n- Low scores can trigger limited retries\n\n### 8. Cache Update\nHigh-quality answers are saved back to **LangCache** for future reuse.\n\n### 9. Aggregation & Synthesis\nAll sub-answers are aggregated and synthesized into:\n- One final, user-facing response, or\n- A polite fallback message if information is insufficient\n\n---\n\n## Main Nodes & Responsibilities\n\n- **When Chat Message Received** — Entry point for user messages\n- **LangCache Config** — Centralized configuration values\n- **Decompose Query (LangChain Agent)** — Splits complex queries\n- **Structured Output Parser** — Ensures valid JSON output\n- **Search LangCache** — Cache lookup via HTTP\n- **Redis Vector Store** — Semantic retrieval from Redis\n- **Embeddings OpenAI** — Vector generation\n- **Research Agent** — KB-only answering (no hallucinations)\n- **Quality Evaluator** — Scores answer relevance\n- **Save to LangCache** — Stores validated answers\n- **Memory Buffers** — Session context handling\n- **Response Synthesizer** — Final message generation\n\n---\n\n## Setup Instructions\n\n### 1. Configure Credentials\nCreate the following credentials in n8n:\n- **OpenAI API**\n- **Redis**\n- **HTTP Bearer Auth** (for LangCache)\n\n### 2. Prepare the Knowledge Base\n- Embed your documents using OpenAI embeddings\n- Insert them into the configured Redis vector index\n- Ensure documents are concise and well-structured\n\n### 3. Configure LangCache\nUpdate the configuration node with:\n- `langcacheBaseUrl`\n- `langcacheCacheId`\n- Optional tuning for similarity threshold and iterations\n\n### 4. Test the Workflow\n- Use the example data loader or schedule trigger\n- Send test chat messages\n- Validate cache hits, vector retrieval, and final responses\n\n---\n\n## Recommended Tuning\n\n- **Similarity Threshold:** `0.7 – 0.85`\n- **Max Iterations:** `1 – 3`\n- **Quality Score Cutoff:** `0.7`\n- **Model Choice:** Use faster models for low latency, stronger models for accuracy\n- **Cache Policy:** Cache only high-confidence answers\n\n---\n\n## Security & Compliance Notes\n\n- Store API keys securely using n8n credentials\n- Avoid caching sensitive or personally identifiable information\n- Apply least-privilege access to Redis and LangCache\n- Consider logging cache writes for audit purposes\n\n---\n\n## Common Use Cases\n\n- Customer support chatbots\n- Internal help desks\n- Knowledge-base assistants\n- Self-service support portals\n- AI-powered FAQ systems\n\n---\n\n## Template Metadata (Recommended)\n\n- **Template Name:** AI Customer Support — Redis RAG (LangCache + OpenAI)\n- **Category:** Customer Support / AI / RAG\n- **Tags:**  \n  `customer-support`, `RAG`, `knowledge-base`, `redis`, `openai`, `langcache`, `chatbot`, `n8n-template`\n- **Difficulty Level:** Intermediate\n- **Required Integrations:** OpenAI, Redis, LangCache\n",
+			"nodes": [
+				"@n8n/n8n-nodes-langchain.chatTrigger",
+				"@n8n/n8n-nodes-langchain.agent",
+				"@n8n/n8n-nodes-langchain.outputParserStructured",
+				"n8n-nodes-base.splitOut",
+				"n8n-nodes-base.httpRequest",
+				"n8n-nodes-base.if",
+				"n8n-nodes-base.set",
+				"n8n-nodes-base.splitInBatches",
+				"n8n-nodes-base.aggregate",
+				"@n8n/n8n-nodes-langchain.vectorStoreRedis",
+				"@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+				"@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+				"@n8n/n8n-nodes-langchain.lmChatOpenAi",
+				"@n8n/n8n-nodes-langchain.openAi",
+				"n8n-nodes-base.scheduleTrigger",
+				"@n8n/n8n-nodes-langchain.memoryBufferWindow",
+				"n8n-nodes-base.stickyNote"
+			],
+			"tags": ["trigger:chatTrigger", "flow:loop", "ai", "integration:langchain"],
+			"triggerType": "chatTrigger",
+			"hasAI": true,
+			"score": 77.65,
+			"scoreBreakdown": {
+				"traction": 0.24,
+				"recency": 1,
+				"coverage": 1,
+				"aiAgent": 1,
+				"clarity": 1,
+				"density": 0.571
+			},
+			"source": "https://n8n.io/workflows/12400",
+			"author": "mohelwah",
+			"success": true
+		},
+		{
+			"id": 5010,
+			"slug": "rag-starter-template-using-simple-vector-stores-form-trigger-5010",
+			"name": "RAG Starter Template using Simple Vector Stores, Form trigger and OpenAI",
+			"description": "This template quickly shows how to use RAG in n8n.\n\n## Who is this for?\nThis template is for everyone who wants to start giving knowledge to their Agents through RAG.\n\n## Requirements\nHave a PDF with custom knowledge that you want to provide to your agent.\n\n## Setup\nNo setup required. Just hit `Execute Workflow`, upload your knowledge document and then start chatting.\n\n## How to customize this to your needs\n1. Add custom instructions to your Agent by changing the prompts in it.\n2. Add a different way to load in knowledge to your vector store, e.g. by looking at some Google Drive files or loading knowledge from a table.\n2. Exchange the `Simple Vector Store` nodes with your own vector store tools ready for production.\n3. Add a more sophisticated way to rank files found in the vector store.\n\nFor more information read our [docs on RAG in n8n](https://docs.n8n.io/advanced-ai/rag-in-n8n/).\n\n",
+			"nodes": [
+				"n8n-nodes-base.formTrigger",
+				"@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+				"@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+				"n8n-nodes-base.stickyNote",
+				"@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+				"@n8n/n8n-nodes-langchain.agent",
+				"@n8n/n8n-nodes-langchain.chatTrigger",
+				"@n8n/n8n-nodes-langchain.lmChatOpenAi"
+			],
+			"tags": ["trigger:formTrigger", "flow:linear", "ai", "integration:langchain"],
+			"triggerType": "formTrigger",
+			"hasAI": true,
+			"score": 72.06,
+			"scoreBreakdown": {
+				"traction": 0.759,
+				"recency": 1,
+				"coverage": 0.5,
+				"aiAgent": 0.6,
+				"clarity": 1,
+				"density": 0.875
+			},
+			"source": "https://n8n.io/workflows/5010",
+			"author": "n8n-team",
+			"success": true
+		},
+		{
+			"id": 3647,
+			"slug": "transform-google-drive-documents-into-vector-embeddings-3647",
+			"name": "📥 Transform Google Drive Documents into Vector Embeddings",
+			"description": "Automatically convert documents from Google Drive into vector embeddings using OpenAI, LangChain, and PGVector — fully automated through n8n.\n\n---\n\n### ⚙️ What It Does\n\nThis workflow monitors a Google Drive folder for new files, supports multiple file types (PDF, TXT, JSON), and processes them into vector embeddings using OpenAI’s `text-embedding-3-small` model. These embeddings are stored in a Postgres database using the PGVector extension, making them query-ready for semantic search or RAG-based AI agents.\n\nAfter successful processing, files are moved to a separate “vectorized” folder to avoid duplication.\n\n---\n\n### 💡 Use Cases\n\n- Powering Retrieval-Augmented Generation (RAG) AI agents  \n- Semantic search across private documents  \n- AI assistant knowledge ingestion  \n- Automated document pipelines for indexing or classification  \n\n---\n\n### 🧠 Workflow Highlights\n\n- **Trigger Options:** Manual or Scheduled (3 AM daily by default)  \n- **Supported File Types:** PDF, TXT, JSON  \n- **Embedding Stack:** LangChain Text Splitter, OpenAI Embeddings, PGVector  \n- **Deduplication:** Files are moved after processing  \n- **License:** CC BY-SA 4.0  \n- **Author:** [AlexK1919](https://www.alexk1919.com)\n\n---\n\n### 🛠 What You’ll Need\n\n- **Google Drive OAuth2** credentials (connected to `Search Folder`, `Download File`, and `Move File` nodes)  \n- **OpenAI API Key** (used in the `Embeddings OpenAI` node)  \n- **Postgres + PGVector** database (connected in the `Postgres PGVector Store` node)\n\n---\n\n### 🔧 Step-by-Step Setup Instructions\n\n1. **Create Google OAuth2 credentials** in n8n and connect them to all Google Drive nodes.\n2. **Set your source folder** ID in the `Search Folder` node — this is where incoming files are placed.\n3. **Set your processed folder** ID in the `Move File` node — files will be moved here after vectorization.\n4. **Ensure you have a PGVector-enabled Postgres instance** and input the table name and collection in the `Postgres PGVector Store` node.\n5. **Add your OpenAI credentials** to the `Embeddings OpenAI` node and select `text-embedding-3-small`.\n6. **Optional:** Activate the `Schedule Trigger` node to run daily or configure your own schedule.\n7. **Run manually** by triggering `When clicking ‘Test workflow’` for on-demand ingestion.\n\n---\n\n### 🧩 Customization Tips\n\nWant to support more file types or enhance the pipeline?\n\n- **Add new extractors**: Use `Extract from File` with other formats like DOCX, Markdown, or HTML.\n- **Refine logic by file type**: The `Switch` node routes files to the correct extraction method based on MIME type (`application/pdf`, `text/plain`, `application/json`).\n- **Pre-process with OCR**: Add an OCR step before extraction to handle scanned PDFs or images.\n- **Add filters**: Enhance the `Search Folder` or `Switch` node logic to skip specific files or folders.\n\n---\n\n### 📄 License\n\nThis workflow is available under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) license. You are free to use, adapt, and share this workflow for non-commercial purposes under the terms of this license.\n\nFull license details: https://creativecommons.org/licenses/by-nc-sa/4.0/",
+			"nodes": [
+				"@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+				"@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+				"@n8n/n8n-nodes-langchain.vectorStorePGVector",
+				"n8n-nodes-base.manualTrigger",
+				"n8n-nodes-base.splitInBatches",
+				"n8n-nodes-base.googleDrive",
+				"n8n-nodes-base.scheduleTrigger",
+				"n8n-nodes-base.stickyNote",
+				"n8n-nodes-base.switch",
+				"n8n-nodes-base.extractFromFile",
+				"@n8n/n8n-nodes-langchain.embeddingsOpenAi"
+			],
+			"tags": ["trigger:manual", "flow:loop", "ai", "integration:langchain"],
+			"triggerType": "manual",
+			"hasAI": true,
+			"score": 66.66,
+			"scoreBreakdown": {
+				"traction": 0.529,
+				"recency": 1,
+				"coverage": 0.5,
+				"aiAgent": 0.6,
+				"clarity": 1,
+				"density": 0.714
+			},
+			"source": "https://n8n.io/workflows/3647",
+			"author": "alexk1919",
+			"success": true
+		},
+		{
+			"id": 3848,
+			"slug": "build-a-document-qa-system-with-rag-using-milvus-cohere-and--3848",
+			"name": "Build a Document QA System with RAG using Milvus, Cohere, and OpenAI for Google Drive",
+			"description": "\n\n### Template Description\n\nThis template creates a powerful Retrieval Augmented Generation (RAG) AI agent workflow in [n8n](https://n8n.partnerlinks.io/5xf5bs8y3ruv). It monitors a specified Google Drive folder for new PDF files, extracts their content, generates vector embeddings using Cohere, and stores these embeddings in a Milvus vector database. Subsequently, it enables a RAG agent that can retrieve relevant information from the Milvus database based on user queries and generate responses using OpenAI, enhanced by the retrieved context.\n\n### Functionality\n\nThe workflow automates the process of ingesting documents into a vector database for use with a RAG system.\n\n 1. **Watch New Files:** Triggers when a new file (specifically targeting PDFs) is added to a designated Google Drive folder.\n\n 2. **Download New:** Downloads the newly added file from Google Drive.\n\n 3. **Extract from File:** Extracts text content from the downloaded PDF file.\n\n 4. **Default Data Loader / Set Chunks:** Processes the extracted text, splitting it into manageable chunks for embedding.\n\n 5. **Embeddings Cohere:** Generates vector embeddings for each text chunk using the Cohere API.\n\n 6. **Insert into Milvus:** Inserts the generated vector embeddings and associated metadata into a Milvus vector database.\n\n 7. **When chat message received:** Adapt the trigger tool to fit your needs. \n 8. **RAG Agent:** Orchestrates the RAG process.\n\n 9. **Retrieve from Milvus:** Queries the Milvus database with the user's chat query to find the most relevant chunks.\n\n10. **Memory:** Manages conversation history for the RAG agent to optimize cost and response speed.\n\n11. **OpenAI / Cohere embeddings:** Uses ChatGPT 4o for text generation.\n\n### Requirements\n\nTo use this template, you will need:\n\n* An [n8n instance](https://n8n.partnerlinks.io/5xf5bs8y3ruv) (cloud or self-hosted).\n\n* Access to a Google Drive account to monitor a folder.\n\n* A Milvus instance or access to a Milvus cloud service like [Zilliz](https://zilliz.com). \n\n* A [Cohere](https://cohere.com) API key for generating embeddings.\n\n* An OpenAI API key for the RAG agent's text generation.\n\n### Usage\n\n1. Set up the required credentials in n8n for Google Drive, Milvus, Cohere, and OpenAI.\n\n2. Configure the \"Watch New Files\" node to point to the Google Drive folder you want to monitor for PDFs.\n\n3. Ensure your Milvus instance is running and the target cluster is set up correctly.\n\n4. Activate the workflow.\n\n5. Add PDF files to the monitored Google Drive folder. The workflow will automatically process them and insert their embeddings into Milvus.\n\n6. Interact with the RAG agent. The agent will use the data in Milvus to provide context-aware answers.\n\n### Benefits\n\n* Automates document ingestion for RAG applications.\n\n* Leverages Milvus for high-performance vector storage and search.\n\n* Uses Cohere for generating high-quality text embeddings.\n\n* Enables building a context-aware AI agent using your own documents.\n\n### Suggested improvements\n* **Support for More File Types:** Extend the \"Watch New Files\" node and subsequent extraction steps to handle various document types (e.g., .docx, .txt, .csv, web pages) in addition to PDFs.\n\n* **Error Handling and Notifications:** Implement robust error handling for each step of the workflow (e.g., failed downloads, extraction errors, Milvus insertion failures) and add notification mechanisms (e.g., email, Slack) to alert the user.\n\n### Get in touch with us\n\nContact us at [https://1node.ai](https://1node.ai) ",
+			"nodes": [
+				"@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+				"@n8n/n8n-nodes-langchain.embeddingsCohere",
+				"@n8n/n8n-nodes-langchain.chatTrigger",
+				"n8n-nodes-base.googleDriveTrigger",
+				"n8n-nodes-base.googleDrive",
+				"@n8n/n8n-nodes-langchain.vectorStoreMilvus",
+				"@n8n/n8n-nodes-langchain.agent",
+				"@n8n/n8n-nodes-langchain.lmChatOpenAi",
+				"@n8n/n8n-nodes-langchain.memoryBufferWindow",
+				"@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+				"n8n-nodes-base.extractFromFile",
+				"n8n-nodes-base.stickyNote"
+			],
+			"tags": ["trigger:chatTrigger", "flow:linear", "ai", "integration:langchain"],
+			"triggerType": "chatTrigger",
+			"hasAI": true,
+			"score": 65.61,
+			"scoreBreakdown": {
+				"traction": 0.444,
+				"recency": 1,
+				"coverage": 0.5,
+				"aiAgent": 1,
+				"clarity": 1,
+				"density": 0.846
+			},
+			"source": "https://n8n.io/workflows/3848",
+			"author": "aitoralonso",
 			"success": true
 		}
 	]
