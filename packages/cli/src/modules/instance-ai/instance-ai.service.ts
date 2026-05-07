@@ -105,7 +105,7 @@ import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storag
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
-import { ProxyTokenManager } from './proxy-token-manager';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
 

@@ -181,12 +181,12 @@ LangSmith appends a random suffix (e.g. `instance-ai-baseline-7abc1234`); the mo
 Each scenario lands in one of three regression tiers, evaluated in order of strictness:
 
 - **Regression** — high-confidence flag, gating-grade. The drop must be statistically significant (chance of seeing it by noise < 5%), at least 30 percentage points in size, and the baseline must have been reliable (≥ 70% pass rate).
-- **Soft regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
-- **Notable movement** — any scenario whose pass rate moved by ≥ 35 percentage points without reaching either flag tier. Pure visibility, no implication of cause.
+- **Likely regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
+- **Worth watching** — any scenario whose pass rate moved by ≥ 35 percentage points but wasn't flagged as a regression (hard or likely tier). Pure visibility, no implication of cause.
 
 Other verdicts: `improvement` (PR significantly better, skips the reliability gate), `unreliable_baseline` (confident drop but baseline was too flaky to call a regression — surfaced but not flagged), `stable`, `insufficient_data`.
 
-Why these tiers and not a flat percentage threshold? At the small N PR runs use (typically 3 iterations), a flat threshold can't tell a real regression from coin-flip noise. The confidence cutoff filters out gaps that could plausibly happen by chance, and the reliability gate avoids chasing noise on already-flaky scenarios. Implementation lives in `comparison/statistics.ts` (Fisher's exact test for the confidence check, Wilson interval for the headline aggregate band). Tune the soft tier first if the false-positive rate looks off — keep the hard tier strict.
+Why these tiers and not a flat percentage threshold? At the small N PR runs use (typically 3 iterations), a flat threshold can't tell a real regression from coin-flip noise. The confidence cutoff filters out gaps that could plausibly happen by chance, and the reliability gate avoids chasing noise on already-flaky scenarios. Implementation lives in `comparison/statistics.ts` (Fisher's exact test for the confidence check, Wilson interval for the headline aggregate band). Tune the likely-regression tier first if the false-positive rate looks off — keep the hard tier strict.
 
 ### Failure-category drift
 
