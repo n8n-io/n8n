@@ -277,7 +277,7 @@ onMounted(async () => {
 
 		<div :class="$style.controls">
 			<div :class="$style.sortControl">
-				<N8nText tag="label" color="text-light" size="small" :class="$style.sortLabel">
+				<N8nText tag="label" color="text-light" :class="$style.sortLabel">
 					{{ i18n.baseText('settings.encryptionKeys.sortBy.label') }}
 				</N8nText>
 				<N8nSelect
