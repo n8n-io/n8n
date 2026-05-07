@@ -47,6 +47,7 @@ import {
 	TerminalOutcomeStorage,
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
+	ANTHROPIC_THINKING,
 	BuilderSandboxSessionRegistry,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
@@ -2807,7 +2808,10 @@ export class InstanceAiService {
 									thread: threadId,
 								},
 								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
+									anthropic: {
+										cacheControl: { type: 'ephemeral' },
+										thinking: ANTHROPIC_THINKING,
+									},
 								},
 							},
 							{
@@ -2831,7 +2835,10 @@ export class InstanceAiService {
 								thread: threadId,
 							},
 							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
+								anthropic: {
+									cacheControl: { type: 'ephemeral' },
+									thinking: ANTHROPIC_THINKING,
+								},
 							},
 						},
 						{

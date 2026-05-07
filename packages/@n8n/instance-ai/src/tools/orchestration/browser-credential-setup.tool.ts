@@ -16,6 +16,7 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
+import { ANTHROPIC_THINKING } from '../../constants/thinking';
 import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
@@ -276,7 +277,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 							maxSteps: MAX_STEPS.BROWSER,
 							abortSignal: context.abortSignal,
 							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
+								anthropic: {
+									cacheControl: { type: 'ephemeral' },
+									thinking: ANTHROPIC_THINKING,
+								},
 							},
 							...(llmStepTraceHooks?.executionOptions ?? {}),
 						});
@@ -333,7 +337,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 									maxSteps: MAX_STEPS.BROWSER,
 									abortSignal: context.abortSignal,
 									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
+										anthropic: {
+											cacheControl: { type: 'ephemeral' },
+											thinking: ANTHROPIC_THINKING,
+										},
 									},
 									...(llmStepTraceHooks?.executionOptions ?? {}),
 								});
