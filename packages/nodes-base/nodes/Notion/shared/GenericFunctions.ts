@@ -91,6 +91,9 @@ export async function notionApiRequestAllItems(
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
+	const limit = query.limit as number | undefined;
+	delete query.limit;
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -104,7 +107,6 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
