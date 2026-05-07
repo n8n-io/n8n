@@ -28,16 +28,13 @@ import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 
 const dataTableStore = useDataTableStore();
 const insightsStore = useInsightsStore();

@@ -5,11 +5,9 @@ import { useToast } from '@/app/composables/useToast';
 import { useRoute } from 'vue-router';
 
 import { N8nButton } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const i18n = useI18n();
 const ssoStore = useSSOStore();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const route = useRoute();
 
 const onSSOLogin = async () => {

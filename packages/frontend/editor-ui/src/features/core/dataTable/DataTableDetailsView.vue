@@ -29,17 +29,13 @@ import {
 } from '@n8n/design-system';
 import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 type Props = {
 	id: string;
 	projectId: string;
 };
 
 const props = defineProps<Props>();
-
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();

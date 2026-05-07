@@ -7,14 +7,12 @@ import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const consentStore = useConsentStore();
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 
 // Success state:
 const waitingForRedirect = ref(false);

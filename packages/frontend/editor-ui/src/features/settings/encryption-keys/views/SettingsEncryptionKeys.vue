@@ -26,12 +26,9 @@ import { useClipboard } from '@/app/composables/useClipboard';
 
 import { useEncryptionKeysStore } from '../encryption-keys.store';
 import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.types';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const workflowId = useWorkflowId();
-const { showMessage, showError } = useToast(workflowId);
+const { showMessage, showError } = useToast();
 const clipboard = useClipboard();
 const store = useEncryptionKeysStore();
 

@@ -17,7 +17,6 @@ import {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
@@ -236,8 +235,7 @@ export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
 export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntimeHooks) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const telemetry = useTelemetry();
 
 	// --- Reactive state ---

@@ -20,7 +20,6 @@ import type { WorkflowResource } from '@/Interface';
 
 import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
 import NodesInWorkflowTable from './NodesInWorkflowTable.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
@@ -39,8 +38,7 @@ const workflowsListStore = useWorkflowsListStore();
 
 const modalBus = createEventBus();
 
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 

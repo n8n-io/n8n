@@ -26,12 +26,10 @@ import {
 	N8nNotice,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();

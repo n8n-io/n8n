@@ -26,7 +26,6 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const EXPIRATION_OPTIONS = {
 	'7_DAYS': 7,
 	'30_DAYS': 30,
@@ -37,8 +36,7 @@ const EXPIRATION_OPTIONS = {
 };
 
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const { showError, showMessage } = useToast(workflowId);
+const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const rootStore = useRootStore();

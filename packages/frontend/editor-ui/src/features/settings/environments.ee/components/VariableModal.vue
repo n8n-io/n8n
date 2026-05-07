@@ -21,8 +21,6 @@ import { useEnvironmentsStore } from '../environments.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const props = withDefaults(
 	defineProps<{
 		mode?: 'new' | 'edit';
@@ -34,8 +32,7 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const { showError } = useToast(workflowId);
+const { showError } = useToast();
 const uiStore = useUIStore();
 const environmentsStore = useEnvironmentsStore();
 const projectsStore = useProjectsStore();

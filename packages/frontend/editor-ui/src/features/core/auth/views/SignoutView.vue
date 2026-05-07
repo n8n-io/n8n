@@ -5,11 +5,8 @@ import { useToast } from '@/app/composables/useToast';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { onMounted } from 'vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const usersStore = useUsersStore();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const router = useRouter();
 const i18n = useI18n();
 

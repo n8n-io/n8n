@@ -8,7 +8,7 @@ import { MODAL_CONFIRM } from '@/app/constants/modals';
 import RevealDataWarning from '../components/RevealDataWarning.vue';
 import type { RefOrComputedRef } from '@/app/types';
 
-export function useExecutionRedaction(workflowId: RefOrComputedRef<string>) {
+export function useExecutionRedaction(workflowId?: RefOrComputedRef<string>) {
 	const workflowsStore = useWorkflowsStore();
 	const message = useMessage();
 	const telemetry = useTelemetry();
@@ -27,7 +27,7 @@ export function useExecutionRedaction(workflowId: RefOrComputedRef<string>) {
 
 	async function revealData() {
 		telemetry.track('User clicked reveal data', {
-			workflow_id: workflowId.value,
+			workflow_id: workflowId?.value,
 			execution_id: workflowsStore.getWorkflowExecution?.id,
 		});
 

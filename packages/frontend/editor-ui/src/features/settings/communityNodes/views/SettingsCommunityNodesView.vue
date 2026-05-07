@@ -20,7 +20,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -31,8 +30,7 @@ const pushStore = usePushConnectionStore();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();

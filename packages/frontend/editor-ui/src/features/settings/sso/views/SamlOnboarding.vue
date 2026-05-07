@@ -7,12 +7,9 @@ import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const router = useRouter();
 const locale = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 
 const usersStore = useUsersStore();
 

@@ -27,15 +27,12 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import EulaAcceptanceModal from '../components/EulaAcceptanceModal.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 

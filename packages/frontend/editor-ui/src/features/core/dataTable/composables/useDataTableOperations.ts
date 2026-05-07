@@ -1,6 +1,5 @@
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type {
 	AddColumnResponse,
@@ -81,9 +80,8 @@ export const useDataTableOperations = ({
 	selectedRowIds,
 	handleCopyFocusedCell,
 }: UseDataTableOperationsParams) => {
-	const workflowId = useWorkflowId();
 	const i18n = useI18n();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const message = useMessage();
 	const dataTableStore = useDataTableStore();
 	const contentLoading = ref(false);

@@ -9,16 +9,13 @@ import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 export function useExternalSecretsProvider(
 	provider:
 		| Ref<ExternalSecretsProvider | undefined>
 		| ComputedRef<ExternalSecretsProvider | undefined>,
 	providerData: Ref<ExternalSecretsProviderData>,
 ) {
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const externalSecretsStore = useExternalSecretsStore();
 
 	const initialConnectionState = ref<ExternalSecretsProvider['state'] | undefined>('initializing');

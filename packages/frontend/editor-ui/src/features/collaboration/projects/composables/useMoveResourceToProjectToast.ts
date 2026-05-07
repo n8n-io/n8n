@@ -2,7 +2,6 @@ import { h } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { VIEWS } from '@/app/constants';
 import { ResourceType } from '../projects.utils';
 import type { ProjectSharingData } from '../projects.types';
@@ -20,10 +19,9 @@ interface ShowMoveToProjectToastOptions {
 }
 
 export function useMoveResourceToProjectToast() {
-	const workflowId = useWorkflowId();
 	const router = useRouter();
 	const i18n = useI18n();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 
 	function showMoveToProjectToast(options: ShowMoveToProjectToastOptions) {
 		const isWorkflow = options.resourceType === ResourceType.Workflow;

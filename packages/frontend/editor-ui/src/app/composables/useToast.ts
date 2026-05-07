@@ -12,7 +12,7 @@ import type { RefOrComputedRef } from '@/app/types';
 
 const stickyNotificationQueue: NotificationHandle[] = [];
 
-export function useToast(workflowId: RefOrComputedRef<string>) {
+export function useToast(workflowId?: RefOrComputedRef<string>) {
 	const telemetry = useTelemetry();
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
@@ -82,7 +82,7 @@ export function useToast(workflowId: RefOrComputedRef<string>) {
 				error_title: params.title,
 				error_message: messageForTelemetry,
 				caused_by_credential: causedByCredential(messageForTelemetry),
-				workflow_id: workflowId.value,
+				workflow_id: workflowId?.value,
 			});
 		}
 
@@ -178,7 +178,7 @@ export function useToast(workflowId: RefOrComputedRef<string>) {
 			error_description: message,
 			error_message: error.message,
 			caused_by_credential: causedByCredential(error.message),
-			workflow_id: workflowId.value,
+			workflow_id: workflowId?.value,
 		});
 	}
 

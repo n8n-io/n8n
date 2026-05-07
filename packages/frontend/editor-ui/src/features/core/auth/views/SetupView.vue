@@ -13,13 +13,9 @@ import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/app/constants';
 
 import AuthView from './AuthView.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const locale = useI18n();
 const router = useRouter();
 

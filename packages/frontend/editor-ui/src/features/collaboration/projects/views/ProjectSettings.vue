@@ -27,8 +27,6 @@ import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioni
 import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 import {
 	N8nButton,
 	N8nFormInput,
@@ -52,8 +50,7 @@ const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();

@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 import { ensureThread, getInstanceAiCredits } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -22,8 +21,7 @@ export type { PendingConfirmationItem } from './instanceAi.threadRuntime';
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const persistedThreadIds = new Set<string>();
 
 	// --- Instance-level state ---

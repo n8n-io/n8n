@@ -4,7 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 import { N8nButton, N8nFormInput, N8nCallout, N8nText } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -52,8 +51,7 @@ const allWorkflowsHint = computed(() => {
 	return '';
 });
 
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const modalBus = createEventBus();
 
 const onSubmit = async () => {

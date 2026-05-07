@@ -8,7 +8,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 
 import { ElSwitch } from 'element-plus';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const emit = defineEmits<{
 	change: [value: boolean];
 }>();
@@ -29,8 +28,7 @@ const props = withDefaults(
 
 const externalSecretsStore = useExternalSecretsStore();
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 
 const saving = ref(false);
 

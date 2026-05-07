@@ -4,16 +4,13 @@ import WorkerAccordion from './WorkerAccordion.vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const props = defineProps<{
 	items: WorkerStatus['interfaces'];
 }>();
 
 const i18n = useI18n();
 const clipboard = useClipboard();
-const workflowId = useWorkflowId();
-const { showMessage } = useToast(workflowId);
+const { showMessage } = useToast();
 
 function onCopyToClipboard(content: string) {
 	try {

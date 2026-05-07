@@ -56,9 +56,9 @@ import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
-export const useActions = (workflowId: RefOrComputedRef<string>) => {
+export const useActions = (workflowId?: RefOrComputedRef<string>) => {
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId?.value ?? '')),
 	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();

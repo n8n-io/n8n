@@ -45,11 +45,8 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useMessage } from '@/app/composables/useMessage';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const clipboard = useClipboard();
-const workflowId = useWorkflowId();
-const { showToast, showError } = useToast(workflowId);
+const { showToast, showError } = useToast();
 const message = useMessage();
 
 const settingsStore = useSettingsStore();

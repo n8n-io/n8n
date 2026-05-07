@@ -7,16 +7,13 @@ import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 defineProps<{
 	placeholder?: string;
 	disabled?: boolean;
 }>();
 
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 
 const modelValue = defineModel<string>();
 

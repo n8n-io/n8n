@@ -13,7 +13,6 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import type { IUpdateInformation } from '@/Interface';
@@ -26,7 +25,6 @@ export interface UseCodeDiffOptions {
 }
 
 export function useCodeDiff(options: UseCodeDiffOptions) {
-	const workflowId = useWorkflowId();
 	const rootStore = useRootStore();
 	const ndvStore = useNDVStore();
 	const locale = useI18n();
@@ -73,7 +71,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 
 	function showCodeUpdateToastIfNeeded(errorNodeName: string) {
 		if (errorNodeName !== ndvStore.activeNodeName) {
-			useToast(workflowId).showMessage({
+			useToast().showMessage({
 				type: 'success',
 				title: locale.baseText('aiAssistant.codeUpdated.message.title'),
 				message: h(AiUpdatedCodeMessage, {

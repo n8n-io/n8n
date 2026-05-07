@@ -20,18 +20,15 @@ import { useChatStore } from './chat.store';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatSemanticSearchSettings from './ChatSemanticSearchSettings.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const i18n = useI18n();
 const posthogStore = usePostHog();
-const workflowId = useWorkflowId();
 const isSemanticSearchEnabled = computed(() =>
 	posthogStore.isVariantEnabled(
 		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.variant,
 	),
 );
-const toast = useToast(workflowId);
+const toast = useToast();
 const documentTitle = useDocumentTitle();
 
 const chatStore = useChatStore();

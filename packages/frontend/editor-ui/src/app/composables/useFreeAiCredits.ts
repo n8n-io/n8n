@@ -6,17 +6,15 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 
 export function useFreeAiCredits() {
-	const workflowId = useWorkflowId();
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const telemetry = useTelemetry();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const i18n = useI18n();
 
 	const claimingCredits = ref(false);

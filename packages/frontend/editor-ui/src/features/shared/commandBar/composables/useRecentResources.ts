@@ -33,15 +33,16 @@ interface RecentNode {
 
 type RecentNodesMap = Record<string, RecentNode[]>;
 
-export function useRecentResources(workflowId: RefOrComputedRef<string>) {
+export function useRecentResources(workflowId?: RefOrComputedRef<string>) {
 	const i18n = useI18n();
 	const router = useRouter();
+	const wfId = computed(() => workflowId?.value ?? '');
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(wfId.value)),
 	);
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const { setNodeActive } = useCanvasOperations(workflowId);
+	const { setNodeActive } = useCanvasOperations(wfId);
 
 	const recentWorkflows = useLocalStorage<RecentWorkflow[]>(RECENT_WORKFLOWS_STORAGE_KEY, []);
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});

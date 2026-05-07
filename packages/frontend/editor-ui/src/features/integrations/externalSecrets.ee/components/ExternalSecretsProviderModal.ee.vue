@@ -21,7 +21,6 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nLink, N8nNotice } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const props = defineProps<{
 	data: { eventBus: EventBus; name: string };
 }>();
@@ -33,8 +32,7 @@ const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> 
 };
 
 const externalSecretsStore = useExternalSecretsStore();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const i18n = useI18n();
 const { confirm } = useMessage();
 

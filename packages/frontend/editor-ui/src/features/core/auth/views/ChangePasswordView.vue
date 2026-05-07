@@ -12,14 +12,11 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH, VIEWS } from '@/app/constants';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const locale = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const router = useRouter();
 const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 

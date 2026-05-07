@@ -24,7 +24,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -130,8 +129,7 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const message = useMessage();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const folderHelpers = useFolders();
 
 const sourceControlStore = useSourceControlStore();

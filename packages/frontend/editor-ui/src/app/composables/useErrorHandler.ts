@@ -1,5 +1,4 @@
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { captureException } from '@sentry/vue';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -25,8 +24,7 @@ export interface HandleErrorOptions {
  * Shows error toast, logs to console, and captures exception to Sentry.
  */
 export function useErrorHandler(options: ErrorHandlerOptions) {
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const i18n = useI18n();
 
 	/**

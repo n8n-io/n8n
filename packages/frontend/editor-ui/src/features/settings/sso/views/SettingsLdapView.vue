@@ -22,7 +22,6 @@ import { useSSOStore } from '../sso.store';
 
 import { ElTable, ElTableColumn } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nFormInputs, N8nHeading, N8nInfoTip } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -61,9 +60,7 @@ type CellClassStyleMethodParams<T> = {
 	column: TableColumnCtx<T>;
 	columnIndex: number;
 };
-
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const documentTitle = useDocumentTitle();

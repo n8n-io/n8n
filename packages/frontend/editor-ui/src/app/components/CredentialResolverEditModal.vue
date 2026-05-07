@@ -11,7 +11,6 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -46,8 +45,7 @@ const props = defineProps<{
 
 const modalBus = createEventBus();
 const i18n = useI18n();
-const workflowId = useInjectWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const rootStore = useRootStore();
 
 const activeTab = ref('configuration');

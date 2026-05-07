@@ -11,7 +11,6 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
 const modalBus = createEventBus();
@@ -19,8 +18,7 @@ const password = ref('');
 const loading = ref(false);
 
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const { showMessage, showError } = useToast(workflowId);
+const { showMessage, showError } = useToast();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;

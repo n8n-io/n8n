@@ -19,14 +19,11 @@ import { AGENT_EDITOR_MODAL_KEY, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHu
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const chatStore = useChatStore();
 const uiStore = useUIStore();
 const route = useRoute();
 const router = useRouter();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);

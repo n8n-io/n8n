@@ -20,15 +20,12 @@ import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const $style = useCssModule();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const { showToast, showError } = useToast(workflowId);
+const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';

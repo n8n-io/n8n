@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 
 import { N8nInputLabel } from '@n8n/design-system';
@@ -33,8 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
-const workflowId = useInjectWorkflowId();
-const { showMessage } = useToast(workflowId);
+const { showMessage } = useToast();
 
 function copy() {
 	if (props.disableCopy) return;

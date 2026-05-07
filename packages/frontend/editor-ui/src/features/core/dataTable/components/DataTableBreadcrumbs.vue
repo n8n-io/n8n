@@ -12,7 +12,6 @@ import { telemetry } from '@/app/plugins/telemetry';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
@@ -32,8 +31,7 @@ const dataTableStore = useDataTableStore();
 
 const i18n = useI18n();
 const router = useRouter();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 
 const editableName = ref(props.dataTable.name);
 

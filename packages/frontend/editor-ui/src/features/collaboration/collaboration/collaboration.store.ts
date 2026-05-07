@@ -10,7 +10,6 @@ import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -38,8 +37,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const builderStore = useBuilderStore();
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const i18n = useI18n();
 
 	const route = useRoute();

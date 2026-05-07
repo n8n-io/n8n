@@ -9,7 +9,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
@@ -29,8 +28,7 @@ const props = defineProps<{
 const modalBus = createEventBus();
 
 const i18n = useI18n();
-const workflowId = useInjectWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();

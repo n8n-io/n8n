@@ -13,7 +13,7 @@ import type { RefOrComputedRef } from '@/app/types';
  * Composable for OAuth credential type detection and authorization.
  * Used by NodeCredentials for the quick connect OAuth flow.
  */
-export function useCredentialOAuth(workflowId: RefOrComputedRef<string>) {
+export function useCredentialOAuth(workflowId?: RefOrComputedRef<string>) {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 
@@ -244,7 +244,7 @@ export function useCredentialOAuth(workflowId: RefOrComputedRef<string>) {
 			telemetry.track('User created credentials', {
 				credential_type: credential.type,
 				credential_id: credential.id,
-				workflow_id: workflowId.value,
+				workflow_id: workflowId?.value,
 			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
@@ -262,7 +262,7 @@ export function useCredentialOAuth(workflowId: RefOrComputedRef<string>) {
 
 		const trackProperties: Record<string, GenericValue> = {
 			credential_type: credentialTypeName,
-			workflow_id: workflowId.value ?? null,
+			workflow_id: workflowId?.value ?? null,
 			credential_id: credential.id,
 			is_complete: true,
 			is_new: true,

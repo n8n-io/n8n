@@ -12,7 +12,6 @@ import { defineStore } from 'pinia';
 import type { NotificationHandle } from 'element-plus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useUIStore } from '@/app/stores/ui.store';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
@@ -51,8 +50,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const whatsNewCallout = ref<NotificationHandle | undefined>();
 
 	const telemetry = useTelemetry();
-	const workflowId = useWorkflowId();
-	const { showToast, showMessage } = useToast(workflowId);
+	const { showToast, showMessage } = useToast();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();

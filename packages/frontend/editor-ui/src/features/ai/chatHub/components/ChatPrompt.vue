@@ -13,8 +13,6 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatPromptCallouts from './ChatPromptCallouts.vue';
 import ChatPromptCompact from './ChatPromptCompact.vue';
 import ChatPromptFull from './ChatPromptFull.vue';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const props = defineProps<{
 	messagingState: MessagingState;
 	isNewSession: boolean;
@@ -46,9 +44,7 @@ const activePromptRef = ref<InstanceType<typeof ChatPromptCompact | typeof ChatP
 const message = ref('');
 const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
-
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const i18n = useI18n();
 
 const speechInput = useSpeechRecognition({

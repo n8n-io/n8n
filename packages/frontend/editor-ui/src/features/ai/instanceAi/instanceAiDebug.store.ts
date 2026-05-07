@@ -2,15 +2,13 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { fetchThreads, fetchThreadMessages } from './instanceAi.memory.api';
 import type { InstanceAiThreadInfo, InstanceAiStoredMessage } from '@n8n/api-types';
 
 export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 	const rootStore = useRootStore();
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const i18n = useI18n();
 
 	// --- State ---

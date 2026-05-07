@@ -12,8 +12,6 @@ import Modal from '@/app/components/Modal.vue';
 import { ElUpload } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 type Props = {
 	modalName: string;
 	dataTable: DataTable;
@@ -29,8 +27,7 @@ const emit = defineEmits<{
 const dataTableStore = useDataTableStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const telemetry = useTelemetry();
 
 const selectedFile = ref<File | null>(null);

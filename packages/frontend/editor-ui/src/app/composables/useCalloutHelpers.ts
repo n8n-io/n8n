@@ -18,7 +18,7 @@ import type { OpenTemplateElement } from '@/Interface';
 import type { RefOrComputedRef } from '@/app/types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-export function useCalloutHelpers(workflowId: RefOrComputedRef<string>) {
+export function useCalloutHelpers(workflowId?: RefOrComputedRef<string>) {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
@@ -33,7 +33,7 @@ export function useCalloutHelpers(workflowId: RefOrComputedRef<string>) {
 		const template = getRagStarterWorkflowJson();
 
 		const routeTemplateId = route.query.templateId;
-		const workflow = workflowsListStore.getWorkflowById(workflowId.value);
+		const workflow = workflowId ? workflowsListStore.getWorkflowById(workflowId.value) : undefined;
 
 		// Hide the RAG starter callout if we're currently on the RAG starter template
 		if ((routeTemplateId ?? workflow?.meta?.templateId) === template.meta.templateId) {

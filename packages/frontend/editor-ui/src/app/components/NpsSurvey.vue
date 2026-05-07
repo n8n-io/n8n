@@ -3,7 +3,6 @@ import { NPS_SURVEY_MODAL_KEY } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import ModalDrawer from '@/app/components/ModalDrawer.vue';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -18,8 +17,7 @@ const props = defineProps<{
 
 const rootStore = useRootStore();
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const telemetry = useTelemetry();
 const { APP_Z_INDEXES } = useStyles();
 

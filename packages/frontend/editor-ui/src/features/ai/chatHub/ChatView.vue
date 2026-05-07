@@ -60,15 +60,12 @@ import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
 import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
 const settingsStore = useSettingsStore();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();

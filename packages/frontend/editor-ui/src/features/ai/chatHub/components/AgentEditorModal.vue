@@ -49,8 +49,6 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -66,11 +64,9 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-
 const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner);
 const canUploadFiles = computed(() => chatStore.semanticSearchReadiness.isReadyForCurrentUser);
-const toast = useToast(workflowId);
+const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
 const documentVisibility = useDocumentVisibility();

@@ -5,7 +5,6 @@ import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { importCurlEventBus } from '@/app/event-bus';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -415,8 +414,7 @@ export function useImportCurlCommand(options?: {
 		};
 	};
 }) {
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const i18n = useI18n();
 
 	const translationStrings = {

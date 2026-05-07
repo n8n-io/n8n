@@ -23,11 +23,8 @@ import {
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
 import { useRBACStore } from '@/app/stores/rbac.store';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
-
 const i18n = useI18n();
-const workflowId = useWorkflowId();
-const toast = useToast(workflowId);
+const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();

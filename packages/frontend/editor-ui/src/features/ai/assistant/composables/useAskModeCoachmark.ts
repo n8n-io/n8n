@@ -4,7 +4,6 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
@@ -16,12 +15,11 @@ const isBuilderEnabledView = (name: unknown): name is VIEWS =>
 	typeof name === 'string' && (BUILDER_ENABLED_VIEWS as readonly string[]).includes(name);
 
 export function useAskModeCoachmark() {
-	const workflowId = useWorkflowId();
 	const chatPanelStore = useChatPanelStore();
 	const builderStore = useBuilderStore();
 	const settingsStore = useSettingsStore();
 	const route = useRoute();
-	const { isCalloutDismissed, dismissCallout } = useCalloutHelpers(workflowId);
+	const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
 	const posthogStore = usePostHog();
 
 	const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);

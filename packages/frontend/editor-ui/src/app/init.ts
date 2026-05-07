@@ -3,7 +3,6 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -52,8 +51,7 @@ export async function initializeCore() {
 	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
 
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const i18n = useI18n();
 
 	registerAuthenticationHooks();
@@ -112,8 +110,7 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	const i18n = useI18n();
-	const workflowId = useWorkflowId();
-	const toast = useToast(workflowId);
+	const toast = useToast();
 	const sourceControlStore = useSourceControlStore();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
