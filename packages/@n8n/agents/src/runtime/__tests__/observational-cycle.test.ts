@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+import { AgentEvent } from '../../types';
+import type { AgentDbMessage } from '../../types/sdk/message';
+import {
+	OBSERVATION_SCHEMA_VERSION,
+	type CompactFn,
+	type NewObservation,
+	type ObserveFn,
+} from '../../types/sdk/observation';
 import { AgentEventBus } from '../event-bus';
 import { InMemoryMemory, saveMessagesToThread } from '../memory-store';
 import {
@@ -8,14 +16,6 @@ import {
 	runObservationalCycle,
 	type RunObservationalCycleOpts,
 } from '../observational-cycle';
-import { AgentEvent } from '../../types';
-import {
-	OBSERVATION_SCHEMA_VERSION,
-	type CompactFn,
-	type NewObservation,
-	type ObserveFn,
-} from '../../types/sdk/observation';
-import type { AgentDbMessage } from '../../types/sdk/message';
 
 type GenerateTextCall = { model: unknown; system?: string; prompt?: string };
 const mockGenerateText = jest.fn<Promise<{ text: string }>, [GenerateTextCall]>();
@@ -60,7 +60,10 @@ function opts(
 		resourceId: 'u-1',
 		model: { doGenerate: jest.fn() } as never,
 		workingMemory: { template: '# Thread memory', structured: false },
-		observe: async () => [],
+		observe: async () => {
+			await Promise.resolve();
+			return [];
+		},
 		compactionThreshold: 5,
 		...overrides,
 	};
@@ -75,6 +78,7 @@ describe('runObservationalCycle', () => {
 		const mem = new InMemoryMemory();
 		await save(mem, [msg('m1', 'remember that I prefer concise answers')]);
 		const observe = jest.fn<ReturnType<ObserveFn>, Parameters<ObserveFn>>(async (ctx) => {
+			await Promise.resolve();
 			expect(ctx.deltaMessages.map((m) => m.id)).toEqual(['m1']);
 			expect(ctx.currentWorkingMemory).toBeNull();
 			expect(ctx.threadId).toBe('t-1');
@@ -99,6 +103,7 @@ describe('runObservationalCycle', () => {
 			'# Thread memory\n- Current project:',
 		);
 		const compact = jest.fn<ReturnType<CompactFn>, Parameters<CompactFn>>(async (ctx) => {
+			await Promise.resolve();
 			expect(ctx.observations).toHaveLength(1);
 			expect(ctx.currentWorkingMemory).toContain('Current project');
 			return { content: '# Thread memory\n- Current project: Memory v1' };
@@ -106,7 +111,10 @@ describe('runObservationalCycle', () => {
 
 		const result = await runObservationalCycle(
 			opts(mem, {
-				observe: async () => [row('Current project is Memory v1.')],
+				observe: async () => {
+					await Promise.resolve();
+					return [row('Current project is Memory v1.')];
+				},
 				compact,
 				compactionThreshold: 1,
 			}),
@@ -126,7 +134,10 @@ describe('runObservationalCycle', () => {
 
 		const result = await runObservationalCycle(
 			opts(mem, {
-				observe: async () => [row('one')],
+				observe: async () => {
+					await Promise.resolve();
+					return [row('one')];
+				},
 				compact,
 				compactionThreshold: 2,
 			}),
@@ -165,6 +176,7 @@ describe('runObservationalCycle', () => {
 		await save(mem, [msg('m2', 'later', second)]);
 
 		const observe = jest.fn<ReturnType<ObserveFn>, Parameters<ObserveFn>>(async (ctx) => {
+			await Promise.resolve();
 			expect(ctx.gap).toMatchObject({
 				durationMs: 90 * 60 * 1000,
 				text: 'User returned after 1h 30m of inactivity.',
@@ -248,9 +260,10 @@ describe('runObservationalCycle', () => {
 		await runObservationalCycle(opts(mem));
 		await save(mem, [msg('m2', 'later', second)]);
 
-		const compact = jest.fn<ReturnType<CompactFn>, Parameters<CompactFn>>(async () => ({
-			content: '# Thread memory\n- Continuity notes: user returned after a gap',
-		}));
+		const compact = jest.fn<ReturnType<CompactFn>, Parameters<CompactFn>>(async () => {
+			await Promise.resolve();
+			return { content: '# Thread memory\n- Continuity notes: user returned after a gap' };
+		});
 
 		await runObservationalCycle(opts(mem, { compact, compactionThreshold: 1 }));
 		expect(compact).not.toHaveBeenCalled();
@@ -259,7 +272,10 @@ describe('runObservationalCycle', () => {
 		await save(mem, [msg('m3', 'remember this decision', third)]);
 		await runObservationalCycle(
 			opts(mem, {
-				observe: async () => [row('Decision was recorded.')],
+				observe: async () => {
+					await Promise.resolve();
+					return [row('Decision was recorded.')];
+				},
 				compact,
 				compactionThreshold: 1,
 			}),
@@ -327,6 +343,8 @@ describe('runObservationalCycle', () => {
 		expect(call.system).toContain('Do not record assistant self-assessments');
 		expect(call.system).toContain('memory drawer shows it');
 		expect(call.system).toContain('the test passed');
+		expect(call.system).not.toContain('Do not treat assistant acknowledgements');
+		expect(call.system).not.toContain('actions performed by the main agent');
 		expect(call.system).toContain('Do not emit temporal-gap rows');
 		expect(call.prompt).toContain('Computed temporal gap:');
 		expect(call.prompt).toContain('User returned after 2h of inactivity.');
@@ -366,6 +384,8 @@ describe('runObservationalCycle', () => {
 		expect(compactorCall.system).toContain(
 			'Remove existing follow-ups that came only from assistant questions',
 		);
+		expect(compactorCall.system).not.toContain('The observer owns memory updates');
+		expect(compactorCall.system).not.toContain('Which DB schema is Robin using?');
 		expect(compactorCall.prompt).toContain('### continuity / gap');
 		expect(compactorCall.prompt).toContain('duration=2h');
 		expect(compactorCall.prompt).toContain('### decisions / observation');
@@ -388,8 +408,14 @@ describe('runObservationalCycle', () => {
 					structured: true,
 					schema: z.object({ name: z.string() }),
 				},
-				observe: async () => [row('Name is Alice.')],
-				compact: async () => ({ content: '{"name": 123}' }),
+				observe: async () => {
+					await Promise.resolve();
+					return [row('Name is Alice.')];
+				},
+				compact: async () => {
+					await Promise.resolve();
+					return { content: '{"name": 123}' };
+				},
 				compactionThreshold: 1,
 				eventBus,
 			}),
@@ -415,6 +441,7 @@ describe('runObservationalCycle', () => {
 		const result = await runObservationalCycle(
 			opts(mem, {
 				observe: async () => {
+					await Promise.resolve();
 					throw new Error('observer failed');
 				},
 				eventBus,

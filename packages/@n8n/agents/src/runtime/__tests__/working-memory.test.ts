@@ -18,6 +18,8 @@ describe('buildWorkingMemoryInstruction', () => {
 		expect(result).toContain('Do not try to edit, summarize, refresh, or maintain working memory');
 		expect(result).toContain('Treat working memory as internal context');
 		expect(result).toContain('instead of dumping the document');
+		expect(result).not.toContain('Do not say "I added", "I saved", or "I updated memory"');
+		expect(result).not.toContain('remember, add, save, or update memory');
 	});
 
 	it('does not include the template in the main-agent instruction', () => {
@@ -50,6 +52,12 @@ describe('templateFromSchema', () => {
 		const result = templateFromSchema(schema);
 		expect(result).toContain('userName');
 		expect(result).toContain('favoriteColor');
-		expect(JSON.parse(result)).toHaveProperty('userName');
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(result) as unknown;
+		} catch (error) {
+			throw new Error(`Expected schema template to be valid JSON: ${String(error)}`);
+		}
+		expect(parsed).toHaveProperty('userName');
 	});
 });

@@ -519,6 +519,12 @@ describe('buildFromJson()', () => {
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('Use it silently');
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
+			'Do not say "I added", "I saved", or "I updated memory"',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
+			'remember, add, save, or update memory',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
 			'current-state snapshot',
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain('Keep it concise');
