@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 import type express from 'express';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
@@ -40,6 +41,7 @@ describe('TestRunsController', () => {
 		mockTestCaseExecutionRepository = {
 			find: jest.fn(),
 			markAllPendingAsCancelled: jest.fn(),
+			cancelIfNew: jest.fn(),
 		} as unknown as jest.Mocked<TestCaseExecutionRepository>;
 
 		mockTestRunnerService = {
@@ -176,20 +178,57 @@ describe('TestRunsController', () => {
 		});
 	});
 
-	describe('getTestRun (cross-workflow scoping)', () => {
-		it('returns 404 when the run id belongs to a different workflow', async () => {
-			// User has access to the route's workflow, but supplies a run id from
+	describe('cancelCase', () => {
+		const caseId = 'case-1';
+
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId, caseId },
+				user: mockUser,
+			}) as TestRunsRequest.CancelCase;
+
+		it('cancels a pending case via cancelIfNew (scoped to run) and tracks telemetry', async () => {
+			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(true);
+
+			const result = await testRunsController.cancelCase(buildReq());
+
+			expect(mockTestCaseExecutionRepository.cancelIfNew).toHaveBeenCalledWith(
+				mockTestRunId,
+				caseId,
+			);
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User cancelled a test case', {
+				run_id: mockTestRunId,
+				case_id: caseId,
+			});
+			expect(result).toEqual({ success: true });
+		});
+
+		it('throws ConflictError when the case is no longer pending', async () => {
+			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(false);
+
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(ConflictError);
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the workflow is not accessible', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestCaseExecutionRepository.cancelIfNew).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the run id belongs to a different workflow', async () => {
+			// User has access to the route's workflow but supplies a run id from
 			// another workflow. The scoped lookup returns null and we surface a
-			// NotFoundError — the same behaviour as a missing run, so callers
-			// can't distinguish "wrong workflow" from "doesn't exist".
+			// 404 — the cancel must never reach `cancelIfNew`.
 			mockTestRunRepository.findOne.mockResolvedValue(null);
 
-			await expect(
-				(testRunsController as any).getTestRun(mockTestRunId, mockWorkflowId, mockUser),
-			).rejects.toThrow(NotFoundError);
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(NotFoundError);
 			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
 				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
 			});
+			expect(mockTestCaseExecutionRepository.cancelIfNew).not.toHaveBeenCalled();
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		});
 	});
 

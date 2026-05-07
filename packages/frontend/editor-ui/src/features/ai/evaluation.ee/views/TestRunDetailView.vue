@@ -12,6 +12,7 @@ import orderBy from 'lodash/orderBy';
 import { N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { getUserDefinedMetricNames } from '../evaluation.utils';
 import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
+import RunStatusPill from '../components/RunDetail/RunStatusPill.vue';
 import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
 
 const router = useRouter();
@@ -61,7 +62,14 @@ const previousRun = computed<TestRunRecord | null>(() => {
 });
 
 const orderedTestCases = computed(() =>
-	orderBy(testCases.value, (record) => record.runAt ?? '', 'asc'),
+	orderBy(
+		testCases.value,
+		// Pre-created cases have no runAt yet, so prefer the deterministic
+		// runIndex set at seeding. Fall back to runAt for legacy rows that
+		// pre-date the runIndex column.
+		[(record) => record.runIndex ?? Number.MAX_SAFE_INTEGER, (record) => record.runAt ?? ''],
+		['asc', 'asc'],
+	),
 );
 
 const metricSources = computed(() => evaluationStore.metricSourceByKey);
@@ -73,6 +81,43 @@ const caseValuesByKey = computed(() => {
 	}
 	return result;
 });
+
+const rerunRun = async () => {
+	if (!workflowId.value) return;
+	try {
+		// startTestRun returns only { success: boolean }, so we identify the
+		// newly created run by diffing the run-id set before and after the
+		// refetch instead of relying on runAt ordering (which is unstable
+		// when two runs land in the same millisecond).
+		const previousRunIds = new Set(orderedRuns.value.map((record) => record.id));
+		await evaluationStore.startTestRun(workflowId.value);
+		await evaluationStore.fetchTestRuns(workflowId.value);
+		const newRun = orderedRuns.value.find((record) => !previousRunIds.has(record.id));
+		await router.push(
+			newRun
+				? {
+						name: VIEWS.EVALUATION_RUNS_DETAIL,
+						params: { workflowId: workflowId.value, runId: newRun.id },
+					}
+				: { name: VIEWS.EVALUATION_EDIT, params: { workflowId: workflowId.value } },
+		);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
+	}
+};
+
+const cancelPendingCase = async (testCase: TestCaseExecutionRecord) => {
+	if (!workflowId.value) return;
+	try {
+		await evaluationStore.cancelTestCase({
+			workflowId: workflowId.value,
+			runId: runId.value,
+			caseId: testCase.id,
+		});
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.runDetail.testCase.cancelError'));
+	}
+};
 
 const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
 	const executionId = testCase.executionId;
@@ -155,6 +200,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 						})
 					}}
 				</h1>
+				<RunStatusPill v-if="run" :status="run.status" />
 			</div>
 		</div>
 
@@ -178,6 +224,8 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 				:index="index + 1"
 				:metric-sources="metricSources"
 				@view="openRelatedExecution"
+				@cancel="cancelPendingCase"
+				@rerun="rerunRun"
 			/>
 		</div>
 	</div>
