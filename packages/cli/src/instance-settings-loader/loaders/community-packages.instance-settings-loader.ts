@@ -119,16 +119,17 @@ export class CommunityPackagesInstanceSettingsLoader {
 		}
 
 		for (const pkg of toRemove) {
+			const { packageName } = pkg;
 			const dependentNodeCount = pkg.installedNodes?.length ?? 0;
 			try {
-				await this.communityPackagesService.removePackage(pkg.packageName, pkg);
+				await this.communityPackagesService.removePackage(packageName, pkg);
 				this.logger.warn(
-					`Removed community package '${pkg.packageName}' (had ${dependentNodeCount} registered node type(s)) — not declared in N8N_COMMUNITY_PACKAGES`,
+					`Removed community package '${packageName}' (had ${dependentNodeCount} registered node type(s)) — not declared in N8N_COMMUNITY_PACKAGES`,
 				);
 				changed = true;
 			} catch (error) {
 				this.logger.error(
-					`Failed to remove community package '${pkg.packageName}' that is not declared in env: ${ensureError(error).message}`,
+					`Failed to remove community package '${packageName}' that is not declared in env: ${ensureError(error).message}`,
 				);
 			}
 		}
