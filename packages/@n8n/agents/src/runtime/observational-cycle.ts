@@ -309,11 +309,11 @@ function buildGapContext(
 	gapThresholdMs: number,
 ): ObservationGapContext | null {
 	if (!cursor) return null;
-	const firstMessage = firstUserMessage(deltaMessages) ?? deltaMessages[0];
+	const firstMessage = deltaMessages[0];
 	if (!firstMessage) return null;
 	const durationMs = firstMessage.createdAt.getTime() - cursor.lastObservedAt.getTime();
 	if (durationMs < gapThresholdMs) return null;
-	const text = `User returned after ${humanizeMs(durationMs)} of inactivity.`;
+	const text = buildGapText(firstMessage, durationMs);
 	return {
 		durationMs,
 		text,
@@ -444,8 +444,12 @@ function renderGapContext(gap: ObservationGapContext): string {
 	].join('\n');
 }
 
-function firstUserMessage(messages: AgentDbMessage[]): AgentDbMessage | undefined {
-	return messages.find((message) => isLlmMessage(message) && message.role === 'user');
+function buildGapText(message: AgentDbMessage, durationMs: number): string {
+	const inactivity = humanizeMs(durationMs);
+	if (isLlmMessage(message) && message.role === 'user') {
+		return `User returned after ${inactivity} of inactivity.`;
+	}
+	return `Conversation continued after ${inactivity} of inactivity.`;
 }
 
 function observationCategory(value: unknown): ObservationCategory {
