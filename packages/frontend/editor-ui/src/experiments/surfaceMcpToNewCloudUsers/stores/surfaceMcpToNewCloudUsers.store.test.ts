@@ -55,11 +55,14 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 		store = useSurfaceMcpToNewCloudUsersStore();
 	});
 
-	it('derives the tile variant from PostHog only', () => {
-		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantTile);
+	it.each([
+		SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1,
+		SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
+	])('derives tile entry state from PostHog variant %s', (variant) => {
+		mockGetVariant.mockReturnValue(variant);
 
 		expect(store.$id).toBe(STORES.EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS);
-		expect(store.currentVariant).toBe(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantTile);
+		expect(store.currentVariant).toBe(variant);
 		expect(store.isEnabled).toBe(true);
 		expect(store.isTileVariant).toBe(true);
 		expect(store.isFirstOpenModalVariant).toBe(false);
@@ -74,14 +77,14 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 		expect(store.isFirstOpenModalVariant).toBe(false);
 	});
 
-	it('persists the first eligible open marker', () => {
+	it('persists the first eligible open marker for the retained intro modal', () => {
 		store.markFirstEligibleOpenSeen();
 
 		expect(firstOpenSeenStorage.value).toBe('true');
 		expect(store.hasSeenFirstEligibleOpen).toBe(true);
 	});
 
-	it('persists first-open modal dismissal', () => {
+	it('persists first-open modal dismissal for the retained intro modal', () => {
 		store.dismissFirstOpenModal();
 
 		expect(firstOpenDismissedStorage.value).toBe('true');
@@ -91,16 +94,16 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 	});
 
 	it('tracks copied parameter payload with the current variant', () => {
-		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal);
+		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1);
 		expectTypeOf<CopiedParameter>().toEqualTypeOf<'agent-prompt'>();
 
-		store.trackCopiedParameter('first_open_modal', 'cursor', 'agent-prompt');
+		store.trackCopiedParameter('tile', 'cursor', 'agent-prompt');
 
 		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding copied parameter', {
-			surface: 'first_open_modal',
+			surface: 'tile',
 			client: 'cursor',
 			parameter: 'agent-prompt',
-			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal,
+			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1,
 		});
 	});
 });

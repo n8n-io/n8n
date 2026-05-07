@@ -25,13 +25,15 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			posthogStore.getVariant(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name),
 		);
 
-		const isTileVariant = computed(
-			() => currentVariant.value === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantTile,
-		);
-		const isFirstOpenModalVariant = computed(
-			() =>
-				currentVariant.value === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal,
-		);
+		const isTileVariant = computed(() => {
+			const variant = currentVariant.value;
+
+			return (
+				variant === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1 ||
+				variant === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2
+			);
+		});
+		const isFirstOpenModalVariant = computed(() => false);
 		const isEnabled = computed(() => Boolean(currentVariant.value));
 
 		const hasSeenFirstEligibleOpen = computed(() => firstOpenSeenStorage.value === 'true');

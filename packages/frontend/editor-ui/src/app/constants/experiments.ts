@@ -103,8 +103,8 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 	'080_surface_mcp_to_new_cloud_users',
 	{
 		control: 'control',
-		variantTile: 'variant-tile',
-		variantFirstOpenModal: 'variant-first-open-modal',
+		variant1: 'variant-1',
+		variant2: 'variant-2',
 	},
 );
 
