@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nText, N8nIcon } from '@n8n/design-system';
+import { N8nText, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
@@ -54,6 +54,12 @@ function relayPushEvent(event: PushMessage) {
 		JSON.stringify({ command: 'executionEvent', event }),
 		window.location.origin,
 	);
+}
+
+function openWorkflowInEditor() {
+	const workflowId = workflow.value?.id ?? props.workflowId;
+	if (!workflowId) return;
+	window.open(`/workflow/${workflowId}`, '_blank', 'noopener');
 }
 
 async function fetchWorkflow(id: string) {
@@ -133,6 +139,17 @@ defineExpose({ relayPushEvent });
 			loader-type="spinner"
 		/>
 
+		<N8nIconButton
+			v-if="workflow"
+			icon="external-link"
+			variant="subtle"
+			size="large"
+			:class="$style.openWorkflowButton"
+			:aria-label="i18n.baseText('instanceAi.previewTabBar.openWorkflowInEditor')"
+			data-test-id="instance-ai-workflow-preview-open-editor"
+			@click="openWorkflowInEditor"
+		/>
+
 		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
 		<div v-if="isLoading && !workflow" :class="$style.centerState">
 			<N8nIcon icon="loader-circle" :size="80" spin />
@@ -155,5 +172,12 @@ defineExpose({ relayPushEvent });
 	justify-content: center;
 	gap: var(--spacing--xs);
 	height: 100%;
+}
+
+.openWorkflowButton {
+	position: absolute;
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
+	z-index: 1;
 }
 </style>

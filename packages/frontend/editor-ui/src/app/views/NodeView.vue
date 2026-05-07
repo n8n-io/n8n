@@ -99,7 +99,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
@@ -192,7 +192,7 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();

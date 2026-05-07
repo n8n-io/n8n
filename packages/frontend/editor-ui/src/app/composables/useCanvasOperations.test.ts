@@ -80,7 +80,7 @@ const mockRoute = reactive({
 const mockRouterReplace = vi.fn();
 
 vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
+	...(await importOriginal<typeof import('vue-router')>()),
 	useRoute: () => mockRoute,
 	useRouter: () => ({
 		replace: mockRouterReplace,
@@ -92,7 +92,6 @@ import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
 	return {
 		...actual,
@@ -111,7 +110,6 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 });
 
 vi.mock('@vueuse/core', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const original = await importOriginal<typeof import('@vueuse/core')>();
 	const copySpy = vi.fn();
 	return {
@@ -3752,7 +3750,7 @@ describe('useCanvasOperations', () => {
 			const newWorkflowId = 'new-workflow-id';
 			const workflow = createTestWorkflow({
 				id: newWorkflowId,
-				nodes: [createTestNode()],
+				nodes: [createTestNode({ name: 'Node 1' }), createTestNode({ name: 'Node 2' })],
 				connections: testConnections,
 			});
 
@@ -3766,6 +3764,56 @@ describe('useCanvasOperations', () => {
 				createWorkflowDocumentId(newWorkflowId),
 			);
 			expect(workflowDocumentStore.setConnections).toHaveBeenCalledWith(testConnections);
+		});
+
+		it('should default position to [0, 0] for nodes with missing position', async () => {
+			const { position: _, ...nodeWithoutPosition } = createTestNode({ name: 'Start' });
+
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [nodeWithoutPosition as INodeUi],
+				connections: {},
+			});
+
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
+			const { initializeWorkspace } = useCanvasOperations();
+			await initializeWorkspace(workflow);
+
+			expect(setNodesSpy).toHaveBeenCalledWith([
+				expect.objectContaining({ name: 'Start', position: [0, 0] }),
+			]);
+		});
+
+		it('should remove connections for nodes filtered out during initialization', async () => {
+			const validNode = createTestNode({ name: 'Start' });
+			const invalidNode = createTestNode({ name: 'Missing', type: '' });
+			const targetNode = createTestNode({ name: 'End' });
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [validNode, invalidNode, targetNode],
+				connections: {
+					Start: {
+						main: [
+							[
+								{ node: 'End', type: 'main', index: 0 },
+								{ node: 'Missing', type: 'main', index: 0 },
+							],
+						],
+					},
+					Missing: {
+						main: [[{ node: 'End', type: 'main', index: 0 }]],
+					},
+				},
+			});
+
+			const { initializeWorkspace } = useCanvasOperations();
+			await initializeWorkspace(workflow);
+
+			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalledWith({
+				Start: {
+					main: [[{ node: 'End', type: 'main', index: 0 }]],
+				},
+			});
 		});
 
 		it('should initialize node data from node type description', async () => {
@@ -3788,14 +3836,18 @@ describe('useCanvasOperations', () => {
 			nodeTypesStore.nodeTypes = { [type]: { [version]: expectedDescription } };
 
 			const workflow = createTestWorkflow({
+				id: workflowId,
 				nodes: [createTestNode()],
 				connections: {},
 			});
 
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
 			const { initializeWorkspace } = useCanvasOperations();
 			await initializeWorkspace(workflow);
 
-			expect(workflow.nodes[0].parameters).toEqual({ value: true });
+			expect(setNodesSpy).toHaveBeenCalledWith([
+				expect.objectContaining({ parameters: { value: true } }),
+			]);
 		});
 	});
 
@@ -4614,6 +4666,46 @@ describe('useCanvasOperations', () => {
 				canvasOperations.importWorkflowData(workflowDataToImport, 'paste'),
 			).resolves.not.toThrow();
 			expect(toast.showError).not.toHaveBeenCalled();
+		});
+
+		it('should remove connections for nodes filtered out during import', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const workflowDataToImport = {
+				nodes: [
+					createTestNode({ id: 'start-id', name: 'Start' }),
+					createTestNode({ id: 'missing-id', name: 'Missing', type: '' }),
+					createTestNode({ id: 'end-id', name: 'End' }),
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{ node: 'End', type: 'main' as const, index: 0 },
+								{ node: 'Missing', type: 'main' as const, index: 0 },
+							],
+						],
+					},
+					Missing: {
+						main: [[{ node: 'End', type: 'main' as const, index: 0 }]],
+					},
+				},
+			};
+
+			const canvasOperations = useCanvasOperations();
+			const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+			expect(workflow.connections).toEqual({
+				Start: {
+					main: [[{ node: 'End', type: 'main', index: 0 }]],
+				},
+			});
 		});
 
 		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(

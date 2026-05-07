@@ -7,7 +7,7 @@
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "start": "node dist/cli.js http://localhost:5678 --allowed-origins http://localhost:5678",
+    "start": "node dist/cli.js http://localhost:5678 --log-level debug --allowed-origins http://localhost:5678",
     "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",

@@ -118,6 +118,7 @@ import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
+import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -2334,7 +2335,14 @@ export function useCanvasOperations() {
 	async function initializeWorkspace(data: IWorkflowDb) {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
-		data.nodes.forEach((node) => {
+
+		// Filter out nodes with missing type to prevent canvas rendering crashes
+		const validNodes = data.nodes
+			.filter((node) => !!node.type)
+			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
+		const validNodeNames = validNodes.map((node) => node.name);
+
+		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
 			nodeHelpers.matchCredentials(node);
@@ -2345,8 +2353,8 @@ export function useCanvasOperations() {
 			}
 		});
 
-		initializedDocumentStore.setNodes(data.nodes);
-		initializedDocumentStore.setConnections(data.connections);
+		initializedDocumentStore.setNodes(validNodes);
+		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2618,6 +2626,34 @@ export function useCanvasOperations() {
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			return {};
+		}
+
+		// Filter out nodes with missing type to prevent crashes
+		if (workflowData.nodes) {
+			const invalidNodes = workflowData.nodes.filter((node) => !node.type);
+			if (invalidNodes.length > 0) {
+				toast.showError(
+					new Error(
+						i18n.baseText('nodeView.showError.importWorkflowData.invalidNodes', {
+							interpolate: { count: String(invalidNodes.length) },
+						}),
+					),
+					i18n.baseText('nodeView.showError.importWorkflowData.title'),
+				);
+				workflowData.nodes = workflowData.nodes.filter((node) => !!node.type);
+			}
+		}
+
+		if (workflowData.nodes) {
+			workflowData.nodes = workflowData.nodes.map((node) => ({
+				...node,
+				position: ensureNodePosition(node.position),
+			}));
+		}
+
+		if (workflowData.connections) {
+			const validNodeNames = workflowData.nodes?.map((node) => node.name);
+			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
 		}
 
 		try {
