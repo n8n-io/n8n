@@ -175,6 +175,23 @@ export type PubSubCommandMap = {
 	};
 
 	// #endregion
+
+	// #region Agents
+
+	/**
+	 * Reconcile a single agent chat integration across main instances.
+	 * Published by the main that handled the user's connect/disconnect request
+	 * after the change is persisted; every main applies the same connect or
+	 * disconnect locally so the in-memory `connections` map stays in sync.
+	 */
+	'agent-chat-integration-changed': {
+		agentId: string;
+		type: string;
+		credentialId: string;
+		action: 'connect' | 'disconnect';
+	};
+
+	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {
