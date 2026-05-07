@@ -1,4 +1,4 @@
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
@@ -69,14 +69,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
 
-	// Tracks whether the user sent a message in the current thread session.
-	// Used to distinguish live operations (should auto-open preview) from
-	// historical data being loaded (should not). Sourced from the runtime so
-	// the flag survives the EmptyView → ThreadView leaf swap (EmptyView's
-	// `sendMessage` flips it true; this composable doesn't exist yet at that
-	// point, so a local ref would miss it).
-	const userSentMessage = toRef(store, 'userSentMessage');
-
 	// --- Actions ---
 
 	function selectTab(tabId: string) {
@@ -109,10 +101,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		return true;
 	}
 
-	function markUserSentMessage() {
-		store.markUserSentMessage();
-	}
-
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
@@ -126,7 +114,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	});
 
 	// --- Reset preview on thread switch ---
-	// Each thread is stateless w.r.t. the preview panel: switching threads
+	// Each thread is stateless for the preview panel: switching threads
 	// closes the panel. Past artifacts are reachable via their inline
 	// references in the message timeline.
 	watch(
@@ -139,7 +127,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 			if (threadId === oldThreadId) return;
 
 			activeTabId.value = undefined;
-			userSentMessage.value = false;
 		},
 	);
 
@@ -161,7 +148,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
 	//   - Preview already open: switch to this workflow and refresh
-	//   - Preview closed + live build (streaming or just-sent): auto-open
+	//   - Preview closed + agent streaming a build: auto-open
 	//   - Otherwise (historical data): stay closed
 	watch(
 		() => latestBuildResult.value?.toolCallId,
@@ -170,7 +157,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 			const targetId = latestBuildResult.value.workflowId;
 
-			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) {
+			if (!isPreviewVisible.value && !store.isStreaming) {
 				return;
 			}
 
@@ -236,7 +223,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 			const targetId = latestDataTableResult.value.dataTableId;
 
-			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) {
+			if (!isPreviewVisible.value && !store.isStreaming) {
 				return;
 			}
 
@@ -273,12 +260,10 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		activeDataTableProjectId,
 		dataTableRefreshKey,
 		isPreviewVisible,
-		userSentMessage,
 		workflowRefreshKey,
 		selectTab,
 		closePreview,
 		openWorkflowPreview,
 		openDataTablePreview,
-		markUserSentMessage,
 	};
 }

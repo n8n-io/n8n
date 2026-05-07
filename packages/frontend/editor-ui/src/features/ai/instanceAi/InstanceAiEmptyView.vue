@@ -35,22 +35,18 @@ onMounted(() => {
 });
 
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
-	// Flag the user-send intent on the runtime so the canvas-preview composable
-	// in the incoming ThreadView auto-opens the workflow preview when the
-	// build artifact arrives. Without this, the freshly-mounted ThreadView
-	// would treat the artifact as historical and skip auto-open.
-	store.markUserSentMessage();
-	// Capture the placeholder thread id before send. After the send completes
-	// and syncThread persists it, navigate to the thread route so the URL
-	// reflects the active conversation and the sidebar highlights it.
 	const threadId = store.currentThreadId;
-	void store.sendMessage(message, attachments, rootStore.pushRef).then(() => {
-		if (store.threads.some((t) => t.id === threadId)) {
-			void router.replace({
-				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId },
-			});
-		}
+	// Kick off the send and the route change in parallel.
+	// `sendMessage` runs its synchronous prelude before its first await:
+	// pushes the optimistic user message into the runtime and opens the
+	// SSE connection. By the time the router resolves the navigation,
+	// ThreadView mounts with that state already in place. Backend
+	// persistence (`syncThread` → `postMessage`) completes in the
+	// background while the user is already on the thread page.
+	void store.sendMessage(message, attachments, rootStore.pushRef);
+	void router.replace({
+		name: INSTANCE_AI_THREAD_VIEW,
+		params: { threadId },
 	});
 }
 

@@ -128,7 +128,6 @@ export interface InstanceAiHarness {
 	allArtifactTabs: ReturnType<typeof useCanvasPreview>['allArtifactTabs'];
 	workflowRefreshKey: Ref<number>;
 	dataTableRefreshKey: Ref<number>;
-	userSentMessage: Ref<boolean>;
 
 	// Relay tracking
 	relayedEvents: PushMessage[];
@@ -142,7 +141,6 @@ export interface InstanceAiHarness {
 	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
-	markUserSentMessage: () => void;
 	switchThread: (threadId: string) => Promise<void>;
 	addMessage: (msg: InstanceAiMessage) => void;
 	addBuildResult: (workflowId: string, toolCallId?: string) => void;
@@ -165,24 +163,13 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const isStreaming = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
-	const userSentMessage = ref(false);
-
-	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	const store = reactive({
 		messages,
 		isStreaming,
 		producedArtifacts,
 		resourceNameIndex,
-		userSentMessage,
 		currentThreadId: 'thread-1',
-		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
-		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
-			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
-		},
-		markUserSentMessage: () => {
-			userSentMessage.value = true;
-		},
 	});
 
 	// --- Mock route ---
@@ -389,7 +376,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		allArtifactTabs: preview.allArtifactTabs,
 		workflowRefreshKey: preview.workflowRefreshKey,
 		dataTableRefreshKey: preview.dataTableRefreshKey,
-		userSentMessage: preview.userSentMessage,
 		relayedEvents,
 
 		// Actions
@@ -401,7 +387,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
-		markUserSentMessage: preview.markUserSentMessage,
 		switchThread,
 		addMessage,
 		addBuildResult,

@@ -55,23 +55,13 @@ function createMockStore() {
 	const isStreaming = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
-	const userSentMessage = ref(false);
-	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	return reactive({
 		messages,
 		isStreaming,
 		producedArtifacts,
 		resourceNameIndex,
-		userSentMessage,
 		currentThreadId: 'thread-1',
-		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
-		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
-			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
-		},
-		markUserSentMessage: () => {
-			userSentMessage.value = true;
-		},
 	});
 }
 
@@ -250,22 +240,11 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
-	describe('markUserSentMessage', () => {
-		test('sets userSentMessage to true', () => {
-			const ctx = setup();
-			expect(ctx.userSentMessage.value).toBe(false);
-
-			ctx.markUserSentMessage();
-			expect(ctx.userSentMessage.value).toBe(true);
-		});
-	});
-
 	describe('thread switch (route.params.threadId change)', () => {
 		test('resets all preview state on thread switch', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
-			ctx.markUserSentMessage();
 
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
@@ -274,7 +253,6 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeDataTableId.value).toBeNull();
 			expect(ctx.activeDataTableProjectId.value).toBeNull();
-			expect(ctx.userSentMessage.value).toBe(false);
 		});
 
 		test('does not auto-restore preview after thread switch — historical artifacts stay closed', async () => {
@@ -336,32 +314,9 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
-		test('auto-opens canvas when user sent a message', async () => {
-			const ctx = setup();
-			ctx.markUserSentMessage();
-			registerWorkflow(ctx.store, 'wf-new');
-
-			ctx.store.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
-								result: { success: true, workflowId: 'wf-new' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.activeWorkflowId.value).toBe('wf-new');
-		});
-
 		test('does not auto-open for historical data when canvas was closed', async () => {
 			const ctx = setup();
-			// Not streaming, user didn't send message, canvas was not open before switch
+			// Not streaming, canvas closed → treat any artifact as historical.
 
 			ctx.store.messages = [
 				makeMessage({

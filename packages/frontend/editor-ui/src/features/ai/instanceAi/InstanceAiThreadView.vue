@@ -296,7 +296,6 @@ const eventRelay = useEventRelay({
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-	preview.markUserSentMessage();
 	void store.sendMessage(message, attachments, rootStore.pushRef);
 }
 
