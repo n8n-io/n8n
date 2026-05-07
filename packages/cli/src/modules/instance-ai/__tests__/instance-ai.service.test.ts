@@ -379,6 +379,25 @@ type SnapshotServiceInternals = {
 	logger: { warn: jest.Mock };
 };
 
+type PlannedTaskFollowUpServiceInternals = {
+	buildPlannedTaskFollowUpMessage: (
+		type: 'synthesize' | 'replan' | 'checkpoint',
+		graph: {
+			tasks: Array<Record<string, unknown>>;
+		},
+		options?: { failedTask?: Record<string, unknown>; checkpoint?: Record<string, unknown> },
+	) => string;
+};
+
+type CheckpointAllowedWorkflowServiceInternals = {
+	createPlannedTaskState: jest.Mock;
+	getCheckpointAllowedWorkflowIds: (
+		threadId: string,
+		checkpointTaskId: string,
+	) => Promise<ReadonlySet<string>>;
+	logger: { warn: jest.Mock };
+};
+
 function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	const events: InstanceAiEvent[] = [];
 	const service = Object.create(
@@ -428,6 +447,27 @@ function createSnapshotService(): SnapshotServiceInternals {
 	return service;
 }
 
+function createPlannedTaskFollowUpService(): PlannedTaskFollowUpServiceInternals {
+	return Object.create(
+		InstanceAiService.prototype,
+	) as unknown as PlannedTaskFollowUpServiceInternals;
+}
+
+function createCheckpointAllowedWorkflowService(
+	graph: { tasks: Array<Record<string, unknown>> } | null,
+): CheckpointAllowedWorkflowServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as CheckpointAllowedWorkflowServiceInternals;
+	service.createPlannedTaskState = jest.fn(async () => ({
+		plannedTaskService: {
+			getGraph: jest.fn(async () => graph),
+		},
+	}));
+	service.logger = { warn: jest.fn() };
+	return service;
+}
+
 function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
 	return {
 		id: 'group-1:task-1:completed',
@@ -456,6 +496,194 @@ function makeAgentTree(): InstanceAiAgentNode {
 		timeline: [{ type: 'text', content: 'Initial response' }],
 	};
 }
+
+function extractPlannedTaskFollowUpPayload(message: string): Record<string, unknown> {
+	const match = message.match(
+		/<planned-task-follow-up type="[^"]+">\n([\s\S]*?)\n<\/planned-task-follow-up>/,
+	);
+	if (!match) throw new Error('Expected planned-task-follow-up wrapper');
+	return JSON.parse(match[1]) as Record<string, unknown>;
+}
+
+function makeBuilderOutcome(workflowId: string) {
+	return {
+		taskKey: 'build-1',
+		kind: 'build-workflow',
+		status: 'completed',
+		resultText: `Built ${workflowId}`,
+		durationMs: 1234,
+		toolCallCount: 4,
+		toolErrorCount: 1,
+		blockers: ['verify-built-workflow: first run failed'],
+		payload: {
+			workItemId: 'wi_build-1',
+			runId: 'run-1',
+			taskId: 'background-build-1',
+			workflowId,
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			summary: `Built ${workflowId}`,
+		},
+	};
+}
+
+describe('InstanceAiService — planned task follow-up payloads', () => {
+	it('projects build-workflow sub-agent outcomes into workflow payloads with sub-agent metadata', () => {
+		const service = createPlannedTaskFollowUpService();
+		const graph = {
+			planRunId: 'run-1',
+			status: 'active',
+			tasks: [
+				{
+					id: 'build-1',
+					title: 'Build Slack workflow',
+					kind: 'build-workflow',
+					status: 'succeeded',
+					result: 'Submitted workflow wf-main',
+					outcome: makeBuilderOutcome('wf-main'),
+					deps: [],
+				},
+				{
+					id: 'research-1',
+					title: 'Research Slack scopes',
+					kind: 'research',
+					status: 'succeeded',
+					result: 'Use chat:write',
+					outcome: {
+						taskKey: 'research-1',
+						kind: 'research',
+						status: 'completed',
+						resultText: 'Use chat:write',
+					},
+					deps: [],
+				},
+			],
+		};
+
+		const payload = extractPlannedTaskFollowUpPayload(
+			service.buildPlannedTaskFollowUpMessage('synthesize', graph),
+		);
+
+		const tasks = payload.tasks as Array<{ id: string; outcome?: Record<string, unknown> }>;
+		expect(tasks[0].outcome).toMatchObject({
+			workItemId: 'wi_build-1',
+			taskId: 'background-build-1',
+			workflowId: 'wf-main',
+			submitted: true,
+			subAgent: {
+				taskKey: 'build-1',
+				status: 'completed',
+				resultText: 'Built wf-main',
+				durationMs: 1234,
+				toolCallCount: 4,
+				toolErrorCount: 1,
+				blockers: ['verify-built-workflow: first run failed'],
+			},
+		});
+		expect(tasks[0].outcome).not.toHaveProperty('payload');
+		expect(tasks[1].outcome).toEqual({
+			taskKey: 'research-1',
+			kind: 'research',
+			status: 'completed',
+			resultText: 'Use chat:write',
+		});
+	});
+
+	it('projects checkpoint dependency outcomes the same way as top-level tasks', () => {
+		const service = createPlannedTaskFollowUpService();
+		const graph = {
+			planRunId: 'run-1',
+			status: 'active',
+			tasks: [
+				{
+					id: 'build-1',
+					title: 'Build Slack workflow',
+					kind: 'build-workflow',
+					status: 'succeeded',
+					result: 'Submitted workflow wf-main',
+					outcome: makeBuilderOutcome('wf-main'),
+					deps: [],
+				},
+				{
+					id: 'verify-1',
+					title: 'Verify Slack workflow',
+					kind: 'checkpoint',
+					status: 'planned',
+					spec: 'Run the workflow and inspect Slack output.',
+					deps: ['build-1'],
+				},
+			],
+		};
+
+		const payload = extractPlannedTaskFollowUpPayload(
+			service.buildPlannedTaskFollowUpMessage('checkpoint', graph, {
+				checkpoint: graph.tasks[1],
+			}),
+		);
+
+		const checkpoint = payload.checkpoint as {
+			id: string;
+			instructions: string;
+			dependsOn: Array<{ id: string; outcome?: Record<string, unknown> }>;
+		};
+		expect(checkpoint).toMatchObject({
+			id: 'verify-1',
+			instructions: 'Run the workflow and inspect Slack output.',
+		});
+		expect(checkpoint.dependsOn[0].outcome).toMatchObject({
+			workflowId: 'wf-main',
+			subAgent: {
+				taskKey: 'build-1',
+				status: 'completed',
+				toolCallCount: 4,
+			},
+		});
+		expect(checkpoint.dependsOn[0].outcome).not.toHaveProperty('payload');
+	});
+});
+
+describe('InstanceAiService — checkpoint workflow allow-list', () => {
+	it('resolves workflow IDs from typed builder outcomes and legacy flat outcomes', async () => {
+		const service = createCheckpointAllowedWorkflowService({
+			tasks: [
+				{
+					id: 'build-1',
+					kind: 'build-workflow',
+					outcome: makeBuilderOutcome('wf-main'),
+				},
+				{
+					id: 'build-legacy',
+					kind: 'build-workflow',
+					outcome: { workflowId: 'wf-legacy' },
+				},
+				{
+					id: 'research-1',
+					kind: 'research',
+					outcome: { workflowId: 'wf-ignored' },
+				},
+				{
+					id: 'verify-1',
+					kind: 'checkpoint',
+					deps: ['build-1', 'build-legacy', 'research-1'],
+				},
+			],
+		});
+
+		const allowed = await service.getCheckpointAllowedWorkflowIds('thread-a', 'verify-1');
+
+		expect([...allowed].sort()).toEqual(['wf-legacy', 'wf-main']);
+	});
+
+	it('returns an empty set when the checkpoint graph cannot be loaded', async () => {
+		const service = createCheckpointAllowedWorkflowService(null);
+
+		const allowed = await service.getCheckpointAllowedWorkflowIds('thread-a', 'verify-1');
+
+		expect([...allowed]).toEqual([]);
+		expect(service.logger.warn).not.toHaveBeenCalled();
+	});
+});
 
 describe('InstanceAiService — pending checkpoint re-entry', () => {
 	describe('queuePendingCheckpointReentry', () => {

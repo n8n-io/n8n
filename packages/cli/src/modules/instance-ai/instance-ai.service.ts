@@ -2300,6 +2300,7 @@ export class InstanceAiService {
 			const allowed = new Set<string>();
 			for (const task of graph.tasks) {
 				if (!deps.has(task.id)) continue;
+				if (task.kind !== 'build-workflow') continue;
 				const workflowId = workflowIdFromOutcome(task.outcome);
 				if (workflowId) {
 					allowed.add(workflowId);

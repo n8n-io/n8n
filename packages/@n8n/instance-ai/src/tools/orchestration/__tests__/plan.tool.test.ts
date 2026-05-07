@@ -1,4 +1,9 @@
-import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
+import type {
+	OrchestrationContext,
+	PlannedTask,
+	PlannedTaskService,
+	TaskStorage,
+} from '../../../types';
 
 // Mock heavy Mastra dependencies to avoid ESM issues in Jest
 jest.mock('@mastra/core/tools', () => ({
@@ -123,6 +128,135 @@ describe('createPlanTool — replan-only guard', () => {
 		const metadata = bypassCall?.[1] as { reason?: string } | undefined;
 		expect(metadata?.reason).toContain('planner discovery');
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+
+	it('persists every task kind as a typed handoff before plan approval', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'Repair this existing Slack workflow and verify it',
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tasks = [
+			{
+				id: 'delegate-1',
+				title: 'Inspect Slack node',
+				kind: 'delegate' as const,
+				spec: 'Read the Slack node schema and return channel fields.',
+				deps: [],
+				tools: ['nodes'],
+			},
+			{
+				id: 'table-1',
+				title: 'Create log table',
+				kind: 'manage-data-tables' as const,
+				spec: 'Create an execution log table.',
+				deps: [],
+			},
+			{
+				id: 'research-1',
+				title: 'Research Slack scopes',
+				kind: 'research' as const,
+				spec: 'Focus on OAuth scopes needed for posting messages.',
+				deps: ['delegate-1'],
+			},
+			{
+				id: 'build-1',
+				title: 'Patch Slack workflow',
+				kind: 'build-workflow' as const,
+				spec: 'Update the existing workflow to use the selected channel.',
+				deps: ['table-1', 'research-1'],
+				workflowId: 'wf-existing',
+			},
+			{
+				id: 'verify-1',
+				title: 'Verify Slack workflow',
+				kind: 'checkpoint' as const,
+				spec: 'Run the patched workflow and inspect Slack output.',
+				deps: ['build-1'],
+			},
+		];
+
+		const out = await tool.execute(
+			{
+				tasks,
+				skipPlannerDiscovery: true,
+				reason: 'Testing typed task conversion in a focused unit.',
+			},
+			{ agent: { suspend } },
+		);
+
+		expect(out.result).toBe('Awaiting approval');
+		const createPlanMock = context.plannedTaskService!.createPlan as jest.MockedFunction<
+			PlannedTaskService['createPlan']
+		>;
+		const createPlanCall = createPlanMock.mock.calls[0];
+		if (!createPlanCall) throw new Error('Expected createPlan to be called');
+		const [threadId, plannedTasks, options] = createPlanCall as [
+			string,
+			PlannedTask[],
+			{ planRunId: string; messageGroupId?: string },
+		];
+
+		expect(threadId).toBe('test-thread');
+		expect(options).toEqual({ planRunId: 'test-run', messageGroupId: undefined });
+		expect(plannedTasks).toHaveLength(5);
+
+		const [delegate, table, research, build, checkpoint] = plannedTasks;
+		if (delegate.kind !== 'delegate') throw new Error('Expected delegate task');
+		if (table.kind !== 'manage-data-tables') throw new Error('Expected data-table task');
+		if (research.kind !== 'research') throw new Error('Expected research task');
+		if (build.kind !== 'build-workflow') throw new Error('Expected build task');
+		if (checkpoint.kind !== 'checkpoint') throw new Error('Expected checkpoint task');
+
+		expect(delegate).toMatchObject({ id: 'delegate-1', tools: ['nodes'] });
+		expect(delegate.handoff).toMatchObject({
+			taskKey: 'delegate-1',
+			kind: 'delegate',
+			input: {
+				role: 'Inspect Slack node',
+				goal: 'Read the Slack node schema and return channel fields.',
+				toolNames: ['nodes'],
+			},
+		});
+		expect(table.handoff).toEqual({
+			taskKey: 'table-1',
+			kind: 'manage-data-tables',
+			input: { goal: 'Create an execution log table.' },
+		});
+		expect(research.handoff).toEqual({
+			taskKey: 'research-1',
+			kind: 'research',
+			input: {
+				goal: 'Research Slack scopes',
+				constraints: 'Focus on OAuth scopes needed for posting messages.',
+			},
+		});
+		expect(build.handoff).toEqual({
+			taskKey: 'build-1',
+			kind: 'build-workflow',
+			input: {
+				goal: 'Update the existing workflow to use the selected channel.',
+				workflowId: 'wf-existing',
+				workItemId: 'wi_build-1',
+				sandboxMode: true,
+			},
+		});
+		expect(checkpoint).toMatchObject({
+			id: 'verify-1',
+			spec: 'Run the patched workflow and inspect Slack output.',
+			deps: ['build-1'],
+		});
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tasks: {
+					tasks: tasks.map((task) => ({
+						id: task.id,
+						description: task.title,
+						status: 'todo',
+					})),
+				},
+			}),
+		);
 	});
 
 	it('rejects skipPlannerDiscovery=true without a reason', async () => {

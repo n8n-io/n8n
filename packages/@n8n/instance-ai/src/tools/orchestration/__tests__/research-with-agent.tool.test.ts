@@ -14,9 +14,27 @@ jest.mock('../../../stream/map-chunk', () => ({
 	mapMastraChunkToEvent: jest.fn(),
 }));
 
-const { createResearchWithAgentTool, researchWithAgentInputSchema } =
+const { createResearchWithAgentTool, researchWithAgentInputSchema, startResearchAgentTask } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../research-with-agent.tool') as typeof import('../research-with-agent.tool');
+
+function getSpawnOptions(context: OrchestrationContext) {
+	const spawnMock = context.spawnBackgroundTask as jest.MockedFunction<
+		NonNullable<OrchestrationContext['spawnBackgroundTask']>
+	>;
+	const options = spawnMock.mock.calls[0]?.[0];
+	if (!options) throw new Error('Expected spawnBackgroundTask to be called');
+	return options;
+}
+
+function getPublishedEvent(context: OrchestrationContext) {
+	const publishMock = context.eventBus.publish as jest.MockedFunction<
+		OrchestrationContext['eventBus']['publish']
+	>;
+	const event = publishMock.mock.calls[0]?.[1];
+	if (!event) throw new Error('Expected eventBus.publish to be called');
+	return event;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -188,6 +206,38 @@ describe('research-with-agent tool', () => {
 			expect(result.result).toContain('limit reached');
 			expect(result.taskId).toBe('');
 			expect(context.eventBus.publish).not.toHaveBeenCalled();
+		});
+
+		it('uses the typed handoff as the source of truth for planned research dispatch', async () => {
+			const context = createMockContext();
+
+			const result = await startResearchAgentTask(context, {
+				goal: 'fallback goal',
+				constraints: 'fallback constraints',
+				plannedTaskId: 'research-plan-1',
+				handoff: {
+					taskKey: 'research-plan-1',
+					kind: 'research',
+					input: {
+						goal: 'Research Slack OAuth scopes',
+						constraints: 'Focus on chat.postMessage and channels:read',
+						conversationContext: 'The workflow will post weekly summaries.',
+					},
+				},
+			});
+
+			expect(result.result).toContain('Research started');
+			expect(getSpawnOptions(context)).toMatchObject({
+				plannedTaskId: 'research-plan-1',
+				dedupeKey: { role: 'web-researcher', plannedTaskId: 'research-plan-1' },
+			});
+			expect(getPublishedEvent(context)).toMatchObject({
+				type: 'agent-spawned',
+				payload: {
+					goal: 'Research Slack OAuth scopes',
+					subtitle: 'Research Slack OAuth scopes',
+				},
+			});
 		});
 	});
 });

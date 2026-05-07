@@ -7,6 +7,123 @@ describe('BlueprintAccumulator', () => {
 		accumulator = new BlueprintAccumulator();
 	});
 
+	describe('typed task conversion', () => {
+		it('converts data table items into manage-data-tables handoffs with schema details', () => {
+			const task = accumulator.addItem({
+				kind: 'data-table',
+				id: 'table-1',
+				name: 'Leads',
+				purpose: 'Store qualified leads',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'score', type: 'number' },
+				],
+				dependsOn: [],
+			});
+
+			expect(task).toEqual({
+				id: 'table-1',
+				title: "Create 'Leads' data table",
+				kind: 'manage-data-tables',
+				deps: [],
+				handoff: {
+					taskKey: 'table-1',
+					kind: 'manage-data-tables',
+					input: {
+						goal: "Create a data table named 'Leads'. Purpose: Store qualified leads\nColumns: email (string), score (number)",
+					},
+				},
+			});
+		});
+
+		it('converts workflow items into build-workflow handoffs with inferred table deps', () => {
+			accumulator.updateMeta('Build a reporting flow', ['The Slack credential already exists']);
+			accumulator.addItem({
+				kind: 'data-table',
+				id: 'table-1',
+				name: 'Leads',
+				purpose: 'Store qualified leads',
+				columns: [{ name: 'email', type: 'string' }],
+				dependsOn: [],
+			});
+
+			const task = accumulator.addItem({
+				kind: 'workflow',
+				id: 'workflow-1',
+				name: 'Lead report',
+				purpose: 'Read Leads and send a weekly report to Slack',
+				triggerDescription: 'Every Friday',
+				integrations: ['Slack'],
+				existingWorkflowId: 'wf-existing',
+				dependsOn: [],
+			});
+
+			expect(task.deps).toEqual(['table-1']);
+			expect(task).toMatchObject({
+				id: 'workflow-1',
+				title: "Build 'Lead report' workflow",
+				kind: 'build-workflow',
+				handoff: {
+					taskKey: 'workflow-1',
+					kind: 'build-workflow',
+					input: {
+						workflowId: 'wf-existing',
+						workItemId: 'wi_workflow-1',
+						sandboxMode: true,
+					},
+				},
+			});
+			expect(task.kind === 'build-workflow' ? task.handoff.input.goal : '').toContain(
+				"Table 'Leads': email (string)",
+			);
+			expect(task.kind === 'build-workflow' ? task.handoff.input.goal : '').toContain(
+				'The Slack credential already exists',
+			);
+		});
+
+		it('converts research and delegate items into handoffs consumed by planned dispatch', () => {
+			const research = accumulator.addItem({
+				kind: 'research',
+				id: 'research-1',
+				question: 'Which Slack scopes are required?',
+				constraints: 'Focus on chat.postMessage',
+				dependsOn: [],
+			});
+			const delegate = accumulator.addItem({
+				kind: 'delegate',
+				id: 'delegate-1',
+				title: 'Inspect Slack node',
+				description: 'Return the operation and credential fields.',
+				requiredTools: ['nodes'],
+				dependsOn: ['research-1'],
+			});
+
+			expect(research).toMatchObject({
+				id: 'research-1',
+				kind: 'research',
+				handoff: {
+					taskKey: 'research-1',
+					kind: 'research',
+					input: {
+						goal: 'Which Slack scopes are required?',
+						constraints: 'Focus on chat.postMessage',
+					},
+				},
+			});
+			expect(delegate).toMatchObject({
+				id: 'delegate-1',
+				kind: 'delegate',
+				tools: ['nodes'],
+			});
+			if (delegate.kind !== 'delegate') throw new Error('Expected delegate task');
+			expect(delegate.handoff.input).toMatchObject({
+				role: 'Inspect Slack node',
+				goal: 'Return the operation and credential fields.',
+				toolNames: ['nodes'],
+			});
+		});
+	});
+
 	describe('addItem with kind=checkpoint', () => {
 		it('produces a PlannedTaskInput with kind=checkpoint', () => {
 			accumulator.addItem({
