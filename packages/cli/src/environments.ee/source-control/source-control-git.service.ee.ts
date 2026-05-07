@@ -137,6 +137,7 @@ export class SourceControlGitService {
 					// ensures that the credentials are only used for the configured repositoryUrl of the environment
 					'credential.useHttpPath=true',
 				],
+				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
