@@ -65,6 +65,7 @@ export namespace PubSub {
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
+		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -93,7 +94,8 @@ export namespace PubSub {
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.CancelTestRun
-		| Commands.AgentChatIntegrationChanged;
+		| Commands.AgentChatIntegrationChanged
+		| Commands.AgentConfigChanged;
 
 	// ----------------------------------
 	//         worker responses

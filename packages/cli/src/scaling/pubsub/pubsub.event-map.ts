@@ -191,6 +191,21 @@ export type PubSubCommandMap = {
 		action: 'connect' | 'disconnect';
 	};
 
+	/**
+	 * Drop the cached agent runtime in `AgentsService.runtimes` across mains.
+	 * Published by the main that handled an agent mutation (publish, unpublish,
+	 * config update, tool/skill change, delete) after the change is persisted.
+	 * Every main drops its cache entry so the next request rebuilds the runtime
+	 * from the current DB state, picking up the new model/credential/tools/skills.
+	 *
+	 * Without this, peer mains keep serving webhook traffic from a stale
+	 * compiled runtime — including stale embedded credentials — until the
+	 * 30-minute TTL evicts the entry.
+	 */
+	'agent-config-changed': {
+		agentId: string;
+	};
+
 	// #endregion
 };
 

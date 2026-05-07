@@ -28,7 +28,8 @@ export type PubSubEventName =
 	| 'reload-sso-provisioning-configuration'
 	| 'reload-source-control-config'
 	| 'cancel-test-run'
-	| 'agent-chat-integration-changed';
+	| 'agent-chat-integration-changed'
+	| 'agent-config-changed';
 
 export type PubSubEventFilter =
 	| {
