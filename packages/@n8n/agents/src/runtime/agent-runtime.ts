@@ -1,6 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { generateText, Output, streamText } from 'ai';
-import Ajv from 'ajv';
+import { generateText, streamText, Output } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -39,10 +38,8 @@ import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
 	applySubAgentUsage,
-	extractToolResults,
+	extractSettledToolCalls,
 	makeErrorStream,
-	makeErrorToolResultMessage,
-	makeToolResultMessage,
 	normalizeInput,
 } from './runtime-helpers';
 import { convertChunk } from './stream';
@@ -57,8 +54,8 @@ import {
 	toAiSdkTools,
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
-import type { AgentEventSpecificData } from '../types/runtime/event';
 import { AgentEvent } from '../types/runtime/event';
+import type { AgentEventData } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
@@ -66,13 +63,9 @@ import type {
 	PersistedExecutionOptions,
 	ToolResultEntry,
 } from '../types/sdk/agent';
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	ContentToolResult,
-	Message,
-} from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 import type { JSONObject, JSONValue } from '../types/utils/json';
+import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
 
 export interface AgentRuntimeConfig {
@@ -100,21 +93,9 @@ export interface AgentRuntimeConfig {
 	toolCallConcurrency?: number;
 	titleGeneration?: TitleGenerationConfig;
 	telemetry?: BuiltTelemetry;
-	/**
-	 * Pre-fetched model cost from the catalog. When provided, skips the per-run
-	 * catalog fetch. Set once during Agent.build() and shared across per-run runtimes.
-	 */
-	modelCost?: ModelCost;
-	/**
-	 * Shared RunStateManager for suspend/resume. When provided, all per-run runtimes
-	 * use the same store so that resume() can find state from a prior stream()/generate() call.
-	 */
-	runState?: RunStateManager;
 }
 
 const MAX_LOOP_ITERATIONS = 20;
-
-const ajv = new Ajv({ strict: false });
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -137,12 +118,22 @@ type ToolCallOutcome =
 	| {
 			outcome: 'success';
 			toolEntry: ToolResultEntry;
+			/**
+			 * Output as the LLM sees it (after `toModelOutput`). Same as
+			 * `toolEntry.output` when no `toModelOutput` transform is configured.
+			 * Surfaced on the `tool-result` wire chunk so consumers see what the
+			 * LLM saw (rather than the larger raw output).
+			 */
+			modelOutput: unknown;
 			subAgentUsage?: SubAgentUsage[];
 			customMessage?: AgentMessage;
-			message: AgentMessage;
 	  }
-	| { outcome: 'suspended'; payload: unknown; resumeSchema: JsonSchema7Type }
-	| { outcome: 'error'; error: unknown; message: AgentMessage }
+	| {
+			outcome: 'suspended';
+			payload: unknown;
+			resumeSchema: JsonSchema7Type;
+	  }
+	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
 
 /** A tool call that completed successfully. */
@@ -151,9 +142,9 @@ interface ToolCallSuccess {
 	toolName: string;
 	input: JSONValue;
 	toolEntry: ToolResultEntry;
+	modelOutput: unknown;
 	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
-	message: AgentMessage;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -172,7 +163,6 @@ interface ToolCallError {
 	toolName: string;
 	input: JSONValue;
 	error: unknown;
-	message: AgentMessage;
 }
 
 /** Result of executing a batch of tool calls (before persistence). */
@@ -182,6 +172,22 @@ interface ToolCallBatchResult {
 	errors: ToolCallError[];
 	/** All items to persist: suspended tools (with suspendPayload) + unexecuted tools (without). */
 	pending: Record<string, PendingToolCall>;
+}
+
+/** Shared input for the private generate/stream loops. */
+interface LoopContext {
+	list: AgentMessageList;
+	options?: RunOptions & ExecutionOptions;
+	runId: string;
+	pendingResume?: PendingResume;
+}
+
+/** Shared input for the tool-call batch iterators. */
+interface ToolBatchContext {
+	toolMap: Map<string, BuiltTool>;
+	list: AgentMessageList;
+	runId: string;
+	telemetry?: BuiltTelemetry;
 }
 
 /**
@@ -208,17 +214,12 @@ export class AgentRuntime {
 
 	private modelCost: ModelCost | undefined;
 
-	/** Unique identifier for the current run. Set at the start of generate/stream/resume. */
-	private runId = '';
-
-	/** Execution options for the current run (excludes persistence). Set at the start of generate/stream/resume. */
-	private executionOptions: ExecutionOptions | undefined;
+	/** Resolved telemetry for the current run (own config or inherited from parent). */
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
-		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
+		this.runState = new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
-		this.modelCost = config.modelCost;
 		this.currentState = {
 			persistence: undefined,
 			status: 'idle',
@@ -242,28 +243,20 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		this.runId = generateRunId();
-		this.executionOptions = options;
-		this.updateState({ persistence: options?.persistence });
+		const runId = generateRunId();
 		let list: AgentMessageList | undefined = undefined;
 		try {
-			list = await this.initRun(input);
-			const rawResult = await this.runGenerateLoop(list);
-			return this.finalizeGenerate(rawResult, list);
+			list = await this.initRun(input, options);
+			const rawResult = await this.runGenerateLoop({ list, options, runId });
+			return this.finalizeGenerate(rawResult, list, runId);
 		} catch (error) {
-			await this.flushTelemetry();
+			await this.flushTelemetry(options);
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
-				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return {
-				runId: this.runId,
-				messages: list?.responseDelta() ?? [],
-				finishReason: 'error',
-				error,
-				getState: () => this.getState(),
-			};
+			return { runId, messages: list?.responseDelta() ?? [], finishReason: 'error', error };
 		}
 	}
 
@@ -272,26 +265,20 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		this.runId = generateRunId();
-		this.executionOptions = options;
-		this.updateState({ persistence: options?.persistence });
+		const runId = generateRunId();
 		let list: AgentMessageList;
 		try {
-			list = await this.initRun(input);
+			list = await this.initRun(input, options);
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
-				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
+			return { runId, stream: makeErrorStream(error) };
 		}
 
-		return {
-			runId: this.runId,
-			stream: this.startStreamLoop(list),
-			getState: () => this.getState(),
-		};
+		return { runId, stream: this.startStreamLoop({ list, options, runId }) };
 	}
 
 	/**
@@ -317,9 +304,8 @@ export class AgentRuntime {
 		data: unknown,
 		options: { runId: string; toolCallId: string } & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		this.runId = options.runId;
-		const state = await this.runState.resume(this.runId);
-		if (!state) throw new Error(`No suspended run found for runId: ${this.runId}`);
+		const state = await this.runState.resume(options.runId);
+		if (!state) throw new Error(`No suspended run found for runId: ${options.runId}`);
 
 		const toolCall = state.pendingToolCalls[options.toolCallId];
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
@@ -329,9 +315,9 @@ export class AgentRuntime {
 
 		let resumeData: unknown = data;
 		if (tool.resumeSchema) {
-			const parseResult = await tool.resumeSchema.safeParseAsync(data);
+			const parseResult = await parseWithSchema(tool.resumeSchema, data);
 			if (!parseResult.success) {
-				throw new Error(`Invalid resume payload: ${parseResult.error.message}`);
+				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
 			resumeData = parseResult.data as JSONValue;
 		}
@@ -339,8 +325,7 @@ export class AgentRuntime {
 		try {
 			const list = AgentMessageList.deserialize(state.messageList);
 
-			// Merge persisted execution options with fresh caller options.
-			// runId and toolCallId are resume-routing keys, not run options.
+			// Merge persisted execution options with fresh caller options
 			const { runId: _rid, toolCallId: _tcid, ...callerExecOptions } = options;
 			const persisted = state.executionOptions ?? {};
 			const mergedExecOptions: ExecutionOptions = {
@@ -348,11 +333,13 @@ export class AgentRuntime {
 				...callerExecOptions,
 			};
 
-			this.executionOptions = mergedExecOptions;
-			this.updateState({ persistence: state.persistence });
+			const resumeOptions: RunOptions & ExecutionOptions = {
+				persistence: state.persistence,
+				...mergedExecOptions,
+			};
 
 			// Pass abortSignal to event bus
-			this.eventBus.resetAbort(this.executionOptions?.abortSignal);
+			this.eventBus.resetAbort(resumeOptions.abortSignal);
 
 			const pendingResume: PendingResume = {
 				pendingToolCalls: state.pendingToolCalls,
@@ -367,34 +354,42 @@ export class AgentRuntime {
 			await this.setListWorkingMemoryConfig(list, state.persistence);
 
 			if (method === 'generate') {
-				const rawResult = await this.runGenerateLoop(list, pendingResume);
+				const rawResult = await this.runGenerateLoop({
+					list,
+					options: resumeOptions,
+					runId: options.runId,
+					pendingResume,
+				});
 				if (!rawResult.pendingSuspend) {
-					await this.cleanupRun();
+					await this.cleanupRun(options.runId);
 				}
-				return this.finalizeGenerate(rawResult, list);
+				return this.finalizeGenerate(rawResult, list, options.runId);
 			}
 
 			return {
-				runId: this.runId,
-				stream: this.startStreamLoop(list, pendingResume),
-				getState: () => this.getState(),
+				runId: options.runId,
+				stream: this.startStreamLoop({
+					list,
+					options: resumeOptions,
+					runId: options.runId,
+					pendingResume,
+				}),
 			};
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
-				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
 			if (method === 'generate') {
 				return {
-					runId: this.runId,
+					runId: options.runId,
 					messages: [],
 					finishReason: 'error' as const,
 					error,
-					getState: () => this.getState(),
 				};
 			}
-			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
+			return { runId: options.runId, stream: makeErrorStream(error) };
 		}
 	}
 
@@ -408,12 +403,14 @@ export class AgentRuntime {
 	 * The system prompt is NOT stored in the list; list.forLlm(instructions)
 	 * prepends it at every LLM call site.
 	 */
-	private async buildMessageList(input: AgentMessage[]): Promise<AgentMessageList> {
+	private async buildMessageList(
+		input: AgentMessage[],
+		options?: RunOptions,
+	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
-		const persistence = this.currentState.persistence;
 
-		if (this.config.memory && persistence?.threadId) {
-			const memMessages = await this.config.memory.getMessages(persistence.threadId, {
+		if (this.config.memory && options?.persistence?.threadId) {
+			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
 				limit: this.config.lastMessages ?? 10,
 			});
 			if (memMessages.length > 0) {
@@ -422,12 +419,17 @@ export class AgentRuntime {
 		}
 
 		// Semantic recall — retrieve relevant past messages beyond the history window
-		if (this.config.semanticRecall && persistence?.threadId) {
-			await this.performSemanticRecall(list, input, persistence.threadId, persistence.resourceId);
+		if (this.config.semanticRecall && options?.persistence?.threadId) {
+			await this.performSemanticRecall(
+				list,
+				input,
+				options.persistence.threadId,
+				options.persistence.resourceId,
+			);
 		}
 
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
-		await this.setListWorkingMemoryConfig(list, persistence);
+		await this.setListWorkingMemoryConfig(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
@@ -548,41 +550,51 @@ export class AgentRuntime {
 	 * emit AgentStart, fetch model cost, normalize input, and build the message list.
 	 * Throws if buildMessageList fails; callers catch and handle the error.
 	 */
-	private async initRun(input: AgentMessage[] | string): Promise<AgentMessageList> {
-		this.eventBus.resetAbort(this.executionOptions?.abortSignal);
-		this.updateState({ status: 'running' });
-		this.emitEvent({ type: AgentEvent.AgentStart });
+	private async initRun(
+		input: AgentMessage[] | string,
+		options?: RunOptions & ExecutionOptions,
+	): Promise<AgentMessageList> {
+		this.eventBus.resetAbort(options?.abortSignal);
+		this.updateState({
+			status: 'running',
+			persistence: options?.persistence,
+		});
+		this.eventBus.emit({ type: AgentEvent.AgentStart });
 		await this.ensureModelCost();
 		const normalizedInput = normalizeInput(input);
-		return await this.buildMessageList(normalizedInput);
+		return await this.buildMessageList(normalizedInput, options);
 	}
 
 	/**
 	 * Post-loop finalization for generate: apply cost, set model id, roll up sub-agent usage,
 	 * transition to success, and emit AgentEnd. Returns the finalized result.
 	 */
-	private finalizeGenerate(result: GenerateResult, list: AgentMessageList): GenerateResult {
-		result.runId = this.runId;
+	private finalizeGenerate(
+		result: GenerateResult,
+		list: AgentMessageList,
+		runId: string,
+	): GenerateResult {
+		result.runId = runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
 		const finalized = applySubAgentUsage(result);
 		this.updateState({ status: 'success', messageList: list.serialize() });
-		this.emitEvent({ type: AgentEvent.AgentEnd, messages: finalized.messages });
-		return { ...finalized, getState: () => this.getState() };
+		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: finalized.messages });
+		return finalized;
 	}
 
-	/** Resolve telemetry: own config wins, then inherited from executionOptions, then nothing. */
-	private resolveTelemetry(): BuiltTelemetry | undefined {
+	/** Resolve telemetry: own config wins, then inherited from options, then nothing. */
+	private resolveTelemetry(options?: ExecutionOptions): BuiltTelemetry | undefined {
 		if (this.config.telemetry) return this.config.telemetry;
-		const inherited = this.executionOptions?.telemetry;
+		const inherited = options?.telemetry;
 		if (!inherited) return undefined;
 		return { ...inherited, functionId: this.config.name };
 	}
 
 	/** Best-effort flush of telemetry provider. Never throws. */
-	private async flushTelemetry(): Promise<void> {
+	private async flushTelemetry(options?: ExecutionOptions): Promise<void> {
 		try {
-			const resolved = this.resolveTelemetry();
+			const resolved = this.resolveTelemetry(options);
 			if (resolved?.provider) {
 				await resolved.provider.forceFlush();
 			}
@@ -592,8 +604,8 @@ export class AgentRuntime {
 	}
 
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
-	private buildTelemetryOptions(): Record<string, unknown> {
-		const t = this.resolveTelemetry();
+	private buildTelemetryOptions(options?: ExecutionOptions): Record<string, unknown> {
+		const t = this.resolveTelemetry(options);
 		if (!t?.enabled) return {};
 
 		return {
@@ -609,19 +621,18 @@ export class AgentRuntime {
 		};
 	}
 
-	/**
-	 * Core generate loop using generateText (non-streaming).
-	 *
-	 * @param list - Message list for this turn. Grows during the loop via addResponse().
-	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
-	 *   to execute before the first LLM call.
-	 */
-	private async runGenerateLoop(
-		list: AgentMessageList,
-		pendingResume?: PendingResume,
-	): Promise<GenerateResult> {
-		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
-			this.buildLoopContext();
+	/** Core generate loop using generateText (non-streaming). */
+	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
+		const { list, options, runId, pendingResume } = ctx;
+		const {
+			model,
+			toolMap,
+			aiTools,
+			providerOptions,
+			hasTools,
+			outputSpec,
+			effectiveInstructions,
+		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
@@ -630,14 +641,11 @@ export class AgentRuntime {
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
-		const runTelemetry = this.resolveTelemetry();
+		const runTelemetry = this.resolveTelemetry(options);
+		const toolCtx: ToolBatchContext = { toolMap, list, runId, telemetry: runTelemetry };
+
 		if (pendingResume) {
-			const batch = await this.iteratePendingToolCallsConcurrent(
-				pendingResume,
-				toolMap,
-				list,
-				runTelemetry,
-			);
+			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
@@ -645,7 +653,13 @@ export class AgentRuntime {
 			}
 
 			if (Object.keys(batch.pending).length > 0) {
-				const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
+				const suspendRunId = await this.persistSuspension(
+					batch.pending,
+					options,
+					list,
+					totalUsage,
+					runId,
+				);
 				return {
 					runId: suspendRunId,
 					messages: list.responseDelta(),
@@ -659,30 +673,29 @@ export class AgentRuntime {
 						suspendPayload: s.payload,
 						resumeSchema: s.resumeSchema,
 					})),
-					getState: () => this.getState(),
 				};
 			}
 		}
 
-		const maxIterations = this.executionOptions?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		for (let i = 0; i < maxIterations; i++) {
 			if (this.eventBus.isAborted) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
 
-			this.emitEvent({ type: AgentEvent.TurnStart });
+			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
 			const result = await generateText({
 				model,
-				messages: list.forLlm(this.config.instructions, this.config.instructionProviderOptions),
+				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(providerOptions
 					? { providerOptions: providerOptions as Record<string, JSONObject> }
 					: {}),
 				...(outputSpec ? { output: outputSpec } : {}),
-				...this.buildTelemetryOptions(),
+				...this.buildTelemetryOptions(options),
 			});
 
 			const aiFinishReason = result.finishReason;
@@ -698,16 +711,14 @@ export class AgentRuntime {
 				if (outputSpec) {
 					structuredOutput = result.output;
 				}
-				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
+				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
 				break;
 			}
 
-			const batch = await this.iterateToolCallsConcurrent(
-				result.toolCalls,
-				toolMap,
-				list,
-				runTelemetry,
-			);
+			const batch = await this.iterateToolCallsConcurrent({
+				...toolCtx,
+				toolCalls: result.toolCalls,
+			});
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
@@ -715,7 +726,13 @@ export class AgentRuntime {
 			}
 
 			if (Object.keys(batch.pending).length > 0) {
-				const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
+				const suspendRunId = await this.persistSuspension(
+					batch.pending,
+					options,
+					list,
+					totalUsage,
+					runId,
+				);
 				return {
 					runId: suspendRunId,
 					messages: list.responseDelta(),
@@ -729,12 +746,11 @@ export class AgentRuntime {
 						suspendPayload: s.payload,
 						resumeSchema: s.resumeSchema,
 					})),
-					getState: () => this.getState(),
 				};
 			}
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
+			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
 		}
 
 		if (lastFinishReason === 'tool-calls') {
@@ -743,77 +759,95 @@ export class AgentRuntime {
 			);
 		}
 
-		await this.saveToMemory(list);
-		await this.flushTelemetry();
+		await this.saveToMemory(list, options);
+		await this.flushTelemetry(options);
 
-		const persistence = this.currentState.persistence;
-		if (this.config.titleGeneration && persistence?.threadId && this.config.memory) {
-			void generateThreadTitle({
+		if (this.config.titleGeneration && options?.persistence?.threadId && this.config.memory) {
+			const titlePromise = generateThreadTitle({
 				memory: this.config.memory,
-				threadId: persistence.threadId,
-				resourceId: persistence.resourceId,
+				threadId: options.persistence.threadId,
+				resourceId: options.persistence.resourceId,
 				titleConfig: this.config.titleGeneration,
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
 			});
+			if (this.config.titleGeneration.sync) {
+				await titlePromise;
+			}
 		}
 
 		return {
-			runId: this.runId,
+			runId: runId ?? '',
 			messages: list.responseDelta(),
 			finishReason: lastFinishReason,
 			usage: totalUsage,
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(toolCallSummary.length > 0 && { toolCalls: toolCallSummary }),
 			...(collectedSubAgentUsage.length > 0 && { subAgentUsage: collectedSubAgentUsage }),
-			getState: () => this.getState(),
 		};
 	}
 
 	/**
 	 * Wire up a ReadableStream and start the stream loop asynchronously.
 	 * Returns the readable side immediately; the loop runs in the background.
-	 *
-	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
-	 *   to execute before the first LLM stream starts.
 	 */
-	private startStreamLoop(
-		list: AgentMessageList,
-		pendingResume?: PendingResume,
-	): ReadableStream<StreamChunk> {
+	private startStreamLoop(ctx: LoopContext): ReadableStream<StreamChunk> {
+		const { options, runId } = ctx;
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		this.runStreamLoop(list, writer, pendingResume).catch(async (error: unknown) => {
-			await this.flushTelemetry();
-			await this.cleanupRun();
-			try {
-				await writer.write({ type: 'error', error });
-				await writer.write({ type: 'finish', finishReason: 'error' });
-				await writer.close();
-			} catch {
-				writer.abort(error).catch(() => {});
-			}
-		});
+		// Bridge tool-execution lifecycle events into the stream so consumers
+		// can show a mid-flight indicator between the LLM's tool-call message
+		// and the eventual tool-result message. Writer queues writes in order
+		// so the fire-and-forget is safe.
+		const onToolExecutionStart = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			// Swallow rejections: if the writer is already closed/errored (e.g.
+			// an abort raced ahead of the subscription cleanup) there is nothing
+			// useful to do with the chunk.
+			writer
+				.write({
+					type: 'tool-execution-start',
+					toolCallId: data.toolCallId,
+					toolName: data.toolName,
+				})
+				.catch(() => {});
+		};
+		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+
+		this.runStreamLoop({ ...ctx, writer })
+			.catch(async (error: unknown) => {
+				await this.flushTelemetry(options);
+				await this.cleanupRun(runId);
+				try {
+					await writer.write({ type: 'error', error });
+					await writer.write({ type: 'finish', finishReason: 'error' });
+					await writer.close();
+				} catch {
+					writer.abort(error).catch(() => {});
+				}
+			})
+			.finally(() => {
+				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+			});
 
 		return readable;
 	}
 
-	/**
-	 * Core stream loop using streamText.
-	 *
-	 * @param list - Message list for this turn. Grows during the loop via addResponse().
-	 * @param writer - Stream writer to emit StreamChunks to the consumer.
-	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
-	 *   to execute before the first LLM call.
-	 */
+	/** Core stream loop using streamText. */
 	private async runStreamLoop(
-		list: AgentMessageList,
-		writer: WritableStreamDefaultWriter<StreamChunk>,
-		pendingResume?: PendingResume,
+		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
-		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
-			this.buildLoopContext();
+		const { list, options, runId, pendingResume, writer } = ctx;
+		const {
+			model,
+			toolMap,
+			aiTools,
+			providerOptions,
+			hasTools,
+			outputSpec,
+			effectiveInstructions,
+		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
 			await writer.write(chunk);
@@ -823,10 +857,10 @@ export class AgentRuntime {
 		let lastFinishReason: FinishReason = 'stop';
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
-		const maxIterations = this.executionOptions?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
-			await this.cleanupRun();
+			await this.cleanupRun(runId);
 			this.updateState({ status });
 			await writer.write({ type: 'error', error });
 			await writer.write({ type: 'finish', finishReason: 'error' });
@@ -840,21 +874,22 @@ export class AgentRuntime {
 		};
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
-		const runTelemetry = this.resolveTelemetry();
+		const runTelemetry = this.resolveTelemetry(options);
+		const toolCtx: ToolBatchContext = { toolMap, list, runId, telemetry: runTelemetry };
 		if (pendingResume) {
 			try {
-				const batch = await this.iteratePendingToolCallsConcurrent(
+				const batch = await this.iteratePendingToolCallsConcurrent({
+					...toolCtx,
 					pendingResume,
-					toolMap,
-					list,
-					runTelemetry,
-				);
+				});
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 					await writer.write({
-						type: 'message',
-						message: r.message,
+						type: 'tool-result',
+						toolCallId: r.toolCallId,
+						toolName: r.toolName,
+						output: r.modelOutput,
 					});
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
@@ -863,13 +898,22 @@ export class AgentRuntime {
 
 				for (const e of batch.errors) {
 					await writer.write({
-						type: 'message',
-						message: e.message,
+						type: 'tool-result',
+						toolCallId: e.toolCallId,
+						toolName: e.toolName,
+						output: e.error,
+						isError: true,
 					});
 				}
 
 				if (Object.keys(batch.pending).length > 0) {
-					const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
+					const suspendRunId = await this.persistSuspension(
+						batch.pending,
+						options,
+						list,
+						totalUsage,
+						runId,
+					);
 					for (const s of batch.suspensions) {
 						await writer.write({
 							type: 'tool-call-suspended',
@@ -886,7 +930,7 @@ export class AgentRuntime {
 					return;
 				}
 			} catch (error) {
-				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 				await closeStreamWithError(error, 'failed');
 				return;
 			}
@@ -895,18 +939,18 @@ export class AgentRuntime {
 		for (let i = 0; i < maxIterations; i++) {
 			if (await handleAbort()) return;
 
-			this.emitEvent({ type: AgentEvent.TurnStart });
-
+			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
 				model,
-				messages: list.forLlm(this.config.instructions, this.config.instructionProviderOptions),
+				messages,
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(providerOptions
 					? { providerOptions: providerOptions as Record<string, JSONObject> }
 					: {}),
 				...(outputSpec ? { output: outputSpec } : {}),
-				...this.buildTelemetryOptions(),
+				...this.buildTelemetryOptions(options),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
@@ -914,13 +958,17 @@ export class AgentRuntime {
 			// We catch that here and close the consumer stream with an error chunk.
 			try {
 				for await (const chunk of result.fullStream) {
-					if (chunk.type === 'finish' || chunk.type === 'finish-step') continue;
+					// Filter only the SDK's terminal `finish` chunk — the runtime
+					// emits its own consolidated `finish` after the loop completes.
+					// `start-step` / `finish-step` are passed through so consumers
+					// can use them as LLM-iteration boundaries.
+					if (chunk.type === 'finish') continue;
 					const converted = convertChunk(chunk);
 					if (converted) await writeChunk(converted);
 				}
 			} catch (streamError) {
 				if (await handleAbort()) return;
-				this.emitEvent({
+				this.eventBus.emit({
 					type: AgentEvent.Error,
 					message: String(streamError),
 					error: streamError,
@@ -947,22 +995,24 @@ export class AgentRuntime {
 				if (outputSpec) {
 					structuredOutput = await result.output;
 				}
-				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
+				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
 				break;
 			}
 
 			const toolCalls = await result.toolCalls;
 
 			try {
-				const batch = await this.iterateToolCallsConcurrent(toolCalls, toolMap, list, runTelemetry);
+				const batch = await this.iterateToolCallsConcurrent({ ...toolCtx, toolCalls });
 
 				if (await handleAbort()) return;
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 					await writer.write({
-						type: 'message',
-						message: r.message,
+						type: 'tool-result',
+						toolCallId: r.toolCallId,
+						toolName: r.toolName,
+						output: r.modelOutput,
 					});
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
@@ -971,13 +1021,22 @@ export class AgentRuntime {
 
 				for (const e of batch.errors) {
 					await writer.write({
-						type: 'message',
-						message: e.message,
+						type: 'tool-result',
+						toolCallId: e.toolCallId,
+						toolName: e.toolName,
+						output: e.error,
+						isError: true,
 					});
 				}
 
 				if (Object.keys(batch.pending).length > 0) {
-					const suspendRunId = await this.persistSuspension(batch.pending, list, totalUsage);
+					const suspendRunId = await this.persistSuspension(
+						batch.pending,
+						options,
+						list,
+						totalUsage,
+						runId,
+					);
 					for (const s of batch.suspensions) {
 						await writer.write({
 							type: 'tool-call-suspended',
@@ -994,13 +1053,13 @@ export class AgentRuntime {
 					return;
 				}
 			} catch (error) {
-				this.emitEvent({ type: AgentEvent.Error, message: String(error), error });
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 				await closeStreamWithError(error, 'failed');
 				return;
 			}
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
+			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
 		}
 
 		const costUsage = this.applyCost(totalUsage);
@@ -1019,46 +1078,54 @@ export class AgentRuntime {
 		});
 
 		try {
-			await this.saveToMemory(list);
+			await this.saveToMemory(list, options);
 
-			const persistence = this.currentState.persistence;
-			if (this.config.titleGeneration && persistence && this.config.memory) {
-				void generateThreadTitle({
+			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
+				const titlePromise = generateThreadTitle({
 					memory: this.config.memory,
-					threadId: persistence.threadId,
-					resourceId: persistence.resourceId,
+					threadId: options.persistence.threadId,
+					resourceId: options.persistence.resourceId,
 					titleConfig: this.config.titleGeneration,
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
 				});
+				if (this.config.titleGeneration.sync) {
+					await titlePromise;
+				}
 			}
 
-			await this.cleanupRun();
-			await this.flushTelemetry();
+			await this.cleanupRun(runId);
+			await this.flushTelemetry(options);
 
 			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.emitEvent({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
 		} finally {
 			await writer.close();
 		}
 	}
 
 	/** Persist the current-turn delta to memory. */
-	private async saveToMemory(list: AgentMessageList): Promise<void> {
-		const persistence = this.currentState.persistence;
-		if (!this.config.memory || !persistence) return;
+	private async saveToMemory(
+		list: AgentMessageList,
+		options: RunOptions | undefined,
+	): Promise<void> {
+		if (!this.config.memory || !options?.persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
 		await saveMessagesToThread(
 			this.config.memory,
-			persistence.threadId,
-			persistence.resourceId,
+			options.persistence.threadId,
+			options.persistence.resourceId,
 			delta,
 		);
 
 		// Generate and save embeddings if semantic recall is configured
 		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
-			await this.saveEmbeddingsForMessages(persistence.threadId, persistence.resourceId, delta);
+			await this.saveEmbeddingsForMessages(
+				options.persistence.threadId,
+				options.persistence.resourceId,
+				delta,
+			);
 		}
 	}
 
@@ -1186,16 +1253,16 @@ export class AgentRuntime {
 	 * even if one throws, then re-throws the first error.
 	 */
 	private async iterateToolCallsConcurrent(
-		toolCalls: Array<{
-			toolCallId: string;
-			toolName: string;
-			input: unknown;
-			providerExecuted?: boolean;
-		}>,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		resolvedTelemetry?: BuiltTelemetry,
+		ctx: ToolBatchContext & {
+			toolCalls: Array<{
+				toolCallId: string;
+				toolName: string;
+				input: unknown;
+				providerExecuted?: boolean;
+			}>;
+		},
 	): Promise<ToolCallBatchResult> {
+		const { toolCalls, toolMap, list, runId, telemetry: resolvedTelemetry } = ctx;
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
 		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
@@ -1240,12 +1307,12 @@ export class AgentRuntime {
 				const toolInput = tc.input as JSONValue;
 
 				if (result.status === 'rejected') {
+					list.setToolCallError(tc.toolCallId, result.reason);
 					errors.push({
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
 						input: toolInput,
 						error: result.reason,
-						message: makeErrorToolResultMessage(tc.toolCallId, tc.toolName, result.reason),
 					});
 				} else if (result.value.outcome === 'suspended') {
 					hasSuspension = true;
@@ -1263,6 +1330,7 @@ export class AgentRuntime {
 						input: toolInput,
 						suspendPayload: result.value.payload,
 						resumeSchema: result.value.resumeSchema,
+						runId,
 					};
 				} else if (result.value.outcome === 'success') {
 					results.push({
@@ -1270,9 +1338,9 @@ export class AgentRuntime {
 						toolName: tc.toolName,
 						input: toolInput,
 						toolEntry: result.value.toolEntry,
+						modelOutput: result.value.modelOutput,
 						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
-						message: result.value.message,
 					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
@@ -1280,7 +1348,6 @@ export class AgentRuntime {
 						toolName: tc.toolName,
 						input: toolInput,
 						error: result.value.error,
-						message: result.value.message,
 					});
 				} else if (result.value.outcome === 'noop') {
 					// noop
@@ -1315,11 +1382,9 @@ export class AgentRuntime {
 	 * Returns a `ToolCallBatchResult` — the caller handles persistence.
 	 */
 	private async iteratePendingToolCallsConcurrent(
-		pendingResume: PendingResume,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		resolvedTelemetry?: BuiltTelemetry,
+		ctx: ToolBatchContext & { pendingResume: PendingResume },
 	): Promise<ToolCallBatchResult> {
+		const { pendingResume, toolMap, list, runId, telemetry: resolvedTelemetry } = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
 		const resumedEntry = pendingResume.pendingToolCalls[resumedId];
 		if (!resumedEntry) {
@@ -1349,6 +1414,7 @@ export class AgentRuntime {
 				suspended: true,
 				suspendPayload: processResult.payload,
 				resumeSchema: processResult.resumeSchema,
+				runId,
 			};
 			suspensions.push({
 				toolCallId: resumedId,
@@ -1363,9 +1429,9 @@ export class AgentRuntime {
 				toolName: resumedToolName,
 				input: resumedEntry.input,
 				toolEntry: processResult.toolEntry,
+				modelOutput: processResult.modelOutput,
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
-				message: processResult.message,
 			});
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -1373,7 +1439,6 @@ export class AgentRuntime {
 				toolName: resumedToolName,
 				input: resumedEntry.input,
 				error: processResult.error,
-				message: processResult.message,
 			});
 		} else if (processResult.outcome === 'noop') {
 			// noop
@@ -1409,12 +1474,13 @@ export class AgentRuntime {
 
 		// Execute unexecuted tools via iterateToolCallsConcurrent
 		if (unexecuted.length > 0) {
-			const batch = await this.iterateToolCallsConcurrent(
-				unexecuted,
+			const batch = await this.iterateToolCallsConcurrent({
+				toolCalls: unexecuted,
 				toolMap,
 				list,
-				resolvedTelemetry,
-			);
+				runId,
+				telemetry: resolvedTelemetry,
+			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
 			errors.push(...batch.errors);
@@ -1445,7 +1511,7 @@ export class AgentRuntime {
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
 
-		this.emitEvent({
+		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionStart,
 			toolCallId,
 			toolName,
@@ -1453,56 +1519,55 @@ export class AgentRuntime {
 		});
 
 		const makeToolError = (error: unknown): ToolCallOutcome => {
-			this.emitEvent({
+			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionEnd,
 				toolCallId,
 				toolName,
 				result: error,
 				isError: true,
 			});
-			const errorMsg = makeErrorToolResultMessage(toolCallId, toolName, error);
-			list.addResponse([errorMsg]);
-			return { outcome: 'error', error, message: errorMsg };
+			list.setToolCallError(toolCallId, error);
+			return { outcome: 'error', error };
 		};
 
 		if (!builtTool) {
 			return makeToolError(new Error(`Tool ${toolName} not found`));
 		}
 
-		// AI SDK automatically parses tool input and creates a tool-result message for it.
-		// If the tool-result message is an error, we don't need to execute the tool again.
-		const existingToolResults = list
+		// Check if this tool-call block was already settled (e.g. by provider-executed tools).
+		// If so, emit ToolExecutionEnd and skip re-execution.
+		type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
+		const settledBlock = list
 			.responseDelta()
-			.filter((m) => isLlmMessage(m) && m.role === 'tool')
-			.flatMap((m) => (m as Message).content.filter((content) => content.type === 'tool-result'));
-		const existingToolResult = existingToolResults.find((r) => r.toolCallId === toolCallId);
+			.flatMap((m) => (isLlmMessage(m) && 'content' in m ? (m as Message).content : []))
+			.find(
+				(c): c is SettledToolCall =>
+					c.type === 'tool-call' && c.toolCallId === toolCallId && c.state !== 'pending',
+			);
 
-		if (existingToolResult) {
-			this.emitEvent({
+		if (settledBlock) {
+			let settledResult: unknown;
+			if (settledBlock.state === 'resolved') {
+				settledResult = settledBlock.output;
+			} else {
+				settledResult = settledBlock.error;
+			}
+			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionEnd,
 				toolCallId,
 				toolName,
-				result: existingToolResult.result,
-				isError: !!existingToolResult.isError,
+				result: settledResult,
+				isError: settledBlock.state === 'rejected',
 			});
 			return { outcome: 'noop' };
 		}
 
 		if (builtTool.inputSchema) {
-			if (isZodSchema(builtTool.inputSchema)) {
-				const result = await builtTool.inputSchema.safeParseAsync(toolInput);
-				if (!result.success) {
-					return makeToolError(new Error(`Invalid tool input: ${result.error.message}`));
-				}
-				toolInput = result.data as JSONValue;
-			} else {
-				const validate = ajv.compile(builtTool.inputSchema);
-				const valid = validate(toolInput);
-				if (!valid) {
-					const message = ajv.errorsText(validate.errors);
-					return makeToolError(new Error(`Invalid tool input: ${message}`));
-				}
+			const result = await parseWithSchema(builtTool.inputSchema, toolInput);
+			if (!result.success) {
+				return makeToolError(new Error(`Invalid tool input: ${result.error}`));
 			}
+			toolInput = result.data as JSONValue;
 		}
 
 		let toolResult: unknown;
@@ -1514,9 +1579,9 @@ export class AgentRuntime {
 
 		if (isSuspendedToolResult(toolResult)) {
 			if (builtTool?.suspendSchema) {
-				const parseResult = await builtTool.suspendSchema.safeParseAsync(toolResult.payload);
+				const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
 				if (!parseResult.success) {
-					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error.message}`));
+					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error}`));
 				}
 				toolResult.payload = parseResult.data as JSONValue;
 			}
@@ -1524,8 +1589,17 @@ export class AgentRuntime {
 				const error = new Error(`Tool ${toolName} has no resume schema`);
 				return makeToolError(error);
 			}
-			const resumeSchema = zodToJsonSchema(builtTool.resumeSchema);
-			return { outcome: 'suspended', payload: toolResult.payload, resumeSchema };
+			const resumeSchema = isZodSchema(builtTool.resumeSchema)
+				? zodToJsonSchema(builtTool.resumeSchema)
+				: builtTool.resumeSchema;
+			if (!resumeSchema) {
+				return makeToolError(new Error('Invalid resume schema'));
+			}
+			return {
+				outcome: 'suspended',
+				payload: toolResult.payload,
+				resumeSchema,
+			};
 		}
 
 		let actualResult = toolResult;
@@ -1535,7 +1609,7 @@ export class AgentRuntime {
 			extractedSubAgentUsage = toolResult.subAgentUsage;
 		}
 
-		this.emitEvent({
+		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
 			toolName,
@@ -1549,8 +1623,7 @@ export class AgentRuntime {
 			? builtTool.toModelOutput(actualResult)
 			: actualResult;
 
-		const toolResultMsg = makeToolResultMessage(toolCallId, toolName, modelResult);
-		list.addResponse([toolResultMsg]);
+		list.setToolCallResult(toolCallId, modelResult as JSONValue);
 
 		const customMessage = builtTool?.toMessage?.(actualResult);
 		if (customMessage) {
@@ -1565,35 +1638,58 @@ export class AgentRuntime {
 				output: actualResult,
 				transformed: !!builtTool.toModelOutput,
 			},
+			modelOutput: modelResult,
 			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
-			message: toolResultMsg,
 		};
 	}
 
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */
-	private buildLoopContext() {
-		const wmTool = this.buildWorkingMemoryToolForRun(this.currentState.persistence);
+	private buildLoopContext(
+		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
+	) {
+		const wmTool = this.buildWorkingMemoryToolForRun(execOptions?.persistence);
 		const allUserTools = wmTool
 			? [...(this.config.tools ?? []), wmTool]
 			: (this.config.tools ?? []);
 		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
+		const model = createModel(this.config.model);
 		return {
-			model: createModel(this.config.model),
+			model,
 			toolMap: buildToolMap(allUserTools),
 			aiTools: allTools,
-			providerOptions: this.buildCallProviderOptions(this.executionOptions?.providerOptions),
+			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
 			hasTools: Object.keys(allTools).length > 0,
 			outputSpec: this.config.structuredOutput
 				? Output.object({ schema: this.config.structuredOutput })
 				: undefined,
+			effectiveInstructions: this.composeEffectiveInstructions(allUserTools),
 		};
 	}
 
 	/**
-	 * Build the updateWorkingMemory BuiltTool for the current run.
+	 * Merge tool-attached `systemInstruction` fragments into the agent's
+	 * configured instructions. Fragments are wrapped in a single
+	 * `<built_in_rules>` block, prepended above the user's instructions so
+	 * the user's text remains the dominant tail of the prompt and can still
+	 * override defaults if needed.
+	 */
+	private composeEffectiveInstructions(tools: BuiltTool[]): string {
+		const fragments = tools
+			.map((t) => t.systemInstruction)
+			.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+
+		const userInstructions = this.config.instructions;
+		if (fragments.length === 0) return userInstructions;
+
+		const block = `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
+		return userInstructions ? `${block}\n\n${userInstructions}` : block;
+	}
+
+	/**
+	 * Build the update_working_memory BuiltTool for the current run.
 	 * Returns undefined when working memory is not configured or persistence is unavailable.
 	 */
 	private buildWorkingMemoryToolForRun(persistence: AgentPersistenceOptions | undefined) {
@@ -1608,45 +1704,47 @@ export class AgentRuntime {
 
 	/**
 	 * Persist a suspended run state and update the current state snapshot.
-	 * Returns the runId (reuses this.runId when resuming to prevent dangling runs).
+	 * Returns the runId (reuses existingRunId when resuming to prevent dangling runs).
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
+		options: (RunOptions & ExecutionOptions) | undefined,
 		list: AgentMessageList,
 		totalUsage: TokenUsage | undefined,
+		existingRunId?: string,
 	): Promise<string> {
+		const runId = existingRunId ?? generateRunId();
+
 		// Only persist maxIterations. providerOptions are intentionally excluded
 		// because they may contain sensitive data (API keys, auth headers).
 		const executionOptions: PersistedExecutionOptions | undefined =
-			this.executionOptions?.maxIterations !== undefined
-				? { maxIterations: this.executionOptions.maxIterations }
-				: undefined;
+			options?.maxIterations !== undefined ? { maxIterations: options.maxIterations } : undefined;
 
 		const state: SerializableAgentState = {
-			persistence: this.currentState.persistence,
+			persistence: options?.persistence,
 			status: 'suspended',
 			messageList: list.serialize(),
 			pendingToolCalls,
 			usage: totalUsage,
 			executionOptions,
 		};
-		await this.runState.suspend(this.runId, state);
+		await this.runState.suspend(runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-		return this.runId;
+		return runId;
 	}
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
-	private async cleanupRun(): Promise<void> {
-		if (this.runId) {
-			await this.runState.complete(this.runId);
+	private async cleanupRun(runId: string | undefined): Promise<void> {
+		if (runId) {
+			await this.runState.complete(runId);
 		}
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */
-	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolResult[]): void {
+	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolCall[]): void {
 		const assistantMsg = newMessages.find((m) => 'role' in m && m.role === 'assistant');
 		if (assistantMsg) {
-			this.emitEvent({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });
+			this.eventBus.emit({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });
 		}
 	}
 
@@ -1703,10 +1801,6 @@ export class AgentRuntime {
 			state: wmState,
 			...(wmParams.instruction !== undefined && { instruction: wmParams.instruction }),
 		};
-	}
-
-	private emitEvent(data: AgentEventSpecificData): void {
-		this.eventBus.emit({ ...data, runId: this.runId });
 	}
 
 	private resolveWorkingMemoryParams(options: AgentPersistenceOptions | undefined) {
