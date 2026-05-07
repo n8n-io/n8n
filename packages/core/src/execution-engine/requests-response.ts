@@ -99,7 +99,9 @@ function prepareRequestedNodesForExecution(
 		actions: [],
 		metadata: request.metadata,
 	};
-	const parentSourceData = executionData.source?.main?.[runIndex];
+	// Source data is keyed by input index, so resumed agent executions must read the
+	// original upstream branch from the first main input instead of the node run index.
+	const parentSourceData = executionData.source?.main?.[0];
 	const defaultParentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
 	const defaultParentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
 
@@ -211,14 +213,16 @@ function prepareRequestingNodeForResuming(
 
 		return undefined;
 	}
-	const metadata: Partial<ITaskMetadata> =
-		executionData.metadata?.preservedSourceOverwrite &&
-		executionData.metadata?.preserveSourceOverwrite
-			? {
-					preserveSourceOverwrite: true,
-					preservedSourceOverwrite: executionData.metadata.preservedSourceOverwrite,
-				}
-			: {};
+	// Always preserve the original branch provenance when resuming an agent.
+	// Without sourceOverwrite, downstream .item cannot traverse through the branch node.
+	const metadata: Partial<ITaskMetadata> = {
+		preserveSourceOverwrite: true,
+		preservedSourceOverwrite: {
+			previousNode: parentNode,
+			previousNodeOutput: executionData.source?.main?.[0]?.previousNodeOutput ?? 0,
+			previousNodeRun: executionData.source?.main?.[0]?.previousNodeRun ?? 0,
+		},
+	};
 	const connectionData: IConnection = {
 		// agents always have a main input
 		type: 'ai_tool',
@@ -268,15 +272,30 @@ export function handleRequest({
 		return { nodesToBeExecuted: [] };
 	}
 
+	// Preserve the original pairedItem.item from the agent's input so the resumed
+	// execution can keep the same upstream item lineage after the tool call returns.
+	const originalPairedItem = executionData.data.main?.[0]?.[0]?.pairedItem;
+	const originalItemIndex =
+		typeof originalPairedItem === 'number'
+			? originalPairedItem
+			: Array.isArray(originalPairedItem)
+				? (originalPairedItem[0]?.item ?? 0)
+				: (originalPairedItem?.item ?? 0);
+
 	// 3. add current node back to the bottom of the stack
 	nodesToBeExecuted.unshift({
 		inputConnectionData: result.connectionData,
-		parentOutputIndex: 0,
+		parentOutputIndex: executionData.source?.main?.[0]?.previousNodeOutput ?? 0,
 		parentNode: result.parentNode,
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
-		runIndex,
+		runIndex: executionData.source?.main?.[0]?.previousNodeRun ?? runIndex,
 		nodeRunIndex: runIndex,
-		metadata: { nodeWasResumed: true, subNodeExecutionData, ...result.metadata },
+		metadata: {
+			nodeWasResumed: true,
+			subNodeExecutionData,
+			...result.metadata,
+			originalPairedItemIndex: originalItemIndex,
+		},
 	});
 
 	return { nodesToBeExecuted };
