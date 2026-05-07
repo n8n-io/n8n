@@ -2820,6 +2820,8 @@
 	"runData.aiContentBlock.tokens.prompt": "Prompt:",
 	"runData.aiContentBlock.tokens.completion": "Completion:",
 	"runData.trimmedData.loading": "Loading data",
+	"runData.trimmedData.corrupted": "Pinned data on this node is corrupted and can't be displayed.",
+	"runData.trimmedData.unpin": "Unpin data",
 	"runData.panel.actions.collapse": "Collapse panel",
 	"runData.panel.actions.open": "Open panel",
 	"runData.panel.actions.popOut": "Pop out panel",
