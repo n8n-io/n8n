@@ -10,30 +10,55 @@ import SplitButton from './SplitButton.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
-const props = defineProps<{
+interface DomainProps {
 	requestId: string;
+	severity?: string;
 	url: string;
 	host: string;
+	query?: never;
+}
+
+interface WebSearchProps {
+	requestId: string;
 	severity?: string;
-}>();
+	query: string;
+	url?: never;
+	host?: never;
+}
+
+const props = defineProps<DomainProps | WebSearchProps>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const resolved = ref(false);
 
+const isWebSearch = computed(() => props.query !== undefined);
 const isDestructive = computed(() => props.severity === 'destructive');
+
+const promptText = computed(() =>
+	isWebSearch.value
+		? i18n.baseText('instanceAi.webSearch.prompt')
+		: i18n.baseText('instanceAi.domainAccess.prompt', {
+				interpolate: { domain: props.host ?? '' },
+			}),
+);
+
+const previewText = computed(() => (isWebSearch.value ? props.query : props.url) ?? '');
+
+const persistentLabel = computed(() =>
+	isWebSearch.value
+		? i18n.baseText('instanceAi.webSearch.allowThread')
+		: i18n.baseText('instanceAi.domainAccess.allowDomain', {
+				interpolate: { domain: props.host ?? '' },
+			}),
+);
 
 const primaryAction: DomainAction = 'allow_once';
 
 const primaryLabel = computed(() => i18n.baseText('instanceAi.domainAccess.allowOnce'));
 
 const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() => [
-	{
-		id: 'allow_domain' as const,
-		label: i18n.baseText('instanceAi.domainAccess.allowDomain', {
-			interpolate: { domain: props.host },
-		}),
-	},
+	{ id: 'allow_domain' as const, label: persistentLabel.value },
 ]);
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
@@ -70,11 +95,9 @@ function onDropdownSelect(action: string) {
 	<div v-if="!resolved">
 		<div :class="$style.body">
 			<N8nText tag="div" size="medium" bold>
-				{{
-					i18n.baseText('instanceAi.domainAccess.prompt', { interpolate: { domain: props.host } })
-				}}
+				{{ promptText }}
 			</N8nText>
-			<ConfirmationPreview>{{ props.url }}</ConfirmationPreview>
+			<ConfirmationPreview>{{ previewText }}</ConfirmationPreview>
 		</div>
 
 		<ConfirmationFooter>

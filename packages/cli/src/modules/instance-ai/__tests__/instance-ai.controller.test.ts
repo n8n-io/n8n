@@ -855,8 +855,14 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should return token and command', async () => {
+		it('should return token, command, and token expiry', async () => {
+			const nowSpy = jest
+				.spyOn(Date, 'now')
+				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
 			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+			instanceAiService.getGatewayApiKeyExpiresAt.mockReturnValue(
+				new Date('2026-01-01T00:05:00.000Z'),
+			);
 			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
@@ -864,8 +870,15 @@ describe('InstanceAiController', () => {
 			expect(result).toEqual({
 				token: 'pairing-token',
 				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
+				expiresAt: '2026-01-01T00:05:00.000Z',
+				ttlSeconds: 300,
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
+				USER_ID,
+				'pairing-token',
+			);
+			nowSpy.mockRestore();
 		});
 	});
 

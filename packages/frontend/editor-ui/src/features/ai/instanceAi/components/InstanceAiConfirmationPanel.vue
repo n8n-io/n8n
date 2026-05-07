@@ -84,10 +84,13 @@ interface StandaloneChunk {
 
 type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
 
-/** Items that need the "Agent needs approval" wrapper (generic approvals, domain access). */
+/** Items that need the "Agent needs approval" wrapper (generic approvals, domain access, web search). */
 function isApprovalWrapped(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
+
 	if (conf.domainAccess) return true;
+	if (conf.webSearch) return true;
+
 	// Generic approval: no special fields and no structured input UI
 	if (
 		!conf.credentialRequests?.length &&
@@ -263,9 +266,11 @@ function handlePlanRequestChanges(
 	});
 }
 
-/** True when every item in the group is a generic approval (not domain/cred/text). */
+/** True when every item in the group is a generic approval (not domain/web-search/cred/text). */
 function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
-	return items.every((item) => !item.toolCall.confirmation.domainAccess);
+	return items.every(
+		(item) => !item.toolCall.confirmation.domainAccess && !item.toolCall.confirmation.webSearch,
+	);
 }
 </script>
 
@@ -440,6 +445,14 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							:request-id="item.toolCall.confirmation.requestId"
 							:url="item.toolCall.confirmation.domainAccess!.url"
 							:host="item.toolCall.confirmation.domainAccess!.host"
+							:severity="item.toolCall.confirmation.severity"
+						/>
+
+						<!-- Web search -->
+						<DomainAccessApproval
+							v-else-if="item.toolCall.confirmation.webSearch"
+							:request-id="item.toolCall.confirmation.requestId"
+							:query="item.toolCall.confirmation.webSearch!.query"
 							:severity="item.toolCall.confirmation.severity"
 						/>
 

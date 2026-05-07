@@ -140,6 +140,7 @@ export class SourceControlGitService {
 					// ensures that the credentials are only used for the configured repositoryUrl of the environment
 					'credential.useHttpPath=true',
 				],
+				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
 			// Add proxy configuration if proxy environment variables are set
