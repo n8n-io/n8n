@@ -518,4 +518,33 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
+
+	it('should return all items without slicing when no limit is provided', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'resource') return 'database';
+			if (name === 'authentication') return 'apiKey';
+			return undefined;
+		});
+
+		const page1 = {
+			results: [{ id: '1' }, { id: '2' }],
+			has_more: false,
+			next_cursor: null,
+		};
+
+		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValueOnce(
+			page1,
+		);
+
+		const result = await notionApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'results',
+			'POST',
+			'/search',
+			{},
+		);
+
+		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
 });
