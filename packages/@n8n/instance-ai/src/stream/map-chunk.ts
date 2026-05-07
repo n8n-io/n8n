@@ -1,3 +1,4 @@
+import type { StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -13,7 +14,6 @@ import type {
 	TaskList,
 	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
-import type { StreamChunk } from '@n8n/agents';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({
@@ -31,7 +31,6 @@ const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
 	'reasoning-delta',
-	'tool-call-delta',
 	'tool-call',
 	'tool-result',
 	'error',
@@ -50,8 +49,6 @@ interface ErrorInfo {
 	technicalDetails?: string;
 }
 
-/** Extract structured error info from Mastra's error chunk payload.
- *  Mastra sets `payload.error` to the raw Error object, not a string. */
 function extractErrorInfo(error: unknown): ErrorInfo {
 	if (typeof error === 'string') return { content: error };
 
@@ -90,74 +87,52 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 	return { content: 'Unknown error' };
 }
 
-/**
- * Maps a Mastra fullStream chunk to our InstanceAiEvent schema.
- *
- * Mastra chunks have the shape: { type, runId, from, payload: { ... } }
- * The actual data (textDelta, toolCallId, etc.) lives inside chunk.payload.
- *
- * Returns null for unrecognized chunk types (step-finish, finish, etc.)
- */
-export function mapMastraChunkToEvent(
+export function mapAgentChunkToEvent(
 	runId: string,
 	agentId: string,
 	chunk: unknown,
 	responseId?: string,
 ): InstanceAiEvent | null {
-	if (!isRecord(chunk)) return null;
+	if (!isAgentStreamChunk(chunk)) return null;
 
-	const { type } = chunk;
-	const payload = isRecord(chunk.payload) ? chunk.payload : {};
 	const base = { runId, agentId, ...(responseId ? { responseId } : {}) };
 
-	// Mastra payload uses `text` (not `textDelta`) for text-delta chunks
-	const textValue =
-		typeof payload.text === 'string'
-			? payload.text
-			: typeof payload.textDelta === 'string'
-				? payload.textDelta
-				: undefined;
-
-	if (type === 'text-delta' && textValue !== undefined) {
+	if (chunk.type === 'text-delta') {
 		return {
 			type: 'text-delta',
 			...base,
-			payload: { text: textValue },
+			payload: { text: chunk.delta },
 		};
 	}
 
-	if ((type === 'reasoning-delta' || type === 'reasoning') && textValue !== undefined) {
+	if (chunk.type === 'reasoning-delta') {
 		return {
 			type: 'reasoning-delta',
 			...base,
-			payload: { text: textValue },
+			payload: { text: chunk.delta },
 		};
 	}
 
-	if (type === 'tool-call') {
+	if (chunk.type === 'tool-call') {
 		return {
 			type: 'tool-call',
 			...base,
 			payload: {
-				toolCallId: typeof payload.toolCallId === 'string' ? payload.toolCallId : '',
-				toolName: typeof payload.toolName === 'string' ? payload.toolName : '',
-				args: isRecord(payload.args) ? payload.args : {},
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				args: isRecord(chunk.input) ? chunk.input : {},
 			},
 		};
 	}
 
-	if (type === 'tool-result' || type === 'tool-error') {
-		const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
-
-		// Mastra signals tool errors via `isError` on tool-result chunks,
-		// not a separate event type. Map to our `tool-error` event.
-		if (payload.isError === true) {
+	if (chunk.type === 'tool-result') {
+		if (chunk.isError === true) {
 			return {
 				type: 'tool-error',
 				...base,
 				payload: {
-					toolCallId,
-					error: typeof payload.result === 'string' ? payload.result : 'Tool execution failed',
+					toolCallId: chunk.toolCallId,
+					error: typeof chunk.output === 'string' ? chunk.output : 'Tool execution failed',
 				},
 			};
 		}
@@ -166,15 +141,15 @@ export function mapMastraChunkToEvent(
 			type: 'tool-result',
 			...base,
 			payload: {
-				toolCallId,
-				result: payload.result,
+				toolCallId: chunk.toolCallId,
+				result: chunk.output,
 			},
 		};
 	}
 
-	if (type === 'tool-call-suspended') {
-		const suspendPayload = isRecord(payload.suspendPayload) ? payload.suspendPayload : {};
-		const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
+	if (chunk.type === 'tool-call-suspended') {
+		const suspendPayload = isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {};
+		const toolCallId = typeof chunk.toolCallId === 'string' ? chunk.toolCallId : '';
 
 		const requestId =
 			typeof suspendPayload.requestId === 'string' && suspendPayload.requestId
@@ -189,7 +164,6 @@ export function mapMastraChunkToEvent(
 			? (rawSeverity as (typeof validSeverities)[number])
 			: 'warning';
 
-		// Extract and validate optional credentialRequests for credential setup HITL
 		let credentialRequests: InstanceAiCredentialRequest[] | undefined;
 		if (Array.isArray(suspendPayload.credentialRequests)) {
 			const parsed = suspendPayload.credentialRequests
@@ -201,11 +175,9 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
-		// Extract optional projectId for project-scoped actions
 		const projectId =
 			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
 
-		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision')
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
 		const validInputTypes = [
@@ -219,7 +191,6 @@ export function mapMastraChunkToEvent(
 			? (rawInputType as (typeof validInputTypes)[number])
 			: undefined;
 
-		// Extract optional structured questions (for ask-user tool with questions)
 		let questions: Array<z.infer<typeof questionItemSchema>> | undefined;
 		if (Array.isArray(suspendPayload.questions)) {
 			const parsed = suspendPayload.questions
@@ -231,11 +202,9 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
-		// Extract optional intro message
 		const introMessage =
 			typeof suspendPayload.introMessage === 'string' ? suspendPayload.introMessage : undefined;
 
-		// Extract optional task list (for plan-review)
 		let tasks: TaskList | undefined;
 		if (isRecord(suspendPayload.tasks)) {
 			const parsed = taskListSchema.safeParse(suspendPayload.tasks);
@@ -244,7 +213,6 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
-		// Extract optional full planned task items (for plan-review panel details)
 		let planItems: PlannedTaskArg[] | undefined;
 		if (Array.isArray(suspendPayload.planItems)) {
 			const parsed = suspendPayload.planItems
@@ -256,7 +224,6 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
-		// Extract optional domainAccess metadata (for domain-gated tools like fetch-url)
 		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
 			? suspendPayload.domainAccess
 			: undefined;
@@ -267,7 +234,6 @@ export function mapMastraChunkToEvent(
 				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
 				: undefined;
 
-		// Extract optional credentialFlow for credential setup stage
 		const rawCredentialFlow = isRecord(suspendPayload.credentialFlow)
 			? suspendPayload.credentialFlow
 			: undefined;
@@ -281,7 +247,6 @@ export function mapMastraChunkToEvent(
 				? { stage: rawStage as 'generic' | 'finalize' }
 				: undefined;
 
-		// Extract and validate optional setupRequests for workflow setup HITL
 		let setupRequests: InstanceAiWorkflowSetupNode[] | undefined;
 		if (Array.isArray(suspendPayload.setupRequests)) {
 			const parsed = suspendPayload.setupRequests
@@ -293,11 +258,9 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
-		// Extract optional workflowId for workflow setup tool
 		const workflowId =
 			typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 
-		// Extract optional resourceDecision for gateway permission gating (inputType=resource-decision)
 		let resourceDecision: GatewayConfirmationRequiredPayload | undefined;
 		if (isRecord(suspendPayload.resourceDecision)) {
 			const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(
@@ -314,8 +277,8 @@ export function mapMastraChunkToEvent(
 			payload: {
 				requestId,
 				toolCallId,
-				toolName: typeof payload.toolName === 'string' ? payload.toolName : '',
-				args: isRecord(payload.args) ? payload.args : {},
+				toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
+				args: isRecord(chunk.input) ? chunk.input : {},
 				severity,
 				message:
 					typeof suspendPayload.message === 'string'
@@ -337,8 +300,23 @@ export function mapMastraChunkToEvent(
 		};
 	}
 
-	if (type === 'error') {
-		const errorInfo = extractErrorInfo(payload.error);
+	if (chunk.type === 'message' && 'role' in chunk.message && chunk.message.role === 'tool') {
+		const toolCall = chunk.message.content.find((part) => part.type === 'tool-call');
+		if (toolCall?.type === 'tool-call') {
+			return {
+				type: 'tool-call',
+				...base,
+				payload: {
+					toolCallId: typeof toolCall.toolCallId === 'string' ? toolCall.toolCallId : '',
+					toolName: toolCall.toolName,
+					args: isRecord(toolCall.input) ? toolCall.input : {},
+				},
+			};
+		}
+	}
+
+	if (chunk.type === 'error') {
+		const errorInfo = extractErrorInfo(chunk.error);
 		return {
 			type: 'error',
 			...base,
@@ -349,99 +327,6 @@ export function mapMastraChunkToEvent(
 				...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
 			},
 		};
-	}
-
-	// Other Mastra chunk types (step-finish, finish, etc.) are ignored
-	return null;
-}
-
-export function mapAgentChunkToEvent(
-	runId: string,
-	agentId: string,
-	chunk: unknown,
-	responseId?: string,
-): InstanceAiEvent | null {
-	if (!isAgentStreamChunk(chunk)) return null;
-
-	if (chunk.type === 'text-delta') {
-		return mapMastraChunkToEvent(
-			runId,
-			agentId,
-			{ type: 'text-delta', payload: { text: chunk.delta } },
-			responseId,
-		);
-	}
-
-	if (chunk.type === 'reasoning-delta') {
-		return mapMastraChunkToEvent(
-			runId,
-			agentId,
-			{ type: 'reasoning-delta', payload: { text: chunk.delta } },
-			responseId,
-		);
-	}
-
-	if (chunk.type === 'tool-call') {
-		return mapMastraChunkToEvent(
-			runId,
-			agentId,
-			{
-				type: 'tool-call',
-				payload: {
-					toolCallId: chunk.toolCallId,
-					toolName: chunk.toolName,
-					args: isRecord(chunk.input) ? chunk.input : {},
-				},
-			},
-			responseId,
-		);
-	}
-
-	if (chunk.type === 'tool-result') {
-		return mapMastraChunkToEvent(
-			runId,
-			agentId,
-			{
-				type: chunk.isError === true ? 'tool-error' : 'tool-result',
-				payload:
-					chunk.isError === true
-						? {
-								toolCallId: chunk.toolCallId,
-								error: typeof chunk.output === 'string' ? chunk.output : 'Tool execution failed',
-							}
-						: {
-								toolCallId: chunk.toolCallId,
-								result: chunk.output,
-							},
-			},
-			responseId,
-		);
-	}
-
-	if (chunk.type === 'tool-call-suspended') {
-		return mapMastraChunkToEvent(
-			runId,
-			agentId,
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: chunk.toolCallId,
-					toolName: chunk.toolName,
-					args: isRecord(chunk.input) ? chunk.input : {},
-					suspendPayload: isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {},
-				},
-			},
-			responseId,
-		);
-	}
-
-	if (chunk.type === 'error') {
-		return mapMastraChunkToEvent(
-			runId,
-			agentId,
-			{ type: 'error', payload: { error: chunk.error } },
-			responseId,
-		);
 	}
 
 	return null;

@@ -1,8 +1,13 @@
 import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
-import type { ToolsInput } from '@mastra/core/agent';
-import type { MastraCompositeStore } from '@mastra/core/storage';
-import type { Memory } from '@mastra/memory';
-import type { Workspace } from '@n8n/agents';
+import type {
+	AttributeValue,
+	BuiltTelemetry,
+	BuiltMemory,
+	BuiltTool,
+	CheckpointStore,
+	Telemetry,
+	Workspace,
+} from '@n8n/agents';
 import type {
 	TaskList,
 	InstanceAiAttachment,
@@ -33,6 +38,8 @@ import type {
 import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
+
+export type InstanceAiToolRegistry = Record<string, BuiltTool>;
 
 export interface WorkflowSummary {
 	id: string;
@@ -765,7 +772,6 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	storage: MastraCompositeStore;
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
@@ -778,11 +784,10 @@ export interface InstanceAiMemoryConfig {
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
  *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists because Mastra's model router forces all object configs
- *  with a `url` field through `createOpenAICompatible`, which calls `/chat/completions`.
- *  When routing through a proxy that forwards to Vertex AI (which only supports the native
- *  Anthropic Messages API at `/v1/messages`), we must use `@ai-sdk/anthropic` directly to
- *  produce a model instance that speaks the correct protocol. */
+ *  The LanguageModelV2 variant exists for proxy routes that need a provider-native transport.
+ *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
+ *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
+ *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
@@ -811,6 +816,8 @@ export interface InstanceAiTraceRun {
 	startTime: number;
 	endTime?: number;
 	traceId: string;
+	otelTraceId?: string;
+	otelSpanId?: string;
 	dottedOrder: string;
 	executionOrder: number;
 	childExecutionOrder: number;
@@ -824,6 +831,7 @@ export interface InstanceAiTraceRun {
 
 export interface InstanceAiTraceRunInit {
 	name: string;
+	canonicalName?: string;
 	runType?: string;
 	tags?: string[];
 	metadata?: Record<string, unknown>;
@@ -844,9 +852,17 @@ export interface InstanceAiToolTraceOptions {
 
 export type TraceReplayMode = 'record' | 'replay' | 'off';
 
+export interface InstanceAiTelemetryOptions {
+	agentRole: string;
+	functionId?: string;
+	executionMode?: 'foreground' | 'background' | 'background_subagent' | 'resume' | 'internal';
+	metadata?: Record<string, AttributeValue | undefined>;
+}
+
 export interface InstanceAiTraceContext {
 	projectName: string;
-	traceKind: 'message_turn' | 'detached_subagent';
+	traceKind: 'message_turn' | 'orchestrator_resume' | 'background_subagent' | 'internal_operation';
+	proxyConfig?: ServiceProxyConfig;
 	rootRun: InstanceAiTraceRun;
 	actorRun: InstanceAiTraceRun;
 	/** Compatibility alias for existing foreground-trace call sites. */
@@ -857,15 +873,18 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
-	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
+	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	finishRun: (run: InstanceAiTraceRun, options?: InstanceAiTraceRunFinishOptions) => Promise<void>;
 	failRun: (
 		run: InstanceAiTraceRun,
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	) => Promise<void>;
-	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
-	wrapTools: (tools: ToolsInput, options?: InstanceAiToolTraceOptions) => ToolsInput;
+	wrapTools: (
+		tools: InstanceAiToolRegistry,
+		options?: InstanceAiToolTraceOptions,
+	) => InstanceAiToolRegistry;
+	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -891,7 +910,10 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	/** Existing trace context for legacy callers. Prefer createTraceContext for new background tasks. */
 	traceContext?: InstanceAiTraceContext;
+	/** Lazily creates the background trace only after the task is accepted and starts executing. */
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** When set, links the background task back to a planned task in the scheduler. */
 	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
@@ -922,6 +944,7 @@ export interface SpawnBackgroundTaskOptions {
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
+		taskContext: { traceContext?: InstanceAiTraceContext },
 	) => Promise<string | BackgroundTaskResult>;
 }
 
@@ -958,12 +981,12 @@ export interface OrchestrationContext {
 	userId: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	storage: MastraCompositeStore;
+	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
-	domainTools: ToolsInput;
+	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
@@ -988,7 +1011,7 @@ export interface OrchestrationContext {
 	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
-	mcpTools?: ToolsInput;
+	mcpTools?: InstanceAiToolRegistry;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
@@ -1011,9 +1034,9 @@ export interface OrchestrationContext {
 	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
-	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
-	memory?: Memory;
-	/** The current user message being processed — needed because memory.recall() only
+	/** Native memory store — used to retrieve thread message history for sub-agents. */
+	memory?: BuiltMemory;
+	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
@@ -1059,17 +1082,17 @@ export interface CreateInstanceAgentOptions {
 	/** Owns MCP client connections + tool listing caches; the service passes its singleton in. */
 	mcpManager: McpClientManager;
 	memoryConfig: InstanceAiMemoryConfig;
-	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
-	memory?: Memory;
+	/** Pre-built native Memory instance. When provided, `memoryConfig` controls options only. */
+	memory?: BuiltMemory;
+	/** Native checkpoint store for HITL/suspend state. */
+	checkpointStore?: CheckpointStore;
 	/**
 	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * `mastra_workspace_*` tools on the orchestrator, which the LLM abused as a `sleep` primitive
+	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
 	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
 	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
 	 */
 	workspace?: Workspace;
-	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
-	disableDeferredTools?: boolean;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

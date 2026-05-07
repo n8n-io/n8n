@@ -19,19 +19,8 @@ jest.mock('@n8n/instance-ai', () => {
 		handleVerificationVerdict: jest.fn(),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
-		createMemory: jest.fn(),
-		mapMastraChunkToEvent: jest.fn(),
 	};
 });
-jest.mock('../storage/typeorm-composite-store', () => ({
-	TypeORMCompositeStore: class TypeORMCompositeStore {},
-}));
-jest.mock('../storage/typeorm-memory-storage', () => ({
-	TypeORMMemoryStorage: class TypeORMMemoryStorage {},
-}));
-jest.mock('../storage/typeorm-workflows-storage', () => ({
-	TypeORMWorkflowsStorage: class TypeORMWorkflowsStorage {},
-}));
 
 import type { User } from '@n8n/db';
 

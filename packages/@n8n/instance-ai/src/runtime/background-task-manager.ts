@@ -21,6 +21,7 @@ export interface ManagedBackgroundTask {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** Identity used for single-flight dedupe lookups; copied from the spawn options. */
 	dedupeKey?: BackgroundTaskDedupeKey;
 	/**
@@ -52,6 +53,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/**
 	 * Identity for single-flight dedupe. When supplied, a spawn with the same `plannedTaskId`
 	 * (primary) or `role + workflowId` (fallback) as a currently-running task returns
@@ -72,6 +74,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
+		taskContext: { traceContext?: InstanceAiTraceContext },
 	) => Promise<string | BackgroundTaskResult>;
 	onLimitReached?: (errorMessage: string) => void;
 	onCompleted?: (task: ManagedBackgroundTask) => void | Promise<void>;
@@ -300,10 +303,14 @@ export class BackgroundTaskManager {
 			});
 
 		try {
+			if (!task.traceContext && options.createTraceContext) {
+				task.traceContext = await options.createTraceContext();
+			}
 			const raw = await options.run(
 				task.abortController.signal,
 				drainCorrections,
 				waitForCorrection,
+				{ traceContext: task.traceContext },
 			);
 			task.status = 'completed';
 			task.result = typeof raw === 'string' ? raw : raw.text;

@@ -1,15 +1,8 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 import { delegateInputSchema } from '../delegate.schemas';
 
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({ Agent: jest.fn() }));
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-jest.mock('@mastra/core/mastra', () => ({ Mastra: jest.fn() }));
-jest.mock('@mastra/memory', () => ({ Memory: jest.fn() }));
 jest.mock('../../../stream/consume-with-hitl', () => ({ consumeStreamWithHitl: jest.fn() }));
-jest.mock('../../../stream/map-chunk', () => ({ mapMastraChunkToEvent: jest.fn() }));
 jest.mock('../../../storage/iteration-log', () => ({ formatPreviousAttempts: jest.fn() }));
 
 const { createDelegateTool } =
@@ -27,7 +20,6 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model',
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),
@@ -90,10 +82,7 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = (await tool.execute!(
-			{ ...makeValidInput(), tools: ['plan'] },
-			{} as never,
-		)) as Record<string, unknown>;
+		const output = await executeTool(tool, { ...makeValidInput(), tools: ['plan'] }, {} as never);
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('plan');
@@ -104,10 +93,11 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = (await tool.execute!(
+		const output = await executeTool(
+			tool,
 			{ ...makeValidInput(), tools: ['delegate'] },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('delegate');
@@ -118,10 +108,11 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = (await tool.execute!(
+		const output = await executeTool(
+			tool,
 			{ ...makeValidInput(), tools: ['nonexistent'] },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('nonexistent');

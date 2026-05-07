@@ -6,7 +6,7 @@
  * for this execution.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { Logger } from '../../logger';
@@ -474,37 +474,39 @@ function classifyVerificationFailure(
 }
 
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'verify-built-workflow',
-		description:
+	return new Tool('verify-built-workflow')
+		.description(
 			'Run a built workflow that has mocked credentials, using sidecar verification pin data ' +
-			'from the build outcome. Use this instead of `executions(action="run")` when the build had mocked credentials. ' +
-			'CRITICAL: `inputData` shape depends on the trigger type — see the per-trigger guidance on the inputData field. ' +
-			'Passing the wrong shape (e.g. wrapping form fields under `formFields`) produces null downstream values that ' +
-			'look like an expression bug but are not — do not patch the workflow, re-run verify with the correct shape.',
-		inputSchema: verifyBuiltWorkflowInputSchema,
-		outputSchema: z.object({
-			executionId: z.string().optional(),
-			success: z.boolean(),
-			status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
-			nodesExecuted: z.array(z.string()).optional(),
-			nodePreviews: z
-				.array(
-					z.object({
-						nodeName: z.string(),
-						itemCount: z.number().optional(),
-						preview: z.string(),
-						truncated: z.boolean(),
-						chars: z.number(),
-					}),
-				)
-				.optional(),
-			data: z.record(z.unknown()).optional(),
-			error: z.string().optional(),
-			remediation: remediationOutputSchema,
-			guidance: z.string().optional(),
-		}),
-		execute: async (input: z.infer<typeof verifyBuiltWorkflowInputSchema>) => {
+				'from the build outcome. Use this instead of `executions(action="run")` when the build had mocked credentials. ' +
+				'CRITICAL: `inputData` shape depends on the trigger type — see the per-trigger guidance on the inputData field. ' +
+				'Passing the wrong shape (e.g. wrapping form fields under `formFields`) produces null downstream values that ' +
+				'look like an expression bug but are not — do not patch the workflow, re-run verify with the correct shape.',
+		)
+		.input(verifyBuiltWorkflowInputSchema)
+		.output(
+			z.object({
+				executionId: z.string().optional(),
+				success: z.boolean(),
+				status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
+				nodesExecuted: z.array(z.string()).optional(),
+				nodePreviews: z
+					.array(
+						z.object({
+							nodeName: z.string(),
+							itemCount: z.number().optional(),
+							preview: z.string(),
+							truncated: z.boolean(),
+							chars: z.number(),
+						}),
+					)
+					.optional(),
+				data: z.record(z.unknown()).optional(),
+				error: z.string().optional(),
+				remediation: remediationOutputSchema,
+				guidance: z.string().optional(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof verifyBuiltWorkflowInputSchema>) => {
 			if (!context.workflowTaskService || !context.domainContext) {
 				const remediation = createRemediation({
 					category: 'blocked',
@@ -702,6 +704,6 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				remediation,
 				guidance: remediation?.guidance,
 			};
-		},
-	});
+		})
+		.build();
 }

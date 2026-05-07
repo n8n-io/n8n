@@ -1,7 +1,7 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 
 import { parseStoredMessages } from '../message-parser';
-import type { MastraDBMessage } from '../message-parser';
+import type { StoredAgentMessage } from '../message-parser';
 
 function makeDate(offset = 0): Date {
 	return new Date(Date.now() + offset);
@@ -23,7 +23,7 @@ function makeSnapshotTree(text = 'Snapshot text'): InstanceAiAgentNode {
 describe('parseStoredMessages', () => {
 	describe('user messages', () => {
 		it('should parse user message with string content', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-1',
 					role: 'user',
@@ -45,7 +45,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should parse user message with V2 content (parts array)', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-1',
 					role: 'user',
@@ -64,7 +64,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should parse user message with V2 content shortcut', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-1',
 					role: 'user',
@@ -81,7 +81,7 @@ describe('parseStoredMessages', () => {
 
 	describe('assistant messages', () => {
 		it('should parse assistant message with text only', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -109,7 +109,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should parse assistant message with tool invocations (result state)', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -151,7 +151,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should parse assistant message with tool invocations (call state - interrupted)', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -186,7 +186,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should parse assistant message with reasoning', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -211,7 +211,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should parse reasoning from parts array', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -239,7 +239,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should use agentTree snapshot when available', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -290,7 +290,7 @@ describe('parseStoredMessages', () => {
 		it('should hydrate orphan snapshots without a matching assistant message', () => {
 			const snapshotCreatedAt = makeDate(1);
 			const tree = makeSnapshotTree('I finished the run, but I did not generate a final response.');
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -325,7 +325,7 @@ describe('parseStoredMessages', () => {
 		it('should append trailing orphan snapshots without remapping existing assistant snapshots', () => {
 			const firstTree = makeSnapshotTree('First assistant response');
 			const orphanTree = makeSnapshotTree('The run was cancelled before I could send a response.');
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u1',
 					role: 'user',
@@ -366,7 +366,7 @@ describe('parseStoredMessages', () => {
 		it('should place leading orphan snapshots before later assistant messages', () => {
 			const orphanTree = makeSnapshotTree('The run was cancelled before I could send a response.');
 			const secondTree = makeSnapshotTree('Second assistant response');
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u1',
 					role: 'user',
@@ -422,7 +422,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should apply renderHint correctly for known tool names', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -466,7 +466,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should apply renderHint correctly for workflow flow aliases in stored messages', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -510,7 +510,7 @@ describe('parseStoredMessages', () => {
 
 	describe('internal enrichment stripping', () => {
 		it('should hide auto-follow-up (continue) messages', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u1',
 					role: 'user',
@@ -548,7 +548,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should hide bare (continue) messages without task context block', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -563,7 +563,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should strip running-tasks enrichment from real user messages', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -580,7 +580,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should not strip running-tasks text that appears mid-message', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
@@ -603,7 +603,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should skip tool/system role messages', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-t',
 					role: 'tool',
@@ -623,7 +623,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should handle assistant message with empty content gracefully', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-a',
 					role: 'assistant',
@@ -641,7 +641,7 @@ describe('parseStoredMessages', () => {
 		});
 
 		it('should extract tool invocations from parts array as fallback', () => {
-			const messages: MastraDBMessage[] = [
+			const messages: StoredAgentMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',

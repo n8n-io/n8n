@@ -15,6 +15,7 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
@@ -45,12 +46,11 @@ export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
 export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
-export { createMemory } from './memory/memory-config';
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
-	MastraIterationLogStorage,
-	MastraTaskStorage,
+	ThreadIterationLogStorage,
+	ThreadTaskStorage,
 	PlannedTaskStorage,
 	getThread,
 	TerminalOutcomeStorage,

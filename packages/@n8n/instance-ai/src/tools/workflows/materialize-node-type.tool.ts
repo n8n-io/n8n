@@ -9,7 +9,7 @@
  * single batched command to minimize API round-trips.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
@@ -54,25 +54,27 @@ export function createMaterializeNodeTypeTool(
 	context: InstanceAiContext,
 	workspace: SandboxWorkspace,
 ) {
-	return createTool({
-		id: 'materialize-node-type',
-		description:
+	return new Tool('materialize-node-type')
+		.description(
 			'Get TypeScript type definitions for nodes. Returns the full definition content ' +
-			'AND writes the files to the sandbox so tsc can reference them. ' +
-			'Use after search-nodes to get exact schemas before writing workflow code. ' +
-			'No need to cat the files afterward — content is returned directly.',
-		inputSchema: materializeNodeTypeInputSchema,
-		outputSchema: z.object({
-			definitions: z.array(
-				z.object({
-					nodeId: z.string(),
-					path: z.string(),
-					content: z.string(),
-					error: z.string().optional(),
-				}),
-			),
-		}),
-		execute: async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>) => {
+				'AND writes the files to the sandbox so tsc can reference them. ' +
+				'Use after search-nodes to get exact schemas before writing workflow code. ' +
+				'No need to cat the files afterward — content is returned directly.',
+		)
+		.input(materializeNodeTypeInputSchema)
+		.output(
+			z.object({
+				definitions: z.array(
+					z.object({
+						nodeId: z.string(),
+						path: z.string(),
+						content: z.string(),
+						error: z.string().optional(),
+					}),
+				),
+			}),
+		)
+		.handler(async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
 					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
@@ -143,6 +145,6 @@ export function createMaterializeNodeTypeTool(
 			}
 
 			return { definitions: resolved };
-		},
-	});
+		})
+		.build();
 }

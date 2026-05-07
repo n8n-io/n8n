@@ -2,19 +2,18 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
-// Mock createMemory to return a controllable memory instance
-const mockRecall = jest.fn();
-const mockGetThreadById = jest.fn();
+const mockListMessages = jest.fn();
+const mockGetThread = jest.fn();
 const mockSaveThread = jest.fn();
-const mockMemory = {
-	recall: mockRecall,
-	getThreadById: mockGetThreadById,
+const mockDeleteThread = jest.fn();
+const mockListThreads = jest.fn();
+const mockAgentMemory = {
+	listMessages: mockListMessages,
+	getThread: mockGetThread,
 	saveThread: mockSaveThread,
+	deleteThread: mockDeleteThread,
+	listThreads: mockListThreads,
 };
-
-jest.mock('@n8n/instance-ai', () => ({
-	createMemory: () => mockMemory,
-}));
 
 // Mock GlobalConfig
 const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
@@ -38,11 +37,10 @@ function createService(): InstanceAiMemoryService {
 		},
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
-	const mockCompositeStore = {} as never;
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
-		mockCompositeStore,
+		mockAgentMemory as never,
 		mockDbSnapshotStorage as never,
 	);
 }
@@ -65,11 +63,12 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
+		mockListMessages.mockResolvedValue({ messages: [] });
 	});
 
 	it('should return parsed rich messages with agent trees from snapshots', async () => {
 		const tree = makeTree();
-		mockRecall.mockResolvedValue({
+		mockListMessages.mockResolvedValue({
 			messages: [
 				{
 					id: 'msg-u',
@@ -99,7 +98,7 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 	});
 
 	it('should return parsed messages with flat tree when no snapshots exist', async () => {
-		mockRecall.mockResolvedValue({
+		mockListMessages.mockResolvedValue({
 			messages: [
 				{
 					id: 'msg-u',
@@ -127,7 +126,7 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 				},
 			],
 		});
-		mockGetThreadById.mockResolvedValue({
+		mockGetThread.mockResolvedValue({
 			id: 'thread-1',
 			title: 'Test',
 			metadata: {},
@@ -145,8 +144,8 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 	});
 
 	it('should handle empty message list', async () => {
-		mockRecall.mockResolvedValue({ messages: [] });
-		mockGetThreadById.mockResolvedValue({
+		mockListMessages.mockResolvedValue({ messages: [] });
+		mockGetThread.mockResolvedValue({
 			id: 'thread-1',
 			title: 'Test',
 			metadata: {},
@@ -165,7 +164,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 	});
 
 	it('creates a thread when it does not exist yet', async () => {
-		mockGetThreadById.mockResolvedValueOnce(null);
+		mockGetThread.mockResolvedValueOnce(null);
 		mockSaveThread.mockResolvedValueOnce({
 			id: 'thread-new',
 			title: '',
@@ -179,11 +178,9 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		const result = await service.ensureThread('user-1', 'thread-new');
 
 		expect(mockSaveThread).toHaveBeenCalledWith({
-			thread: expect.objectContaining({
-				id: 'thread-new',
-				resourceId: 'user-1',
-				title: '',
-			}),
+			id: 'thread-new',
+			resourceId: 'user-1',
+			title: '',
 		});
 		expect(result.created).toBe(true);
 		expect(result.thread.id).toBe('thread-new');
@@ -191,7 +188,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 	});
 
 	it('returns the existing thread without rewriting it', async () => {
-		mockGetThreadById.mockResolvedValueOnce({
+		mockGetThread.mockResolvedValueOnce({
 			id: 'thread-existing',
 			title: 'Existing',
 			resourceId: 'user-1',

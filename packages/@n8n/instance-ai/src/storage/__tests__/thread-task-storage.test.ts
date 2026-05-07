@@ -1,18 +1,20 @@
 import type { TaskList } from '@n8n/api-types';
 
+import type { PatchableThreadMemory } from '../thread-patch';
+import type * as ThreadPatch from '../thread-patch';
+import { patchThread } from '../thread-patch';
+import { ThreadTaskStorage } from '../thread-task-storage';
+
 jest.mock('../thread-patch', () => {
 	const actual =
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof import('../thread-patch')>('../thread-patch');
+		jest.requireActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
 		patchThread: jest.fn(),
 	};
 });
-
-import { MastraTaskStorage } from '../mastra-task-storage';
-import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 
 const mockedPatchThread = jest.mocked(patchThread);
 type TestMemory = PatchableThreadMemory & { getThreadById: jest.Mock };
@@ -33,14 +35,14 @@ const sampleTaskList: TaskList = {
 	],
 };
 
-describe('MastraTaskStorage', () => {
+describe('ThreadTaskStorage', () => {
 	let memory: TestMemory;
-	let storage: MastraTaskStorage;
+	let storage: ThreadTaskStorage;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		memory = makeMemory();
-		storage = new MastraTaskStorage(memory);
+		storage = new ThreadTaskStorage(memory);
 	});
 
 	describe('get', () => {

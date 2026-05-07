@@ -3,11 +3,9 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { generateCompactionSummary, getThread, patchThread } from '@n8n/instance-ai';
-import type { ModelConfig, PatchableThreadMemory } from '@n8n/instance-ai';
+import type { BuiltMemory, ModelConfig } from '@n8n/instance-ai';
 
 import { maxContextWindowTokens } from '@/modules/chat-hub/context-limits';
-
-import { TypeORMMemoryStorage } from './storage/typeorm-memory-storage';
 
 const METADATA_KEY = 'instanceAiConversationSummary';
 
@@ -78,11 +76,7 @@ interface PendingCompactionInput {
 	text: string;
 }
 
-interface StoredCompactionMessage {
-	id: string;
-	role: string;
-	content: unknown;
-}
+type StoredCompactionMessage = Awaited<ReturnType<BuiltMemory['getMessages']>>[number];
 
 /**
  * Manages rolling compaction of older thread messages into a summary.
@@ -104,7 +98,6 @@ export class InstanceAiCompactionService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly memoryStorage: TypeORMMemoryStorage,
 		globalConfig: GlobalConfig,
 	) {
 		this.maxContextWindowTokensCap = globalConfig.instanceAi.maxContextWindowTokens;
@@ -119,7 +112,7 @@ export class InstanceAiCompactionService {
 	 */
 	async prepareCompactedContext(
 		threadId: string,
-		memory: PatchableThreadMemory,
+		memory: BuiltMemory,
 		modelId: ModelConfig,
 		lastMessages: number,
 		compactionThreshold = 0.8,
@@ -130,11 +123,7 @@ export class InstanceAiCompactionService {
 			const currentInputTokens = currentInput ? estimateTokens(currentInput.text) : 0;
 
 			// Load all messages for the thread, ordered chronologically
-			const { messages: allMessages } = await this.memoryStorage.listMessages({
-				threadId,
-				perPage: false,
-				orderBy: { field: 'createdAt', direction: 'ASC' },
-			});
+			const allMessages = await memory.getMessages(threadId);
 
 			// Estimate total token usage across all messages
 			const rawMessageTokens = allMessages.reduce(
@@ -231,7 +220,7 @@ export class InstanceAiCompactionService {
 
 	/** Get the full serialized text of a message (for token estimation). */
 	private extractRawText(msg: StoredCompactionMessage): string {
-		const content: unknown = msg.content;
+		const content: unknown = 'content' in msg ? msg.content : msg.data;
 		if (typeof content === 'string') return content;
 		return JSON.stringify(content);
 	}
@@ -246,6 +235,7 @@ export class InstanceAiCompactionService {
 		const result: Array<{ role: string; text: string }> = [];
 
 		for (const msg of messages) {
+			if (!('role' in msg)) continue;
 			if (msg.role !== 'user' && msg.role !== 'assistant') continue;
 
 			const text = this.extractTextFromContent(msg.content);
@@ -264,22 +254,30 @@ export class InstanceAiCompactionService {
 	private extractTextFromContent(content: unknown): string {
 		if (typeof content === 'string') return content;
 
+		if (Array.isArray(content)) {
+			return this.extractTextParts(content);
+		}
+
 		const inner = (content as Record<string, unknown>)?.content;
 		if (typeof inner === 'string') return inner;
 
 		if (Array.isArray(inner)) {
-			const textParts: string[] = [];
-			for (const part of inner) {
-				if (typeof part === 'string') {
-					textParts.push(part);
-				} else if (isTextPart(part)) {
-					textParts.push(part.text);
-				}
-			}
-			return textParts.join('\n');
+			return this.extractTextParts(inner);
 		}
 
 		return '';
+	}
+
+	private extractTextParts(parts: unknown[]): string {
+		const textParts: string[] = [];
+		for (const part of parts) {
+			if (typeof part === 'string') {
+				textParts.push(part);
+			} else if (isTextPart(part)) {
+				textParts.push(part.text);
+			}
+		}
+		return textParts.join('\n');
 	}
 
 	private formatSummaryBlock(summary: string): string {
@@ -302,7 +300,7 @@ export class InstanceAiCompactionService {
 
 	private async saveMetadata(
 		threadId: string,
-		memory: PatchableThreadMemory,
+		memory: BuiltMemory,
 		metadata: ConversationSummaryMetadata,
 	): Promise<void> {
 		await patchThread(memory, {

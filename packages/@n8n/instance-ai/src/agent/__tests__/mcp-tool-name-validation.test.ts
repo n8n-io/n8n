@@ -1,14 +1,16 @@
-import type { ToolsInput } from '@mastra/core/agent';
+import type { BuiltTool } from '@n8n/agents';
 
 import { addSafeMcpTools, createClaimedToolNames } from '../mcp-tool-name-validation';
 
-function makeTools(names: string[]): ToolsInput {
-	return Object.fromEntries(names.map((name) => [name, { id: name }])) as unknown as ToolsInput;
+type ToolRegistry = Record<string, BuiltTool>;
+
+function makeTools(names: string[]): ToolRegistry {
+	return Object.fromEntries(names.map((name) => [name, { name, description: name }]));
 }
 
 describe('MCP tool name validation', () => {
 	it('allows external tool names that contain native tool names as suffixes', () => {
-		const target: ToolsInput = {};
+		const target: ToolRegistry = {};
 
 		addSafeMcpTools(target, makeTools(['github_workflows', 'custom_plan']), {
 			source: 'external MCP',
@@ -20,7 +22,7 @@ describe('MCP tool name validation', () => {
 	});
 
 	it('still skips exact normalized name collisions with native tools', () => {
-		const target: ToolsInput = {};
+		const target: ToolRegistry = {};
 		const warn = jest.fn();
 
 		addSafeMcpTools(target, makeTools(['work-flows']), {

@@ -2,6 +2,7 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes } from 'n8n-workflow';
 
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
@@ -10,18 +11,10 @@ import {
 	type SubmitWorkflowAttempt,
 } from '../submit-workflow.tool';
 
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
 }));
 
-// `require` (rather than `import`) is needed because `submit-workflow.tool`
-// transitively pulls in @mastra/core (ESM-only); the require call here runs
-// AFTER the `jest.mock('@mastra/core/tools', …)` above, so the mock is in
-// place before the module is evaluated.
 const { createSubmitWorkflowTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../submit-workflow.tool') as typeof import('../submit-workflow.tool');
@@ -121,7 +114,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 			new Map(),
 		) as unknown as Executable;
 
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider,
@@ -136,7 +129,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 			new Map(),
 		) as unknown as Executable;
 
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider: undefined,
@@ -184,7 +177,7 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			},
 		) as unknown as Executable;
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', name: 'New workflow' });
+		const out = await executeTool(tool, { filePath: 'src/workflow.ts', name: 'New workflow' });
 
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);
@@ -205,7 +198,7 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			},
 		) as unknown as Executable;
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', workflowId: 'abc123' });
+		const out = await executeTool(tool, { filePath: 'src/workflow.ts', workflowId: 'abc123' });
 
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);

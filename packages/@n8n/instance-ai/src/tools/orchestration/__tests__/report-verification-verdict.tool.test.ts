@@ -1,3 +1,4 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 import type { WorkflowLoopAction } from '../../../workflow-loop/workflow-loop-state';
 import { createReportVerificationVerdictTool } from '../report-verification-verdict.tool';
@@ -25,7 +26,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model',
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),
@@ -58,7 +58,7 @@ describe('report-verification-verdict tool', () => {
 		const context = createMockContext({ workflowTaskService: undefined });
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
+		const result = await executeTool(tool, baseInput, {} as never);
 
 		expect((result as { guidance: string }).guidance).toContain('Error');
 	});
@@ -75,7 +75,7 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
+		const result = await executeTool(tool, baseInput, {} as never);
 
 		expect(reportVerificationVerdict).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -96,7 +96,7 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
+		const result = await executeTool(tool, baseInput, {} as never);
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
 		expect((result as { guidance: string }).guidance).toContain('executions(action="run")');
@@ -116,7 +116,8 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(
+		const result = await executeTool(
+			tool,
 			{
 				...baseInput,
 				verdict: 'needs_patch',
@@ -124,7 +125,7 @@ describe('report-verification-verdict tool', () => {
 				patch: { url: 'https://example.com' },
 			},
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		const reported = reportVerificationVerdict.mock.calls[0]?.[0] as {
 			remediation?: { category?: string; shouldEdit?: boolean };
@@ -150,7 +151,8 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		await tool.execute!(
+		await executeTool(
+			tool,
 			{
 				...baseInput,
 				verdict: 'needs_patch',
@@ -199,14 +201,15 @@ describe('report-verification-verdict tool', () => {
 		const context = createMockContext({ workflowTaskService });
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(
+		const result = await executeTool(
+			tool,
 			{
 				...baseInput,
 				verdict: 'needs_patch',
 				failedNodeName: 'HTTP Request',
 			},
 			{} as never,
-		)) as { guidance: string };
+		);
 
 		expect(reportVerificationVerdict).not.toHaveBeenCalled();
 		expect(result.guidance).toContain('Stop editing');
@@ -238,7 +241,8 @@ describe('report-verification-verdict tool', () => {
 		const context = createMockContext({ workflowTaskService });
 		const tool = createReportVerificationVerdictTool(context);
 
-		await tool.execute!(
+		await executeTool(
+			tool,
 			{
 				...baseInput,
 				verdict: 'needs_patch',
@@ -266,7 +270,8 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		await tool.execute!(
+		await executeTool(
+			tool,
 			{
 				...baseInput,
 				verdict: 'needs_patch',
@@ -302,10 +307,11 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(
+		const result = await executeTool(
+			tool,
 			{ ...baseInput, verdict: 'needs_rebuild', diagnosis: 'Missing connection between nodes' },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
 		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
@@ -323,10 +329,11 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = (await tool.execute!(
+		const result = await executeTool(
+			tool,
 			{ ...baseInput, verdict: 'failed_terminal', failureSignature: 'TypeError' },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect((result as { guidance: string }).guidance).toContain('BUILD BLOCKED');
 		expect((result as { guidance: string }).guidance).toContain('Repeated patch failure');
@@ -344,7 +351,8 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		(await tool.execute!(
+		await executeTool(
+			tool,
 			{
 				...baseInput,
 				executionId: 'exec-456',
@@ -354,7 +362,7 @@ describe('report-verification-verdict tool', () => {
 				patch: { code: 'fixed' },
 			},
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect(reportVerificationVerdict).toHaveBeenCalledWith(
 			expect.objectContaining({
