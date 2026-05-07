@@ -78,12 +78,11 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			},
 			builderHint: {
 				...args.meta.builderHint,
-				message:
-					'Mode picks both the SDK factory and the required subnodes. Read the per-mode example in this type to see the canonical shape.',
 				extraTypeDefContent: [
 					{
 						displayOptions: { show: { mode: ['insert'] } },
-						content: `<patterns>
+						content: `Declare with the \`vectorStore({...})\` factory. Required subnodes: \`{ embedding, documentLoader }\`. Sits on the main flow — pipe the documents you want to embed into this node.
+<patterns>
 <pattern title="Insert mode — upsert documents into the store">
 const store = vectorStore({
   type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
@@ -99,7 +98,8 @@ const store = vectorStore({
 					},
 					{
 						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
-						content: `<patterns>
+						content: `Declare with the \`tool({...})\` factory (NOT \`vectorStore\`). Required subnodes: \`{ embedding }\`. Set \`toolDescription\` so the agent knows when to call it. Plug into an AI Agent's \`subnodes.tools\` array — this is the canonical RAG pattern.
+<patterns>
 <pattern title="retrieve-as-tool mode — RAG via AI Agent">
 const knowledgeBase = tool({
   type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
@@ -127,6 +127,21 @@ const agent = node({
 });
 </pattern>
 </patterns>`,
+					},
+					{
+						displayOptions: { show: { mode: ['load'] } },
+						content:
+							"Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Performs a one-shot similarity search on the main flow using the `prompt` parameter — use this when you need a lookup outside an agent's tool-calling loop.",
+					},
+					{
+						displayOptions: { show: { mode: ['retrieve'] } },
+						content:
+							"Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Plug the resulting node into another node's `subnodes` (e.g. a `toolVectorStore` node's `subnodes: { vectorStore }`).",
+					},
+					{
+						displayOptions: { show: { mode: ['update'] } },
+						content:
+							'Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Updates documents by ID — only available on stores whose `operationModes` explicitly enables it.',
 					},
 				],
 				inputs: {
