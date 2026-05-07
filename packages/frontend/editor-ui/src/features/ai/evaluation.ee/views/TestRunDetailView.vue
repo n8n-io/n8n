@@ -126,9 +126,10 @@ const trackViewedRunDetail = () => {
 };
 
 // `router.back()` no-ops on shared links with no prior history; nav explicitly.
-const navigateBackToRuns = () =>
-	workflowId.value &&
-	void router.push({ name: VIEWS.EVALUATION_EDIT, params: { workflowId: workflowId.value } });
+const navigateBackToRuns = async () => {
+	if (!workflowId.value) return;
+	await router.push({ name: VIEWS.EVALUATION_EDIT, params: { workflowId: workflowId.value } });
+};
 
 // Skip telemetry on fetch error to avoid all-zero events.
 onMounted(async () => (await fetchExecutionTestCases()) && trackViewedRunDetail());
