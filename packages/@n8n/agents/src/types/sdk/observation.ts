@@ -1,7 +1,7 @@
-import type { AgentDbMessage } from './message';
 import type { z } from 'zod';
 
 import type { ModelConfig } from './agent';
+import type { AgentDbMessage } from './message';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONValue } from '../utils/json';
 
