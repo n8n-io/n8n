@@ -343,6 +343,8 @@ describe('runObservationalCycle', () => {
 		expect(call.system).toContain('Do not record assistant self-assessments');
 		expect(call.system).toContain('memory drawer shows it');
 		expect(call.system).toContain('the test passed');
+		expect(call.system).not.toContain('Do not treat assistant acknowledgements');
+		expect(call.system).not.toContain('actions performed by the main agent');
 		expect(call.system).toContain('Do not emit temporal-gap rows');
 		expect(call.prompt).toContain('Computed temporal gap:');
 		expect(call.prompt).toContain('User returned after 2h of inactivity.');
@@ -382,6 +384,8 @@ describe('runObservationalCycle', () => {
 		expect(compactorCall.system).toContain(
 			'Remove existing follow-ups that came only from assistant questions',
 		);
+		expect(compactorCall.system).not.toContain('The observer owns memory updates');
+		expect(compactorCall.system).not.toContain('Which DB schema is Robin using?');
 		expect(compactorCall.prompt).toContain('### continuity / gap');
 		expect(compactorCall.prompt).toContain('duration=2h');
 		expect(compactorCall.prompt).toContain('### decisions / observation');
