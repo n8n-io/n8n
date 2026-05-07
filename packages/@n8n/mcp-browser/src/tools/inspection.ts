@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
+import { redactString } from '../redaction/redact';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult, formatImageResponse } from '../utils';
 import { createConnectedTool, elementTargetSchema, pageIdField } from './helpers';
@@ -115,7 +116,11 @@ function browserContent(connection: BrowserConnection): ToolDefinition {
 		'Extract page content as structured markdown with headings, links, lists, and tables preserved. Uses readability extraction to strip navigation, ads, and boilerplate. Prefer browser_snapshot for element discovery and interaction; use this when you need to read and understand page text content.',
 		browserContentSchema,
 		async (state, input, pageId) => {
-			const { html, url } = await state.adapter.getContent(pageId, input.selector);
+			const { html: rawHtml, url } = await state.adapter.getContent(pageId, input.selector);
+
+			// Markdown turndown escapes characters like `_` (e.g. `ghp_xxx` →
+			// `ghp\_xxx`), so redact on the raw HTML before turndown runs.
+			const html = redactString(rawHtml);
 
 			const [{ JSDOM, VirtualConsole }, { Readability }, TurndownModule, { gfm }] =
 				await Promise.all([

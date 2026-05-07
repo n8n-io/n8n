@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { createInspectionTools } from './inspection';
-import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
+import { createMockConnection, findTool, structuredOf, textOf, TOOL_CONTEXT } from './test-helpers';
 
 describe('createInspectionTools', () => {
 	let mockConnection: ReturnType<typeof createMockConnection>;
@@ -387,6 +387,82 @@ describe('createInspectionTools', () => {
 				expect(mockConnection.adapter.getNetwork).toHaveBeenCalledWith('page1', '**/*.json', true);
 				expect(data.requests).toEqual(requests);
 			});
+		});
+	});
+
+	describe('redaction at response-envelope chokepoint', () => {
+		// Synthetic fixtures sized to the BUILTIN_PATTERNS shapes.
+		const FAKE_ANTHROPIC = `sk-ant-api03-${'a'.repeat(93)}AA`;
+		const FAKE_GH_PAT = `ghp_${'b'.repeat(36)}`;
+
+		it('redacts secrets in browser_snapshot tree output', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({
+				tree: `- text "Your key is ${FAKE_ANTHROPIC}" [ref=e1]`,
+				refCount: 1,
+			});
+
+			const result = await findTool(tools, 'browser_snapshot').execute({}, TOOL_CONTEXT);
+			const data = structuredOf(result);
+
+			expect(data.snapshot).toBe('- text "Your key is [REDACTED:anthropic_api_key]" [ref=e1]');
+			expect(data.snapshot).not.toContain(FAKE_ANTHROPIC);
+			// Both surfaces of CallToolResult must be redacted.
+			expect(textOf(result)).not.toContain(FAKE_ANTHROPIC);
+			expect(textOf(result)).toContain('[REDACTED:anthropic_api_key]');
+		});
+
+		it('redacts secrets in browser_content output', async () => {
+			mockConnection.adapter.getContent.mockResolvedValue({
+				html: `<html><body><p>Token: ${FAKE_GH_PAT}</p></body></html>`,
+				url: 'http://test.com',
+			});
+
+			const result = await findTool(tools, 'browser_content').execute({}, TOOL_CONTEXT);
+			const data = structuredOf(result);
+			const content = typeof data.content === 'string' ? data.content : '';
+
+			// Markdown turndown escapes characters like `[`, `]`, `_` — the
+			// marker survives as `\[REDACTED:github\_pat\]`, semantically
+			// identical for any markdown reader. The secret itself must be
+			// gone in any form.
+			expect(content).not.toContain(FAKE_GH_PAT);
+			expect(content.replace(/\\/g, '')).toContain('[REDACTED:github_pat]');
+		});
+
+		it('redacts secrets returned by browser_evaluate', async () => {
+			mockConnection.adapter.evaluate.mockResolvedValue({ revealed: FAKE_ANTHROPIC });
+
+			const result = await findTool(tools, 'browser_evaluate').execute(
+				{ script: 'document.querySelector("#key").innerText' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(data.result).toEqual({ revealed: '[REDACTED:anthropic_api_key]' });
+			expect(textOf(result)).not.toContain(FAKE_ANTHROPIC);
+		});
+
+		it('preserves @e ref annotations alongside the redaction marker', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({
+				tree: `- button "Copy ${FAKE_ANTHROPIC}" [ref=e42]`,
+				refCount: 1,
+			});
+
+			const result = await findTool(tools, 'browser_snapshot').execute({}, TOOL_CONTEXT);
+			const data = structuredOf(result);
+
+			expect(data.snapshot).toContain('[ref=e42]');
+			expect(data.snapshot).toContain('[REDACTED:anthropic_api_key]');
+		});
+
+		it('leaves browser_screenshot image data untouched', async () => {
+			// Image bytes are base64; the regex is meaningless on them. The
+			// screenshot tool's `image` content block must pass through.
+			const result = await findTool(tools, 'browser_screenshot').execute({}, TOOL_CONTEXT);
+
+			const imageBlock = result.content[0];
+			expect(imageBlock.type).toBe('image');
+			expect((imageBlock as { data: string }).data).toBe('base64imagedata');
 		});
 	});
 });
