@@ -526,7 +526,8 @@ describe('AgentRuntime.stream() — working memory', () => {
 		});
 		await collectChunks(stream);
 
-		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+		const calls = streamText.mock.calls as Array<[Record<string, unknown>]>;
+		const callArgs = calls[0]?.[0] ?? {};
 		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
 		expect(savedWorkingMemory).toEqual([]);
 	});
