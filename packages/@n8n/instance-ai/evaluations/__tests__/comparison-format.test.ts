@@ -209,11 +209,29 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/\*\*notable\*\*/);
 	});
 
-	it('always includes all five tier counts in the alert line', () => {
+	it('always includes all five tier counts in the alert, split across two lines', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
 		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
-		expect(md).toMatch(/0 regressions, 0 soft, 0 notable, 0 improvements, 1 stable/);
+		expect(md).toMatch(/0 regressions · 0 likely regressions · 0 worth watching/);
+		expect(md).toMatch(/0 improvements · 1 stable · pass rate/);
+	});
+
+	it('places the pass-rate delta on the concerns line when negative', () => {
+		// PR pass rate < baseline → delta is negative, so the pass-rate text
+		// tails the regression-tier line instead of the wins line.
+		const pr = bucket('pr', [s('a', 'happy', 1, 10)]);
+		const base = bucket('master', [s('a', 'happy', 8, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
+		expect(md).toMatch(/regression.*pass rate -/);
+		expect(md).not.toMatch(/stable · pass rate/);
+	});
+
+	it('places the pass-rate delta on the wins line when positive or zero', () => {
+		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
+		const base = bucket('master', [s('a', 'happy', 1, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
+		expect(md).toMatch(/stable · pass rate \+/);
 	});
 
 	it('renders a per-scenario breakdown collapsible inside the regression section', () => {
