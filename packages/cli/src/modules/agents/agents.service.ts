@@ -181,13 +181,6 @@ export class AgentsService {
 		{ agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
-	/**
-	 * Stash of user messages for suspended tool calls.
-	 * When executeForChat suspends, we store the original message here so
-	 * resumeForChat can record it against the execution.
-	 */
-	private readonly pendingUserMessages = new Map<string, string>();
-
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
 		if (params.usePublishedVersion) {
 			const parts = [params.agentId, 'published'];
@@ -775,9 +768,6 @@ export class AgentsService {
 
 		// Always record resumed executions — even if they suspend again (chained HITL).
 		// Don't repeat the original user message — the pre-suspension execution already has it.
-		if (!recorder.suspended) {
-			this.pendingUserMessages.delete(agentId);
-		}
 		const messageRecord = recorder.getMessageRecord();
 		void this.agentExecutionService
 			.recordMessage({
@@ -1005,10 +995,6 @@ export class AgentsService {
 
 		// Always record — even if suspended, the pre-suspension response text
 		// and tool calls are valuable. Usage/model will be null for suspended runs.
-		if (recorder.suspended) {
-			this.pendingUserMessages.set(agentId, message);
-		}
-
 		const messageRecord = recorder.getMessageRecord();
 		void this.agentExecutionService
 			.recordMessage({
