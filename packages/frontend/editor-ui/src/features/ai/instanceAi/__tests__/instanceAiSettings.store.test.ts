@@ -36,6 +36,8 @@ const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
 const mockFetchModelCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
+const mockCreateGatewayLink = vi.fn();
+const mockDisconnectGatewaySession = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
@@ -48,8 +50,8 @@ vi.mock('../instanceAi.settings.api', () => ({
 
 const mockGetGatewayStatus = vi.fn();
 vi.mock('../instanceAi.api', () => ({
-	createGatewayLink: vi.fn(),
-	disconnectGatewaySession: vi.fn(),
+	createGatewayLink: (...args: unknown[]) => mockCreateGatewayLink(...args),
+	disconnectGatewaySession: (...args: unknown[]) => mockDisconnectGatewaySession(...args),
 	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
 }));
 
@@ -394,6 +396,88 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.connections).toHaveLength(1);
 			expect(store.connections[0].type).toBe('computer-use');
+		});
+	});
+
+	describe('setup command', () => {
+		beforeEach(() => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('clears stale command state while fetching a new setup command', async () => {
+			let resolveRequest: (value: {
+				command: string;
+				expiresAt: string;
+				ttlSeconds: number;
+			}) => void = () => {};
+			mockCreateGatewayLink.mockReturnValue(
+				new Promise((resolve) => {
+					resolveRequest = resolve;
+				}),
+			);
+			store.setupCommand = 'old command';
+			store.setupCommandExpiresAt = '2026-01-01T00:00:00.000Z';
+			store.setupCommandTtlSeconds = 1;
+			store.setupCommandFetchedAt = 1;
+
+			const request = store.fetchSetupCommand();
+
+			expect(store.setupCommand).toBeNull();
+			expect(store.setupCommandExpiresAt).toBeNull();
+			expect(store.setupCommandTtlSeconds).toBeNull();
+			expect(store.setupCommandFetchedAt).toBeNull();
+
+			resolveRequest({
+				command: 'new command',
+				expiresAt: '2026-01-01T00:05:00.000Z',
+				ttlSeconds: 300,
+			});
+			await request;
+
+			expect(store.setupCommand).toBe('new command');
+		});
+
+		it('uses the request start time as setup command countdown baseline', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			mockCreateGatewayLink.mockImplementation(async () => {
+				vi.setSystemTime(new Date('2026-01-01T00:00:10.000Z'));
+				return {
+					command: 'command',
+					expiresAt: '2026-01-01T00:05:00.000Z',
+					ttlSeconds: 300,
+				};
+			});
+
+			await store.fetchSetupCommand();
+
+			expect(store.setupCommandFetchedAt).toBe(new Date('2026-01-01T00:00:00.000Z').getTime());
+		});
+
+		it('clears setup command state on disconnect', async () => {
+			mockDisconnectGatewaySession.mockResolvedValue(undefined);
+			store.setupCommand = 'old command';
+			store.setupCommandExpiresAt = '2026-01-01T00:00:00.000Z';
+			store.setupCommandTtlSeconds = 1;
+			store.setupCommandFetchedAt = 1;
+
+			await store.disconnectComputerUse();
+
+			expect(store.setupCommand).toBeNull();
+			expect(store.setupCommandExpiresAt).toBeNull();
+			expect(store.setupCommandTtlSeconds).toBeNull();
+			expect(store.setupCommandFetchedAt).toBeNull();
 		});
 	});
 });

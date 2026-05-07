@@ -45,6 +45,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
+	const setupCommandExpiresAt = ref<string | null>(null);
+	const setupCommandTtlSeconds = ref<number | null>(null);
+	const setupCommandFetchedAt = ref<number | null>(null);
+	let setupCommandRequestId = 0;
 
 	const hasEverConnectedGateway = ref(
 		typeof localStorage !== 'undefined' &&
@@ -297,6 +301,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			);
 			return;
 		}
+		clearSetupCommand();
 		clearGatewayEverConnected();
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
@@ -451,11 +456,29 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	function clearSetupCommand(): void {
+		setupCommandRequestId++;
+		setupCommand.value = null;
+		setupCommandExpiresAt.value = null;
+		setupCommandTtlSeconds.value = null;
+		setupCommandFetchedAt.value = null;
+	}
+
 	async function fetchSetupCommand(): Promise<void> {
+		const requestId = ++setupCommandRequestId;
+		setupCommand.value = null;
+		setupCommandExpiresAt.value = null;
+		setupCommandTtlSeconds.value = null;
+		setupCommandFetchedAt.value = null;
 		if (isLocalGatewayDisabled.value) return;
+		const requestStartedAt = Date.now();
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
+			if (requestId !== setupCommandRequestId) return;
 			setupCommand.value = result.command;
+			setupCommandExpiresAt.value = result.expiresAt;
+			setupCommandTtlSeconds.value = result.ttlSeconds;
+			setupCommandFetchedAt.value = requestStartedAt;
 		} catch {
 			// Fallback handled in the component
 		}
@@ -512,6 +535,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,
+		setupCommandExpiresAt,
+		setupCommandTtlSeconds,
+		setupCommandFetchedAt,
 		hasEverConnectedGateway,
 		isGatewayConnected,
 		gatewayStatusLoaded,
@@ -529,6 +555,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		startGatewayPushListener,
 		stopGatewayPushListener,
 		fetchSetupCommand,
+		clearSetupCommand,
 		refreshCredentials,
 		refreshModuleSettings,
 		// Sidebar connections
