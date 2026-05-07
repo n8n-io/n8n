@@ -381,19 +381,30 @@ export interface JsonSchema {
  * as structural cues. Only `*\/` is escaped to keep the JSDoc block well-formed.
  */
 /**
- * True when a variation has no `displayOptions` (always emit) or its
- * `displayOptions` match `combo`. Variations gated by a key not present in the
- * combo are excluded — they're meant for narrowed contexts.
+ * Determines whether a variation should be emitted in the current scope.
+ *
+ * The two scopes are mutually exclusive so unconditional variations are
+ * NOT duplicated across narrowed types:
+ *
+ * - File-level header (no `combo`): emit ONLY unconditional variations
+ *   (those with no `displayOptions`). They appear once at the top of the
+ *   generated `.d.ts` and cover every narrowed type.
+ *
+ * - Narrowed config block (per `combo`): emit ONLY gated variations
+ *   whose `displayOptions` match the combo. Unconditional variations are
+ *   skipped here — they were already emitted at the file header.
  */
 function variationApplies(
 	variation: BuilderHintVariation,
 	combo: DiscriminatorCombination | undefined,
 ): boolean {
 	const opts = variation.displayOptions;
-	if (!opts) return true;
 
-	// Without a combo (file-level emission), only unconditional variations apply.
-	if (!combo) return false;
+	// File-level scope: only unconditional variations.
+	if (!combo) return !opts;
+
+	// Narrowed scope: only gated variations whose displayOptions match.
+	if (!opts) return false;
 
 	if (opts.show) {
 		for (const [key, conditions] of Object.entries(opts.show)) {

@@ -1440,6 +1440,49 @@ describe('generate-types', () => {
 			expect(retrieveSection!).not.toContain('insert example');
 		});
 
+		it('should not duplicate an unconditional node-level variation across narrowed types (file header only)', () => {
+			const node: NodeTypeDescription & { builderHint?: unknown } = {
+				name: 'n8n-nodes-test.unconditional',
+				displayName: 'Unconditional',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				builderHint: {
+					extraTypeDefContent: [{ content: 'unconditional only' }],
+				},
+				properties: [
+					{
+						displayName: 'Operation Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Insert', value: 'insert' },
+							{ name: 'Retrieve', value: 'retrieve' },
+						],
+						default: 'insert',
+					},
+					{
+						displayName: 'Insert Field',
+						name: 'insertField',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+				],
+			};
+
+			// Unconditional content does NOT appear inside narrowed type bodies —
+			// it's reserved for the file-level node header.
+			const result = generateTypes.generateDiscriminatedUnion(node);
+			expect(result).not.toContain('unconditional only');
+
+			// File header emits it exactly once.
+			const header = generateTypes.generateNodeJSDoc(node);
+			expect(header).toContain('unconditional only');
+			expect(header.match(/unconditional only/g)?.length).toBe(1);
+		});
+
 		it('should skip variations whose displayOptions do not match the combo', () => {
 			const node: NodeTypeDescription & { builderHint?: unknown } = {
 				name: 'n8n-nodes-test.partialMatch',
