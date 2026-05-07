@@ -127,6 +127,38 @@ jobs:
               }'
           done
 
+      # Belt-and-suspenders: env vars set sandbox config but persisted admin
+      # settings can override. Per-lane assertion catches env-injection hiccups
+      # or unexpected DB-side state. A single misconfigured lane would
+      # silently route some builds through tool mode and pollute results.
+      - name: Verify sandbox config (per lane)
+        run: |
+          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          bad=0
+          for i in "${!PORTS[@]}"; do
+            port="${PORTS[$i]}"
+            lane="$((i+1))"
+            curl -sf -X POST "http://localhost:$port/rest/login" \
+              -H "Content-Type: application/json" \
+              -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
+              -c "/tmp/cookies-$port.txt" -o /dev/null
+            cfg=$(curl -sf -b "/tmp/cookies-$port.txt" \
+              "http://localhost:$port/rest/instance-ai/settings" \
+              | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
+            if [ "$cfg" != "true daytona" ]; then
+              echo "::error::lane $lane (port $port): expected 'true daytona', got '$cfg'"
+              bad=$((bad+1))
+            else
+              echo "  lane $lane: sandboxEnabled=true sandboxProvider=daytona ok"
+            fi
+          done
+          if [ "$bad" -gt 0 ]; then
+            echo "::error::$bad lane(s) misconfigured - eval would mix sandbox + tool-mode builds"
+            exit 1
+          fi
+          echo "--- n8n-eval-1 startup logs (first 100 lines) ---"
+          docker logs n8n-eval-1 2>&1 | head -100
+
       - name: Run Instance AI Evals
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai
