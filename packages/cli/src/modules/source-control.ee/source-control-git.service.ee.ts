@@ -171,7 +171,12 @@ export class SourceControlGitService {
 			// - Subsequent connections: verifies against saved key
 			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=accept-new -i "${escapedPrivateKeyPath}"`;
 
-			this.git = simpleGit(this.gitOptions)
+			// Allow GIT_SSH_COMMAND so we can point SSH at n8n's own private key and known_hosts.
+			// This is safe because the command is constructed internally above, not from user input.
+			this.git = simpleGit({
+				...this.gitOptions,
+				unsafe: { allowUnsafeSshCommand: true },
+			})
 				.env('GIT_SSH_COMMAND', sshCommand)
 				.env('GIT_TERMINAL_PROMPT', '0');
 		}

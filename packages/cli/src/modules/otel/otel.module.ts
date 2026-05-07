@@ -1,4 +1,4 @@
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -15,8 +15,21 @@ export class OtelModule implements ModuleInterface {
 		const { OtelService } = await import('./otel.service');
 		Container.get(OtelService).init();
 
-		// Importing N8nInstrumentation triggers @OnLifecycleEvent registration
-		await import('./n8n-instrumentation');
+		// Importing the lifecycle handler triggers @OnLifecycleEvent registration
+		await import('./otel-lifecycle-handler');
+	}
+
+	async context(): Promise<ModuleContext> {
+		const { OtelConfig } = await import('./otel.config');
+		const config = Container.get(OtelConfig);
+		if (!config.enabled) return {};
+
+		const { ExecutionLevelTracer } = await import('./execution-level-tracer');
+		const tracer = Container.get(ExecutionLevelTracer);
+
+		return {
+			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
+		};
 	}
 
 	@OnShutdown()

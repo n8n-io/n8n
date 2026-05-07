@@ -130,11 +130,13 @@ export abstract class ICredentials<T extends object = ICredentialDataDecryptedOb
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): T;
+	abstract getData(nodeType?: string): Promise<T>;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: T): void;
+	abstract setData(data: T): Promise<void>;
+
+	abstract updateData(toUpdate: Partial<T>, toDelete?: Array<keyof T>): Promise<void>;
 }
 
 export interface IUser {
@@ -225,6 +227,12 @@ export abstract class ICredentialsHelper {
 		typeName: string,
 		node: INode,
 		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
+
+	abstract runPreAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
 	): Promise<ICredentialDataDecryptedObject | undefined>;
 
 	abstract getCredentials(
@@ -947,7 +955,7 @@ export type CronContext = {
 export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
 
 export interface SchedulingFunctions {
-	registerCron(cron: Cron, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -996,6 +1004,7 @@ export interface FunctionsBase {
 	getChatTrigger: () => INode | null;
 	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
+	listAgents?(): Promise<Array<{ id: string; name: string }>>;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -1057,6 +1066,10 @@ export type CredentialCheckProxyFunctions = {
 	): Promise<CredentialCheckResult>;
 };
 
+export type OauthJweProxyProvider = {
+	decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject>;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -1083,6 +1096,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				executionMode?: WorkflowExecuteMode;
 			},
 		): Promise<ExecuteWorkflowData>;
+		executeAgent(
+			agentInfo: ExecuteAgentInfo,
+			message: string,
+			executionId: string,
+			itemIndex: number,
+		): Promise<ExecuteAgentData>;
 		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
 		getInputConnectionData(
 			connectionType: AINodeConnectionType,
@@ -1240,7 +1259,7 @@ export interface IPollFunctions
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun>,
+		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
@@ -1260,6 +1279,7 @@ export interface ITriggerFunctions
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
+		deduplicationKey?: string,
 	): void;
 	/**
 	 * Persist the current run as a failed execution and run the error workflow if configured.
@@ -1927,6 +1947,39 @@ export interface ExecuteWorkflowData {
 	waitTill?: Date | null;
 }
 
+export interface ExecuteAgentInfo {
+	/** The agent ID to execute. */
+	agentId: string;
+}
+
+export interface ExecuteAgentOptions {
+	node?: INode;
+	parentWorkflowId: string;
+	parentWorkflowSettings?: IWorkflowSettings;
+	executionMode?: WorkflowExecuteMode;
+}
+
+export interface ExecuteAgentData {
+	/** The agent's text response extracted from the last assistant message. */
+	response: string;
+	/** Parsed structured output if the agent has a structuredOutput schema. */
+	structuredOutput: unknown | null;
+	/** Token usage for the call. */
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+	} | null;
+	/** Tool calls the agent made during execution. */
+	toolCalls: Array<{
+		toolName: string;
+		input: unknown;
+		result: unknown;
+	}>;
+	/** Why the agent stopped. */
+	finishReason: string;
+}
+
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export namespace MultiPartFormData {
@@ -2433,6 +2486,30 @@ export interface IBuilderHintInputConfig {
 export type BuilderHintInputs = Partial<Record<AINodeConnectionType, IBuilderHintInputConfig>>;
 
 /**
+ * Configuration for a single output in builderHint.outputs.
+ *
+ * Describes when an output connection type is available based on the node's parameters,
+ * mirroring `IBuilderHintInputConfig`. Unlike inputs, the connection-type key here may also
+ * be `'main'`, since main outputs are commonly mode-conditional (e.g. vector stores expose
+ * `main` only in `insert`/`load` modes and `ai_vectorStore` only in `retrieve` mode).
+ */
+export interface IBuilderHintOutputConfig {
+	/**
+	 * Whether this output is required to be connected. Optional because most outputs
+	 * are availability declarations only — but some sub-node-style outputs (e.g.
+	 * `ai_vectorStore` in `mode: 'retrieve'`) are useless unless wired to a parent.
+	 */
+	required?: boolean;
+	/** Conditions under which this output is exposed by the node. */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps connection types (including `main`) to their availability configuration.
+ */
+export type BuilderHintOutputs = Partial<Record<NodeConnectionType, IBuilderHintOutputConfig>>;
+
+/**
  * Related node with explanation of why it's related
  */
 export interface IRelatedNode {
@@ -2448,6 +2525,8 @@ export interface IRelatedNode {
 export interface IBuilderHint {
 	/** Explicit AI input requirements for accurate type generation */
 	inputs?: BuilderHintInputs;
+	/** Declarative output availability — which outputs the node exposes per parameter values */
+	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
 	message?: string;
 	/** Related nodes that work together with this node */
@@ -2690,6 +2769,25 @@ export interface LoadedClass<T> {
 type LoadedData<T> = Record<string, LoadedClass<T>>;
 export type ICredentialTypeData = LoadedData<ICredentialType>;
 export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
+
+/**
+ * Contract that the runtime consumes from each node source. Implemented by the
+ * filesystem-backed `DirectoryLoader` in `n8n-core` and in modules
+ */
+export interface NodeLoader {
+	packageName: string;
+
+	known: KnownNodesAndCredentials;
+	types: { nodes: INodeTypeDescription[]; credentials: ICredentialType[] };
+
+	loadAll(): Promise<void>;
+	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType>;
+	getCredential(credentialType: string): LoadedClass<ICredentialType>;
+	reset(): void;
+	releaseTypes(): void;
+	ensureTypesLoaded(): Promise<void>;
+	resolveSourcePath(sourcePath: string): string;
+}
 
 export interface IRun {
 	data: IRunExecutionData;
@@ -2982,6 +3080,10 @@ export interface IWorkflowExecutionDataProcess {
 		arguments: Record<string, unknown>;
 		sourceNodeName?: string;
 	};
+	/** Key to uniquely identify this execution, generated by the trigger. */
+	deduplicationKey?: string;
+	/** W3C trace context extracted from inbound webhook headers. */
+	tracingContext?: { traceparent: string; tracestate?: string };
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3039,6 +3141,14 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
+	executeAgent?: (
+		agentId: string,
+		message: string,
+		executionId: string,
+		threadId: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) => Promise<ExecuteAgentData>;
+	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
@@ -3093,6 +3203,13 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	otel?: {
+		injectTraceHeaders: (
+			executionId: string,
+			nodeName: string | undefined,
+			headers: Record<string, string>,
+		) => void;
+	};
 }
 
 export type WorkflowActivateMode =

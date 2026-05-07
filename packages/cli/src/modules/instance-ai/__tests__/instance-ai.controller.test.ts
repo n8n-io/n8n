@@ -29,7 +29,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiConfirmRequestDto,
+	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiUserPreferencesUpdateRequest,
@@ -270,6 +270,10 @@ describe('InstanceAiController', () => {
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
 
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID, {
+				delivery: 'event',
+			});
+
 			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
@@ -497,39 +501,34 @@ describe('InstanceAiController', () => {
 
 		it('should resolve confirmation', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
-			const body = mock<InstanceAiConfirmRequestDto>({ approved: true });
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			const result = await controller.confirm(req, res, 'req-1', body);
+			const result = await controller.confirm(reqWithBody, res, 'req-1');
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				expect.objectContaining({ approved: true }),
-			);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
 		});
 
 		it('should pass resourceDecision through to resolveConfirmation', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
-			const body = mock<InstanceAiConfirmRequestDto>({
-				approved: true,
+			const body: InstanceAiConfirmRequest = {
+				kind: 'resourceDecision',
 				resourceDecision: 'allowOnce',
-			});
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await controller.confirm(req, res, 'req-1', body);
+			await controller.confirm(reqWithBody, res, 'req-1');
 
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				expect.objectContaining({ resourceDecision: 'allowOnce' }),
-			);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(false);
-			const body = mock<InstanceAiConfirmRequestDto>({ approved: false });
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: false };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await expect(controller.confirm(req, res, 'req-1', body)).rejects.toThrow(NotFoundError);
+			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -763,6 +762,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
 
 			expect(result).toMatchObject({ nextEventId: 42 });
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
 				page: 0,
@@ -1073,6 +1073,32 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:gateway',
 				globalOnly: true,
 			});
+		});
+	});
+
+	describe('gatewayDisconnectSession', () => {
+		it('should require instanceAi:gateway scope', () => {
+			expect(scopeOf('gatewayDisconnectSession')).toEqual({
+				scope: 'instanceAi:gateway',
+				globalOnly: true,
+			});
+		});
+
+		it('should tear down the session and push state change without flipping preferences', async () => {
+			const result = await controller.gatewayDisconnectSession(req);
+
+			expect(result).toEqual({ ok: true });
+			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
+				[USER_ID],
+			);
+			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
 		});
 	});
 

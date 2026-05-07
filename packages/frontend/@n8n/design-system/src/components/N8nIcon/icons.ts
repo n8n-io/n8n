@@ -6,6 +6,7 @@ import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
@@ -22,7 +23,9 @@ import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
+import Slack from './custom/slack.svg';
 import Spinner from './custom/spinner.svg';
+import StarFilled from './custom/star-filled.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
 import StatusError from './custom/status-error.svg';
@@ -30,6 +33,7 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
@@ -71,6 +75,7 @@ import IconLucideChevronRight from '~icons/lucide/chevron-right';
 import IconLucideChevronUp from '~icons/lucide/chevron-up';
 import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
 import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
+import IconLucideChevronsRight from '~icons/lucide/chevrons-right';
 import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
@@ -161,6 +166,7 @@ import IconLucideMaximize from '~icons/lucide/maximize';
 import IconLucideMaximize2 from '~icons/lucide/maximize-2';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
+import IconLucideMessageCirclePlus from '~icons/lucide/message-circle-plus';
 import IconLucideMessageSquare from '~icons/lucide/message-square';
 import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
@@ -276,6 +282,9 @@ export const deprecatedIconSet = {
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
+	slack: Slack,
+	linear: Linear,
+	telegram: Telegram,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -481,6 +490,7 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
 	'always-output-data': EmptyOutput,
@@ -491,6 +501,9 @@ export const updatedIconSet = {
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
+	slack: Slack,
+	linear: Linear,
+	telegram: Telegram,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -540,6 +553,7 @@ export const updatedIconSet = {
 	'chevron-right': IconLucideChevronRight,
 	'chevron-up': IconLucideChevronUp,
 	'chevrons-left': IconLucideChevronsLeft,
+	'chevrons-right': IconLucideChevronsRight,
 	'chevrons-down-up': IconLucideChevronsDownUp,
 	'chevrons-up-down': IconLucideChevronsUpDown,
 	circle: IconLucideCircle,
@@ -630,6 +644,7 @@ export const updatedIconSet = {
 	'message-circle': IconLucideMessageCircle,
 	'message-square': IconLucideMessageSquare,
 	'message-square-plus': IconLucideMessageSquarePlus,
+	'message-circle-plus': IconLucideMessageCirclePlus,
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
@@ -682,6 +697,7 @@ export const updatedIconSet = {
 	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
 	'square-plus': IconLucideSquarePlus,
+	star: IconLucideStar,
 	'sticky-note': IconLucideStickyNote,
 	sun: IconLucideSun,
 	table: IconLucideTable,
@@ -719,7 +735,6 @@ export const updatedIconSet = {
 	loader: IconLucideLoader2,
 	'loader-circle': IconLucideLoaderCircle,
 	'quick-connect': IconLucideFlame,
-	star: IconLucideStar,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

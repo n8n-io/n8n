@@ -86,6 +86,22 @@ async function isDockerPodmanShim() {
 		return false;
 	}
 }
+
+/**
+ * Get the driver of the currently selected buildx builder ('docker', 'docker-container', etc).
+ * Colima defaults to the 'docker' driver, which doesn't support buildkit-container flags
+ * like `--load` or `--provenance=false`.
+ * @returns {Promise<string|null>}
+ */
+async function getBuildxDriver() {
+	try {
+		const { stdout } = await $`docker buildx inspect`;
+		const match = stdout.match(/Driver:\s+(\S+)/);
+		return match ? match[1] : null;
+	} catch {
+		return null;
+	}
+}
 /**
  * @returns {Promise<(typeof SupportedContainerEngines[number])>}
  */
@@ -268,9 +284,23 @@ async function buildDockerImage({ name, dockerfilePath, fullImageName, buildArgs
 		echo(chalk.yellow(`INFO: Registry detected - pushing directly to ${fullImageName}`));
 	}
 
+	const buildxDriver = containerEngine === 'docker' ? await getBuildxDriver() : null;
+	const useLegacyDockerBuild = containerEngine === 'docker' && buildxDriver === 'docker';
+
 	try {
 		if (containerEngine === 'podman') {
 			const { stdout } = await $`podman build \
+				--platform ${platform} \
+				--build-arg TARGETPLATFORM=${platform} \
+				${extraFlags} \
+				-t ${fullImageName} \
+				-f ${dockerfilePath} \
+				${config.buildContext}`;
+			echo(stdout);
+		} else if (useLegacyDockerBuild) {
+			// Buildx 'docker' driver (colima default) doesn't support `--load` or
+			// `--provenance=false`. Use plain `docker build` instead.
+			const { stdout } = await $`docker build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
 				${extraFlags} \

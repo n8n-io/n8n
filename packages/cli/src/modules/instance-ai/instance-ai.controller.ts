@@ -171,6 +171,11 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
+		}
 
 		// When the thread didn't exist at connect time, another user could create
 		// and own it before events start flowing. We re-check once on the first
@@ -325,27 +330,21 @@ export class InstanceAiController {
 
 	@Post('/confirm/:requestId')
 	@GlobalScope('instanceAi:message')
-	async confirm(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('requestId') requestId: string,
-		@Body body: InstanceAiConfirmRequestDto,
-	) {
+	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
 		this.requireInstanceAiEnabled();
-		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved: body.approved,
-			credentialId: body.credentialId,
-			credentials: body.credentials,
-			nodeCredentials: body.nodeCredentials,
-			autoSetup: body.autoSetup,
-			userInput: body.userInput,
-			domainAccessAction: body.domainAccessAction,
-			action: body.action,
-			nodeParameters: body.nodeParameters,
-			testTriggerNode: body.testTriggerNode,
-			answers: body.answers,
-			resourceDecision: body.resourceDecision,
-		});
+
+		// Manual parse: `@Body` decorator can't resolve zod discriminated unions via reflection,
+		// so validate the request body against the union schema directly.
+		const parseResult = InstanceAiConfirmRequestDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+
+		const resolved = await this.instanceAiService.resolveConfirmation(
+			req.user.id,
+			requestId,
+			parseResult.data,
+		);
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
@@ -553,6 +552,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
@@ -660,9 +660,14 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		const unsubscribe = gateway.onRequest((event) => {
+		const unsubscribeRequest = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();
+		});
+		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
+			res.write(`data: ${JSON.stringify(event)}\n\n`);
+			res.flush?.();
+			res.end();
 		});
 
 		const keepAlive = setInterval(() => {
@@ -670,8 +675,12 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
+		let cleanedUp = false;
 		const cleanup = () => {
-			unsubscribe();
+			if (cleanedUp) return;
+			cleanedUp = true;
+			unsubscribeRequest();
+			unsubscribeDisconnect();
 			clearInterval(keepAlive);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
@@ -764,6 +773,28 @@ export class InstanceAiController {
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		return this.instanceAiService.getGatewayStatus(req.user.id);
+	}
+
+	/**
+	 * User-initiated gateway disconnect. Tears down the paired daemon session
+	 * so its tools are no longer exposed to the agent, without changing the
+	 * user's preference to disabled.
+	 */
+	@Post('/gateway/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDisconnectSession(req: AuthenticatedRequest) {
+		const userId = req.user.id;
+		this.instanceAiService.clearDisconnectTimer(userId);
+		this.instanceAiService.disconnectGateway(userId);
+		this.instanceAiService.clearActiveSessionKey(userId);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
+		return { ok: true };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────

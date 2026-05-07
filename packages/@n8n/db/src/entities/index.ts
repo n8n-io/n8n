@@ -1,3 +1,4 @@
+import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -46,6 +47,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -94,6 +96,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,

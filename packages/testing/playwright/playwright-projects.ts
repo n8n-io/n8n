@@ -54,7 +54,8 @@ export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
 const BENCHMARK_BASE_CONFIG: N8NConfig = {
-	services: [...OBSERVABILITY_SERVICES],
+	// Postgres exporter scrapes DB internals into VictoriaMetrics — only meaningful for benchmarks.
+	services: [...OBSERVABILITY_SERVICES, 'postgresExporter'],
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
@@ -170,6 +171,15 @@ export function getProjects(): Project[] {
 			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
+		});
+		projects.push({
+			name: 'dev-server-smoke',
+			testDir: './tests/dev-server-smoke',
+			fullyParallel: false,
+			// Vite dev cold-start can take 15-25s on the first navigation while it
+			// pre-bundles deps. Subsequent navigations are sub-second.
+			timeout: 90_000,
+			use: { baseURL: getFrontendUrl(), navigationTimeout: 30_000 },
 		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
