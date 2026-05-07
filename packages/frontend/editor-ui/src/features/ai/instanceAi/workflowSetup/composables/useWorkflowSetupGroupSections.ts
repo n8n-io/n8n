@@ -6,7 +6,7 @@ import { useWorkflowSetupContext } from './useWorkflowSetupContext';
 /**
  * Manages per-section expansion state inside a `WorkflowSetupGroup`.
  *
- * Only sub-node sections are collapsible: the parent section renders inline
+ * Only sub-node sections are collapsible: the root section renders inline
  * as the group card's primary body and is always visible.
  *
  * Sections that contain parameters stay open so the user isn't interrupted

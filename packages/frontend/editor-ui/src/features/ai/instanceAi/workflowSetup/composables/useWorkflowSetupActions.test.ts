@@ -283,7 +283,7 @@ describe('useWorkflowSetupActions', () => {
 				{
 					kind: 'group',
 					group: {
-						parentNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
+						subnodeRootNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
 						subnodeSections: [sectionA, sectionB],
 					},
 				},
@@ -359,7 +359,7 @@ describe('useWorkflowSetupActions', () => {
 				{
 					kind: 'group',
 					group: {
-						parentNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
+						subnodeRootNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
 						subnodeSections: [sectionA, sectionB],
 					},
 				},

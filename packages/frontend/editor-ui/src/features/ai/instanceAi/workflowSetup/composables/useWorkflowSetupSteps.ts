@@ -7,10 +7,10 @@ import type {
 } from '../workflowSetup.types';
 
 /**
- * Combines flat sections with parent-stamp metadata from setup requests to
- * produce a list of wizard steps. Sections that share a parent node (an
- * agent) are folded into a single `{ group }` step emitted at the position
- * of the group's earliest section. Ungrouped sections pass through.
+ * Combines flat sections with subnode-root metadata from setup requests to
+ * produce a list of wizard steps. Sections that share a root node (an agent)
+ * are folded into a single `{ group }` step emitted at the position of the
+ * group's earliest section. Ungrouped sections pass through.
  */
 export function useWorkflowSetupSteps(deps: {
 	sections: ComputedRef<WorkflowSetupSection[]>;
@@ -21,40 +21,40 @@ export function useWorkflowSetupSteps(deps: {
 		const requests = deps.setupRequests.value;
 		if (sections.length === 0) return [];
 
-		const parentBySubnodeName = new Map<string, WorkflowSetupGroup['parentNode']>();
-		const parentMetaByName = new Map<string, WorkflowSetupGroup['parentNode']>();
+		const rootBySubnodeName = new Map<string, WorkflowSetupGroup['subnodeRootNode']>();
+		const rootMetaByName = new Map<string, WorkflowSetupGroup['subnodeRootNode']>();
 		for (const req of requests) {
-			if (!req.parentNode) continue;
-			parentBySubnodeName.set(req.node.name, req.parentNode);
-			if (!parentMetaByName.has(req.parentNode.name)) {
-				parentMetaByName.set(req.parentNode.name, req.parentNode);
+			if (!req.subnodeRootNode) continue;
+			rootBySubnodeName.set(req.node.name, req.subnodeRootNode);
+			if (!rootMetaByName.has(req.subnodeRootNode.name)) {
+				rootMetaByName.set(req.subnodeRootNode.name, req.subnodeRootNode);
 			}
 		}
 
 		const result: WorkflowSetupStep[] = [];
-		const groupByParentName = new Map<string, WorkflowSetupGroup>();
+		const groupByRootName = new Map<string, WorkflowSetupGroup>();
 
 		for (const section of sections) {
-			const subnodeParent = parentBySubnodeName.get(section.targetNodeName);
-			const selfAsParent = parentMetaByName.get(section.targetNodeName);
-			const parent = subnodeParent ?? selfAsParent;
+			const subnodeRoot = rootBySubnodeName.get(section.targetNodeName);
+			const selfAsRoot = rootMetaByName.get(section.targetNodeName);
+			const root = subnodeRoot ?? selfAsRoot;
 
-			if (!parent) {
+			if (!root) {
 				result.push({ kind: 'section', section });
 				continue;
 			}
 
-			let group = groupByParentName.get(parent.name);
+			let group = groupByRootName.get(root.name);
 			if (!group) {
-				group = { parentNode: parent, subnodeSections: [] };
-				groupByParentName.set(parent.name, group);
+				group = { subnodeRootNode: root, subnodeSections: [] };
+				groupByRootName.set(root.name, group);
 				result.push({ kind: 'group', group });
 			}
 
-			if (subnodeParent) {
+			if (subnodeRoot) {
 				group.subnodeSections.push(section);
-			} else if (!group.parentSection) {
-				group.parentSection = section;
+			} else if (!group.rootSection) {
+				group.rootSection = section;
 			}
 		}
 

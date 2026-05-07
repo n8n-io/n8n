@@ -78,10 +78,10 @@ export function useWorkflowSetupSections(
 /**
  * Build a merge key for credential-only sections.
  *
- * When the request is a sub-node (has `parentNode`), the parent's name is
- * prepended so credential sections never merge across different parents —
+ * When the request is a sub-node (has `subnodeRootNode`), the root node's name is
+ * prepended so credential sections never merge across different root nodes —
  * sub-nodes of two different agents stay separate even when they share a
- * credential type. Standalone nodes (no parent) keep the original
+ * credential type. Standalone nodes (no subnode root) keep the original
  * credentialType+URL merging behaviour to preserve the existing UX
  * optimisation of configuring a shared credential once.
  */
@@ -91,8 +91,8 @@ function buildGroupKey(
 ): string | null {
 	if (!credentialType) return null;
 
-	const parentPrefix = req.parentNode?.name ? `${req.parentNode.name}|` : '';
-	const baseKey = `${parentPrefix}${credentialType}`;
+	const rootPrefix = req.subnodeRootNode?.name ? `${req.subnodeRootNode.name}|` : '';
+	const baseKey = `${rootPrefix}${credentialType}`;
 
 	if (!isHttpRequestNodeType(req.node.type)) return baseKey;
 

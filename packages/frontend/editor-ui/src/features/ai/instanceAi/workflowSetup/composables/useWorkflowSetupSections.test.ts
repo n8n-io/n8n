@@ -347,18 +347,18 @@ describe('useWorkflowSetupSections', () => {
 		]);
 	});
 
-	describe('parent-aware credential merging', () => {
+	describe('subnode-root-aware credential merging', () => {
 		const agentA = { name: 'Agent A', type: 'agent', typeVersion: 1, id: 'a' };
 		const agentB = { name: 'Agent B', type: 'agent', typeVersion: 1, id: 'b' };
 
 		it('keeps two agents with HTTP-credential sub-nodes in separate sections', () => {
 			const setupRequests = ref([
 				makeSetupRequest({
-					parentNode: agentA,
+					subnodeRootNode: agentA,
 					node: { id: 'tool-a', name: 'Tool A', type: 'n8n-nodes-base.httpRequestTool' },
 				}),
 				makeSetupRequest({
-					parentNode: agentB,
+					subnodeRootNode: agentB,
 					node: { id: 'tool-b', name: 'Tool B', type: 'n8n-nodes-base.httpRequestTool' },
 				}),
 			]);
@@ -377,12 +377,12 @@ describe('useWorkflowSetupSections', () => {
 		it('merges sub-nodes of the same agent that share a credential type', () => {
 			const setupRequests = ref([
 				makeSetupRequest({
-					parentNode: agentA,
+					subnodeRootNode: agentA,
 					node: { id: 'tool-1', name: 'Tool 1', type: 'n8n-nodes-base.slack' },
 					credentialType: 'slackApi',
 				}),
 				makeSetupRequest({
-					parentNode: agentA,
+					subnodeRootNode: agentA,
 					node: { id: 'tool-2', name: 'Tool 2', type: 'n8n-nodes-base.slack' },
 					credentialType: 'slackApi',
 				}),
@@ -403,7 +403,7 @@ describe('useWorkflowSetupSections', () => {
 					node: { id: 'standalone', name: 'Standalone' },
 				}),
 				makeSetupRequest({
-					parentNode: agentA,
+					subnodeRootNode: agentA,
 					node: { id: 'tool-a', name: 'Tool A', type: 'n8n-nodes-base.httpRequestTool' },
 				}),
 			]);

@@ -85,7 +85,7 @@ function makeContext(overrides: ContextOverrides = {}): WorkflowSetupContext {
 	};
 }
 
-const parentNode = { name: 'Agent', type: 'agentType', typeVersion: 1, id: 'agent-1' };
+const subnodeRootNode = { name: 'Agent', type: 'agentType', typeVersion: 1, id: 'agent-1' };
 
 describe('WorkflowSetupGroupCard', () => {
 	beforeEach(() => {
@@ -96,13 +96,13 @@ describe('WorkflowSetupGroupCard', () => {
 		}));
 	});
 
-	it('renders the parent header even when there is no parent section', () => {
+	it('renders the root node header even when there is no root section', () => {
 		const sub = makeWorkflowSetupSection({
 			id: 'Model:openAiApi',
 			targetNodeName: 'Model',
 		});
 		const group: WorkflowSetupGroup = {
-			parentNode,
+			subnodeRootNode,
 			subnodeSections: [sub],
 		};
 		workflowSetupContext.current = makeContext();
@@ -114,8 +114,8 @@ describe('WorkflowSetupGroupCard', () => {
 		expect(icons[0].getAttribute('data-node-type')).toBe('agentType');
 	});
 
-	it('renders the parent section inline without a collapsible header', async () => {
-		const parentSection = makeWorkflowSetupSection({
+	it('renders the root section inline without a collapsible header', async () => {
+		const rootSection = makeWorkflowSetupSection({
 			id: 'Agent:openAiApi',
 			targetNodeName: 'Agent',
 			credentialType: 'openAiApi',
@@ -125,8 +125,8 @@ describe('WorkflowSetupGroupCard', () => {
 			targetNodeName: 'Model',
 		});
 		const group: WorkflowSetupGroup = {
-			parentNode,
-			parentSection,
+			subnodeRootNode,
+			rootSection,
 			subnodeSections: [sub],
 		};
 		workflowSetupContext.current = makeContext();
@@ -140,7 +140,7 @@ describe('WorkflowSetupGroupCard', () => {
 		const sectionHeaders = queryAllByTestId('instance-ai-workflow-setup-section-header');
 		expect(sectionHeaders).toHaveLength(1);
 
-		// Parent body is always rendered; the (incomplete) sub-node is
+		// Root body is always rendered; the (incomplete) sub-node is
 		// auto-expanded since it is the first incomplete sub-node.
 		const bodies = getAllByTestId('workflow-setup-section-body');
 		const renderedIds = bodies.map((body) => body.getAttribute('data-section-id'));
@@ -149,7 +149,7 @@ describe('WorkflowSetupGroupCard', () => {
 	});
 
 	it('toggles sub-node sections via the section header', async () => {
-		const parentSection = makeWorkflowSetupSection({
+		const rootSection = makeWorkflowSetupSection({
 			id: 'Agent:openAiApi',
 			targetNodeName: 'Agent',
 			credentialType: 'openAiApi',
@@ -159,15 +159,15 @@ describe('WorkflowSetupGroupCard', () => {
 			targetNodeName: 'Model',
 		});
 		const group: WorkflowSetupGroup = {
-			parentNode,
-			parentSection,
+			subnodeRootNode,
+			rootSection,
 			subnodeSections: [sub],
 		};
 		workflowSetupContext.current = makeContext();
 
 		const { getAllByTestId } = renderComponent({ props: { group } });
 
-		// Initial state: parent body always rendered + sub-node auto-expanded.
+		// Initial state: root body always rendered + sub-node auto-expanded.
 		let bodies = getAllByTestId('workflow-setup-section-body');
 		expect(bodies).toHaveLength(2);
 
@@ -182,7 +182,7 @@ describe('WorkflowSetupGroupCard', () => {
 	});
 
 	it('shows the complete badge only when every section is complete', () => {
-		const parentSection = makeWorkflowSetupSection({
+		const rootSection = makeWorkflowSetupSection({
 			id: 'Agent:openAiApi',
 			targetNodeName: 'Agent',
 			credentialType: 'openAiApi',
@@ -192,12 +192,12 @@ describe('WorkflowSetupGroupCard', () => {
 			targetNodeName: 'Model',
 		});
 		const group: WorkflowSetupGroup = {
-			parentNode,
-			parentSection,
+			subnodeRootNode,
+			rootSection,
 			subnodeSections: [sub],
 		};
 		workflowSetupContext.current = makeContext({
-			completedIds: new Set([parentSection.id, sub.id]),
+			completedIds: new Set([rootSection.id, sub.id]),
 		});
 
 		const { getByTestId } = renderComponent({ props: { group } });
@@ -211,7 +211,7 @@ describe('WorkflowSetupGroupCard', () => {
 			targetNodeName: 'Model',
 		});
 		const group: WorkflowSetupGroup = {
-			parentNode,
+			subnodeRootNode,
 			subnodeSections: [sub],
 		};
 		workflowSetupContext.current = makeContext();

@@ -697,8 +697,8 @@ describe('analyzeWorkflow', () => {
 		expect(names.indexOf('Webhook')).toBeLessThan(names.indexOf('Slack'));
 	});
 
-	describe('parentNode stamping for sub-nodes', () => {
-		it('stamps parentNode on every sub-node connected to an agent', async () => {
+	describe('subnodeRootNode stamping for sub-nodes', () => {
+		it('stamps subnodeRootNode on every sub-node connected to an agent', async () => {
 			const agent = makeNode({
 				name: 'Agent',
 				type: '@n8n/n8n-nodes-langchain.agent',
@@ -742,7 +742,7 @@ describe('analyzeWorkflow', () => {
 			const result = await analyzeWorkflow(context, 'wf-1');
 
 			const modelReq = result.find((r) => r.node.name === 'OpenAI Model');
-			expect(modelReq?.parentNode).toEqual({
+			expect(modelReq?.subnodeRootNode).toEqual({
 				name: 'Agent',
 				type: '@n8n/n8n-nodes-langchain.agent',
 				typeVersion: 1,
@@ -750,7 +750,7 @@ describe('analyzeWorkflow', () => {
 			});
 		});
 
-		it('stamps the topmost parent for transitively nested sub-agents', async () => {
+		it('stamps the topmost root node for transitively nested sub-agents', async () => {
 			const agent = makeNode({
 				name: 'Agent',
 				type: '@n8n/n8n-nodes-langchain.agent',
@@ -791,10 +791,10 @@ describe('analyzeWorkflow', () => {
 			const result = await analyzeWorkflow(context, 'wf-1');
 
 			const subModelReq = result.find((r) => r.node.name === 'Sub Model');
-			expect(subModelReq?.parentNode?.name).toBe('Agent');
+			expect(subModelReq?.subnodeRootNode?.name).toBe('Agent');
 		});
 
-		it('keeps parentNode metadata even when the parent itself produced no setup request', async () => {
+		it('keeps subnodeRootNode metadata even when the root node itself produced no setup request', async () => {
 			const agent = makeNode({
 				name: 'Agent',
 				type: '@n8n/n8n-nodes-langchain.agent',
@@ -828,7 +828,7 @@ describe('analyzeWorkflow', () => {
 
 			expect(result.find((r) => r.node.name === 'Agent')).toBeUndefined();
 			const modelReq = result.find((r) => r.node.name === 'Model');
-			expect(modelReq?.parentNode).toEqual({
+			expect(modelReq?.subnodeRootNode).toEqual({
 				name: 'Agent',
 				type: '@n8n/n8n-nodes-langchain.agent',
 				typeVersion: 1,
@@ -836,7 +836,7 @@ describe('analyzeWorkflow', () => {
 			});
 		});
 
-		it('attaches a multi-parent sub-node to the first root parent in execution order', async () => {
+		it('attaches a multi-root sub-node to the first root node in execution order', async () => {
 			const trigger = makeNode({
 				name: 'Trigger',
 				type: 'n8n-nodes-base.webhook',
@@ -905,7 +905,7 @@ describe('analyzeWorkflow', () => {
 
 			const sharedReq = result.find((r) => r.node.name === 'Shared Model');
 			// Agent A executes first (left-most), so it claims the shared sub-node.
-			expect(sharedReq?.parentNode?.name).toBe('Agent A');
+			expect(sharedReq?.subnodeRootNode?.name).toBe('Agent A');
 		});
 
 		it('does not classify a sub-node by following a Main edge', async () => {
@@ -944,7 +944,7 @@ describe('analyzeWorkflow', () => {
 			const result = await analyzeWorkflow(context, 'wf-1');
 
 			const httpReq = result.find((r) => r.node.name === 'HTTP');
-			expect(httpReq?.parentNode).toBeUndefined();
+			expect(httpReq?.subnodeRootNode).toBeUndefined();
 		});
 	});
 });

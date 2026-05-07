@@ -16,7 +16,7 @@ const activeSection = computed(() =>
 );
 
 const groupKey = computed(() => {
-	return activeGroup.value ? `group:${activeGroup.value.parentNode.name}` : undefined;
+	return activeGroup.value ? `group:${activeGroup.value.subnodeRootNode.name}` : undefined;
 });
 
 const sectionKey = computed(() => activeSection.value?.id);

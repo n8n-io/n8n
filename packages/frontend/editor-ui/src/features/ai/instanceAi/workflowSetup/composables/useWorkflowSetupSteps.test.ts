@@ -35,14 +35,14 @@ describe('useWorkflowSetupSteps', () => {
 		expect(steps.value.every((s) => s.kind === 'section')).toBe(true);
 	});
 
-	it('inserts the group at the first sub-node position when the parent comes after the sub-nodes', () => {
+	it('inserts the group at the first sub-node position when the root node comes after the sub-nodes', () => {
 		const sections = [
 			makeWorkflowSetupSection({ id: 'Model:openAiApi', targetNodeName: 'Model' }),
 			makeWorkflowSetupSection({ id: 'Standalone:slackApi', targetNodeName: 'Standalone' }),
 			makeWorkflowSetupSection({ id: 'Agent:foo', targetNodeName: 'Agent' }),
 		];
 		const requests = [
-			makeSetupRequest({ node: { name: 'Model' }, parentNode: agent }),
+			makeSetupRequest({ node: { name: 'Model' }, subnodeRootNode: agent }),
 			makeSetupRequest({ node: { name: 'Standalone' } }),
 			makeSetupRequest({ node: { name: 'Agent' } }),
 		];
@@ -52,15 +52,15 @@ describe('useWorkflowSetupSteps', () => {
 		expect(steps.value).toHaveLength(2);
 		const groupStep = steps.value[0];
 		if (groupStep.kind !== 'group') throw new Error('expected group step');
-		expect(groupStep.group.parentNode.name).toBe('Agent');
+		expect(groupStep.group.subnodeRootNode.name).toBe('Agent');
 		expect(groupStep.group.subnodeSections.map((s) => s.id)).toEqual(['Model:openAiApi']);
-		expect(groupStep.group.parentSection?.id).toBe('Agent:foo');
+		expect(groupStep.group.rootSection?.id).toBe('Agent:foo');
 		const sectionStep = steps.value[1];
 		if (sectionStep.kind !== 'section') throw new Error('expected section step');
 		expect(sectionStep.section.targetNodeName).toBe('Standalone');
 	});
 
-	it('inserts the group at the parent position when the parent comes before its sub-nodes', () => {
+	it('inserts the group at the root node position when the root comes before its sub-nodes', () => {
 		const sections = [
 			makeWorkflowSetupSection({ id: 'Agent:foo', targetNodeName: 'Agent' }),
 			makeWorkflowSetupSection({ id: 'Standalone:slackApi', targetNodeName: 'Standalone' }),
@@ -69,7 +69,7 @@ describe('useWorkflowSetupSteps', () => {
 		const requests = [
 			makeSetupRequest({ node: { name: 'Agent' } }),
 			makeSetupRequest({ node: { name: 'Standalone' } }),
-			makeSetupRequest({ node: { name: 'Model' }, parentNode: agent }),
+			makeSetupRequest({ node: { name: 'Model' }, subnodeRootNode: agent }),
 		];
 
 		const { steps } = harness(sections, requests);
@@ -81,18 +81,18 @@ describe('useWorkflowSetupSteps', () => {
 		expect(sectionStep.section.targetNodeName).toBe('Standalone');
 	});
 
-	it('emits a group with no parentSection when the parent has no setup request', () => {
+	it('emits a group with no rootSection when the root node has no setup request', () => {
 		const sections = [makeWorkflowSetupSection({ id: 'Model:openAiApi', targetNodeName: 'Model' })];
-		const requests = [makeSetupRequest({ node: { name: 'Model' }, parentNode: agent })];
+		const requests = [makeSetupRequest({ node: { name: 'Model' }, subnodeRootNode: agent })];
 
 		const { steps } = harness(sections, requests);
 
 		expect(steps.value).toHaveLength(1);
 		const step = steps.value[0];
 		if (step.kind !== 'group') throw new Error('expected group');
-		expect(step.group.parentSection).toBeUndefined();
+		expect(step.group.rootSection).toBeUndefined();
 		expect(step.group.subnodeSections.map((s) => s.id)).toEqual(['Model:openAiApi']);
-		expect(step.group.parentNode).toEqual(agent);
+		expect(step.group.subnodeRootNode).toEqual(agent);
 	});
 
 	it('attaches multiple sections from the same sub-node into subnodeSections', () => {
@@ -106,10 +106,10 @@ describe('useWorkflowSetupSteps', () => {
 			}),
 		];
 		const requests = [
-			makeSetupRequest({ node: { name: 'Model' }, parentNode: agent }),
+			makeSetupRequest({ node: { name: 'Model' }, subnodeRootNode: agent }),
 			makeSetupRequest({
 				node: { name: 'Model' },
-				parentNode: agent,
+				subnodeRootNode: agent,
 				credentialType: undefined,
 				editableParameters: [{ name: 'temperature', displayName: 'Temperature', type: 'number' }],
 			}),
@@ -124,7 +124,7 @@ describe('useWorkflowSetupSteps', () => {
 			'Model:openAiApi',
 			'Model:parameters',
 		]);
-		expect(step.group.parentSection).toBeUndefined();
+		expect(step.group.rootSection).toBeUndefined();
 	});
 
 	it('preserves execution order between two non-overlapping groups', () => {
@@ -133,8 +133,8 @@ describe('useWorkflowSetupSteps', () => {
 			makeWorkflowSetupSection({ id: 'ModelB:openAiApi', targetNodeName: 'Model B' }),
 		];
 		const requests = [
-			makeSetupRequest({ node: { name: 'Model A' }, parentNode: agent }),
-			makeSetupRequest({ node: { name: 'Model B' }, parentNode: agentB }),
+			makeSetupRequest({ node: { name: 'Model A' }, subnodeRootNode: agent }),
+			makeSetupRequest({ node: { name: 'Model B' }, subnodeRootNode: agentB }),
 		];
 
 		const { steps } = harness(sections, requests);
@@ -142,7 +142,7 @@ describe('useWorkflowSetupSteps', () => {
 		expect(steps.value).toHaveLength(2);
 		const [first, second] = steps.value;
 		if (first.kind !== 'group' || second.kind !== 'group') throw new Error('expected groups');
-		expect(first.group.parentNode.name).toBe('Agent');
-		expect(second.group.parentNode.name).toBe('Agent B');
+		expect(first.group.subnodeRootNode.name).toBe('Agent');
+		expect(second.group.subnodeRootNode.name).toBe('Agent B');
 	});
 });

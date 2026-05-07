@@ -10,16 +10,14 @@ export function buildSectionId(targetNodeName: string, credentialType?: string):
 }
 
 /**
- * Returns the parent + sub-node sections in display order. Centralizes the
- * optional-parent handling so callers don't repeat the same spread.
+ * Returns the root + sub-node sections in display order. Centralizes the
+ * optional-root handling so callers don't repeat the same spread.
  */
 export function getGroupSections(group: WorkflowSetupGroup): WorkflowSetupSection[] {
-	return group.parentSection
-		? [group.parentSection, ...group.subnodeSections]
-		: group.subnodeSections;
+	return group.rootSection ? [group.rootSection, ...group.subnodeSections] : group.subnodeSections;
 }
 
-/** Returns every section a step represents (one for section steps, parent+subnodes for group steps). */
+/** Returns every section a step represents (one for section steps, root+subnodes for group steps). */
 export function getStepSections(step: WorkflowSetupStep): WorkflowSetupSection[] {
 	return step.kind === 'group' ? getGroupSections(step.group) : [step.section];
 }

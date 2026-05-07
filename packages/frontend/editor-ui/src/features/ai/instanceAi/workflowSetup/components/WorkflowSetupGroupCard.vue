@@ -21,8 +21,11 @@ const nodeTypesStore = useNodeTypesStore();
 const groupRef = toRef(props, 'group');
 const { expandedSections, toggleSection } = useWorkflowSetupGroupSections(groupRef);
 
-const parentNodeType = computed(() =>
-	nodeTypesStore.getNodeType(props.group.parentNode.type, props.group.parentNode.typeVersion),
+const subnodeRootNodeType = computed(() =>
+	nodeTypesStore.getNodeType(
+		props.group.subnodeRootNode.type,
+		props.group.subnodeRootNode.typeVersion,
+	),
 );
 
 const isGroupComplete = computed(() => getGroupSections(props.group).every(ctx.isSectionComplete));
@@ -35,9 +38,9 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 <template>
 	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-group-card">
 		<header :class="$style.header">
-			<NodeIcon :node-type="parentNodeType" :size="16" />
+			<NodeIcon :node-type="subnodeRootNodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-				{{ group.parentNode.name }}
+				{{ group.subnodeRootNode.name }}
 			</N8nText>
 			<N8nText
 				v-if="isGroupComplete"
@@ -53,12 +56,12 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 
 		<div :class="$style.sections">
 			<div
-				v-if="group.parentSection"
-				:key="group.parentSection.id"
-				:class="[$style.section, $style.parentSection]"
+				v-if="group.rootSection"
+				:key="group.rootSection.id"
+				:class="[$style.section, $style.rootSection]"
 				data-test-id="instance-ai-workflow-setup-section"
 			>
-				<WorkflowSetupSectionBody :section="group.parentSection" />
+				<WorkflowSetupSectionBody :section="group.rootSection" />
 			</div>
 
 			<div
@@ -144,15 +147,15 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 	padding: var(--spacing--sm);
 }
 
-// The parent section renders inline as the group card's primary body and
+// The root section renders inline as the group card's primary body and
 // belongs with the group header, so no separator is drawn above it.
-.parentSection {
+.rootSection {
 	border-top: none;
 }
 
-// The parent section sits directly under the group header; collapse its top
+// The root section sits directly under the group header; collapse its top
 // padding so the header's own bottom padding dictates the gap.
-.parentSection:first-child {
+.rootSection:first-child {
 	padding-top: 0;
 }
 

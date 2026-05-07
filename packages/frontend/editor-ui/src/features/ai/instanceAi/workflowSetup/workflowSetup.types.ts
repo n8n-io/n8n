@@ -16,16 +16,16 @@ export interface WorkflowSetupSection {
 }
 
 /**
- * Agent + its parent/sub-node sections grouped under a single wizard step.
+ * Root node + its setup/sub-node sections grouped under a single wizard step.
  *
- * `parentSection` is optional because a parent node may not have a setup
+ * `rootSection` is optional because the root node may not have a setup
  * request of its own — its sub-nodes can carry all the configuration. When
- * the parent does have a setup request, credentials and parameters from
+ * the root node does have a setup request, credentials and parameters from
  * that request are bundled into a single section.
  */
 export interface WorkflowSetupGroup {
-	parentNode: { name: string; type: string; typeVersion: number; id: string };
-	parentSection?: WorkflowSetupSection;
+	subnodeRootNode: { name: string; type: string; typeVersion: number; id: string };
+	rootSection?: WorkflowSetupSection;
 	subnodeSections: WorkflowSetupSection[];
 }
 
