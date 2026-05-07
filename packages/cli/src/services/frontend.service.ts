@@ -305,6 +305,8 @@ export class FrontendService {
 			// @TODO: Move to community-packages module
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
+			communityNodesManagedByEnv:
+				this.globalConfig.instanceSettingsLoader.communityPackagesManagedByEnv,
 
 			deployment: {
 				type: this.globalConfig.deployment.type,

@@ -5,6 +5,7 @@ import {
 	buildSetupRequests,
 	analyzeWorkflow,
 	applyNodeChanges,
+	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
@@ -1046,5 +1047,124 @@ describe('stripStaleCredentialsFromWorkflow', () => {
 
 		expect(wfJson.nodes[0].credentials).toBeUndefined();
 		expect(context.nodeService.getDescription).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// applyNodeCredentials — credential ownership revalidation (IDOR boundary)
+//
+// `nodeCredentials` arrives in the confirmation payload from the client and
+// can carry arbitrary credential IDs. Each ID must be resolved through
+// `context.credentialService.get()`, which the adapter binds to the
+// requesting user — IDs the user can't access throw and are recorded as
+// failures rather than being silently written to the workflow.
+// ---------------------------------------------------------------------------
+
+describe('applyNodeCredentials — credential ownership revalidation', () => {
+	let context: InstanceAiContext;
+
+	beforeEach(() => {
+		context = createMockContext();
+	});
+
+	it('applies a credential the user is allowed to read', async () => {
+		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockResolvedValue({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+		});
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Slack: { slackApi: 'cred-mine' },
+		});
+
+		expect(context.credentialService.get).toHaveBeenCalledWith('cred-mine');
+		expect(node.credentials).toEqual({ slackApi: { id: 'cred-mine', name: 'My Slack' } });
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toEqual([]);
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('wf-1', wfJson);
+	});
+
+	it('does not write a credential the user cannot access', async () => {
+		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockRejectedValue(
+			new Error('Credential with ID "cred-other" could not be found.'),
+		);
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Slack: { slackApi: 'cred-other' },
+		});
+
+		expect(node.credentials).toBeUndefined();
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0]).toMatchObject({ nodeName: 'Slack' });
+		expect(result.failed[0].error).toContain('cred-other');
+	});
+
+	it('applies allowed credentials and rejects forbidden ones in a mixed payload', async () => {
+		const slack = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const github = makeNode({ name: 'GitHub', type: 'n8n-nodes-base.github', id: 'node-2' });
+		const wfJson = makeWorkflowJSON([slack, github]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockImplementation(async (credId: string) => {
+			if (credId === 'cred-mine') {
+				return await Promise.resolve({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+			}
+			throw new Error(`Credential with ID "${credId}" could not be found.`);
+		});
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Slack: { slackApi: 'cred-mine' },
+			GitHub: { githubApi: 'cred-other' },
+		});
+
+		expect(slack.credentials).toEqual({ slackApi: { id: 'cred-mine', name: 'My Slack' } });
+		expect(github.credentials).toBeUndefined();
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0]).toMatchObject({ nodeName: 'GitHub' });
+	});
+
+	it('marks a node as failed when any of its credentials are rejected', async () => {
+		const node = makeNode({ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as jest.Mock).mockImplementation(async (credId: string) => {
+			if (credId === 'cred-mine') {
+				return await Promise.resolve({ id: 'cred-mine', name: 'Auth', type: 'httpHeaderAuth' });
+			}
+			throw new Error(`Credential with ID "${credId}" could not be found.`);
+		});
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			HTTP: { httpHeaderAuth: 'cred-mine', httpQueryAuth: 'cred-other' },
+		});
+
+		// Allowed cred is still written, but the node is reported as failed and
+		// not in `applied` so callers know one of its credentials was rejected.
+		expect(node.credentials).toEqual({ httpHeaderAuth: { id: 'cred-mine', name: 'Auth' } });
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result.failed[0].error).toContain('cred-other');
+	});
+
+	it('skips credentials for nodes not present in the workflow', async () => {
+		const node = makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			GhostNode: { slackApi: 'cred-other' },
+		});
+
+		expect(context.credentialService.get).not.toHaveBeenCalled();
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toEqual([]);
 	});
 });
