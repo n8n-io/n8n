@@ -62,7 +62,10 @@ vi.mock('../components/InstanceAiQuestions.vue', () => ({
 }));
 
 vi.mock('../components/DomainAccessApproval.vue', () => ({
-	default: { template: '<div />', props: ['requestId', 'url', 'host', 'severity'] },
+	default: {
+		template: '<div />',
+		props: ['requestId', 'url', 'host', 'query', 'severity'],
+	},
 }));
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
 	default: {
@@ -181,6 +184,24 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					skipped_inputs: [],
 				}),
 			);
+		});
+
+		it('renders explicit approval input type as generic approval', async () => {
+			injectPendingConfirmation(store, {
+				requestId: 'req-explicit-approval',
+				severity: 'info',
+				message: 'Approve this action?',
+				inputType: 'approval',
+			});
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent();
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-explicit-approval', {
+				kind: 'approval',
+				approved: true,
+			});
 		});
 
 		it('tracks deny with correct payload', async () => {

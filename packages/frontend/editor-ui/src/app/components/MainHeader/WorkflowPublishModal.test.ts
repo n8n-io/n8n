@@ -9,11 +9,12 @@ import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { NodeConnectionTypes, WEBHOOK_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -75,6 +76,19 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 	},
 });
 
+const WEBHOOK_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
+	displayName: 'Webhook',
+	name: WEBHOOK_NODE_TYPE,
+	group: ['trigger'],
+	version: 1,
+	description: 'Starts the workflow when a webhook is called',
+	defaults: { name: 'Webhook' },
+	inputs: [],
+	outputs: [NodeConnectionTypes.Main],
+	properties: [],
+	webhooks: [{ name: 'default', httpMethod: 'GET', path: '' }],
+};
+
 const AI_GATEWAY_NODE = {
 	id: 'ai-node-1',
 	name: 'Message a model',
@@ -95,6 +109,10 @@ describe('WorkflowPublishModal', () => {
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		// Register the webhook node type so workflowTriggerNodes computed recognises triggers
+		const nodeTypesStore = useNodeTypesStore();
+		nodeTypesStore.setNodeTypes([WEBHOOK_NODE_TYPE_DESCRIPTION]);
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
 		workflowDocumentStore.setActiveState({
@@ -128,21 +146,19 @@ describe('WorkflowPublishModal', () => {
 			isArchived: false,
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
-			nodes: [],
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Webhook Trigger',
+					type: WEBHOOK_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					disabled: false,
+				},
+			],
 			connections: {},
 		};
-
-		workflowsStore.workflowTriggerNodes = [
-			{
-				id: 'trigger-1',
-				name: 'Webhook Trigger',
-				type: WEBHOOK_NODE_TYPE,
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-				disabled: false,
-			},
-		];
 
 		mockPublishWorkflow.mockReset().mockResolvedValue({
 			success: true,

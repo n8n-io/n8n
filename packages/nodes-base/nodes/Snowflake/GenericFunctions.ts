@@ -73,6 +73,44 @@ export async function destroy(conn: snowflake.Connection) {
 	});
 }
 
+export function escapeSnowflakeIdentifier(identifier: string): string {
+	if (identifier.startsWith('"') && identifier.endsWith('"') && identifier.length > 2) {
+		// Already quoted — preserve case (Snowflake quoted identifiers are case-sensitive)
+		const bare = identifier.slice(1, -1).replace(/""/g, '"');
+		return `"${bare.replace(/"/g, '""')}"`;
+	}
+	// Snowflake stores unquoted identifiers as UPPERCASE by default; uppercase for compatibility
+	return `"${identifier.toUpperCase().replace(/"/g, '""')}"`;
+}
+
+export function escapeSnowflakeObjectIdentifier(identifier: string): string {
+	const parts: string[] = [];
+	let current = '';
+	let inQuotes = false;
+
+	for (let i = 0; i < identifier.length; i++) {
+		const char = identifier[i];
+		if (char === '"') {
+			if (inQuotes && identifier[i + 1] === '"') {
+				// Escaped double-quote inside a quoted identifier
+				current += '""';
+				i++;
+			} else {
+				inQuotes = !inQuotes;
+				current += char;
+			}
+		} else if (char === '.' && !inQuotes) {
+			parts.push(current);
+			current = '';
+		} else {
+			current += char;
+		}
+	}
+	parts.push(current);
+
+	return parts.map(escapeSnowflakeIdentifier).join('.');
+}
+
 export async function execute(
 	conn: snowflake.Connection,
 	sqlText: string,

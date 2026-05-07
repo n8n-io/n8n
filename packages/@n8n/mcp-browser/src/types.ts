@@ -1,6 +1,9 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 
+import type { BrowserConnection as BrowserConnectionType } from './connection';
+import type { ConnectionLostReason } from './errors';
+
 // ---------------------------------------------------------------------------
 // Browser names
 // ---------------------------------------------------------------------------
@@ -23,6 +26,7 @@ const browserOverrideSchema = z.object({
 export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
+	adapter: z.enum(['playwright', 'agent-browser']).default('agent-browser'),
 });
 
 export type Config = z.input<typeof configSchema>;
@@ -36,6 +40,7 @@ export interface ResolvedBrowserInfo {
 export interface ResolvedConfig {
 	defaultBrowser: BrowserName;
 	browsers: Map<BrowserName, ResolvedBrowserInfo>;
+	adapter: 'playwright' | 'agent-browser';
 }
 
 // ---------------------------------------------------------------------------
@@ -52,8 +57,73 @@ export interface PageInfo {
 	url: string;
 }
 
+export interface Adapter {
+	onDisconnect?: (reason: ConnectionLostReason) => void;
+	launch(config: ConnectConfig): Promise<void>;
+	close(): Promise<void>;
+	// Tabs
+	listTabs(): Promise<PageInfo[]>;
+	listTabIds(): Promise<string[]>;
+	listTabSessionIds(): Promise<string[]>;
+	newPage(url?: string): Promise<PageInfo>;
+	closePage(pageId: string): Promise<void>;
+	focusPage(pageId: string): Promise<void>;
+	// Navigation
+	navigate(
+		pageId: string,
+		url: string,
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult>;
+	back(pageId: string): Promise<NavigateResult>;
+	forward(pageId: string): Promise<NavigateResult>;
+	reload(
+		pageId: string,
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult>;
+	// Interaction
+	click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void>;
+	type(pageId: string, target: ElementTarget, text: string, options?: TypeOptions): Promise<void>;
+	select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]>;
+	hover(pageId: string, target: ElementTarget): Promise<void>;
+	press(pageId: string, keys: string): Promise<void>;
+	drag(pageId: string, from: ElementTarget, to: ElementTarget): Promise<void>;
+	scroll(pageId: string, target?: ElementTarget, options?: ScrollOptions): Promise<void>;
+	upload(pageId: string, target: ElementTarget | undefined, files: string[]): Promise<void>;
+	dialog(pageId: string, action: 'accept' | 'dismiss', text?: string): Promise<string>;
+	// Inspection
+	snapshot(pageId: string, target?: ElementTarget, interactive?: boolean): Promise<SnapshotResult>;
+	screenshot(pageId: string, target?: ElementTarget, options?: ScreenshotOptions): Promise<string>;
+	getText(pageId: string, target?: ElementTarget): Promise<string>;
+	getContent(pageId: string, selector?: string): Promise<{ html: string; url: string }>;
+	evaluate(pageId: string, script: string): Promise<unknown>;
+	getConsole(pageId: string, level?: string, clear?: boolean): Promise<ConsoleEntry[]>;
+	getConsoleSummary(pageId: string): { errors: number; warnings: number };
+	getModalStates(pageId: string): ModalState[];
+	getNetwork(pageId: string, filter?: string, clear?: boolean): Promise<NetworkEntry[]>;
+	pdf(
+		pageId: string,
+		options?: { format?: string; landscape?: boolean },
+	): Promise<{ data: string; pages: number }>;
+	// Wait
+	wait(pageId: string, options: WaitOptions): Promise<number>;
+	waitForCompletion<T>(pageId: string, action: () => Promise<T>): Promise<T>;
+	// State
+	getCookies(pageId: string, url?: string): Promise<Cookie[]>;
+	setCookies(pageId: string, cookies: Cookie[]): Promise<void>;
+	clearCookies(pageId: string): Promise<void>;
+	getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>>;
+	setStorage(
+		pageId: string,
+		kind: 'local' | 'session',
+		data: Record<string, string>,
+	): Promise<void>;
+	clearStorage(pageId: string, kind: 'local' | 'session'): Promise<void>;
+	// Sync helpers used by tool helpers
+	getPageUrl(pageId: string): string | undefined;
+}
+
 export interface ConnectionState {
-	adapter: PlaywrightAdapter;
+	adapter: Adapter;
 	pages: Map<string, PageInfo>;
 	activePageId: string;
 }
@@ -195,11 +265,7 @@ export interface BrowserToolkit {
 	connection: BrowserConnection;
 }
 
-// Forward declarations — imported at runtime to avoid circular deps
-import type { PlaywrightAdapter as PlaywrightAdapterType } from './adapters/playwright';
-import type { BrowserConnection as BrowserConnectionType } from './connection';
 type BrowserConnection = BrowserConnectionType;
-type PlaywrightAdapter = PlaywrightAdapterType;
 
 // ---------------------------------------------------------------------------
 // Discovery types

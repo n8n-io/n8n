@@ -3,6 +3,7 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
+	'agents',
 	'insights',
 	'external-secrets',
 	'community-packages',
@@ -23,6 +24,7 @@ export const MODULE_NAMES = [
 	'redaction',
 	'instance-registry',
 	'instance-ai',
+	'mcp-registry',
 	'otel',
 	'token-exchange',
 	'instance-version-history',
