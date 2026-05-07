@@ -10,37 +10,65 @@ import SplitButton from './SplitButton.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
-const props = defineProps<{
+interface DomainProps {
 	requestId: string;
+	severity?: string;
 	url: string;
 	host: string;
+	query?: never;
+}
+
+interface WebSearchProps {
+	requestId: string;
 	severity?: string;
-}>();
+	query: string;
+	url?: never;
+	host?: never;
+}
+
+const props = defineProps<DomainProps | WebSearchProps>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const resolved = ref(false);
 
+const isWebSearch = computed(() => props.query !== undefined);
 const isDestructive = computed(() => props.severity === 'destructive');
 
-const primaryAction = computed<DomainAction>(() =>
-	isDestructive.value ? 'allow_once' : 'allow_domain',
+const promptText = computed(() =>
+	isWebSearch.value
+		? i18n.baseText('instanceAi.webSearch.prompt')
+		: i18n.baseText('instanceAi.domainAccess.prompt', {
+				interpolate: { domain: props.host ?? '' },
+			}),
 );
 
-const primaryLabel = computed(() =>
-	isDestructive.value
-		? i18n.baseText('instanceAi.domainAccess.allowOnce')
+const previewText = computed(() => (isWebSearch.value ? props.query : props.url) ?? '');
+
+const persistentLabel = computed(() =>
+	isWebSearch.value
+		? i18n.baseText('instanceAi.webSearch.allowThread')
 		: i18n.baseText('instanceAi.domainAccess.allowDomain'),
 );
 
+// Web search's persistent option approves every future search in the thread,
+// which is much broader than fetch-url's per-domain scope — default to
+// allow-once so users opt into thread-wide approval explicitly.
+const primaryIsAllowOnce = computed(() => isDestructive.value || isWebSearch.value);
+
+const primaryAction = computed<DomainAction>(() =>
+	primaryIsAllowOnce.value ? 'allow_once' : 'allow_domain',
+);
+
+const primaryLabel = computed(() =>
+	primaryIsAllowOnce.value
+		? i18n.baseText('instanceAi.domainAccess.allowOnce')
+		: persistentLabel.value,
+);
+
 const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
-	isDestructive.value
-		? [
-				{
-					id: 'allow_domain' as const,
-					label: i18n.baseText('instanceAi.domainAccess.allowDomain'),
-				},
-			]
+	primaryIsAllowOnce.value
+		? [{ id: 'allow_domain' as const, label: persistentLabel.value }]
 		: [
 				{
 					id: 'allow_once' as const,
@@ -83,11 +111,9 @@ function onDropdownSelect(action: string) {
 	<div v-if="!resolved">
 		<div :class="$style.body">
 			<N8nText tag="div" size="medium" bold>
-				{{
-					i18n.baseText('instanceAi.domainAccess.prompt', { interpolate: { domain: props.host } })
-				}}
+				{{ promptText }}
 			</N8nText>
-			<ConfirmationPreview>{{ props.url }}</ConfirmationPreview>
+			<ConfirmationPreview>{{ previewText }}</ConfirmationPreview>
 		</div>
 
 		<ConfirmationFooter>
