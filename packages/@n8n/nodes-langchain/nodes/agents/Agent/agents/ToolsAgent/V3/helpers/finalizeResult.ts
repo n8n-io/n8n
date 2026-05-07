@@ -20,7 +20,7 @@ import type { AgentResult } from '../types';
  */
 export function finalizeResult(
 	result: AgentResult,
-	itemIndex: number,
+	_itemIndex: number,
 	memory: BaseChatMemory | undefined,
 	outputParser: N8nOutputParser | undefined,
 ): INodeExecutionData {
@@ -47,7 +47,6 @@ export function finalizeResult(
 			'chat_history',
 			'agent_scratchpad',
 		),
-		pairedItem: { item: itemIndex },
 	};
 
 	return itemResult;
