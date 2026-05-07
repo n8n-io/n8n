@@ -7,11 +7,10 @@
  */
 
 import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { writeFileViaSandbox } from '../../workspace/sandbox-fs';
+import { writeFileViaSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export const writeSandboxFileInputSchema = z.object({
@@ -21,7 +20,7 @@ export const writeSandboxFileInputSchema = z.object({
 	content: z.string().describe('The file content to write'),
 });
 
-export function createWriteSandboxFileTool(workspace: Workspace) {
+export function createWriteSandboxFileTool(workspace: SandboxWorkspace) {
 	return createTool({
 		id: 'write-file',
 		description:

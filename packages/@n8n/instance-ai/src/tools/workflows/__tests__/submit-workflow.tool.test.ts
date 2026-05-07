@@ -1,9 +1,9 @@
-import type { Workspace } from '@mastra/core/workspace';
 import { validateWorkflow } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes } from 'n8n-workflow';
 
 import type { InstanceAiContext } from '../../../types';
+import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
 	classifySubmitFailure,
 	isTriggerNodeType,
@@ -51,7 +51,7 @@ function makeContext(
  * `readFileViaSandbox` (`cat ...`) — both run before the permission check so
  * the pre-check reportAttempt path gets a resolved filePath + sourceHash.
  */
-function makeWorkspace(): Workspace {
+function makeWorkspace(): SandboxWorkspace {
 	return {
 		sandbox: {
 			executeCommand: async (command: string) => {
@@ -62,7 +62,7 @@ function makeWorkspace(): Workspace {
 					: { exitCode: 0, stdout: '', stderr: '' };
 			},
 		},
-	} as unknown as Workspace;
+	};
 }
 
 /** Workspace stub that simulates a successful sandbox build by emitting
@@ -74,7 +74,7 @@ function makeBuildSuccessWorkspace(
 		nodes: [],
 		connections: {},
 	},
-): Workspace {
+): SandboxWorkspace {
 	return {
 		sandbox: {
 			executeCommand: async (command: string) => {
@@ -96,7 +96,7 @@ function makeBuildSuccessWorkspace(
 				return { exitCode: 0, stdout: '', stderr: '' };
 			},
 		},
-	} as unknown as Workspace;
+	};
 }
 
 describe('createSubmitWorkflowTool — schema validation wiring', () => {

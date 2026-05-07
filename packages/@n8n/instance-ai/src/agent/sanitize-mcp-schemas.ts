@@ -2,9 +2,8 @@
  * Sanitizes MCP tool Zod schemas for Anthropic compatibility.
  *
  * Problem: Chrome DevTools MCP (and potentially other MCP servers) return JSON
- * schemas with `type: ["string", "null"]`. Mastra converts these to
- * `z.union([z.string(), z.null()])`. Anthropic's API rejects `ZodNull` —
- * `@mastra/schema-compat` throws "does not support zod type: ZodNull".
+ * schemas with `type: ["string", "null"]`. Some tool adapters convert these
+ * to `z.union([z.string(), z.null()])`, and Anthropic's API rejects `ZodNull`.
  *
  * Solution: Walk the Zod schema tree and replace ZodNull unions with optional
  * non-null alternatives. For example:
@@ -12,7 +11,6 @@
  *   z.nullable(z.string())           →  z.string().optional()
  */
 
-import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
 export const MCP_SCHEMA_MAX_DEPTH = 32;
@@ -632,9 +630,8 @@ export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
 
 /**
  * Sanitize a single Zod input schema for Anthropic compatibility.
- * Must be called BEFORE passing to `createTool()`, because Mastra captures
- * the schema in a closure at construction time — post-creation mutation
- * does not affect the JSON Schema sent to the API.
+ * Must be called before registering a tool with the agent runtime, because
+ * tool builders/adapters can capture the schema during construction.
  *
  * Uses strict mode: throws on description conflicts in discriminated unions
  * to prevent silently degraded schemas. Harmonize field descriptions at the
@@ -659,8 +656,8 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * action context (e.g. 'For "create": ... For "delete": ...') rather than
  * throwing.
  */
-export function sanitizeMcpToolSchemas(
-	tools: ToolsInput,
+export function sanitizeMcpToolSchemas<TTools extends Record<string, unknown>>(
+	tools: TTools,
 	options: {
 		maxDepth?: number;
 		maxNodes?: number;
@@ -668,34 +665,56 @@ export function sanitizeMcpToolSchemas(
 		maxUnionOptions?: number;
 		onError?: (error: McpSchemaSanitizationError) => void;
 	} = {},
-): ToolsInput {
+): TTools {
 	for (const [name, tool] of Object.entries(tools)) {
-		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
+		if (!isRecord(tool)) continue;
+
+		const t = tool as { inputSchema?: unknown; outputSchema?: unknown };
 		const budget = { nodes: 0 };
 		try {
 			if (t.inputSchema) {
-				t.inputSchema = ensureTopLevelObject(
-					sanitizeZodType(t.inputSchema, false, {
+				if (t.inputSchema instanceof z.ZodType) {
+					t.inputSchema = ensureTopLevelObject(
+						sanitizeZodType(t.inputSchema, false, {
+							maxDepth: options.maxDepth,
+							maxNodes: options.maxNodes,
+							maxObjectProperties: options.maxObjectProperties,
+							maxUnionOptions: options.maxUnionOptions,
+							toolName: name,
+							path: '$.inputSchema',
+							budget,
+						}),
+					);
+				} else {
+					assertMcpJsonSchemaWithinLimits(t.inputSchema, {
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
 						maxUnionOptions: options.maxUnionOptions,
 						toolName: name,
-						path: '$.inputSchema',
-						budget,
-					}),
-				);
+					});
+				}
 			}
 			if (t.outputSchema) {
-				t.outputSchema = sanitizeZodType(t.outputSchema, false, {
-					maxDepth: options.maxDepth,
-					maxNodes: options.maxNodes,
-					maxObjectProperties: options.maxObjectProperties,
-					maxUnionOptions: options.maxUnionOptions,
-					toolName: name,
-					path: '$.outputSchema',
-					budget,
-				});
+				if (t.outputSchema instanceof z.ZodType) {
+					t.outputSchema = sanitizeZodType(t.outputSchema, false, {
+						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
+						toolName: name,
+						path: '$.outputSchema',
+						budget,
+					});
+				} else {
+					assertMcpJsonSchemaWithinLimits(t.outputSchema, {
+						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
+						toolName: name,
+					});
+				}
 			}
 		} catch (error) {
 			if (error instanceof McpSchemaSanitizationError) {

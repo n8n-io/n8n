@@ -1,6 +1,6 @@
 // Mock external SDKs and other workspace modules so we can drive the factory
 // end-to-end in Jest without touching real sandboxes, filesystems, or the
-// Mastra runtime.
+// native workspace runtime.
 
 interface DaytonaCreateParams {
 	snapshot?: string;
@@ -44,36 +44,9 @@ jest.mock('@daytonaio/sdk', () => {
 	return { Daytona, DaytonaError, Image };
 });
 
-jest.mock('@mastra/core/workspace', () => {
-	class LocalSandbox {
-		constructor(public opts: unknown) {}
-	}
-	class LocalFilesystem {
-		constructor(public opts: unknown) {}
-	}
-	class Workspace {
-		sandbox: { processes?: { list: jest.Mock; kill: jest.Mock; get: jest.Mock } } & {
-			[k: string]: unknown;
-		};
-		filesystem: { writeFile: jest.Mock };
-		constructor(public opts: { sandbox: unknown; filesystem: unknown }) {
-			this.sandbox = {
-				...(opts.sandbox as Record<string, unknown>),
-				processes: {
-					list: jest.fn().mockResolvedValue([]),
-					kill: jest.fn().mockResolvedValue(undefined),
-					get: jest.fn().mockResolvedValue(undefined),
-				},
-			};
-			this.filesystem = { writeFile: jest.fn().mockResolvedValue(undefined) };
-		}
-		init = jest.fn().mockResolvedValue(undefined);
-	}
-	return { LocalSandbox, LocalFilesystem, Workspace };
-});
-
-jest.mock('@mastra/daytona', () => {
+jest.mock('../daytona-sandbox', () => {
 	class DaytonaSandbox {
+		start = jest.fn().mockResolvedValue(undefined);
 		constructor(public opts: unknown) {}
 	}
 	return { DaytonaSandbox };
@@ -100,6 +73,9 @@ const capturedSandboxes: MockN8nSandbox[] = [];
 
 jest.mock('../n8n-sandbox-sandbox', () => ({
 	N8nSandboxServiceSandbox: class {
+		start = jest.fn(async () => {
+			await Promise.resolve();
+		});
 		destroy = jest.fn(async () => {
 			await Promise.resolve();
 		});

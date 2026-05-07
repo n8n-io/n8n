@@ -13,6 +13,7 @@ import type {
 	TaskList,
 	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
+import type { StreamChunk } from '@n8n/agents';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({
@@ -24,6 +25,22 @@ const questionItemSchema = z.object({
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+const agentStreamChunkTypes = new Set<string>([
+	'finish',
+	'text-delta',
+	'reasoning-delta',
+	'tool-call-delta',
+	'tool-call',
+	'tool-result',
+	'error',
+	'message',
+	'tool-call-suspended',
+]);
+
+function isAgentStreamChunk(value: unknown): value is StreamChunk {
+	return isRecord(value) && typeof value.type === 'string' && agentStreamChunkTypes.has(value.type);
 }
 
 interface ErrorInfo {
@@ -335,5 +352,97 @@ export function mapMastraChunkToEvent(
 	}
 
 	// Other Mastra chunk types (step-finish, finish, etc.) are ignored
+	return null;
+}
+
+export function mapAgentChunkToEvent(
+	runId: string,
+	agentId: string,
+	chunk: unknown,
+	responseId?: string,
+): InstanceAiEvent | null {
+	if (!isAgentStreamChunk(chunk)) return null;
+
+	if (chunk.type === 'text-delta') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{ type: 'text-delta', payload: { text: chunk.delta } },
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'reasoning-delta') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{ type: 'reasoning-delta', payload: { text: chunk.delta } },
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'tool-call') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{
+				type: 'tool-call',
+				payload: {
+					toolCallId: chunk.toolCallId,
+					toolName: chunk.toolName,
+					args: isRecord(chunk.input) ? chunk.input : {},
+				},
+			},
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'tool-result') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{
+				type: chunk.isError === true ? 'tool-error' : 'tool-result',
+				payload:
+					chunk.isError === true
+						? {
+								toolCallId: chunk.toolCallId,
+								error: typeof chunk.output === 'string' ? chunk.output : 'Tool execution failed',
+							}
+						: {
+								toolCallId: chunk.toolCallId,
+								result: chunk.output,
+							},
+			},
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'tool-call-suspended') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: chunk.toolCallId,
+					toolName: chunk.toolName,
+					args: isRecord(chunk.input) ? chunk.input : {},
+					suspendPayload: isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {},
+				},
+			},
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'error') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{ type: 'error', payload: { error: chunk.error } },
+			responseId,
+		);
+	}
+
 	return null;
 }

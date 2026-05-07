@@ -1,5 +1,6 @@
-import type { FileContent } from '@mastra/core/workspace';
 import { z } from 'zod';
+
+type FileContent = string | Buffer | Uint8Array;
 
 /** Error payload returned by the sandbox service. */
 export interface N8nSandboxServiceErrorPayload {
@@ -37,7 +38,7 @@ export interface N8nSandboxFileEntry {
 	modTime: string;
 }
 
-/** File stat payload mapped into Mastra-friendly shape. */
+/** File stat payload mapped into the native workspace shape. */
 export interface N8nSandboxFileStat {
 	name: string;
 	path: string;

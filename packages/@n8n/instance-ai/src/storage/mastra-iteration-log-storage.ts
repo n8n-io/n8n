@@ -1,16 +1,15 @@
-import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
 import { iterationEntrySchema } from './iteration-log';
 import type { IterationEntry, IterationLog } from './iteration-log';
-import { patchThread } from './thread-patch';
+import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
 
 const METADATA_KEY = 'instanceAiIterationLog';
 
 const logRecordSchema = z.record(z.string(), z.array(iterationEntrySchema));
 
 export class MastraIterationLogStorage implements IterationLog {
-	constructor(private readonly memory: Memory) {}
+	constructor(private readonly memory: PatchableThreadMemory) {}
 
 	async append(threadId: string, taskKey: string, entry: IterationEntry): Promise<void> {
 		const updated = await patchThread(this.memory, {
@@ -33,7 +32,7 @@ export class MastraIterationLogStorage implements IterationLog {
 	}
 
 	async getForTask(threadId: string, taskKey: string): Promise<IterationEntry[]> {
-		const thread = await this.memory.getThreadById({ threadId });
+		const thread = await getThread(this.memory, threadId);
 		if (!thread?.metadata?.[METADATA_KEY]) return [];
 
 		const existing = this.parseLog(thread.metadata[METADATA_KEY]);

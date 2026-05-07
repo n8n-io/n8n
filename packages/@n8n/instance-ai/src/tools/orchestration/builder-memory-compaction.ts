@@ -1,8 +1,5 @@
-import type { MastraDBMessage } from '@mastra/core/agent';
-import type { MastraCompositeStore, MemoryStorage } from '@mastra/core/storage';
 import { randomUUID } from 'node:crypto';
 
-import type { OrchestrationContext } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop';
 
 const BUILDER_MEMORY_SUMMARY_TYPE = 'builder-memory-summary';
@@ -12,8 +9,19 @@ interface BuilderMemoryBinding {
 	thread: string;
 }
 
+interface BuilderMemoryStorageProvider {
+	getStore(storeName: string): Promise<unknown> | unknown;
+}
+
+interface BuilderMemoryCompactionContext {
+	storage: BuilderMemoryStorageProvider;
+	threadId: string;
+	runId: string;
+	messageGroupId?: string;
+}
+
 interface BuilderMemoryCompactionInput {
-	context: Pick<OrchestrationContext, 'storage' | 'threadId' | 'runId' | 'messageGroupId'>;
+	context: BuilderMemoryCompactionContext;
 	binding: BuilderMemoryBinding;
 	sessionId?: string;
 	workflowId?: string;
@@ -38,10 +46,33 @@ export interface BuilderMemoryCompactionResult {
 	compactedTokenEstimate: number;
 }
 
+interface BuilderMemoryMessage {
+	id: string;
+	role: string;
+	threadId: string;
+	resourceId: string;
+	createdAt: Date;
+	type?: string;
+	content: unknown;
+}
+
+interface BuilderMemoryListResult {
+	messages: BuilderMemoryMessage[];
+	total?: number;
+	page?: number;
+	perPage?: number | false;
+	hasMore?: boolean;
+}
+
 interface BuilderMemoryStore {
-	listMessages: MemoryStorage['listMessages'];
-	saveMessages: MemoryStorage['saveMessages'];
-	deleteMessages: MemoryStorage['deleteMessages'];
+	listMessages: (args: {
+		threadId: string;
+		resourceId: string;
+		perPage: false;
+		orderBy: { field: 'createdAt'; direction: 'ASC' };
+	}) => Promise<BuilderMemoryListResult>;
+	saveMessages: (args: { messages: BuilderMemoryMessage[] }) => Promise<unknown>;
+	deleteMessages: (messageIds: string[]) => Promise<unknown>;
 }
 
 function estimateTokens(value: string): number {
@@ -68,7 +99,7 @@ function hasBuilderMemoryStore(value: unknown): value is BuilderMemoryStore {
 }
 
 async function getBuilderMemoryStore(
-	storage: MastraCompositeStore,
+	storage: BuilderMemoryStorageProvider,
 ): Promise<BuilderMemoryStore | undefined> {
 	const store = await storage.getStore('memory');
 	return hasBuilderMemoryStore(store) ? store : undefined;
@@ -154,7 +185,7 @@ function buildSummaryContent(input: BuilderMemoryCompactionInput): string {
 function buildSummaryMessage(
 	input: BuilderMemoryCompactionInput,
 	content: string,
-): MastraDBMessage {
+): BuilderMemoryMessage {
 	return {
 		id: `${BUILDER_MEMORY_SUMMARY_TYPE}-${randomUUID()}`,
 		role: 'assistant',

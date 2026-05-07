@@ -1,16 +1,16 @@
-import type { Workspace } from '@mastra/core/workspace';
 import { jsonParse } from 'n8n-workflow';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
+import type { SandboxWorkspace } from '../sandbox-fs';
 import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
 import { formatNodeCatalogLine } from '../sandbox-setup';
 
 type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
 type RunInSandboxMock = jest.Mock<
 	Promise<{ exitCode: number; stdout: string; stderr: string }>,
-	[Workspace, string, string?]
+	[SandboxWorkspace, string, string?]
 >;
-type ReadFileViaSandboxMock = jest.Mock<Promise<string | null>, [Workspace, string]>;
+type ReadFileViaSandboxMock = jest.Mock<Promise<string | null>, [SandboxWorkspace, string]>;
 
 function createSetupContext(): InstanceAiContext {
 	return {
@@ -24,15 +24,15 @@ function createSetupContext(): InstanceAiContext {
 }
 
 function createLocalWorkspace(
-	writeFile: jest.Mock<Promise<void>, [string, string, { recursive: true }]>,
-): Workspace {
+	writeFile: jest.Mock<Promise<void>, [string, string, { recursive?: boolean }?]>,
+): SandboxWorkspace {
 	return {
 		filesystem: {
 			provider: 'local',
 			basePath: '/sandbox',
 			writeFile,
 		},
-	} as unknown as Workspace;
+	};
 }
 
 function loadSetupSandboxWorkspaceWithFsMocks(
@@ -117,19 +117,21 @@ describe('setupSandboxWorkspace', () => {
 	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
 		const runInSandbox: RunInSandboxMock = jest.fn<
 			Promise<{ exitCode: number; stdout: string; stderr: string }>,
-			[Workspace, string, string?]
+			[SandboxWorkspace, string, string?]
 		>();
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
 			Promise<string | null>,
-			[Workspace, string]
+			[SandboxWorkspace, string]
 		>();
 		readFileViaSandbox.mockResolvedValue(null);
 		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
+			async () => {},
+		);
 
 		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
 
@@ -145,19 +147,21 @@ describe('setupSandboxWorkspace', () => {
 	it('does not write the initialized marker when npm install fails', async () => {
 		const runInSandbox: RunInSandboxMock = jest.fn<
 			Promise<{ exitCode: number; stdout: string; stderr: string }>,
-			[Workspace, string, string?]
+			[SandboxWorkspace, string, string?]
 		>();
 		runInSandbox.mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'install failed' });
 		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
 			Promise<string | null>,
-			[Workspace, string]
+			[SandboxWorkspace, string]
 		>();
 		readFileViaSandbox.mockResolvedValue(null);
 		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
 		);
-		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive?: boolean }?]>(
+			async () => {},
+		);
 
 		await expect(
 			setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext()),

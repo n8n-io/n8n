@@ -10,11 +10,10 @@
  */
 
 import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
-import { runInSandbox } from '../../workspace/sandbox-fs';
+import { runInSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 const nodeRequestSchema = z.union([
@@ -51,7 +50,10 @@ export const materializeNodeTypeInputSchema = z.object({
 		.describe('Node IDs to materialize definitions for (max 5)'),
 });
 
-export function createMaterializeNodeTypeTool(context: InstanceAiContext, workspace: Workspace) {
+export function createMaterializeNodeTypeTool(
+	context: InstanceAiContext,
+	workspace: SandboxWorkspace,
+) {
 	return createTool({
 		id: 'materialize-node-type',
 		description:

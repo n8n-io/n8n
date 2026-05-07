@@ -218,6 +218,17 @@ async function* fromChunks(chunks: unknown[]) {
 	}
 }
 
+function readableFromChunks(chunks: unknown[]) {
+	return new ReadableStream<unknown>({
+		start(controller) {
+			for (const chunk of chunks) {
+				controller.enqueue(chunk);
+			}
+			controller.close();
+		},
+	});
+}
+
 function createDeferred<T>() {
 	let resolve!: (value: T | PromiseLike<T>) => void;
 	let reject!: (reason?: unknown) => void;
@@ -279,7 +290,7 @@ describe('executeResumableStream', () => {
 		expect(result).toEqual(
 			expect.objectContaining({
 				status: 'suspended',
-				mastraRunId: 'mastra-run-1',
+				agentRunId: 'mastra-run-1',
 				suspension: {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
@@ -299,6 +310,74 @@ describe('executeResumableStream', () => {
 		expect(result.confirmationEvent?.runId).toBe('run-1');
 		expect(result.confirmationEvent?.agentId).toBe('agent-1');
 		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');
+	});
+
+	it('maps native agent stream chunks when stream source is native', async () => {
+		const eventBus = createEventBus();
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				streamFormat: 'agent',
+				fullStream: fromChunks([
+					{ type: 'text-delta', delta: 'Working...' },
+					{
+						type: 'tool-call-suspended',
+						toolCallId: 'tool-call-1',
+						toolName: 'ask-user',
+						input: { prompt: 'Confirm?' },
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Need approval',
+						},
+					},
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				status: 'suspended',
+				agentRunId: 'agent-run-1',
+				suspension: {
+					toolCallId: 'tool-call-1',
+					requestId: 'request-1',
+					toolName: 'ask-user',
+				},
+			}),
+		);
+		expect(eventBus.publish).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { text: 'Working...' },
+			}),
+		);
+		expect(eventBus.publish).not.toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({ type: 'confirmation-request' }),
+		);
+		expect(result.confirmationEvent?.type).toBe('confirmation-request');
+		expect(result.confirmationEvent?.payload).toEqual(
+			expect.objectContaining({
+				requestId: 'request-1',
+				toolCallId: 'tool-call-1',
+				toolName: 'ask-user',
+				args: { prompt: 'Confirm?' },
+			}),
+		);
 	});
 
 	it('returns errored status when stream contains an error chunk', async () => {
@@ -330,7 +409,7 @@ describe('executeResumableStream', () => {
 		});
 
 		expect(result.status).toBe('errored');
-		expect(result.mastraRunId).toBe('mastra-run-1');
+		expect(result.agentRunId).toBe('mastra-run-1');
 	});
 
 	it('auto-resumes suspended streams and surfaces queued corrections', async () => {
@@ -382,13 +461,71 @@ describe('executeResumableStream', () => {
 			{ runId: 'mastra-run-1', toolCallId: 'tool-call-1' },
 		);
 		expect(result.status).toBe('completed');
-		expect(result.mastraRunId).toBe('mastra-run-2');
+		expect(result.agentRunId).toBe('mastra-run-2');
 		await expect(result.text ?? Promise.resolve('')).resolves.toBe('Done.');
 		expect(eventBus.publish).toHaveBeenCalledWith(
 			'thread-1',
 			expect.objectContaining({
 				type: 'text-delta',
 				payload: { text: '\n[USER CORRECTION]: Prefer Slack instead of email\n' },
+			}),
+		);
+	});
+
+	it('auto-resumes native agent streams', async () => {
+		const eventBus = createEventBus();
+		const resume = jest.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([{ type: 'text-delta', delta: 'Done.' }]),
+			getState: jest.fn(),
+		});
+		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
+
+		const result = await executeResumableStream({
+			agent: { resume },
+			stream: {
+				runId: 'agent-run-1',
+				streamFormat: 'agent',
+				fullStream: fromChunks([
+					{
+						type: 'tool-call-suspended',
+						toolCallId: 'tool-call-1',
+						toolName: 'pause-for-user',
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Please confirm',
+						},
+					},
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+			},
+			control: {
+				mode: 'auto',
+				waitForConfirmation,
+			},
+		});
+
+		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
+		expect(resume).toHaveBeenCalledWith(
+			'stream',
+			{ approved: true },
+			{ runId: 'agent-run-1', toolCallId: 'tool-call-1' },
+		);
+		expect(result.status).toBe('completed');
+		expect(result.agentRunId).toBe('agent-run-2');
+		await expect(result.text).resolves.toBe('Done.');
+		expect(eventBus.publish).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({
+				type: 'text-delta',
+				payload: { text: 'Done.' },
 			}),
 		);
 	});
@@ -460,7 +597,7 @@ describe('executeResumableStream', () => {
 		await expect(execution).resolves.toEqual(
 			expect.objectContaining({
 				status: 'completed',
-				mastraRunId: 'mastra-run-2',
+				agentRunId: 'mastra-run-2',
 			}),
 		);
 		expect(resumeStream).toHaveBeenCalledWith(
@@ -1069,7 +1206,7 @@ describe('executeResumableStream', () => {
 		]);
 	});
 
-	it('creates synthetic tool spans for native Mastra tools', async () => {
+	it('creates synthetic tool spans for native tools', async () => {
 		const eventBus = createEventBus();
 		const parentRun = new RunTree({
 			name: 'subagent:workflow-builder',

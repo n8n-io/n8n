@@ -8,14 +8,16 @@
  */
 
 import { Daytona } from '@daytonaio/sdk';
-import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
-import { DaytonaSandbox } from '@mastra/daytona';
+import { Workspace } from '@n8n/agents';
 import assert from 'node:assert/strict';
 import { join as posixJoin } from 'node:path/posix';
 
 import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
+import { DaytonaSandbox } from './daytona-sandbox';
+import { LocalFilesystem } from './local-filesystem';
+import { LocalSandbox } from './local-sandbox';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxImageManager } from './n8n-sandbox-image-manager';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
@@ -56,7 +58,7 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 	// does not keep stdout/stderr listener closures alive after builder cleanup.
 	for (const process of processes) {
 		try {
-			if (process.running) {
+			if (process.exitCode === undefined) {
 				await processManager.kill(process.pid);
 			} else {
 				await processManager.get(process.pid);
@@ -244,8 +246,8 @@ export class BuilderSandboxFactory {
 		};
 
 		try {
-			// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
-			// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
+			// Wrap raw Sandbox in the native provider; start() reconnects to
+			// the existing sandbox by ID.
 			// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
 			const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 			const daytonaSandbox = new DaytonaSandbox({

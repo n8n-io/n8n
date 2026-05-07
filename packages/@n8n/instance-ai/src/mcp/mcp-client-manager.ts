@@ -1,14 +1,23 @@
-import type { ToolsInput } from '@mastra/core/agent';
-import { MCPClient } from '@mastra/mcp';
+import {
+	McpClient,
+	type BuiltTool,
+	type McpServerConfig as NativeMcpServerConfig,
+} from '@n8n/agents';
 import type { Result } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
-import { nanoid } from 'nanoid';
 
-import { isSafeMcpIdentifierName } from '../agent/mcp-tool-name-validation';
+import {
+	addSafeMcpTools,
+	createClaimedToolNames,
+	isSafeMcpIdentifierName,
+} from '../agent/mcp-tool-name-validation';
+import type { McpToolNameValidationError } from '../agent/mcp-tool-name-validation';
 import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
 import type { Logger } from '../logger';
 import type { McpServerConfig } from '../types';
+
+type McpToolRegistry = Record<string, BuiltTool>;
 
 /**
  * SSRF policy gate for outbound MCP URLs. The cli's `SsrfProtectionService`
@@ -19,20 +28,25 @@ export interface SsrfUrlValidator {
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 }
 
-type McpServerEntry =
-	| { url: URL }
-	| { command: string; args?: string[]; env?: Record<string, string> };
-
-function buildMcpServers(configs: McpServerConfig[]): Record<string, McpServerEntry> {
-	const servers: Record<string, McpServerEntry> = {};
+function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfig[] {
+	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
 		if (server.url) {
-			servers[server.name] = { url: new URL(server.url) };
+			servers.push({ name: server.name, url: server.url });
 		} else if (server.command) {
-			servers[server.name] = { command: server.command, args: server.args, env: server.env };
+			servers.push({
+				name: server.name,
+				command: server.command,
+				args: server.args,
+				env: server.env,
+			});
 		}
 	}
 	return servers;
+}
+
+function toolsToRegistry(tools: BuiltTool[]): McpToolRegistry {
+	return Object.fromEntries(tools.map((tool) => [tool.name, tool]));
 }
 
 function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
@@ -45,6 +59,16 @@ function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
 			maxDepth: error.details.maxDepth,
 			limitType: error.details.limitType,
 			limit: error.details.limit,
+			reason: error.message,
+		});
+	};
+}
+
+function warnSkippedMcpTool(logger: Logger | undefined) {
+	return (error: McpToolNameValidationError) => {
+		logger?.warn('Skipped MCP tool with unsafe name', {
+			toolName: error.toolName,
+			source: error.source,
 			reason: error.message,
 		});
 	};
@@ -67,37 +91,30 @@ function getSafeMcpServers(
 }
 
 /**
- * Owns the lifecycle of MCP client connections used by the orchestrator.
+ * Owns the lifecycle of MCP client connections used by Instance AI.
  *
  * Two buckets:
- * - **regular**: external MCP servers configured by the admin. Their tools are
+ * - regular: external MCP servers configured by the admin. Their tools are
  *   merged into the orchestrator's toolset.
- * - **browser**: Chrome DevTools MCP. Excluded from the orchestrator (context
- *   bloat from screenshots) and only handed to `browser-credential-setup`
- *   sub-agents.
+ * - browser: browser MCP. Excluded from the orchestrator and only handed to
+ *   browser-oriented sub-agents to keep screenshots/snapshots out of the
+ *   orchestrator context.
  *
- * Tool listings are cached by config-hash; clients are tracked in a single map
- * so `disconnect()` cleans up everything regardless of which bucket created
- * them.
- *
- * URLs are validated before the underlying `MCPClient` is constructed:
- * - Protocol whitelist (`http:` / `https:`) is always enforced.
- * - SSRF policy is opt-in via `ssrfValidator`. The cli supplies one when
- *   `N8N_SSRF_PROTECTION_ENABLED` is on, matching how other admin-configured
- *   outbound URLs (workflow imports, HTTP Request node) handle the same flag.
+ * Tool listings are cached by config hash; clients are tracked in one map so
+ * `disconnect()` cleans up everything regardless of which bucket created them.
  */
 export class McpClientManager {
-	private regularToolsByKey = new Map<string, ToolsInput>();
-	private browserToolsByKey = new Map<string, ToolsInput>();
+	private regularToolsByKey = new Map<string, McpToolRegistry>();
+	private browserToolsByKey = new Map<string, McpToolRegistry>();
 
-	private inFlightRegularByKey = new Map<string, Promise<ToolsInput>>();
-	private inFlightBrowserByKey = new Map<string, Promise<ToolsInput>>();
+	private inFlightRegularByKey = new Map<string, Promise<McpToolRegistry>>();
+	private inFlightBrowserByKey = new Map<string, Promise<McpToolRegistry>>();
 
-	private clientsByKey = new Map<string, MCPClient>();
+	private clientsByKey = new Map<string, McpClient>();
 
 	constructor(private readonly ssrfValidator?: SsrfUrlValidator) {}
 
-	async getRegularTools(configs: McpServerConfig[], logger?: Logger): Promise<ToolsInput> {
+	async getRegularTools(configs: McpServerConfig[], logger?: Logger): Promise<McpToolRegistry> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return {};
 
@@ -108,18 +125,15 @@ export class McpClientManager {
 			key,
 			async () => {
 				await this.validateConfigs(safeConfigs);
-				return await this.connectAndListTools(
-					`mcp-${nanoid(6)}`,
-					safeConfigs,
-					key,
-					logger,
-					'external MCP',
-				);
+				return await this.connectAndListTools(safeConfigs, key, logger, 'external MCP');
 			},
 		);
 	}
 
-	async getBrowserTools(config: McpServerConfig | undefined, logger?: Logger): Promise<ToolsInput> {
+	async getBrowserTools(
+		config: McpServerConfig | undefined,
+		logger?: Logger,
+	): Promise<McpToolRegistry> {
 		if (!config) return {};
 
 		const [safeConfig] = getSafeMcpServers([config], logger, 'browser MCP');
@@ -132,13 +146,7 @@ export class McpClientManager {
 			key,
 			async () => {
 				await this.validateConfigs([safeConfig]);
-				return await this.connectAndListTools(
-					`browser-mcp-${nanoid(6)}`,
-					[safeConfig],
-					key,
-					logger,
-					'browser MCP',
-				);
+				return await this.connectAndListTools([safeConfig], key, logger, 'browser MCP');
 			},
 		);
 	}
@@ -150,15 +158,9 @@ export class McpClientManager {
 		this.browserToolsByKey.clear();
 		this.inFlightRegularByKey.clear();
 		this.inFlightBrowserByKey.clear();
-		await Promise.all(clients.map(async (c) => await c.disconnect()));
+		await Promise.all(clients.map(async (client) => await client.close()));
 	}
 
-	/**
-	 * Returns a cached value if present, otherwise dedupes concurrent producers
-	 * by sharing a single in-flight promise per key. Successful results are
-	 * committed to the cache; failures clear the in-flight entry so the next
-	 * call retries from scratch.
-	 */
 	private async getOrLoad<T>(
 		cache: Map<string, T>,
 		inFlight: Map<string, Promise<T>>,
@@ -166,7 +168,7 @@ export class McpClientManager {
 		produce: () => Promise<T>,
 	): Promise<T> {
 		const cached = cache.get(key);
-		if (cached) return cached;
+		if (cached !== undefined) return cached;
 
 		const pending = inFlight.get(key);
 		if (pending) return await pending;
@@ -187,7 +189,7 @@ export class McpClientManager {
 
 	private async validateConfigs(configs: McpServerConfig[]): Promise<void> {
 		for (const server of configs) {
-			if (!server.url) continue; // stdio transport — no URL to validate
+			if (!server.url) continue;
 
 			let parsed: URL;
 			try {
@@ -206,7 +208,7 @@ export class McpClientManager {
 				const result = await this.ssrfValidator.validateUrl(server.url);
 				if (!result.ok) {
 					throw new UserError(
-						`MCP server "${server.name}": URL blocked by SSRF policy — ${result.error.message}`,
+						`MCP server "${server.name}": URL blocked by SSRF policy - ${result.error.message}`,
 					);
 				}
 			}
@@ -214,16 +216,25 @@ export class McpClientManager {
 	}
 
 	private async connectAndListTools(
-		id: string,
 		configs: McpServerConfig[],
 		clientKey: string,
 		logger: Logger | undefined,
 		source: string,
-	): Promise<ToolsInput> {
-		const client = new MCPClient({ id, servers: buildMcpServers(configs) });
+	): Promise<McpToolRegistry> {
+		const client = new McpClient(buildNativeMcpConfigs(configs));
 		this.clientsByKey.set(clientKey, client);
-		return sanitizeMcpToolSchemas(await client.listTools(), {
+
+		const registry = toolsToRegistry(await client.listTools());
+		const sanitizedTools = sanitizeMcpToolSchemas(registry, {
 			onError: warnSkippedMcpSchema(logger, source),
 		});
+
+		const safeTools: McpToolRegistry = {};
+		addSafeMcpTools(safeTools, sanitizedTools, {
+			source,
+			claimedToolNames: createClaimedToolNames([]),
+			warn: warnSkippedMcpTool(logger),
+		});
+		return safeTools;
 	}
 }

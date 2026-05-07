@@ -1,12 +1,9 @@
-import type { MastraMessageContentV2 } from '@mastra/core/agent';
-import type { MastraDBMessage } from '@mastra/core/memory';
-import type { Memory } from '@mastra/memory';
 import type { ChatHubLLMProvider } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { generateCompactionSummary, patchThread } from '@n8n/instance-ai';
-import type { ModelConfig } from '@n8n/instance-ai';
+import { generateCompactionSummary, getThread, patchThread } from '@n8n/instance-ai';
+import type { ModelConfig, PatchableThreadMemory } from '@n8n/instance-ai';
 
 import { maxContextWindowTokens } from '@/modules/chat-hub/context-limits';
 
@@ -81,6 +78,12 @@ interface PendingCompactionInput {
 	text: string;
 }
 
+interface StoredCompactionMessage {
+	id: string;
+	role: string;
+	content: unknown;
+}
+
 /**
  * Manages rolling compaction of older thread messages into a summary.
  * Stores compaction state in thread metadata — no DB migration needed.
@@ -116,7 +119,7 @@ export class InstanceAiCompactionService {
 	 */
 	async prepareCompactedContext(
 		threadId: string,
-		memory: Memory,
+		memory: PatchableThreadMemory,
 		modelId: ModelConfig,
 		lastMessages: number,
 		compactionThreshold = 0.8,
@@ -148,7 +151,7 @@ export class InstanceAiCompactionService {
 			const threshold = contextWindow * compactionThreshold;
 
 			// Load existing compaction state
-			const thread = await memory.getThreadById({ threadId });
+			const thread = await getThread(memory, threadId);
 			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
 
 			if (allMessages.length <= recentTail) {
@@ -227,7 +230,7 @@ export class InstanceAiCompactionService {
 	}
 
 	/** Get the full serialized text of a message (for token estimation). */
-	private extractRawText(msg: MastraDBMessage): string {
+	private extractRawText(msg: StoredCompactionMessage): string {
 		const content: unknown = msg.content;
 		if (typeof content === 'string') return content;
 		return JSON.stringify(content);
@@ -238,7 +241,7 @@ export class InstanceAiCompactionService {
 	 * tool results, and system messages.
 	 */
 	private extractHighSignalContent(
-		messages: MastraDBMessage[],
+		messages: StoredCompactionMessage[],
 	): Array<{ role: string; text: string }> {
 		const result: Array<{ role: string; text: string }> = [];
 
@@ -255,10 +258,10 @@ export class InstanceAiCompactionService {
 	}
 
 	/**
-	 * Extract plain text from a Mastra message content structure.
+	 * Extract plain text from the persisted message content structure.
 	 * Handles both string content and structured content arrays.
 	 */
-	private extractTextFromContent(content: MastraMessageContentV2): string {
+	private extractTextFromContent(content: unknown): string {
 		if (typeof content === 'string') return content;
 
 		const inner = (content as Record<string, unknown>)?.content;
@@ -299,7 +302,7 @@ export class InstanceAiCompactionService {
 
 	private async saveMetadata(
 		threadId: string,
-		memory: Memory,
+		memory: PatchableThreadMemory,
 		metadata: ConversationSummaryMetadata,
 	): Promise<void> {
 		await patchThread(memory, {

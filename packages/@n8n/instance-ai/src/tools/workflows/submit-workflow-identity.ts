@@ -15,7 +15,6 @@
  */
 
 import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
 
 import type { CredentialMap } from './resolve-credentials';
 import {
@@ -28,6 +27,7 @@ import {
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
+import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 import {
 	MAX_PRE_SAVE_SUBMIT_FAILURES,
 	createRemediation,
@@ -213,7 +213,7 @@ export function wrapSubmitExecuteWithIdentity(
  */
 export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	context: InstanceAiContext;
-	workspace: Workspace;
+	workspace: SandboxWorkspace;
 	credentialMap?: CredentialMap;
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;

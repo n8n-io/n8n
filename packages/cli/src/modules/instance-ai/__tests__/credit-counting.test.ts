@@ -23,16 +23,15 @@ jest.mock('@n8n/instance-ai', () => {
 		mapMastraChunkToEvent: jest.fn(),
 	};
 });
-jest.mock('@mastra/core/agent', () => ({}));
-jest.mock('@mastra/core/storage', () => ({
-	MemoryStorage: class {},
-	MastraCompositeStore: class {},
-	WorkflowsStorage: class {},
+jest.mock('../storage/typeorm-composite-store', () => ({
+	TypeORMCompositeStore: class TypeORMCompositeStore {},
 }));
-jest.mock('@mastra/memory', () => ({
-	Memory: class {},
+jest.mock('../storage/typeorm-memory-storage', () => ({
+	TypeORMMemoryStorage: class TypeORMMemoryStorage {},
 }));
-jest.mock('@mastra/core/workflows', () => ({}));
+jest.mock('../storage/typeorm-workflows-storage', () => ({
+	TypeORMWorkflowsStorage: class TypeORMWorkflowsStorage {},
+}));
 
 import type { User } from '@n8n/db';
 
