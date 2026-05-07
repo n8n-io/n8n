@@ -114,7 +114,7 @@ const setTextStyle = (value: string | number) => {
 		:class="[$style.toolbar, mode === 'always' ? $style.alwaysVisible : '']"
 		data-test-id="markdown-editor-toolbar"
 	>
-		<div :class="[$style.toolbarInner, variant === 'textbox' ? $style.textboxToolbar : '']">
+		<div :class="[$style.toolbarInner, variant === 'contained' ? $style.containedToolbar : '']">
 			<N8nTooltip :content="activeTextStyleLabel">
 				<N8nDropdown
 					:options="textStyleOptions"
@@ -226,9 +226,9 @@ const setTextStyle = (value: string | number) => {
 
 <style lang="scss" module>
 .toolbar {
-	/* position: absolute;
+	position: absolute;
 	inset-inline: 0;
-	bottom: 0; */
+	top: 0;
 	padding: 2px;
 	z-index: 1;
 	opacity: 0;
@@ -242,14 +242,14 @@ const setTextStyle = (value: string | number) => {
 	gap: var(--spacing--3xs);
 	height: var(--height--lg);
 	padding: var(--spacing--3xs) var(--spacing--3xs);
-	background-color: var(--n8n--markdown-editor--background-color, transparent);
+	background-color: var(--n8n--markdown-editor--background-color, var(--background--surface));
 	transition:
 		opacity var(--duration--snappy) var(--easing--ease-out),
 		visibility var(--duration--snappy) var(--easing--ease-out);
 }
 
-.textboxToolbar {
-	border-top: var(--border);
+.containedToolbar {
+	border-bottom: var(--border);
 }
 
 :global(.n8n-markdown-editor-container:hover) .toolbar,

@@ -89,7 +89,6 @@ export const useMarkdownEditor = (
 
 			emit('update:modelValue', markdown);
 			emit('input', markdown);
-			emit('change', markdown);
 		},
 		onFocus: ({ event }) => {
 			emit('focus', event);

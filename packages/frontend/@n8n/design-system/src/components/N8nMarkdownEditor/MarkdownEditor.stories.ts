@@ -66,7 +66,6 @@ When a workflow error is provided, identify the failing node, summarize the like
 const methods = {
 	onUpdateModelValue: action('update:modelValue'),
 	onInput: action('input'),
-	onChange: action('change'),
 	onFocus: action('focus'),
 	onBlur: action('blur'),
 	onReady: action('ready'),
@@ -78,7 +77,7 @@ export default {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['default', 'textbox'],
+			options: ['ghost', 'contained'],
 		},
 		showToolbar: {
 			control: 'select',
@@ -133,7 +132,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 				v-model="value"
 				@update:modelValue="onUpdateModelValue"
 				@input="onInput"
-				@change="onChange"
 				@focus="onFocus"
 				@blur="onBlur"
 				@ready="onReady"
@@ -146,18 +144,24 @@ const Template: StoryFn = (args, { argTypes }) => ({
 export const Default = Template.bind({});
 Default.args = {
 	modelValue: defaultMarkdown,
-	variant: 'default',
+	variant: 'contained',
 	placeholder: 'Write Markdown...',
-	showToolbar: 'hover',
+	showToolbar: 'always',
 	maxHeight: '480px',
 	disabled: false,
 	readonly: false,
 };
 
-export const Textbox = Template.bind({});
-Textbox.args = {
+export const Contained = Template.bind({});
+Contained.args = {
 	...Default.args,
-	variant: 'textbox',
+	variant: 'contained',
+};
+
+export const Ghost = Template.bind({});
+Ghost.args = {
+	...Default.args,
+	variant: 'ghost',
 };
 
 export const WithoutToolbar = Template.bind({});
@@ -176,28 +180,28 @@ export const GfmContent = Template.bind({});
 GfmContent.args = {
 	...Default.args,
 	modelValue: gfmMarkdown,
-	variant: 'textbox',
+	variant: 'contained',
 };
 
 export const Disabled = Template.bind({});
 Disabled.args = {
 	...Default.args,
 	disabled: true,
-	variant: 'textbox',
+	variant: 'contained',
 };
 
 export const Readonly = Template.bind({});
 Readonly.args = {
 	...Default.args,
 	readonly: true,
-	variant: 'textbox',
+	variant: 'contained',
 };
 
 export const LongInstructions = Template.bind({});
 LongInstructions.args = {
 	...Default.args,
 	modelValue: longInstructionsMarkdown,
-	variant: 'textbox',
+	variant: 'contained',
 };
 
 export const Empty = Template.bind({});
@@ -205,6 +209,6 @@ Empty.args = {
 	...Default.args,
 	modelValue: '',
 	showToolbar: 'never',
-	variant: 'textbox',
+	variant: 'contained',
 	placeholder: 'Write instructions...',
 };

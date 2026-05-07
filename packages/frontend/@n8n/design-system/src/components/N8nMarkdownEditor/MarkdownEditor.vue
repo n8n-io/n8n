@@ -10,11 +10,11 @@ import { setEditorContent } from './markdownEditorUtils';
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	modelValue: '',
-	variant: 'default',
+	variant: 'contained',
 	placeholder: '',
 	disabled: false,
 	readonly: false,
-	showToolbar: 'hover',
+	showToolbar: 'always',
 	maxHeight: '480px',
 	containerClass: '',
 });
@@ -28,7 +28,7 @@ const maxHeightStyle = computed(() => ({
 
 const shouldShowToolbar = computed(() => props.showToolbar !== 'never');
 const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
-const shouldPadContent = computed(() => props.showToolbar === 'always');
+const shouldPadContentTop = computed(() => props.showToolbar === 'always');
 
 const editor = useMarkdownEditor(props, emit);
 const isRawMode = ref(false);
@@ -78,7 +78,6 @@ function updateRawMarkdown(event: Event) {
 	rawMarkdown.value = value;
 	emit('update:modelValue', value);
 	emit('input', value);
-	emit('change', value);
 }
 
 function handleRawFocus(event: FocusEvent) {
@@ -128,18 +127,27 @@ defineExpose({
 		:class="[
 			'n8n-markdown-editor-container',
 			$style.container,
-			props.variant === 'default' ? $style.default : $style.textbox,
+			props.variant === 'ghost' ? $style.ghost : $style.contained,
 			props.containerClass,
 			props.disabled ? $style.disabled : '',
 		]"
 		:style="maxHeightStyle"
 		data-test-id="n8n-markdown-editor"
 	>
-		<div v-if="isRawMode" :class="[$style.content, shouldPadContent ? $style.padBottom : '']">
+		<MarkdownEditorToolbar
+			v-if="shouldShowToolbar && editor"
+			:editor="editor"
+			:disabled="props.disabled || props.readonly"
+			:is-raw-mode="isRawMode"
+			:mode="toolbarMode"
+			:variant="props.variant"
+			@update:is-raw-mode="toggleRawMode"
+		/>
+		<div v-if="isRawMode" :class="[$style.content, shouldPadContentTop ? $style.padTop : '']">
 			<textarea
 				ref="rawEditor"
 				:value="rawMarkdown"
-				:class="$style.rawContent"
+				:class="[$style.rawContent, shouldPadContentTop ? $style.padTop : '']"
 				:style="{ '--markdown-editor-raw-height': rawContentHeight }"
 				:placeholder="props.placeholder"
 				:disabled="props.disabled"
@@ -153,16 +161,7 @@ defineExpose({
 		<EditorContent
 			v-else
 			:editor="editor"
-			:class="[$style.content, shouldPadContent ? $style.padBottom : '']"
-		/>
-		<MarkdownEditorToolbar
-			v-if="shouldShowToolbar && editor"
-			:editor="editor"
-			:disabled="props.disabled || props.readonly"
-			:is-raw-mode="isRawMode"
-			:mode="toolbarMode"
-			:variant="props.variant"
-			@update:is-raw-mode="toggleRawMode"
+			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
 		/>
 	</div>
 </template>
@@ -187,11 +186,13 @@ defineExpose({
 	background-color: transparent;
 }
 
-.default {
+.ghost {
+	--n8n--markdown-editor--background-color: transparent;
+
 	background-color: transparent;
 }
 
-.textbox {
+.contained {
 	--input--height: var(--height--lg);
 	--input--radius: var(--radius--2xs);
 	--input--font-size: var(--font-size--sm);
@@ -234,11 +235,6 @@ defineExpose({
 	max-height: var(--markdown-editor-max-height);
 	overflow: hidden;
 
-	/** NOTE (@heymynameisrob): Adds clearing for Toolbar **/
-	&.padBottom :global(.n8n-markdown > *:first-child) {
-		scroll-padding-bottom: var(--height--lg);
-	}
-
 	:global(.n8n-markdown) {
 		overflow-y: scroll;
 		scrollbar-width: thin;
@@ -251,6 +247,11 @@ defineExpose({
 		padding: var(--spacing--xs);
 		font-family: inherit;
 		font-size: var(--input--font-size, inherit);
+	}
+
+	&.padTop :global(.n8n-markdown) {
+		padding-top: calc(var(--height--lg) + var(--spacing--xs));
+		scroll-padding-top: calc(var(--height--lg) + var(--spacing--xs));
 	}
 
 	:global(.n8n-markdown .is-empty::before) {
@@ -296,6 +297,11 @@ defineExpose({
 
 	&:disabled {
 		cursor: not-allowed;
+	}
+
+	&.padTop {
+		padding-top: calc(var(--height--lg) + var(--spacing--xs));
+		scroll-padding-top: calc(var(--height--lg) + var(--spacing--xs));
 	}
 }
 </style>

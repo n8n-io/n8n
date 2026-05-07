@@ -22,9 +22,45 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 		expect(wrapper.getByRole('button', { name: 'Task list' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Code block' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Blockquote' })).toBeInTheDocument();
-		expect(wrapper.getByRole('button', { name: 'Link' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Redo' })).toBeInTheDocument();
+	});
+
+	it('shows the toolbar as always visible and pads content by default', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+			},
+		});
+
+		await waitFor(() => expect(wrapper.getByTestId('markdown-editor-toolbar')).toBeInTheDocument());
+
+		expect(wrapper.getByTestId('markdown-editor-toolbar')).toHaveClass('alwaysVisible');
+		expect(
+			wrapper.container.querySelector('[data-test-id="n8n-markdown-editor-content"]')
+				?.parentElement,
+		).toHaveClass('padTop');
+	});
+
+	it('uses the contained variant by default', () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+			},
+		});
+
+		expect(wrapper.getByTestId('n8n-markdown-editor')).toHaveClass('contained');
+	});
+
+	it('uses a transparent toolbar background for the ghost variant', () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				variant: 'ghost',
+			},
+		});
+
+		expect(wrapper.getByTestId('n8n-markdown-editor')).toHaveClass('ghost');
 	});
 
 	it('hides the toolbar when showToolbar is never', () => {

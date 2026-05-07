@@ -8,29 +8,28 @@ import type { SuggestionOptions } from '@tiptap/suggestion';
 import { resolveMarkdownSlashCommandConfig } from './commandConfig';
 import type { MarkdownSlashCommand, MarkdownSlashCommandConfig } from './types';
 
-const slashCommandPluginKey = new PluginKey('markdownSlashCommands');
-
 export type MarkdownSlashCommandOptions = MarkdownSlashCommandConfig & {
 	commands: MarkdownSlashCommand[];
 	disabledInNodes: string[];
 	render?: SuggestionOptions<MarkdownSlashCommand, MarkdownSlashCommand>['render'];
 };
 
-const normalizeSearchValue = (value: string) => value.trim().toLocaleLowerCase();
+const slashCommandPluginKey = new PluginKey('markdownSlashCommands');
 
 export const filterMarkdownSlashCommands = (
 	commands: MarkdownSlashCommand[],
 	query: string,
 ): MarkdownSlashCommand[] => {
+	const normalizeSearchValue = (value: string) => value.trim().toLocaleLowerCase();
 	const normalizedQuery = normalizeSearchValue(query);
 
 	if (!normalizedQuery) return commands;
 
-	return commands.filter((command) => {
-		const searchableValues = [command.label, ...(command.aliases ?? [])].map(normalizeSearchValue);
-
-		return searchableValues.some((value) => value.includes(normalizedQuery));
-	});
+	return commands.filter((command) =>
+		[command.label, ...(command.aliases ?? [])].some((value) =>
+			normalizeSearchValue(value).includes(normalizedQuery),
+		),
+	);
 };
 
 const isSelectionInsideDisabledNode = (

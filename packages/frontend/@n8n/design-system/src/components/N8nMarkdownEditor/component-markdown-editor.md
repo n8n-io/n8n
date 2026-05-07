@@ -29,11 +29,11 @@ A reusable rich-text Markdown editor for editing Markdown-backed content in the 
 **Props**
 
 - `modelValue: string` - The bound Markdown value. Default: `''`
-- `variant?: MarkdownEditorVariant` - Visual style variant. Values: `'default' | 'textbox'`. Default: `'default'`
+- `variant?: MarkdownEditorVariant` - Visual style variant. Values: `'ghost' | 'contained'`. Default: `'contained'`
 - `placeholder?: string` - Placeholder text displayed when the editor is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the editor. Default: `false`
 - `readonly?: boolean` - When `true`, content can be selected but not edited. Default: `false`
-- `showToolbar?: MarkdownEditorToolbarMode` - Controls toolbar visibility. Values: `'never' | 'hover' | 'always'`. Default: `'hover'`
+- `showToolbar?: MarkdownEditorToolbarMode` - Controls toolbar visibility. Values: `'never' | 'hover' | 'always'`. Default: `'always'`
 - `maxHeight?: string | number` - Maximum editor content height. Number values are treated as pixels. Default: `'480px'`
 - `extensions?: Extension[]` - Optional TipTap extension escape hatch for concrete callsite needs. Default extensions remain design-system managed.
 - `editorProps?: EditorOptions['editorProps']` - Optional TipTap editor props escape hatch.
@@ -42,7 +42,7 @@ A reusable rich-text Markdown editor for editing Markdown-backed content in the 
 **Types**
 
 ```ts
-type MarkdownEditorVariant = 'default' | 'textbox';
+type MarkdownEditorVariant = 'ghost' | 'contained';
 type MarkdownEditorToolbarMode = 'never' | 'hover' | 'always';
 ```
 
@@ -169,8 +169,8 @@ Existing consumers such as chat should be updated to import and use the design-s
 
 Component variants:
 
-- `default` - Applies shared Markdown styles with minimal editor affordances.
-- `textbox` - Applies shared Markdown styles while visually matching `N8nInput` textarea styling.
+- `ghost` - Applies shared Markdown styles with minimal editor affordances and a transparent toolbar background.
+- `contained` - Applies shared Markdown styles while visually matching `N8nInput` textarea styling.
 
 Component-level overrides are acceptable for editable TipTap behavior, selection, placeholder styling, and ProseMirror-specific DOM details.
 
@@ -191,7 +191,7 @@ const instructions = ref('# Instructions\n\nWrite clear, concise responses.');
 </template>
 ```
 
-**Textbox variant with save on blur:**
+**Contained variant with save on blur:**
 
 ```vue
 <script setup lang="ts">
@@ -208,7 +208,7 @@ const saveMarkdown = (value: string) => {
 <template>
 	<N8nMarkdownEditor
 		v-model="markdown"
-		variant="textbox"
+		variant="contained"
 		placeholder="Write instructions..."
 		@blur="saveMarkdown"
 	/>
@@ -272,7 +272,7 @@ Add unit tests for:
 - Emitting the current Markdown value on blur.
 - Emitting the TipTap editor instance through `ready`.
 - Hiding the toolbar with `showToolbar="never"`.
-- Applying `default` and `textbox` variants.
+- Applying `ghost` and `contained` variants.
 - Respecting `disabled`.
 - Respecting `readonly`.
 - Toolbar commands for bold, italic, strikethrough, link, lists, and headings.
@@ -284,7 +284,8 @@ Add unit tests for:
 Add Storybook stories for:
 
 - Default
-- Textbox
+- Contained
+- Ghost
 - Without toolbar
 - GFM content
 - Disabled
@@ -309,7 +310,7 @@ Add Storybook stories for:
 5. Add the design-system extension registry.
 6. Implement Markdown string `v-model` sync.
 7. Implement focus, blur, input, change, and ready emits.
-8. Implement `default` and `textbox` variants.
+8. Implement `ghost` and `contained` variants.
 9. Implement the design-system owned toolbar.
 10. Add unit tests.
 11. Add Storybook stories.
