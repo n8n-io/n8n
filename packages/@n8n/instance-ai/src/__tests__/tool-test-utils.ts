@@ -24,8 +24,7 @@ function toNativeContext(context?: unknown): ToolContext | InterruptibleToolCont
 	return {
 		resumeData: context.agent?.resumeData,
 		suspend: (async (payload: unknown) => {
-			await context.agent?.suspend?.(payload);
-			return undefined as never;
+			return (await context.agent?.suspend?.(payload)) as never;
 		}) as InterruptibleToolContext['suspend'],
 	};
 }

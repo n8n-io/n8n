@@ -369,6 +369,7 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+			newLeaderElection: false,
 		},
 		evaluation: {
 			parallelExecutionEnabled: false,
@@ -541,6 +542,10 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+			modules: [],
 		},
 	} satisfies GlobalConfigShape;
 

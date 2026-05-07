@@ -37,7 +37,7 @@ function createMockContext(
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),
 			archive: jest.fn(),
-			delete: jest.fn(),
+			unarchive: jest.fn(),
 			publish: jest.fn().mockResolvedValue({ activeVersionId: 'v1' }),
 			unpublish: jest.fn(),
 		},
@@ -152,6 +152,7 @@ describe('workflows tool', () => {
 					name: 'Test Workflow',
 					versionId: 'v1',
 					activeVersionId: null,
+					isArchived: false,
 					createdAt: '2024-01-01',
 					updatedAt: '2024-01-01',
 				},
@@ -169,6 +170,26 @@ describe('workflows tool', () => {
 			expect(context.workflowService.list).toHaveBeenCalledWith({ limit: 10, query: 'test' });
 			expect(result).toEqual({ workflows });
 		});
+
+		it('should pass archived status when listing archived workflows', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'list', status: 'archived' }, {} as never);
+
+			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'archived' });
+		});
+
+		it('should pass all status when listing all workflows', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'list', status: 'all' }, {} as never);
+
+			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'all' });
+		});
 	});
 
 	describe('get action', () => {
@@ -180,6 +201,7 @@ describe('workflows tool', () => {
 				connections: {},
 				versionId: 'v1',
 				activeVersionId: null,
+				isArchived: false,
 				createdAt: '2024-01-01',
 				updatedAt: '2024-01-01',
 			};
@@ -272,6 +294,96 @@ describe('workflows tool', () => {
 				denied: true,
 				reason: 'User denied the action',
 			});
+		});
+	});
+
+	describe('unarchive action', () => {
+		it('should return denied when permission is blocked', async () => {
+			const context = createMockContext({
+				permissions: { deleteWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'unarchive', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(context.workflowService.unarchive).not.toHaveBeenCalled();
+		});
+
+		it('should suspend for confirmation using the looked-up workflow name', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Archived WF',
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: expect.stringContaining('Archived WF'),
+				severity: 'warning',
+			});
+			expect(suspend.mock.calls[0][0].message).toContain('will not publish it');
+		});
+
+		it('should return the suspension result when approval is pending', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Archived WF',
+			});
+			const suspension = { suspended: true };
+			const suspend = jest.fn().mockResolvedValue(suspension);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(result).toBe(suspension);
+			expect(context.workflowService.unarchive).not.toHaveBeenCalled();
+		});
+
+		it('should unarchive when approved via resume', async () => {
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				agent: { resumeData: { approved: true } },
+			} as never);
+
+			expect(context.workflowService.unarchive).toHaveBeenCalledWith('wf1');
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should return denied when user rejects', async () => {
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				agent: { resumeData: { approved: false } },
+			} as never);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'User denied the action',
+			});
+			expect(context.workflowService.unarchive).not.toHaveBeenCalled();
 		});
 	});
 

@@ -9,4 +9,6 @@ export interface AgentTreeSnapshot {
 	spanId?: string;
 	langsmithRunId?: string;
 	langsmithTraceId?: string;
+	createdAt?: Date;
+	updatedAt?: Date;
 }

@@ -1,3 +1,4 @@
+import { TypedEmitter } from '@/typed-emitter';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -5,9 +6,13 @@ import { MultiMainMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
+import type * as LeaderElectionClientModule from '@/scaling/leader-election-client';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
-import { TypedEmitter } from '@/typed-emitter';
+
+import { MultiMainSetupLegacy } from './multi-main-setup-legacy';
+import type { MultiMainStrategy } from './multi-main-setup.types';
+import { MultiMainSetupV2 } from './multi-main-setup-v2';
 
 type MultiMainEvents = {
 	/**
@@ -28,34 +33,53 @@ type MultiMainEvents = {
 /** Designates leader and followers when running multiple main processes. */
 @Service()
 export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
-	constructor(
-		private readonly logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
-		private readonly publisher: Publisher,
-		private readonly redisClientService: RedisClientService,
-		private readonly globalConfig: GlobalConfig,
-		private readonly metadata: MultiMainMetadata,
-		private readonly errorReporter: ErrorReporter,
-	) {
-		super();
-		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
-	}
-
-	private leaderKey: string;
-
-	private readonly leaderKeyTtl = this.globalConfig.multiMainSetup.ttl;
+	private readonly strategy: MultiMainStrategy;
 
 	private leaderCheckInterval: NodeJS.Timeout | undefined;
 
-	async init() {
-		const prefix = this.globalConfig.redis.prefix;
-		const validPrefix = this.redisClientService.toValidPrefix(prefix);
-		this.leaderKey = validPrefix + ':main_instance_leader';
+	constructor(
+		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
+		private readonly metadata: MultiMainMetadata,
+		private readonly errorReporter: ErrorReporter,
+		private readonly publisher: Publisher,
+		private readonly redisClientService: RedisClientService,
+	) {
+		super();
+		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
 
-		await this.tryBecomeLeader(); // prevent initial wait
+		const emitFn = (event: 'leader-takeover' | 'leader-stepdown') => this.emit(event);
+
+		if (this.globalConfig.multiMainSetup.newLeaderElection) {
+			const { LeaderElectionClient } =
+				require('@/scaling/leader-election-client') as typeof LeaderElectionClientModule;
+			const client = Container.get(LeaderElectionClient);
+			this.strategy = new MultiMainSetupV2(
+				this.logger,
+				this.instanceSettings,
+				this.errorReporter,
+				client,
+				emitFn,
+			);
+		} else {
+			this.strategy = new MultiMainSetupLegacy(
+				this.logger,
+				this.instanceSettings,
+				this.publisher,
+				this.redisClientService,
+				this.globalConfig,
+				this.errorReporter,
+				emitFn,
+			);
+		}
+	}
+
+	async init() {
+		await this.strategy.init();
 
 		this.leaderCheckInterval = setInterval(async () => {
-			await this.checkLeader();
+			await this.strategy.checkLeader();
 		}, this.globalConfig.multiMainSetup.interval * Time.seconds.toMilliseconds);
 	}
 
@@ -63,90 +87,11 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
-		const { isLeader } = this.instanceSettings;
-
-		if (isLeader) await this.publisher.clear(this.leaderKey);
+		await this.strategy.shutdown();
 	}
 
-	private async checkLeader() {
-		const leaderId = await this.publisher.get(this.leaderKey);
-
-		const { hostId } = this.instanceSettings;
-
-		if (leaderId === hostId) {
-			if (!this.instanceSettings.isLeader) {
-				// This indicates that the remote state indicated that this host is the leader, but this
-				// host believed it was a follower. See CAT-2200 for more context.
-				this.errorReporter.info(
-					`[Instance ID ${hostId}] Remote/Local leadership mismatch, marking self as leader`,
-					{
-						shouldBeLogged: true,
-						shouldReport: true,
-					},
-				);
-
-				this.instanceSettings.markAsLeader();
-
-				this.emit('leader-takeover');
-			}
-
-			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
-
-			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
-
-			return;
-		}
-
-		if (leaderId && leaderId !== hostId) {
-			this.logger.debug(`[Instance ID ${hostId}] Leader is other instance "${leaderId}"`);
-
-			if (this.instanceSettings.isLeader) {
-				this.instanceSettings.markAsFollower();
-
-				this.emit('leader-stepdown');
-
-				this.logger.warn('[Multi-main setup] Leader failed to renew leader key');
-			}
-
-			return;
-		}
-
-		if (!leaderId) {
-			this.logger.debug(
-				`[Instance ID ${hostId}] Leadership vacant, attempting to become leader...`,
-			);
-
-			this.instanceSettings.markAsFollower();
-
-			this.emit('leader-stepdown');
-
-			await this.tryBecomeLeader();
-		}
-	}
-
-	private async tryBecomeLeader() {
-		const { hostId } = this.instanceSettings;
-
-		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.publisher.setIfNotExists(
-			this.leaderKey,
-			hostId,
-			this.leaderKeyTtl,
-		);
-
-		if (keySetSuccessfully) {
-			this.logger.info(`[Instance ID ${hostId}] Leader is now this instance`);
-
-			this.instanceSettings.markAsLeader();
-
-			this.emit('leader-takeover');
-		} else {
-			this.instanceSettings.markAsFollower();
-		}
-	}
-
-	async fetchLeaderKey() {
-		return await this.publisher.get(this.leaderKey);
+	async fetchLeaderKey(): Promise<string | null> {
+		return await this.strategy.fetchLeaderKey();
 	}
 
 	registerEventHandlers() {
@@ -155,7 +100,6 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		for (const { eventHandlerClass, methodName, eventName } of handlers) {
 			const instance = Container.get(eventHandlerClass);
 			this.on(eventName, async () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				return await instance[methodName].call(instance);
 			});
 		}

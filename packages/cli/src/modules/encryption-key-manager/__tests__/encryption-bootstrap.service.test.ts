@@ -14,10 +14,10 @@ describe('EncryptionBootstrapService', () => {
 		keyManager.bootstrapGcmKey.mockResolvedValue(undefined);
 	});
 
-	const createService = () =>
+	const createService = (instanceType: InstanceSettings['instanceType'] = 'main') =>
 		new EncryptionBootstrapService(
 			keyManager,
-			mockInstance(InstanceSettings, { encryptionKey: 'test-instance-key' }),
+			mockInstance(InstanceSettings, { encryptionKey: 'test-instance-key', instanceType }),
 			encryptionKeyProxy,
 			mockLogger(),
 		);
@@ -38,6 +38,17 @@ describe('EncryptionBootstrapService', () => {
 		await createService().run();
 
 		expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+	});
+
+	it('skips key creation on non-main instances but still sets the provider', async () => {
+		for (const instanceType of ['worker', 'webhook'] as const) {
+			jest.clearAllMocks();
+			await createService(instanceType).run();
+
+			expect(keyManager.bootstrapLegacyCbcKey).not.toHaveBeenCalled();
+			expect(keyManager.bootstrapGcmKey).not.toHaveBeenCalled();
+			expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+		}
 	});
 
 	it('bootstraps CBC before GCM', async () => {

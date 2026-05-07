@@ -19,10 +19,11 @@ jest.mock('@n8n/agents', () => ({
 	}),
 }));
 
-const mockBuiltTool = (name: string) => ({
+const mockBuiltTool = (name: string, marker?: string) => ({
 	name,
 	description: name,
 	handler: jest.fn(),
+	marker,
 });
 
 jest.mock('../../tools', () => ({
@@ -47,10 +48,6 @@ jest.mock('../../tracing/langsmith-tracing', () => ({
 	mergeTraceRunInputs: jest.fn(),
 }));
 
-jest.mock('../sanitize-mcp-schemas', () => ({
-	sanitizeMcpToolSchemas: jest.fn((tools: Record<string, unknown>) => tools),
-}));
-
 jest.mock('../system-prompt', () => ({
 	getSystemPrompt: jest.fn().mockReturnValue('system prompt'),
 }));
@@ -61,11 +58,38 @@ const { createInstanceAgent } =
 const { Agent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('@n8n/agents') as { Agent: jest.Mock };
+const { createToolsFromLocalMcpServer } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../../tools/filesystem/create-tools-from-mcp-server') as {
+		createToolsFromLocalMcpServer: jest.Mock;
+	};
+
+function createMcpManagerStub(
+	regularTools: Record<string, ReturnType<typeof mockBuiltTool>> = {},
+	browserTools: Record<string, ReturnType<typeof mockBuiltTool>> = {},
+) {
+	return {
+		getRegularTools: jest.fn().mockResolvedValue(regularTools),
+		getBrowserTools: jest.fn().mockResolvedValue(browserTools),
+		disconnect: jest.fn().mockResolvedValue(undefined),
+	};
+}
+
+function getAttachedTools(agentIndex = 0) {
+	const instance = mockAgentInstances[agentIndex];
+	const calls = (instance?.tool.mock.calls ?? []) as unknown as Array<
+		[Array<ReturnType<typeof mockBuiltTool>>]
+	>;
+	const tools = calls[0]?.[0];
+	return Object.fromEntries((tools ?? []).map((tool) => [tool.name, tool]));
+}
 
 describe('createInstanceAgent', () => {
 	beforeEach(() => {
 		Agent.mockClear();
 		mockAgentInstances.length = 0;
+		createToolsFromLocalMcpServer.mockReset();
+		createToolsFromLocalMcpServer.mockReturnValue({});
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
@@ -73,6 +97,7 @@ describe('createInstanceAgent', () => {
 			lastMessages: 20,
 		} as never;
 
+		const mcpManager = createMcpManagerStub();
 		const createOptions = (runId: string) =>
 			({
 				modelId: 'test-model',
@@ -87,6 +112,7 @@ describe('createInstanceAgent', () => {
 					browserMcpConfig: undefined,
 				},
 				memoryConfig,
+				mcpManager,
 			}) as never;
 
 		await createInstanceAgent(createOptions('run-1'));
@@ -119,6 +145,7 @@ describe('createInstanceAgent', () => {
 				workspace: fakeWorkspace,
 			},
 			memoryConfig,
+			mcpManager: createMcpManagerStub(),
 			// Exercise the deprecated field to confirm it is ignored.
 			workspace: fakeWorkspace,
 		} as never);
@@ -155,8 +182,54 @@ describe('createInstanceAgent', () => {
 				},
 			},
 			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
 		} as never);
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
+	});
+
+	it('prefers local gateway tools over external MCP tools when names collide', async () => {
+		const memoryConfig = { lastMessages: 20 } as never;
+		const localMcpServer = {
+			getToolsByCategory: jest.fn().mockReturnValue([]),
+		};
+		const localTools = {
+			shared_tool: mockBuiltTool('shared_tool', 'local-shared'),
+		};
+		const externalTools = {
+			shared_tool: mockBuiltTool('shared_tool', 'external-shared'),
+			github_workflows: mockBuiltTool('github_workflows', 'github-workflows'),
+			custom_plan: mockBuiltTool('custom_plan', 'custom-plan'),
+		};
+		const orchestrationContext: Record<string, unknown> = {
+			runId: 'local-priority',
+			browserMcpConfig: undefined,
+		};
+		createToolsFromLocalMcpServer.mockReturnValue(localTools);
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'local-priority',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer,
+			},
+			orchestrationContext,
+			memoryConfig,
+			mcpManager: createMcpManagerStub(externalTools),
+		} as never);
+
+		const agentTools = getAttachedTools();
+		const mcpContextTools = orchestrationContext.mcpTools as Record<
+			string,
+			ReturnType<typeof mockBuiltTool>
+		>;
+
+		expect(agentTools.shared_tool).toMatchObject({ marker: 'local-shared' });
+		expect(agentTools.github_workflows).toMatchObject({ marker: 'github-workflows' });
+		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
+		expect(mcpContextTools.shared_tool).toMatchObject({ marker: 'local-shared' });
+		expect(mcpContextTools.github_workflows).toMatchObject({ marker: 'github-workflows' });
 	});
 });

@@ -164,6 +164,8 @@ import { AddExecutionDeduplicationKey1778000000000 } from '../common/17780000000
 import { CreateInstanceAiCheckpointTable1778050000000 } from '../common/1778050000000-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1778060000000 } from '../common/1778060000000-ResetInstanceAiNativePersistence';
 import { AddOtelIdsToInstanceAiRunSnapshots1778065000000 } from '../common/1778065000000-AddOtelIdsToInstanceAiRunSnapshots';
+import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
+import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -326,13 +328,15 @@ const sqliteMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
 	AddJweKeyIndexesToDeploymentKey1777023444000,
+	AddTracingContextToExecution1777045000000,
 	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	AddExecutionDeduplicationKey1778000000000,
 	CreateInstanceAiCheckpointTable1778050000000,
-	AddTracingContextToExecution1777045000000,
-	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	ResetInstanceAiNativePersistence1778060000000,
 	AddOtelIdsToInstanceAiRunSnapshots1778065000000,
+	CreateAgentTables1783000000000,
+	CreateAgentExecutionTables1783000000001,
 ];
 
 export { sqliteMigrations };

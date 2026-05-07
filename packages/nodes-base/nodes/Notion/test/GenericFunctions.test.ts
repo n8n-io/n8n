@@ -3,13 +3,45 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { databasePageUrlExtractionRegexp } from '../shared/constants';
+import {
+	blockUrlExtractionRegexp,
+	blockUrlValidationRegexp,
+	databasePageUrlExtractionRegexp,
+	databasePageUrlValidationRegexp,
+	databaseUrlExtractionRegexp,
+	databaseUrlValidationRegexp,
+} from '../shared/constants';
+import { NotionTrigger } from '../NotionTrigger.node';
 import {
 	extractPageId,
 	formatBlocks,
 	getPageId,
 	notionApiRequest,
 } from '../shared/GenericFunctions';
+import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
+import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
+
+const collectNotionUrlExpressions = (value: unknown): string[] => {
+	if (Array.isArray(value)) {
+		return value.flatMap(collectNotionUrlExpressions);
+	}
+
+	if (value && typeof value === 'object') {
+		return Object.entries(value).flatMap(([key, nestedValue]) => {
+			if (
+				key === 'url' &&
+				typeof nestedValue === 'string' &&
+				nestedValue.startsWith('=https://www.notion.')
+			) {
+				return [nestedValue];
+			}
+
+			return collectNotionUrlExpressions(nestedValue);
+		});
+	}
+
+	return [];
+};
 
 describe('Test NotionV2, formatBlocks', () => {
 	it('should format to_do block', () => {
@@ -44,13 +76,13 @@ describe('Test NotionV2, formatBlocks', () => {
 });
 
 describe('Test Notion', () => {
-	const baseUrl = 'https://www.notion.so/fake-instance';
 	const testIds = [
 		'4eb10d5001254b7faaa831d72d9445aa', // Taken from Notion
 		'fffb95d3060b80309027eb9c99605ec3', // Taken from user comment
 		'a6356387779d4df485449a72a408f0d4', // Random v4 UUID
 		'f4c1217e48f711ef94540242ac120002', // Random v1 UUID
 	];
+
 	describe('extractPageId From URL', () => {
 		// RLC does some Regex extraction before extractPageId is called
 		const extractIdFromUrl = (url: string): string => {
@@ -58,7 +90,10 @@ describe('Test Notion', () => {
 			return match ? match[1] : url;
 		};
 
-		test('should return the part after "p="', () => {
+		test.each([
+			['www.notion.so', 'https://www.notion.so/fake-instance'],
+			['www.notion.com', 'https://www.notion.com/fake-instance'],
+		])('should return the part after "p=" on %s', (_, baseUrl) => {
 			for (const testId of testIds) {
 				const page = `${baseUrl}?p=${testId}`;
 				const result = extractPageId(extractIdFromUrl(page));
@@ -66,23 +101,38 @@ describe('Test Notion', () => {
 			}
 		});
 
-		test('should return the last part after splitting by "-" when URL contains multiple "-"', () => {
-			for (const testId of testIds) {
-				const page = `${baseUrl}/some-page-${testId}`;
-				const result = extractPageId(extractIdFromUrl(page));
-				expect(result).toBe(testId);
-			}
-		});
+		test.each([
+			['www.notion.so', 'https://www.notion.so/fake-instance'],
+			['www.notion.com', 'https://www.notion.com/fake-instance'],
+		])(
+			'should return the last part after splitting by "-" when URL contains multiple "-" on %s',
+			(_, baseUrl) => {
+				for (const testId of testIds) {
+					const page = `${baseUrl}/some-page-${testId}`;
+					const result = extractPageId(extractIdFromUrl(page));
+					expect(result).toBe(testId);
+				}
+			},
+		);
 
-		test('should return the last part after splitting by "-" when URL contains one "-"', () => {
-			for (const testId of testIds) {
-				const page = `${baseUrl}/1-${testId}`;
-				const result = extractPageId(extractIdFromUrl(page));
-				expect(result).toBe(testId);
-			}
-		});
+		test.each([
+			['www.notion.so', 'https://www.notion.so/fake-instance'],
+			['www.notion.com', 'https://www.notion.com/fake-instance'],
+		])(
+			'should return the last part after splitting by "-" when URL contains one "-" on %s',
+			(_, baseUrl) => {
+				for (const testId of testIds) {
+					const page = `${baseUrl}/1-${testId}`;
+					const result = extractPageId(extractIdFromUrl(page));
+					expect(result).toBe(testId);
+				}
+			},
+		);
 
-		test('should return just the id when there is an instance name', () => {
+		test.each([
+			['www.notion.so', 'https://www.notion.so/fake-instance'],
+			['www.notion.com', 'https://www.notion.com/fake-instance'],
+		])('should return just the id when there is an instance name on %s', (_, baseUrl) => {
 			for (const testId of testIds) {
 				const page = `${baseUrl}/${testId}`;
 				const result = extractPageId(extractIdFromUrl(page));
@@ -90,17 +140,23 @@ describe('Test Notion', () => {
 			}
 		});
 
-		test('should return the id when there is no instance name', () => {
+		test.each([
+			['www.notion.so', 'https://www.notion.so'],
+			['www.notion.com', 'https://www.notion.com'],
+		])('should return the id when there is no instance name on %s', (_, host) => {
 			for (const testId of testIds) {
-				const page = `https://www.notion.so/${testId}`;
+				const page = `${host}/${testId}`;
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
 		});
 
-		test('should return the id when page slug contains underscores', () => {
+		test.each([
+			['www.notion.so', 'https://www.notion.so'],
+			['www.notion.com', 'https://www.notion.com'],
+		])('should return the id when page slug contains underscores on %s', (_, host) => {
 			for (const testId of testIds) {
-				const page = `https://www.notion.so/url_with-underscore-${testId}`;
+				const page = `${host}/url_with-underscore-${testId}`;
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
@@ -121,6 +177,81 @@ describe('Test Notion', () => {
 				expect(result).toBe(testId);
 			}
 		});
+	});
+});
+
+describe('Test Notion resource locator URL regexes', () => {
+	const id = '3ab5bc794647496dac48feca926813fd';
+
+	it.each([
+		[
+			'database URL',
+			'www.notion.so',
+			databaseUrlValidationRegexp,
+			databaseUrlExtractionRegexp,
+			`https://www.notion.so/${id}?v=7bcc03614eed4c95a9e6168c040e9c58`,
+		],
+		[
+			'database URL',
+			'www.notion.com',
+			databaseUrlValidationRegexp,
+			databaseUrlExtractionRegexp,
+			`https://www.notion.com/${id}?v=7bcc03614eed4c95a9e6168c040e9c58`,
+		],
+		[
+			'database page URL',
+			'www.notion.so',
+			databasePageUrlValidationRegexp,
+			databasePageUrlExtractionRegexp,
+			`https://www.notion.so/Page-Title-${id}`,
+		],
+		[
+			'database page URL',
+			'www.notion.com',
+			databasePageUrlValidationRegexp,
+			databasePageUrlExtractionRegexp,
+			`https://www.notion.com/Page-Title-${id}`,
+		],
+		[
+			'block URL',
+			'www.notion.so',
+			blockUrlValidationRegexp,
+			blockUrlExtractionRegexp,
+			`https://www.notion.so/Block-Test-${id}?pvs=4#c44444444444bbbbb4d32fdfdd84e`,
+		],
+		[
+			'block URL',
+			'www.notion.com',
+			blockUrlValidationRegexp,
+			blockUrlExtractionRegexp,
+			`https://www.notion.com/Block-Test-${id}?pvs=4#c44444444444bbbbb4d32fdfdd84e`,
+		],
+	])(
+		'should validate and extract IDs from %s on %s',
+		(_, __, validationRegexp, extractionRegexp, url) => {
+			expect(url).toMatch(new RegExp(validationRegexp));
+			expect(url.match(new RegExp(extractionRegexp))?.[1]).toBe(id);
+		},
+	);
+});
+
+describe('Test Notion resource locator generated URLs', () => {
+	const descriptions = [
+		new NotionTrigger().description,
+		versionDescriptionV1,
+		versionDescriptionV2,
+	];
+
+	it('should generate notion.com URL expressions across all node descriptions', () => {
+		const notionUrlExpression = '=https://www.notion.com/{{$value.replace(/-/g, "")}}';
+		const urlExpressions = collectNotionUrlExpressions(descriptions);
+
+		expect(urlExpressions).not.toHaveLength(0);
+		expect(urlExpressions.every((url) => url === notionUrlExpression)).toBe(true);
+		expect(urlExpressions).not.toContain('=https://www.notion.so/{{$value.replace(/-/g, "")}}');
+		expect(urlExpressions).not.toContain(
+			'=https://www.notion.(?:so|com)/{{$value.replace(/-/g, "")}}',
+		);
 	});
 });
 
@@ -149,10 +280,13 @@ describe('Test Notion, getPageId', () => {
 		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('pageId', 0, {});
 	});
 
-	it('should extract page ID from URL with p parameter', () => {
+	it.each([
+		['www.notion.so', `https://www.notion.so/xxxxx?v=xxxxx&p=${id}&pm=s`],
+		['www.notion.com', `https://www.notion.com/xxxxx?v=xxxxx&p=${id}&pm=s`],
+	])('should extract page ID from URL with p parameter on %s', (_, value) => {
 		const page = {
 			mode: 'url',
-			value: `https://www.notion.so/xxxxx?v=xxxxx&p=${id}&pm=s`,
+			value,
 		} as INodeParameterResourceLocator;
 
 		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
@@ -161,10 +295,13 @@ describe('Test Notion, getPageId', () => {
 		expect(result).toBe(id);
 	});
 
-	it('should extract page ID from URL using regex', () => {
+	it.each([
+		['www.notion.so', `https://www.notion.so/page-name-${id}`],
+		['www.notion.com', `https://www.notion.com/page-name-${id}`],
+	])('should extract page ID from URL using regex on %s', (_, value) => {
 		const page = {
 			mode: 'url',
-			value: `https://www.notion.so/page-name-${id}`,
+			value,
 		} as INodeParameterResourceLocator;
 
 		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);

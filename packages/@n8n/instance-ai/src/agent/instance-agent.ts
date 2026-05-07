@@ -1,128 +1,115 @@
 import { Agent } from '@n8n/agents';
 
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
-import { McpClientManager } from '../mcp/mcp-client-manager';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, InstanceAiToolRegistry, McpServerConfig } from '../types';
-
-// ── Cached MCP tools (expensive to initialize — spawn processes, connect, list) ──
-
-let cachedMcpTools: InstanceAiToolRegistry | null = null;
-let cachedMcpServersKey = '';
-let cachedMcpClientManager: McpClientManager | undefined;
-
-let cachedBrowserMcpTools: InstanceAiToolRegistry | null = null;
-let cachedBrowserMcpKey = '';
-let cachedBrowserMcpClientManager: McpClientManager | undefined;
-
-function toolsToRegistry(
-	tools: Awaited<ReturnType<McpClientManager['connect']>>,
-): InstanceAiToolRegistry {
-	return sanitizeMcpToolSchemas(Object.fromEntries(tools.map((tool) => [tool.name, tool])));
-}
-
-async function getMcpTools(mcpServers: McpServerConfig[]): Promise<InstanceAiToolRegistry> {
-	const key = JSON.stringify(mcpServers);
-	if (cachedMcpTools && cachedMcpServersKey === key) return cachedMcpTools;
-
-	if (mcpServers.length === 0) {
-		cachedMcpTools = {};
-		cachedMcpServersKey = key;
-		return cachedMcpTools;
-	}
-
-	await cachedMcpClientManager?.disconnect();
-	cachedMcpClientManager = new McpClientManager();
-	cachedMcpTools = toolsToRegistry(await cachedMcpClientManager.connect(mcpServers));
-	cachedMcpServersKey = key;
-	return cachedMcpTools;
-}
-
-async function getBrowserMcpTools(
-	config: McpServerConfig | undefined,
-): Promise<InstanceAiToolRegistry> {
-	if (!config) return {};
-
-	const key = JSON.stringify(config);
-	if (cachedBrowserMcpTools && cachedBrowserMcpKey === key) return cachedBrowserMcpTools;
-
-	await cachedBrowserMcpClientManager?.disconnect();
-	cachedBrowserMcpClientManager = new McpClientManager();
-	cachedBrowserMcpTools = toolsToRegistry(await cachedBrowserMcpClientManager.connect([config]));
-	cachedBrowserMcpKey = key;
-	return cachedBrowserMcpTools;
-}
+import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
+import {
+	addSafeMcpTools,
+	createClaimedToolNames,
+	type McpToolNameValidationError,
+} from './mcp-tool-name-validation';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
 export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
-	const { modelId, context, orchestrationContext, mcpServers = [], memoryConfig } = options;
+	const {
+		modelId,
+		context,
+		orchestrationContext,
+		mcpServers = [],
+		mcpManager,
+		memoryConfig,
+	} = options;
 
 	// Build native n8n domain tools (context captured via closures — per-run)
 	const domainTools = createAllTools(context);
-
 	const orchestratorDomainTools = createOrchestratorDomainTools(context);
 
-	// Load MCP tools (cached — only spawns processes on first call or config change)
-	const mcpTools = await getMcpTools(mcpServers);
-	const browserMcpTools = await getBrowserMcpTools(orchestrationContext?.browserMcpConfig);
+	// Load MCP tools (cached by config hash inside the manager — only spawns
+	// processes / opens connections on first call or config change).
+	const mcpTools = await mcpManager.getRegularTools(mcpServers, context.logger);
+	const browserMcpTools = await mcpManager.getBrowserTools(
+		orchestrationContext?.browserMcpConfig,
+		context.logger,
+	);
+	const rawLocalMcpTools = context.localMcpServer
+		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
+		: {};
 
-	// Browser tool names — used to exclude them from the orchestrator's direct toolset.
-	// Browser tools are only accessible via browser-credential-setup (sub-agent) to prevent
-	// 200KB+ screenshots/snapshots from bloating the orchestrator's context.
+	// Browser tool names are excluded from the orchestrator's direct toolset.
+	// They remain available to browser-oriented sub-agents via orchestrationContext.mcpTools.
 	const browserToolNames = new Set([
 		...Object.keys(browserMcpTools),
-		...(context.localMcpServer?.getToolsByCategory('browser').map((t) => t.name) ?? []),
+		...(context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? []),
 	]);
 
-	// Store ALL MCP tools (external + browser) on orchestrationContext for sub-agents
-	// (browser-credential-setup, delegate). NOT given to the orchestrator directly.
-	const allMcpTools: InstanceAiToolRegistry = {};
-	const domainToolNames = new Set(Object.keys(domainTools));
-	for (const [name, tool] of Object.entries({ ...mcpTools, ...browserMcpTools })) {
-		if (!domainToolNames.has(name)) {
-			allMcpTools[name] = tool;
-		}
-	}
-	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
-		orchestrationContext.mcpTools = allMcpTools;
-	}
+	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
+		context.logger?.warn('Skipped MCP tool with unsafe name', {
+			toolName: error.toolName,
+			source: error.source,
+			reason: error.message,
+		});
+	};
 
-	// Build orchestration tools (plan, delegate) — orchestrator-only
-	// Must happen after mcpTools are set on orchestrationContext
+	// Build orchestration tools (plan, delegate) — orchestrator-only.
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: {};
 
-	// Prevent MCP tools from shadowing domain or orchestration tools.
-	// A malicious/misconfigured MCP server could register a tool named "run-workflow"
-	// which would silently replace the real domain tool via object spread.
+	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
 	const reservedToolNames = new Set([
 		...Object.keys(domainTools),
 		...Object.keys(orchestrationTools),
 	]);
-	const safeMcpTools: InstanceAiToolRegistry = {};
-	for (const [name, tool] of Object.entries(mcpTools)) {
-		if (reservedToolNames.has(name)) continue;
-		safeMcpTools[name] = tool;
+
+	// Store all MCP tools (external + browser + local gateway) on orchestrationContext for
+	// sub-agents. These are not all given to the orchestrator directly.
+	const allMcpTools: InstanceAiToolRegistry = {};
+	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
+	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
+		source: 'local gateway MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	addSafeMcpTools(allMcpTools, mcpTools, {
+		source: 'external MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	addSafeMcpTools(allMcpTools, browserMcpTools, {
+		source: 'browser MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
+
+	const orchestratorLocalMcpTools = Object.fromEntries(
+		Object.entries(rawLocalMcpTools).filter(([name]) => !browserToolNames.has(name)),
+	);
+	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
+		orchestrationContext.mcpTools = allMcpTools;
 	}
 
-	const localMcpTools = context.localMcpServer
-		? Object.fromEntries(
-				Object.entries(createToolsFromLocalMcpServer(context.localMcpServer)).filter(
-					([name]) => !browserToolNames.has(name),
-				),
-			)
-		: {};
+	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
+	const safeLocalMcpTools: InstanceAiToolRegistry = {};
+	addSafeMcpTools(safeLocalMcpTools, orchestratorLocalMcpTools, {
+		source: 'local gateway MCP',
+		claimedToolNames: claimedOrchestratorToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	const safeMcpTools: InstanceAiToolRegistry = {};
+	addSafeMcpTools(safeMcpTools, mcpTools, {
+		source: 'external MCP',
+		claimedToolNames: claimedOrchestratorToolNames,
+		warn: warnSkippedMcpTool,
+	});
 
 	const allOrchestratorTools: InstanceAiToolRegistry = {
 		...orchestratorDomainTools,
 		...orchestrationTools,
-		...safeMcpTools, // external MCP only — browser tools excluded
-		...localMcpTools, // gateway tools — browser tools excluded via browserToolNames
+		...safeLocalMcpTools,
+		...safeMcpTools,
 	};
 	const tracedOrchestratorTools =
 		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
@@ -132,7 +119,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const systemPrompt = getSystemPrompt({
 		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-		filesystemAccess: (context.localMcpServer?.getToolsByCategory('filesystem').length ?? 0) > 0,
+		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: false,
 		licenseHints: context.licenseHints,

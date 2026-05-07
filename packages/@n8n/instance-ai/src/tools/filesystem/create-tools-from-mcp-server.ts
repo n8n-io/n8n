@@ -11,7 +11,18 @@ import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
 
-import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
+import {
+	addSafeMcpTools,
+	createClaimedToolNames,
+	McpToolNameValidationError,
+	validateMcpToolName,
+} from '../../agent/mcp-tool-name-validation';
+import {
+	assertMcpJsonSchemaWithinLimits,
+	McpSchemaSanitizationError,
+	sanitizeMcpToolSchemas,
+} from '../../agent/sanitize-mcp-schemas';
+import type { Logger } from '../../logger';
 import type { LocalMcpServer } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -26,14 +37,27 @@ const gatewayConfirmationSuspendSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema,
 });
 
+const gatewayResourceDecisionSchema = z.enum(['denyOnce', 'allowOnce', 'allowForSession']);
+
+const gatewayConfirmationRequiredWirePayloadSchema =
+	gatewayConfirmationRequiredPayloadSchema.extend({
+		options: z.array(z.string()),
+	});
+
 const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
-	resourceDecision: z.string().optional(),
+	resourceDecision: gatewayResourceDecisionSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
+
+function isGatewayResourceDecision(
+	option: string,
+): option is z.infer<typeof gatewayResourceDecisionSchema> {
+	return gatewayResourceDecisionSchema.safeParse(option).success;
+}
 
 function tryParseGatewayConfirmationRequired(
 	result: McpToolCallResult,
@@ -65,8 +89,13 @@ function tryParseGatewayConfirmationRequired(
 		const json = JSON.parse(
 			candidate.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length),
 		) as unknown;
-		const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(json);
-		return parsed.success ? parsed.data : null;
+		const parsed = gatewayConfirmationRequiredWirePayloadSchema.safeParse(json);
+		if (!parsed.success) return null;
+
+		const options = parsed.data.options.filter(isGatewayResourceDecision);
+		if (options.length === 0) return null;
+
+		return { ...parsed.data, options };
 	} catch {
 		return null;
 	}
@@ -75,6 +104,33 @@ function tryParseGatewayConfirmationRequired(
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
+
+const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
+
+function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+	return (error: McpSchemaSanitizationError) => {
+		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+			toolName: error.details.toolName,
+			source: LOCAL_GATEWAY_MCP_SOURCE,
+			path: error.details.path,
+			depth: error.details.depth,
+			maxDepth: error.details.maxDepth,
+			limitType: error.details.limitType,
+			limit: error.details.limit,
+			reason: error.message,
+		});
+	};
+}
+
+function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+	return (error: McpToolNameValidationError) => {
+		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+			toolName: error.toolName,
+			source: error.source,
+			reason: error.message,
+		});
+	};
+}
 
 /**
  * Build native tools dynamically from the MCP tools advertised by a connected
@@ -93,12 +149,42 @@ function tryParseGatewayConfirmationRequired(
  * The `toModelOutput` callback converts MCP content blocks (text and image)
  * into the AI SDK's multimodal format so the LLM receives images.
  */
-export function createToolsFromLocalMcpServer(server: LocalMcpServer): Record<string, BuiltTool> {
+export function createToolsFromLocalMcpServer(
+	server: LocalMcpServer,
+	logger?: Logger,
+): Record<string, BuiltTool> {
 	const tools: Record<string, BuiltTool> = {};
+	const claimedToolNames = createClaimedToolNames([]);
+	const warnTool = warnSkippedLocalMcpTool(logger);
+	const warnSchema = warnSkippedLocalMcpSchema(logger);
 
 	for (const mcpTool of server.getAvailableTools()) {
 		const toolName = mcpTool.name;
 		const description = mcpTool.description ?? toolName;
+
+		try {
+			const normalizedName = validateMcpToolName(toolName, LOCAL_GATEWAY_MCP_SOURCE);
+			const claimedBy = claimedToolNames.get(normalizedName);
+			if (claimedBy) {
+				throw new McpToolNameValidationError(
+					`MCP tool "${toolName}" from ${LOCAL_GATEWAY_MCP_SOURCE} conflicts with "${claimedBy}"`,
+					toolName,
+					LOCAL_GATEWAY_MCP_SOURCE,
+				);
+			}
+			assertMcpJsonSchemaWithinLimits(mcpTool.inputSchema, { toolName });
+			claimedToolNames.set(normalizedName, toolName);
+		} catch (error) {
+			if (error instanceof McpToolNameValidationError) {
+				warnTool(error);
+				continue;
+			}
+			if (error instanceof McpSchemaSanitizationError) {
+				warnSchema(error);
+				continue;
+			}
+			throw error;
+		}
 
 		let inputSchema: z.ZodTypeAny;
 		try {
@@ -199,5 +285,14 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): Record<st
 		tools[toolName] = tool;
 	}
 
-	return sanitizeMcpToolSchemas(tools);
+	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
+		onError: warnSkippedLocalMcpSchema(logger),
+	});
+	const safeTools: Record<string, BuiltTool> = {};
+	addSafeMcpTools(safeTools, sanitizedTools, {
+		source: LOCAL_GATEWAY_MCP_SOURCE,
+		claimedToolNames: createClaimedToolNames([]),
+		warn: warnTool,
+	});
+	return safeTools;
 }

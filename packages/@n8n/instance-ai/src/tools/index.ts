@@ -1,10 +1,11 @@
+import type { BuiltTool } from '@n8n/agents';
+
 import { isStructuredAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
 import { createExecutionsTool } from './executions.tool';
-import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
@@ -22,11 +23,13 @@ import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool } from './workflows.tool';
 import { createWorkspaceTool } from './workspace.tool';
 
+type ToolRegistry = Record<string, BuiltTool>;
+
 /**
  * Creates all native n8n domain tools with the full action surface.
  * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
  */
-export function createAllTools(context: InstanceAiContext) {
+export function createAllTools(context: InstanceAiContext): ToolRegistry {
 	return {
 		workflows: createWorkflowsTool(context),
 		executions: createExecutionsTool(context),
@@ -37,7 +40,6 @@ export function createAllTools(context: InstanceAiContext) {
 		nodes: createNodesTool(context),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
-		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(context.currentUserAttachments?.some(isStructuredAttachment)
 			? { 'parse-file': createParseFileTool(context) }
 			: {}),
@@ -48,7 +50,7 @@ export function createAllTools(context: InstanceAiContext) {
  * Creates orchestrator-scoped domain tools — restricted action surfaces
  * for tools where the orchestrator should not have write/builder access.
  */
-export function createOrchestratorDomainTools(context: InstanceAiContext) {
+export function createOrchestratorDomainTools(context: InstanceAiContext): ToolRegistry {
 	return {
 		workflows: createWorkflowsTool(context, 'orchestrator'),
 		executions: createExecutionsTool(context),
@@ -58,7 +60,6 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
 		'ask-user': createAskUserTool(),
-		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 	};
 }
 

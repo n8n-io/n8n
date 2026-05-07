@@ -85,6 +85,7 @@ describe('streamAgentRun', () => {
 
 		expect(result.status).toBe('errored');
 		expect(result.agentRunId).toBe('agent-run-1');
+		expect(result.workSummary).toBe(emptyWorkSummary);
 	});
 
 	it('returns completed status for successful streams', async () => {
@@ -116,6 +117,7 @@ describe('streamAgentRun', () => {
 		);
 
 		expect(result.status).toBe('completed');
+		expect(result.workSummary).toBe(emptyWorkSummary);
 	});
 
 	it('passes through the buffered manual confirmation event', async () => {
@@ -168,6 +170,7 @@ describe('streamAgentRun', () => {
 
 		expect(result.status).toBe('suspended');
 		expect(result.agentRunId).toBe('agent-run-1');
+		expect(result.workSummary).toBe(emptyWorkSummary);
 		expect(result.suspension?.requestId).toBe('request-1');
 		expect(result.confirmationEvent?.type).toBe('confirmation-request');
 		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');

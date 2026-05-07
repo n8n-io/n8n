@@ -31,7 +31,8 @@ const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
 	'reasoning-delta',
-	'tool-call-delta',
+	'tool-call',
+	'tool-result',
 	'error',
 	'message',
 	'tool-call-suspended',
@@ -109,6 +110,40 @@ export function mapAgentChunkToEvent(
 			type: 'reasoning-delta',
 			...base,
 			payload: { text: chunk.delta },
+		};
+	}
+
+	if (chunk.type === 'tool-call') {
+		return {
+			type: 'tool-call',
+			...base,
+			payload: {
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				args: isRecord(chunk.input) ? chunk.input : {},
+			},
+		};
+	}
+
+	if (chunk.type === 'tool-result') {
+		if (chunk.isError === true) {
+			return {
+				type: 'tool-error',
+				...base,
+				payload: {
+					toolCallId: chunk.toolCallId,
+					error: typeof chunk.output === 'string' ? chunk.output : 'Tool execution failed',
+				},
+			};
+		}
+
+		return {
+			type: 'tool-result',
+			...base,
+			payload: {
+				toolCallId: chunk.toolCallId,
+				result: chunk.output,
+			},
 		};
 	}
 
@@ -275,30 +310,6 @@ export function mapAgentChunkToEvent(
 					toolCallId: typeof toolCall.toolCallId === 'string' ? toolCall.toolCallId : '',
 					toolName: toolCall.toolName,
 					args: isRecord(toolCall.input) ? toolCall.input : {},
-				},
-			};
-		}
-
-		const toolResult = chunk.message.content.find((part) => part.type === 'tool-result');
-		if (toolResult?.type === 'tool-result') {
-			if (toolResult.isError === true) {
-				return {
-					type: 'tool-error',
-					...base,
-					payload: {
-						toolCallId: toolResult.toolCallId,
-						error:
-							typeof toolResult.result === 'string' ? toolResult.result : 'Tool execution failed',
-					},
-				};
-			}
-
-			return {
-				type: 'tool-result',
-				...base,
-				payload: {
-					toolCallId: toolResult.toolCallId,
-					result: toolResult.result,
 				},
 			};
 		}

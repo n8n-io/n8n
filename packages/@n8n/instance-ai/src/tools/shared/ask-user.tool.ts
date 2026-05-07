@@ -2,6 +2,8 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+export const ASK_USER_TOOL_ID = 'ask-user';
+
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
 	question: z.string().describe('The question text to display to the user'),

@@ -12,6 +12,8 @@ import type { InstanceAiContext } from '../types';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
 
+export const DATA_TABLES_TOOL_ID = 'data-tables';
+
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 const filterSchema = z.object({

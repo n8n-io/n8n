@@ -13,7 +13,6 @@ import {
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
-	layoutWorkflowJSON: jest.fn((wf: unknown) => wf),
 }));
 
 const { createSubmitWorkflowTool } =

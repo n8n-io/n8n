@@ -25,6 +25,7 @@ import type { GenericValue, INodeTypes } from 'n8n-workflow';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
+import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
@@ -45,6 +46,7 @@ export interface WorkflowSummary {
 	name: string;
 	versionId: string;
 	activeVersionId: string | null;
+	isArchived: boolean;
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
@@ -155,8 +157,14 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 	connections: Record<string, unknown>;
 }
 
+export type WorkflowListStatus = 'active' | 'archived' | 'all';
+
 export interface InstanceAiWorkflowService {
-	list(options?: { query?: string; limit?: number }): Promise<WorkflowSummary[]>;
+	list(options?: {
+		query?: string;
+		limit?: number;
+		status?: WorkflowListStatus;
+	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
@@ -172,7 +180,7 @@ export interface InstanceAiWorkflowService {
 		options?: { projectId?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
-	delete(workflowId: string): Promise<void>;
+	unarchive(workflowId: string): Promise<void>;
 	/**
 	 * Clear the AI-builder temporary marker on a workflow — used to promote the
 	 * main deliverable so the run-finish reap leaves it alone.
@@ -313,7 +321,7 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string } | null>;
+	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -552,9 +560,13 @@ export interface InstanceAiWorkspaceService {
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
-	| { status: 'connected' }
-	| { status: 'disconnected'; capabilities: string[] }
-	| { status: 'disabled' };
+	| {
+			status: 'connected';
+			capabilities: string[];
+	  }
+	| {
+			status: 'disabledGlobally' | 'disconnected' | 'disabled';
+	  };
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
@@ -1004,6 +1016,8 @@ export interface OrchestrationContext {
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
 	webhookBaseUrl?: string;
+	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
+	formBaseUrl?: string;
 	/** Spawn a detached background task that outlives the current orchestrator run */
 	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
@@ -1065,6 +1079,8 @@ export interface CreateInstanceAgentOptions {
 	context: InstanceAiContext;
 	orchestrationContext?: OrchestrationContext;
 	mcpServers?: McpServerConfig[];
+	/** Owns MCP client connections + tool listing caches; the service passes its singleton in. */
+	mcpManager: McpClientManager;
 	memoryConfig: InstanceAiMemoryConfig;
 	/** Pre-built native Memory instance. When provided, `memoryConfig` controls options only. */
 	memory?: BuiltMemory;

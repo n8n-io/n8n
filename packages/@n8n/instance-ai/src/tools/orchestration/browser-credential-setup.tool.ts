@@ -3,6 +3,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { buildNudgeStreamInput } from './browser-credential-setup.nudge';
 import { buildBrowserAgentPrompt, type BrowserToolSource } from './browser-credential-setup.prompt';
 import {
 	createDetachedSubAgentTraceFactory,
@@ -150,7 +151,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			if (gatewayBrowserTools.length > 0 && context.localMcpServer) {
 				// Gateway path: create native tools from gateway, keep only browser category tools
 				const gatewayBrowserNames = new Set(gatewayBrowserTools.map((t) => t.name));
-				const allGatewayTools = createToolsFromLocalMcpServer(context.localMcpServer);
+				const allGatewayTools = createToolsFromLocalMcpServer(
+					context.localMcpServer,
+					context.logger,
+				);
 				for (const [name, tool] of Object.entries(allGatewayTools)) {
 					if (gatewayBrowserNames.has(name)) {
 						browserTools[name] = tool;
@@ -311,18 +315,19 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 
 							if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
 								// Agent ended without a final pause-for-user confirmation.
-								// Re-invoke with a nudge to call pause-for-user.
+								// Replay the prior conversation + a nudge so the sub-agent
+								// has full context to finish — native `stream()` is otherwise
+								// stateless across calls.
 								nudgeCount++;
-								const nudge = await subAgent.stream(
-									'You stopped without confirming with the user. Call pause-for-user NOW to tell the user where the credential values live and to enter them privately in the n8n credential form.',
-									{
-										maxIterations: MAX_STEPS.BROWSER,
-										abortSignal: signal,
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
+								const priorMessages = subAgent.getState().messageList.messages;
+								const nudgeInput = buildNudgeStreamInput(priorMessages);
+								const nudge = await subAgent.stream(nudgeInput, {
+									maxIterations: MAX_STEPS.BROWSER,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
-								);
+								});
 								activeStream = normalizeStreamSource(nudge);
 								activeAgentRunId =
 									(typeof activeStream.runId === 'string' && activeStream.runId) ||

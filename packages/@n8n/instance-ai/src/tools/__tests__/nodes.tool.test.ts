@@ -103,6 +103,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 
 			expect(tool.description).toContain('node types');
+			expect(tool.description).not.toContain('targeted guides');
 		});
 	});
 
@@ -216,6 +217,40 @@ describe('nodes tool', () => {
 			expect(result).toMatchObject({
 				definitions: [],
 				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
+		it('should surface node-level builder hints from type definitions', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: jest.fn(),
+					getDescription: jest.fn(),
+					listSearchable: jest.fn(),
+					exploreResources: jest.fn(),
+					getNodeTypeDefinition: jest.fn().mockResolvedValue({
+						content: 'export type IfNode = unknown;',
+						version: 'v23',
+						builderHint: 'Always include options, conditions, and combinator.',
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.if'] } as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: 'n8n-nodes-base.if',
+						version: 'v23',
+						content: 'export type IfNode = unknown;',
+						builderHint: 'Always include options, conditions, and combinator.',
+					},
+				],
 			});
 		});
 	});

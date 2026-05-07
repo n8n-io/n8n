@@ -119,13 +119,13 @@ describe('generateTitleFromMessage', () => {
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow', {
 			instructions: 'Custom system prompt',
 		});
-		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[0].content).toBe('Custom system prompt');
-	});
+	const call = mockGenerateText.mock.calls[0][0];
+	expect(call.messages[0].content).toBe('Custom system prompt');
+});
 
-	it('passes generic telemetry to the title LLM call', async () => {
-		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
-		const telemetry: BuiltTelemetry = {
+it('passes generic telemetry to the title LLM call', async () => {
+	mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
+	const telemetry: BuiltTelemetry = {
 			enabled: true,
 			functionId: 'instance-ai.thread-title',
 			metadata: { thread_id: 'thread-1' },
@@ -183,6 +183,6 @@ describe('generateTitleFromMessage', () => {
 			fakeModel,
 			'build a workflow that queries Scryfall for a random card',
 		);
-		expect(result).toBe('Scryfall random card workflow');
-	});
+	expect(result).toBe('Scryfall random card workflow');
+});
 });

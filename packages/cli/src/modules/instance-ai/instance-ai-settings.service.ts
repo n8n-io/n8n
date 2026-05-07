@@ -19,6 +19,7 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
 
@@ -109,6 +110,7 @@ export class InstanceAiSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -177,6 +179,8 @@ export class InstanceAiSettingsService {
 			);
 		}
 		const c = this.config;
+		const previousMcpServers = c.mcpServers;
+		const previousBrowserMcp = c.browserMcp;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
@@ -202,6 +206,12 @@ export class InstanceAiSettingsService {
 		if (update.optinModalDismissed !== undefined)
 			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
+
+		this.eventService.emit('instance-ai-settings-updated', {
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || c.browserMcp !== previousBrowserMcp,
+		});
+
 		return this.getAdminSettings();
 	}
 

@@ -49,6 +49,13 @@ export interface StoredAgentMessage {
 	createdAt: Date;
 }
 
+type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
+	id: string;
+	role: string;
+	content: unknown;
+	createdAt: Date;
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -240,6 +247,45 @@ function buildFlatAgentTree(
 	};
 }
 
+function snapshotTimestamp(snapshot: AgentTreeSnapshot): string {
+	return (snapshot.updatedAt ?? snapshot.createdAt ?? new Date(0)).toISOString();
+}
+
+function snapshotCreatedAtMs(snapshot: AgentTreeSnapshot): number | undefined {
+	return snapshot.createdAt?.getTime();
+}
+
+function messageCreatedAtMs(message: { createdAt: Date }): number {
+	return message.createdAt.getTime();
+}
+
+function getNextConversationMessageTimestamp(
+	messages: ConversationStoredMessage[],
+	currentIndex: number,
+): number | undefined {
+	for (let i = currentIndex + 1; i < messages.length; i++) {
+		const role = messages[i].role;
+		if (role === 'user' || role === 'assistant') return messageCreatedAtMs(messages[i]);
+	}
+	return undefined;
+}
+
+function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
+	const groupId = snapshot.messageGroupId ?? snapshot.runId;
+	return {
+		id: groupId,
+		runId: snapshot.runId,
+		messageGroupId: snapshot.messageGroupId,
+		runIds: snapshot.runIds,
+		role: 'assistant',
+		createdAt: snapshotTimestamp(snapshot),
+		content: snapshot.tree.textContent,
+		reasoning: snapshot.tree.reasoning,
+		isStreaming: false,
+		agentTree: snapshot.tree,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Main parser
 // ---------------------------------------------------------------------------
@@ -253,18 +299,81 @@ export function parseStoredMessages(
 	snapshots?: RunSnapshots,
 ): InstanceAiMessage[] {
 	const messages: InstanceAiMessage[] = [];
+	const snapshotList = snapshots ?? [];
 
-	// Snapshots are stored as a chronological array — the Nth snapshot
-	// corresponds to the Nth assistant message. We align from the END
-	// so old messages (before snapshots existed) get flat trees.
-	const assistantCount = storedMessages.filter((m) => 'role' in m && m.role === 'assistant').length;
-	const snapshotOffset = assistantCount - (snapshots?.length ?? 0);
+	const conversationMessages = storedMessages.filter(
+		(message): message is ConversationStoredMessage => 'role' in message,
+	);
+
+	// Snapshots are stored chronologically. DB-backed snapshots have timestamps,
+	// so use them to place orphan snapshots before, between, or after assistant
+	// rows. Older tests and legacy snapshots may not have timestamps; for those,
+	// keep the positional alignment behavior.
+	const assistantCount = conversationMessages.filter((m) => m.role === 'assistant').length;
+	const hasSnapshotTimestamps = snapshotList.some((snapshot) => snapshot.createdAt !== undefined);
+	const snapshotCount = snapshotList.length;
+	const snapshotOffset =
+		!hasSnapshotTimestamps && snapshotCount <= assistantCount ? assistantCount - snapshotCount : 0;
 	let assistantIdx = 0;
+	let nextSnapshotIdx = 0;
+	const consumedSnapshots = new Set<AgentTreeSnapshot>();
 
 	let lastUserMessageId: string | undefined;
 
-	for (const msg of storedMessages) {
-		if (!('role' in msg)) continue;
+	function appendChronologicalOrphansBefore(message: ConversationStoredMessage): void {
+		if (!hasSnapshotTimestamps) return;
+
+		const messageTimestamp = messageCreatedAtMs(message);
+		while (nextSnapshotIdx < snapshotList.length) {
+			const snapshot = snapshotList[nextSnapshotIdx];
+			const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
+			if (snapshotTimestamp === undefined || snapshotTimestamp >= messageTimestamp) return;
+
+			consumedSnapshots.add(snapshot);
+			messages.push(buildSnapshotMessage(snapshot));
+			nextSnapshotIdx++;
+		}
+	}
+
+	function takeSnapshotForAssistant(
+		message: ConversationStoredMessage,
+		messageIndex: number,
+	): AgentTreeSnapshot | undefined {
+		if (!hasSnapshotTimestamps) {
+			const snapshotIdx = assistantIdx - snapshotOffset;
+			const snapshot =
+				snapshotIdx >= 0 && snapshotIdx < snapshotList.length
+					? snapshotList[snapshotIdx]
+					: undefined;
+			if (snapshot) consumedSnapshots.add(snapshot);
+			return snapshot;
+		}
+
+		appendChronologicalOrphansBefore(message);
+
+		const snapshot = snapshotList[nextSnapshotIdx];
+		if (!snapshot) return undefined;
+
+		const nextMessageTimestamp = getNextConversationMessageTimestamp(
+			conversationMessages,
+			messageIndex,
+		);
+		const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
+		if (
+			snapshotTimestamp !== undefined &&
+			nextMessageTimestamp !== undefined &&
+			snapshotTimestamp > nextMessageTimestamp
+		) {
+			return undefined;
+		}
+
+		consumedSnapshots.add(snapshot);
+		nextSnapshotIdx++;
+		return snapshot;
+	}
+
+	for (const [messageIndex, msg] of conversationMessages.entries()) {
+		appendChronologicalOrphansBefore(msg);
 		const text = extractTextFromContent(msg.content);
 
 		if (msg.role === 'user') {
@@ -291,12 +400,7 @@ export function parseStoredMessages(
 			const toolCalls = invocations.map(buildToolCallState);
 			const parts = extractParts(msg.content);
 
-			// Match snapshot by position: Nth assistant message → Nth snapshot (aligned from end)
-			const snapshotIdx = assistantIdx - snapshotOffset;
-			const snapshot =
-				snapshots && snapshotIdx >= 0 && snapshotIdx < snapshots.length
-					? snapshots[snapshotIdx]
-					: undefined;
+			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
 			assistantIdx++;
 
 			// Use the native runId from the snapshot (matches SSE events),
@@ -325,6 +429,11 @@ export function parseStoredMessages(
 
 		// Skip tool/system messages — they are represented via tool invocations
 		// in the assistant message's content
+	}
+
+	for (const snapshot of snapshots ?? []) {
+		if (consumedSnapshots.has(snapshot)) continue;
+		messages.push(buildSnapshotMessage(snapshot));
 	}
 
 	// Deduplicate assistant messages by messageGroupId.

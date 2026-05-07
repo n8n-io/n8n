@@ -1,4 +1,11 @@
-import type { AgentDbMessage, AgentMessage, BuiltMemory, Thread } from '@n8n/instance-ai';
+import type {
+	AgentDbMessage,
+	AgentMessage,
+	BuiltMemory,
+	Thread,
+	ThreadPatch,
+} from '@n8n/instance-ai';
+import type { MemoryDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { In, LessThan } from '@n8n/typeorm';
 
@@ -65,13 +72,53 @@ function workingMemoryKey(params: {
 	return params.scope === 'thread' ? `thread:${params.threadId}` : params.resourceId;
 }
 
+const PATCH_ONLY_METADATA_KEYS = new Set([
+	'instanceAiConversationSummary',
+	'instanceAiIterationLog',
+	'instanceAiPlannedTasks',
+	'instanceAiTasks',
+	'instanceAiTerminalOutcomes',
+	'instanceAiWorkflowLoop',
+]);
+
+function cloneThreadForPatch(thread: Thread): Thread {
+	return {
+		...thread,
+		metadata: { ...(thread.metadata ?? {}) },
+	};
+}
+
+function mergeSaveThreadMetadata(
+	current: Record<string, unknown> | null | undefined,
+	incoming: Record<string, unknown>,
+): Record<string, unknown> {
+	const safeIncoming = { ...incoming };
+	for (const key of PATCH_ONLY_METADATA_KEYS) {
+		delete safeIncoming[key];
+	}
+	return {
+		...(current ?? {}),
+		...safeIncoming,
+	};
+}
+
 @Service()
 export class TypeORMAgentMemory implements BuiltMemory {
+	private readonly threadMutationQueues = new Map<string, Promise<unknown>>();
+
 	constructor(
 		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly resourceRepo: InstanceAiResourceRepository,
 	) {}
+
+	describe(): MemoryDescriptor {
+		return {
+			name: 'typeorm-agent-memory',
+			constructorName: this.constructor.name,
+			connectionParams: null,
+		};
+	}
 
 	async getThread(threadId: string): Promise<Thread | null> {
 		const thread = await this.threadRepo.findOneBy({ id: threadId });
@@ -108,23 +155,45 @@ export class TypeORMAgentMemory implements BuiltMemory {
 	}
 
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
-		const existing = await this.threadRepo.findOneBy({ id: thread.id });
-		if (existing) {
-			existing.resourceId = thread.resourceId;
-			if (thread.title !== undefined) existing.title = thread.title;
-			if (thread.metadata !== undefined) existing.metadata = thread.metadata;
-			return toThread(await this.threadRepo.save(existing));
-		}
+		return await this.serializeThreadMutation(thread.id, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: thread.id });
+			if (existing) {
+				existing.resourceId = thread.resourceId;
+				if (thread.title !== undefined) existing.title = thread.title;
+				if (thread.metadata !== undefined) {
+					existing.metadata = mergeSaveThreadMetadata(existing.metadata, thread.metadata);
+				}
+				return toThread(await this.threadRepo.save(existing));
+			}
 
-		const saved = await this.threadRepo.save(
-			this.threadRepo.create({
-				id: thread.id,
-				resourceId: thread.resourceId,
-				title: thread.title ?? '',
-				metadata: thread.metadata ?? null,
-			}),
-		);
-		return toThread(saved);
+			const saved = await this.threadRepo.save(
+				this.threadRepo.create({
+					id: thread.id,
+					resourceId: thread.resourceId,
+					title: thread.title ?? '',
+					metadata: thread.metadata ?? null,
+				}),
+			);
+			return toThread(saved);
+		});
+	}
+
+	async patchThread(args: {
+		threadId: string;
+		update: (current: Thread) => ThreadPatch | null | undefined;
+	}): Promise<Thread | null> {
+		return await this.serializeThreadMutation(args.threadId, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: args.threadId });
+			if (!existing) return null;
+
+			const current = toThread(existing);
+			const patch = args.update(cloneThreadForPatch(current));
+			if (!patch) return current;
+
+			if (patch.title !== undefined) existing.title = patch.title;
+			if (patch.metadata !== undefined) existing.metadata = patch.metadata;
+			return toThread(await this.threadRepo.save(existing));
+		});
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
@@ -228,5 +297,19 @@ export class TypeORMAgentMemory implements BuiltMemory {
 				metadata: { scope: params.scope },
 			}),
 		);
+	}
+
+	private async serializeThreadMutation<T>(threadId: string, mutation: () => Promise<T>): Promise<T> {
+		const previous = this.threadMutationQueues.get(threadId) ?? Promise.resolve();
+		const next = previous.catch(() => undefined).then(mutation);
+		this.threadMutationQueues.set(threadId, next);
+
+		try {
+			return await next;
+		} finally {
+			if (this.threadMutationQueues.get(threadId) === next) {
+				this.threadMutationQueues.delete(threadId);
+			}
+		}
 	}
 }

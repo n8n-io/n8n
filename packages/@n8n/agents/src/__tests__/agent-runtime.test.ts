@@ -6,7 +6,8 @@ import { isLlmMessage } from '../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
-import type { ContentToolResult, Message } from '../types/sdk/message';
+import type { BuiltMemory } from '../types/sdk/memory';
+import type { ContentToolCall, Message } from '../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext } from '../types/sdk/tool';
 import type { BuiltTelemetry } from '../types/telemetry';
 
@@ -236,9 +237,9 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		generateText.mockRejectedValue(new Error('API failure'));
 
 		const { runtime } = createRuntime();
-		const result = await runtime.generate('hello');
+		await runtime.generate('hello');
 
-		expect(result.getState().status).toBe('failed');
+		expect(runtime.getState().status).toBe('failed');
 	});
 
 	it('emits AgentEvent.Error (not AgentEnd) when the LLM call throws', async () => {
@@ -266,10 +267,10 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		// Abort during AgentStart so the loop's first abort-check fires before generateText is called
 		bus.on(AgentEvent.AgentStart, () => bus.abort());
 
-		const result = await runtime.generate('hello');
+		await runtime.generate('hello');
 
 		expect(errorEvents.length).toBe(0);
-		expect(result.getState().status).toBe('cancelled');
+		expect(runtime.getState().status).toBe('cancelled');
 	});
 
 	it('returns finishReason "error" and sets cancelled status on abort', async () => {
@@ -282,7 +283,7 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		const result = await runtime.generate('hello');
 
 		expect(result.finishReason).toBe('error');
-		expect(result.getState().status).toBe('cancelled');
+		expect(runtime.getState().status).toBe('cancelled');
 	});
 
 	it('is reusable after an error — subsequent call with a good LLM response succeeds', async () => {
@@ -400,10 +401,10 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		});
 
 		const { runtime } = createRuntime();
-		const { stream: readableStream, getState } = await runtime.stream('hello');
+		const { stream: readableStream } = await runtime.stream('hello');
 		await collectChunks(readableStream);
 
-		expect(getState().status).toBe('failed');
+		expect(runtime.getState().status).toBe('failed');
 	});
 
 	it('yields error chunk and finishes cleanly on abort', async () => {
@@ -412,13 +413,13 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const { runtime, bus } = createRuntime();
 		bus.on(AgentEvent.TurnStart, () => bus.abort());
 
-		const { stream: readableStream, getState } = await runtime.stream('hello');
+		const { stream: readableStream } = await runtime.stream('hello');
 		const chunks = await collectChunks(readableStream);
 
 		const errorChunks = chunks.filter((c) => c.type === 'error');
 		expect(errorChunks.length).toBeGreaterThan(0);
 
-		expect(getState().status).toBe('cancelled');
+		expect(runtime.getState().status).toBe('cancelled');
 	});
 
 	it('stream is reusable after an error', async () => {
@@ -467,6 +468,120 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — working memory
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — working memory', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	function makeMemory(savedWorkingMemory: string[]): BuiltMemory {
+		return {
+			getThread: jest.fn().mockResolvedValue(null),
+			saveThread: jest.fn(async (thread) => {
+				await Promise.resolve();
+				return {
+					...thread,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				};
+			}),
+			deleteThread: jest.fn(),
+			getMessages: jest.fn().mockResolvedValue([]),
+			saveMessages: jest.fn(),
+			deleteMessages: jest.fn(),
+			getWorkingMemory: jest.fn().mockResolvedValue(null),
+			saveWorkingMemory: jest.fn(async (_params, content: string) => {
+				await Promise.resolve();
+				savedWorkingMemory.push(content);
+			}),
+			describe: jest
+				.fn()
+				.mockReturnValue({ name: 'test', constructorName: 'TestMemory', connectionParams: {} }),
+		};
+	}
+
+	it('persists working memory and streams the tool chunks unfiltered', async () => {
+		const savedWorkingMemory: string[] = [];
+		const memoryContent = '# Thread memory\n- User facts: Alice likes concise answers';
+		const memory = makeMemory(savedWorkingMemory);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			lastMessages: 5,
+			workingMemory: {
+				template: '# Thread memory\n- User facts:',
+				structured: false,
+				scope: 'thread',
+			},
+		});
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([
+					{ type: 'tool-input-start', id: 'wm-1', toolName: 'update_working_memory' },
+					{ type: 'tool-input-delta', id: 'wm-1', delta: memoryContent },
+					{
+						type: 'tool-call',
+						toolCallId: 'wm-1',
+						toolName: 'update_working_memory',
+						input: { memory: memoryContent },
+					},
+				]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'wm-1',
+									toolName: 'update_working_memory',
+									args: { memory: memoryContent },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{
+						toolCallId: 'wm-1',
+						toolName: 'update_working_memory',
+						input: { memory: memoryContent },
+					},
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const { stream } = await runtime.stream('remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+		const chunks = await collectChunks(stream);
+
+		expect(savedWorkingMemory).toEqual([memoryContent]);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'tool-call',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+			}),
+		);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'tool-result',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+			}),
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // resume() — graceful error contract
 // ---------------------------------------------------------------------------
 
@@ -497,37 +612,35 @@ describe('AgentRuntime — state transitions on error', () => {
 		jest.clearAllMocks();
 	});
 
-	it('starts idle before first run', () => {
+	it('starts idle, then reflects running→failed after a generate error', async () => {
 		const { runtime } = createRuntime();
+
 		expect(runtime.getState().status).toBe('idle');
-	});
 
-	it('result.getState() reflects failed after a generate error', async () => {
 		generateText.mockRejectedValue(new Error('oops'));
+		const runDone = runtime.generate('hi');
 
-		const { runtime } = createRuntime();
-		const result = await runtime.generate('hi');
-
-		expect(result.getState().status).toBe('failed');
+		await runDone;
+		expect(runtime.getState().status).toBe('failed');
 	});
 
-	it('result.getState() reflects cancelled on abort', async () => {
+	it('starts idle, then reflects running→cancelled on abort', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const { runtime, bus } = createRuntime();
 		bus.on(AgentEvent.AgentStart, () => bus.abort());
 
-		const result = await runtime.generate('hi');
-		expect(result.getState().status).toBe('cancelled');
+		await runtime.generate('hi');
+		expect(runtime.getState().status).toBe('cancelled');
 	});
 
-	it('result.getState() transitions to success on a clean run', async () => {
+	it('transitions to success on a clean run', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const { runtime } = createRuntime();
-		const result = await runtime.generate('hi');
+		await runtime.generate('hi');
 
-		expect(result.getState().status).toBe('success');
+		expect(runtime.getState().status).toBe('success');
 	});
 });
 
@@ -675,7 +788,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.pendingSuspend![0].toolCallId).toBe('tc-1');
 
 		// Verify tc-3 is in the persisted state as a pending tool call (without suspendPayload)
-		const state = result.getState();
+		const state = runtime.getState();
 		expect(state.pendingToolCalls['tc-3']).toBeDefined();
 		expect(state.pendingToolCalls['tc-3'].suspended).toBe(false);
 	});
@@ -905,7 +1018,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	it('tool error produces an error tool-result in the message list and loop continues', async () => {
 		type ToolOutputContent = {
 			type: string;
-			output?: { type: string; value?: { error?: string } };
+			output?: { type: string; value?: unknown };
 		};
 		type ToolMessage = { role: string; content: ToolOutputContent[] };
 		const receivedMessages: unknown[] = [];
@@ -932,13 +1045,15 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.finishReason).toBe('stop');
 		// LLM was called a second time — it saw the error tool result and continued
 		expect(generateText).toHaveBeenCalledTimes(2);
-		// The second LLM call received a tool message whose output carries the error description
+		// The second LLM call received a tool message whose output carries the error description.
 		const toolMsg = receivedMessages.find(
 			(m): m is ToolMessage =>
 				typeof m === 'object' && m !== null && (m as ToolMessage).role === 'tool',
 		);
 		expect(toolMsg).toBeDefined();
-		const hasErrorOutput = toolMsg!.content.some((c) => !!c.output?.value?.error);
+		const hasErrorOutput = toolMsg!.content.some(
+			(c) => c.output?.type === 'error-text' || c.output?.type === 'error-json',
+		);
 		expect(hasErrorOutput).toBe(true);
 	});
 
@@ -982,9 +1097,9 @@ describe('AgentRuntime — concurrent tool execution', () => {
 			]),
 		);
 
-		const result = await runtime.generate('run tools');
+		await runtime.generate('run tools');
 
-		const state = result.getState();
+		const state = runtime.getState();
 		expect(state.pendingToolCalls['tc-1']).toBeDefined();
 		expect(state.pendingToolCalls['tc-1'].toolName).toBe('suspend_tool');
 	});
@@ -1007,9 +1122,9 @@ describe('AgentRuntime — concurrent tool execution', () => {
 			]),
 		);
 
-		const result = await runtime.generate('run tools');
+		await runtime.generate('run tools');
 
-		const state = result.getState();
+		const state = runtime.getState();
 		expect(state.pendingToolCalls['tc-2']).toBeDefined();
 		expect(state.pendingToolCalls['tc-2'].toolName).toBe('normal_tool');
 		expect(state.pendingToolCalls['tc-2'].suspended).toBe(false);
@@ -1554,17 +1669,14 @@ describe('AgentRuntime — runtime input schema validation', () => {
 		// the LLM responds with 'done' on the next turn.
 		expect(result.finishReason).toBe('stop');
 
-		const toolErrorMessage = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool' && m.content[0].type === 'tool-result',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		expect(toolErrorMessage).toBeDefined();
-		const content = toolErrorMessage.content[0] as ContentToolResult;
-		expect(content.result).toEqual(
-			expect.objectContaining({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				error: expect.stringContaining('Expected string, received number'),
-			}),
-		);
+		expect(assistantMsg).toBeDefined();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Expected string, received number');
 	});
 });
 
@@ -1603,13 +1715,14 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		const result = await runtime.generate('go');
 		expect(result.finishReason).toBe('stop');
 
-		// No tool-result error — the tool ran successfully
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		// No error — the tool ran successfully
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		expect(toolResultMsg).toBeDefined();
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBeFalsy();
+		expect(assistantMsg).toBeDefined();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('resolved');
 	});
 
 	it('surfaces a validation error as a tool error outcome when LLM provides the wrong type', async () => {
@@ -1639,14 +1752,14 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		const result = await runtime.generate('go');
 		expect(result.finishReason).toBe('stop');
 
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		expect(toolResultMsg).toBeDefined();
-		console.log('ToolResultMsg', toolResultMsg);
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBe(true);
-		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
+		expect(assistantMsg).toBeDefined();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Invalid tool input');
 	});
 
 	it('surfaces a validation error when a required property is missing', async () => {
@@ -1677,15 +1790,15 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		});
 
 		const result = await runtime.generate('go');
-		console.log('Result', result.error);
 		expect(result.finishReason).toBe('stop');
 
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBe(true);
-		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Invalid tool input');
 	});
 
 	it('does not invoke the handler when JSON Schema validation fails', async () => {
@@ -1715,6 +1828,142 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 
 		await runtime.generate('go');
 		expect(handlerFn).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Tool builder — JSON Schema input integration
+//
+// Mirrors the resolveNodeTool() code path in node-tool-factory.ts where the
+// input schema is a raw JSON Schema object (converted from Zod by ToolFromNode).
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — Tool builder with JSON Schema input', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('passes valid input to the handler when built via Tool builder', async () => {
+		const handlerFn = jest.fn().mockResolvedValue({ found: true });
+
+		const tool = new Tool('lookup')
+			.description('Look up a record by id')
+			.input({
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				required: ['id'],
+			})
+			.handler(handlerFn)
+			.build();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'lookup', { id: 'abc-123' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'abc-123' }),
+			expect.anything(),
+		);
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('resolved');
+	});
+
+	it('produces a tool error when the LLM sends input that fails JSON Schema validation', async () => {
+		const handlerFn = jest.fn().mockResolvedValue({ found: true });
+
+		const tool = new Tool('lookup')
+			.description('Look up a record by id')
+			.input({
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					count: { type: 'integer', minimum: 1 },
+				},
+				required: ['id', 'count'],
+			})
+			.handler(handlerFn)
+			.build();
+
+		generateText
+			// LLM sends count: 0 (violates minimum: 1) and id as a number (wrong type)
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'lookup', { id: 42, count: 0 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('corrected'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('stop');
+		// Handler must not be called — validation should block execution
+		expect(handlerFn).not.toHaveBeenCalled();
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Invalid tool input');
+	});
+
+	it('validates enum and pattern constraints defined in JSON Schema', async () => {
+		const handlerFn = jest.fn().mockResolvedValue({ ok: true });
+
+		const tool = new Tool('set_status')
+			.description('Set the status of a record')
+			.input({
+				type: 'object',
+				properties: {
+					status: { type: 'string', enum: ['active', 'inactive', 'pending'] },
+				},
+				required: ['status'],
+			})
+			.handler(handlerFn)
+			.build();
+
+		// First call: invalid enum value
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'set_status', { status: 'deleted' }))
+			// Second call: valid enum value after self-correction
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'set_status', { status: 'inactive' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('stop');
+		// Handler called exactly once — only for the valid input
+		expect(handlerFn).toHaveBeenCalledTimes(1);
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'inactive' }),
+			expect.anything(),
+		);
 	});
 });
 
@@ -1952,6 +2201,114 @@ describe('provider options merging', () => {
 // ---------------------------------------------------------------------------
 // Instruction providerOptions
 // ---------------------------------------------------------------------------
+
+describe('tool systemInstruction merging', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	function getSystemMessageText(): string {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		const systemMsg = messages[0];
+		expect(systemMsg.role).toBe('system');
+		return String(systemMsg.content);
+	}
+
+	it("wraps a tool's systemInstruction in a built_in_rules block above user instructions", async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const toolWithDirective: BuiltTool = {
+			name: 'show_card',
+			description: 'show a card',
+			systemInstruction: 'Prefer this tool over plain text when posting images.',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a helpful assistant.',
+			tools: [toolWithDirective],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		expect(text).toContain('<built_in_rules>');
+		expect(text).toContain('- Prefer this tool over plain text when posting images.');
+		expect(text).toContain('</built_in_rules>');
+		expect(text).toContain('You are a helpful assistant.');
+		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
+	});
+
+	it('joins multiple tools systemInstructions into a single block', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const toolA: BuiltTool = {
+			name: 'a',
+			description: 'a',
+			systemInstruction: 'Rule A.',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+		const toolB: BuiltTool = {
+			name: 'b',
+			description: 'b',
+			systemInstruction: 'Rule B.',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+		const toolC: BuiltTool = {
+			name: 'c',
+			description: 'c',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base',
+			tools: [toolA, toolB, toolC],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		const block = text.match(/<built_in_rules>([\s\S]*?)<\/built_in_rules>/);
+		expect(block).not.toBeNull();
+		expect(block![1]).toContain('- Rule A.');
+		expect(block![1]).toContain('- Rule B.');
+		expect(block![1]).not.toContain('Rule C');
+	});
+
+	it('does not add a built_in_rules block when no tool sets a systemInstruction', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const plainTool: BuiltTool = {
+			name: 'plain',
+			description: 'plain',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a helpful assistant.',
+			tools: [plainTool],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		expect(text).not.toContain('<built_in_rules>');
+		expect(text).toContain('You are a helpful assistant.');
+	});
+});
 
 describe('instruction providerOptions', () => {
 	beforeEach(() => {

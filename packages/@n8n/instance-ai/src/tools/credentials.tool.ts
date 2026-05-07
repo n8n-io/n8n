@@ -11,6 +11,8 @@ import type { InstanceAiContext } from '../types';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
+export const CREDENTIALS_TOOL_ID = 'credentials';
+
 const DEFAULT_LIMIT = 50;
 
 /** Generic auth types that should be excluded from search results — the AI should prefer dedicated types. */

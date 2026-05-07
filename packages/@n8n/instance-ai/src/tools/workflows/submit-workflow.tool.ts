@@ -9,7 +9,7 @@
 import { Tool } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -398,10 +398,9 @@ export function createSubmitWorkflowTool(
 					};
 				}
 
-				// Apply Dagre layout to produce positions matching the FE's tidy-up.
-				// Temporary: until the SDK is published with toJSON({ tidyUp: true }) support,
-				// the sandbox's SDK doesn't have Dagre layout, so we apply it server-side.
-				const json = layoutWorkflowJSON(buildOutput.workflow);
+				// Keep positions from the generated workflow. Re-layout here would move
+				// existing nodes during workflow updates and make small edits hard to review.
+				const json = buildOutput.workflow;
 				if (name) {
 					json.name = name;
 				} else if (!json.name && !workflowId) {
