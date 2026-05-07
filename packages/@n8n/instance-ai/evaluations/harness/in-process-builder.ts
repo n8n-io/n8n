@@ -42,6 +42,7 @@ import { stringifyError, truncate } from './redact';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { registerWithMastra } from '../../src/agent/register-with-mastra';
+import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
@@ -141,7 +142,11 @@ export async function buildInProcess(
 	const started = Date.now();
 	const timeoutMs = options.timeoutMs ?? 20 * 60 * 1000;
 	const modelId: ModelConfig = options.modelId ?? 'anthropic/claude-sonnet-4-6';
-	const maxSteps = options.maxSteps ?? 30;
+	// Match production: builds run with the same MAX_STEPS.BUILDER cap as
+	// `build-workflow-agent.tool.ts` uses inside the orchestrator. Halving
+	// the budget for evals makes the harness run out of steps on examples
+	// that production would complete, inflating `no_workflow_built` rates.
+	const maxSteps = options.maxSteps ?? MAX_STEPS.BUILDER;
 
 	const interactivity = {
 		askUserCount: 0,
