@@ -51,7 +51,7 @@ catalog:
   tsx: ^4.19.3
   typescript: 5.9.2
   uuid: 10.0.0
-  vite: npm:rolldown-vite@latest
+  vite: npm:rolldown-vite@7.1.16
   vm2: 3.11.2
   vite-plugin-dts: ^4.5.4
   vitest: ^3.1.3
