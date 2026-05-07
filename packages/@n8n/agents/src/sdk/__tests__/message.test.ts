@@ -1,5 +1,5 @@
-import { getCreatedAt } from '../sdk/message';
-import type { AgentMessage } from '../types/sdk/message';
+import type { AgentMessage } from '../../types/sdk/message';
+import { getCreatedAt } from '../message';
 
 function userMessage(partial: Partial<AgentMessage> & { createdAt?: unknown }): AgentMessage {
 	return partial as AgentMessage;

@@ -1,6 +1,6 @@
 import type { LanguageModel } from 'ai';
 
-import { createModel } from '../runtime/model-factory';
+import { createModel } from '../model-factory';
 
 type ProviderOpts = {
 	apiKey?: string;

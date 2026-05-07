@@ -1,7 +1,7 @@
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
-import { parseWithSchema } from '../utils/parse';
+import { parseWithSchema } from '../parse';
 
 // ---------------------------------------------------------------------------
 // parseWithSchema — Zod schemas

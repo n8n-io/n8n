@@ -1,9 +1,9 @@
-import { InMemoryMemory } from '../runtime/memory-store';
 import {
 	OBSERVATION_SCHEMA_VERSION,
 	type NewObservation,
 	type ObservationCursor,
-} from '../types/sdk/observation';
+} from '../../types/sdk/observation';
+import { InMemoryMemory } from '../memory-store';
 
 function makeRow(overrides: Partial<NewObservation> = {}): NewObservation {
 	return {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { Tool, wrapToolForApproval } from '../sdk/tool';
-import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
+import { Tool, wrapToolForApproval } from '../tool';
 
 // ---------------------------------------------------------------------------
 // Test helpers
