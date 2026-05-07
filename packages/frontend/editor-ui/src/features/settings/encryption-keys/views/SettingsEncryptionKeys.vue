@@ -364,7 +364,7 @@ onMounted(async () => {
 							v-if="item.status === 'active'"
 							icon="status-completed"
 							color="success"
-							size="small"
+							size="large"
 						/>
 						<span v-else :class="$style.statusDot" aria-hidden="true" />
 						{{
@@ -466,8 +466,8 @@ onMounted(async () => {
 
 .statusDot {
 	display: inline-block;
-	width: var(--font-size--2xs);
-	height: var(--font-size--2xs);
+	width: var(--font-size--md);
+	height: var(--font-size--md);
 	border-radius: 50%;
 	background-color: var(--text-color--subtler);
 	flex-shrink: 0;
