@@ -515,13 +515,22 @@ export class TestRunnerService {
 	 *     is recorded in telemetry when this kicks in.
 	 *
 	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
+	 *
+	 * `options.existingTestRunId` attaches to a pre-created test_run row (the
+	 * config-driven dispatch endpoint creates the row up-front so it can return
+	 * the id synchronously).
+	 * `options.compiledWorkflow` lets the caller substitute a compiled workflow
+	 * (with `__eval_trigger` + metric nodes injected) so the legacy validation
+	 * and run loop accept a config-driven evaluation.
 	 */
 	async runTest(
 		user: User,
 		workflowId: string,
 		concurrency: number = 1,
 		flagEnabledForUser: boolean = false,
+		options: { existingTestRunId?: string; compiledWorkflow?: IWorkflowBase } = {},
 	): Promise<void> {
+		const { existingTestRunId, compiledWorkflow } = options;
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
 		const evaluationLimit = this.executionsConfig.concurrency.evaluationLimit;
 		const concurrencyLimitedByConfig =
@@ -531,15 +540,17 @@ export class TestRunnerService {
 			: requestedConcurrency;
 
 		this.logger.debug(
-			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit} flagEnabledForUser=${flagEnabledForUser}`,
+			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit} flagEnabledForUser=${flagEnabledForUser} existingTestRunId=${existingTestRunId ?? 'none'} compiled=${Boolean(compiledWorkflow)}`,
 			{ workflowId },
 		);
 
-		const workflow = await this.workflowRepository.findById(workflowId);
+		const workflow = compiledWorkflow ?? (await this.workflowRepository.findById(workflowId));
 		assert(workflow, 'Workflow not found');
 
-		// 0. Create new Test Run
-		const testRun = await this.testRunRepository.createTestRun(workflowId);
+		// 0. Create or attach to existing Test Run
+		const testRun = existingTestRunId
+			? await this.testRunRepository.findOneByOrFail({ id: existingTestRunId })
+			: await this.testRunRepository.createTestRun(workflowId);
 		assert(testRun, 'Unable to create a test run');
 
 		// Initialize telemetry metadata
