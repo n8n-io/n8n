@@ -1,6 +1,6 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
-import type { WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { AgentsToolsService } from '../agents-tools.service';
@@ -9,6 +9,7 @@ import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
 } from '../builder/agents-builder-tools.service';
+import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
@@ -25,6 +26,7 @@ function makeService() {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
+	const builderModelLookupService = mock<BuilderModelLookupService>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 
 	const service = new AgentsBuilderToolsService(
@@ -32,6 +34,7 @@ function makeService() {
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
+		builderModelLookupService,
 	);
 
 	return { service, agentsService, secureRuntime };
@@ -61,6 +64,7 @@ describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
 	const credentialProvider = mock<CredentialProvider>();
+	const user = mock<User>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -69,7 +73,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('JSON config tools', () => {
 		function getJsonTool(service: AgentsBuilderToolsService, name: string) {
 			return service
-				.getTools(agentId, projectId, credentialProvider)
+				.getTools(agentId, projectId, credentialProvider, user)
 				.json.find((tool) => tool.name === name)!;
 		}
 
@@ -205,7 +209,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('build_custom_tool tool', () => {
 		function getBuildCustomTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider)
+				.getTools(agentId, projectId, credentialProvider, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
@@ -252,7 +256,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('create_skill tool', () => {
 		function getCreateSkillTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider)
+				.getTools(agentId, projectId, credentialProvider, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILL)!;
 		}
 

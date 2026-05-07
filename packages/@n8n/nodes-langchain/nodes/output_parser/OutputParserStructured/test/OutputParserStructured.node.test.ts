@@ -828,6 +828,7 @@ describe('OutputParserStructured', () => {
 				await expect(execution).rejects.toThrow(
 					'Auto-fixing parser prompt has to contain {error} placeholder',
 				);
+				await expect(execution).rejects.toThrow(NodeOperationError);
 			});
 
 			it('should throw error when prompt template is empty', async () => {

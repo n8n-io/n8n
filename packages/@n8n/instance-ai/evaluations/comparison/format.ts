@@ -12,7 +12,7 @@
 // When no comparison is available (no baseline yet, LangSmith offline)
 // the renderers still produce a useful per-test-case summary. When a
 // comparison is available, sections render in priority order:
-// regressions, soft regressions, notable movement, improvements,
+// regressions, likely regressions, worth watching, improvements,
 // failure-category drift. Only sections with content are emitted.
 // ---------------------------------------------------------------------------
 
@@ -87,8 +87,8 @@ export function formatComparisonMarkdown(
 		if (soft.length > 0) {
 			lines.push(
 				...renderScenarioSection(
-					'Soft regressions',
-					'— investigate if related to your changes',
+					'Likely regressions',
+					'— looser statistical flag, investigate if related to your changes',
 					soft,
 					true,
 					failedIndex,
@@ -98,8 +98,8 @@ export function formatComparisonMarkdown(
 		if (watch.length > 0) {
 			lines.push(
 				...renderScenarioSection(
-					'Notable movement',
-					'— large gap, no statistical flag',
+					'Worth watching',
+					'— large change, not flagged as a regression',
 					watch,
 					false,
 					failedIndex,
@@ -177,16 +177,24 @@ function formatTopAlert(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
+	const passRateText = `pass rate ${aggDeltaText} vs master`;
 
-	// Always include all five tier counts so readers see what's being tracked,
-	// not just what's > 0. The hard count is bolded when nonzero for emphasis.
-	const summary = [
+	// Two-line summary: regression-tier counts on top, positives/neutrals on the
+	// bottom. The pass-rate delta tails whichever line matches its sign so the
+	// per-line story stays coherent (negative delta lives with the concerns).
+	const concernsParts = [
 		hard > 0 ? `**${hard} regression${hard === 1 ? '' : 's'}**` : '0 regressions',
-		`${soft} soft`,
-		`${watch} notable`,
-		`${imps} improvement${imps === 1 ? '' : 's'}`,
-		`${stable} stable`,
-	].join(', ');
+		`${soft} likely regression${soft === 1 ? '' : 's'}`,
+		`${watch} worth watching`,
+	];
+	const winsParts = [`${imps} improvement${imps === 1 ? '' : 's'}`, `${stable} stable`];
+	if (aggDelta < 0) {
+		concernsParts.push(passRateText);
+	} else {
+		winsParts.push(passRateText);
+	}
+	const concerns = concernsParts.join(' · ');
+	const wins = winsParts.join(' · ');
 
 	let icon: string;
 	let alertKind: 'CAUTION' | 'WARNING' | 'NOTE' | 'TIP';
@@ -205,7 +213,7 @@ function formatTopAlert(outcome?: ComparisonOutcome): string {
 		alertKind = 'TIP';
 	}
 
-	return `> [!${alertKind}]\n> ${icon} ${summary}. Pass rate ${aggDeltaText} vs master.`;
+	return `> [!${alertKind}]\n> ${icon} ${concerns}\n> ${wins}`;
 }
 
 function formatAggregateBlock(
@@ -650,13 +658,13 @@ export function formatComparisonTerminal(
 		if (soft.length > 0) {
 			lines.push(
 				TERMINAL_INDENT +
-					'SOFT REGRESSIONS  (likely natural variance — investigate if related to your changes)',
+					'LIKELY REGRESSIONS  (looser statistical flag — investigate if related to your changes)',
 			);
 			lines.push(formatTerminalScenarioTable(soft, true));
 			lines.push('');
 		}
 		if (watch.length > 0) {
-			lines.push(TERMINAL_INDENT + 'NOTABLE MOVEMENT  (large gap, no statistical flag)');
+			lines.push(TERMINAL_INDENT + 'WORTH WATCHING  (large change, not flagged as a regression)');
 			lines.push(formatTerminalScenarioTable(watch, false));
 			lines.push('');
 		}
@@ -714,16 +722,24 @@ function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
+	const passRateText = `pass rate ${aggDeltaText} vs master`;
 
-	const summary = [
+	const concernsParts = [
 		`${hard} regression${hard === 1 ? '' : 's'}`,
-		`${soft} soft`,
-		`${watch} notable`,
-		`${imps} improvement${imps === 1 ? '' : 's'}`,
-		`${stable} stable`,
-	].join(', ');
+		`${soft} likely regression${soft === 1 ? '' : 's'}`,
+		`${watch} worth watching`,
+	];
+	const winsParts = [`${imps} improvement${imps === 1 ? '' : 's'}`, `${stable} stable`];
+	if (aggDelta < 0) {
+		concernsParts.push(passRateText);
+	} else {
+		winsParts.push(passRateText);
+	}
 
-	return `▶ ${summary}. Pass rate ${aggDeltaText} vs master.`;
+	// The caller prepends TERMINAL_INDENT to the start of this string. Embed an
+	// extra TERMINAL_INDENT after the line break so the wins line aligns under
+	// the concerns text (past the `▶ ` arrow).
+	return `▶ ${concernsParts.join(' · ')}\n${TERMINAL_INDENT}  ${winsParts.join(' · ')}`;
 }
 
 function formatTerminalAggregate(
