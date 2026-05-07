@@ -1,3 +1,11 @@
+## [2.20.5](https://github.com/n8n-io/n8n/compare/n8n@2.20.4...n8n@2.20.5) (2026-05-07)
+
+
+### Bug Fixes
+
+* **core:** Simple-git update broke https connection ([#30003](https://github.com/n8n-io/n8n/issues/30003)) ([ce01685](https://github.com/n8n-io/n8n/commit/ce016859cb055b7d193208412e5e656b0048a1fa))
+
+
 ## [2.20.4](https://github.com/n8n-io/n8n/compare/n8n@2.20.0...n8n@2.20.4) (2026-05-07)
 
 ## [2.20.3](https://github.com/n8n-io/n8n/compare/n8n@2.20.0...n8n@2.20.3) (2026-05-07)
