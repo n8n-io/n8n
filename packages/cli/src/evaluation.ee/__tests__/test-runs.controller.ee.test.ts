@@ -145,7 +145,7 @@ describe('TestRunsController', () => {
 				['workflow:read'],
 			);
 			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTestRunId },
+				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
 			});
 			expect(result).toEqual(mockTestRun);
 		});
@@ -171,7 +171,24 @@ describe('TestRunsController', () => {
 				['workflow:read'],
 			);
 			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTestRunId },
+				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
+			});
+		});
+	});
+
+	describe('getTestRun (cross-workflow scoping)', () => {
+		it('returns 404 when the run id belongs to a different workflow', async () => {
+			// User has access to the route's workflow, but supplies a run id from
+			// another workflow. The scoped lookup returns null and we surface a
+			// NotFoundError — the same behaviour as a missing run, so callers
+			// can't distinguish "wrong workflow" from "doesn't exist".
+			mockTestRunRepository.findOne.mockResolvedValue(null);
+
+			await expect(
+				(testRunsController as any).getTestRun(mockTestRunId, mockWorkflowId, mockUser),
+			).rejects.toThrow(NotFoundError);
+			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
+				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
 			});
 		});
 	});
