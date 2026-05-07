@@ -103,7 +103,7 @@ describe('McpRegistryNodeLoader', () => {
 	});
 
 	describe('loadAll', () => {
-		it('populates `types`, `known`, registers synthetic nodes and credentialsfor each supported server', async () => {
+		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
 			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
 			const service = createServiceWithServers([notionMockServer]);
 			const loader = new McpRegistryNodeLoader(service, loadNodesAndCredentials, logger);

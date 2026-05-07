@@ -65,7 +65,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		for (const server of this.registry.getAll({ includeDeprecated: true })) {
 			const nodeDescription = serverToNodeDescription(server, baseDescription);
 			const credentialDescription = serverToCredentialDescription(server);
-			if (!nodeDescription) continue;
+			if (!nodeDescription || !credentialDescription) continue;
 
 			const bareName = camelCase(server.slug);
 
@@ -79,19 +79,17 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				sourcePath,
 			};
 
-			if (credentialDescription) {
-				this.types.credentials.push(credentialDescription);
-				this.credentialTypes[credentialDescription.name] = {
-					type: credentialDescription,
-					sourcePath: '',
-				};
-				this.known.credentials[credentialDescription.name] = {
-					className: 'McpRegistryApi',
-					sourcePath: '',
-					extends: credentialDescription.extends,
-					supportedNodes: [bareName],
-				};
-			}
+			this.types.credentials.push(credentialDescription);
+			this.credentialTypes[credentialDescription.name] = {
+				type: credentialDescription,
+				sourcePath: '',
+			};
+			this.known.credentials[credentialDescription.name] = {
+				className: 'McpRegistryApi',
+				sourcePath: '',
+				extends: credentialDescription.extends,
+				supportedNodes: [bareName],
+			};
 		}
 	}
 
