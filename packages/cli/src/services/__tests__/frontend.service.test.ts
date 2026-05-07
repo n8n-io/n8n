@@ -137,6 +137,9 @@ describe('FrontendService', () => {
 	const urlService = mock<UrlService>({
 		getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
 		getWebhookBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
+		getInstanceJwksUri: jest
+			.fn()
+			.mockReturnValue('http://localhost:5678/rest/.well-known/jwks.json'),
 	});
 
 	const securityConfig = mock<SecurityConfig>({
