@@ -1189,7 +1189,7 @@ onBeforeUnmount(() => {
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
-							<N8nIcon v-if="isRedactionSettingLocked" icon="lock" size="xsmall" />
+							<N8nIcon v-if="isRedactionSettingLocked" icon="lock" size="xsmall" style="opacity: 1" />
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
