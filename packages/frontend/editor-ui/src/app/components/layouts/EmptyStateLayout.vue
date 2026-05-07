@@ -2,7 +2,8 @@
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -18,7 +19,7 @@ import RecommendedTemplatesSection from '@/features/workflows/templates/recommen
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
-import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
+import SurfaceMcpTileLogos from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpTileLogos.vue';
 
 const emit = defineEmits<{
 	'click:add': [];
@@ -72,6 +73,12 @@ const handleReadyToRunClick = async () => {
 const containerStyle = computed(() => ({
 	minHeight: `calc(100vh - ${bannersStore.bannersHeight}px)`,
 }));
+
+const mcpTileCtaKey = computed<BaseTextKey>(() =>
+	surfaceMcpStore.currentVariant === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2
+		? 'workflows.empty.mcp.tile.variant2.cta'
+		: 'workflows.empty.mcp.tile.variant1.cta',
+);
 
 const builderProjectId = computed(() =>
 	projectPages.isOverviewSubPage
@@ -208,17 +215,14 @@ const openMcpOnboardingFromTile = () => {
 					>
 						<N8nCard
 							v-if="showMcpTile"
-							:class="[
-								$style.actionCard,
-								$style.mcpCard,
-								{ [$style.mcpCardEnabled]: mcpStore.mcpAccessEnabled },
-							]"
+							:class="[$style.actionCard, $style.mcpCard]"
 							hoverable
 							data-test-id="mcp-onboarding-card"
 							@click="openMcpOnboardingFromTile"
 						>
 							<span
-								:class="[$style.mcpBadge, { [$style.mcpBadgeActive]: mcpStore.mcpAccessEnabled }]"
+								:class="[$style.mcpBadge, { [$style.mcpBadgeEnabled]: mcpStore.mcpAccessEnabled }]"
+								data-test-id="mcp-onboarding-badge"
 							>
 								<N8nIcon
 									v-if="mcpStore.mcpAccessEnabled"
@@ -229,32 +233,15 @@ const openMcpOnboardingFromTile = () => {
 								{{
 									i18n.baseText(
 										mcpStore.mcpAccessEnabled
-											? 'workflows.empty.mcp.tile.badge.active'
+											? 'workflows.empty.mcp.tile.badge.enabled'
 											: 'workflows.empty.mcp.tile.badge.new',
 									)
 								}}
 							</span>
 							<div :class="$style.mcpCardContent">
-								<div :class="$style.mcpGraphic">
-									<SurfaceMcpBridgeGraphic size="tile" />
-								</div>
-								<N8nText size="large" :bold="true" :class="$style.mcpTitle">
-									{{
-										i18n.baseText(
-											mcpStore.mcpAccessEnabled
-												? 'workflows.empty.mcp.tile.enabledTitle'
-												: 'workflows.empty.mcp.tile.title',
-										)
-									}}
-								</N8nText>
-								<N8nText size="small" color="text-light">
-									{{
-										i18n.baseText(
-											mcpStore.mcpAccessEnabled
-												? 'workflows.empty.mcp.tile.enabledDescription'
-												: 'workflows.empty.mcp.tile.description',
-										)
-									}}
+								<SurfaceMcpTileLogos />
+								<N8nText size="large" :bold="true" :class="$style.mcpCta">
+									{{ i18n.baseText(mcpTileCtaKey) }}
 								</N8nText>
 							</div>
 						</N8nCard>
@@ -432,23 +419,11 @@ const openMcpOnboardingFromTile = () => {
 .mcpCard {
 	position: relative;
 	overflow: hidden;
-	background: radial-gradient(
-		120% 80% at 50% 0%,
-		rgb(234 152 75 / 12%) 0%,
-		rgb(234 152 75 / 0%) 60%
-	);
+	background: var(--background--surface);
 	border: 1px solid var(--border-color--subtle);
 
 	&:hover {
-		border-color: var(--color--orange-300);
-	}
-}
-
-.mcpCardEnabled {
-	background: radial-gradient(120% 80% at 50% 0%, rgb(34 197 94 / 10%) 0%, rgb(34 197 94 / 0%) 60%);
-
-	&:hover {
-		border-color: var(--color--green-300);
+		border-color: var(--border-color--strong);
 	}
 }
 
@@ -458,23 +433,11 @@ const openMcpOnboardingFromTile = () => {
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--md);
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--sm);
 	width: 100%;
 }
 
-.mcpGraphic {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-bottom: var(--spacing--xs);
-	transition: transform var(--duration--snappy) ease;
-
-	.mcpCard:hover & {
-		transform: scale(1.04);
-	}
-}
-
-.mcpTitle {
+.mcpCta {
 	letter-spacing: var(--letter-spacing--tight);
 }
 
@@ -497,7 +460,7 @@ const openMcpOnboardingFromTile = () => {
 	z-index: 1;
 }
 
-.mcpBadgeActive {
+.mcpBadgeEnabled {
 	background: var(--color--green-100);
 	color: var(--color--green-800);
 }

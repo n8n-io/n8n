@@ -10,6 +10,7 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
+import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { ref } from 'vue';
@@ -192,16 +193,51 @@ describe('EmptyStateLayout', () => {
 			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
 		});
 
-		it('renders the MCP card for the tile variant', () => {
+		it('renders the variant 1 MCP tile CTA with a New badge', () => {
 			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
+			mcpStore.mcpAccessEnabled = false;
+
+			const { getByTestId, queryByText } = renderComponent();
+			const card = getByTestId('mcp-onboarding-card');
+
+			expect(card).toHaveTextContent('Build from your agents');
+			expect(getByTestId('mcp-onboarding-badge')).toHaveTextContent('New');
+			expect(getByTestId('mcp-tile-logo-row')).toBeInTheDocument();
+			expect(
+				queryByText(/Connect MCP clients like Claude Code and Cursor/),
+			).not.toBeInTheDocument();
+		});
+
+		it('renders the variant 2 MCP tile CTA with a New badge', () => {
+			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2;
+			mcpStore.mcpAccessEnabled = false;
+
+			const { getByTestId, queryByText } = renderComponent();
+			const card = getByTestId('mcp-onboarding-card');
+
+			expect(card).toHaveTextContent('Connect to your AI');
+			expect(getByTestId('mcp-onboarding-badge')).toHaveTextContent('New');
+			expect(getByTestId('mcp-tile-logo-row')).toBeInTheDocument();
+			expect(
+				queryByText(/Connect MCP clients like Claude Code and Cursor/),
+			).not.toBeInTheDocument();
+		});
+
+		it('renders the Enabled badge when MCP access is enabled', () => {
+			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
+			mcpStore.mcpAccessEnabled = true;
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
+			expect(getByTestId('mcp-onboarding-badge')).toHaveTextContent('Enabled');
 		});
 
 		it('opens the onboarding modal when the MCP card is clicked', async () => {
 			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
 			const { getByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('mcp-onboarding-card'));
