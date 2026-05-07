@@ -170,6 +170,7 @@ import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/17
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
+import { AddAgentExecutionCount1783000000002 } from '../common/1783000000002-AddAgentExecutionCount';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -345,4 +346,5 @@ export const postgresMigrations: Migration[] = [
 	AddExecutionDeduplicationKey1778000000000,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
+	AddAgentExecutionCount1783000000002,
 ];

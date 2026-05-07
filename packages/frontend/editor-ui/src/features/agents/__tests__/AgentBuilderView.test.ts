@@ -127,6 +127,7 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 		updatedAt: '2026-01-01T00:00:00Z',
 		publishedVersion: null,
 		versionId: 'v1',
+		executionCount: 0,
 		...overrides,
 	};
 }

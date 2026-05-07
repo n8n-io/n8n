@@ -32,6 +32,7 @@ export type Agent = {
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;
+	executionCount: number;
 	tools: Record<string, CustomToolEntry>;
 	skills: Record<string, AgentSkill>;
 	publishedVersion: AgentPublishedVersion | null;

@@ -7,6 +7,7 @@ import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -36,6 +37,7 @@ export class AgentExecutionService {
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
+		private readonly agentRepository: AgentRepository,
 		private readonly n8nMemory: N8nMemory,
 	) {}
 
@@ -93,6 +95,7 @@ export class AgentExecutionService {
 				source: source ?? null,
 			}),
 		);
+		await this.agentRepository.incrementExecutionCount(agentId);
 
 		// When a resumed execution completes with usage data, backfill any
 		// preceding suspended executions in the same thread that are missing it.

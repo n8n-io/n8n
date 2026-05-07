@@ -18,6 +18,24 @@ describe('AgentRepository', () => {
 		repository = new AgentRepository(mockDataSource as never);
 	});
 
+	describe('incrementExecutionCount', () => {
+		it('atomically increments the execution count for an agent', async () => {
+			const execute = jest.fn().mockResolvedValue({ affected: 1 });
+			const where = jest.fn().mockReturnValue({ execute });
+			const set = jest.fn().mockReturnValue({ where });
+			const update = jest.fn().mockReturnValue({ set });
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue({ update } as never);
+
+			await repository.incrementExecutionCount('agent-1');
+
+			expect(update).toHaveBeenCalledWith(Agent);
+			expect(set).toHaveBeenCalledWith({ executionCount: expect.any(Function) });
+			expect((set.mock.calls[0][0].executionCount as () => string)()).toBe('"executionCount" + 1');
+			expect(where).toHaveBeenCalledWith('id = :agentId', { agentId: 'agent-1' });
+			expect(execute).toHaveBeenCalled();
+		});
+	});
+
 	describe('findByIdAndProjectId', () => {
 		it('calls findOne with id, projectId, and the publishedVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });

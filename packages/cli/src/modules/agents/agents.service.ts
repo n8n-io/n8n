@@ -255,6 +255,7 @@ export class AgentsService {
 			projectId,
 			schema: defaultConfig,
 			versionId: uuid(),
+			executionCount: 0,
 		});
 
 		const saved = await this.agentRepository.save(agent);

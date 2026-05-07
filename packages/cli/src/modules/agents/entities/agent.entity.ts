@@ -1,6 +1,6 @@
 import type { AgentIntegration, AgentSkill } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
-import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
+import { bigintStringToNumber, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, OneToOne, type Relation } from '@n8n/typeorm';
 
 import type { AgentPublishedVersion } from './agent-published-version.entity';
@@ -51,6 +51,9 @@ export class Agent extends WithTimestampsAndStringId {
 	/** UUID identifying the current draft; bumped on the first config save after each publish. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;
+
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	executionCount: number;
 
 	@OneToOne('AgentPublishedVersion', 'agent', { nullable: true })
 	publishedVersion?: Relation<AgentPublishedVersion> | null;

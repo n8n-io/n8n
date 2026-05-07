@@ -16,7 +16,13 @@ export { isStringArray } from './utils/is-string-array';
 export { isValidEmail } from './utils/is-valid-email';
 export { separate } from './utils/separate';
 export { sql } from './utils/sql';
-export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
+export {
+	bigintStringToNumber,
+	idStringifier,
+	lowerCaser,
+	objectRetriever,
+	sqlite,
+} from './utils/transformers';
 export { withTransaction } from './utils/transaction';
 
 export * from './constants';

@@ -40,6 +40,14 @@ export class AgentRepository extends Repository<Agent> {
 			.getMany();
 	}
 
+	async incrementExecutionCount(agentId: string): Promise<void> {
+		await this.createQueryBuilder()
+			.update(Agent)
+			.set({ executionCount: () => '"executionCount" + 1' })
+			.where('id = :agentId', { agentId })
+			.execute();
+	}
+
 	/**
 	 * Finds agents within a project whose `integrations` JSON column contains an
 	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
