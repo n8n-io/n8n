@@ -78,13 +78,6 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			},
 			builderHint: {
 				...args.meta.builderHint,
-				searchHint:
-					'Mode picks the SDK factory and required subnodes:\n' +
-					'- `load`: vectorStore() + { embedding } — one-shot similarity search on main flow.\n' +
-					'- `insert`: vectorStore() + { embedding, documentLoader } — upsert documents into the store.\n' +
-					"- `retrieve`: vectorStore() + { embedding } — plug into another node's subnodes (e.g. toolVectorStore).\n" +
-					"- `retrieve-as-tool`: tool() + { embedding } — set toolDescription, plug into AI Agent's subnodes.tools (canonical RAG).\n" +
-					'- `update`: vectorStore() + { embedding } — update documents by ID.',
 				extraTypeDefContent: [
 					{
 						displayOptions: { show: { mode: ['insert'] } },

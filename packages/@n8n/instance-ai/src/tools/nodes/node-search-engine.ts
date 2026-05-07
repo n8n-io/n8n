@@ -209,7 +209,6 @@ export class NodeSearchEngine {
 					outputs: item.outputs,
 					score,
 					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-					...(item.builderHint?.searchHint && { searchHint: item.builderHint.searchHint }),
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 				};
 			});
@@ -256,9 +255,6 @@ export class NodeSearchEngine {
 						...(nodeType.builderHint?.message && {
 							builderHintMessage: nodeType.builderHint.message,
 						}),
-						...(nodeType.builderHint?.searchHint && {
-							searchHint: nodeType.builderHint.searchHint,
-						}),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
 				});
@@ -285,7 +281,6 @@ export class NodeSearchEngine {
 				outputs: item.outputs,
 				score: connectionScore + nameScore,
 				...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-				...(item.builderHint?.searchHint && { searchHint: item.builderHint.searchHint }),
 				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 			};
 		});
@@ -309,11 +304,6 @@ export class NodeSearchEngine {
 		// Add builder hint message if present
 		if (result.builderHintMessage) {
 			parts.push(`			<builder_hint>${result.builderHintMessage}</builder_hint>`);
-		}
-
-		// Add search-only extra content if present
-		if (result.searchHint) {
-			parts.push(`			<search_hint>${result.searchHint}</search_hint>`);
 		}
 
 		// Add subnode requirements if present

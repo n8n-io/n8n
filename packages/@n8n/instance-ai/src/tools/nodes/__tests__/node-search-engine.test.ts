@@ -177,29 +177,6 @@ describe('NodeSearchEngine', () => {
 			expect(agentResult?.builderHintMessage).toBe('Use an AI Agent for autonomous task execution');
 		});
 
-		it('should surface builderHint.searchHint in search results and formatted XML', () => {
-			const nodeWithSearchHint = makeNode({
-				name: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-				displayName: 'Pinecone Vector Store',
-				description: 'Pinecone',
-				outputs: ['main', 'ai_vectorStore', 'ai_tool'],
-				builderHint: {
-					searchHint:
-						'Mode picks the SDK factory:\n- insert: vectorStore() + documentLoader\n- retrieve-as-tool: tool() + AI Agent',
-				},
-			});
-			const localEngine = new NodeSearchEngine([nodeWithSearchHint]);
-			const results = localEngine.searchByName('pinecone');
-			const result = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.vectorStorePinecone');
-			expect(result).toBeDefined();
-			expect(result?.searchHint).toContain('vectorStore() + documentLoader');
-
-			const xml = localEngine.formatResult(result!);
-			expect(xml).toContain('<search_hint>');
-			expect(xml).toContain('vectorStore() + documentLoader');
-			expect(xml).toContain('tool() + AI Agent');
-		});
-
 		it('should NOT surface builderHint.extraTypeDefContent in search results', () => {
 			const results = engine.searchByName('AI Agent');
 			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');

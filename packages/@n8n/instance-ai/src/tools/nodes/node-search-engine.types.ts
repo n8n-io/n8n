@@ -78,11 +78,6 @@ export interface SearchableNodeType {
 				hide?: Record<string, unknown[]>;
 			};
 		}>;
-		/**
-		 * Extra content surfaced in search results (counterpart to
-		 * `extraTypeDefContent`, which is type-def-only).
-		 */
-		searchHint?: string;
 	};
 }
 
@@ -111,8 +106,6 @@ export interface NodeSearchResult {
 	outputs: string[] | string;
 	/** General hint message for workflow builders (from builderHint.message). */
 	builderHintMessage?: string;
-	/** Search-only extra content (from builderHint.searchHint). */
-	searchHint?: string;
 	/** Subnode requirements extracted from builderHint.inputs. */
 	subnodeRequirements?: SubnodeRequirement[];
 }

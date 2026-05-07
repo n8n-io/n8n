@@ -2558,13 +2558,6 @@ export interface IBuilderHint {
 	 * corresponding narrowed type.
 	 */
 	extraTypeDefContent?: IBuilderHintVariation[];
-	/**
-	 * Extra content surfaced in `nodes(action="search")` results but NOT in the
-	 * generated `.d.ts`. Use for guidance the LLM needs while picking a node
-	 * (e.g. per-mode rules, picking advice) but that doesn't belong in the
-	 * type definition. Keep concise — it's emitted on every search hit.
-	 */
-	searchHint?: string;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
