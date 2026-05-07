@@ -8,6 +8,7 @@ import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
+import { hasObservationStore } from '../runtime/observation-store';
 import {
 	runObservationalCycle,
 	type RunObservationalCycleOpts,
@@ -15,14 +16,12 @@ import {
 } from '../runtime/observational-cycle';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
-	AgentEvent,
 	AgentEventHandler,
 	AgentMiddleware,
 	BuiltAgent,
 	BuiltEval,
 	BuiltGuardrail,
 	BuiltMemory,
-	BuiltObservationStore,
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
@@ -42,6 +41,7 @@ import type {
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
+import { AgentEvent } from '../types/runtime/event';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
@@ -580,7 +580,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (cycle === null) return;
 			const runtime = await this.ensureBuilt();
 			runtime.scheduleBackgroundCycle(cycle);
-		})();
+		})().catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			this.eventBus.emit({ type: AgentEvent.Error, message, error });
+		});
 	}
 
 	/**
@@ -601,14 +604,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			!memory ||
 			!workingMemory ||
 			!this.modelConfig ||
-			typeof (memory as Partial<BuiltObservationStore>).appendObservations !== 'function'
+			!hasObservationStore(memory)
 		) {
 			return null;
 		}
 		const runtime = await this.ensureBuilt();
 		const telemetry = runtime.getConfiguredTelemetry();
 		return {
-			memory: memory as BuiltMemory & BuiltObservationStore,
+			memory,
 			threadId: opts.threadId,
 			resourceId: opts.resourceId,
 			model: this.modelConfig,

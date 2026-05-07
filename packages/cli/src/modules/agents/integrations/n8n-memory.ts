@@ -18,6 +18,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
+import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
@@ -320,24 +321,36 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	): Promise<ObservationLockHandle | null> {
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
-		const existing = await this.observationLockRepository.findOneBy({ scopeKind, scopeId });
 
-		if (existing) {
-			const isExpired = existing.heldUntil.getTime() <= now.getTime();
-			if (existing.holderId !== opts.holderId && !isExpired) return null;
-			existing.holderId = opts.holderId;
-			existing.heldUntil = heldUntil;
-			await this.observationLockRepository.save(existing);
-		} else {
-			await this.observationLockRepository.save(
-				this.observationLockRepository.create({
-					scopeKind,
-					scopeId,
-					holderId: opts.holderId,
-					heldUntil,
-				}),
-			);
+		const updateResult = await this.observationLockRepository
+			.createQueryBuilder()
+			.update(AgentObservationLockEntity)
+			.set({ holderId: opts.holderId, heldUntil })
+			.where('"scopeKind" = :scopeKind')
+			.andWhere('"scopeId" = :scopeId')
+			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
+			.setParameters({ scopeKind, scopeId, holderId: opts.holderId, now })
+			.execute();
+
+		if ((updateResult.affected ?? 0) > 0) {
+			return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
 		}
+
+		await this.observationLockRepository
+			.createQueryBuilder()
+			.insert()
+			.into(AgentObservationLockEntity)
+			.values({ scopeKind, scopeId, holderId: opts.holderId, heldUntil })
+			.orIgnore()
+			.execute();
+
+		const claimed = await this.observationLockRepository.findOneBy({
+			scopeKind,
+			scopeId,
+			holderId: opts.holderId,
+		});
+		if (!claimed) return null;
+
 		return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
 	}
 

@@ -1,4 +1,5 @@
 import { InMemoryMemory } from '../../runtime/memory-store';
+import { AgentEvent } from '../../types/runtime/event';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import {
 	OBSERVATION_SCHEMA_VERSION,
@@ -52,7 +53,11 @@ describe('agent.reflect', () => {
 		const observe = jest
 			.fn()
 			.mockResolvedValue([makeNewObs('builder-observed')]) as unknown as ObserveFn;
-		const memory = new Memory().storage(store).freeform('# Notes').observationalMemory({ observe });
+		const memory = new Memory()
+			.storage(store)
+			.freeform('# Notes')
+			.scope('thread')
+			.observationalMemory({ observe });
 
 		const agent = new Agent('a').model('openai/gpt-4o-mini').instructions('test').memory(memory);
 		const result = await agent.reflect({ threadId: 't-1', resourceId: 'u-1' });
@@ -73,6 +78,7 @@ describe('agent.reflect', () => {
 		const memory = new Memory()
 			.storage(store)
 			.freeform('# Notes')
+			.scope('thread')
 			.observationalMemory({ observe: builderObserve });
 
 		const agent = new Agent('a').model('openai/gpt-4o-mini').instructions('test').memory(memory);
@@ -88,12 +94,37 @@ describe('agent.reflect', () => {
 		await store.acquireObservationLock('thread', 't-1', { ttlMs: 60_000, holderId: 'other' });
 
 		const observe = jest.fn().mockResolvedValue([makeNewObs('x')]) as unknown as ObserveFn;
-		const memory = new Memory().storage(store).freeform('# Notes').observationalMemory({ observe });
+		const memory = new Memory()
+			.storage(store)
+			.freeform('# Notes')
+			.scope('thread')
+			.observationalMemory({ observe });
 
 		const agent = new Agent('a').model('openai/gpt-4o-mini').instructions('test').memory(memory);
 		const result = await agent.reflect({ threadId: 't-1', resourceId: 'u-1' });
 
 		expect(result).toEqual({ status: 'skipped', reason: 'lock-held' });
 		expect(observe).not.toHaveBeenCalled();
+	});
+});
+
+describe('agent.reflectInBackground', () => {
+	it('emits AgentEvent.Error when background setup fails before scheduling the cycle', async () => {
+		const store = new InMemoryMemory();
+		const errors: string[] = [];
+		const memory = new Memory()
+			.storage(store)
+			.freeform('# Notes')
+			.scope('thread')
+			.observationalMemory();
+		const agent = new Agent('a').model('openai/gpt-4o-mini').memory(memory);
+		agent.on(AgentEvent.Error, (event) => {
+			if (event.type === AgentEvent.Error) errors.push(event.message);
+		});
+
+		agent.reflectInBackground({ threadId: 't-1', resourceId: 'u-1' });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(errors).toEqual(['Agent "a" requires instructions']);
 	});
 });

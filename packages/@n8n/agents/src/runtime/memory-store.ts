@@ -19,6 +19,14 @@ function scopeKey(scopeKind: ScopeKind, scopeId: string): string {
 	return `${scopeKind}:${scopeId}`;
 }
 
+function cloneCursor(cursor: ObservationCursor): ObservationCursor {
+	return {
+		...cursor,
+		lastObservedAt: new Date(cursor.lastObservedAt),
+		updatedAt: new Date(cursor.updatedAt),
+	};
+}
+
 function compareKeyset(
 	a: { createdAt: Date; id: string },
 	b: { createdAt: Date; id: string },
@@ -70,7 +78,8 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 		resourceId?: string;
 		scope: 'resource' | 'thread';
 	}): string {
-		return params.scope === 'thread' ? params.threadId : (params.resourceId ?? params.threadId);
+		const id = params.scope === 'thread' ? params.threadId : (params.resourceId ?? params.threadId);
+		return `${params.scope}:${id}`;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -279,13 +288,14 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getCursor(scopeKind: ScopeKind, scopeId: string): Promise<ObservationCursor | null> {
-		return this.cursorsByScope.get(scopeKey(scopeKind, scopeId)) ?? null;
+		const cursor = this.cursorsByScope.get(scopeKey(scopeKind, scopeId));
+		return cursor ? cloneCursor(cursor) : null;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		const key = scopeKey(cursor.scopeKind, cursor.scopeId);
-		this.cursorsByScope.set(key, { ...cursor });
+		this.cursorsByScope.set(key, cloneCursor(cursor));
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
