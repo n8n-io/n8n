@@ -4527,7 +4527,6 @@
 	"settings.encryptionKeys.rotate.confirm.cancel": "Cancel",
 	"settings.encryptionKeys.rotate.success": "Encryption key rotated",
 	"settings.encryptionKeys.rotate.error": "Could not rotate encryption key",
-	"settings.encryptionKeys.copyId.success": "Key ID copied to clipboard",
 	"settings.encryptionKeys.empty.title": "No encryption keys yet",
 	"settings.encryptionKeys.empty.description": "Rotate a key to generate your first active encryption key.",
 	"settings.encryptionKeys.loadError": "Could not load encryption keys",
