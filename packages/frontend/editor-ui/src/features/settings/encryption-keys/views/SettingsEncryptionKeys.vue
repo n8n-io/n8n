@@ -361,10 +361,12 @@ onMounted(async () => {
 				<template #[`item.status`]="{ item }">
 					<span :class="$style.statusCell">
 						<N8nIcon
-							:icon="item.status === 'active' ? 'circle-check' : 'circle'"
-							:color="item.status === 'active' ? 'success' : 'text-light'"
+							v-if="item.status === 'active'"
+							icon="status-completed"
+							color="success"
 							size="small"
 						/>
+						<span v-else :class="$style.statusDot" aria-hidden="true" />
 						{{
 							i18n.baseText(
 								item.status === 'active'
@@ -460,6 +462,15 @@ onMounted(async () => {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.statusDot {
+	display: inline-block;
+	width: var(--font-size--2xs);
+	height: var(--font-size--2xs);
+	border-radius: 50%;
+	background-color: var(--text-color--subtler);
+	flex-shrink: 0;
 }
 
 .docsLinkLabel {
