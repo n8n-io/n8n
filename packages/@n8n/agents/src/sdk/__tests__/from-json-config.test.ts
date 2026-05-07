@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { Tool } from '../sdk/tool';
-import type { AgentMessage } from '../types/sdk/message';
-import type { InterruptibleToolContext } from '../types/sdk/tool';
+import type { AgentMessage } from '../../types/sdk/message';
+import type { InterruptibleToolContext } from '../../types/sdk/tool';
+import { Tool } from '../tool';
 
 // ---------------------------------------------------------------------------
 // Tool.describe() tests

@@ -1,15 +1,16 @@
 import { z } from 'zod';
 
-import { AgentRuntime } from '../runtime/agent-runtime';
-import { AgentEventBus } from '../runtime/event-bus';
-import { isLlmMessage } from '../sdk/message';
-import { Tool, Tool as ToolBuilder } from '../sdk/tool';
-import { AgentEvent } from '../types/runtime/event';
-import type { StreamChunk } from '../types/sdk/agent';
-import type { BuiltMemory } from '../types/sdk/memory';
-import type { ContentToolCall, Message } from '../types/sdk/message';
-import type { BuiltTool, InterruptibleToolContext } from '../types/sdk/tool';
-import type { BuiltTelemetry } from '../types/telemetry';
+import { isLlmMessage } from '../../sdk/message';
+import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import { AgentEvent } from '../../types/runtime/event';
+import type { StreamChunk } from '../../types/sdk/agent';
+import type { BuiltMemory } from '../../types/sdk/memory';
+import type { ContentToolCall, Message } from '../../types/sdk/message';
+import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { AgentRuntime } from '../agent-runtime';
+import { AgentEventBus } from '../event-bus';
+import { InMemoryMemory } from '../memory-store';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -502,9 +503,8 @@ describe('AgentRuntime.stream() — working memory', () => {
 		};
 	}
 
-	it('persists working memory and streams the tool chunks unfiltered', async () => {
+	it('does not expose a working-memory write tool to the main agent', async () => {
 		const savedWorkingMemory: string[] = [];
-		const memoryContent = '# Thread memory\n- User facts: Alice likes concise answers';
 		const memory = makeMemory(savedWorkingMemory);
 		const runtime = new AgentRuntime({
 			name: 'test',
@@ -519,65 +519,16 @@ describe('AgentRuntime.stream() — working memory', () => {
 			},
 		});
 
-		streamText
-			.mockReturnValueOnce({
-				fullStream: makeChunkStream([
-					{ type: 'tool-input-start', id: 'wm-1', toolName: 'update_working_memory' },
-					{ type: 'tool-input-delta', id: 'wm-1', delta: memoryContent },
-					{
-						type: 'tool-call',
-						toolCallId: 'wm-1',
-						toolName: 'update_working_memory',
-						input: { memory: memoryContent },
-					},
-				]),
-				finishReason: Promise.resolve('tool-calls'),
-				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-				response: Promise.resolve({
-					messages: [
-						{
-							role: 'assistant',
-							content: [
-								{
-									type: 'tool-call',
-									toolCallId: 'wm-1',
-									toolName: 'update_working_memory',
-									args: { memory: memoryContent },
-								},
-							],
-						},
-					],
-				}),
-				toolCalls: Promise.resolve([
-					{
-						toolCallId: 'wm-1',
-						toolName: 'update_working_memory',
-						input: { memory: memoryContent },
-					},
-				]),
-			})
-			.mockReturnValueOnce(makeStreamSuccess('Done'));
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
 
 		const { stream } = await runtime.stream('remember this', {
 			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
 		});
-		const chunks = await collectChunks(stream);
+		await collectChunks(stream);
 
-		expect(savedWorkingMemory).toEqual([memoryContent]);
-		expect(chunks).toContainEqual(
-			expect.objectContaining({
-				type: 'tool-call',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-			}),
-		);
-		expect(chunks).toContainEqual(
-			expect.objectContaining({
-				type: 'tool-result',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-			}),
-		);
+		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
+		expect(savedWorkingMemory).toEqual([]);
 	});
 });
 
@@ -1519,7 +1470,7 @@ describe('providerOptions — tool adapter', () => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const ai = require('ai') as { tool: jest.Mock };
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../runtime/tool-adapter') as {
+		const adapter = require('../tool-adapter') as {
 			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
 		};
 
@@ -1547,7 +1498,7 @@ describe('providerOptions — tool adapter', () => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const ai = require('ai') as { tool: jest.Mock };
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../runtime/tool-adapter') as {
+		const adapter = require('../tool-adapter') as {
 			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
 		};
 
@@ -1572,7 +1523,7 @@ describe('providerOptions — tool adapter', () => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const ai = require('ai') as { tool: jest.Mock };
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../runtime/tool-adapter') as {
+		const adapter = require('../tool-adapter') as {
 			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
 		};
 
@@ -2518,5 +2469,77 @@ describe('AgentRuntime — telemetry propagation', () => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observational memory — post-turn writer
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — observational memory writer', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		generateText.mockResolvedValue(makeGenerateSuccess());
+	});
+
+	it('runs the observer after saving the turn and compacts into thread working memory', async () => {
+		const store = new InMemoryMemory();
+		const observe = jest.fn().mockResolvedValue([
+			{
+				scopeKind: 'thread',
+				scopeId: 't-obs',
+				kind: 'observation',
+				payload: { text: 'User prefers concise answers.' },
+				durationMs: null,
+				schemaVersion: 1,
+				createdAt: new Date(),
+			},
+		]);
+		const compact = jest.fn().mockResolvedValue({
+			content: '# Thread memory\n- User preferences: concise answers',
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'obs-writer',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+			workingMemory: {
+				template: '# Thread memory\n- User preferences:',
+				structured: false,
+				scope: 'thread',
+			},
+			observationalMemory: { observe, compact, compactionThreshold: 1, sync: true },
+		});
+
+		await runtime.generate('remember that I like concise answers', {
+			persistence: { threadId: 't-obs', resourceId: 'u-1' },
+		});
+
+		expect(observe).toHaveBeenCalledTimes(1);
+		expect(compact).toHaveBeenCalledTimes(1);
+		expect(
+			await store.getWorkingMemory({ threadId: 't-obs', resourceId: 'u-1', scope: 'thread' }),
+		).toBe('# Thread memory\n- User preferences: concise answers');
+		expect(await store.getObservations({ scopeKind: 'thread', scopeId: 't-obs' })).toEqual([]);
+	});
+
+	it('does not run when observational memory is not configured', async () => {
+		const store = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'obs-disabled',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+			workingMemory: {
+				template: '# Thread memory',
+				structured: false,
+				scope: 'thread',
+			},
+		});
+
+		await runtime.generate('hi', { persistence: { threadId: 't-none', resourceId: 'u-1' } });
+
+		expect(await store.getCursor('thread', 't-none')).toBeNull();
 	});
 });

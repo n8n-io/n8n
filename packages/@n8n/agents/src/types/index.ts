@@ -70,17 +70,22 @@ export type {
 export type {
 	BuiltObservationStore,
 	CompactFn,
-	FormatContextFn,
 	NewObservation,
 	Observation,
+	ObservationCategory,
 	ObservationCursor,
+	ObservationGapContext,
 	ObservationLockHandle,
 	ObservationalMemoryConfig,
+	ObservationalMemoryTrigger,
 	ObserveFn,
-	ResolveObservationalScope,
 	ScopeKind,
 } from './sdk/observation';
-export { OBSERVATION_SCHEMA_VERSION } from './sdk/observation';
+export {
+	DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+	OBSERVATION_CATEGORIES,
+	OBSERVATION_SCHEMA_VERSION,
+} from './sdk/observation';
 
 export type {
 	EvalInput,

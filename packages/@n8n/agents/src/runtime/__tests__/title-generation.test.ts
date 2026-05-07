@@ -1,7 +1,7 @@
 import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
-import { generateTitleFromMessage } from '../runtime/title-generation';
+import { generateTitleFromMessage } from '../title-generation';
 
 type GenerateTextCall = {
 	messages: Array<{ role: string; content: string }>;

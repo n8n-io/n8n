@@ -4,10 +4,20 @@ import { InMemoryMemory } from '../runtime/memory-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
+	BuiltObservationStore,
 	MemoryConfig,
+	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
+import { DEFAULT_OBSERVATION_GAP_THRESHOLD_MS } from '../types';
+
+const DEFAULT_OBSERVATION_LOCK_TTL_MS = 30_000;
+const DEFAULT_OBSERVATION_COMPACTION_THRESHOLD = 5;
+
+function hasObservationStore(memory: BuiltMemory): memory is BuiltMemory & BuiltObservationStore {
+	return typeof (memory as Partial<BuiltObservationStore>).appendObservations === 'function';
+}
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
@@ -42,6 +52,8 @@ export class Memory {
 	private memoryBackend?: BuiltMemory;
 
 	private titleGenerationConfig?: TitleGenerationConfig;
+
+	private observationalMemoryConfig?: ObservationalMemoryConfig;
 
 	/** The configured number of recent messages to include. */
 	get lastMessageCount(): number {
@@ -145,6 +157,19 @@ export class Memory {
 	}
 
 	/**
+	 * Enable observational memory: an out-of-band observer + compactor that
+	 * maintains thread-scoped working memory after turns.
+	 *
+	 * The configured storage backend must implement
+	 * {@link BuiltObservationStore} (e.g. SqliteMemory or n8n's N8nMemory);
+	 * `.build()` throws otherwise.
+	 */
+	observationalMemory(config: ObservationalMemoryConfig = {}): this {
+		this.observationalMemoryConfig = config;
+		return this;
+	}
+
+	/**
 	 * Validate configuration and produce a `MemoryConfig`.
 	 *
 	 * @throws if both `.structured()` and `.freeform()` are used
@@ -182,6 +207,12 @@ export class Memory {
 			}
 		}
 
+		if (this.observationalMemoryConfig && !hasObservationStore(memory)) {
+			throw new Error(
+				"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. SqliteMemory or n8n's N8nMemory).",
+			);
+		}
+
 		let workingMemory: MemoryConfig['workingMemory'];
 		if (this.workingMemorySchema) {
 			workingMemory = {
@@ -204,12 +235,43 @@ export class Memory {
 			};
 		}
 
+		if (this.observationalMemoryConfig && !workingMemory) {
+			throw new Error(
+				'Observational memory requires working memory. Add .freeform(template) or .structured(schema) before .observationalMemory().',
+			);
+		}
+
+		if (this.observationalMemoryConfig && !memory.saveWorkingMemory) {
+			throw new Error(
+				'Observational memory requires a storage backend that implements saveWorkingMemory().',
+			);
+		}
+
+		const observationalMemory: ObservationalMemoryConfig | undefined = this
+			.observationalMemoryConfig
+			? {
+					...this.observationalMemoryConfig,
+					lockTtlMs: this.observationalMemoryConfig.lockTtlMs ?? DEFAULT_OBSERVATION_LOCK_TTL_MS,
+					compactionThreshold:
+						this.observationalMemoryConfig.compactionThreshold ??
+						DEFAULT_OBSERVATION_COMPACTION_THRESHOLD,
+					trigger: this.observationalMemoryConfig.trigger ?? { type: 'per-turn' },
+					gapThresholdMs:
+						this.observationalMemoryConfig.gapThresholdMs ??
+						(this.observationalMemoryConfig.trigger?.type === 'idle-timer'
+							? this.observationalMemoryConfig.trigger.gapThresholdMs
+							: undefined) ??
+						DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+				}
+			: undefined;
+
 		return {
 			memory,
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
 			titleGeneration: this.titleGenerationConfig,
+			observationalMemory,
 		};
 	}
 }

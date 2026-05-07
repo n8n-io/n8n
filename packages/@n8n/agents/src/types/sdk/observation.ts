@@ -12,6 +12,31 @@ import type { JSONValue } from '../utils/json';
  */
 export const OBSERVATION_SCHEMA_VERSION = 1;
 
+/** Default inactivity period that produces an explicit temporal-gap row. */
+export const DEFAULT_OBSERVATION_GAP_THRESHOLD_MS = 60 * 60_000;
+
+export const OBSERVATION_CATEGORIES = [
+	'facts',
+	'preferences',
+	'goal',
+	'state',
+	'active_items',
+	'decisions',
+	'follow_ups',
+	'continuity',
+	'superseded',
+	'other',
+] as const;
+
+export type ObservationCategory = (typeof OBSERVATION_CATEGORIES)[number];
+
+export interface ObservationGapContext {
+	durationMs: number;
+	text: string;
+	previousObservedAt: Date;
+	nextMessageAt: Date;
+}
+
 /**
  * Scope an observation belongs to. v1 writes only `'thread'`; the others are
  * reserved so future resource- and agent-scoped observers are a behavioral
@@ -68,6 +93,7 @@ export type ObserveFn = (ctx: {
 	resourceId: string;
 	now: Date;
 	trigger: ObservationalMemoryTrigger;
+	gap: ObservationGapContext | null;
 	telemetry: BuiltTelemetry | undefined;
 }) => Promise<NewObservation[]>;
 
@@ -184,6 +210,8 @@ export interface ObservationalMemoryConfig {
 	trigger?: ObservationalMemoryTrigger;
 	/** Queue size that triggers compaction into the thread working-memory document. @default 5 */
 	compactionThreshold?: number;
+	/** Inactivity duration that creates a runtime-owned gap row. @default 60 * 60_000 */
+	gapThresholdMs?: number;
 	/** Replaces the SDK reference observer system prompt. */
 	observerPrompt?: string;
 	/** Replaces the SDK reference compactor system prompt. */

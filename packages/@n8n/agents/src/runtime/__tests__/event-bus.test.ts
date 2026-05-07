@@ -1,4 +1,4 @@
-import { AgentEventBus } from '../runtime/event-bus';
+import { AgentEventBus } from '../event-bus';
 
 describe('AgentEventBus', () => {
 	describe('resetAbort', () => {

@@ -23,7 +23,17 @@ export type AgentEventData =
 			result: unknown;
 			isError: boolean;
 	  }
-	| { type: AgentEvent.Error; message: string; error: unknown };
+	| {
+			type: AgentEvent.Error;
+			message: string;
+			error: unknown;
+			/**
+			 * Optional tag for callers wiring up multiple background sources
+			 * (e.g. the observer/compactor). Absent on the main agent loop's
+			 * own errors.
+			 */
+			source?: 'observer' | 'compactor';
+	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;
 
