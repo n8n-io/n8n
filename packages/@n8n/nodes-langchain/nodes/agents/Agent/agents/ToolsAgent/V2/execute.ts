@@ -88,13 +88,6 @@ function isExecuteFunctions(
 	return 'getExecuteData' in context;
 }
 
-const MAX_AGENT_FAILURE_MESSAGE_LENGTH = 1024;
-
-function truncateAgentFailureMessage(message: string): string {
-	if (message.length <= MAX_AGENT_FAILURE_MESSAGE_LENGTH) return message;
-	return message.slice(0, MAX_AGENT_FAILURE_MESSAGE_LENGTH);
-}
-
 function applyAgentTracingMetadata(
 	context: IExecuteFunctions | ISupplyDataFunctions,
 	stats: {
@@ -102,7 +95,7 @@ function applyAgentTracingMetadata(
 		failedItems: number;
 		totalItems: number;
 		streamingEnabled: boolean;
-		failureMessage?: string;
+		failureType?: string;
 		memoryLoads?: number;
 	},
 ): void {
@@ -116,10 +109,10 @@ function applyAgentTracingMetadata(
 		'ai.agent.tool_calls.total': stats.toolCalls,
 		'ai.agent.memory.loads': stats.memoryLoads ?? 0,
 		'ai.agent.memory.saves': 0,
-		'ai.agent.execution.succeeded': stats.failureMessage === undefined,
+		'ai.agent.execution.succeeded': stats.failureType === undefined,
 	};
-	if (stats.failureMessage !== undefined) {
-		tracing['ai.agent.failure.message'] = truncateAgentFailureMessage(stats.failureMessage);
+	if (stats.failureType !== undefined) {
+		tracing['ai.agent.failure.type'] = stats.failureType;
 	}
 
 	context.setMetadata({ tracing });
@@ -240,7 +233,7 @@ export async function toolsAgentExecute(
 	let failedItems = 0;
 	let totalItems = 0;
 	let enableStreaming = true;
-	let failureMessage: string | undefined;
+	let failureType: string | undefined;
 	let memoryLoads = 0;
 
 	try {
@@ -442,7 +435,8 @@ export async function toolsAgentExecute(
 
 		return [returnData];
 	} catch (error) {
-		failureMessage = error instanceof Error ? error.message : String(error);
+		failureType =
+			error instanceof Error ? error.name || error.constructor.name || 'Error' : typeof error;
 		throw error;
 	} finally {
 		applyAgentTracingMetadata(this, {
@@ -450,7 +444,7 @@ export async function toolsAgentExecute(
 			failedItems,
 			totalItems,
 			streamingEnabled: enableStreaming,
-			failureMessage,
+			failureType,
 			memoryLoads,
 		});
 	}

@@ -16,13 +16,6 @@ function isExecuteFunctions(
 	return 'getExecuteData' in context;
 }
 
-const MAX_AGENT_FAILURE_MESSAGE_LENGTH = 1024;
-
-function truncateAgentFailureMessage(message: string): string {
-	if (message.length <= MAX_AGENT_FAILURE_MESSAGE_LENGTH) return message;
-	return message.slice(0, MAX_AGENT_FAILURE_MESSAGE_LENGTH);
-}
-
 function countIntermediateSteps(returnData: INodeExecutionData[]): number {
 	let total = 0;
 	for (const item of returnData) {
@@ -75,7 +68,7 @@ export async function toolsAgentExecute(
 	let iterationCount = 0;
 	let itemsTotal = 0;
 	let enableStreaming = true;
-	let failureMessage: string | undefined;
+	let failureType: string | undefined;
 	let memoryLoads = 0;
 	let memorySaves = 0;
 
@@ -140,7 +133,8 @@ export async function toolsAgentExecute(
 		// Otherwise return execution data
 		return [returnData];
 	} catch (error) {
-		failureMessage = error instanceof Error ? error.message : String(error);
+		failureType =
+			error instanceof Error ? error.name || error.constructor.name || 'Error' : typeof error;
 		throw error;
 	} finally {
 		if (isExecuteFunctions(this)) {
@@ -154,10 +148,10 @@ export async function toolsAgentExecute(
 				'ai.agent.iteration.count': iterationCount,
 				'ai.agent.memory.loads': memoryLoads,
 				'ai.agent.memory.saves': memorySaves,
-				'ai.agent.execution.succeeded': failureMessage === undefined,
+				'ai.agent.execution.succeeded': failureType === undefined,
 			};
-			if (failureMessage !== undefined) {
-				tracing['ai.agent.failure.message'] = truncateAgentFailureMessage(failureMessage);
+			if (failureType !== undefined) {
+				tracing['ai.agent.failure.type'] = failureType;
 			}
 			this.setMetadata({ tracing });
 		}

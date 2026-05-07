@@ -408,7 +408,7 @@ describe('ExecutionLevelTracer', () => {
 				outputItemCount: 0,
 				customAttributes: {
 					'ai.agent.version': 'v3',
-					'ai.agent.failure.message': 'Max iterations reached',
+					'ai.agent.failure.type': 'NodeOperationError',
 				},
 				error: {
 					message: 'agent failed',
@@ -427,8 +427,8 @@ describe('ExecutionLevelTracer', () => {
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
 			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.version']).toBe('v3');
-			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.failure.message']).toBe(
-				'Max iterations reached',
+			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.failure.type']).toBe(
+				'NodeOperationError',
 			);
 		});
 	});
