@@ -39,11 +39,11 @@ const classes = computed(() => {
 });
 
 const sizesInPixels: Record<IconSize, number> = {
-	xsmall: 10,
-	small: 12,
-	medium: 14,
-	large: 16,
-	xlarge: 20,
+	xsmall: 12,
+	small: 14,
+	medium: 16,
+	large: 20,
+	xlarge: 24,
 	xxlarge: 40,
 };
 
