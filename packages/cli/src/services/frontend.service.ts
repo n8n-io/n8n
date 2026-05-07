@@ -698,26 +698,21 @@ export class FrontendService {
 				credential.__skipManagedCreation = true;
 			}
 
-			// JWE fields on `oAuth2Api` are baked into nodes-base's pre-rendered
-			// credentials.json by lazy loading, so feature gating and the
-			// instance-specific JWKS URI have to be applied here at runtime.
-			if (credential.name === 'oAuth2Api' && credential.properties) {
-				const isOAuth2JweEnabled = process.env.N8N_ENV_FEAT_OAUTH2_JWE === 'true';
-				if (!isOAuth2JweEnabled) {
-					credential.properties = credential.properties.filter(
-						(property) => property.name !== 'jweEnabled' && property.name !== 'jwksUriNotice',
-					);
-				} else {
-					const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
-					credential.properties = credential.properties.map((property) =>
-						property.name === 'jwksUriNotice'
-							? {
-									...property,
-									displayName: `Provide this JWKS URI to your IdP so it can encrypt tokens to this instance's public key: \`${jwksUri}\``,
-								}
-							: property,
-					);
-				}
+			// Inject the per-instance JWKS URI as the default of any `jwksUri`
+			// property on `oAuth2Api` itself or any credential that extends it
+			// and explicitly re-declares the field. Inheritance is blocked by
+			// `doNotInherit: true` on both `jweEnabled` and `jwksUri` so that
+			// extending credentials don't silently inherit half a dependency
+			// pair (which would crash `getParameterResolveOrder`); custom
+			// JWE-aware OAuth2 extensions can re-declare both fields together.
+			const isOAuth2Credential =
+				credential.name === 'oAuth2Api' ||
+				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
+			if (isOAuth2Credential && credential.properties) {
+				const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+				credential.properties = credential.properties.map((property) =>
+					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
+				);
 			}
 		}
 	}
