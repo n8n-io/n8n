@@ -1552,9 +1552,9 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 			<RedactionMembersModal
-				v-if="workflow?.homeProject?.id"
+				v-if="workflowDocumentStore?.homeProject?.id"
 				:open="redactionMembersModalOpen"
-				:project-id="workflow.homeProject.id"
+				:project-id="workflowDocumentStore?.homeProject?.id"
 				@update:open="redactionMembersModalOpen = $event"
 			/>
 		</template>
