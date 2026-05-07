@@ -2,6 +2,7 @@ import { reactive, computed } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
+	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
@@ -17,7 +18,12 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	type INodeExecutionData,
+	type ITaskData,
+	type ITaskMetadata,
+} from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
@@ -1390,32 +1396,20 @@ describe('RunData', () => {
 
 		workflowsStore.workflow.id = testWorkflowId;
 
-		workflowsStore.setWorkflowExecutionData({
-			id: '1',
-			finished: true,
-			mode: 'trigger',
-			status: 'success',
-			startedAt: new Date(),
-			createdAt: new Date(),
-			workflowData: {
-				id: '1',
-				name: 'Test Workflow',
-				versionId: '1',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				active: false,
-				nodes: [],
-				connections: {},
-			},
-			data: {
-				resultData: {
-					runData: {
-						'Test Node': runs ?? [defaultRun],
+		workflowsStore.setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({
+				mode: 'trigger',
+				status: 'success',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Test Node': runs ?? [defaultRun],
+						},
 					},
-				},
-				...(redactionInfo ? { redactionInfo } : {}),
-			},
-		} as unknown as IExecutionResponse);
+					...(redactionInfo ? { redactionInfo } : {}),
+				}),
+			}),
+		);
 
 		if (lastSuccessfulExecution) {
 			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
