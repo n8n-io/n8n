@@ -1,10 +1,10 @@
 import type { z } from 'zod';
 
 import { InMemoryMemory } from '../runtime/memory-store';
+import { hasObservationStore } from '../runtime/observation-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
-	BuiltObservationStore,
 	MemoryConfig,
 	ObservationalMemoryConfig,
 	SemanticRecallConfig,
@@ -14,10 +14,6 @@ import { DEFAULT_OBSERVATION_GAP_THRESHOLD_MS } from '../types';
 
 const DEFAULT_OBSERVATION_LOCK_TTL_MS = 30_000;
 const DEFAULT_OBSERVATION_COMPACTION_THRESHOLD = 5;
-
-function hasObservationStore(memory: BuiltMemory): memory is BuiltMemory & BuiltObservationStore {
-	return typeof (memory as Partial<BuiltObservationStore>).appendObservations === 'function';
-}
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
@@ -238,6 +234,12 @@ export class Memory {
 		if (this.observationalMemoryConfig && !workingMemory) {
 			throw new Error(
 				'Observational memory requires working memory. Add .freeform(template) or .structured(schema) before .observationalMemory().',
+			);
+		}
+
+		if (this.observationalMemoryConfig && workingMemory?.scope !== 'thread') {
+			throw new Error(
+				"Observational memory requires thread-scoped working memory. Add .scope('thread') before .observationalMemory().",
 			);
 		}
 
