@@ -47,7 +47,7 @@ import {
 	TerminalOutcomeStorage,
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
-	ANTHROPIC_THINKING,
+	EXTENDED_THINKING,
 	BuilderSandboxSessionRegistry,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
@@ -2810,7 +2810,7 @@ export class InstanceAiService {
 								providerOptions: {
 									anthropic: {
 										cacheControl: { type: 'ephemeral' },
-										thinking: ANTHROPIC_THINKING,
+										thinking: EXTENDED_THINKING,
 									},
 								},
 							},
@@ -2837,7 +2837,7 @@ export class InstanceAiService {
 							providerOptions: {
 								anthropic: {
 									cacheControl: { type: 'ephemeral' },
-									thinking: ANTHROPIC_THINKING,
+									thinking: EXTENDED_THINKING,
 								},
 							},
 						},

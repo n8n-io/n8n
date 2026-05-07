@@ -22,7 +22,7 @@ import {
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { ANTHROPIC_THINKING } from '../../constants/thinking';
+import { EXTENDED_THINKING } from '../../constants/thinking';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -137,7 +137,7 @@ export async function startDataTableAgentTask(
 						providerOptions: {
 							anthropic: {
 								cacheControl: { type: 'ephemeral' },
-								thinking: ANTHROPIC_THINKING,
+								thinking: EXTENDED_THINKING,
 							},
 						},
 						...(llmStepTraceHooks?.executionOptions ?? {}),

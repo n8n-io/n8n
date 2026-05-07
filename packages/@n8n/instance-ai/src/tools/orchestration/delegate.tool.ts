@@ -18,7 +18,7 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { ANTHROPIC_THINKING } from '../../constants/thinking';
+import { EXTENDED_THINKING } from '../../constants/thinking';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
@@ -186,7 +186,7 @@ export async function startDetachedDelegateTask(
 						providerOptions: {
 							anthropic: {
 								cacheControl: { type: 'ephemeral' },
-								thinking: ANTHROPIC_THINKING,
+								thinking: EXTENDED_THINKING,
 							},
 						},
 						...(llmStepTraceHooks?.executionOptions ?? {}),
@@ -343,7 +343,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 							providerOptions: {
 								anthropic: {
 									cacheControl: { type: 'ephemeral' },
-									thinking: ANTHROPIC_THINKING,
+									thinking: EXTENDED_THINKING,
 								},
 							},
 							...(llmStepTraceHooks?.executionOptions ?? {}),

@@ -34,7 +34,7 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { ANTHROPIC_THINKING } from '../../constants/thinking';
+import { EXTENDED_THINKING } from '../../constants/thinking';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
@@ -744,7 +744,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							providerOptions: {
 								anthropic: {
 									cacheControl: { type: 'ephemeral' },
-									thinking: ANTHROPIC_THINKING,
+									thinking: EXTENDED_THINKING,
 								},
 							},
 							...(llmStepTraceHooks?.executionOptions ?? {}),
