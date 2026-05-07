@@ -295,7 +295,11 @@ export async function executeAgent(
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
-	const agents = await agentsService.findByUser(userId);
+	// Only published agents are runnable from a workflow — see the publish
+	// guard in `executeForWorkflow`. Filtering here keeps unpublished agents
+	// out of the MessageAnAgent dropdown so users don't pick one that would
+	// fail at execution time.
+	const agents = await agentsService.findPublishedByUser(userId);
 	return agents.map((agent) => ({ id: agent.id, name: agent.name }));
 }
 
