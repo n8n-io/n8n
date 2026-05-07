@@ -87,8 +87,7 @@ export async function createSandbox(
 
 	// Local fallback for development — no isolation, runs commands directly on host.
 	// Block in production to prevent unrestricted host command execution.
-	// Allow when E2E_TESTS=true so the eval Docker image (NODE_ENV=production) can run local mode.
-	if (process.env.NODE_ENV === 'production' && process.env.E2E_TESTS !== 'true') {
+	if (process.env.NODE_ENV === 'production') {
 		throw new Error(
 			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
 		);

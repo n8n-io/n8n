@@ -205,22 +205,6 @@ describe('createSandbox', () => {
 		);
 	});
 
-	it('should allow "local" provider in production when E2E_TESTS=true', async () => {
-		const originalE2E = process.env.E2E_TESTS;
-		process.env.NODE_ENV = 'production';
-		process.env.E2E_TESTS = 'true';
-		try {
-			const config: SandboxConfig = { enabled: true, provider: 'local' };
-
-			const result = await createSandbox(config);
-
-			expect(result).toBeInstanceOf(LocalSandbox);
-		} finally {
-			if (originalE2E === undefined) delete process.env.E2E_TESTS;
-			else process.env.E2E_TESTS = originalE2E;
-		}
-	});
-
 	it('should return an N8nSandboxServiceSandbox for "n8n-sandbox" provider', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
