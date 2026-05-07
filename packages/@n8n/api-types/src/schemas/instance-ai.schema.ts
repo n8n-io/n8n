@@ -930,9 +930,19 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 };
 
-/** Permission keys that remain active when branchReadOnly is enabled.
- *  When changing this set, also update the read-only section in
- *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+/**
+ * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * This set mirrors n8n's own backend permission model for protected branches:
+ * publish/unpublish, credential delete/update, and workflow update have no
+ * hard backend lockout — only project-scope gates. branchReadOnly is a
+ * UX-level nudge toward the source-control sync workflow, not a global write
+ * block (only data-table mutations have a hard middleware lockout). Trimming
+ * this set would make the AI stricter than human users on the same instance.
+ *
+ * When changing this set, also update the read-only section in
+ * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
+ */
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'readFilesystem',
 	'fetchUrl',

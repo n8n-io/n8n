@@ -2844,6 +2844,7 @@
 	"settings.communityNodes.uninstallAction.label": "Uninstall package",
 	"settings.communityNodes.upToDate.tooltip": "You are up to date",
 	"settings.communityNodes.failedToLoad.tooltip": "There is a problem with this package, try uninstalling it then reinstalling to resolve this issue",
+	"settings.communityNodes.managedByEnv": "Community packages are managed via environment variables and cannot be modified from the UI.",
 	"settings.communityNodes.fetchError.title": "Problem fetching installed packages",
 	"settings.communityNodes.fetchError.message": "There may be a problem with your internet connection or your n8n instance",
 	"settings.communityNodes.installModal.title": "Install community nodes",
