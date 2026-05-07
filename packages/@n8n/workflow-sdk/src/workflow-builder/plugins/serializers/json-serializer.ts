@@ -16,7 +16,12 @@ import type {
 	GraphNode,
 } from '../../../types/base';
 import { START_X, DEFAULT_Y } from '../../constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from '../../layout-utils';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	resolveStickyWrappingBoxes,
+	type StickyWrappingBox,
+} from '../../layout-utils';
 import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
@@ -41,6 +46,7 @@ function serializeNode(
 	mapKey: string,
 	graphNode: GraphNode,
 	nodePositions: Map<string, [number, number]>,
+	stickyOverride?: StickyWrappingBox,
 ): NodeJSON | undefined {
 	const instance = graphNode.instance;
 
@@ -50,7 +56,12 @@ function serializeNode(
 	}
 
 	const config = instance.config ?? {};
-	const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
+	// Sticky-wrapping override takes precedence: a sticky created via
+	// `sticky(content, [nodes])` without explicit position should snap to the
+	// post-layout bbox of its wrapped nodes, not the constructor-time guess.
+	const position: [number, number] = stickyOverride?.position ??
+		config.position ??
+		nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
 	// Determine node name:
 	// - If config has _originalName, use that (preserves undefined for sticky notes from fromJSON)
@@ -84,6 +95,13 @@ function serializeNode(
 			const normalized = normalizeResourceLocators(parsed);
 			serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
 		}
+	}
+
+	// Sticky wrapping: snap dimensions to the post-layout bbox of wrapped nodes.
+	if (stickyOverride) {
+		serializedParams = serializedParams ?? {};
+		serializedParams.width = stickyOverride.width;
+		serializedParams.height = stickyOverride.height;
 	}
 
 	const n8nNode: NodeJSON = {
@@ -212,10 +230,21 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			? calculateNodePositionsDagre(ctx.nodes)
 			: calculateNodePositions(ctx.nodes);
 
+		// Resolve final bbox for stickies that wrap a set of named nodes.
+		// `sticky(content, [a, b])` snapshots wrapped-node positions at construction —
+		// usually `[0, 0]`s before layout — so without this every auto-wrapping sticky
+		// in the workflow would stack on top of each other at the origin.
+		const stickyOverrides = resolveStickyWrappingBoxes(ctx.nodes, nodePositions);
+
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
 			// Serialize node
-			const serializedNode = serializeNode(mapKey, graphNode, nodePositions);
+			const serializedNode = serializeNode(
+				mapKey,
+				graphNode,
+				nodePositions,
+				stickyOverrides.get(mapKey),
+			);
 			if (!serializedNode) continue;
 
 			nodes.push(serializedNode);

@@ -21,6 +21,7 @@ import {
 	type IfElseTarget,
 	type SwitchCaseTarget,
 } from '../../types/base';
+import { STICKY_PADDING } from '../constants';
 import {
 	isSwitchCaseComposite,
 	isIfElseComposite,
@@ -985,7 +986,6 @@ export function trigger<TTrigger extends TriggerInput>(
 // Default node dimensions for bounding box calculation
 const DEFAULT_NODE_WIDTH = 200;
 const DEFAULT_NODE_HEIGHT = 100;
-const STICKY_PADDING = 50;
 
 /**
  * Calculate bounding box around a set of nodes
@@ -1050,6 +1050,13 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 	readonly config: NodeConfig;
 	readonly id: string;
 	readonly name: string;
+	/**
+	 * Names of nodes this sticky was constructed to wrap. Layout uses this to
+	 * recompute the sticky's bbox from the wrapped nodes' final positions, so a
+	 * sticky created before its referenced nodes had positions doesn't end up
+	 * stacked at the origin.
+	 */
+	readonly wrappedNodeNames?: string[];
 
 	constructor(
 		content: string,
@@ -1063,6 +1070,26 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 
 		// If nodes are provided, calculate bounding box to wrap around them
 		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
+
+		// Remember the wrapped node names so layout can recompute the bbox once
+		// those nodes have real positions. The initial bbox above can be all-zeros
+		// when wrapped nodes don't yet have positions at construction time, so
+		// without this the sticky would otherwise stack at the origin.
+		// Skipped when the user supplied an explicit position OR explicit
+		// dimensions — any of those signals "I'm in control of the bbox" and
+		// should suppress auto-wrapping at serialization time.
+		const userControlsBbox =
+			stickyConfig.position !== undefined ||
+			stickyConfig.width !== undefined ||
+			stickyConfig.height !== undefined;
+		if (nodes.length > 0 && !userControlsBbox) {
+			const wrappedNames = nodes
+				.map((n) => n.config?.name ?? n.name)
+				.filter((n): n is string => typeof n === 'string' && n.length > 0);
+			if (wrappedNames.length > 0) {
+				this.wrappedNodeNames = wrappedNames;
+			}
+		}
 
 		this.config = {
 			name: this.name,

@@ -3,7 +3,11 @@
  */
 
 import { GRID_SIZE, STICKY_NODE_TYPE, NODE_SPACING_X, START_X, DEFAULT_Y } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	resolveStickyWrappingBoxes,
+} from './layout-utils';
 import type { GraphNode, ConnectionTarget } from '../types/base';
 
 // Helper to create connection targets
@@ -28,6 +32,25 @@ function createGraphNode(
 			config: position ? { position } : {},
 		} as unknown as GraphNode['instance'],
 		connections,
+	};
+}
+
+// Helper to create a sticky GraphNode that wraps a set of named nodes,
+// matching what `sticky(content, [nodes])` produces in the SDK.
+function createWrappingStickyGraphNode(
+	name: string,
+	wrappedNodeNames: string[],
+	position?: [number, number],
+): GraphNode {
+	return {
+		instance: {
+			type: STICKY_NODE_TYPE,
+			name,
+			version: 1,
+			config: position ? { position } : {},
+			wrappedNodeNames,
+		} as unknown as GraphNode['instance'],
+		connections: new Map([['main', new Map<number, ConnectionTarget[]>()]]),
 	};
 }
 
@@ -419,5 +442,88 @@ describe('calculateNodePositionsDagre', () => {
 			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess
 			expect(positions.get('note')).toEqual([496, 672]);
 		});
+	});
+});
+
+// ===========================================================================
+// resolveStickyWrappingBoxes Tests
+// ===========================================================================
+
+describe('resolveStickyWrappingBoxes', () => {
+	it('produces distinct boxes for stickies wrapping different node sets', () => {
+		// Reproduces the stacked-stickies regression: two auto-wrapping stickies
+		// constructed before any wrapped node had a position. Without resolution,
+		// both default to the origin.
+		const nodes = new Map<string, GraphNode>();
+		nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger'));
+		nodes.set('http', createGraphNode('http', 'n8n-nodes-base.httpRequest'));
+		nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+		nodes.set('note-a', createWrappingStickyGraphNode('note-a', ['trigger', 'http']));
+		nodes.set('note-b', createWrappingStickyGraphNode('note-b', ['set']));
+
+		const finalPositions = new Map<string, [number, number]>([
+			['trigger', [100, 100]],
+			['http', [400, 100]],
+			['set', [800, 200]],
+		]);
+
+		const result = resolveStickyWrappingBoxes(nodes, finalPositions);
+
+		const a = result.get('note-a');
+		const b = result.get('note-b');
+		expect(a).toBeDefined();
+		expect(b).toBeDefined();
+		expect(a!.position).not.toEqual(b!.position);
+	});
+
+	it('falls back to explicit config.position for wrapped nodes', () => {
+		const nodes = new Map<string, GraphNode>();
+		nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger'));
+		// `set` carries an explicit config.position — should be used as-is.
+		nodes.set(
+			'set',
+			createGraphNode(
+				'set',
+				'n8n-nodes-base.set',
+				new Map([['main', new Map<number, ConnectionTarget[]>()]]),
+				[500, 600],
+			),
+		);
+		nodes.set('note', createWrappingStickyGraphNode('note', ['trigger', 'set']));
+
+		const finalPositions = new Map<string, [number, number]>([['trigger', [100, 100]]]);
+
+		const result = resolveStickyWrappingBoxes(nodes, finalPositions);
+
+		const box = result.get('note');
+		expect(box).toBeDefined();
+		// Bounding box must include the explicitly positioned `set` at (500, 600).
+		expect(box!.position[0]).toBeLessThanOrEqual(100);
+		expect(box!.position[1]).toBeLessThanOrEqual(100);
+		expect(box!.position[0] + box!.width).toBeGreaterThanOrEqual(500);
+		expect(box!.position[1] + box!.height).toBeGreaterThanOrEqual(600);
+	});
+
+	it('skips stickies with no wrappedNodeNames', () => {
+		const nodes = new Map<string, GraphNode>();
+		nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger'));
+		// Plain sticky — no wrappedNodeNames, e.g. loaded via fromJSON.
+		nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE, undefined, [50, 50]));
+
+		const result = resolveStickyWrappingBoxes(
+			nodes,
+			new Map<string, [number, number]>([['trigger', [100, 100]]]),
+		);
+
+		expect(result.has('note')).toBe(false);
+	});
+
+	it('skips stickies whose wrapped nodes are not in the graph', () => {
+		const nodes = new Map<string, GraphNode>();
+		nodes.set('note', createWrappingStickyGraphNode('note', ['ghost-1', 'ghost-2']));
+
+		const result = resolveStickyWrappingBoxes(nodes, new Map());
+
+		expect(result.has('note')).toBe(false);
 	});
 });
