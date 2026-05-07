@@ -15,12 +15,21 @@ import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow
 import { logAiEvent } from './log-ai-event';
 import { estimateTokensFromStringList } from './tokenizer/token-estimator';
 
-type TokensUsageParser = (result: LLMResult) => {
+// Normalized token usage returned by TokensUsageParser.
+type TokenUsageResult = {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
+	// Cost may be undefined when the provider returns token counts but no pricing fields.
 	cost?: number;
 };
+
+// Raw provider tokenUsage payload. Some providers report `totalCost` instead of `cost`.
+type ProviderTokenUsageResult = TokenUsageResult & {
+	totalCost?: number;
+};
+
+type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
 
 type RunDetail = {
 	index: number;
@@ -73,13 +82,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
 			const tokenUsage = result?.llmOutput?.tokenUsage as
-				| {
-						completionTokens?: number;
-						promptTokens?: number;
-						totalTokens?: number;
-						cost?: number;
-						totalCost?: number;
-				  }
+				| Partial<ProviderTokenUsageResult>
 				| undefined;
 			const completionTokens = tokenUsage?.completionTokens ?? 0;
 			const promptTokens = tokenUsage?.promptTokens ?? 0;
