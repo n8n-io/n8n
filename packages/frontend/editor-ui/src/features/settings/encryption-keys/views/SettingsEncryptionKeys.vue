@@ -44,7 +44,7 @@ const isConfirmRotateOpen = ref(false);
 const sortOptions = computed<Array<{ value: EncryptionKeySortField; label: string }>>(() => [
 	{ value: 'createdAt', label: i18n.baseText('settings.encryptionKeys.sortBy.activated') },
 	{ value: 'updatedAt', label: i18n.baseText('settings.encryptionKeys.sortBy.archived') },
-	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.type') },
+	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.status') },
 ]);
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {

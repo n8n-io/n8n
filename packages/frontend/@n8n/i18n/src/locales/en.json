@@ -4518,7 +4518,7 @@
 	"settings.encryptionKeys.sortBy.label": "Sort by",
 	"settings.encryptionKeys.sortBy.activated": "Activated",
 	"settings.encryptionKeys.sortBy.archived": "Archived",
-	"settings.encryptionKeys.sortBy.type": "Type",
+	"settings.encryptionKeys.sortBy.status": "Status",
 	"settings.encryptionKeys.filter.title": "Filter",
 	"settings.encryptionKeys.filter.dateRange": "Date range",
 	"settings.encryptionKeys.filter.apply": "Apply",
