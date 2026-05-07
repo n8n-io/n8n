@@ -461,6 +461,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				execution,
 			);
 		} else {
+			currentState.value.trackExecutionId(execution.id);
 			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
 			// Ensure the data is visible through the computed chain.
 			// When activeExecutionId isn't yet pointing at this execution,

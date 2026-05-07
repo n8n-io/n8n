@@ -5,6 +5,7 @@ import { createEventHook } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import {
 	createExecutionDataId,
 	disposeExecutionDataStore,
@@ -85,6 +86,13 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		const selectedTriggerNodeName = ref<string | undefined>();
 		const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 		const lastSuccessfulExecutionId = ref<string | null>(null);
+		/**
+		 * Every execution id ever bound to this workflow's state. Used at
+		 * `resetExecutionState` time to dispose all per-execution data stores
+		 * — including ones rolled out of the `previousExecutionId` slot, which
+		 * the slot-only collection would otherwise miss.
+		 */
+		const trackedExecutionIds = ref<Set<string>>(new Set());
 
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
@@ -93,6 +101,22 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 				action,
 				payload: { workflowId, field },
 			});
+		}
+
+		/**
+		 * Records an execution id as bound to this workflow so its
+		 * per-execution data store gets disposed on `resetExecutionState`.
+		 * Safe to call repeatedly with the same id; ignores `null`/`undefined`
+		 * and the IN_PROGRESS sentinel (the sentinel is disposed unconditionally).
+		 */
+		function trackExecutionId(executionId: string | null | undefined) {
+			if (
+				typeof executionId === 'string' &&
+				executionId.length > 0 &&
+				executionId !== IN_PROGRESS_EXECUTION_ID
+			) {
+				trackedExecutionIds.value.add(executionId);
+			}
 		}
 
 		// --- Read API ---
@@ -198,6 +222,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 				promotePendingExecution(value);
 				return;
 			}
+			trackExecutionId(value);
 			if (value) {
 				previousExecutionId.value = activeExecutionId.value;
 				displayedExecutionId.value = value;
@@ -210,6 +235,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		}
 
 		function setDisplayedExecutionId(value: string | null | undefined) {
+			trackExecutionId(value);
 			displayedExecutionId.value = value;
 			fireChange(
 				value === undefined ? CHANGE_ACTION.DELETE : CHANGE_ACTION.UPDATE,
@@ -218,6 +244,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		}
 
 		function setPendingExecution(value: IExecutionResponse | null) {
+			if (value?.id) trackExecutionId(value.id);
 			pendingExecution.value = value;
 			fireChange(value === null ? CHANGE_ACTION.DELETE : CHANGE_ACTION.UPDATE, 'pendingExecution');
 		}
@@ -225,6 +252,26 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		function setPendingExecutionRunData(runData: IExecutionResponse['data']) {
 			if (!pendingExecution.value) return;
 			pendingExecution.value = { ...pendingExecution.value, data: runData };
+			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
+		}
+
+		/**
+		 * Mirrors stop metadata (status/startedAt/stoppedAt) onto the pending-execution
+		 * scaffold so the UI sees the canceled state when stop is requested before the
+		 * backend assigns a real id. No-op when there is no pending scaffold.
+		 */
+		function applyStopDataToPendingExecution(stopData: {
+			status: IExecutionResponse['status'];
+			startedAt: IExecutionResponse['startedAt'];
+			stoppedAt: IExecutionResponse['stoppedAt'];
+		}) {
+			if (!pendingExecution.value) return;
+			pendingExecution.value = {
+				...pendingExecution.value,
+				status: stopData.status,
+				startedAt: stopData.startedAt,
+				stoppedAt: stopData.stoppedAt,
+			};
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
 		}
 
@@ -238,6 +285,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			const promoted: IExecutionResponse = scaffold
 				? { ...scaffold, id: executionId }
 				: ({ id: executionId } as IExecutionResponse);
+			trackExecutionId(executionId);
 			useExecutionDataStore(createExecutionDataId(executionId)).setExecution(promoted);
 			setActiveExecutionId(executionId);
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
@@ -281,18 +329,21 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 				previousId !== displayedExecutionId.value
 			) {
 				disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(previousId)));
+				trackedExecutionIds.value.delete(previousId);
 			}
 			if (execution === null) {
 				lastSuccessfulExecutionId.value = null;
 				fireChange(CHANGE_ACTION.DELETE, 'lastSuccessfulExecutionId');
 				return;
 			}
+			trackExecutionId(execution.id);
 			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
 			lastSuccessfulExecutionId.value = execution.id;
 			fireChange(CHANGE_ACTION.UPDATE, 'lastSuccessfulExecutionId');
 		}
 
 		function setLastSuccessfulExecutionId(value: string | null) {
+			trackExecutionId(value);
 			lastSuccessfulExecutionId.value = value;
 			fireChange(
 				value === null ? CHANGE_ACTION.DELETE : CHANGE_ACTION.UPDATE,
@@ -376,6 +427,16 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		}
 
 		function resetExecutionState() {
+			// Dispose every per-execution data store ever bound to this workflow,
+			// plus the IN_PROGRESS placeholder (sentinel reused across runs).
+			for (const id of trackedExecutionIds.value) {
+				disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(id)));
+			}
+			trackedExecutionIds.value.clear();
+			disposeExecutionDataStore(
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)),
+			);
+
 			activeExecutionId.value = undefined;
 			displayedExecutionId.value = undefined;
 			previousExecutionId.value = undefined;
@@ -416,10 +477,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			getActiveExecutionRunDataByNodeName,
 			resolveExecutionTriggerNodeName,
 			// Write API
+			trackExecutionId,
 			setActiveExecutionId,
 			setDisplayedExecutionId,
 			setPendingExecution,
 			setPendingExecutionRunData,
+			applyStopDataToPendingExecution,
 			promotePendingExecution,
 			clearActiveNodeExecutionData,
 			setExecutionWaitingForWebhook,

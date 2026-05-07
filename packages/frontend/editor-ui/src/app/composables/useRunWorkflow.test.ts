@@ -1237,6 +1237,68 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('stopCurrentExecution()', () => {
+		it('stamps id and clears activeExecutionId before setWorkflowExecutionData when execution finished before stop', async () => {
+			const runWorkflowComposable = useRunWorkflow({ router });
+			const finishedExecution: IExecutionResponse = {
+				id: 'exec-fin',
+				workflowData: createTestWorkflow({ id: 'test-wf-id' }),
+				finished: true,
+				mode: 'manual',
+				status: 'success',
+				startedAt: new Date('2025-04-01T00:00:00.000Z'),
+				stoppedAt: new Date('2025-04-01T00:00:30.000Z'),
+				createdAt: new Date('2025-04-01T00:00:00.000Z'),
+				data: {
+					resultData: {
+						runData: {},
+					},
+				} as IExecutionResponse['data'],
+			};
+			const setActiveExecutionIdSpy = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setWorkflowExecutionDataSpy = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+
+			// Stop API throws because the execution already finished server-side.
+			const { useExecutionsStore } = await import(
+				'@/features/execution/executions/executions.store'
+			);
+			const executionsStore = useExecutionsStore();
+			vi.spyOn(executionsStore, 'stopCurrentExecution').mockRejectedValue(
+				new Error('Execution already finished'),
+			);
+			// getExecution returns the canonical finished snapshot (with id).
+			vi.spyOn(workflowsStore, 'getExecution').mockResolvedValue(finishedExecution);
+
+			workflowState.setActiveExecutionId('exec-fin');
+
+			(mockDocumentStore as unknown as { getSnapshot: () => unknown }).getSnapshot = vi
+				.fn()
+				.mockReturnValue({ id: 'test-wf-id' });
+
+			void runWorkflowComposable.stopCurrentExecution();
+
+			await waitFor(() =>
+				expect(setWorkflowExecutionDataSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'exec-fin', finished: true }),
+				),
+			);
+
+			// activeExecutionId(undefined) must run BEFORE setWorkflowExecutionData(executedData)
+			// so the facade's else-branch sets displayedExecutionId to the freshly-fetched id.
+			const clearActiveCallIdx = setActiveExecutionIdSpy.mock.invocationCallOrder.findIndex(
+				(_order, idx) => setActiveExecutionIdSpy.mock.calls[idx][0] === undefined,
+			);
+			const setDataCallIdx = setWorkflowExecutionDataSpy.mock.invocationCallOrder.findIndex(
+				(_order, idx) =>
+					(setWorkflowExecutionDataSpy.mock.calls[idx][0] as IExecutionResponse | null)?.id ===
+					'exec-fin',
+			);
+			expect(clearActiveCallIdx).toBeGreaterThanOrEqual(0);
+			expect(setDataCallIdx).toBeGreaterThanOrEqual(0);
+			expect(setActiveExecutionIdSpy.mock.invocationCallOrder[clearActiveCallIdx]).toBeLessThan(
+				setWorkflowExecutionDataSpy.mock.invocationCallOrder[setDataCallIdx],
+			);
+		});
+
 		it('should not prematurely call markExecutionAsStopped() while execution status is still "running"', async () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 			const executionData: IExecutionResponse = {

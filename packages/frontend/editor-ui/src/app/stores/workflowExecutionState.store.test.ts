@@ -18,6 +18,7 @@ import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/execu
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ExecutionSummary } from 'n8n-workflow';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 function makeExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return createTestWorkflowExecutionResponse({
@@ -503,6 +504,116 @@ describe('workflowExecutionState.store', () => {
 			expect(stateStore.selectedTriggerNodeName).toBeUndefined();
 			expect(stateStore.currentWorkflowExecutions).toEqual([]);
 			expect(stateStore.lastSuccessfulExecutionId).toBeNull();
+		});
+
+		it('disposes per-execution data stores for every tracked id', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+
+			// Three sequential runs — exec-1 rolls out of previousExecutionId after exec-3.
+			stateStore.setActiveExecutionId('exec-1');
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				makeExecution({ id: 'exec-1' }),
+			);
+			stateStore.setActiveExecutionId('exec-2');
+			useExecutionDataStore(createExecutionDataId('exec-2')).setExecution(
+				makeExecution({ id: 'exec-2' }),
+			);
+			stateStore.setActiveExecutionId('exec-3');
+			useExecutionDataStore(createExecutionDataId('exec-3')).setExecution(
+				makeExecution({ id: 'exec-3' }),
+			);
+
+			stateStore.resetExecutionState();
+
+			// All three stores must be disposed — even exec-1 which is in no slot.
+			expect(useExecutionDataStore(createExecutionDataId('exec-1')).execution).toBeNull();
+			expect(useExecutionDataStore(createExecutionDataId('exec-2')).execution).toBeNull();
+			expect(useExecutionDataStore(createExecutionDataId('exec-3')).execution).toBeNull();
+		});
+
+		it('disposes the IN_PROGRESS placeholder store', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.setPendingExecution(
+				makeExecution({ id: IN_PROGRESS_EXECUTION_ID, status: 'running' }),
+			);
+			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+				makeExecution({ id: IN_PROGRESS_EXECUTION_ID }),
+			);
+
+			stateStore.resetExecutionState();
+
+			expect(
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution,
+			).toBeNull();
+		});
+	});
+
+	describe('trackExecutionId', () => {
+		it('tracks ids written via setActiveExecutionId across rolling runs', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+
+			stateStore.setActiveExecutionId('exec-1');
+			stateStore.setActiveExecutionId('exec-2');
+			stateStore.setActiveExecutionId('exec-3');
+
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				makeExecution({ id: 'exec-1' }),
+			);
+			useExecutionDataStore(createExecutionDataId('exec-2')).setExecution(
+				makeExecution({ id: 'exec-2' }),
+			);
+			useExecutionDataStore(createExecutionDataId('exec-3')).setExecution(
+				makeExecution({ id: 'exec-3' }),
+			);
+
+			stateStore.resetExecutionState();
+
+			// All three are disposed even though exec-1 is in no slot after run 3.
+			expect(useExecutionDataStore(createExecutionDataId('exec-1')).execution).toBeNull();
+			expect(useExecutionDataStore(createExecutionDataId('exec-2')).execution).toBeNull();
+			expect(useExecutionDataStore(createExecutionDataId('exec-3')).execution).toBeNull();
+		});
+
+		it('tracks ids written via setLastSuccessfulExecution', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.setLastSuccessfulExecution(
+				makeExecution({ id: 'exec-success', finished: true, status: 'success' }),
+			);
+
+			stateStore.resetExecutionState();
+
+			expect(useExecutionDataStore(createExecutionDataId('exec-success')).execution).toBeNull();
+		});
+
+		it('does not track the IN_PROGRESS placeholder id (handled separately)', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.trackExecutionId(IN_PROGRESS_EXECUTION_ID);
+			stateStore.trackExecutionId('real-exec');
+
+			useExecutionDataStore(createExecutionDataId('real-exec')).setExecution(
+				makeExecution({ id: 'real-exec' }),
+			);
+			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+				makeExecution({ id: IN_PROGRESS_EXECUTION_ID }),
+			);
+
+			stateStore.resetExecutionState();
+
+			// Both stores get disposed: real-exec via tracked set, IN_PROGRESS unconditionally.
+			expect(useExecutionDataStore(createExecutionDataId('real-exec')).execution).toBeNull();
+			expect(
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution,
+			).toBeNull();
+		});
+
+		it('ignores null and undefined ids', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			stateStore.trackExecutionId(null);
+			stateStore.trackExecutionId(undefined);
+			stateStore.trackExecutionId('');
+
+			// resetExecutionState must complete without error and produce no surprising side effects.
+			expect(() => stateStore.resetExecutionState()).not.toThrow();
 		});
 	});
 
