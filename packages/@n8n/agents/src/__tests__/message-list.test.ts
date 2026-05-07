@@ -1,6 +1,6 @@
 import { AgentMessageList } from '../runtime/message-list';
 import { isLlmMessage } from '../sdk/message';
-import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 
 function makeUserMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };
@@ -172,5 +172,120 @@ describe('AgentMessageList — deserialize', () => {
 		const [newMsg] = list2.turnDelta();
 		expect(newMsg.createdAt).toBeInstanceOf(Date);
 		expect(newMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
+	});
+});
+
+// ---------------------------------------------------------------------------
+// setToolCallResult / setToolCallError
+// ---------------------------------------------------------------------------
+
+function makePendingToolCallMsg(toolCallId: string): AgentMessage {
+	return {
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId,
+				toolName: 'my_tool',
+				input: { x: 1 },
+				state: 'pending',
+			},
+		],
+	};
+}
+
+describe('AgentMessageList — setToolCallResult', () => {
+	it('sets state and output on the matching tool-call block', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+
+		const host = list.setToolCallResult('id-1', { ok: true });
+		expect(host).toBeDefined();
+
+		const block = (host as Message).content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(block.state).toBe('resolved');
+		expect((block as ContentToolCall & { state: 'resolved' }).output).toEqual({ ok: true });
+	});
+
+	it('promotes a history-only message into responseDelta after setToolCallResult', () => {
+		const list = new AgentMessageList();
+		const histMsg: AgentDbMessage = {
+			id: 'hist-1',
+			createdAt: new Date('2024-01-01T00:00:01.000Z'),
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-hist',
+					toolName: 'my_tool',
+					input: {},
+					state: 'pending',
+				},
+			],
+		};
+		list.addHistory([histMsg]);
+
+		// Before: not in responseDelta (history only)
+		expect(list.responseDelta()).toHaveLength(0);
+
+		list.setToolCallResult('tc-hist', { done: true });
+
+		// After: promoted to responseDelta
+		const delta = list.responseDelta();
+		expect(delta).toHaveLength(1);
+		const block = (delta[0] as Message).content.find(
+			(c) => c.type === 'tool-call',
+		) as ContentToolCall;
+		expect(block.state).toBe('resolved');
+	});
+
+	it('is a no-op when toolCallId is unknown', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+
+		const result = list.setToolCallResult('unknown-id', { x: 1 });
+		expect(result).toBeUndefined();
+		// List unchanged
+		expect(list.responseDelta()).toHaveLength(1);
+	});
+
+	it('Set semantics make repeated calls idempotent (no duplicate messages)', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+
+		list.setToolCallResult('id-1', { ok: true });
+		list.setToolCallResult('id-1', { ok: true });
+
+		expect(list.responseDelta()).toHaveLength(1);
+	});
+});
+
+describe('AgentMessageList — setToolCallError', () => {
+	it('stringifies errors and clears any prior output', () => {
+		const list = new AgentMessageList();
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'id-1',
+						toolName: 'my_tool',
+						input: {},
+						state: 'resolved',
+						output: { prev: true },
+					},
+				],
+			},
+		]);
+
+		const host = list.setToolCallError('id-1', new Error('boom'));
+		expect(host).toBeDefined();
+
+		const block = (host as Message).content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(block.state).toBe('rejected');
+		expect((block as ContentToolCall & { state: 'rejected' }).error).toBe('Error: boom');
+		// output should be gone
+		expect((block as unknown as { output?: unknown }).output).toBeUndefined();
 	});
 });

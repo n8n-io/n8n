@@ -1803,6 +1803,28 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+/**
+ * Trigger node types that don't have "trigger" in their name
+ * but still function as workflow entry points
+ */
+const TRIGGER_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.cron', // Legacy schedule trigger
+	'n8n-nodes-base.emailReadImap', // Email polling trigger
+	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
+	'n8n-nodes-base.start', // Legacy trigger
+]);
+
+/**
+ * Check if a node type is a trigger
+ */
+export function isTriggerNodeType(type: string): boolean {
+	if (TRIGGER_NODE_TYPES.has(type)) {
+		return true;
+	}
+	return type.toLowerCase().includes('trigger');
+}
+
 export function isToolType(
 	nodeType?: string,
 	{ includeHitl = true }: { includeHitl?: boolean } = {},

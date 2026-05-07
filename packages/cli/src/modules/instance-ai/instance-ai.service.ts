@@ -105,7 +105,7 @@ import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storag
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
-import { ProxyTokenManager } from './proxy-token-manager';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
 
@@ -336,6 +336,8 @@ export class InstanceAiService {
 
 	private readonly webhookBaseUrl: string;
 
+	private readonly formBaseUrl: string;
+
 	private readonly runState = new RunStateRegistry<User>();
 
 	private readonly backgroundTasks = new BackgroundTaskManager(
@@ -434,6 +436,7 @@ export class InstanceAiService {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
+		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
 		this.mcpClientManager = new McpClientManager(
 			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
@@ -1273,6 +1276,10 @@ export class InstanceAiService {
 		return this.gatewayRegistry.generatePairingToken(userId);
 	}
 
+	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
+	}
+
 	getPairingToken(userId: string): string | null {
 		return this.gatewayRegistry.getPairingToken(userId);
 	}
@@ -2090,6 +2097,7 @@ export class InstanceAiService {
 			localMcpServer: context.localMcpServer,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
+			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
