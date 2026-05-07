@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core';
-import { computed, nextTick, ref } from 'vue';
+import { computed } from 'vue';
 
 import N8nButton from '../N8nButton';
 import N8nDropdown, { type N8nDropdownOption } from '../N8nDropdown';
 import N8nIcon from '../N8nIcon';
-import N8nInput from '../N8nInput';
-import N8nPopover from '../N8nPopover';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import { t } from '../../locale';
@@ -25,10 +23,6 @@ const props = defineProps<{
 	mode: Exclude<MarkdownEditorToolbarMode, 'never'>;
 	variant: MarkdownEditorVariant;
 }>();
-
-const linkPopoverOpen = ref(false);
-const linkUrl = ref('');
-const linkInput = ref<InstanceType<typeof N8nInput>>();
 
 const markdownCommands = computed(() => createMarkdownSlashCommands());
 
@@ -93,9 +87,6 @@ const activeTextStyleLabel = computed(
 		translate('markdownEditor.text'),
 );
 
-const linkValue = computed(() => (props.editor.isActive('link') ? ['link'] : []));
-const linkControl = computed(() => getCommand('link'));
-
 const runControl = (control: ToolbarControl) => {
 	if (props.disabled) return;
 
@@ -106,48 +97,6 @@ const setTextStyle = (value: string | number) => {
 	if (props.disabled) return;
 
 	getCommand(String(value))?.command({ editor: props.editor });
-};
-
-const getActiveLinkHref = () => {
-	const href = props.editor.getAttributes('link').href;
-
-	return typeof href === 'string' ? href : '';
-};
-
-const openLinkPopover = async () => {
-	if (props.disabled) return;
-
-	linkUrl.value = getActiveLinkHref();
-	linkPopoverOpen.value = true;
-	await nextTick();
-	linkInput.value?.focus();
-};
-
-const applyLink = () => {
-	if (props.disabled) return;
-
-	if (!linkUrl.value) {
-		props.editor.chain().focus().unsetLink().run();
-		linkPopoverOpen.value = false;
-		return;
-	}
-
-	props.editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl.value }).run();
-	linkPopoverOpen.value = false;
-};
-
-const removeLink = () => {
-	if (props.disabled) return;
-
-	props.editor.chain().focus().unsetLink().run();
-	linkPopoverOpen.value = false;
-};
-
-const handleLinkInputKeydown = (event: KeyboardEvent) => {
-	if (event.key !== 'Enter') return;
-
-	event.preventDefault();
-	applyLink();
 };
 </script>
 
@@ -221,68 +170,6 @@ const handleLinkInputKeydown = (event: KeyboardEvent) => {
 					/>
 				</template>
 			</N8nToggleGroup>
-
-			<N8nPopover
-				v-model:open="linkPopoverOpen"
-				width="280px"
-				:content-class="$style.linkPopover"
-				:enable-scrolling="false"
-				:suppress-auto-focus="true"
-			>
-				<template #trigger>
-					<N8nToggleGroup
-						:model-value="linkValue"
-						type="multiple"
-						variant="ghost"
-						size="small"
-						:disabled="disabled"
-						:class="$style.toolbarGroup"
-					>
-						<template #default="slotProps">
-							<N8nToggle
-								value="link"
-								:label="linkControl?.label ?? translate('markdownEditor.link')"
-								icon="link"
-								:disabled="disabled"
-								v-bind="slotProps"
-								@click="openLinkPopover"
-							/>
-						</template>
-					</N8nToggleGroup>
-				</template>
-
-				<template #content>
-					<form :class="$style.linkForm" @submit.prevent="applyLink">
-						<label :class="$style.linkLabel" for="markdown-editor-link-url">
-							{{ translate('markdownEditor.linkUrlLabel') }}
-						</label>
-						<N8nInput
-							id="markdown-editor-link-url"
-							ref="linkInput"
-							v-model="linkUrl"
-							size="small"
-							type="text"
-							:placeholder="translate('markdownEditor.linkUrlPlaceholder')"
-							autocomplete="off"
-							@keydown="handleLinkInputKeydown"
-						/>
-						<div :class="$style.linkActions">
-							<N8nButton
-								v-if="props.editor.isActive('link')"
-								type="button"
-								variant="ghost"
-								size="small"
-								@click="removeLink"
-							>
-								{{ translate('markdownEditor.removeLink') }}
-							</N8nButton>
-							<N8nButton type="submit" variant="solid" size="small">
-								{{ translate('markdownEditor.applyLink') }}
-							</N8nButton>
-						</div>
-					</form>
-				</template>
-			</N8nPopover>
 
 			<N8nToggleGroup
 				:model-value="[]"
@@ -362,27 +249,5 @@ const handleLinkInputKeydown = (event: KeyboardEvent) => {
 		margin-inline-start: var(--spacing--3xs);
 		background-color: var(--border-color);
 	}
-}
-
-.linkPopover {
-	padding: var(--spacing--xs);
-}
-
-.linkForm {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.linkLabel {
-	color: var(--text-color);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--medium);
-}
-
-.linkActions {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>

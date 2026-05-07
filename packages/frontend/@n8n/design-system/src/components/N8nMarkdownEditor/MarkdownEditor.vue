@@ -1,25 +1,11 @@
 <script setup lang="ts">
-import type { Content, Editor } from '@tiptap/core';
-import type { EditorView } from '@tiptap/pm/view';
-/** These probably should be lazy loaded */
-import Link from '@tiptap/extension-link';
-import Placeholder from '@tiptap/extension-placeholder';
-import Strike from '@tiptap/extension-strike';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TableRow from '@tiptap/extension-table-row';
-import TaskItem from '@tiptap/extension-task-item';
-import TaskList from '@tiptap/extension-task-list';
-import { Table } from '@tiptap/extension-table';
-import { Markdown } from '@tiptap/markdown';
-import StarterKit from '@tiptap/starter-kit';
-
-import { EditorContent, useEditor } from '@tiptap/vue-3';
-import { computed, watch } from 'vue';
+import type { Editor } from '@tiptap/core';
+import { EditorContent } from '@tiptap/vue-3';
+import { computed } from 'vue';
 
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
-import { MarkdownSlashCommandExtension, renderSlashCommandMenu } from './extensions';
-import type { N8nMarkdownEditorProps } from './MarkdownEditor.types';
+import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
+import { useMarkdownEditor } from './composables/useMarkdownEditor';
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	modelValue: '',
@@ -32,169 +18,18 @@ const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	containerClass: '',
 });
 
-const emit = defineEmits<{
-	'update:modelValue': [value: string];
-	input: [value: string];
-	change: [value: string];
-	focus: [event: FocusEvent];
-	blur: [value: string, event: FocusEvent];
-	ready: [editor: Editor];
-}>();
+const emit = defineEmits<N8nMarkdownEditorEmits>();
 
 const maxHeightStyle = computed(() => ({
 	'--markdown-editor-max-height':
 		typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
 }));
 
-const emptyEditorContent: Content = {
-	type: 'doc',
-	content: [{ type: 'paragraph' }],
-};
-
-const getEditorContent = (markdown: string): Content => markdown || emptyEditorContent;
-
-const setEditorContent = (editor: Editor, markdown: string) => {
-	if (markdown) {
-		editor.commands.setContent(markdown, {
-			contentType: 'markdown',
-			emitUpdate: false,
-		});
-
-		return;
-	}
-
-	editor.commands.setContent(emptyEditorContent, {
-		emitUpdate: false,
-	});
-};
-
 const shouldShowToolbar = computed(() => props.showToolbar !== 'never');
 const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
 const shouldPadContent = computed(() => props.showToolbar === 'always');
 
-const baseExtensions = [
-	StarterKit,
-	Strike,
-	Link.configure({
-		openOnClick: false,
-	}),
-	Placeholder.configure({
-		placeholder: () => props.placeholder,
-		showOnlyCurrent: false,
-	}),
-	Table.configure({
-		resizable: true,
-	}),
-	TableRow,
-	TableHeader,
-	TableCell,
-	TaskList,
-	TaskItem.configure({
-		nested: true,
-	}),
-	Markdown.configure({
-		markedOptions: {
-			gfm: true,
-			breaks: false,
-		},
-	}),
-	MarkdownSlashCommandExtension.configure({
-		render: renderSlashCommandMenu,
-	}),
-];
-
-function copyMarkdown(event: ClipboardEvent) {
-	if (!editor.value || !event.clipboardData) return false;
-
-	event.clipboardData.setData('text/plain', editor.value.getMarkdown());
-	event.preventDefault();
-
-	return true;
-}
-
-function pasteMarkdown(event: ClipboardEvent) {
-	if (!editor.value || !event.clipboardData) return false;
-
-	const plainText = event.clipboardData.getData('text/plain');
-
-	if (!plainText) return false;
-
-	const command =
-		editor.value.getMarkdown().trim() === ''
-			? editor.value.commands.setContent
-			: editor.value.commands.insertContent;
-
-	command(plainText, {
-		contentType: 'markdown',
-	});
-	event.preventDefault();
-
-	return true;
-}
-
-function handleCopy(view: EditorView, event: ClipboardEvent) {
-	return props.editorProps?.handleDOMEvents?.copy?.(view, event) || copyMarkdown(event);
-}
-
-function handlePaste(view: EditorView, event: ClipboardEvent) {
-	return props.editorProps?.handleDOMEvents?.paste?.(view, event) || pasteMarkdown(event);
-}
-
-const editor = useEditor({
-	content: getEditorContent(props.modelValue),
-	contentType: props.modelValue ? 'markdown' : undefined,
-	extensions: [...baseExtensions, ...(props.extensions ?? [])],
-	editable: !props.disabled && !props.readonly,
-	editorProps: {
-		...props.editorProps,
-		attributes: {
-			class: 'n8n-markdown',
-			'data-test-id': 'n8n-markdown-editor-content',
-			...props.editorProps?.attributes,
-		},
-		handleDOMEvents: {
-			...props.editorProps?.handleDOMEvents,
-			copy: handleCopy,
-			paste: handlePaste,
-		},
-	},
-	onCreate: ({ editor }) => {
-		emit('ready', editor);
-	},
-	onUpdate: ({ editor }) => {
-		const markdown = editor.getMarkdown();
-
-		emit('update:modelValue', markdown);
-		emit('input', markdown);
-		emit('change', markdown);
-	},
-	onFocus: ({ event }) => {
-		emit('focus', event);
-	},
-	onBlur: ({ editor, event }) => {
-		emit('blur', editor.getMarkdown(), event);
-	},
-});
-
-watch(
-	() => props.modelValue,
-	(value) => {
-		if (!editor.value) return;
-
-		const currentMarkdown = editor.value.getMarkdown();
-
-		if (currentMarkdown === value) return;
-
-		setEditorContent(editor.value, value ?? '');
-	},
-);
-
-watch(
-	() => [props.disabled, props.readonly] as const,
-	([disabled, readonly]) => {
-		editor.value?.setEditable(!disabled && !readonly);
-	},
-);
+const editor = useMarkdownEditor(props, emit);
 
 function focus() {
 	editor.value?.commands.focus();
@@ -208,7 +43,7 @@ function getMarkdown() {
 	return editor.value?.getMarkdown() ?? '';
 }
 
-function getEditor() {
+function getEditor(): Editor | undefined {
 	return editor.value;
 }
 
@@ -219,7 +54,6 @@ defineExpose({
 	getEditor,
 });
 </script>
-
 <template>
 	<div
 		:class="[

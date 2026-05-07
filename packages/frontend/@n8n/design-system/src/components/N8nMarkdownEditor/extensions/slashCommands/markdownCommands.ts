@@ -130,16 +130,6 @@ export const createMarkdownSlashCommands = (): Map<string, MarkdownSlashCommand>
 					deleteSuggestionRange(editor, range).toggleBlockquote().run(),
 			},
 		],
-		[
-			'link',
-			{
-				id: 'link',
-				label: translate('markdownEditor.link'),
-				icon: 'link',
-				aliases: ['url', 'href'],
-				command: ({ editor, range }) => deleteSuggestionRange(editor, range).run(),
-			},
-		],
 	]);
 
 export const getDefaultMarkdownSlashCommands = () => [...createMarkdownSlashCommands().values()];
