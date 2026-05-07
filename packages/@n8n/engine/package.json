@@ -23,14 +23,22 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "express": "5.1.0"
+    "@n8n/typeorm": "catalog:",
+    "express": "5.1.0",
+    "nanoid": "catalog:",
+    "pg": "catalog:",
+    "reflect-metadata": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@testcontainers/postgresql": "catalog:",
     "@types/express": "catalog:",
+    "@types/pg": "^8.15.6",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.1",
+    "testcontainers": "catalog:",
     "vitest": "catalog:"
   }
 }
