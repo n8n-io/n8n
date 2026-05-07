@@ -118,6 +118,7 @@ import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
+import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -211,14 +212,14 @@ export function useCanvasOperations() {
 
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
-	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
-
 	const editableWorkflowObject = computed(() =>
-		workflowDocumentStore.value ? workflowDocumentStore.value.getSnapshot() : undefined,
+		workflowDocumentStore.value
+			? workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot()
+			: undefined,
 	);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
-		return workflowsStore.workflowTriggerNodes;
+		return workflowDocumentStore.value.workflowTriggerNodes;
 	});
 
 	/**
@@ -2316,9 +2317,9 @@ export function useCanvasOperations() {
 		// Reset editable workflow state
 		workflowsStore.resetWorkflow();
 		workflowState.resetState();
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.clearCurrentWorkflowExecutions();
 		workflowState.setActiveExecutionId(undefined);
-		workflowsStore.lastSuccessfulExecution = null;
+		workflowsStore.setLastSuccessfulExecution(null);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -2334,7 +2335,14 @@ export function useCanvasOperations() {
 	async function initializeWorkspace(data: IWorkflowDb) {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
-		data.nodes.forEach((node) => {
+
+		// Filter out nodes with missing type to prevent canvas rendering crashes
+		const validNodes = data.nodes
+			.filter((node) => !!node.type)
+			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
+		const validNodeNames = validNodes.map((node) => node.name);
+
+		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
 			nodeHelpers.matchCredentials(node);
@@ -2345,8 +2353,8 @@ export function useCanvasOperations() {
 			}
 		});
 
-		initializedDocumentStore.setNodes(data.nodes);
-		initializedDocumentStore.setConnections(data.connections);
+		initializedDocumentStore.setNodes(validNodes);
+		initializedDocumentStore.setConnections(sanitizeConnections(data.connections, validNodeNames));
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2620,6 +2628,34 @@ export function useCanvasOperations() {
 			return {};
 		}
 
+		// Filter out nodes with missing type to prevent crashes
+		if (workflowData.nodes) {
+			const invalidNodes = workflowData.nodes.filter((node) => !node.type);
+			if (invalidNodes.length > 0) {
+				toast.showError(
+					new Error(
+						i18n.baseText('nodeView.showError.importWorkflowData.invalidNodes', {
+							interpolate: { count: String(invalidNodes.length) },
+						}),
+					),
+					i18n.baseText('nodeView.showError.importWorkflowData.title'),
+				);
+				workflowData.nodes = workflowData.nodes.filter((node) => !!node.type);
+			}
+		}
+
+		if (workflowData.nodes) {
+			workflowData.nodes = workflowData.nodes.map((node) => ({
+				...node,
+				position: ensureNodePosition(node.position),
+			}));
+		}
+
+		if (workflowData.connections) {
+			const validNodeNames = workflowData.nodes?.map((node) => node.name);
+			workflowData.connections = sanitizeConnections(workflowData.connections, validNodeNames);
+		}
+
 		try {
 			const nodeIdMap: { [prev: string]: string } = {};
 			if (workflowData.nodes) {
@@ -2708,12 +2744,16 @@ export function useCanvasOperations() {
 			// the user
 			workflowHelpers.updateNodePositions(
 				workflowData,
-				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value, {
-					...(workflowData.nodes && workflowData.nodes.length > 1
-						? { size: getNodesGroupSize(workflowData.nodes) }
-						: {}),
-					viewport,
-				}),
+				NodeViewUtils.getNewNodePosition(
+					workflowDocumentStore.value.allNodes,
+					lastClickPosition.value,
+					{
+						...(workflowData.nodes && workflowData.nodes.length > 1
+							? { size: getNodesGroupSize(workflowData.nodes) }
+							: {}),
+						viewport,
+					},
+				),
 			);
 
 			await addImportedNodesToWorkflow(workflowData, {
@@ -3014,11 +3054,26 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.setName(workflowData.name);
 	}
 
-	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
+	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {
 		const node = workflowDocumentStore.value.getNodeById(nodeId);
 		if (!node) return false;
-		const subWorkflowId = NodeHelpers.getSubworkflowId(node);
+		let subWorkflowId = NodeHelpers.getSubworkflowId(node);
 		if (!subWorkflowId) return false;
+
+		if (subWorkflowId.startsWith('=')) {
+			try {
+				const resolved = await workflowHelpers.resolveExpression(
+					subWorkflowId,
+					{},
+					{ contextNodeName: node.name },
+				);
+				if (typeof resolved !== 'string' || !resolved) return false;
+				subWorkflowId = resolved;
+			} catch {
+				return false;
+			}
+		}
+
 		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
 		return true;
 	}
@@ -3076,10 +3131,11 @@ export function useCanvasOperations() {
 			telemetry: true,
 		});
 
-		const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
+		const allNodes = workflowDocumentStore.value.allNodes;
+		const offsetIndex = allNodes.length - nodes.length;
 		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
-			const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
-			const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
+			const fromNode = allNodes[offsetIndex + from.nodeIndex];
+			const toNode = allNodes[offsetIndex + to.nodeIndex];
 			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
 			return {
@@ -3152,7 +3208,7 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		let data: IWorkflowTemplate | undefined;
@@ -3215,7 +3271,7 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.clearCurrentWorkflowExecutions();
 		executionsStore.activeExecution = null;
 
 		uiStore.isBlankRedirect = true;
@@ -3251,7 +3307,6 @@ export function useCanvasOperations() {
 
 	return {
 		lastClickPosition,
-		editableWorkflow,
 		editableWorkflowObject,
 		triggerNodes,
 		requireNodeTypeDescription,

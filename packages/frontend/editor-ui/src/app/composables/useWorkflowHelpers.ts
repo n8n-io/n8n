@@ -98,7 +98,7 @@ export async function resolveParameter<T = IDataObject>(
 
 	return await resolveParameterImpl(
 		parameter,
-		workflowDocumentStore.getSnapshot(),
+		workflowDocumentStore.getWorkflowObjectAccessorSnapshot(),
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
@@ -325,7 +325,7 @@ export async function resolveRequiredParameters(
 }
 
 function getNodeTypes(): INodeTypes {
-	return useWorkflowsStore().getNodeTypes();
+	return useNodeTypesStore().getAllNodeTypes();
 }
 
 // TODO: move to separate file

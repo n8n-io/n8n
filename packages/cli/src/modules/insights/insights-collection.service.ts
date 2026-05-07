@@ -48,6 +48,9 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 	// n8n Chat hub messages
 	chat: true,
+
+	// Agent executions
+	agent: true,
 };
 
 const MIN_RUNTIME = 0;
