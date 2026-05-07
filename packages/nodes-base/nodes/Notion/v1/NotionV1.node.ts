@@ -274,6 +274,7 @@ export class NotionV1 implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;
 						qs.page_size = Math.min(limit, 100);
+						qs.limit = limit;
 						responseData = await notionApiRequestAllItems.call(
 							this,
 							'results',
@@ -333,6 +334,7 @@ export class NotionV1 implements INodeType {
 							'POST',
 							'/search',
 							body,
+							{ limit },
 						);
 						responseData = responseData.slice(0, limit);
 					}
@@ -443,7 +445,7 @@ export class NotionV1 implements INodeType {
 							'POST',
 							`/databases/${databaseId}/query`,
 							body,
-							{},
+							{ limit },
 						);
 						responseData = responseData.slice(0, limit);
 					}
