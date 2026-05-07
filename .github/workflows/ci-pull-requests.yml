@@ -74,7 +74,6 @@ jobs:
               packages/testing/playwright/playwright-projects.ts
               packages/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
-              .github/workflows/ci-pull-requests.yml
             workflows: .github/**
             workflow-scripts: .github/scripts/**
             performance:
