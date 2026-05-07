@@ -446,10 +446,34 @@ describe('calculateNodePositionsDagre', () => {
 			const stickies = json.nodes.filter((n) => n.type === STICKY_NODE_TYPE);
 
 			expect(stickies).toHaveLength(2);
-			// The bug was that both stickies landed at the same coordinates
-			// (both at [-50, -50]) because getNodeDimensions returned a 96x96
-			// box for stickies, so isCoveredBy never matched their wrapped nodes.
 			expect(stickies[0].position).not.toEqual(stickies[1].position);
+		});
+
+		it('preserves explicit position and dimensions when sticky wraps nodes', () => {
+			const a1 = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'A1' },
+			});
+			const a2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A2' } });
+
+			const wf = workflow('wf', 'wf')
+				.add(a1.to(a2))
+				.add(
+					sticky('## Manual', [a1, a2], {
+						name: 'Pinned',
+						position: [800, 400],
+						width: 500,
+						height: 300,
+					}),
+				);
+
+			const json = wf.toJSON({ tidyUp: true });
+			const note = json.nodes.find((n) => n.name === 'Pinned')!;
+
+			expect(note.position).toEqual([800, 400]);
+			expect(note.parameters?.width).toBe(500);
+			expect(note.parameters?.height).toBe(300);
 		});
 
 		it('repositions stickies correctly after regenerateNodeIds reshuffles ids', () => {

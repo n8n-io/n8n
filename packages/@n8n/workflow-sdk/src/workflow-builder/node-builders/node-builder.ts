@@ -1081,7 +1081,14 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		// the sticky around those exact nodes after dagre has assigned them
 		// positions. Names survive regenerateNodeIds (which the AI builder runs
 		// on every parse) — instance ids do not.
-		const wrappedNodeNames = collectWrappedNodeNames(nodes);
+		// Skip auto-layout tracking when the user supplied explicit position or
+		// dimensions: the wrapped nodes were passed for sizing only and the
+		// caller is driving placement.
+		const userOverridesLayout =
+			stickyConfig.position !== undefined ||
+			stickyConfig.width !== undefined ||
+			stickyConfig.height !== undefined;
+		const wrappedNodeNames = userOverridesLayout ? [] : collectWrappedNodeNames(nodes);
 
 		this.config = {
 			name: this.name,
