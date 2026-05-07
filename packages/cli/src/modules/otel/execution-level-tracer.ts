@@ -196,6 +196,20 @@ export class ExecutionLevelTracer {
 		}
 	}
 
+	getNodeTraceparent(
+		executionId: string,
+		nodeName: string,
+	): { traceparent: string; tracestate?: string } | undefined {
+		const span = this.findMostSpecificSpan(executionId, nodeName);
+		if (!span) return undefined;
+
+		const carrier: Record<string, string> = {};
+		propagation.inject(trace.setSpan(context.active(), span), carrier);
+		if (!carrier.traceparent) return undefined;
+
+		return { traceparent: carrier.traceparent, tracestate: carrier.tracestate };
+	}
+
 	private parseTraceParentHeaders(tracingContext?: TracingContext) {
 		return tracingContext
 			? propagation.extract(context.active(), tracingContext)

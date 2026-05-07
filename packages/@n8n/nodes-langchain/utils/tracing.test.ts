@@ -1,12 +1,21 @@
 import type { CallbackManager } from '@langchain/core/callbacks/manager';
-import { trace } from '@opentelemetry/api';
+import { propagation } from '@opentelemetry/api';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import { afterAll, beforeAll } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { OtelAiCallbackHandler } from './otel-ai-callback-handler';
 import { buildTracingMetadata, getTracingConfig } from './tracing';
 
 describe('getTracingConfig', () => {
+	beforeAll(() => {
+		propagation.setGlobalPropagator(new W3CTraceContextPropagator());
+	});
+
+	afterAll(() => {
+		propagation.disable();
+	});
 	const mockWorkflow = {
 		id: 'workflow-123',
 		name: 'Test Workflow',
@@ -131,55 +140,48 @@ describe('getTracingConfig', () => {
 	});
 
 	describe('OTEL integration', () => {
-		it('should not include OTEL handler when no active span exists', () => {
+		it('should not include OTEL handler when getOtelTraceparent returns undefined', () => {
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
 			mockContext.getExecutionId.mockReturnValue('exec-456');
 			mockContext.getParentCallbackManager.mockReturnValue(undefined);
-
-			// No OTEL SDK registered = trace.getActiveSpan() returns undefined
-			expect(trace.getActiveSpan()).toBeUndefined();
+			mockContext.getOtelTraceparent.mockReturnValue(undefined);
 
 			const result = getTracingConfig(mockContext);
 
-			// callbacks should be undefined (no parent callback manager, no OTEL)
 			expect(result.callbacks).toBeUndefined();
 		});
 
-		it('should include OTEL handler alongside parent callback manager when active span exists', () => {
+		it('should include OTEL handler alongside parent callback manager when traceparent exists', () => {
 			const mockCallbackManager = mock<CallbackManager>();
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
 			mockContext.getExecutionId.mockReturnValue('exec-456');
 			mockContext.getParentCallbackManager.mockReturnValue(mockCallbackManager);
-
-			// Mock trace.getActiveSpan to return a span
-			const mockSpan = { spanContext: () => ({ traceId: 'abc', spanId: '123' }) };
-			const getActiveSpanSpy = vi.spyOn(trace, 'getActiveSpan').mockReturnValue(mockSpan as any);
+			mockContext.getOtelTraceparent.mockReturnValue({
+				traceparent: '00-abcdef1234567890abcdef1234567890-1234567890abcdef-01',
+			});
 
 			const result = getTracingConfig(mockContext);
 
-			// callbacks should be an array with parent manager and OTEL handler
 			expect(Array.isArray(result.callbacks)).toBe(true);
 			const callbacksArray = result.callbacks as unknown[];
 			expect(callbacksArray).toHaveLength(2);
 			expect(callbacksArray[0]).toBe(mockCallbackManager);
 			expect(callbacksArray[1]).toBeInstanceOf(OtelAiCallbackHandler);
-
-			getActiveSpanSpy.mockRestore();
 		});
 
-		it('should include only OTEL handler when active span exists but no parent callback manager', () => {
+		it('should include only OTEL handler when traceparent exists but no parent callback manager', () => {
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
 			mockContext.getExecutionId.mockReturnValue('exec-456');
 			mockContext.getParentCallbackManager.mockReturnValue(undefined);
-
-			const mockSpan = { spanContext: () => ({ traceId: 'abc', spanId: '123' }) };
-			const getActiveSpanSpy = vi.spyOn(trace, 'getActiveSpan').mockReturnValue(mockSpan as any);
+			mockContext.getOtelTraceparent.mockReturnValue({
+				traceparent: '00-abcdef1234567890abcdef1234567890-1234567890abcdef-01',
+			});
 
 			const result = getTracingConfig(mockContext);
 
@@ -187,8 +189,6 @@ describe('getTracingConfig', () => {
 			const callbacksArray = result.callbacks as unknown[];
 			expect(callbacksArray).toHaveLength(1);
 			expect(callbacksArray[0]).toBeInstanceOf(OtelAiCallbackHandler);
-
-			getActiveSpanSpy.mockRestore();
 		});
 
 		it('should not include OTEL handler when N8N_OTEL_TRACES_INCLUDE_AI_SPANS is false', () => {
@@ -197,9 +197,9 @@ describe('getTracingConfig', () => {
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
 			mockContext.getExecutionId.mockReturnValue('exec-456');
 			mockContext.getParentCallbackManager.mockReturnValue(undefined);
-
-			const mockSpan = { spanContext: () => ({ traceId: 'abc', spanId: '123' }) };
-			const getActiveSpanSpy = vi.spyOn(trace, 'getActiveSpan').mockReturnValue(mockSpan as any);
+			mockContext.getOtelTraceparent.mockReturnValue({
+				traceparent: '00-abcdef1234567890abcdef1234567890-1234567890abcdef-01',
+			});
 
 			const originalEnv = process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS;
 			process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS = 'false';
@@ -213,7 +213,6 @@ describe('getTracingConfig', () => {
 				} else {
 					process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS = originalEnv;
 				}
-				getActiveSpanSpy.mockRestore();
 			}
 		});
 	});

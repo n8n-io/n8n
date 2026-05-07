@@ -1,5 +1,5 @@
 import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
-import { trace } from '@opentelemetry/api';
+import { propagation, context as otelContext, trace } from '@opentelemetry/api';
 import type { FieldType, IExecuteFunctions, ISupplyDataFunctions, Logger } from 'n8n-workflow';
 import { jsonParse, validateFieldType } from 'n8n-workflow';
 
@@ -92,16 +92,21 @@ export function getTracingConfig(
 			? context.getParentCallbackManager()
 			: undefined;
 
-	// Build callbacks array, including OTEL handler when an active span exists
-	// (indicating OTEL is enabled and the node is being traced).
-	// When OTEL is not configured, trace.getActiveSpan() returns undefined and no handler is added.
+	// Build callbacks array, including OTEL handler when the node has an active OTEL span.
+	// We retrieve the span's traceparent via getOtelTraceparent() (available on IExecuteFunctions)
+	// and reconstruct a remote span context from it. This is necessary because the node execution
+	// doesn't run within the span's async context — spans are managed externally by lifecycle hooks.
 	// The N8N_OTEL_TRACES_INCLUDE_AI_SPANS env var (default: true) allows explicit opt-out.
 	let callbacks: Callbacks | undefined = parentRunManager;
 	const includeAiSpans = process.env.N8N_OTEL_TRACES_INCLUDE_AI_SPANS !== 'false';
-	const activeSpan = includeAiSpans ? trace.getActiveSpan() : undefined;
-	if (activeSpan) {
-		const otelHandler = new OtelAiCallbackHandler(activeSpan);
-		callbacks = parentRunManager ? [parentRunManager, otelHandler] : [otelHandler];
+	if (includeAiSpans && 'getOtelTraceparent' in context) {
+		const traceparent = (context as IExecuteFunctions).getOtelTraceparent();
+		if (traceparent) {
+			const parentCtx = propagation.extract(otelContext.active(), traceparent);
+			const parentSpan = trace.getSpan(parentCtx);
+			const otelHandler = new OtelAiCallbackHandler(parentSpan);
+			callbacks = parentRunManager ? [parentRunManager, otelHandler] : [otelHandler];
+		}
 	}
 
 	return {

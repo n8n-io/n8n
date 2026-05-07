@@ -242,6 +242,13 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		return this.additionalData.parentCallbackManager;
 	}
 
+	getOtelTraceparent(): { traceparent: string; tracestate?: string } | undefined {
+		return this.additionalData.otel?.getNodeTraceparent?.(
+			this.additionalData.executionId!,
+			this.node.name,
+		);
+	}
+
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
 	}
