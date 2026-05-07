@@ -1,0 +1,574 @@
+{
+	"id": "wf-3912",
+	"name": "Automate lead qualification with RetellAI Phone Agent, OpenAI GPT & Google Sheet",
+	"nodes": [
+		{
+			"id": "78f39980-c9f8-49b6-93bb-a1f61d347ac3",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, 0],
+			"parameters": {
+				"width": 1260,
+				"height": 320,
+				"content": "# Outbound lead qualification call workflow"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "661006b9-dac7-4ac0-882a-2e0cba9dbae1",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, 360],
+			"parameters": {
+				"color": 5,
+				"width": 1260,
+				"height": 320,
+				"content": "# Inbound call appointment scheduler workflow"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "96a278b9-8d2e-4f85-9f6a-2997932a7ca4",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1060, -420],
+			"parameters": {
+				"color": 4,
+				"width": 1400,
+				"height": 1100,
+				"content": "# Post-call workflow\n## Triggers when a new lead is added in Google Sheets:\n\n### 1 -Sends SMS to remind rep to call in 5 min\n### 2- (Optional delay step)\n### 3- Triggers RetellAI to place an automated call to the lead\n\n## 💡 Requires phone numbers to be formatted in E.164"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d082f904-f185-4615-b0d8-9438c731786f",
+			"name": "Detect new lead in Google Sheets",
+			"type": "n8n-nodes-base.googleSheetsTrigger",
+			"position": [-160, 100],
+			"parameters": {
+				"event": "rowAdded",
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyHour"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleSheetsTriggerOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsTriggerOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c61172c2-7795-47be-acaa-d4824ca69680",
+			"name": "Send SMS reminder to call lead in 5 minutes",
+			"type": "n8n-nodes-base.twilio",
+			"position": [140, 100],
+			"parameters": {
+				"to": "={{ $json['Phone Number'] }}",
+				"from": "+1234567890",
+				"message": "Hello, thanks for your interest in our roofing services. We'll be calling you shortly to ask about your project!",
+				"options": {},
+				"resource": "call"
+			},
+			"credentials": {
+				"twilioApi": {
+					"id": "credential-id",
+					"name": "twilioApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d88573d4-ec99-40e4-8603-f1e910d034d1",
+			"name": "Wait 5 minutes before making call",
+			"type": "n8n-nodes-base.wait",
+			"position": [460, 100],
+			"webhookId": "344c2d5d-5629-4466-866b-ac6359b3b042",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 1
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "d6778895-90dd-471e-9d9d-c48a35154291",
+			"name": "Call new lead using RetellAI",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [760, 100],
+			"parameters": {
+				"url": "https://api.retellai.com/v2/create-phone-call",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"from_number\": \"+33600000000\",\n  \"to_number\": \"{{ $json['Phone Number'] }}\",\n  \"retell_llm_dynamic_variables\": {\n    \"uuid\": \"{{ $('Detect new lead in Google Sheets').item.json.UUID }}\"\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "8e7e7c0c-2600-4b20-ba30-b855d456d302",
+			"name": "Receive inbound call from RetellAI (webhook)",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-160, 460],
+			"webhookId": "ebd11c9b-129c-4b59-8c27-9a4b567305f7",
+			"parameters": {
+				"path": "ebd11c9b-129c-4b59-8c27-9a4b567305f7",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "36bf25b0-d39d-4127-b005-5e3619069744",
+			"name": "Check if phone number exists in Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [300, 460],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupValue": "={{ $json.body.call_inbound.from_number }}",
+							"lookupColumn": "Phone Number"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "0b2dc7b9-84c1-488b-9d02-47cf6ee460c7",
+			"name": "Send response to inbound webhook call",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [760, 460],
+			"parameters": {
+				"options": {},
+				"respondWith": "json",
+				"responseBody": "={\n  \"call_inbound\": {\n    \"dynamic_variables\": {\n        \"name\": \"{{ $json.Name }}\"\n    }\n  }\n}"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "063a4a31-429f-4cf0-b248-869131e92633",
+			"name": "Receive post-call data from RetellAI (webhook)",
+			"type": "n8n-nodes-base.webhook",
+			"position": [1180, 80],
+			"webhookId": "f8878b78-43ea-4caa-b16c-cde9aaf2e9b1",
+			"parameters": {
+				"path": "f8878b78-43ea-4caa-b16c-cde9aaf2e9b1",
+				"options": {},
+				"httpMethod": "POST"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "215e2031-983a-4785-b46d-026f64c115e4",
+			"name": "Filter for analyzed calls only",
+			"type": "n8n-nodes-base.filter",
+			"position": [1400, 80],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "a0e40476-0054-43ec-b7a7-e872d1c6061a",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.body.event }}",
+							"rightValue": "call_analyzed"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "f8cae0c3-1b5d-47e6-b7fd-b47558c30d3f",
+			"name": "Check if call was outbound",
+			"type": "n8n-nodes-base.if",
+			"position": [1620, 80],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "46590184-4e33-48fd-a9f4-c63b13f88c1f",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.body.call.direction }}",
+							"rightValue": "outbound"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "8997d5ec-bfb9-4ce9-9e13-6035f02b634e",
+			"name": "Update lead record in Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1860, -40],
+			"parameters": {
+				"columns": {
+					"value": {
+						"UUID": "={{ $json.body.call.retell_llm_dynamic_variables.uuid }}",
+						"Qualification": "={{ $json.body.call.call_analysis.custom_analysis_data.qualification }}"
+					},
+					"schema": [
+						{
+							"id": "UUID",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "UUID",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Phone Number",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Phone Number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Datetime Called",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Datetime Called",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Qualification",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Qualification",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["UUID"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "20757ff8-6604-4c80-96ec-32bfac983ed7",
+			"name": "Send call summary email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [2220, -40],
+			"webhookId": "806ec3f9-8bcb-48ef-8e22-9d1ce3b06bf0",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "=Name:\n{{ $json.body.call.call_analysis.custom_analysis_data.first_name }}\n\nNumber:\n{{ $json.body.call.call_analysis.custom_analysis_data.phone_number }}\n\nQualification:\n{{ $json.body.call.call_analysis.custom_analysis_data.qualification }}\n\n\nCall Summary:\n{{ $json.body.call.call_analysis.custom_analysis_data.call_summary }}",
+				"options": {},
+				"subject": "=New Lead - Call Summary",
+				"emailType": "text"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "753bd92d-b95b-4710-bf49-6da89a43223f",
+			"name": "Generate call summary with OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1860, 180],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1",
+					"cachedResultName": "GPT-4.1"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Analyze this call transcript to identify how the call went and identify possible improvements to the voice prompt:\n\n{{ $json.body.call.transcript }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "cf600277-bb07-4f7a-a9b7-3e20017f716d",
+			"name": "Send confirmation email to lead",
+			"type": "n8n-nodes-base.gmail",
+			"position": [2220, 180],
+			"webhookId": "453fe9d9-1de6-40a2-bd0c-88cb9c1cc7ef",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "=New roofing appointment:\n\nClient Name:\n{{ $('Check if call was outbound').item.json.body.call.call_analysis.custom_analysis_data.first_name }}\n\nClient Number:\n{{ $('Check if call was outbound').item.json.body.call.call_analysis.custom_analysis_data.phone_number }}\n\nAvailabilities:\n{{ $('Check if call was outbound').item.json.body.call.call_analysis.custom_analysis_data.availabilities }}\n\n\nCall Summary:\n{{ $('Check if call was outbound').item.json.body.call.call_analysis.call_summary }}\n\n\nChatGPT analysis of how the call went and suggestions for improving the voice prompt:\n{{ $json.message.content }}",
+				"options": {},
+				"subject": "=Roofing Appointment Scheduled",
+				"emailType": "text"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "f75763b6-0867-4625-89e1-cafa3c9e6e44",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, -420],
+			"parameters": {
+				"width": 1260,
+				"height": 400,
+				"content": "# ✅ General Workflow Explanation\n##  This workflow automates outbound and inbound lead calls with RetellAI, Google Sheets, OpenAI, and Gmail. It handles:\n\nScheduling and reminding outbound qualification calls\nHandling inbound appointment calls\nAutomatically updating records and sending summaries post-call\n\n## 👉 Dependencies:\n\nActive RetellAI API key\nGoogle Sheet set up with lead data\nGmail API credentials configured"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Check if call was outbound": {
+			"main": [
+				[
+					{
+						"node": "Update lead record in Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Generate call summary with OpenAI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter for analyzed calls only": {
+			"main": [
+				[
+					{
+						"node": "Check if call was outbound",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Detect new lead in Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Send SMS reminder to call lead in 5 minutes",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate call summary with OpenAI": {
+			"main": [
+				[
+					{
+						"node": "Send confirmation email to lead",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 5 minutes before making call": {
+			"main": [
+				[
+					{
+						"node": "Call new lead using RetellAI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update lead record in Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Send call summary email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send SMS reminder to call lead in 5 minutes": {
+			"main": [
+				[
+					{
+						"node": "Wait 5 minutes before making call",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive inbound call from RetellAI (webhook)": {
+			"main": [
+				[
+					{
+						"node": "Check if phone number exists in Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check if phone number exists in Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Send response to inbound webhook call",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive post-call data from RetellAI (webhook)": {
+			"main": [
+				[
+					{
+						"node": "Filter for analyzed calls only",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

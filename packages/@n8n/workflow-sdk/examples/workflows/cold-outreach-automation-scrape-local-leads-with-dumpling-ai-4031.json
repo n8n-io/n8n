@@ -1,0 +1,390 @@
+{
+	"id": "wf-4031",
+	"name": "Cold outreach automation: Scrape local leads with Dumpling AI & call via Vapi",
+	"nodes": [
+		{
+			"id": "ec17b443-6dbd-46c1-8331-797ce6290801",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-860, -900],
+			"parameters": {
+				"width": 900,
+				"height": 320,
+				"content": "### 📍 Get Local Business Data from Google Maps with Dumpling AI\n\nThe workflow begins manually and pulls a list of Google Maps search queries (like \"best plumbers in Chicago\") from Google Sheets. These queries are sent to Dumpling AI's `search-google-map` endpoint, which scrapes businesses matching the terms. The response is split into individual business entries. A Set node extracts the business name and phone number for each result.\n\n- `Start Workflow Manually`: Begin process\n- `Get Search Keywords from Google Sheets`: Pulls search terms (e.g., \"top dentists in NY\")\n- `Scrape Google Map Businesses`: Uses Dumpling AI to collect business info\n- `Split Each Business Result`: Breaks response into single business entries\n- `Extract Business Name and Phone`: Prepares business name and phone number for calling\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5345e653-8442-4caa-bb7e-a597b3779db0",
+			"name": "Start Workflow Manually",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-820, -580],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "072baaf9-81d8-4989-9354-822f02b2f922",
+			"name": "Get Search Keywords from Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-600, -580],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "https://docs.google.YOUR_AWS_SECRET_KEY_HERE_HeZYRKWOjsxOaFZ2BZtu3Y/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "https://docs.google.YOUR_AWS_SECRET_KEY_HERE_HeZYRKWOjsxOaFZ2BZtu3Y/edit?usp=drivesdk",
+					"cachedResultName": "leads"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "004427b8-e8d7-4f28-b03e-4b459f2a7b2b",
+			"name": "Scrape Google Map Businesses using Dumpling AI",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-380, -580],
+			"parameters": {
+				"url": "https://app.dumplingai.com/api/v1/search-maps",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "={\n  \"query\":\"{{ $json.URLs }}\", \n  \"language\": \"en\"\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [{}]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "21eed6ed-ca94-48b1-a164-1a0841ec376b",
+			"name": "Split Each Business Result",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-160, -580],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "places"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5efb54a1-0b80-46aa-861d-2ef53f069a22",
+			"name": "Extract Business Name, Phone and website",
+			"type": "n8n-nodes-base.set",
+			"position": [60, -580],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "79cc91c6-28bd-47a1-86db-b936e6958428",
+							"name": "website",
+							"type": "string",
+							"value": "={{ $json.website }}"
+						},
+						{
+							"id": "7a0455bb-b235-4e03-a93d-0e3b31b40df2",
+							"name": "phoneNumber",
+							"type": "string",
+							"value": "={{ $json.phoneNumber }}"
+						},
+						{
+							"id": "a493dd1f-b495-4c01-983a-4e417aca80fc",
+							"name": "title",
+							"type": "string",
+							"value": "={{ $json.title }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "91ec444a-44be-471b-8f2d-e192f58b085d",
+			"name": "Filter Valid Phone Numbers Only",
+			"type": "n8n-nodes-base.filter",
+			"position": [280, -580],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "dab1310e-6566-4e77-b1a6-362363b2e025",
+							"operator": {
+								"type": "string",
+								"operation": "exists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.phoneNumber }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "77d150c3-0908-443e-afb9-c2e1a740e749",
+			"name": "Format Phone Number for Calling",
+			"type": "n8n-nodes-base.set",
+			"position": [500, -580],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "045d4c64-61f3-4b39-9b5c-35b7e95783fd",
+							"name": "formattedPhone",
+							"type": "string",
+							"value": "={{ '+1' + $json[\"phoneNumber\"].replace(/\\D/g, '') }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "1dbe296d-c422-4ae6-ba7e-6bd7dbe0a5e9",
+			"name": "Initiate Vapi AI Call to Business",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueErrorOutput",
+			"position": [720, -580],
+			"parameters": {
+				"url": "https://api.vapi.ai/call",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "={\n  \"customers\": [\n    {\n      \"number\": \"{{ $json.formattedPhone}}\",\n      \"name\": \"\"\n    }\n  ],\n  \"assistantId\": \"\",\n  \"phoneNumberId\": \"\",\n  \"assistantOverrides\": {\n    \"variableValues\": {\n      \"Name\": \"{{ $('Filter Valid Phone Numbers Only').item.json.title }}\",\n    }\n  }\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fc705d86-98b2-4219-9b19-0350657b845b",
+			"name": "Log Called Business Info to Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [940, -600],
+			"parameters": {
+				"columns": {
+					"value": {
+						"website": "={{ $('Extract Business Name, Phone and website').item.json.website }}",
+						"company name": "={{ $('Extract Business Name, Phone and website').item.json.title }}",
+						"phone number ": "={{ $('Format Phone Number for Calling').item.json.formattedPhone }}"
+					},
+					"schema": [
+						{
+							"id": "company name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "company name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "phone number ",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "phone number ",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "website",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "website",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1315810611,
+					"cachedResultUrl": "https://docs.google.YOUR_AWS_SECRET_KEY_HERE_HeZYRKWOjsxOaFZ2BZtu3Y/edit#gid=1315810611",
+					"cachedResultName": "leads"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1QXZk6D8hW29f9umrmsYv_HeZYRKWOjsxOaFZ2BZtu3Y",
+					"cachedResultUrl": "https://docs.google.YOUR_AWS_SECRET_KEY_HERE_HeZYRKWOjsxOaFZ2BZtu3Y/edit?usp=drivesdk",
+					"cachedResultName": "leads"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "e30e0706-3732-4a2f-81f2-d50e63043632",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [160, -900],
+			"parameters": {
+				"color": 3,
+				"width": 900,
+				"height": 320,
+				"content": "### 📞 Auto-Call Businesses and Track Results\n\nBusinesses without valid phone numbers are filtered out. A Set node formats the numbers for international dialing (e.g., adds +1 for US). The Vapi AI assistant then initiates a phone call to each business, using the business name in the script. After the call, the name, number, and call status are logged to a Google Sheet for follow-up or reporting.\n\n- `Filter Valid Phone Numbers Only`: Ensures phone number exists\n- `Format Phone Number for Calling`: Adds correct dial prefix\n- `Initiate Vapi AI Call to Business`: Triggers outbound AI call via Vapi\n- `Log Called Business Info to Sheet`: Records successful outreach for tracking\n\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Start Workflow Manually": {
+			"main": [
+				[
+					{
+						"node": "Get Search Keywords from Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Each Business Result": {
+			"main": [
+				[
+					{
+						"node": "Extract Business Name, Phone and website",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter Valid Phone Numbers Only": {
+			"main": [
+				[
+					{
+						"node": "Format Phone Number for Calling",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Phone Number for Calling": {
+			"main": [
+				[
+					{
+						"node": "Initiate Vapi AI Call to Business",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Initiate Vapi AI Call to Business": {
+			"main": [
+				[
+					{
+						"node": "Log Called Business Info to Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Search Keywords from Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Scrape Google Map Businesses using Dumpling AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Business Name, Phone and website": {
+			"main": [
+				[
+					{
+						"node": "Filter Valid Phone Numbers Only",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Scrape Google Map Businesses using Dumpling AI": {
+			"main": [
+				[
+					{
+						"node": "Split Each Business Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

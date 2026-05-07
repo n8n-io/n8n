@@ -1,0 +1,373 @@
+{
+	"id": "wf-5368",
+	"name": "Manage Google Calendar via WhatsApp with GPT-4 virtual assistant",
+	"nodes": [
+		{
+			"id": "62514198-2f29-4a99-8747-7e88054649bb",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-740, 560],
+			"parameters": {
+				"model": "gpt-4-turbo-preview",
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0a57b879-0e26-4221-a637-5496dc2e879f",
+			"name": "Success",
+			"type": "n8n-nodes-base.set",
+			"position": [60, 340],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "39c2f302-03be-4464-a17a-d7cc481d6d44",
+							"name": "=response",
+							"type": "string",
+							"value": "={{$json.output}}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "be536969-ceb6-479a-9090-f2af61e51788",
+			"name": "Create Event",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [-500, 560],
+			"parameters": {
+				"end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+				"start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"descriptionType": "manual",
+				"toolDescription": "=Consume Google Calendar API",
+				"additionalFields": {
+					"summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+					"attendees": []
+				}
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "79bb24fa-7432-4099-8b4e-a4245b0994b7",
+			"name": "Delete Event",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [-380, 560],
+			"parameters": {
+				"eventId": "={{ $fromAI(\"eventID\") }}",
+				"options": {
+					"sendUpdates": "all"
+				},
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"operation": "delete",
+				"descriptionType": "manual"
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "b48b62cd-0664-4be9-97ad-0894076b222b",
+			"name": "Update Event",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [-260, 560],
+			"parameters": {
+				"eventId": "={{ $fromAI(\"eventID\") }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"operation": "update",
+				"updateFields": {
+					"end": "={{ $fromAI(\"endTime\") }}",
+					"start": "={{ $fromAI(\"startTime\") }}"
+				},
+				"descriptionType": "manual"
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "2503b217-d803-48e4-bcab-35326ad6fbcd",
+			"name": "WhatsApp Trigger",
+			"type": "n8n-nodes-base.whatsAppTrigger",
+			"position": [-960, 340],
+			"webhookId": "d214a512-4e47-4795-94e7-8fe22d728e53",
+			"parameters": {
+				"updates": ["messages"]
+			},
+			"credentials": {
+				"whatsAppTriggerApi": {
+					"id": "credential-id",
+					"name": "whatsAppTriggerApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "75ca98bd-87cd-4d33-ae93-0ce24fee9128",
+			"name": "WhatsApp Business Cloud",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [280, 340],
+			"webhookId": "313cb932-f2a1-413c-82be-9992dd6f7fb2",
+			"parameters": {
+				"textBody": "={{ $json.response }}",
+				"operation": "send",
+				"phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}",
+				"additionalFields": {},
+				"recipientPhoneNumber": "ENTER YOUR PHONE NUMBER HERE"
+			},
+			"credentials": {
+				"whatsAppApi": {
+					"id": "credential-id",
+					"name": "whatsAppApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a07c2c51-ceed-4243-85c4-5f027dc01692",
+			"name": "Search Event",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [-140, 560],
+			"parameters": {
+				"limit": "={{ $fromAI('Limit', ``, 'number') }}",
+				"options": {},
+				"timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+				"timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"operation": "getAll",
+				"descriptionType": "manual"
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "c38e2b8f-eb9f-49c7-87db-81dc322ab90b",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-620, 560],
+			"parameters": {
+				"sessionKey": "={{ $('WhatsApp Trigger').item.json.messages[0].type }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "43bfc3ce-e5b0-407d-b556-e1bbdc78a178",
+			"name": "TimePilot",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-528, 340],
+			"parameters": {
+				"text": "={{ $json.messages[0].text.body }}",
+				"options": {
+					"systemMessage": "=# Overview  \nYou are a personal AI assistant that manages *your own calendar* through WhatsApp messages. You must always trigger the correct module corresponding to the requested action (create, update, search, delete). No assumptions or shortcuts—only execute via the designated modules.\n\n## Context  \n- You are the only user of this system.  \n- All requests come from WhatsApp and responses must be sent via WhatsApp.  \n- You use Google Calendar modules to perform every action and confirm completion.  \n- You understand both French and English.  \n- Your tone is neutral, fast, and action-focused.  \n\n## Instructions  \n1. Always check if the input contains a clear calendar-related request.  \n2. If the message is a greeting or polite phrase (e.g., \"Hi\", \"Thanks\", \"Hello\"), reply briefly and kindly.  \n3. Always route tasks through the correct module:\n   - Always Use **Search Event** to:\n     - List all upcoming meetings.\n     - Show availability.\n     - Retrieve a specific event before updating or deleting it.\n   -Always Use **Create Event with Attendee** to create any new event (even without participants).\n   - Always Use **Update Event** only after retrieving the target event with **Search Event**.\n   - Always Use **Delete Event** only after retrieving the event with **Search Event**.\n4. Never perform any action without using the appropriate module.  \n5. If information is missing (like time or participants), ask one short, targeted follow-up question.  \n6. Always confirm the completed action with a short message via WhatsApp.  \n7. If the input is unclear, ask for clarification. Never guess.  \n8. Never explain your steps or how you operate. Just act.  \n\n## Tools  \n- Search Event (availability/meeting schedule:calendar)  \n- Create Event with Attendee (create:event)  \n- Update Event (update:event)  \n- Delete Event (delete:event)  \n\n## Examples  \n- Input: \"Yo\"  \n  - Output: \"Hi! What would you like to do with your calendar?\"  \n- Input: \"Add a call tomorrow at 9am with Julien\"  \n  - Modules: Create Event with Attendee  \n  - Output: \"Call with Julien added tomorrow at 9am.\"  \n- Input: \"What meetings do I have Friday?\"  \n  - Modules: Search Event  \n  - Output: \"On Friday you have: 10am 'Budget Review' with Claire, 3pm 'Product Sync' with Marc.\"  \n- Input: \"List my meetings this week\"  \n  - Modules: Search Event  \n  - Output: \"Here are your meetings this week: Monday 10am with Hugo, Wednesday 2pm with Ana...\"  \n- Input: \"Delete the HR sync tomorrow\"  \n  - Modules: Search Event → Delete Event  \n  - Output: \"Done. The HR sync for tomorrow has been deleted.\"  \n- Input: \"Thanks\"  \n  - Output: \"You're welcome!\"  \n- Input: \"Move the 2pm meeting to 4pm\"  \n  - Modules: Search Event → Update Event  \n  - Output: \"The meeting has been moved to 4pm.\"  \n- Input: \"Create a ‘Sprint Review’ meeting tomorrow at 11am with Lisa and Karim\"  \n  - Modules: Create Event with Attendee  \n  - Output: \"‘Sprint Review’ meeting created tomorrow at 11am with Lisa and Karim.\"  \n\n## SOP (Standard Operating Procedure)  \n1. Read the WhatsApp message.  \n2. Identify the intent:\n   - View meetings: use \"Search Event\"\n   - Create meeting: use \"Create Event with Attendee\"\n   - Update meeting: use \"Search Event\" → \"Update Event\"\n   - Delete meeting: use \"Search Event\" → \"Delete Event\"\n3. Always use the correct module—no exceptions.  \n4. Send a short confirmation message via WhatsApp.  \n5. If data is missing, ask a concise follow-up question.  \n\n## Final Notes  \n- You are the only user.  \n- Never handle any action without triggering the corresponding module.  \n- All confirmations are sent in real-time via WhatsApp.  \n- Default meeting duration is one hour.  \n\nCurrent time is {{ $now.format('yyyy-MM-dd') }}  \nTime zone: Paris/Europe  "
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "c9ff64ad-d3ec-40f8-af60-9ae1f739148d",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1020, 20],
+			"parameters": {
+				"color": 4,
+				"width": 220,
+				"height": 700,
+				"content": "## 🟩 Block 1 – WhatsApp Trigger\n\nPurpose: Entry point of the workflow.\nIt triggers the automation when a message is received via WhatsApp.\n📥 User Input = A WhatsApp message (e.g. “What’s my schedule today?”)\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c4a4972c-bf6f-4c7e-b4c3-ef44479989de",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-780, 20],
+			"parameters": {
+				"color": 5,
+				"width": 800,
+				"height": 700,
+				"content": "## 🟦 Block 2 – TimePilot (Tools Agent)\nPurpose: The brain of the system.\nThis is the main AI agent that receives the message, interprets it using GPT, and decides what calendar action to trigger.\n\n🔁 It connects with:\nOpenAI Chat Model → to understand natural language\nSimple Memory → to retain conversation context\nCalendar Modules → to take the proper action (create, delete, update…)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "34cc21ed-6dbb-4625-b5df-126def225d18",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [40, 20],
+			"parameters": {
+				"color": 6,
+				"width": 440,
+				"height": 700,
+				"content": "## 🟪 Part 3 – Output & Confirmation\n✅ Success (manual)\nPurpose: Triggered when everything runs smoothly.\nPrepares a success message based on the operation performed.\n\n💬 WhatsApp Business Cloud – message:send\nPurpose: Sends the final response to the user directly on WhatsApp.\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d725e087-45d0-48eb-bbbe-3d7bed5bd9a3",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [520, 20],
+			"parameters": {
+				"width": 540,
+				"height": 1360,
+				"content": "## 🛠️ How to use TimePilot Agent (WhatsApp Calendar Assistant)\n\n✅ Prerequisites\n-WhatsApp Business Cloud account\n-Google Calendar connected in n8n\n-OpenAI API Key (GPT-4 or GPT-3.5)\n-A verified phone number in Meta Developer Portal\n-Meta App created and approved (for messages access)\n-n8n running with a webhook accessible from Meta\n-TimePilot Workflow imported into n8n\n\n🧩 STEP 1 – Create a Meta App\nGo to https://developers.facebook.com/apps\n\nClick Create App → Type: Business\nAdd WhatsApp Product\nAdd your verified phone number\nSave your Phone Number ID and WhatsApp Business Account ID\n\n🔑 STEP 2 – Add WhatsApp Product\nIn your Meta App → Add product → Select WhatsApp\n\nGenerate a test token or configure permanent access token\nNote your Access Token, and Business Account ID\n\n🔁 STEP 3 – Configure Webhook (n8n)\nCopy your n8n webhook URL (e.g. https://yourn8n.com/webhook/timepilot)\n\nIn Meta Dashboard → WhatsApp → Webhooks\nAdd webhook → Paste your n8n webhook URL\nSubscribe to the following fields:\n\n-management\n-messaging\n\n🔐 STEP 4 – Setup Token in n8n Credentials\nGo to n8n → Credentials → HTTP Basic Auth / OAuth2 / Bearer YOUR_TOKEN_HERE\n\nAdd Meta API Token for WhatsApp module\nAdd Google Calendar OAuth2 credential\n\n🧠 STEP 5 – Add OpenAI API Key\nGo to n8n → Credentials → OpenAI\n\nPaste your API key\nChoose GPT-3.5 or GPT-4\n\n🧱 STEP 6 – Modules connected in the TimePilot Agent\n📅 Create Event → Handles creation of new Google Calendar events\n\n✏️ Update Event → Changes existing events (title, time, etc.)\n\n🗑 Delete Event → Removes an event\n\n🔍 Search Event → Checks availability or lists upcoming events\n\n💬 WhatsApp Cloud → Sends reply with confirmation or schedule\n\n🤖 OpenAI Chat Model → Interprets the user’s message\n\n🧠 Memory (optional) → Maintains past request context\n\n🧪 STEP 7 – Test It!\nSend a message via WhatsApp to your connected number:\n\n“Create a meeting with Anna at 4pm tomorrow”\n\nn8n will process the request and return:\n\n“✅ Your event has been created.”"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Success": {
+			"main": [
+				[
+					{
+						"node": "WhatsApp Business Cloud",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TimePilot": {
+			"main": [
+				[
+					{
+						"node": "Success",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Event": {
+			"ai_tool": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete Event": {
+			"ai_tool": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Event": {
+			"ai_tool": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Event": {
+			"ai_tool": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"WhatsApp Trigger": {
+			"main": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "TimePilot",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

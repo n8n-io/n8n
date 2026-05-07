@@ -1,0 +1,342 @@
+{
+	"id": "wf-3772",
+	"name": "Automatically classify and label Gmail emails with Google Gemini AI",
+	"nodes": [
+		{
+			"id": "0226578d-4741-42f2-8a7b-c750f75be78d",
+			"name": "Gmail Trigger",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"position": [0, 0],
+			"parameters": {
+				"simple": false,
+				"filters": {},
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "48d0ee27-d4d6-4db4-843c-d9c18b934945",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [220, 320],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.0-flash-001"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d7e8bed4-cadc-41e3-b793-cc8affb177cc",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"disabled": true,
+			"position": [1420, 60],
+			"parameters": {
+				"text": "=Here's the email context: {{ $('Classification Agent').item.json.text }}",
+				"options": {
+					"systemMessage": "You are my personal assistant for Kajonkietsuksa School.\nYour role is to help me with any work-related tasks.\nOne of your main responsibilities is to write professional and polite reply emails whenever I receive an email in my inbox. Act as me, don't include something like \"here's a potential reply email or other\"\n\nWhen writing a reply email:\n\nStart by acknowledging the sender's message.\n\nAnswer their questions or address their requests clearly and directly.\n\nMaintain a polite, professional, and helpful tone.\n\nKeep the language simple and easy to understand.\n\nIf additional action is required from me, mention that I will get back to them soon.\n\nAlways end the email with a courteous closing line, such as \"Thank you\" or \"Best regards.\"\n\nKeep your writing style consistent with a warm yet formal communication style that reflects the reputation of Kajonkietsuksa School.\n\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "3b5cabb7-346f-4b69-b3f4-c61e78e2d8c7",
+			"name": "Groq Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+			"disabled": true,
+			"position": [1440, 180],
+			"parameters": {
+				"model": "meta-llama/llama-4-scout-17b-16e-instruct",
+				"options": {}
+			},
+			"credentials": {
+				"groqApi": {
+					"id": "credential-id",
+					"name": "groqApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "43984fb2-7a26-4e13-95ee-c29f0d9f2f24",
+			"name": "Gmail3",
+			"type": "n8n-nodes-base.gmail",
+			"disabled": true,
+			"position": [1780, 60],
+			"webhookId": "64df877a-5475-447d-860b-b62d4418d841",
+			"parameters": {
+				"message": "={{ $json.output }}",
+				"options": {},
+				"subject": "=Re: {{ $('Gmail Trigger').item.json.headers.subject }}",
+				"resource": "draft"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "c269ec5e-f882-4458-ab52-46b719731309",
+			"name": "Classification Agent",
+			"type": "@n8n/n8n-nodes-langchain.textClassifier",
+			"position": [240, 0],
+			"parameters": {
+				"options": {
+					"systemPromptTemplate": "Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json."
+				},
+				"inputText": "={{ $json.text || $json.html }}",
+				"categories": {
+					"categories": [
+						{
+							"category": "High Priority",
+							"description": "Emails requiring immediate attention or action, typically from key stakeholders, clients, or decision-makers. These emails often contain time-sensitive requests, deadlines, or escalated issues. Keywords: urgent, ASAP, immediate, deadline, action required, high priority"
+						},
+						{
+							"category": "KS Work Related",
+							"description": "Anything related to my school or education. Keyword: Kajonkietsuksa School, Kajonkietsuksa, School"
+						},
+						{
+							"category": "Promotion",
+							"description": "Anything related to updating on promotions. Keywords: newsletter, promotion, offer, sale, campaign, marketing, launch"
+						},
+						{
+							"category": "Other",
+							"description": "If you don't know what category is this email."
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "17be38df-c225-4d19-81ec-e205ff4b9f3c",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [60, 260],
+			"parameters": {
+				"color": 4,
+				"width": 300,
+				"height": 80,
+				"content": "### 2) Change to your desire LLMs"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3e8ac267-c2ac-49cb-ad53-536510faa1a4",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-80, -60],
+			"parameters": {
+				"color": 4,
+				"content": "### 1) Change to your gmail's credential"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f5e2c92d-3335-4ed0-915e-f7edeb0b5a92",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [220, -380],
+			"parameters": {
+				"color": 4,
+				"width": 340,
+				"content": "### 3) Login to your gmail inbox\n* Create a label with \"+\" icon\n* Change the color of your choice"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4a8a7424-f9dd-42b1-b803-5d0dbe076956",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [220, -160],
+			"parameters": {
+				"color": 4,
+				"width": 320,
+				"content": "### 4) Agent instruction\n* Input the category name that you just created in gmail.\n* Description = Tell agent about how should it classify your email. Keywords can be useful to let your agent classify the email context."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "24c7ef4e-7a68-4240-980b-02b994300084",
+			"name": "Add Label Promotion",
+			"type": "n8n-nodes-base.gmail",
+			"position": [700, 200],
+			"webhookId": "4e089f5f-58ea-4c8d-8870-3d155a81f0b7",
+			"parameters": {
+				"labelIds": ["Label_4917715854276709190"],
+				"messageId": "={{ $json.id }}",
+				"operation": "addLabels"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "759f8cbe-4674-49e5-a52b-2acf208ffb22",
+			"name": "Add Label (KS Work Related)",
+			"type": "n8n-nodes-base.gmail",
+			"position": [700, 0],
+			"webhookId": "4e089f5f-58ea-4c8d-8870-3d155a81f0b7",
+			"parameters": {
+				"labelIds": ["Label_4956837555783205638"],
+				"messageId": "={{ $json.id }}",
+				"operation": "addLabels"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "d07fe962-16c0-401a-b194-5ce7e6ad9746",
+			"name": "Add Label (High Priority)",
+			"type": "n8n-nodes-base.gmail",
+			"position": [700, -200],
+			"webhookId": "4e089f5f-58ea-4c8d-8870-3d155a81f0b7",
+			"parameters": {
+				"labelIds": ["Label_3750994713301985229"],
+				"messageId": "={{ $json.id }}",
+				"operation": "addLabels"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "7d0c9bd5-6150-4afa-9344-8bb3c1a6b01c",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [660, -320],
+			"parameters": {
+				"color": 4,
+				"width": 320,
+				"content": "### 5) Add Label Nodes\n* In this option \"Label Names or IDs\" -> Select the category to match with the Classification Agent Node."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d57ecacb-a479-4bf7-b9b4-b9e14e30dcd7",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [980, 60],
+			"parameters": {
+				"color": 4,
+				"width": 220,
+				"content": "### 6) Add-on\n* You can add more category of your choice!"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Gmail3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gmail Trigger": {
+			"main": [
+				[
+					{
+						"node": "Classification Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Groq Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Classification Agent": {
+			"main": [
+				[
+					{
+						"node": "Add Label (High Priority)",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add Label (KS Work Related)",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add Label Promotion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Classification Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Label (KS Work Related)": {
+			"main": [[]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

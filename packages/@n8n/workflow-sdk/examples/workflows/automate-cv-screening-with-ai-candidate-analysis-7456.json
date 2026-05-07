@@ -1,0 +1,543 @@
+{
+	"id": "wf-7456",
+	"name": "🤖 Automate CV screening with AI candidate analysis",
+	"nodes": [
+		{
+			"id": "821d52da-591f-44db-b218-ee3974855a05",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - Create Spreadsheet1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [832, 560],
+			"parameters": {
+				"color": 7,
+				"width": 272,
+				"height": 272,
+				"content": "Initializes a new Google Sheet with columns for applicant data. Can be replaced with Airtable, Notion, etc."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "72c7af0e-d8f8-4498-a849-b95c323a6cd6",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - Append Row1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1520, 208],
+			"parameters": {
+				"color": 7,
+				"width": 320,
+				"height": 288,
+				"content": "Adds the applicant's name and email to the Google Sheet right after they submit the form to have it logged even if the workflow fails."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b8076a35-fb6e-481d-9d92-3a95e9c3c732",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - Extract Text1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1536, 528],
+			"parameters": {
+				"color": 7,
+				"width": 224,
+				"height": 304,
+				"content": "This uses **[Mistral OCR](https://mistral.ai/fr/news/mistral-ocr)**, it extracts the text perfectly from a candidate's CV (PDF).\n\n**[Get your Mistral API key here](https://console.mistral.ai/api-keys)**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f7d1f44f-2d84-4a97-adad-2923f6ba1736",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - LLM Chain1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1776, 560],
+			"parameters": {
+				"color": 6,
+				"width": 320,
+				"height": 248,
+				"content": "Adapt the `job requirements` in the prompt to **your position & criteria**."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a1e153ae-1a1b-4a4f-b901-b999c31b4059",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - Output Parser1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1920, 864],
+			"parameters": {
+				"color": 7,
+				"width": 368,
+				"height": 256,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\nEnsures the AI's response is perfectly structured as JSON (e.g., `qualificationRate`, `explanation`), making the data reliable and easy to use."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "641d597c-400b-4d6c-a21c-5fc28099c9be",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - Update Row1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2112, 560],
+			"parameters": {
+				"color": 7,
+				"width": 272,
+				"height": 256,
+				"content": "Check your Google Sheets! You now have the analysis of the candidate."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "704e43dd-ee85-4514-8a41-cb3daaf71eee",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note - Workflow Goal1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [368, 240],
+			"parameters": {
+				"width": 448,
+				"height": 592,
+				"content": "## Automated CV Scanner\n\nThis workflow automates your hiring pipeline:\n1.  **Collects** applications via a web form.\n2.  **Extracts** text from the CV (PDF).\n3.  **Analyzes** the CV with AI against your job description.\n4.  **Stores** the candidate's score and a detailed explanation in Google Sheets.\n\n\n### Questions or Feedback?\nFor feedback, coaching, built-for-you workflows, or any questions, use my unified AI-powered contact form.\n\n➡️ **[Get in Touch Here](https://api.ia2s.app/form/templates/academy)**\n\n*Happy Automating! —Lucas Peyrin*"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cb5ef831-79f7-4129-9642-6ece79a3603e",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Application Form",
+			"type": "n8n-nodes-base.formTrigger",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1312, 656],
+			"webhookId": "230e09f7-33df-4266-917d-ce3398cae141",
+			"parameters": {
+				"options": {
+					"path": "230e09f7-33df-4266-917d-ce3398cae141",
+					"customCss": "/* --- ROOT VARIABLES (Dark Professional Theme) --- */\n:root {\n\t/* --- FONT MAPPING --- */\n\t--font-family: 'Inter', sans-serif;\n\t--font-weight-normal: 400;\n\t--font-weight-bold: 600;\n\t--font-size-body: 14px;\n\t--font-size-label: 14px;\n\t--font-size-input: 14px;\n\t--font-size-header: 24px;\n\t--line-height-base: 1.6;\n\n\t/* --- COLOR MAPPING (Dark Slate/Purple Theme) --- */\n\t--color-page-bg: #111827; /* Dark Slate */\n\t--color-card-bg-glass: rgba(29, 39, 53, 0.65); /* Darker, less transparent glass */\n\t--color-card-border-glass: rgba(255, 255, 255, 0.1); /* Subtle light border */\n\t--color-input-bg: #1F2937; /* Slightly lighter than page bg */\n\t--color-header: #F9FAFB; /* Off-white for high contrast */\n\t--color-label: #9CA3AF; /* Light gray for secondary text */\n\t--color-input-text: #F9FAFB;\n\t--color-input-border: #4B5563; /* Mid-gray border */\n\t--color-focus-border: #8B5CF6; /* Vibrant Purple */\n\t--color-link: #8B5CF6;\n\t--color-submit-btn-bg: #8B5CF6;\n\t--color-submit-btn-hover-bg: #7C3AED; /* Darker Purple */\n\t--color-submit-btn-text: #FFFFFF;\n\t--color-error: #F43F5E; /* Vibrant Rose for errors */\n\t--color-required: #F43F5E;\n\n\t/* --- DIMENSIONS & SPACING --- */\n\t--container-width: 550px;\n\t--border-radius-card: 16px;\n\t--border-radius-input: 8px;\n\t--padding-card: 32px;\n\t--padding-form-input: 14px;\n\t--submit-btn-height: 48px;\n\t--checkbox-size: 20px;\n\n\t/* --- EFFECTS & ANIMATIONS --- */\n\t--box-shadow-card: 0 16px 50px rgba(0, 0, 0, 0.3); /* Deeper shadow for dark mode */\n\t--transition-speed: 0.25s;\n\t--animation-speed-fast: 0.2s;\n\t--animation-speed-normal: 0.4s;\n}\n\n/* === KEYFRAME ANIMATIONS === */\n@keyframes fadeInSlideUp {\n    from {\n        opacity: 0;\n        transform: translateY(20px);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n\n@keyframes backgroundPan {\n\t0% { background-position: 0% 50%; }\n\t50% { background-position: 100% 50%; }\n\t100% { background-position: 0% 50%; }\n}\n\n/* === GLOBAL LAYOUT & STYLES === */\nbody {\n    /* Dynamic animated aurora gradient background */\n    background-color: var(--color-page-bg);\n    background-image:\n        radial-gradient(at 20% 100%, hsla(278, 60%, 45%, 0.2) 0px, transparent 50%),\n        radial-gradient(at 80% 0%, hsla(215, 60%, 40%, 0.2) 0px, transparent 50%),\n        radial-gradient(at 50% 50%, hsla(259, 70%, 55%, 0.1) 0px, transparent 50%);\n    background-size: 200% 200%;\n    animation: backgroundPan 15s ease-in-out infinite;\n\n    line-height: var(--line-height-base);\n    font-size: var(--font-size-body);\n    color: var(--color-label); /* Set default text color for body */\n\n    /* Flexbox properties for true centering */\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    min-height: 100vh;\n    margin: 0;\n    overflow-x: hidden; /* Prevent horizontal scroll from large gradients */\n}\n\n.form-container {\n    padding: 2rem 1rem;\n}\n\n/* === THE GLASSMORPHISM CARD === */\n.card {\n    background: var(--color-card-bg-glass);\n    backdrop-filter: blur(16px) saturate(150%);\n    -webkit-backdrop-filter: blur(16px) saturate(150%);\n    border-radius: var(--border-radius-card);\n    border: 1px solid var(--color-card-border-glass);\n    box-shadow: var(--box-shadow-card);\n    transition: box-shadow var(--animation-speed-normal) ease;\n\n    /* Card Load-in Animation */\n    animation: fadeInSlideUp 0.6s ease-out forwards;\n}\n.card:hover {\n    box-shadow: 0 0 50px rgba(139, 92, 246, 0.15); /* Subtle purple glow on hover */\n}\n\n/* === FORM ELEMENT STYLING === */\n.form-input {\n    border-radius: var(--border-radius-input);\n    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;\n    background-color: var(--color-input-bg);\n    border: 1px solid var(--color-input-border);\n    color: var(--color-input-text);\n}\n.form-input::placeholder {\n    color: var(--color-label);\n    opacity: 0.7;\n}\n.form-input:focus {\n    /* Glow effect on focus */\n    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);\n    border-color: var(--color-focus-border);\n    outline: none; /* Remove default outline */\n}\n\ntextarea.form-input {\n    min-height: 150px;\n    resize: vertical;\n}\n\n/* Submit Button */\nbutton.submit-btn {\n    transition: all var(--transition-speed) ease-in-out;\n    font-family: var(--font-family);\n    font-weight: var(--font-weight-bold);\n    color: var(--color-submit-btn-text);\n    background-color: var(--color-submit-btn-bg);\n    border-radius: var(--border-radius-input);\n    border: none;\n    cursor: pointer;\n}\nbutton.submit-btn:hover {\n    background-color: var(--color-submit-btn-hover-bg);\n    /* Add a lift and glow effect on hover */\n    transform: translateY(-3px);\n    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);\n}\n\n/* === MODERN CHECKBOX STYLING === */\nlabel.multiselect-label {\n    display: flex;\n    align-items: center;\n    cursor: pointer;\n    position: relative;\n    padding: 8px 0;\n}\nlabel.multiselect-label span {\n    padding-left: 12px;\n    color: var(--color-label);\n    transition: color var(--transition-speed) ease;\n}\nlabel.multiselect-label:hover span {\n    color: var(--color-input-text); /* Lighten label text on hover */\n}\nlabel.multiselect-label input[type=\"checkbox\"] {\n    position: absolute;\n    opacity: 0;\n    cursor: pointer;\n    height: 0;\n    width: 0;\n}\nlabel.multiselect-label span::before {\n    content: '';\n    position: absolute;\n    left: 0;\n    top: 50%;\n    transform: translateY(-50%);\n    width: var(--checkbox-size);\n    height: var(--checkbox-size);\n    background-color: var(--color-input-bg);\n    border: 1px solid var(--color-input-border);\n    border-radius: 6px;\n    transition: all var(--animation-speed-fast) ease-in-out;\n}\nlabel.multiselect-label input[type=\"checkbox\"]:checked + span::before {\n    background-color: var(--color-focus-border);\n    border-color: var(--color-focus-border);\n    background-image: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e\");\n    background-position: center;\n    background-repeat: no-repeat;\n    /* Animation for the checkmark appearing */\n    transform: translateY(-50%) scale(1.05);\n}\nlabel.multiselect-label input[type=\"checkbox\"]:focus-visible + span::before {\n    /* Use a glow for focus instead of a harsh outline */\n    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);\n}",
+					"buttonLabel": "Submit Application",
+					"appendAttribution": false
+				},
+				"formTitle": "Submit Your Application",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Full Name",
+							"placeholder": "e.g., Jane Doe",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Email",
+							"placeholder": "e.g., user@example.com",
+							"requiredField": true
+						},
+						{
+							"fieldType": "file",
+							"fieldLabel": "Upload CV",
+							"requiredField": true,
+							"acceptFileTypes": ".pdf"
+						}
+					]
+				},
+				"responseMode": "lastNode",
+				"formDescription": "Please fill out the form below and upload your CV to apply."
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "8af8707e-de1b-4687-8d7a-c853dfec2b31",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Start Here",
+			"type": "n8n-nodes-base.manualTrigger",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [592, 656],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "3b04b67b-d4dc-44e6-90e1-d239dbbc40d1",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Extract CV Text",
+			"type": "n8n-nodes-base.mistralAi",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1600, 656],
+			"parameters": {
+				"options": {},
+				"binaryProperty": "={{ $('Application Form').last().binary.keys()[0] }}"
+			},
+			"credentials": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "483377db-ede2-4dcb-8ce0-a77b9f9d1b09",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Log Candidate Submission",
+			"type": "n8n-nodes-base.googleSheets",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1616, 320],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Email": "={{ $json.Email }}",
+						"FullName": "={{ $json[\"Full Name\"] }}"
+					},
+					"schema": [
+						{
+							"id": "FullName",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "FullName",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Email",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Email",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "QualificationRate",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "QualificationRate",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "QualificationDescription",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "QualificationDescription",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"cachedResultName": "CVs"
+				}
+			},
+			"credentials": {},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "d4aa8091-6577-44b5-9541-c0cc87f83e93",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Add CV Analysis",
+			"type": "n8n-nodes-base.googleSheets",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2176, 656],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Email": "={{ $('Application Form').last().json.Email }}",
+						"QualificationRate": "={{ $json.output.qualificationRate }}",
+						"QualificationDescription": "={{ $json.output.explanation }}"
+					},
+					"schema": [
+						{
+							"id": "FullName",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "FullName",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Email",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Email",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "QualificationRate",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "QualificationRate",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "QualificationDescription",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "QualificationDescription",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Email"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"cachedResultName": "CVs"
+				}
+			},
+			"credentials": {},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "05672977-b212-4dc6-9315-9d2c191c43a6",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "JSON Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2064, 912],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"qualificationRate\": {\n      \"type\": \"number\",\n      \"description\": \"The qualification rate, typically a number between 0 and 1 or a percentage.\"\n    },\n    \"explanation\": {\n      \"type\": \"string\",\n      \"description\": \"A textual explanation or description of the qualification rate.\"\n    }\n  },\n  \"required\": [\n    \"qualificationRate\",\n    \"explanation\"\n  ],\n  \"additionalProperties\": false\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "e94d6fac-a882-4573-a52d-11a90b15302f",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Gemini 2.5 Flash Lite",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1728, 896],
+			"parameters": {
+				"options": {
+					"temperature": 0.4
+				},
+				"modelName": "models/gemini-2.5-flash-lite"
+			},
+			"credentials": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "7f185e06-146b-4949-a2b9-c840f1fbf556",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Create 'CVs' Spreadsheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [912, 656],
+			"parameters": {
+				"title": "CVs",
+				"options": {},
+				"resource": "spreadsheet",
+				"sheetsUi": {
+					"sheetValues": [
+						{
+							"title": "FullName"
+						},
+						{
+							"title": "Email"
+						},
+						{
+							"title": "QualificationRate"
+						},
+						{
+							"title": "QualificationDescription"
+						}
+					]
+				}
+			},
+			"credentials": {},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "21587944-8fd4-4583-8697-a7bf04441850",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1216, 560],
+			"parameters": {
+				"color": 7,
+				"width": 300,
+				"height": 268,
+				"content": "💡 Later, activate this workflow and share the public form URL to let candidates share their CV!"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f7e475cb-a354-4e10-9bc1-662cc81d13df",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1616, 864],
+			"parameters": {
+				"color": 7,
+				"width": 294,
+				"height": 316,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n1. [In Google AI Studio](https://aistudio.google.com/app/apikey) click **“Create API key in new project”** and copy it.\n\n2. Open the ```Connect Gemini``` node:\n   * **Select Credential → Create New**\n   * Paste into **API Key** and **Save**\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d75d53de-6040-4620-b102-0621829c0666",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "AI Qualification",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1824, 656],
+			"parameters": {
+				"text": "=<goal>\nYour primary goal is to evaluate a candidate's CV against the provided job requirements for the Senior Frontend Developer position. You must determine if the prospect is qualified and produce a raw JSON output containing a qualification score and a detailed, evidence-based explanation for that score.\n</goal>\n\n<context>\n<job_requirements>\n\n# Position Profile: Senior Frontend Developer\n\nJob Title: Senior Frontend Developer\nLocation: Remote (US-based)\n\nAbout the Role:\nWe are looking for an experienced and passionate Senior Frontend Developer to join our core product team. You will be responsible for building and maintaining the user-facing components of our flagship SaaS platform, ensuring a seamless, responsive, and high-performance user experience. You will collaborate closely with UI/UX designers, product managers, and backend engineers to bring new features to life and mentor other developers on the team.\n\nKey Responsibilities:\n- Develop, test, and deploy high-quality, scalable, and user-friendly web applications using React and TypeScript.\n- Collaborate with cross-functional teams to define, design, and ship new features.\n- Mentor junior and mid-level developers through code reviews, pair programming, and technical guidance.\n- Optimize applications for maximum speed, scalability, and accessibility.\n- Ensure the technical feasibility of UI/UX designs and maintain a high standard of code quality.\n- Stay up-to-date with emerging technologies and advocate for their adoption where it makes sense.\n\n# EVALUATION CRITERIA\n\n## Core Requirements (Must-Haves)\n\n- Experience: 5+ years of professional experience in frontend development.\n- Project Leadership: Proven experience leading frontend projects from conception to completion.\n- JavaScript/TypeScript: Expert-level proficiency in modern JavaScript (ES6+) and TypeScript.\n- Framework Expertise: Deep, hands-on experience with React.\n- State Management: Strong experience with state management libraries such as Redux, Zustand, or React Query.\n- Styling: Proficiency in modern CSS, including CSS-in-JS (e.g., Styled Components) or utility-first CSS (e.g., Tailwind CSS).\n- API Integration: Extensive experience consuming RESTful or GraphQL APIs.\n- Testing: Solid experience with frontend testing frameworks like Jest and React Testing Library.\n- Version Control: Mastery of Git and collaborative workflows (e.g., GitFlow).\n- Communication: Excellent written and verbal communication skills (assessed through the clarity and professionalism of the CV).\n\n## Preferred Qualifications (Nice-to-Haves)\n\n- Meta-Frameworks: Experience with Next.js or a similar framework.\n- Backend Knowledge: Familiarity with Node.js and server-side development.\n- CI/CD: Experience setting up and maintaining CI/CD pipelines (e.g., GitHub Actions, Vercel).\n- Design Acumen: A strong eye for UI/UX design.\n- Performance Tuning: Experience with web performance optimization tools like Lighthouse.\n\n</job_requirements>\n\n<qualifiaction>\n# How I Evaluate\nI operate based on a strict set of evaluation criteria provided for a specific role. My analysis is broken down into two main categories: \"Core Requirements\" (which are non-negotiable) and \"Preferred Qualifications\" (which act as bonuses). My final output is a qualification score and a detailed justification, citing specific evidence from the candidate's CV.\n\n# Evaluation Logic\n- The `qualificationRate` is a score from 0.0 to 1.0.\n- **Core Requirements** are critical. A candidate missing one or more core requirements cannot score above 0.6. A candidate meeting all core requirements should score at least 0.75.\n- **Preferred Qualifications** are bonuses. Each met preferred qualification adds to the score, pushing it closer to 1.0.\n- The `explanation` must be a detailed, point-by-point analysis, justifying the score by citing evidence (or lack thereof) from the CV for each requirement.\n</qualifiaction>\n</context>\n\n<output_format>\nYou must produce a single, raw JSON object. Do not add any conversational text, greetings, or explanations outside of the JSON structure. The JSON object must strictly adhere to the following format:\n```json\n{\n  \"explanation\": \"<string>\",\n  \"qualificationRate\": <number>\n}\n```\n</output_format>\n</instructions>",
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"message": "You are the AI Hiring Assistant, a specialized AI agent designed to meticulously analyze and evaluate candidate CVs against specific job requirements. Your personality is professional, objective, and detail-oriented. You provide clear, evidence-based assessments to support hiring decisions."
+						}
+					]
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		}
+	],
+	"connections": {
+		"Start Here": {
+			"main": [
+				[
+					{
+						"node": "Create 'CVs' Spreadsheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract CV Text": {
+			"main": [
+				[
+					{
+						"node": "AI Qualification",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Qualification": {
+			"main": [
+				[
+					{
+						"node": "Add CV Analysis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Application Form": {
+			"main": [
+				[
+					{
+						"node": "Extract CV Text",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Log Candidate Submission",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"JSON Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Qualification",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini 2.5 Flash Lite": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Qualification",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

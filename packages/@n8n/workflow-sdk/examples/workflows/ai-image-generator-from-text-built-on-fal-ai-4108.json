@@ -1,0 +1,375 @@
+{
+	"id": "wf-4108",
+	"name": "AI image generator from text built on fal.ai",
+	"nodes": [
+		{
+			"id": "c5b7bac5-6e31-4338-af76-32a34be8ae4d",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-440, 280],
+			"webhookId": "5cca11bb-eaea-4c3a-86f7-16d5802b6ac8",
+			"parameters": {
+				"path": "ai_text_to_image_generator",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ba2850cc-3d2b-45d7-9c1d-87bff38d99c3",
+			"name": "Fetch Status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [300, 280],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/flux/requests/{{ $json.request_id }}/status",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "44e08f96-e6b2-49a8-8077-571e07108d8d",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [680, 460],
+			"webhookId": "150069ed-885b-497f-a32a-09e7088136e6",
+			"parameters": {
+				"amount": 1
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "a1455b63-eed2-4c6d-86dc-11bf0937892b",
+			"name": "Is Ready?",
+			"type": "n8n-nodes-base.if",
+			"position": [480, 280],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "ac50759b-e2f3-4efd-a2af-f28b7d209b45",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "6b4446ef-0c5f-4d8b-839e-e7a9d6ae4773",
+			"name": "Submit Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [100, 280],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/flux/schnell",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\"prompt\": \"{{ $json.body.prompt }}\"}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3f1df77f-8576-4c32-a1c8-7e80f5bf572d",
+			"name": "Fetch Result",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [680, 280],
+			"parameters": {
+				"url": "={{ $json.response_url }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "744b0b05-d1f7-4972-b16d-70328b7a36c9",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-260, 440],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "9ab24ceb-c1c1-42b8-88d9-249c2db60a8d",
+			"name": "400 Error",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [100, 640],
+			"parameters": {
+				"options": {
+					"responseCode": 400
+				},
+				"respondWith": "json",
+				"responseBody": "={{\n{\n  \"error\": \"Prompt is in violation of terms of use. Please try again.\",\n  \"result\": []\n}\n}}"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "c5ef424e-1fb5-44d5-9612-4c76c7d1d232",
+			"name": "Success",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [900, 280],
+			"parameters": {
+				"options": {},
+				"respondWith": "json",
+				"responseBody": "={{\n{\n  \"error\": null,\n  \"result\": $json.images\n}\n}}"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "eb43cc4a-4d15-47b9-9c81-840ecc9cfafa",
+			"name": "Content Safety Filter",
+			"type": "@n8n/n8n-nodes-langchain.textClassifier",
+			"position": [-260, 280],
+			"parameters": {
+				"options": {
+					"fallback": "other"
+				},
+				"inputText": "={{ $json.body.prompt }}",
+				"categories": {
+					"categories": [
+						{
+							"category": "Content Safety",
+							"description": "text is not appropriate"
+						},
+						{
+							"category": "SFW",
+							"description": "text is SFW"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "db102cc6-b414-4187-b269-8f73158f0fb3",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-480, 120],
+			"parameters": {
+				"width": 540,
+				"height": 460,
+				"content": "## Receives text prompt through a webhook endpoint and filters the prompt for inappropriate content using AI moderation"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b2ff86e9-62cc-45d1-9f89-6a5d2010c976",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [80, 0],
+			"parameters": {
+				"width": 540,
+				"height": 580,
+				"content": "## Submits valid prompts to the Fal.ai and polls for completion status and retrieves the generated image when ready\n\nFal.ai is a model inference and finetuning service dedicated to AI image and video. It hosts many popular third party models including Flux by Black Forest Labs.\n\nSign up here - https://fal.ai - for an api key."
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Fetch Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Content Safety Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is Ready?": {
+			"main": [
+				[
+					{
+						"node": "Fetch Result",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Result": {
+			"main": [
+				[
+					{
+						"node": "Success",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Status": {
+			"main": [
+				[
+					{
+						"node": "Is Ready?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Submit Request": {
+			"main": [
+				[
+					{
+						"node": "Fetch Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Content Safety Filter",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Content Safety Filter": {
+			"main": [
+				[
+					{
+						"node": "400 Error",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Submit Request",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "400 Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {
+		"Webhook": [
+			{
+				"body": {
+					"prompt": "A person sitting under a moonlit sky",
+					"styleId": "1"
+				},
+				"query": {},
+				"params": {},
+				"headers": {
+					"host": "[insert your host]",
+					"accept": "*/*",
+					"origin": "http://localhost:3000",
+					"pragma": "no-cache",
+					"referer": "http://localhost:3000/",
+					"priority": "u=1, i",
+					"sec-ch-ua": "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
+					"x-real-ip": "10.255.0.2",
+					"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+					"content-type": "multipart/form-data; boundary=----WebKitFormBoundary6KvXTaJpPc6UJTId",
+					"cache-control": "no-cache",
+					"content-length": "268",
+					"sec-fetch-dest": "empty",
+					"sec-fetch-mode": "cors",
+					"sec-fetch-site": "cross-site",
+					"accept-encoding": "gzip, deflate, br, zstd",
+					"accept-language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7,fr;q=0.6,la;q=0.5,de;q=0.4,sk;q=0.3,nl;q=0.2,mt;q=0.1",
+					"x-forwarded-for": "10.255.0.2",
+					"sec-ch-ua-mobile": "?0",
+					"x-forwarded-host": "[insert your host]",
+					"x-forwarded-port": "443",
+					"x-forwarded-proto": "https",
+					"sec-ch-ua-platform": "\"macOS\"",
+					"x-forwarded-server": "5f641c71d311"
+				},
+				"webhookUrl": "https://[insert your host]/webhook/ai_text_to_image_generator",
+				"executionMode": "production"
+			}
+		]
+	}
+}

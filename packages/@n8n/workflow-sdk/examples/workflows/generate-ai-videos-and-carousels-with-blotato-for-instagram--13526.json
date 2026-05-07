@@ -1,0 +1,753 @@
+{
+	"id": "wf-13526",
+	"name": "Generate AI videos and carousels with Blotato for Instagram and TikTok",
+	"nodes": [
+		{
+			"id": "669420e1-caff-4ba6-892a-4420d68b72ba",
+			"name": "Create visual - tweet card carousel",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [592, 400],
+			"parameters": {
+				"prompt": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt', ``, 'string') }}",
+				"resource": "video",
+				"templateId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "/base/v2/tweet-card/ba413be6-a840-4e60-8fd6-0066d3b427df/v1",
+					"cachedResultName": "Twitter/X style quote cards with minimal style"
+				},
+				"templateInputs": {
+					"value": {
+						"handle": "doc.firass",
+						"verified": false,
+						"authorName": "Dr. FIRAS ",
+						"profileImage": "https://www.dr-firas.com/logo.jpg"
+					},
+					"schema": [
+						{
+							"id": "profileImage",
+							"type": "string",
+							"display": true,
+							"required": true,
+							"displayName": "Profile Photo URL * (publicly accessible URL)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "quotes",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Quotes (e.g. [\"item 1\", \"item 2\"])",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "authorName",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "handle",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Social Media Handle",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "verified",
+							"type": "boolean",
+							"display": true,
+							"required": false,
+							"displayName": "Show Verified Badge",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "theme",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Dark",
+									"value": "dark"
+								},
+								{
+									"name": "Light",
+									"value": "light"
+								}
+							],
+							"required": false,
+							"displayName": "Theme",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "aspectRatio",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "4:5",
+									"value": "4:5"
+								},
+								{
+									"name": "1:1",
+									"value": "1:1"
+								},
+								{
+									"name": "9:16",
+									"value": "9:16"
+								}
+							],
+							"required": false,
+							"displayName": "Aspect Ratio",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "b3f3a5e8-5a30-4da9-819d-1774484cb59f",
+			"name": "Create visual - AI image video",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [752, 400],
+			"parameters": {
+				"prompt": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt', ``, 'string') }}",
+				"resource": "video",
+				"templateId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "/base/v2/ai-story-video/5903fe43-514d-40ee-a060-0d6628c5f8fd/v1",
+					"cachedResultName": "Create scenes with images, videos, or AI-generated images. Add scripts that are read by an AI voiceover with TikTok-style captions."
+				},
+				"templateInputs": {
+					"value": {
+						"voiceName": "Brian (American, deep)",
+						"aiImageModel": "replicate/recraft-ai/recraft-v3",
+						"animateAiImages": true,
+						"trimToVoiceover": true
+					},
+					"schema": [
+						{
+							"id": "scenes",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Scenes (e.g. [{\"key\": \"value\"}])",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "voiceName",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Alice (British, confident)",
+									"value": "Alice (British, confident)"
+								},
+								{
+									"name": "Aria (American, expressive)",
+									"value": "Aria (American, expressive)"
+								},
+								{
+									"name": "Bill (American, trustworthy)",
+									"value": "Bill (American, trustworthy)"
+								},
+								{
+									"name": "Brian (American, deep)",
+									"value": "Brian (American, deep)"
+								},
+								{
+									"name": "Callum (Transatlantic, intense)",
+									"value": "Callum (Transatlantic, intense)"
+								},
+								{
+									"name": "Charlie (Australian, natural)",
+									"value": "Charlie (Australian, natural)"
+								},
+								{
+									"name": "Charlotte (Swedish, seductive)",
+									"value": "Charlotte (Swedish, seductive)"
+								},
+								{
+									"name": "Chris (American, casual)",
+									"value": "Chris (American, casual)"
+								},
+								{
+									"name": "Daniel (British, authoritative)",
+									"value": "Daniel (British, authoritative)"
+								},
+								{
+									"name": "Eric (American, friendly)",
+									"value": "Eric (American, friendly)"
+								},
+								{
+									"name": "George (British, warm)",
+									"value": "George (British, warm)"
+								},
+								{
+									"name": "Jessica (American, expressive)",
+									"value": "Jessica (American, expressive)"
+								},
+								{
+									"name": "Laura (American, upbeat)",
+									"value": "Laura (American, upbeat)"
+								},
+								{
+									"name": "Liam (American, articulate)",
+									"value": "Liam (American, articulate)"
+								},
+								{
+									"name": "Lily (British, warm)",
+									"value": "Lily (British, warm)"
+								},
+								{
+									"name": "Matilda (American, friendly)",
+									"value": "Matilda (American, friendly)"
+								},
+								{
+									"name": "River (American, confident)",
+									"value": "River (American, confident)"
+								},
+								{
+									"name": "Roger (American, confident)",
+									"value": "Roger (American, confident)"
+								},
+								{
+									"name": "Sarah (American, soft)",
+									"value": "Sarah (American, soft)"
+								},
+								{
+									"name": "Will (American, friendly)",
+									"value": "Will (American, friendly)"
+								}
+							],
+							"required": false,
+							"displayName": "AI Voice",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "aiImageModel",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Replicate/black-forest-labs/flux-schnell",
+									"value": "replicate/black-forest-labs/flux-schnell"
+								},
+								{
+									"name": "Replicate/black-forest-labs/flux-dev",
+									"value": "replicate/black-forest-labs/flux-dev"
+								},
+								{
+									"name": "Replicate/black-forest-labs/flux-1.1-pro",
+									"value": "replicate/black-forest-labs/flux-1.1-pro"
+								},
+								{
+									"name": "Replicate/black-forest-labs/flux-1.1-pro-ultra",
+									"value": "replicate/black-forest-labs/flux-1.1-pro-ultra"
+								},
+								{
+									"name": "Replicate/recraft-ai/recraft-v3",
+									"value": "replicate/recraft-ai/recraft-v3"
+								},
+								{
+									"name": "Replicate/ideogram-ai/ideogram-v2",
+									"value": "replicate/ideogram-ai/ideogram-v2"
+								},
+								{
+									"name": "Replicate/luma/photon",
+									"value": "replicate/luma/photon"
+								},
+								{
+									"name": "Openai/gpt-image-1",
+									"value": "openai/gpt-image-1"
+								},
+								{
+									"name": "Fal-ai/nano-banana",
+									"value": "fal-ai/nano-banana"
+								},
+								{
+									"name": "Fal-ai/imagen4/preview/fast",
+									"value": "fal-ai/imagen4/preview/fast"
+								}
+							],
+							"required": false,
+							"displayName": "AI Image Model",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "animateAiImages",
+							"type": "boolean",
+							"display": true,
+							"required": false,
+							"displayName": "(Optional) Animate AI Images into Videos",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "captionPosition",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Top",
+									"value": "top"
+								},
+								{
+									"name": "Center",
+									"value": "center"
+								},
+								{
+									"name": "Bottom",
+									"value": "bottom"
+								}
+							],
+							"required": false,
+							"displayName": "Caption Position",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "highlightColor",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Highlight Color",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "transition",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "None",
+									"value": "none"
+								},
+								{
+									"name": "Fade",
+									"value": "fade"
+								},
+								{
+									"name": "Slide",
+									"value": "slide"
+								},
+								{
+									"name": "Zoom",
+									"value": "zoom"
+								}
+							],
+							"required": false,
+							"displayName": "Transition Effect (Optional)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "aspectRatio",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "16:9",
+									"value": "16:9"
+								},
+								{
+									"name": "1:1",
+									"value": "1:1"
+								},
+								{
+									"name": "4:5",
+									"value": "4:5"
+								},
+								{
+									"name": "9:16",
+									"value": "9:16"
+								}
+							],
+							"required": false,
+							"displayName": "Aspect Ratio",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "trimToVoiceover",
+							"type": "boolean",
+							"display": true,
+							"required": false,
+							"displayName": "Trim to Voiceover",
+							"defaultMatch": false,
+							"canBeUsedToMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "03b82495-cd6b-46e1-9798-21cfb5c0ae62",
+			"name": "Post to Instagram",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [1152, 400],
+			"parameters": {
+				"options": {},
+				"accountId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "11892",
+					"cachedResultUrl": "https://backend.blotato.com/v2/accounts/11892",
+					"cachedResultName": "doc.firass"
+				},
+				"postContentText": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Text', ``, 'string') }}",
+				"postContentMediaUrls": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Media_URLs', ``, 'string') }}"
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "faee5dcc-f921-48df-be0b-893300848fb8",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-48, 416],
+			"parameters": {
+				"sessionKey": "={{ $json.message.chat.id }}",
+				"sessionIdType": "customKey",
+				"contextWindowLength": 35
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "bcd7faaf-edc4-4418-a9f2-13e12f6302d5",
+			"name": "OpenAI ChatGPT",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-208, 416],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini",
+					"cachedResultName": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "HUbsD20wv3CFr7gN",
+					"name": "OpenAi account"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f48bd4b6-20e8-405a-8765-2a89f25a4e2c",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-144, 0],
+			"webhookId": "ea7ab04d-bdf9-4740-a769-2e88449be098",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "mDAY5fLEr4z6b3fJ",
+					"name": "Telegram_blotato2"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "7351b2cd-3020-4409-b877-3b18e816aa9e",
+			"name": "Create source",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [176, 400],
+			"parameters": {
+				"resource": "source",
+				"sourceUrl": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+				"customInstructions": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Optional_Instructions', ``, 'string') }}"
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "c562d625-4d60-4ca5-a024-2d1e8345414e",
+			"name": "Get source",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [320, 400],
+			"parameters": {
+				"resource": "source",
+				"sourceId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Source_ID', ``, 'string') }}",
+				"operation": "get"
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "45244cd2-bb14-4df5-aca0-7b40a641ab79",
+			"name": "Post to TikTok",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [1312, 400],
+			"parameters": {
+				"options": {},
+				"platform": "tiktok",
+				"accountId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "30526",
+					"cachedResultUrl": "https://backend.blotato.com/v2/accounts/30526",
+					"cachedResultName": "eliteshicos"
+				},
+				"postContentText": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Text', ``, 'string') }}",
+				"postContentMediaUrls": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Media_URLs', ``, 'string') }}"
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "31dc68a4-1009-4e4b-b261-162ca33a99a4",
+			"name": "Get visual",
+			"type": "@blotato/n8n-nodes-blotato.blotatoTool",
+			"position": [896, 400],
+			"parameters": {
+				"videoId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Video_ID', ``, 'string') }}",
+				"resource": "video",
+				"operation": "get"
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "923d5fa3-9729-4b72-9b24-ac7a06472c51",
+			"name": "Send notification",
+			"type": "n8n-nodes-base.telegramTool",
+			"position": [1488, 400],
+			"webhookId": "f93b56c0-b0b5-4e29-9e7c-13aef7bd0db4",
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Text', ``, 'string') }}",
+				"chatId": "={{ $json.message.chat.id }}",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "mDAY5fLEr4z6b3fJ",
+					"name": "Telegram_blotato2"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9584b742-ec9c-442d-8edb-73ff66fb497e",
+			"name": "Social Media Autopilot",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [320, 0],
+			"parameters": {
+				"text": "=input user from telegram : {{ $json.message.text }}",
+				"options": {
+					"maxIterations": 100,
+					"systemMessage": "=# System Message – Social Media Autopilot (End-to-End Execution)\n\nYou are an autonomous AI agent responsible for fully executing a social media automation workflow.\nYou MUST complete the process end-to-end:\ncontent extraction → visual creation → status verification → publication → Telegram confirmation.\n\nThe user input comes from Telegram via:\n`{{ $json.message.text }}`\n\nThe message always contains:\n- A public URL (YouTube, article, Instagram, TikTok, etc.)\n- A request indicating the target platform: Instagram or TikTok\n\nYour responsibility is to analyze the message, take decisions, and execute ALL required tools until the content is published.\n\n---\n\n## STEP 1 — Extract URL and Platform\n- Extract the first valid public URL from the message.\n- Detect the target platform:\n  - If the message mentions \"instagram\" → platform = Instagram\n  - If the message mentions \"tiktok\" → platform = TikTok\n- If the platform is unclear, ask the user on Telegram to clarify and STOP.\n\n---\n\n## STEP 2 — Create Source\n- Call **Create source** with the extracted URL.\n\n---\n\n## STEP 3 — Poll Source Until COMPLETED\n- Call **Get source** repeatedly.\n- Continue until `status = completed`.\n- Do NOT continue if status is pending or processing.\n- Once completed, extract the `content`.\n\n---\n\n## STEP 4 — Create Visual\nUse the extracted content:\n\n- If platform = Instagram:\n  - Call **Create visual - tweet card carousel**\n- If platform = TikTok:\n  - Call **Create visual - AI image video**\n\n---\n\n## STEP 5 — Poll Visual Until DONE (MANDATORY)\n- Call **Get visual**.\n- Read the `status`.\n\nIf `status` is any of the following:\n- `generating-script`\n- `processing`\n- `queued`\n- `pending`\n- anything other than `done`\n\n→ You MUST call **Get visual** again until `status = done`.\n\nYou are NOT allowed to stop or publish unless the status is exactly `done`.\n\n---\n\n## STEP 6 — Retrieve Visual Media\nOnce `status = done`:\n- Extract the visual ID.\n- Extract the visual media URL:\n  - Use `mediaUrl` for videos\n  - Use `imageUrls` for carousels\n- Validate that the media URL(s) are not null.\n\n---\n\n## STEP 7 — Publish to Social Media (MANDATORY)\nAfter the visual is fully ready, you MUST publish it.\n\n- If platform = Instagram:\n  - Call **Post to Instagram** using the visual media URL(s).\n- If platform = TikTok:\n  - Call **Post to TikTok** using the visual media URL.\n\nPublishing is a REQUIRED step. Do NOT skip it.\n\n---\n\n## STEP 8 — Send Telegram Confirmation (FINAL STEP)\nONLY after successful publication:\n- Send a Telegram message confirming publication.\n- Include:\n  - Platform name\n  - Success confirmation\n\nExample:\n\"✅ Published successfully on Instagram.\"\n\nThis Telegram message MUST be the last action.\n\n---\n\n## CRITICAL RULES\n- Never stop execution before publication.\n- Never send Telegram confirmation before posting.\n- Always respect the execution order.\n- Reliability and completion are more important than speed.\n\n---\n\n## OBJECTIVE\nGuarantee a fully automated and reliable pipeline:\nURL → Source → Visual → Status DONE → Publish → Telegram confirmation.\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "7ff86548-597c-4a74-b3e9-b65a5a3bb61e",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-976, -128],
+			"parameters": {
+				"width": 652,
+				"height": 1428,
+				"content": "# 🚀  Generate AI videos and carousels with Blotato and publish to Instagram & TikTok\n## (By Dr. Firas)\n\n![SORA2 logo](https://www.dr-firas.com/blotato-miniature.png)\n\n# 📘 Documentation  \nAccess detailed setup instructions, API config, platform connection guides, and workflow customization tips: 📎 [Open the full documentation on Notion](https://automatisation.notion.site/Turn-AI-Videos-Carousels-Into-Income-with-n8n-Fully-Automated-x-Blotato-30c3d6550fd9804b999ede955fdf409d?source=copy_link)\n\n## 🔐 Setup\n\nTo use this workflow, you will need:\n\n- An active **n8n** instance\n- A **[Blotato](https://blotato.com/?ref=firas)** account with API access\n- Instagram and/or TikTok accounts connected in **[Blotato](https://blotato.com/?ref=firas)**\n- A **Telegram Bot** for triggering the workflow and receiving notifications\n\nSetup steps:\n1. Import the workflow JSON into n8n.\n2. Add your **[Blotato](https://blotato.com/?ref=firas)** API credentials.\n3. Configure the Telegram Trigger with your bot token.\n4. Select your Instagram and TikTok accounts in the **[Blotato](https://blotato.com/?ref=firas)** post nodes.\n5. Activate the workflow.\n\n---\n## What this workflow does\n\nThis workflow provides a complete **end-to-end automation pipeline**:\n\n1. Receives a message from **Telegram** containing a public URL and a publishing instruction.\n2. Creates a content source from the URL using **Blotato**.\n3. Retrieves and validates the extracted text content.\n4. Generates either:\n   - An **AI tweet-card carousel** for Instagram, or\n   - An **AI-generated video** for TikTok.\n5. Continuously checks the visual generation status until it is fully completed.\n6. Publishes the final media automatically to **Instagram or TikTok**.\n7. Sends a confirmation message back to Telegram once the post is successfully published.\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Get source": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get visual": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create source": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI ChatGPT": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post to TikTok": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post to Instagram": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send notification": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create visual - AI image video": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create visual - tweet card carousel": {
+			"ai_tool": [
+				[
+					{
+						"node": "Social Media Autopilot",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"availableInMCP": false,
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

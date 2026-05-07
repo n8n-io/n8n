@@ -1,0 +1,447 @@
+{
+	"id": "wf-3277",
+	"name": "Smart email auto-responder template using AI",
+	"nodes": [
+		{
+			"id": "e563eef6-39c4-4859-b23a-db096e7f8717",
+			"name": "Gmail Trigger",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"position": [-1300, -60],
+			"parameters": {
+				"simple": false,
+				"filters": {},
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyHour"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "068c250f-84b0-41e4-b48a-6a5260b7a24a",
+			"name": "Text Classifier",
+			"type": "@n8n/n8n-nodes-langchain.textClassifier",
+			"position": [-660, 0],
+			"parameters": {
+				"options": {},
+				"inputText": "={{ $('Gmail Trigger').item.json.subject }}\n{{ $('Gmail Trigger').item.json.text }}",
+				"categories": {
+					"categories": [
+						{
+							"category": "Guest Post",
+							"description": "The inquiry is about the collaboration on guest post inquiry, blog post on syncbricks.com or any other website. "
+						},
+						{
+							"category": "Youtube",
+							"description": "The inquiry is about adding review video on our youtube channel"
+						},
+						{
+							"category": "Udemy Courses",
+							"description": "Training and Courses related to Various Technology, AI Etc"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "036d86c2-0375-4f44-a14f-4f20d17eb048",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-640, 200],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.0-flash-exp"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6ca6adeb-fdf4-4e4c-83f2-e2b28548b33e",
+			"name": "GuestPost Inquiry",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [-80, -180],
+			"webhookId": "880024c2-f011-4385-b0f9-25ce08c5bd1b",
+			"parameters": {
+				"html": "=<!DOCTYPE html>\n<html>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n\n<p>Hello,</p>\n\n<p>Thank you for reaching out! We’re thrilled to help you gain exposure through guest posting on our diverse platforms. Here’s everything you need to know to get started:</p>\n\n<p><strong>Pricing & Options:</strong></p>\n<ul>\n    <li><strong>Guest Post:</strong> $0 per post. Bulk discounts are available for multiple submissions.</li>\n    <li><strong>Link Insertion:</strong> $0 per link in an existing post.</li>\n</ul>\n<p>Both options come with do-follow backlinks, ensuring long-term SEO benefits for your website.</p>\n\n<p><strong>Why Partner with Us?</strong></p>\n<ul>\n    <li><strong>Reach:</strong> Gain exposure to niche-specific, engaged audiences.</li>\n    <li><strong>Quick Turnaround:</strong> Publication within 3 business days for a seamless experience.</li>\n    <li><strong>Diverse Niches:</strong> Choose from a variety of topics to suit your content needs.</li>\n</ul>\n\n<p><strong>Choose the Right Platform:</strong></p>\n<p>Our websites span various niches, so you can select the one that best matches your content. Explore them here:</p>\n<ul>\n    <li><a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a></li>\n    <li><a href=\"https://s4stechnology.com\" target=\"_blank\">s4stechnology.com</a></li>\n    <li><a href=\"https://shukranoman.com\" target=\"_blank\">shukranoman.com</a></li>\n    <li><a href=\"https://brenttechnologies.com\" target=\"_blank\">brenttechnologies.com</a></li>\n    <li><a href=\"https://mairimanzil.com\" target=\"_blank\">mairimanzil.com</a></li>\n    <li><a href=\"https://techfeed.com.au\" target=\"_blank\">techfeed.com.au</a></li>\n    <li><a href=\"https://tuts.plus\" target=\"_blank\">tuts.plus</a></li>\n    <li><a href=\"https://swifttapper.com\" target=\"_blank\">swifttapper.com</a></li>\n    <li><a href=\"https://amjidali.com\" target=\"_blank\">amjidali.com</a></li>\n    <li><a href=\"https://hamid.com.au\" target=\"_blank\">hamid.com.au</a></li>\n    <li><a href=\"https://cio.guru\" target=\"_blank\">cio.guru</a></li>\n</ul>\n\n<p><strong>Submission Guidelines:</strong></p>\n<ul>\n    <li><strong>Original Content:</strong> Submissions must be high-quality, unpublished, and niche-relevant.</li>\n    <li><strong>Minimum Word Count:</strong> 300 words.</li>\n    <li><strong>Formatting:</strong> Use headings, subheadings, and bullet points for readability.</li>\n    <li><strong>Backlinks:</strong> One do-follow backlink is permitted per post.</li>\n    <li><strong>Images:</strong> Unique and relevant images are encouraged.</li>\n</ul>\n\n<p><strong>How to Submit:</strong></p>\n<p>Reply to this email with your completed guest post and any supporting materials. We’ll review your submission and get back to you within 3 business days.</p>\n\n<p><strong>Payment Information:</strong></p>\n<p>Once your guest post or link insertion request is approved, we’ll provide you with payment details. We accept payments through:</p>\n<ul>\n    <li>PayPal</li>\n    <li>Bank Transfer</li>\n    <li>Other methods (upon request)</li>\n</ul>\n<p>Please let us know your preferred method, and we’ll share the necessary information.</p>\n\n<p><strong>Questions?</strong></p>\n<p>If you need further assistance or guidance, feel free to reach out. We’re here to help!</p>\n\n<p>Best regards, <br>\n<strong>Sophia Mitchell</strong> <br>\nOutreach Manager | <a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a> <br>\nWhatsApp: +1</p>\n\n<p style=\"font-size: 12px; color: #888;\">© 2025 SyncBricks. All rights reserved.</p>\n\n</body>\n</html>\n",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "=Re: {{ $('Gmail Trigger').item.json.subject }}",
+				"toEmail": "={{ $json.from.value[0].name }} <{{ $json.from.value[0].address }}>",
+				"fromEmail": "Sophia Mitchell <user@example.com>"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "41f06728-3bac-4fc2-ab20-d16f3fd9a936",
+			"name": "Youtube Video Inquiry",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [-80, 0],
+			"webhookId": "d33a7f20-dca8-4622-b421-b92697fdffd8",
+			"parameters": {
+				"html": "=<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            margin: 0;\n            padding: 0;\n        }\n        .container {\n            width: 100%;\n            max-width: 600px;\n            margin: 0 auto;\n            padding: 20px;\n        }\n        .header {\n            background-color: #f4f4f4;\n            padding: 10px 20px;\n            text-align: center;\n            border-bottom: 1px solid #ddd;\n        }\n        .header h1 {\n            margin: 0;\n            color: #555;\n        }\n        .content {\n            padding: 20px;\n        }\n        .content h2 {\n            color: #555;\n            font-size: 18px;\n        }\n        .content p {\n            margin-bottom: 15px;\n        }\n        .content ul {\n            list-style: disc;\n            padding-left: 20px;\n        }\n        .content ul li {\n            margin-bottom: 10px;\n        }\n        .content a {\n            color: #007BFF;\n            text-decoration: none;\n        }\n        .content a:hover {\n            text-decoration: underline;\n        }\n        .video-thumbnail {\n            text-align: center;\n            margin: 20px 0;\n        }\n        .video-thumbnail img {\n            width: 100%;\n            max-width: 560px;\n            border-radius: 5px;\n            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);\n        }\n        .footer {\n            text-align: center;\n            font-size: 12px;\n            color: #888;\n            margin-top: 20px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>YouTube Review Video Inquiry</h1>\n        </div>\n        <div class=\"content\">\n            <p>Hello {{ $json.Name }},</p>\n            <p>Thank you for reaching out to inquire about our YouTube review video services! We are thrilled to collaborate with you and showcase your product or service to our engaged audience on our YouTube channel, **SyncBricks**.</p>\n            <h2>What We Offer:</h2>\n            <ul>\n                <li><strong>Comprehensive Review Video (10 Minutes):</strong> $1  \n                    <ul>\n                        <li>Detailed review and hands-on demonstration.</li>\n                        <li>Professional editing with a focus on your product's highlights.</li>\n                        <li>Includes a do-follow backlink placement on our website.</li>\n                    </ul>\n                </li>\n                <li><strong>Short Follow-Up Video:</strong> $7  \n                    <ul>\n                        <li>Quick review or update video.</li>\n                        <li>Focus on specific features or updates.</li>\n                        <li>Also includes a do-follow backlink placement on our website.</li>\n                    </ul>\n                </li>\n            </ul>\n            <h2>Sample Video:</h2>\n            <p>Here’s an example of our work to help you understand the quality and style of our reviews:</p>\n            <div class=\"video-thumbnail\">\n                <a href=\"https://youtu.be/-5bI45z4Ozo?si=hkGNnTgtH1quOfH2\" target=\"_blank\">\n                    <img src=\"https://img.youtube.com/vi/-5bI45z4Ozo/maxresdefault.jpg\" alt=\"Sample Video Thumbnail\">\n                </a>\n            </div>\n            <p>Watch it here: <a href=\"https://youtu.be/-5bI45z4Ozo?si=hkGNnTgtH1quOfH2\" target=\"_blank\">https://youtu.be/-5bI45z4Ozo</a></p>\n            <h2>Why Choose Us?</h2>\n            <ul>\n                <li>Professional video production and editing to highlight your product's key features.</li>\n                <li>Engaged audience focused on IT and technology-related content.</li>\n                <li>Comprehensive reviews that provide value to both viewers and sponsors.</li>\n            </ul>\n            <h2>How to Proceed:</h2>\n            <p>To book a review video, please reply to this email with the following details:</p>\n            <ul>\n                <li>Your product/service name and a brief description.</li>\n                <li>Any specific features or aspects you want us to highlight.</li>\n                <li>Preferred review type (Comprehensive or Short Follow-Up).</li>\n            </ul>\n            <p>Once we have your details, we will share the payment instructions and the next steps to get started.</p>\n            <h2>Questions?</h2>\n            <p>If you have any questions or need further clarification, feel free to ask. We’re here to assist you!</p>\n            <p>Best regards,<br><strong>Sophia Mitchell</strong><br>Outreach Manager | <a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a><br>WhatsApp: +1 </p>\n        </div>\n        <div class=\"footer\">\n            <p>© 2025 SyncBricks. All rights reserved.</p>\n        </div>\n    </div>\n</body>\n</html>\n",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "=Re: {{ $('Gmail Trigger').item.json.subject }}",
+				"toEmail": "={{ $json.from.value[0].name }} <{{ $json.from.value[0].address }}>",
+				"fromEmail": "Sophia Mitchell <user@example.com>"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "e42754e8-a594-4ea8-b9a8-9e47ffdacd72",
+			"name": "Send Email",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [-80, 180],
+			"webhookId": "3a0ca27f-1ff9-4c59-b17f-0523c58f70d1",
+			"parameters": {
+				"html": "=<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            margin: 0;\n            padding: 0;\n        }\n        .container {\n            width: 100%;\n            max-width: 600px;\n            margin: 0 auto;\n            padding: 20px;\n        }\n        .header {\n            background-color: #f4f4f4;\n            padding: 10px 20px;\n            text-align: center;\n            border-bottom: 1px solid #ddd.\n        }\n        .header h1 {\n            margin: 0;\n            color: #555;\n        }\n        .content {\n            padding: 20px;\n        }\n        .content h2 {\n            color: #555;\n            font-size: 18px;\n        }\n        .content p {\n            margin-bottom: 15px;\n        }\n        .content ul {\n            list-style: disc;\n            padding-left: 20px;\n        }\n        .content ul li {\n            margin-bottom: 10px;\n        }\n        .content a {\n            color: #007BFF;\n            text-decoration: none;\n        }\n        .content a:hover {\n            text-decoration: underline;\n        }\n        .footer {\n            text-align: center;\n            font-size: 12px;\n            color: #888;\n            margin-top: 20px.\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>Course Inquiry</h1>\n        </div>\n        <div class=\"content\">\n            <p>Hello,</p>\n            <p>Thank you for your interest in our online courses! At **SyncBricks**, we offer a variety of high-quality courses designed to enhance your skills in IT, automation, network security, and more.</p>\n            <h2>Our Featured Courses:</h2>\n            <ul>\n                <li><strong><a href=\"https://www.udemy.com/course/ai-automation-mastery-build-intelligent-agents-with-lowcode/?referralCode=0062E7C1D64784AB70CA\" target=\"_blank\">AI Automation Mastery: Build Intelligent Agents</a></strong>  \n                    Learn how to leverage low-code platforms for workflow automation and build AI-driven solutions.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/microsoft-power-bi-advanced-course-desktop-dax/?referralCode=1B754977728785DC48C9\" target=\"_blank\">Advanced Power BI: Master Desktop & DAX</a></strong>  \n                    Master data visualization, dashboard creation, and DAX in Power BI.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/proxmox-virtualization-environment-complete-training/?referralCode=8E7EAFD11C2389F89C11\" target=\"_blank\">Proxmox VE: Complete Virtualization Guide</a></strong>  \n                    Dive into Proxmox VE for advanced virtualization techniques and management.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/pfsense-network-security-and-firewall-management/?referralCode=866D4839516374C77ACE\" target=\"_blank\">pfSense Network Security & Firewall Management</a></strong>  \n                    Learn how to secure networks with advanced firewall configurations.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/human-resource-management-with-erpnext-onboarding-to-exit/?referralCode=B3C64C3925EC62F42052\" target=\"_blank\">ERPNext for HR Management: Onboarding to Exit</a></strong>  \n                    Manage HR processes efficiently using ERPNext.\n                </li>\n            </ul>\n            <h2>Free Learning Resources:</h2>\n            <p>Explore a wealth of free material on our YouTube channel, **SyncBricks**, including tutorials, reviews, and how-to videos. Check it out here:</p>\n            <p><a href=\"https://www.youtube.com/channel/UC1ORA3oNGYuQ8yQHrC7MzBg?sub_confirmation=1\" target=\"_blank\">Visit Our YouTube Channel</a></p>\n            <h2>Why Choose Our Courses?</h2>\n            <ul>\n                <li>High-quality, industry-relevant content curated by experts.</li>\n                <li>Practical, hands-on projects to enhance learning.</li>\n                <li>Lifetime access to course materials for continuous learning.</li>\n                <li>Affordable pricing with discounts on certain platforms.</li>\n            </ul>\n            <h2>Browse All Courses</h2>\n            <p>Explore our full catalog on <a href=\"https://lms.syncbricks.com/\" target=\"_blank\">SyncBricks LMS</a> for more learning opportunities.</p>\n            <h2>Have Questions?</h2>\n            <p>If you’re unsure which course is the best fit or need assistance enrolling, let us know! We’re happy to guide you based on your interests and goals.</p>\n            <p>Best regards,<br><strong>Sophia Mitchell</strong><br>Outreach Manager | <a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a><br>WhatsApp: +1 (810) 214-4375</p>\n        </div>\n        <div class=\"footer\">\n            <p>© 2025 SyncBricks. All rights reserved.</p>\n        </div>\n    </div>\n</body>\n</html>\n",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "=Re:  {{ $('Gmail Trigger').item.json.Subject }}",
+				"toEmail": "={{ $json.from.value[0].name }} <{{ $json.from.value[0].address }}>",
+				"fromEmail": "Sophia Mitchell <user@example.com>"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "a12e47bb-540b-4d42-b4fa-d27237964022",
+			"name": "Mark as Read",
+			"type": "n8n-nodes-base.gmail",
+			"position": [360, 0],
+			"webhookId": "066a871a-9801-4814-8ba5-238abe493cbb",
+			"parameters": {
+				"messageId": "={{ $('Gmail Trigger').item.json.id }}",
+				"operation": "markAsRead"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "06deb7fa-0169-46c3-b673-f35b476ef6a5",
+			"name": "Apply Label",
+			"type": "n8n-nodes-base.gmail",
+			"position": [660, 200],
+			"webhookId": "066a871a-9801-4814-8ba5-238abe493cbb",
+			"parameters": {
+				"labelIds": ["Label_6332648012153150222"],
+				"messageId": "={{ $('Gmail Trigger').item.json.id }}",
+				"operation": "addLabels"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "a3a38697-87ff-4954-aafe-c548425a84eb",
+			"name": "Create Contact in Brevo",
+			"type": "n8n-nodes-base.sendInBlue",
+			"position": [640, -140],
+			"parameters": {
+				"email": "={{ $('Text Classifier').item.json.from.value[0].address }}",
+				"resource": "contact",
+				"operation": "upsert",
+				"requestOptions": {}
+			},
+			"credentials": {
+				"sendInBlueApi": {
+					"id": "credential-id",
+					"name": "sendInBlueApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "99d8d741-4c7b-4795-958b-18116f9f7f96",
+			"name": "Emails from Existing Contracts",
+			"type": "n8n-nodes-base.if",
+			"position": [-1120, -60],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "or",
+					"conditions": [
+						{
+							"id": "7cffe101-333d-4ec2-a822-181fe421745b",
+							"operator": {
+								"type": "string",
+								"operation": "contains"
+							},
+							"leftValue": "={{ $json.headers.from }}",
+							"rightValue": "@syncbricks.com"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "538b53ef-05cd-4f08-83d7-5218b8492036",
+			"name": "Reply",
+			"type": "n8n-nodes-base.if",
+			"position": [-980, 100],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "07a6d5e2-ffc5-41d8-b69a-abd6860879c0",
+							"operator": {
+								"type": "string",
+								"operation": "notStartsWith"
+							},
+							"leftValue": "={{ $json.subject }}",
+							"rightValue": "Re:"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "28f5e0eb-e3ad-4d34-89c6-c1571521f283",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2060, -300],
+			"parameters": {
+				"color": 4,
+				"width": 715,
+				"height": 716,
+				"content": "## Developed by Amjid Ali\n\nThank you for using this workflow template. It has taken me countless hours of hard work, research, and dedication to develop, and I sincerely hope it adds value to your work.\n\nIf you find this template helpful, I kindly ask you to consider supporting my efforts. Your support will help me continue improving and creating more valuable resources.\n\nBuy N8N Mastery Book : https://www.amazon.com/dp/B0F23GYCFW\n\n\nFor Full Course about ERPNext or Automation using AI follow below link\n\nhttp://lms.syncbricks.com\n\nAdditionally, when sharing this template, I would greatly appreciate it if you include my original information to ensure proper credit is given.\n\nThank you for your generosity and support!\nEmail : amjid@amjidali.com\nhttps://linkedin.com/in/amjidali\nhttps://syncbricks.com\nhttps://youtube.com/@syncbricks"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8c105698-d989-44c3-ad8e-4bdda5c01715",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1320, -300],
+			"parameters": {
+				"width": 520,
+				"height": 720,
+				"content": "## Get the and Validate  New Email"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cbb2e328-35b3-4ec9-9470-254666e40400",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-780, -300],
+			"parameters": {
+				"color": 3,
+				"width": 520,
+				"height": 720,
+				"content": "## Classify the Email"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0b5584cb-1002-46f5-9ac0-bcd816998534",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, -300],
+			"parameters": {
+				"color": 5,
+				"width": 520,
+				"height": 720,
+				"content": "## Email Templates for Services"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "406f5793-6b54-4008-89e5-0b878aef9806",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [300, -300],
+			"parameters": {
+				"color": 4,
+				"width": 520,
+				"height": 720,
+				"content": "## mark as read, apply label and add to contact\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Reply": {
+			"main": [
+				[
+					{
+						"node": "Text Classifier",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Email": {
+			"main": [
+				[
+					{
+						"node": "Mark as Read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mark as Read": {
+			"main": [
+				[
+					{
+						"node": "Apply Label",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Contact in Brevo",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gmail Trigger": {
+			"main": [
+				[
+					{
+						"node": "Emails from Existing Contracts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Text Classifier": {
+			"main": [
+				[
+					{
+						"node": "GuestPost Inquiry",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Youtube Video Inquiry",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GuestPost Inquiry": {
+			"main": [
+				[
+					{
+						"node": "Mark as Read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Youtube Video Inquiry": {
+			"main": [
+				[
+					{
+						"node": "Mark as Read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Text Classifier",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Emails from Existing Contracts": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Reply",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

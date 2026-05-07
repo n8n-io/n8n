@@ -1,0 +1,973 @@
+{
+	"id": "wf-5396",
+	"name": "AI Timesheet Generator with Gmail, Calendar & GitHub to Google Sheets",
+	"nodes": [
+		{
+			"id": "d3ad9729-1444-4227-b37e-b232546347de",
+			"name": "Get Today's Calendar Events",
+			"type": "n8n-nodes-base.googleCalendar",
+			"position": [-3220, -1300],
+			"parameters": {
+				"options": {
+					"timeMax": "={{$today.minus(1).endOf('day').toISO()}}",
+					"timeMin": "={{$today.minus(1).startOf('day').toISO()}}"
+				},
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cd793b22-bd54-430e-aa78-7a7e1f066f96",
+			"name": "Get Today's Emails",
+			"type": "n8n-nodes-base.gmail",
+			"position": [-3220, -1560],
+			"webhookId": "0611a0b0-9e31-497f-98a9-7609c2287db1",
+			"parameters": {
+				"filters": {
+					"sender": "={{ $json.myEmail }}",
+					"receivedAfter": "={{ $now.minus(1).startOf('day').toISO() }}"
+				},
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "8bdb5e00-ce98-4c75-94e4-d1c9f341a826",
+			"name": "Get GitHub PRs",
+			"type": "n8n-nodes-base.github",
+			"position": [-3320, -640],
+			"webhookId": "0ec33ec2-fbb5-4b63-afd2-7227a8dba1c4",
+			"parameters": {
+				"owner": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $('Set Variables').item.json.github_handle }}"
+				},
+				"resource": "repository",
+				"operation": "getPullRequests",
+				"returnAll": true,
+				"repository": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $json.repositoriesToTrack }}"
+				},
+				"getRepositoryPullRequestsFilters": {}
+			},
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "githubApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "201ef564-57e6-4fde-8251-459c56ef05d0",
+			"name": "Format All Data",
+			"type": "n8n-nodes-base.code",
+			"position": [-2320, -1080],
+			"parameters": {
+				"jsCode": "// Get all data from different sources\nconst allInputs = $input.all();\nconst calendarEvents = allInputs.find(b => b.json.calendarEvents)?.json.calendarEvents || [];\nconst emails = allInputs.find(b => b.json.emails)?.json.emails || [];\nconst commits = allInputs.find(b => b.json.commits)?.json.commits || [];\nconst prs = allInputs.find(b => b.json.prs)?.json.prs || [];\n\n// Format calendar events\nconst confirmed = calendarEvents.filter(e => e.status === 'confirmed');\n\nconst calendarSummary = confirmed.map(event => ({\n  time: event.start?.dateTime || 'No time',\n  title: event.summary || 'No title',\n  attendees: event.attendees?.length || 0,\n  description: event.description || 'No description',\n  duration: DateTime.fromISO(event.end.dateTime).diff(DateTime.fromISO(event.start.dateTime), 'hours').hours\n}));\n\n// Format emails (filter out unimportant ones)\nconst importantEmails = emails\n  .filter(email => \n    email.From && \n    !email.From.toLowerCase().includes('noreply') && \n    !email.Subject?.toLowerCase().includes('newsletter')\n  )\n  .slice(0, 20)\n  .map(email => ({\n    from: email.From,\n    subject: email.Subject || 'No subject',\n    snippet: email.snippet?.substring(0, 100) || ''\n  }));\n\nconst commitArray = Array.isArray(commits) ? commits : [commits];\nconst prsArray = Array.isArray(prs) ? prs : [prs];\n// Format GitHub activity\nconst githubActivity = {\n  commits: commitArray.map(commit => ({\n    message: commit.commit?.message || 'No message'\n  })) || [],\n  pullRequests: prsArray.map(pr => ({\n    title: pr.title,\n    repo: pr.head.repo?.name || 'Unknown repo',\n    state: pr.state\n  })) || []\n};\n\n// Create summary object\nconst summary = {\n  date: $('Set Variables').first().json.today,\n  calendar: {\n    totalEvents: calendarSummary.length,\n    events: calendarSummary\n  },\n  emails: {\n    totalReceived: emails.length,\n    important: importantEmails\n  },\n  github: githubActivity\n};\n\nreturn [{ json: summary }];"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9a9385f0-ca86-457f-b599-713a809aa423",
+			"name": "Generate Journal Summary",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [-2100, -1080],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini",
+					"cachedResultName": "GPT-4O-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"role": "system",
+							"content": "You are a professional timesheet creator.\n\nINPUT you receive: a single JSON object that contains:\n  • calendar.events          (array)\n  • emails.important         (array)\n  • github.commits           (array)\n  • github.pullRequests      (array)\n\nTASK\n1. Walk through every element in those arrays.\n2. For each element create an object that has **exactly**:\n     - \"type\"        : CALENDAR_EVENT | EMAIL | COMMIT | PR\n     - \"description\" : ≤120 chars, no commas, no line-breaks\n3. Put all objects in one JSON **array**.\n4. RETURN  that array. No wrapper object, no markdown. Try to create a nice description for each event"
+						},
+						{
+							"content": "=Below is today’s raw data in one JSON object.\n\n{{ JSON.stringify($json, null, 2) }}\n"
+						}
+					]
+				},
+				"jsonOutput": true
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "34e60115-851c-4055-b1bc-3bba3076fefe",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [-2940, -1560],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "emails"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a1dbd248-1cd5-4fec-8198-52573fbe50ed",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [-2540, -1101],
+			"parameters": {
+				"numberInputs": 4
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "53ab1990-ddeb-410f-8cd4-675ed88387a9",
+			"name": "Aggregate1",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [-2940, -1300],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "calendarEvents"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7cc275df-68ac-4a9e-ae02-eb617b85f4cf",
+			"name": "Aggregate2",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [-2840, -620],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "prs"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0faf1f55-23d3-4d33-a142-d1c87d85e9f1",
+			"name": "Daily at 7PM",
+			"type": "n8n-nodes-base.cron",
+			"position": [-3900, -1180],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "7ee78807-a5df-493c-8419-3e9ef8688954",
+			"name": "Set Variables",
+			"type": "n8n-nodes-base.set",
+			"position": [-3640, -1180],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "4fa5acaa-f81f-4ecc-88cb-ac8b56324cf5",
+							"name": "today_date",
+							"type": "string",
+							"value": "={{ $now.format('yyyy-MM-dd') }}"
+						},
+						{
+							"id": "390ed3dd-2205-49eb-8b06-69d3affe98bd",
+							"name": "github_handle",
+							"type": "string",
+							"value": "luka-zivkovic"
+						},
+						{
+							"id": "841cc4c8-f47d-4eea-8f23-62e5e7f0f0dc",
+							"name": "repositoriesToTrack",
+							"type": "array",
+							"value": "={{ ['techPoweredGrowth', 'tech-learn'] }}"
+						},
+						{
+							"id": "df6011d8-70b8-4942-ad38-385d6c459c84",
+							"name": "myEmail",
+							"type": "string",
+							"value": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c6471886-5bce-43ae-9af7-89db8983706c",
+			"name": "Aggregate3",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [-2820, -1000],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "commits"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "469e916d-b567-4314-9f3d-ddebdac1a7c6",
+			"name": "If Authors Commit",
+			"type": "n8n-nodes-base.if",
+			"position": [-3040, -980],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "46c73ee1-9ff2-4318-bad4-5e8cdb3703ff",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.author.login }}",
+							"rightValue": "={{ $('Set Variables').item.json.github_handle }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2e566c1b-1a75-4302-b6f1-bd48d1ea6f26",
+			"name": "If it's closed today",
+			"type": "n8n-nodes-base.if",
+			"position": [-3120, -500],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "204dc12c-e6ec-472a-b84b-d88afb571e93",
+							"operator": {
+								"type": "dateTime",
+								"operation": "exists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.closed_at?.toDateTime().format('yyyy-MM-dd') }}",
+							"rightValue": ""
+						},
+						{
+							"id": "4495a061-a8cd-42e7-81fb-bef628667058",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.closed_at?.toDateTime().format('yyyy-MM-dd') }}",
+							"rightValue": "={{ $('Set Variables').item.json.today_date }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "c4dafdca-e764-412a-9d3c-9b8653c3fb13",
+			"name": "If it's created today",
+			"type": "n8n-nodes-base.if",
+			"position": [-3120, -760],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "46c73ee1-9ff2-4318-bad4-5e8cdb3703ff",
+							"operator": {
+								"type": "dateTime",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.created_at.toDateTime().format('yyyy-MM-dd') }}",
+							"rightValue": "={{ $('Set Variables').item.json.today_date }}"
+						},
+						{
+							"id": "13335ba1-acc1-4f12-8654-326d09553187",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.user.login }}",
+							"rightValue": "={{ $('Set Variables').item.json.github_handle }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ce041632-5c3e-4f15-b772-cde890181ab7",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-1724, -1080],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "message.content.events"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "61d7bb88-1ad8-48d7-ae56-953123ccd501",
+			"name": "Workflow Overview",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-4200, -1620],
+			"parameters": {
+				"color": 5,
+				"width": 640,
+				"height": 380,
+				"content": "## 📊 Daily Activity Tracker Workflow\n\n**Overview:** This workflow automatically collects your daily activities from multiple sources and creates a comprehensive timesheet in Google Sheets.\n\n**Key Features:**\n- 📧 Tracks important emails (filters out newsletters & no-reply)\n- 📅 Logs calendar events with duration and attendees\n- 💻 Records GitHub commits and pull requests\n- 🤖 Uses AI to generate concise activity descriptions\n- 📝 Auto-creates monthly sheets and organizes entries\n\n**Configuration:** Update the **Set Variables** node with your:\n- GitHub username\n- Email address\n- Repository names to track"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ddefaf28-97c9-493b-8762-0d67e8adb345",
+			"name": "Data Collection",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-3280, -1900],
+			"parameters": {
+				"color": 3,
+				"width": 480,
+				"height": 280,
+				"content": "## 🔄 Data Collection Hub\n\n**Sources:**\n- **Gmail:** Fetches emails from today (filtered by sender)\n- **Google Calendar:** Gets confirmed events from yesterday\n- **GitHub API:** Retrieves commits via custom API call\n- **GitHub Node:** Pulls all PRs from specified repository\n\n**Note:** Calendar events use yesterday's date (`$today.minus(1)`) - adjust if needed for your timezone"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "011634e4-2d08-40ac-9545-12b06a370e79",
+			"name": "GitHub Filtering",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-3360, -340],
+			"parameters": {
+				"color": 6,
+				"width": 580,
+				"height": 340,
+				"content": "## 🔍 GitHub Activity Filtering\n\n**Commit Filter:**\n- Only includes commits by the configured user\n- Fetches commits from yesterday (UTC)\n\n**PR Filters:**\n1. **Created Today:** New PRs opened by the user\n2. **Closed Today:** PRs that were merged/closed\n\n**Purpose:** Ensures only relevant GitHub activity is tracked in the timesheet"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c02e7286-fe56-4719-84ae-d75591814c67",
+			"name": "Sheet Management",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-4360, -920],
+			"parameters": {
+				"color": 2,
+				"width": 420,
+				"height": 280,
+				"content": "## 📋 Sheet Management\n\n**Monthly Sheet Creation:**\n- Automatically creates a new sheet for each month\n- Names sheets using month name (e.g., \"January\")\n- Checks if sheet already exists to avoid duplicates\n\n**Header Row Setup:**\n- Creates empty row with Date, Type, Description columns\n- Only runs on first execution of the month"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d24c8f38-772f-47c7-8be5-62b0bf3bb45b",
+			"name": "Data Aggregation",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2600, -1480],
+			"parameters": {
+				"color": 7,
+				"width": 620,
+				"height": 320,
+				"content": "## 🔀 Data Aggregation\n\n**Purpose:** Combines multiple items into single data objects\n\n**Aggregate Nodes:**\n- **Emails → emails[]**\n- **Calendar Events → calendarEvents[]**\n- **Commits → commits[]**\n- **Pull Requests → prs[]**\n\n**Merge Node:** Combines all aggregated data into one payload for AI processing"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5c550d91-2e03-40a7-848b-f1a84e6a335a",
+			"name": "Final Output",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1780, -1440],
+			"parameters": {
+				"width": 420,
+				"height": 280,
+				"content": "## 💾 Final Output\n\n**Google Sheets2 Node:**\n- Appends each activity to the current month's sheet\n- Maps AI-generated data:\n  - **Type:** CALENDAR_EVENT | EMAIL | COMMIT | PR\n  - **Description:** Concise activity summary\n  - **Date:** Today's date (YYYY-MM-DD format)\n\n**Result:** Clean, organized timesheet ready for review!"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9c66ce99-54b4-43c1-bd72-c03b583355f1",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2220, -840],
+			"parameters": {
+				"color": 4,
+				"width": 540,
+				"height": 280,
+				"content": "## 🤖 AI Processing & Summary\n\n**Purpose:** Transform raw activity data into structured timesheet entries\n\n**Process:**\n1. **Format All Data** node consolidates data from all sources\n2. **OpenAI GPT-4o-mini** generates concise descriptions (≤120 chars)\n3. **Split Out** node separates individual events for sheet insertion\n\n**Output:** Clean, categorized entries ready for Google Sheets"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bf6a9ad5-11b6-46f5-b4e1-8f7cbed04c56",
+			"name": "Split Out1",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-3380, -980],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "repositoriesToTrack"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "17c57291-2bbc-4fbb-b2c3-2c7352c379f2",
+			"name": "Get Commits From Github",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-3220, -980],
+			"parameters": {
+				"url": "=https://api.github.com/repos/{{ $('Set Variables').item.json.github_handle }}/{{ $json.repositoriesToTrack }}/commits?since={{ $now.minus(1).startOf('day').toUTC().toISO() }}\n  &until={{ $now.minus(1).endOf('day').toUTC().toISO() }}",
+				"options": {},
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "githubApi"
+			},
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "githubApi Credential"
+				},
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "df7ad87d-f6e1-4d26-8551-c503271dbb3a",
+			"name": "Insert Sheets Entry",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-1504, -1080],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Date": "={{ $now.format('yyyy-MM-dd') }}",
+						"Type": "={{ $json.type }}",
+						"Description": "={{ $json.description }}"
+					},
+					"schema": [
+						{
+							"id": "Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Type",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Type",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Description",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $now.format('MMMM') }}"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "122a1907-1eb5-48c2-9fb7-4d004f41c74a",
+			"name": "Create Sheet If It Doesn't Exist",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-4500, -560],
+			"parameters": {
+				"title": "={{ $now.format('MMMM') }}",
+				"options": {},
+				"operation": "create",
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "a172be21-11f1-48a5-bf6c-2989d3888771",
+			"name": "If it didn't exist",
+			"type": "n8n-nodes-base.if",
+			"position": [-4280, -560],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "b177902a-8b12-4147-afe2-babd21126e4a",
+							"operator": {
+								"type": "string",
+								"operation": "exists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.title }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "9d96d32c-75db-4712-8e8f-8806cb43830b",
+			"name": "Init Sheet Headers",
+			"type": "n8n-nodes-base.set",
+			"position": [-4060, -560],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2e5a5c68-ec1c-4307-b7ab-4db2d0a510d7",
+							"name": "Date",
+							"type": "string",
+							"value": ""
+						},
+						{
+							"id": "18823857-3297-4349-87df-42c364680f70",
+							"name": "Type",
+							"type": "string",
+							"value": ""
+						},
+						{
+							"id": "1806a29c-c5d8-4e6f-ace9-dc2750b4b88c",
+							"name": "Description",
+							"type": "string",
+							"value": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "242351ee-c830-4253-8b4f-37d2c7494018",
+			"name": "init Sheet Columns",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-3840, -560],
+			"parameters": {
+				"columns": {
+					"value": {},
+					"schema": [
+						{
+							"id": "Date",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Type",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Type",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Description",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "autoMapInputData",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $('Create Sheet If It Doesn't Exist').item.json.title }}"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "ce14b4e3-3796-4d03-93fe-8cc2a6199955",
+			"name": "Split Out2",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-3580, -720],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "repositoriesToTrack"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Format All Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Insert Sheets Entry",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Aggregate2": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"Aggregate3": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Split Out1": {
+			"main": [
+				[
+					{
+						"node": "Get Commits From Github",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out2": {
+			"main": [
+				[
+					{
+						"node": "Get GitHub PRs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Daily at 7PM": {
+			"main": [
+				[
+					{
+						"node": "Set Variables",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Variables": {
+			"main": [
+				[
+					{
+						"node": "Get Today's Emails",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Today's Calendar Events",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Sheet If It Doesn't Exist",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Split Out1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Split Out2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get GitHub PRs": {
+			"main": [
+				[
+					{
+						"node": "If it's created today",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "If it's closed today",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format All Data": {
+			"main": [
+				[
+					{
+						"node": "Generate Journal Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If Authors Commit": {
+			"main": [
+				[
+					{
+						"node": "Aggregate3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Today's Emails": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If it didn't exist": {
+			"main": [
+				[
+					{
+						"node": "Init Sheet Headers",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Init Sheet Headers": {
+			"main": [
+				[
+					{
+						"node": "init Sheet Columns",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"init Sheet Columns": {
+			"main": [[]]
+		},
+		"If it's closed today": {
+			"main": [
+				[
+					{
+						"node": "Aggregate2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If it's created today": {
+			"main": [
+				[
+					{
+						"node": "Aggregate2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Get Commits From Github": {
+			"main": [
+				[
+					{
+						"node": "If Authors Commit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Journal Summary": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Today's Calendar Events": {
+			"main": [
+				[
+					{
+						"node": "Aggregate1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Sheet If It Doesn't Exist": {
+			"main": [
+				[
+					{
+						"node": "If it didn't exist",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

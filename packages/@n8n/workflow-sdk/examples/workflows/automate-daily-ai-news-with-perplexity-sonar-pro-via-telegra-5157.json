@@ -1,0 +1,321 @@
+{
+	"id": "wf-5157",
+	"name": "Automate daily AI news with Perplexity Sonar Pro (via Telegram)",
+	"nodes": [
+		{
+			"id": "18a737fb-a33f-4a4b-a5dc-cc5656c46a50",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [720, 180],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 10
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ccc439ae-baab-4b1b-a67f-e21a64426407",
+			"name": "REDACTED",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"position": [1260, 360],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "REDACTED",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1cBdqD8JiMLH2uvnK0KbcLHDrEDrFgK076u2x4uvwLP8",
+					"cachedResultUrl": "REDACTED",
+					"cachedResultName": "REDACTED"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "b7e99d4c-74fd-4ac4-a008-fcaa7e0b2bb6",
+			"name": "Sheet Log",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1820, 180],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Date": "={{ $('Schedule Trigger').item.json['Readable date'] }}",
+						"News": "={{ $('Formatter Agent').item.json.message.content }}",
+						"Thread Ts": "={{ $json.message.ts }}"
+					},
+					"schema": [
+						{
+							"id": "Date",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "News",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "News",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Thread Ts",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Thread Ts",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Date"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "REDACTED",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "Redacted"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "1bb7449f-d243-4d90-9ba4-5e2632dda608",
+			"name": "Perplexity Daily Search (Past 24hrs)",
+			"type": "n8n-nodes-base.perplexity",
+			"position": [960, 180],
+			"parameters": {
+				"model": "sonar-reasoning-pro",
+				"options": {
+					"searchRecency": "day"
+				},
+				"messages": {
+					"message": [
+						{
+							"role": "system",
+							"content": "REDACTED"
+						},
+						{
+							"content": "=Find and summarize the most recent (within the last 24 hours. For reference, today is {{ $json['Readable date'] }}) and relevant news on AI model releases, research breakthroughs, and key announcements by organizations like OpenAI, Anthropic, Google, Meta, Mistral, xAI, and Hugging Face. \n\nPrioritize first primary, credible sources and exclude videos and other news aggregator site.\n\nThen research on potential disrupters that may not be immediately reported on major news outlet (e.g Seedance video generation model, Deepseek etc). \n\nFor each item:\n- Write a clear 2–3 sentence summary\n- Add the full (unshortened) source URL immediately after each summary\n\n#Rule\nIf there are no notable news found in the past 24 hours, respond with \"No Notable AI News found in the past 24 hours\""
+						}
+					]
+				},
+				"simplify": true,
+				"requestOptions": {}
+			},
+			"credentials": {
+				"perplexityApi": {
+					"id": "credential-id",
+					"name": "perplexityApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2d281620-be7d-40b0-afba-0d443a89be88",
+			"name": "Formatter Agent",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1180, 180],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Here is today’s AI news list from Perplexity:\n\n\"{{ $json.message }}\"\n\nPlease:\n\n- Remove all thinking or reasoning notes enclosed between </think> tags.\n- Cross-check the news against the “Past News Log Sheet” and remove duplicates. Remove duplicate news from output even if they were reported from different sources. Take some time to infer the past news in the sheet to ensure no duplication, since news might be worded differently. \n- Ensure each item has a clear, 1–2 sentence summary.\n- After each summary, include the full unfurled source URL.\n- Use bold to highlight company names or major updates.\n- Add spacing between news items for readability.\n\n\nStart with:\nHi, Today is {{ $('Schedule Trigger').item.json['Readable date'] }}. Here are the latest AI updates you should know:\n\n#Rule\nIf Perplexity's output shows that there are no notable news in the past 24 hours, or all the news are duplicates/similar from the \"Past News Log Sheet\" respond appropriately with \"No notable AI development news in the past 24 hours\""
+						},
+						{
+							"role": "system",
+							"content": "You're a helpful formatter Agent"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "e2d77cb3-e14a-4e69-b3b7-20266d160b09",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, 60],
+			"parameters": {
+				"height": 460,
+				"content": "Scheduled trigger"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4c7abefe-918c-4533-946c-5aa771d67388",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [900, 60],
+			"parameters": {
+				"color": 5,
+				"height": 460,
+				"content": "Search"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2337cf99-72be-4e19-abee-ba45aec2f2f7",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1160, 60],
+			"parameters": {
+				"color": 3,
+				"width": 300,
+				"height": 460,
+				"content": "Format + Crosscheck Recency\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "63a6b4f8-e2c1-4bd0-aa04-5057e39cab4a",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1480, 60],
+			"parameters": {
+				"color": 6,
+				"width": 580,
+				"height": 460,
+				"content": "Telegram Message & Log"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d03f18f6-728f-4981-8c94-d6a96191b4fe",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 0],
+			"parameters": {
+				"color": 4,
+				"width": 600,
+				"height": 920,
+				"content": "🧠 Perplexity-Powered Daily AI News Digest (via Telegram)\n\n\nThis ready-to-deploy n8n workflow automates the entire process of collecting, filtering, formatting, and distributing daily AI industry news summaries directly to your Telegram group or channel.\n\nPowered by Perplexity and OpenAI, it fetches only high-signal AI updates from trusted sources (e.g. OpenAI, DeepMind, HuggingFace, MIT Tech Review), filters out duplicates based on a Google Sheet archive, and delivers beautifully formatted news directly to your team — every morning at 10AM.\n\nFor more such build and step-by-step tutorials, check out:\nhttps://www.youtube.com/@Automatewithmarc\n\n🚀 Key Features:\nPerplexity AI Integration: Automatically fetches the most relevant AI developments from the last 24 hours.\n\nAI Formatter Agent: Cleans the raw feed, removes duplicates, adds summaries, and ensures human-friendly formatting.\n\nGoogle Sheets Log: Tracks previously reported news items to avoid repetition.\n\nTelegram Delivery: Sends a polished daily digest straight to your chat, ready for immediate team consumption.\n\nCustomizable Scheduling: Preconfigured for daily use, but can be modified to fit your team's preferred cadence.\n\n💼 Ideal For:\nAnyone who wants to stay ahead of fast-moving AI trends with zero manual effort\n\n🛠️ Tech Stack:\nPerplexity AI\n\nOpenAI (GPT-4 or equivalent)\n\nGoogle Sheets\n\nTelegram API\n\n✅ Setup Notes:\nYou’ll need to connect your own OpenAI, Perplexity, Google Sheets, and Telegram credentials.\n\nReplace the Google Sheet ID and Telegram channel settings with your own."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0d6475ab-3b90-47fd-9e9d-2e901cd15a98",
+			"name": "Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1580, 180],
+			"webhookId": "26253147-c419-426f-9b9d-d99df88464c7",
+			"parameters": {
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		}
+	],
+	"connections": {
+		"Telegram": {
+			"main": [
+				[
+					{
+						"node": "Sheet Log",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Formatter Agent": {
+			"main": [
+				[
+					{
+						"node": "Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Perplexity Daily Search (Past 24hrs)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Past News Sheet Log": {
+			"ai_tool": [
+				[
+					{
+						"node": "Formatter Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Perplexity Daily Search (Past 24hrs)": {
+			"main": [
+				[
+					{
+						"node": "Formatter Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

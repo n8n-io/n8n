@@ -1,0 +1,336 @@
+{
+	"id": "wf-13904",
+	"name": "Auto-create Instagram carousel posts from Canva with OpenAI and Blotato",
+	"nodes": [
+		{
+			"id": "node-wh-001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [64, 304],
+			"parameters": {
+				"path": "canva-pngs-to-drive",
+				"options": {},
+				"httpMethod": "POST"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "node-split-002",
+			"name": "Split Out Slides",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [256, 304],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "body.slides"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a7ad2268-9a28-4220-b930-341a3b2374b2",
+			"name": "Upload media",
+			"type": "@blotato/n8n-nodes-blotato.blotato",
+			"position": [432, 304],
+			"parameters": {
+				"mediaUrl": "={{ $json.export_url }}",
+				"resource": "media"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d2b2f286-7c5c-423a-a33e-a646454997aa",
+			"name": "Create post",
+			"type": "@blotato/n8n-nodes-blotato.blotato",
+			"position": [1760, 288],
+			"parameters": {
+				"options": {},
+				"accountId": "REPLACE_WITH_YOUR_ACCOUNT_ID",
+				"postContentText": "={{ $('Caption Generator').item.json.output[0].content[0].text }}",
+				"postContentMediaUrls": "={{ $('Aggregate').item.json.url }}"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "bfc60fce-d8d3-43f7-afb6-b1b95da22a68",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [608, 304],
+			"parameters": {
+				"options": {},
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "url"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "88e8cf95-f55f-4016-a7d0-59ab023a0fb7",
+			"name": "Send message and wait for response",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1280, 304],
+			"parameters": {
+				"chatId": "REPLACE_WITH_YOUR_ACCOUNT_ID",
+				"message": "=Today's IG Carousel:\n1. {{ $('Aggregate').item.json.url[0] }}\n2. {{ $('Aggregate').item.json.url[1] }}\n3. {{ $('Aggregate').item.json.url[2] }}\n4. {{ $('Aggregate').item.json.url[3] }}\n5. {{ $('Aggregate').item.json.url[4] }}\n\nIG Caption:{{ $json.output[0].content[0].text }}",
+				"options": {
+					"appendAttribution": false
+				},
+				"operation": "sendAndWait",
+				"approvalOptions": {
+					"values": {
+						"approvalType": "double"
+					}
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d105aad1-fe9d-42fd-9452-c3ba6cbae72c",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [1488, 304],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 3,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "0c1ed249-3fb2-4421-8a5a-888676806189",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.data.approved }}",
+							"rightValue": true
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "06230745-1670-48e1-a2b0-57b53b4ed700",
+			"name": "Send a text message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1680, 512],
+			"parameters": {
+				"text": "Got it. In that case, please check your Canva files",
+				"chatId": "REPLACE_WITH_YOUR_ACCOUNT_ID",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c269fb09-dc62-4b47-acb0-bbd61ecd5d33",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"position": [1888, 512],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "20d67174-cb35-486e-8bc7-5ab9217c53cb",
+			"name": "Caption Generator",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [928, 304],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-5-mini",
+					"cachedResultName": "GPT-5-MINI"
+				},
+				"options": {},
+				"responses": {
+					"values": [
+						{
+							"content": "=Create an effective caption for Soulfit Pilates. Output only the caption and hashtags without other marks or explanations. "
+						},
+						{
+							"content": "You're a caption generator agent for Soulfit Pilates. Your job is to come up with Instagram Carousel posts captions to go with the Carousel"
+						}
+					]
+				},
+				"builtInTools": {}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "8b9a5c18-bdb2-4a3e-a662-74a23b5ba624",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-736, -80],
+			"parameters": {
+				"width": 672,
+				"height": 1216,
+				"content": "Auto-Create Instagram Carousel Posts from Canva (Webhook → AI Caption → Instagram)\n\nAutomatically turn Canva carousel exports into a fully published Instagram post with AI-generated captions.\nThis workflow receives a webhook payload containing PNG slides (for example from Claude Cowork or a Canva automation), uploads the images, generates an optimized Instagram caption using AI, and publishes the carousel post via Blotato.\nIt removes the manual work of downloading slides, writing captions, and posting to Instagram.\n\nWhat this template does\nWhen triggered by a webhook, this workflow:\nReceives a payload containing carousel slide images\nSplits the slides into individual items\nUploads each image to a media host\nAggregates all images into a carousel\nUses AI to generate an Instagram caption with hashtags\nPublishes the post to Instagram via Blotato\nThis allows you to go from Canva design → Instagram post automatically.\n\nExample use cases\nThis workflow is useful for:\nSocial media managers automating Instagram posting\nContent creators producing carousel posts at scale\nAgencies generating client posts automatically\nAI-assisted content pipelines\nMarketing automation systems\nExample automation pipeline:\nClaude → Canva → n8n → Instagram\n\nWorkflow overview\nWebhook → Split Slides → Upload Media → Aggregate Images → Generate Caption → Publish Instagram Post\nNode breakdown\nWebhook\nReceives a POST request containing the carousel slide data.\nThe payload includes slide metadata and PNG URLs generated by Canva.\nSplit Out Slides - Splits the slides array so each slide is processed individually.\nThis allows each PNG image to be uploaded and processed as its own item.\nUpload Media (Blotato) - Uploads each slide image to the media host used by the social publishing platform.\nAggregate collects all uploaded image URLs into a single list.\nMessage a Model (AI Caption Generator)\nTelegram Node for Approval\nCreate Post (Blotato) - Creates and publishes the Instagram carousel post\n\nRequirements\nBefore using this template you must configure the following:\nOpenAI API credential\nBlotato API credential\nInstagram account connected to Blotato\nA system that sends the webhook (Claude, Canva, or another automation)\nSetup instructions\nImport the workflow into n8n\n\nConfigure credentials:\nOpenAI\nBlotato\nCopy the webhook URL from the Webhook node\nConfigure your upstream tool (Claude / Canva / automation) to send slide data to this webhook\nTest the workflow by sending a sample payload\nActivate the workflow\nOnce active, new carousel payloads will automatically be turned into Instagram posts"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6ce953bd-0411-47dc-a4ca-93ea25bf3cdf",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-16, -80],
+			"parameters": {
+				"color": 4,
+				"width": 752,
+				"height": 1216,
+				"content": "Receive Webhook Paylotd and Compile URL's"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "574b8c27-ce51-486d-ad0f-90eebc245826",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [768, -80],
+			"parameters": {
+				"color": 5,
+				"width": 688,
+				"height": 1216,
+				"content": "Caption Generate & Approval"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5f75683d-98d2-4ede-bb36-d3ba15d4d280",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1488, -80],
+			"parameters": {
+				"color": 3,
+				"width": 688,
+				"height": 1216,
+				"content": "Approve & Post"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8b5fd114-0d6e-41bc-8ef2-ab814e8e5d51",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-16, -560],
+			"parameters": {
+				"color": 2,
+				"width": 672,
+				"height": 416,
+				"content": "- [ ] @[youtube](UJcv3qSXpG8)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Create post",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send a text message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out Slides",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Caption Generator",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload media": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out Slides": {
+			"main": [
+				[
+					{
+						"node": "Upload media",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Caption Generator": {
+			"main": [
+				[
+					{
+						"node": "Send message and wait for response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send a text message": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send message and wait for response": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"callerPolicy": "workflowsFromSameOwner",
+		"availableInMCP": false,
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

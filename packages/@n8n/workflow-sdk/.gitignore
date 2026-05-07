@@ -12,3 +12,8 @@ test-fixtures/real-workflows/*.generated.ts
 scripts/*.js
 scripts/*.js.map
 scripts/*.d.ts
+
+# Curation pipeline intermediates (committed: manifest.json, workflows/*.json, _calibration.json, _coverage-report.json)
+examples/_raw/
+examples/_failures.log
+examples/_catalog-snapshot.json

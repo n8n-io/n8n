@@ -1,0 +1,481 @@
+{
+	"id": "wf-3942",
+	"name": "AI-powered restaurant order chatbot with GPT-4o for POS integration",
+	"nodes": [
+		{
+			"id": "62b3c7cb-1993-44f1-8b86-38a34ca1d029",
+			"name": "Information Extractor",
+			"type": "@n8n/n8n-nodes-langchain.informationExtractor",
+			"position": [-200, 500],
+			"parameters": {
+				"text": "={{ $json.query }}",
+				"options": {},
+				"schemaType": "fromJson",
+				"jsonSchemaExample": "{\n  \"name\": \"Information Extractor\",\n  \"type\": \"n8n-nodes-base.informationExtractor\",\n  \"parameters\": {\n    \"extract\": [\n      {\n        \"name\": \"items\",\n        \"pattern\": \"(latte|coffee|tea|cappuccino)\"\n      },\n      {\n        \"name\": \"quantity\",\n        \"pattern\": \"\\\\d+\"\n      },\n      {\n        \"name\": \"table\",\n        \"pattern\": \"table number (\\\\d+)\"\n      }\n    ]\n  }\n}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "75883f27-af58-4791-9e1a-a70b83e1cead",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-180, 740],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "aeefdd4b-bf7d-4824-97d8-0afc356fb7d6",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [120, 540],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "8a5dda0c-a567-4305-83a3-68d6fb573dd3",
+							"operator": {
+								"type": "array",
+								"operation": "empty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.output.parameters.extract }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "9e3f8a1b-ccd8-4f4d-91cb-b99cc46f412f",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [840, 420],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Item": "={{ $json.item }}",
+						"Quantity": "={{ $json.quantity }}",
+						"Table No": "={{ $json.table }}",
+						"Timestamp": "={{ $now }}"
+					},
+					"schema": [
+						{
+							"id": "Timestamp",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Timestamp",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Table No",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Table No",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Item",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Item",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Quantity",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Quantity",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/16fXaxEcfnq_-oif9tp94-3uTeHSFWoSnuBPNTljuW-k/edit#gid=0",
+					"cachedResultName": "Order log"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://docs.google.com/spreadsheets/d/16fXaxEcfnq_-oif9tp94-3uTeHSFWoSnuBPNTljuW-k/edit?usp=sharing"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "4cc1818f-1585-42e1-a111-7b55557aebcb",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"position": [380, 560],
+			"parameters": {
+				"language": "python",
+				"pythonCode": "# Input from n8n\ninput_data = items\n\n# Get the extracted list\nextract_data = input_data[0].get('json', {}).get('output', {}).get('parameters', {}).get('extract', [])\n\n# Prepare variables\norder_items = []\ntable_number = None\n\n# Separate entries by type\nitems_list = []\nquantities = []\n\n# Parse all entries\nfor entry in extract_data:\n    if entry['name'] == 'table number':\n        table_number = entry['pattern']\n    elif entry['name'] == 'item':\n        items_list.append(entry['pattern'])\n    elif entry['name'] == 'quantity':\n        quantities.append(int(entry['pattern']))\n\n# Pair items and quantities\nfor i in range(len(items_list)):\n    item_data = {\n        'item': items_list[i],\n        'quantity': quantities[i] if i < len(quantities) else None,\n        'table': table_number\n    }\n    order_items.append(item_data)\n\n# Set final output\noutput = [{'json': item} for item in order_items]\n\nreturn output"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a92d2745-148b-4e2a-b8f7-82d3993ff34f",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [620, 500],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "aea89e6c-37a9-4859-adc8-b7e449701503",
+			"name": "Replace Me",
+			"type": "n8n-nodes-base.noOp",
+			"position": [800, 660],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b31dba52-b27e-4267-be32-a7730b4d08a8",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"position": [440, 400],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "d7f9a381-6bc2-44d0-81ac-6e0fbe77d70a",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-260, 220],
+			"parameters": {
+				"color": 3,
+				"width": 340,
+				"height": 680,
+				"content": "## JSON PARSER\n\n1.converts the textual data final order like\nitem name \nquantity \nand table name in a json.\n\n2.if the data doesn't include the above it returns null."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "acc7a528-f767-4576-b08d-6fc386f57648",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [100, 220],
+			"parameters": {
+				"color": 2,
+				"width": 460,
+				"height": 680,
+				"content": "## Refine/Split the jsons into multiple items\n\nIf the data from previous item is not null the custom code block splits the data into multiple json items in a list."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "857a3102-f5e1-4db5-afb4-154544414701",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [580, 220],
+			"parameters": {
+				"color": 4,
+				"width": 440,
+				"height": 680,
+				"content": "## Send each item as a record in Google sheet\n\n\n**Each item is looped over and produce a batch of 1 item and appended as row in sheet with timestamp.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a1ff2b0f-0b48-4ea2-8121-4e2d72197ef7",
+			"name": "Triggered on Restaurant Chat workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [-440, 500],
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "8689b773-a1c4-4de4-a66e-fab8c9eb6244",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-140, -280],
+			"webhookId": "d931c4a7-02f5-4359-918f-7ad3fae7b144",
+			"parameters": {
+				"public": true,
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "de310ce2-3868-4a0f-aa9b-38253e75dbda",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [100, -260],
+			"parameters": {
+				"options": {
+					"systemMessage": "\n\nYou are a polite and efficient restaurant assistant.\n\nYour job is to take customer orders, verify the order details, correct any mistakes, and confirm the order.\n\nFollow these steps:\n\nGreeting and Asking for the Order\n\nIf the customer greets you (e.g., \"Hello\", \"Hi\", \"Good evening\"), respond with:\n\n\"Hello! How can I assist you today? What would you like to order?\"\n\nOrder Parsing and Understanding\n\nAccept orders in flexible formats, such as:\n\n\"1 latte, 2 coffee, table number 5\"\n\n\"latte 2, pepsi 1, table 3\"\n\n\"1 cappucino\"\n\n\"1 tea table no 4\"\n\nYour goal is to extract the following:\n\nItem names (e.g., latte, coffee, chocolate, tea, pepsi)\n\nQuantities (must be numeric)\n\nTable number (must be numeric)\n\nVerify and Handle Missing or Incorrect Information\n\nFor each item in the order:\n\nIf the item name is missing, respond:\n\"Sorry, the item name is missing. What would you like to order?\"\n\nIf the quantity is missing, respond:\n\"How many [item] would you like?\"\n\nIf the table number is missing, respond:\n\"Could you please provide a table number?\"\n\nIf there are spelling mistakes in the item name, suggest corrections. Example:\n\"Did you mean chocolate instead of chocolat? Please confirm.\"\n\nUse fuzzy matching to detect common variations and typos.\n\nFinal Confirmation\n\nOnce all necessary details are collected, present an order summary like this:\n\nHere’s your order summary:\n\n1 latte\n\n2 coffee\n\nTable number: 5\nShall I confirm this order?\n\nOn Confirmation: Use the Tool\n\nWhen the user confirms, use the tool ConfirmOrder to send the final confirmation message as plain text in this format:\n\nThank you for confirming! Your order will be prepared shortly. Enjoy your time with us!\n\nOrder details are following:\nitem quantity\nlatte 1\ncoffee 2\n\nAdded to table number 5\n\nEnsure numeric values (quantities and table numbers) are correctly extracted, even if they appear at the start or end. Always confirm with the user if there is any uncertainty.\n\n\n\n\n\n\n\n\n"
+				}
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "9dda45ee-0a92-448c-8a7e-8daa99282cda",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-20, 20],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {
+					"responseFormat": "text"
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "0c0189d5-8fb4-4679-b2e2-221a3e2a4c88",
+			"name": "Call n8n Workflow Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [360, 20],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "wgaJ0eJQtYA8oKSC",
+					"cachedResultName": "Restaurant POS workflow"
+				},
+				"description": "This tool sends the text output generated by the AI Agent node to another n8n workflow for additional handling or automation.",
+				"workflowInputs": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"notesInFlow": false,
+			"typeVersion": 2.2
+		},
+		{
+			"id": "9292db7f-6ffc-486e-b31a-bcbd6ef7ab98",
+			"name": "Last 5 conversations Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [140, 40],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "2782d5b6-d33b-4c89-ac79-90bf380f0828",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [60, -380],
+			"parameters": {
+				"width": 340,
+				"height": 300,
+				"content": "## Restaurant Order Chat bot\n** It chats with the user and refines the order for the pos system in another workflow."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7c298718-e9e3-40d3-a612-94c578bd3100",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [500, -20],
+			"parameters": {
+				"color": 5,
+				"content": "## Call the subworkflow\nit passes the data to the subworkflow for further process\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [[]]
+		},
+		"Replace Me": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Replace Me",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Information Extractor",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Information Extractor": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Call n8n Workflow Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Last 5 conversations Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Triggered on Restaurant Chat workflow": {
+			"main": [
+				[
+					{
+						"node": "Information Extractor",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

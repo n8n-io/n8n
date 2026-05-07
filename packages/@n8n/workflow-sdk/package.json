@@ -62,7 +62,11 @@
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
-    "code-to-json": "npx tsx src/cli/index.ts code-to-json"
+    "code-to-json": "npx tsx src/cli/index.ts code-to-json",
+    "fetch-templates": "npx tsx scripts/fetch-templates.ts",
+    "regenerate-examples": "npx tsx scripts/regenerate-examples.ts",
+    "criteria:calibrate": "npx tsx scripts/calibration.ts",
+    "criteria:coverage": "npx tsx scripts/coverage.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -90,7 +94,9 @@
     }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "examples/manifest.json",
+    "examples/workflows/**/*"
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

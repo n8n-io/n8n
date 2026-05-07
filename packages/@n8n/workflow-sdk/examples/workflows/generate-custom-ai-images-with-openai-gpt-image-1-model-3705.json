@@ -1,0 +1,175 @@
+{
+	"id": "wf-3705",
+	"name": "Generate custom AI images with OpenAI GPT-Image-1 model",
+	"nodes": [
+		{
+			"id": "6b5f9234-351f-4f6b-a0ab-f0d30897f60a",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [320, 400],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "b64_json"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "9c60f827-bf37-486b-9026-0cbe97fd83b6",
+			"name": "OpenAI - Generate Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-120, 400],
+			"parameters": {
+				"url": "https://api.openai.com/v1/images/generations",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"{{ $json.openai_image_model }}\",\n  \"prompt\": \"{{ $json.image_prompt }}\",\n  \"n\": {{ $json.number_of_images }},\n  \"size\": \"{{ $json.size_of_image }}\",\n  \"quality\": \"{{ $json.quality_of_image }}\"\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"nodeCredentialType": "openAiApi"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "2dd04b96-5faf-48ec-a7b0-66a31866388d",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-560, 400],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "629799c0-d2ff-4c5a-95d8-54d5afd3ac66",
+			"name": "Set Variables",
+			"type": "n8n-nodes-base.set",
+			"position": [-340, 400],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2a5d52c2-5af1-4796-acba-4e1807fc7d7b",
+							"name": "image_prompt",
+							"type": "string",
+							"value": "a 4-frame cartoon strip telling a joke about AI"
+						},
+						{
+							"id": "c41a8091-d952-4f5a-ae24-3b0691bbce57",
+							"name": "number_of_images",
+							"type": "number",
+							"value": 2
+						},
+						{
+							"id": "00feec5a-19c8-43af-bf93-e0729d1391f8",
+							"name": "quality_of_image",
+							"type": "string",
+							"value": "high"
+						},
+						{
+							"id": "1b359a11-c05a-49c8-aa27-402b145fcbc1",
+							"name": "size_of_image",
+							"type": "string",
+							"value": "1024x1024"
+						},
+						{
+							"id": "6cf4ba85-d11a-48bb-9eaf-4084c9538d87",
+							"name": "openai_image_model",
+							"type": "string",
+							"value": "=gpt-image-1"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5f4e4bbe-7331-42dc-86a3-5d9de658ea07",
+			"name": "Separate Image Outputs",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [100, 400],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0c0310a4-f354-4810-a967-ea002be09cc4",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-600, 580],
+			"parameters": {
+				"width": 1140,
+				"height": 220,
+				"content": "## [CLICK HERE to Watch Video](https://youtu.be/YmDezgolqzU?si=BgMjRm55-T_CYAs7)\n\nOpenAI just dropped API access for their new image generation — and it changes everything. In this quick walkthrough, I show you exactly how to integrate it with n8n using an HTTP request node. Learn how to send prompts, convert base64 to binary, and automate image handling. This is a big one. Don’t miss it.\n\n🔗 Official API Overview: https://openai.com/index/image-generation-api/\n🔗 API Reference – Create Image: https://platform.openai.com/docs/api-reference/images/create\n\n### *New:  Make.com scenario here: https://drive.google.com/file/d/1Uz-mA0LnUZ_tnUWBR2AAlVxs3LBlGKfk/view?usp=sharing\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Set Variables": {
+			"main": [
+				[
+					{
+						"node": "OpenAI - Generate Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Separate Image Outputs": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI - Generate Image": {
+			"main": [
+				[
+					{
+						"node": "Separate Image Outputs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Set Variables",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

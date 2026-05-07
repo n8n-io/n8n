@@ -1,0 +1,285 @@
+{
+	"id": "wf-5924",
+	"name": "AI research assistant via Telegram (GPT-4o mini + DeepSeek R1 + SerpAPI)",
+	"nodes": [
+		{
+			"id": "2103bf29-ca9c-48a0-91f7-9ff81f2385b1",
+			"name": "DeepSeek R1 AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-320, 368],
+			"parameters": {
+				"text": "={{ $json.message.text }} ",
+				"options": {
+					"systemMessage": "=You are an intelligent assistant specialized in understanding user queries and structuring them for deeper investigation. You act as a first-layer analyst, helping clarify, reformulate, or expand the user's original question when needed.\n\nYou have access to short-term memory and can recall recent context to ensure continuity in multi-turn conversations. Your goal is to understand what the user really needs, extract relevant context, and prepare a refined, focused query for a research agent.\n\nYou do not perform live research yourself. Instead, you pass refined questions forward.\nRespond clearly, naturally, and like a helpful human—not robotic or overly formal.\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "c11f364a-f8f5-4894-b95a-c0aba8abdf70",
+			"name": "DeepSeek Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+			"position": [-336, 608],
+			"parameters": {
+				"model": "deepseek-reasoner",
+				"options": {}
+			},
+			"credentials": {
+				"deepSeekApi": {
+					"id": "djoVzbnfBXUw4V0K",
+					"name": "DeepSeek Oficial account"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2f14ea0b-67de-4eb2-bd20-37134914ae00",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-160, 608],
+			"parameters": {
+				"sessionKey": "={{ $json.message.chat.id }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "09271ba5-f172-4463-a56e-e68c6509624e",
+			"name": "Research AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [64, 368],
+			"parameters": {
+				"text": "={{ $json.output }}",
+				"options": {
+					"systemMessage": "=You are a research assistant with access to real-time search results provided by SerpAPI. You must always base your answers exclusively on the information retrieved from SerpAPI—never speculate or guess.\n\nFor every user query, you will receive structured results including titles, snippets, prices, images, and links.\n\nYour job is to:\n- Carefully analyze the SerpAPI results\n- Identify the most relevant and helpful information\n- Summarize or compare the top 2–3 options clearly and concisely\n- Include: product name, short description, price (if available), link, and image URL (if available)\n\nFormat the response in a user-friendly, readable style—using bullets or emojis to improve clarity. Always include direct links and image URLs if they are provided in the search data.\n\nIf no useful results are found, say so transparently.\n\nDo not generate information outside of what SerpAPI returns. Your role is to process, summarize, and organize real web search data—nothing more.\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "34c0f954-121a-44cd-af1b-eda624d4e05a",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [48, 608],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini",
+					"cachedResultName": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "wAP7QjMnHDyoGfIB",
+					"name": "OpenAi Arlindeveloper"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d1fcc1af-f669-42b7-9886-b59e3fd08f1c",
+			"name": "SerpAPI",
+			"type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+			"position": [272, 608],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"serpApi": {
+					"id": "OZlBEWEuwOPID81O",
+					"name": "SerpAPI account"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "be7af2e5-f78e-4354-9f37-3eaa4a47fd35",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-640, 192],
+			"webhookId": "3e00a8f3-50f1-4b71-9af3-f06813efd5e5",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "pl9ohsZOqEJv2B8U",
+					"name": "Invest...Deep_bot"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c9d87edb-252b-4dc9-9d1b-67d5aeeb4e38",
+			"name": "Send a text message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [512, 272],
+			"webhookId": "c933873b-ee2d-48ad-a3d9-24f238083a64",
+			"parameters": {
+				"text": "={{ $json.output }}",
+				"chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "pl9ohsZOqEJv2B8U",
+					"name": "Invest...Deep_bot"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "60e010f3-cca8-4081-9ebc-e424444ce0f0",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"disabled": true,
+			"position": [-1328, -336],
+			"parameters": {
+				"width": 540,
+				"height": 1240,
+				"content": "## AI Research Assistant via Telegram (GPT-4o mini + DeepSeek R1 + SerpAPI)\n\n\n\n## 👥 Who’s it for\n\nThis workflow is perfect for anyone who wants to receive AI-powered research summaries directly on Telegram. Ideal for people asking frequent product, tech, or decision-making questions and want up-to-date answers sourced from the web.\n\n## 🤖 What it does\n\nUsers send a question via Telegram. An AI agent (DeepSeek R1) reformulates and understands the intent, while a second agent (GPT-4o mini) performs live research using SerpAPI. The most relevant answers, including links and images, are delivered back via Telegram.\n\n \n## ⚙️ How it works\n\n📲 Telegram Trigger – Starts when a user sends a message to your Telegram bot.\n🧠 DeepSeek R1 Agent – Understands, clarifies, or reformulates the user query.\n🧠 Research AI Agent (GPT-4o mini + SerpAPI) – Searches the web and summarizes the best results.\n📤 Send Telegram Message – Sends the response back to the same user.\n\n## 📋 Requirements\n\n- Telegram bot (via BotFather) with API token set in n8n credentials\n\n- OpenAI account with API key and balance for GPT-4o mini\n\n- SerpAPI account (100 free searches/month) with API key\n\n- DeepSeek account with API key and balance\n\n## 🛠️ How to set up\n\nCreate your Telegram bot using BotFather and connect it using the Telegram Trigger node\nSet up DeepSeek credentials and add a Chat Model AI Agent node using DeepSeek R1 to reformulate the user’s question\nSet up OpenAI credentials and add a second ChatGPT AI Agent node using GPT-4o mini\nIn the GPT-4o node, enable the SerpAPI Tool and add your SerpAPI API key\nPass the reformulated question from DeepSeek to the GPT-4o agent for live search and summarization\nFormat the response (text, links, optional images)\nSend the final reply to the user using the Telegram Send Message node\nEnsure your n8n instance is publicly accessible\nTest the workflow by sending a message to your Telegram bot ✅"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "eec392b0-3809-4d7f-8db8-cb31d378fe73",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-768, -336],
+			"parameters": {
+				"color": 7,
+				"width": 360,
+				"height": 1240,
+				"content": "## 📲 Telegram Trigger Node\n\nThis node starts the workflow when a user sends a message to your Telegram bot.\n\nTo set it up:\n\nCreate a bot via @BotFather\n\nCopy the bot token and add it to your Telegram credentials in n8n\nIt extracts the message text and chat ID, which are used in later nodes to process and respond to the user.\n\n\n[Read more about Telegram Trigger node Editing](https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.telegramTrigger)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c8c3f661-1d73-4117-ab00-67a634fd2ad2",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-384, -336],
+			"parameters": {
+				"color": 7,
+				"width": 360,
+				"height": 1240,
+				"content": "## 📲 🧠 DeepSeek R1 Agent (with Simple Memory)\n\nThis AI Agent receives the user’s original question and reformulates it if necessary to make it clearer or more focused.\n\nIt also uses a Simple Memory node to maintain short-term context for ongoing conversations.\n\n🔧 Setup:\n\nSign up at https://platform.deepseek.com\n\nCreate an API key and add it to n8n\n\nLoad credits to enable requests (DeepSeek is paid)\n\nThis step ensures that the question passed to the research agent is precise and well-structured.\n\n[Read more about the AI Agent node Editing](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=%40n8n%2Fn8n-nodes-langchain.agent)\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "78f47408-284b-4ae3-a575-a056fca6d135",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, -336],
+			"parameters": {
+				"color": 7,
+				"width": 360,
+				"height": 1240,
+				"content": "## 🔍 Research AI Agent (OpenAI GPT-4o mini + SerpAPI)\n\nThis agent performs the core task: researching the question using real-time web results from SerpAPI.\nIt summarizes the most relevant results with titles, short descriptions, prices (if available), and direct links.\nIt uses GPT-4o mini from OpenAI to structure the response.\n\n🔧 Setup:\n\nCreate an account at https://platform.openai.com\n\nGenerate your OpenAI API key and add balance\n\nUse gpt-4o or gpt-4o-mini as the model\n\nSign up at https://serpapi.com and get your API key (100 free searches/month)\n\nThis node only uses data from SerpAPI — no extra AI knowledge or speculation is allowed.\n\n[Read more about the AI Agent node Editing](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=%40n8n%2Fn8n-nodes-langchain.agent)\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6ba3e890-7a90-48e3-ab12-4cc8be49376a",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [384, -336],
+			"parameters": {
+				"color": 7,
+				"width": 360,
+				"height": 1240,
+				"content": "## 📲 ✉️ Send Telegram Message\n\nThis node sends the final response back to the user on Telegram.\nIt uses the same bot credentials as the trigger and pulls the chat_id from the original message.\nThe content of the message comes from the Research AI Agent output and includes helpful summaries with links.\n\n🔧 Setup:\n\nResource: Message\n\nOperation: Send Message\n\nChat ID: {{$json[\"message\"][\"chat\"][\"id\"]}}\n\nText: Output from the Research AI Agent\n\n[Read more about Telegram Send Message node Editing](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/message-operations/#send-message)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"SerpAPI": {
+			"ai_tool": [
+				[
+					{
+						"node": "Research AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "DeepSeek R1 AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "DeepSeek R1 AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Research AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Research AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Send a text message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DeepSeek Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "DeepSeek R1 AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DeepSeek R1 AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Research AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

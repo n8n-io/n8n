@@ -1,0 +1,547 @@
+{
+	"id": "wf-13270",
+	"name": "Use skills In n8n agent node",
+	"nodes": [
+		{
+			"id": "2f22da99-20e2-413d-aff2-22342ab555f3",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-960, 0],
+			"webhookId": "3611645b-0df7-4c25-8d3b-f4abb9b01fb7",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "f48e987d-c929-4cb6-926a-898864202399",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [544, 0],
+			"parameters": {
+				"text": "={{ $('When chat message received').item.json.chatInput }}",
+				"options": {
+					"maxIterations": 150,
+					"systemMessage": "=You are a helpful assistant. Your capabilities and instructions for completing tasks are stored in skill files in skill directories, whic his listed below in the Available Skills section\n\n## How You Work\nYou do not have built-in knowledge of how to complete tasks. Your instructions live in the skill files. When a user asks you to do something:\n\n1. Identify which skill(s) are relevant to the request, traversing directories using the `List Files by Path Name` tool as needed (ideally concurrently)\n2. Fetch those skill files (use concurrent tool calls when fetching multiple)\n3. Follow the instructions in those files to complete the task\n\n## Available Skills Files and Directories\n{{ \n// 🚨 ONLY UPDATE THIS IF YOU KNOW WHAT YOU'RE DOING 🚨\nJSON.stringify(\n  $('Merge Directory Structures')\n    .all()\n    .map(item => ({\n      \"type\": item.json.type,\n      \"path\": item.json.path,\n      \"orgName\": item.json.url.split('/')[4],\n      \"repoName\": item.json.url.split('/')[5],\n    }))\n    // this removes any files that we don't want to\n    // use up context displaying\n    .filter(i => \n      i.path.toLowerCase().split('/').last() !== \"readme.md\" && \n      i.path.toLowerCase().split('/').last() !== \"template\" &&\n      i.path.toLowerCase().split('/').last() !== \"license\"\n    ),\n  null,\n  2\n) \n}}\n\n## Important\n- Do NOT answer based on general knowledge — your instructions are in the skill files"
+				},
+				"promptType": "define"
+			},
+			"executeOnce": true,
+			"typeVersion": 3.1
+		},
+		{
+			"id": "3813ec64-e25d-4f3a-9f63-667f28d2d75b",
+			"name": "List Root Dirs",
+			"type": "n8n-nodes-base.github",
+			"position": [-128, -80],
+			"webhookId": "4ec37c56-9985-42e6-baf5-fe4ac627182b",
+			"parameters": {
+				"owner": {
+					"__rl": true,
+					"mode": "url",
+					"value": "={{ $json.SKILLS_REPOS }}"
+				},
+				"filePath": "/",
+				"resource": "file",
+				"operation": "list",
+				"repository": {
+					"__rl": true,
+					"mode": "url",
+					"value": "={{ $json.SKILLS_REPOS }}"
+				}
+			},
+			"credentials": {
+				"githubApi": {
+					"id": "aChEhZC5dvKq49tr",
+					"name": "liamdmcgarrigle read only"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "2bf04f87-8672-426a-af41-89de278c4f35",
+			"name": "Set GitHub Repo URLs",
+			"type": "n8n-nodes-base.set",
+			"position": [-608, 0],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "8955dd58-72aa-49a9-a6aa-7c1679ee5b51",
+							"name": "SKILLS_REPOS",
+							"type": "array",
+							"value": "=[\n  \"https://github.com/anthropics/skills\",\n  \"https://github.com/anthropics/knowledge-work-plugins\"\n]"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8533f02e-15b2-46e4-8324-8f0b97c438be",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-320, 0],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "SKILLS_REPOS"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "36b931b8-6bde-4c3c-af00-7d0f41338e3a",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1088, 384],
+			"parameters": {
+				"color": 7,
+				"height": 288,
+				"content": "HTTP request is used here instead of the built in GitHub node because the node returns base 64, but in the HTTP node we can request it as a text file through headers"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3fc14e56-09c1-4450-98d3-aadcc00d20af",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [864, 400],
+			"parameters": {
+				"color": 7,
+				"width": 192,
+				"height": 272,
+				"content": "This lets the agent look through the directories to find relevant files"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "670b4a12-57b3-45dd-8395-bab870d85ef5",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [736, 384],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "ee6eacbf-8cc6-4600-81d4-1fee1e519ff5",
+			"name": "Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [528, 384],
+			"parameters": {
+				"model": "google/gemini-3-flash-preview",
+				"options": {
+					"temperature": 0.1
+				}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "A5tnKaYbV9QNRMl8",
+					"name": "n8n-general-use-mcgarrigle"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "84ee2f0c-781b-44f0-a9ae-3c43b079b5f1",
+			"name": "List Skills Dirs",
+			"type": "n8n-nodes-base.github",
+			"onError": "continueRegularOutput",
+			"position": [-128, 80],
+			"webhookId": "4ec37c56-9985-42e6-baf5-fe4ac627182b",
+			"parameters": {
+				"owner": {
+					"__rl": true,
+					"mode": "url",
+					"value": "={{ $json.SKILLS_REPOS }}"
+				},
+				"filePath": "/skills",
+				"resource": "file",
+				"operation": "list",
+				"repository": {
+					"__rl": true,
+					"mode": "url",
+					"value": "={{ $json.SKILLS_REPOS }}"
+				}
+			},
+			"credentials": {
+				"githubApi": {
+					"id": "aChEhZC5dvKq49tr",
+					"name": "liamdmcgarrigle read only"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "b1568951-5eef-4445-99b5-32a42d973ab2",
+			"name": "Remove Skills Dirs & Dot Files",
+			"type": "n8n-nodes-base.filter",
+			"position": [48, -80],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 3,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "275c05ea-cde6-4b6a-9916-afe5cda498d9",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							},
+							"leftValue": "={{ $json.name }}",
+							"rightValue": "skills"
+						},
+						{
+							"id": "50420e00-4d14-44ff-8c86-389fac249fa6",
+							"operator": {
+								"type": "string",
+								"operation": "notStartsWith"
+							},
+							"leftValue": "={{ $json.name }}",
+							"rightValue": "."
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "89d669a1-936f-476a-bb4e-bcc7b9bd0782",
+			"name": "Remove Errors and Dot Files",
+			"type": "n8n-nodes-base.filter",
+			"position": [48, 80],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 3,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "275c05ea-cde6-4b6a-9916-afe5cda498d9",
+							"operator": {
+								"type": "string",
+								"operation": "notExists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.error }}",
+							"rightValue": ""
+						},
+						{
+							"id": "b07c5b48-668a-4ca2-9ba2-b84509d8f93d",
+							"operator": {
+								"type": "string",
+								"operation": "notStartsWith"
+							},
+							"leftValue": "={{ $json.name }}",
+							"rightValue": "."
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "af4f0351-1c12-4c93-85e7-652910468302",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1024, -176],
+			"parameters": {
+				"color": 7,
+				"height": 352,
+				"content": "## Interact with Chat\nYou can use this with the chat window on the bottom left or by enabling the toggle `Make Available in n8n Chat Hub` to true will let you use it in n8n's [chat hub](https://www.youtube.com/watch?v=s_GHteEnHc4)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "83b10b2b-42ab-4c04-a5cc-3d93ac73cf9b",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-688, -272],
+			"parameters": {
+				"color": 3,
+				"width": 256,
+				"height": 448,
+				"content": "## TODO Add Skills\nYou can use any skill that is publicly available on GitHub.\n\nPreselected is Anthropic's example [Skills Repo](https://github.com/anthropics/skills) and [Knowledge Work Skills](https://github.com/anthropics/knowledge-work-plugins) Repo\n\nIf you add more, ensure to match the same array syntax"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f66b72b8-bb22-4f0e-8f11-8abfb86b9406",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [480, -128],
+			"parameters": {
+				"color": 7,
+				"width": 384,
+				"height": 272,
+				"content": "## Just a Regular Ol Agent\nYou can build up from here! Add any other tool you want or add to the system prompt to fit your needs!"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "10857d7f-a1d7-4f36-a5da-a957a49dbb01",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [864, 208],
+			"parameters": {
+				"color": 7,
+				"width": 464,
+				"height": 464,
+				"content": "## How the Agent Uses the Skills\nThe agent uses the `List Files by Path Name` as much as needed to explore the file skills repo. The `Get a File From GitHub` returns the full text from the skill markdown files. \n\nThis mimics exactly how skills work in Claude Code or Open Code\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "12526c15-4ed3-4bb9-b134-613b4693850d",
+			"name": "List Files by Path Name",
+			"type": "n8n-nodes-base.githubTool",
+			"position": [928, 512],
+			"webhookId": "b309da8c-2f65-4c37-bb15-7c8a88c482ba",
+			"parameters": {
+				"owner": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $fromAI('repoUsername') }}"
+				},
+				"filePath": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Path', \"`/` would be root, `/folder` would list files in the folder named folder\", 'string') }}",
+				"resource": "file",
+				"operation": "list",
+				"repository": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $fromAI('repoName') }}"
+				},
+				"descriptionType": "manual",
+				"toolDescription": "List the files and directories inside of dirs.\nUse this tool on any DIR to see the files and other directories inside of it"
+			},
+			"credentials": {
+				"githubApi": {
+					"id": "aChEhZC5dvKq49tr",
+					"name": "liamdmcgarrigle read only"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "8570e9b5-ded9-4dbd-9a32-a6051d90eee8",
+			"name": "Get a File From GitHub",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [1168, 528],
+			"parameters": {
+				"url": "=https://api.github.com/repos/{{ $fromAI('repoOwnerUsername', ``, 'string') }}/{{ $fromAI('repoName', ``, 'string') }}/contents/{{ $fromAI('File_Path', ``, 'string') }}",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"toolDescription": "Get text content from a file on github from org, repo name, and path to file",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Accept",
+							"value": "application/vnd.github.raw+json"
+						},
+						{
+							"name": "X-GitHub-Api-Version",
+							"value": "2022-11-28"
+						}
+					]
+				},
+				"nodeCredentialType": "githubApi"
+			},
+			"credentials": {
+				"githubApi": {
+					"id": "aChEhZC5dvKq49tr",
+					"name": "liamdmcgarrigle read only"
+				}
+			},
+			"typeVersion": 4.4
+		},
+		{
+			"id": "fea5fbb5-1c6c-4c39-a4ba-15f1e2ba7914",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-352, -272],
+			"parameters": {
+				"color": 7,
+				"width": 736,
+				"height": 528,
+				"content": "## Fetch & Prepare Skills for Agent\nThis:\n1. Gets the directory from the GitHub Repository\n2. Removes duplicates & irrelevant files to save context\n3. Gets nested `/skills` directory if it exists\n4. Merge all data together to prepare for use in the Agent node's system prompt\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b424a991-955e-4fdb-9427-91e059d50019",
+			"name": "Merge Directory Structures",
+			"type": "n8n-nodes-base.merge",
+			"position": [256, 0],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "218097a1-4675-4b6f-b05d-3aee56e79b46",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [448, 192],
+			"parameters": {
+				"width": 224,
+				"height": 320,
+				"content": "## Replace Me\nIf you want, replace me with the provider and model you prefer!\n\nMaybe pick one out on our [AI Benchmark](https://n8n.io/ai-benchmark)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "List Root Dirs",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Skills Dirs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List Root Dirs": {
+			"main": [
+				[
+					{
+						"node": "Remove Skills Dirs & Dot Files",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List Skills Dirs": {
+			"main": [
+				[
+					{
+						"node": "Remove Errors and Dot Files",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set GitHub Repo URLs": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a File From GitHub": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List Files by Path Name": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge Directory Structures": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Set GitHub Repo URLs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Remove Errors and Dot Files": {
+			"main": [
+				[
+					{
+						"node": "Merge Directory Structures",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Remove Skills Dirs & Dot Files": {
+			"main": [
+				[
+					{
+						"node": "Merge Directory Structures",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

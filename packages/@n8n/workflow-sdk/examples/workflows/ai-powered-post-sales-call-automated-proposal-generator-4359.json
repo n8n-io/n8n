@@ -1,0 +1,337 @@
+{
+	"id": "wf-4359",
+	"name": "AI-Powered Post-Sales Call Automated Proposal Generator",
+	"nodes": [
+		{
+			"id": "12f23b4f-a653-45ad-87b7-e60ba30e70cb",
+			"name": "Replace Text",
+			"type": "n8n-nodes-base.googleSlides",
+			"position": [1300, 1100],
+			"parameters": {
+				"textUi": {
+					"textValues": [
+						{
+							"text": "{{proposalTitle}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.proposalTitle }}"
+						},
+						{
+							"text": "{{descriptionName}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.descriptionName }}"
+						},
+						{
+							"text": "{{oneParagraphProblemSummary}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.oneParagraphProblemSummary }}"
+						},
+						{
+							"text": "{{solutionHeadingOne}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.solutionHeadingOne }}"
+						},
+						{
+							"text": "{{solutionHeadingTwo}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.solutionHeadingTwo }}"
+						},
+						{
+							"text": "{{solutionHeadingThree}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.solutionHeadingThree }}"
+						},
+						{
+							"text": "{{solutionDescriptionOne}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.solutionDescriptionOne }}"
+						},
+						{
+							"text": "{{solutionDescriptionTwo}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.solutionDescriptionTwo }}"
+						},
+						{
+							"text": "{{solutionDescriptionThree}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.solutionDescriptionThree }}"
+						},
+						{
+							"text": "{{shortScopeTitleOne}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.shortScopeTitleOne }}"
+						},
+						{
+							"text": "{{shortScopeTitleTwo}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.shortScopeTitleTwo }}"
+						},
+						{
+							"text": "{{shortScopeTitleThree}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.shortScopeTitleThree }}"
+						},
+						{
+							"text": "{{shortScopeDescriptionOne}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.shortScopeDescriptionOne }}"
+						},
+						{
+							"text": "{{shortScopeDescriptionTwo}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.shortScopeDescriptionTwo }}"
+						},
+						{
+							"text": "{{shortScopeDescriptionThree}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.shortScopeDescriptionThree }}"
+						},
+						{
+							"text": "{{milestoneOneDay}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneOneDay }}"
+						},
+						{
+							"text": "{{milestoneTwoDay}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneTwoDay }}"
+						},
+						{
+							"text": "{{milestoneThreeDay}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneThreeDay }}"
+						},
+						{
+							"text": "{{milestoneFourDay}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneFourDay }}"
+						},
+						{
+							"text": "{{milestoneDescriptionOne}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneDescriptionOne }}"
+						},
+						{
+							"text": "{{milestoneDescriptionTwo}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneDescriptionTwo }}"
+						},
+						{
+							"text": "{{milestoneDescriptionThree}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneDescriptionThree }}"
+						},
+						{
+							"text": "{{milestoneDescriptionFour}}",
+							"replaceText": "={{ $('OpenAI').item.json.message.content.milestoneDescriptionFour }}"
+						},
+						{
+							"text": "{{cost}}",
+							"replaceText": "={{ $('On form submission').item.json.Cost }}"
+						}
+					]
+				},
+				"options": {},
+				"operation": "replaceText",
+				"presentationId": "={{ $json.id }}"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "da8060cf-ac55-439f-ab44-a973d5e4ee18",
+			"name": "OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [700, 1100],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"role": "system",
+							"content": "You are a helpful, intelligent writing assistant."
+						},
+						{
+							"content": "Your task is to generate a proposal using input data from a form. This proposal should be highly customized, specific, and high-quality, considering we're going to be sending it immediately after you're done.\n\nContext: we are an automation/no-code agency that develops systems revolving around growth, revenue ops, etc.\n\nThe proposal template we're using has many fields. You must return these fields in one JSON object.\n\nUse this format:\n\n{\n  \"proposalTitle\": \"\",\n  \"descriptionName\": \"\",\n  \"oneParagraphProblemSummary\": \"\",\n  \"solutionHeadingOne\": \"\",\n  \"solutionDescriptionOne\": \"\",\n  \"solutionHeadingTwo\": \"\",\n  \"solutionDescriptionTwo\": \"\",\n  \"solutionHeadingThree\": \"\",\n  \"solutionDescriptionThree\":\"\",\n  \"shortScopeTitleOne\": \"\",\n  \"shortScopeTitleTwo\": \"\",\n  \"shortScopeTitleThree\": \"\",\n  \"shortScopeDescriptionOne\": \"\",\n  \"shortScopeDescriptionTwo\": \"\",\n  \"shortScopeDescriptionThree\": \"\",\n  \"milestoneOneDay\": \"\",\n  \"milestoneTwoDay\": \"\",\n  \"milestoneThreeDay\": \"\",\n  \"milestoneFourDay\": \"\",\n  \"milestoneDescriptionOne\": \"\",\n  \"milestoneDescriptionTwo\": \"\",\n  \"milestoneDescriptionThree\": \"\",\n  \"milestoneDescriptionFour\": \"\"\n}\n\nRules:\n1. Use a spartan, casual tone of voice.\n2. Be to-the-point but professional—assume you're writing to a sophisticated audience.\n3. Ensure that all fields are filled out. Do not miss a field or leave any variables empty.\n4. Keep things short. If a field contains the term \"Description\" it should be no more than fourteen words. For \"descriptionName\" do not use title case."
+						},
+						{
+							"content": "{\n  \"companyName\":\"1SecondCopy\",\n  \"problem\": \"they can't generate leads. everything is referral based rn.\",\n  \"solution\": \"cold email lead gen system, client reactivation system, and best in class sales training for closing\",\n  \"scope\": \"1k/day cold email infra, 30k email leads, 4 weekly zoom sessions for sales training\",\n  \"currentDate\":\"Feb 4 2025\",\n  \"howSoon\": \"two months\",\n  \"depositCost\": \"$1,845\",\n}"
+						},
+						{
+							"role": "assistant",
+							"content": "{\n  \"proposalTitle\": \"Lead Gen System for 1SecondCopy\n\",\n  \"descriptionName\": \"A simple, scalable lead generation system built to help grow your content efforts & connect you with the right people.\n\",\n  \"oneParagraphProblemSummary\": \"Right now, 1SecondCopy is struggling with an inability to generate qualified leads. The majority of your new clients are referral-based, which, while always nice to have, is not scalable nor is it reliable. Building an alternative strategy—one that allows you to take leads from cold -> close—is vital to the health and longevity of the company, and it's what we're going to help you with.\n\",\n  \"solutionHeadingOne\": \"Cold Outbound Lead Gen\",\n  \"solutionDescriptionOne\": \"We'll put in place a robust cold-email-based system for you using best practices.\",\n  \"solutionHeadingTwo\": \"Client Reactivation System\",\n  \"solutionDescriptionTwo\": \"We'll build a simple, but high-ROI reactivation system to let you extract value from pre-existing clients.\",\n  \"solutionHeadingThree\": \"Best-In-Class Sales Training\",\n  \"solutionDescriptionThree\": \"We'll train your team with world-class setting & closing mechanisms.\",\n  \"shortScopeTitleOne\": Cold email infrastructure that sends ~1K emails/day\",\n  \"shortScopeTitleTwo\": \"30K high-quality scraped email leads (included)\",\n  \"shortScopeTitleThree\": \"Four weekly one-hour sales training sessions over Zoom\",\n  \"shortScopeDescriptionOne\": \"12 domains, 36 mailboxes, DNS optimization, and warmups included.\",\n  \"shortScopeDescriptionTwo\": \"30,000 leads in your target market, delivered by CSV.\",\n  \"shortScopeDescriptionThree\": \"We'll take your sales team from 0->1.\",\n  \"milestoneOneDay\": \"February 8th, 2025\",\n  \"milestoneTwoDay\": \"February 28th, 2025\",\n  \"milestoneThreeDay\": \"March 10th, 2025\",\n  \"milestoneFourDay\":\"March 17th-April 1st, 2025\",\n  \"milestoneDescriptionOne\": \"Cold email system done & ready for warmup.\",\n  \"milestoneDescriptionTwo\": \"Cold email system fully warmed up & operational.\",\n  \"milestoneDescriptionThree\": \"10,000 outbound emails sent; analysis & training #1.\"\n  \"milestoneDescriptionFour\":\"One sales training per week alongside iteration & handoff.\"\n}"
+						},
+						{
+							"content": "={\n  \"companyName\":\"{{ $json['Company Name'] }}\",\n  \"problem\": \"{{ $json.Problem }}\",\n  \"solution\": \"{{ $json.Solution}}\",\n  \"scope\": \"{{ $json.Scope }}\",\n  \"currentDate\":\"{{ $now.toLocaleString({ dateStyle: 'medium' }) }}\",\n  \"howSoon\": \"{{ $json['How soon?'] }}\",\n  \"depositCost\": \"{{ $json.Cost }}\",\n}"
+						}
+					]
+				},
+				"jsonOutput": true
+			},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "7e52e4c7-49da-499a-a9ea-3e421611fb87",
+			"name": "Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1080, 1100],
+			"parameters": {
+				"name": "={{ $json.message.content.proposalTitle }}",
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "REPLACE_WITH_YOUR_GOOGLE_SLIDES_TEMPLATE_ID"
+				},
+				"options": {
+					"copyRequiresWriterPermission": false
+				},
+				"operation": "copy"
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "5a0508ab-4eaa-49f0-96f9-a664a1e7a5eb",
+			"name": "Gmail",
+			"type": "n8n-nodes-base.gmail",
+			"position": [1520, 1100],
+			"webhookId": "WEBHOOK_ID_WILL_BE_GENERATED",
+			"parameters": {
+				"sendTo": "={{ $('On form submission').item.json.Email }}",
+				"message": "=Hey {{ $('On form submission').item.json['First Name'] }},\n\nThanks for the great call earlier. I had a moment after our chat to put together a detailed proposal for you—please take a look at your earliest convenience and let me know your thoughts.\n\nYou'll find it here: https://docs.google.com/presentation/d/{{ $json.presentationId }}/edit\n\nIf you have any questions, just ask. I've also sent over an invoice for the project (just to keep things convenient) and we can get started anytime that's sorted.\n\nThanks,\n[YOUR NAME]",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "=Re: Proposal for  {{ $('On form submission').item.json['Company Name'] }}",
+				"emailType": "text"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "5be2415f-96f1-4e05-b589-bc4992c2a231",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [480, 1100],
+			"webhookId": "WEBHOOK_ID_WILL_BE_GENERATED",
+			"parameters": {
+				"options": {
+					"appendAttribution": false
+				},
+				"formTitle": "Sales Call Logging Form",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "First Name",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Last Name",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Company Name",
+							"requiredField": true
+						},
+						{
+							"fieldType": "email",
+							"fieldLabel": "Email"
+						},
+						{
+							"fieldLabel": "Website",
+							"requiredField": true
+						},
+						{
+							"fieldType": "textarea",
+							"fieldLabel": "Problem",
+							"requiredField": true
+						},
+						{
+							"fieldType": "textarea",
+							"fieldLabel": "Solution",
+							"requiredField": true
+						},
+						{
+							"fieldType": "textarea",
+							"fieldLabel": "Scope",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Cost",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "How soon?",
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "This form logs a sales call & automatically generates a proposal."
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "4ae579fb-779d-4312-a163-d438507b8918",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [440, 980],
+			"parameters": {
+				"width": 1220,
+				"height": 280,
+				"content": "## Google Slides AI Proposal Generator\n**This flow generates proposals using AI and the free Google Slides solution**."
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"OpenAI": {
+			"main": [
+				[
+					{
+						"node": "Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Replace Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Replace Text": {
+			"main": [
+				[
+					{
+						"node": "Gmail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "OpenAI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"timezone": "UTC",
+		"callerPolicy": "workflowsFromSameOwner",
+		"executionOrder": "v1"
+	},
+	"pinData": {
+		"On form submission": [
+			{
+				"json": {
+					"Cost": "$2,500",
+					"Email": "john@example.com",
+					"Scope": "Setup and 1 month training",
+					"Problem": "Low sales due to lead generation problems",
+					"Website": "www.example.com",
+					"Solution": "AI automation system for lead generation",
+					"formMode": "test",
+					"How soon?": "Within 2 weeks",
+					"Last Name": "Doe",
+					"First Name": "John",
+					"submittedAt": "2025-05-13T09:10:33.001+01:00",
+					"Company Name": "Example Corp"
+				}
+			}
+		]
+	}
+}

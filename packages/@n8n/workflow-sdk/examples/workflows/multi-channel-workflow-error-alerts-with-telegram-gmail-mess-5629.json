@@ -1,0 +1,171 @@
+{
+	"id": "wf-5629",
+	"name": "Multi-channel workflow error alerts with Telegram, Gmail & messaging apps",
+	"nodes": [
+		{
+			"id": "ef401694-6d19-4d49-8269-0bfeefbc35e9",
+			"name": "Error Trigger",
+			"type": "n8n-nodes-base.errorTrigger",
+			"position": [20, 320],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "e950234f-06c7-4304-b8a6-62d3ba6b7a50",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"position": [240, 320],
+			"parameters": {
+				"jsCode": "// Perfect error access untuk N8N v1.99.1\nconst errorData = $input.first().json;\nconst execution = errorData.execution;\nconst workflow = errorData.workflow;\nconst error = execution.error;\n\nconst message = `🚨 <b>WORKFLOW ERROR</b>\\n\\n` +\n  `📋 Workflow: <b>${workflow.name}</b>\\n` +\n  `⚙️ Node: <code>${error.node.name}</code>\\n` +\n  `❌ Error: <code>${error.message}</code>\\n` +\n  `📝 Description: <i>${error.description}</i>\\n` +\n  `🕐 Waktu: ${new Date(error.timestamp).toLocaleString('id-ID')}\\n` +\n  `🔍 Execution: <a href=\"${execution.url}\">${execution.id}</a>\\n` +\n  `⚠️ Level: ${error.level.toUpperCase()}`;\n\nreturn {\n  message: message,\n  parse_mode: 'HTML',\n  chat_id: '621412350'\n};"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "09a04430-1cb6-4bd5-b97d-d6b98541fd82",
+			"name": "Notify Gmail",
+			"type": "n8n-nodes-base.gmail",
+			"position": [460, 320],
+			"webhookId": "52f0cc71-1ad8-4f9a-b07c-bae9be1e217c",
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "d78b5623-caab-4616-aa3a-e00af03cba3a",
+			"name": "Notify Whatsapp",
+			"type": "n8n-nodes-base.whatsApp",
+			"disabled": true,
+			"position": [460, 520],
+			"webhookId": "fde1b1fc-48dc-4d7b-b48a-c42b36225a43",
+			"parameters": {
+				"operation": "send",
+				"additionalFields": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8c5dbd37-cc37-4a1a-89c4-bbf692339b93",
+			"name": "Notify Slack",
+			"type": "n8n-nodes-base.slack",
+			"disabled": true,
+			"position": [460, 720],
+			"webhookId": "d2b8ce70-e478-4f05-9add-37d859f73dd8",
+			"parameters": {
+				"otherOptions": {}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "0ec6e5cb-c290-4073-9560-0f237f85a6bd",
+			"name": "Notify Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [460, 120],
+			"webhookId": "13c616bf-a3ad-4035-998a-1dfe6021b89f",
+			"parameters": {
+				"text": "={{ $json.message }}",
+				"chatId": "<your_chat_id>",
+				"additionalFields": {
+					"parse_mode": "HTML"
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4e378031-382d-4abd-94f5-b7274f42161e",
+			"name": "Notify Discord",
+			"type": "n8n-nodes-base.discord",
+			"disabled": true,
+			"position": [460, -80],
+			"webhookId": "ea0cb122-61d1-4457-9447-34daa40dccdc",
+			"parameters": {
+				"content": "={{ $json.message }}",
+				"options": {},
+				"authentication": "webhook"
+			},
+			"credentials": {
+				"discordWebhookApi": {
+					"id": "credential-id",
+					"name": "discordWebhookApi Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ad022c9b-4453-4590-b27e-358e342e1f26",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-60, -20],
+			"parameters": {
+				"color": 5,
+				"width": 420,
+				"height": 280,
+				"content": "## 🚨 Error Notification Workflow\n\nThis workflow automatically sends notifications when any other workflow fails.\n\nSimply download copy and paste into your workflow then add your credential with prefered channel\n\nThis workflow is free. \nwant more? [contact me](khmuhtadin.com)\n\nhave something to helps me chill, [a coffee](coff.ee/khmuhtadin) would be great!"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Notify Telegram",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify Discord",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify Slack",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify Whatsapp",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify Gmail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Error Trigger": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify Whatsapp": {
+			"main": [[]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

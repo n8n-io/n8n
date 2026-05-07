@@ -1,0 +1,387 @@
+{
+	"id": "wf-4334",
+	"name": "TradingView signal extractor with Gmail, Google Sheets & Telegram notifications",
+	"nodes": [
+		{
+			"id": "a5f53559-6b91-45a9-8822-53439b9c306d",
+			"name": "Clean Email",
+			"type": "n8n-nodes-base.code",
+			"position": [-160, 180],
+			"parameters": {
+				"jsCode": "// Make sure From exists and is a string\nconst rawFrom = $input.first().json.From;\n\nlet cleanEmail = \"\";\n\n// Proceed only if rawFrom is a valid string\nif (typeof rawFrom === \"string\" && rawFrom.trim() !== \"\") {\n  const match = rawFrom.match(/<(.+?)>/);\n  cleanEmail = match ? match[1] : rawFrom.trim();\n} else {\n  cleanEmail = \"[Missing From field]\";\n}\n\nreturn [\n  {\n    json: {\n      cleanEmail\n    }\n  }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e6a332b0-529d-489c-9d67-8d7d06bc8044",
+			"name": "Gmail",
+			"type": "n8n-nodes-base.gmail",
+			"position": [-160, -20],
+			"webhookId": "0c25cbb3-b954-4c3a-aabc-9f4473b9f733",
+			"parameters": {
+				"messageId": "={{ $json.id }}",
+				"operation": "markAsRead"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "032629d7-d41b-4d8f-b545-e98df9cf796c",
+			"name": "Send Message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1380, 180],
+			"webhookId": "836270b1-beef-4520-b024-30b72af1582a",
+			"parameters": {
+				"text": "=KITE 11: {{ $('Get Email').item.json.snippet }}",
+				"chatId": "123456789",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f7e47b44-5ea8-43fa-9054-539e710d3a39",
+			"name": "Verify Mail",
+			"type": "n8n-nodes-base.if",
+			"position": [60, 180],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "7f6c2c11-6204-4f36-8e57-dcc9efc93433",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.cleanEmail }}",
+							"rightValue": "=noreply@tradingview.com"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "66b91b39-49f7-44cc-8d9a-f4392c11ff77",
+			"name": "Extract Company Name",
+			"type": "n8n-nodes-base.code",
+			"position": [500, 180],
+			"parameters": {
+				"jsCode": "// Get subject from previous node (e.g., IMAP Email node)\nconst subject = $input.first().json.Subject;\n\nconst stockSymbol = subject.split('for ')[1]?.trim() || '';\n\nreturn [\n  {\n    json: {\n      symbol: stockSymbol,\n      originalSubject: subject,\n    }\n  }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ffbbff24-1959-4254-b05c-4a6327edec95",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1160, 180],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Date": "={{ $json.formattedDate }}",
+						"Stock": "={{ $('Extract Company Name').item.json.symbol }}"
+					},
+					"schema": [
+						{
+							"id": "Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Stock",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Stock",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_AWS_SECRET_KEY_HERE-bZc/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "YOUR_AWS_SECRET_KEY_HERE-bZc",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_AWS_SECRET_KEY_HERE-bZc/edit?usp=drivesdk",
+					"cachedResultName": "KITE FINAL 11"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "dde99d76-79fe-4650-b7a2-948047b62a16",
+			"name": "Current Date & Time",
+			"type": "n8n-nodes-base.dateTime",
+			"position": [720, 180],
+			"parameters": {
+				"options": {
+					"timezone": "Asia/kolkata"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "7a60d22e-8027-423c-9927-aa2e0759744d",
+			"name": "Formatted Date & Time",
+			"type": "n8n-nodes-base.dateTime",
+			"position": [940, 180],
+			"parameters": {
+				"date": "={{ $json.currentDate }}",
+				"format": "custom",
+				"options": {},
+				"operation": "formatDate",
+				"customFormat": "DD"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "288dec30-51c9-4206-a0d8-5bca9317ec57",
+			"name": "Get Email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [300, 180],
+			"webhookId": "1fd0763d-5989-4fc4-aa5f-191eb8ee51bc",
+			"parameters": {
+				"messageId": "={{ $('Email Received').item.json.id }}",
+				"operation": "get"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "20ac9cda-60e1-4a52-a41d-e83485f2c76f",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-400, -80],
+			"parameters": {
+				"color": 7,
+				"width": 380,
+				"height": 400,
+				"content": "## Read Emails"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9a8cae5e-9601-4500-bde6-8a84837fc378",
+			"name": "Email Received",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"position": [-380, 80],
+			"parameters": {
+				"filters": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ff7bbb0d-29a1-458d-8437-089fb0bb4ef4",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [20, 120],
+			"parameters": {
+				"color": 7,
+				"width": 180,
+				"height": 200,
+				"content": "## Identify Email"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "70ed236c-3d55-48ec-884c-8bf707139f61",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [240, 80],
+			"parameters": {
+				"color": 7,
+				"width": 400,
+				"height": 260,
+				"content": "## Get Email Data - Extract Buy or Sell Signal"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a86e1c5f-9059-4971-835c-3e39dc176a3e",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [660, 120],
+			"parameters": {
+				"color": 7,
+				"width": 440,
+				"height": 220,
+				"content": "## Get Current Date & Time"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "84d9bbe3-ebe6-4edb-b02b-f37c3dfdabdf",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1120, 120],
+			"parameters": {
+				"color": 7,
+				"width": 420,
+				"height": 220,
+				"content": "## Update Data On Sheet & Notify"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Get Email": {
+			"main": [
+				[
+					{
+						"node": "Extract Company Name",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean Email": {
+			"main": [
+				[
+					{
+						"node": "Verify Mail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Verify Mail": {
+			"main": [
+				[
+					{
+						"node": "Get Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Message": {
+			"main": [[]]
+		},
+		"Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Send Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Email Received": {
+			"main": [
+				[
+					{
+						"node": "Gmail",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Clean Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Current Date & Time": {
+			"main": [
+				[
+					{
+						"node": "Formatted Date & Time",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Company Name": {
+			"main": [
+				[
+					{
+						"node": "Current Date & Time",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Formatted Date & Time": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}
