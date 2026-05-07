@@ -10,7 +10,7 @@
 			"n8n-node-dev",
 			"n8n-nodes-base",
 			"n8n-playwright",
-			"n8n-workflow",
+			"n8n-workflow"
 		]
 	}
 }
