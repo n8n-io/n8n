@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { githubApiRequest } from './GenericFunctions';
+import { githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
 import { verifySignature } from './GithubTriggerHelpers';
 import { getRepositories, getUsers } from './SearchFunctions';
 
@@ -459,36 +459,50 @@ export class GithubTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
-
-				// Webhook got created before so check if it still exists
 				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
 				const repository = this.getNodeParameter('repository', '', {
 					extractValue: true,
 				}) as string;
-				const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 
-				try {
-					await githubApiRequest.call(this, 'GET', endpoint, {});
-				} catch (error) {
-					if (error.httpCode === '404') {
-						// Webhook does not exist
-						delete webhookData.webhookId;
-						delete webhookData.webhookEvents;
+				// If we have a stored webhook ID, try to look it up directly (fast path)
+				if (webhookData.webhookId !== undefined) {
+					const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 
-						return false;
+					try {
+						await githubApiRequest.call(this, 'GET', endpoint, {});
+						return true;
+					} catch (error) {
+						if (error.httpCode === '404') {
+							// Webhook ID no longer valid, fall through to URL-based check
+							delete webhookData.webhookId;
+							delete webhookData.webhookEvents;
+						} else {
+							throw error;
+						}
 					}
-
-					// Some error occurred
-					throw error;
 				}
-				// If it did not error then the webhook exists
-				return true;
+
+				// No valid webhook ID — check if a webhook with the same URL already exists
+				const listEndpoint = `/repos/${owner}/${repository}/hooks`;
+				const webhooks = (await githubApiRequestAllItems.call(
+					this,
+					'GET',
+					listEndpoint,
+					{},
+				)) as IDataObject[];
+
+				for (const webhook of webhooks) {
+					if ((webhook.config as IDataObject)?.url === webhookUrl) {
+						webhookData.webhookId = webhook.id as string;
+						webhookData.webhookEvents = webhook.events as string[];
+						return true;
+					}
+				}
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
