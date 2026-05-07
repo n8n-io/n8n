@@ -4505,7 +4505,7 @@
 	"settings.encryptionKeys.description": "Data encryption keys protect credentials, variables, and other sensitive data at rest. Rotating generates a new active key. Past keys are archived and retained for audit.",
 	"settings.encryptionKeys.description.docsLink": "Learn more in documentation",
 	"settings.encryptionKeys.column.key": "Key",
-	"settings.encryptionKeys.column.type": "Type",
+	"settings.encryptionKeys.column.status": "Status",
 	"settings.encryptionKeys.column.activated": "Activated",
 	"settings.encryptionKeys.column.archived": "Archived",
 	"settings.encryptionKeys.status.active": "Active",
