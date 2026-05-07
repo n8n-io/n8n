@@ -100,10 +100,7 @@ export async function datatypeCompletions(
 	} else {
 		let resolved: Resolved | null = null;
 		try {
-			resolved = await resolveAutocompleteExpression(
-				`={{ ${base} }}`,
-				targetNodeParameterContext?.nodeName,
-			);
+			resolved = await resolveAutocompleteExpression(`={{ ${base} }}`, targetNodeParameterContext);
 		} catch (error) {
 			if (!isPairedItemIntermediateNodesError(error)) {
 				return null;
@@ -113,7 +110,7 @@ export async function datatypeCompletions(
 			try {
 				resolved = await resolveAutocompleteExpression(
 					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
-					targetNodeParameterContext?.nodeName,
+					targetNodeParameterContext,
 				);
 			} catch {
 				return null;
@@ -207,7 +204,7 @@ async function explicitDataTypeOptions(
 	try {
 		const resolved = await resolveAutocompleteExpression(
 			`={{ ${expression} }}`,
-			targetNodeParameterContext?.nodeName,
+			targetNodeParameterContext,
 		);
 		return await datatypeOptions({
 			resolved,

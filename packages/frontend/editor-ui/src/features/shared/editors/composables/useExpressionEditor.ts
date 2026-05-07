@@ -362,14 +362,13 @@ export const useExpressionEditor = ({
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
+				const ctx = toValue(targetNodeParameterContext);
 				let opts: ResolveParameterOptions = {
 					additionalKeys: toValue(additionalData),
-					contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
+					contextNodeName: ctx?.nodeName,
+					inputNodeName: ctx?.inputNodeName,
 				};
-				if (
-					toValue(targetNodeParameterContext) === undefined &&
-					ndvStore.isInputParentOfActiveNode
-				) {
+				if (ctx === undefined && ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,

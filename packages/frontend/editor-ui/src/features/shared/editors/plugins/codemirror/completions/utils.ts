@@ -193,20 +193,29 @@ export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
+export async function resolveAutocompleteExpression(
+	expression: string,
+	contextOrNodeName?: string | TargetNodeParameterContext,
+) {
+	const ctx =
+		typeof contextOrNodeName === 'string' || contextOrNodeName === undefined
+			? { nodeName: contextOrNodeName, inputNodeName: undefined }
+			: contextOrNodeName;
 	const ndvStore = useNDVStore();
 	const inputData =
-		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
+		ctx.nodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
 					targetItem: ndvStore.expressionTargetItem ?? undefined,
 					inputNodeName: ndvStore.ndvInputNodeName,
 					inputRunIndex: ndvStore.ndvInputRunIndex,
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
-			: {};
+			: ctx.inputNodeName
+				? { inputNodeName: ctx.inputNodeName }
+				: {};
 	return await resolveParameter(expression, {
 		...inputData,
-		contextNodeName,
+		contextNodeName: ctx.nodeName,
 	});
 }
 

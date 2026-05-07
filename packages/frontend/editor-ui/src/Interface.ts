@@ -659,6 +659,13 @@ export interface TargetItem {
 export type TargetNodeParameterContext = {
 	nodeName: string;
 	parameterPath: string;
+	/**
+	 * Optional node whose output should resolve as `$json` for autocomplete and
+	 * evaluation. Use when the context node is anchored downstream of its real
+	 * data source (e.g. expression editors that render outside NDV and need
+	 * `$json` to behave like the editor is "on" the downstream node).
+	 */
+	inputNodeName?: string;
 };
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
