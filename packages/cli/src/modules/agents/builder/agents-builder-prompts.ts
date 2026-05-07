@@ -283,11 +283,11 @@ patterns, widely-known public APIs you've configured many times).`;
 export const MEMORY_PRESETS_SECTION = `\
 ## Memory presets
 
-| Storage  | Description                                          |
-|----------|------------------------------------------------------|
-| n8n      | Default. Persists in n8n database. No config needed. |
-| sqlite   | Local SQLite file. Needs connection.path             |
-| postgres | PostgreSQL. Needs connection.credential              |`;
+| Storage | Description                                          |
+|---------|------------------------------------------------------|
+| n8n     | Default. Persists in n8n database. No config needed. |
+
+Only \`"n8n"\` is supported in agent JSON config.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)

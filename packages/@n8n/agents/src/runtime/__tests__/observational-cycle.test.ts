@@ -25,8 +25,13 @@ jest.mock('ai', () => ({
 		await mockGenerateText(call),
 }));
 
-function msg(id: string, text: string, createdAt = new Date()): AgentDbMessage {
-	return { id, createdAt, role: 'user', content: [{ type: 'text', text }] };
+function msg(
+	id: string,
+	text: string,
+	createdAt = new Date(),
+	role: 'user' | 'assistant' = 'user',
+): AgentDbMessage {
+	return { id, createdAt, role, content: [{ type: 'text', text }] };
 }
 
 function row(text: string): NewObservation {
@@ -181,6 +186,40 @@ describe('runObservationalCycle', () => {
 				text: 'User returned after 1h 30m of inactivity.',
 			},
 			durationMs: 90 * 60 * 1000,
+			createdAt: second,
+		});
+	});
+
+	it('uses neutral gap text when the first post-gap message is not from the user', async () => {
+		const mem = new InMemoryMemory();
+		const first = new Date('2026-05-07T10:00:00.000Z');
+		const second = new Date('2026-05-07T12:00:00.000Z');
+		await save(mem, [msg('m1', 'first', first)]);
+		await runObservationalCycle(opts(mem));
+		await save(mem, [msg('m2', 'later', second, 'assistant')]);
+
+		let observedGap: Parameters<ObserveFn>[0]['gap'] = null;
+		const observe = jest.fn<ReturnType<ObserveFn>, Parameters<ObserveFn>>(async (ctx) => {
+			observedGap = ctx.gap;
+			return await Promise.resolve([]);
+		});
+
+		await runObservationalCycle(opts(mem, { observe }));
+
+		expect(observedGap).toMatchObject({
+			durationMs: 2 * 60 * 60 * 1000,
+			text: 'Conversation continued after 2h of inactivity.',
+			previousObservedAt: first,
+			nextMessageAt: second,
+		});
+		const rows = await mem.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			kind: 'gap',
+			payload: {
+				category: 'continuity',
+				text: 'Conversation continued after 2h of inactivity.',
+			},
 			createdAt: second,
 		});
 	});
