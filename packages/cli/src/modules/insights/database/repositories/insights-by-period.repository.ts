@@ -308,24 +308,16 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	private async countInsightsByWorkflowGroups(
-		groupedQuery: SelectQueryBuilder<InsightsByPeriod>,
+		rawRowsQuery: SelectQueryBuilder<InsightsByPeriod>,
 	): Promise<number> {
-		const groupsSubQuery = groupedQuery
-			.clone()
-			.select('metadata.workflowId', 'workflowId')
-			.addSelect('metadata.workflowName', 'workflowName')
-			.addSelect('metadata.projectId', 'projectId')
-			.addSelect('metadata.projectName', 'projectName');
-		groupsSubQuery.orderBy();
-
-		const row = await this.manager
+		const resultRow = await this.manager
 			.createQueryBuilder()
 			.select('COUNT(*)', 'count')
-			.from(`(${groupsSubQuery.getQuery()})`, 'workflow_groups')
-			.setParameters(groupsSubQuery.getParameters())
-			.getRawOne<{ count: string | number | undefined }>();
+			.from(`(${rawRowsQuery.getQuery()})`, 'workflow_groups')
+			.setParameters(rawRowsQuery.getParameters())
+			.getRawOne<{ count: string | number }>();
 
-		return row?.count !== undefined ? Number(row.count) : 0;
+		return Number(resultRow?.count ?? 0);
 	}
 
 	async getInsightsByWorkflow({
@@ -369,7 +361,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
 							END AS "averageRunTime"`,
 			])
-			.addSelect('COUNT(*) OVER()', 'totalCount')
 			.innerJoin('insights.metadata', 'metadata')
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
@@ -378,18 +369,22 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
-			.addGroupBy('metadata.projectName')
-			.orderBy(this.escapeField(sortField), sortOrder);
+			.addGroupBy('metadata.projectName');
 
 		if (projectId) {
 			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
 
-		const rawRows = await rawRowsQuery.clone().offset(skip).limit(take).getRawMany();
-		const count =
-			rawRows.length > 0
-				? Number(rawRows[0].totalCount as string | number)
-				: await this.countInsightsByWorkflowGroups(rawRowsQuery);
+		const paginatedQuery = rawRowsQuery
+			.clone()
+			.orderBy(this.escapeField(sortField), sortOrder)
+			.offset(skip)
+			.limit(take);
+
+		const [count, rawRows] = await Promise.all([
+			this.countInsightsByWorkflowGroups(rawRowsQuery),
+			paginatedQuery.getRawMany(),
+		]);
 
 		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
 	}
