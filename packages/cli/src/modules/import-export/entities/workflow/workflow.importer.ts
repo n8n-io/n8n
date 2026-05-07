@@ -5,6 +5,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 
+import { IdDeriver } from '../../engine/id-deriver';
 import type { ImportScope } from '../../import-export.types';
 import type { EntityKey, ManifestEntry } from '../../spec/manifest.types';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.serialized';
@@ -25,7 +26,10 @@ export interface WorkflowImportDeps {
 export class WorkflowImporter {
 	readonly entityKey: EntityKey = 'workflows';
 
-	constructor(private readonly importService: ImportService) {}
+	constructor(
+		private readonly importService: ImportService,
+		private readonly idDeriver: IdDeriver,
+	) {}
 
 	async import(scope: ImportScope, entries: ManifestEntry[], deps: WorkflowImportDeps) {
 		if (entries.length === 0) return;
@@ -40,11 +44,13 @@ export class WorkflowImporter {
 			const sourceWorkflowId = workflow.id;
 
 			// When importing into a specific project, derive a deterministic ID
-			// prefixed with projectId. This means:
-			// - Same workflow into same project → upserts (idempotent)
+			// keyed by the instance secret. This means:
+			// - Same workflow into same project on same instance → upserts (idempotent)
 			// - Same workflow into different project → creates a separate copy
+			// - Same workflow into a *different instance* → unpredictable ID,
+			//   closing the cross-instance squatting risk noted in the RFC.
 			if (scope.assignNewIds) {
-				workflow.id = `${scope.targetProjectId}-${sourceWorkflowId}`;
+				workflow.id = this.idDeriver.derive(scope.targetProjectId, sourceWorkflowId);
 				subWorkflowBindings.set(sourceWorkflowId, workflow.id);
 			}
 

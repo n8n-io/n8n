@@ -2,6 +2,7 @@ import type { FolderRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import type { IdDeriver } from '../../../engine/id-deriver';
 import type { ImportScope } from '../../../import-export.types';
 import type { PackageReader } from '../../../io/package-reader';
 import type { ManifestEntry } from '../../../spec/manifest.types';
@@ -11,6 +12,7 @@ describe('FolderImporter', () => {
 	let importer: FolderImporter;
 	let mockFolderRepository: MockProxy<FolderRepository>;
 	let mockReader: MockProxy<PackageReader>;
+	let mockIdDeriver: MockProxy<IdDeriver>;
 	let scope: ImportScope;
 
 	beforeEach(() => {
@@ -18,8 +20,13 @@ describe('FolderImporter', () => {
 
 		mockFolderRepository = mock<FolderRepository>();
 		mockReader = mock<PackageReader>();
+		mockIdDeriver = mock<IdDeriver>();
+		// Default: predictable derivation so existing test assertions on IDs still hold.
+		mockIdDeriver.derive.mockImplementation(
+			(projectId: string, sourceId: string) => `${projectId}-${sourceId}`,
+		);
 
-		importer = new FolderImporter(mockFolderRepository);
+		importer = new FolderImporter(mockFolderRepository, mockIdDeriver);
 
 		scope = {
 			user: mock(),

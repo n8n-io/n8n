@@ -3,6 +3,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { ImportService } from '@/services/import.service';
 
+import type { IdDeriver } from '../../../engine/id-deriver';
 import type { ImportScope } from '../../../import-export.types';
 import type { PackageReader } from '../../../io/package-reader';
 import type { ManifestEntry } from '../../../spec/manifest.types';
@@ -12,6 +13,7 @@ describe('WorkflowImporter', () => {
 	let importer: WorkflowImporter;
 	let mockImportService: MockProxy<ImportService>;
 	let mockReader: MockProxy<PackageReader>;
+	let mockIdDeriver: MockProxy<IdDeriver>;
 	let scope: ImportScope;
 	let deps: WorkflowImportDeps;
 
@@ -20,8 +22,13 @@ describe('WorkflowImporter', () => {
 
 		mockImportService = mock<ImportService>();
 		mockReader = mock<PackageReader>();
+		mockIdDeriver = mock<IdDeriver>();
+		// Default: predictable derivation so existing test assertions on IDs still hold.
+		mockIdDeriver.derive.mockImplementation(
+			(projectId: string, sourceId: string) => `${projectId}-${sourceId}`,
+		);
 
-		importer = new WorkflowImporter(mockImportService);
+		importer = new WorkflowImporter(mockImportService, mockIdDeriver);
 
 		scope = {
 			user: mock(),

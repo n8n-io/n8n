@@ -3,6 +3,7 @@ import { Folder, FolderRepository } from '@n8n/db';
 import { IsNull } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
+import { IdDeriver } from '../../engine/id-deriver';
 import type { ImportScope } from '../../import-export.types';
 import type { EntityKey, ManifestEntry } from '../../spec/manifest.types';
 import type { SerializedFolder } from '../../spec/serialized/folder.serialized';
@@ -16,7 +17,10 @@ export interface FolderImportResult {
 export class FolderImporter {
 	readonly entityKey: EntityKey = 'folders';
 
-	constructor(private readonly folderRepository: FolderRepository) {}
+	constructor(
+		private readonly folderRepository: FolderRepository,
+		private readonly idDeriver: IdDeriver,
+	) {}
 
 	/**
 	 * Import folders and return source ID → target ID mappings.
@@ -41,9 +45,12 @@ export class FolderImporter {
 				: null;
 
 			if (scope.assignNewIds) {
-				// Deterministic ID: re-importing the same package into the same
-				// project upserts; importing into a different project creates a copy.
-				const targetId = `${scope.targetProjectId}-${folder.id}`;
+				// HMAC-keyed deterministic ID: re-importing the same package into
+				// the same project on the same instance upserts; importing into a
+				// different project creates a copy. The instance secret prevents
+				// the cross-instance squatting risk where a project member could
+				// pre-create a folder at a predictable target ID.
+				const targetId = this.idDeriver.derive(scope.targetProjectId, folder.id);
 
 				const entity = repo.create({
 					id: targetId,
