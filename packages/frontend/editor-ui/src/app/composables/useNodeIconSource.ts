@@ -8,12 +8,12 @@ import {
 } from '../stores/workflowDocument.store';
 
 export function useNodeIconSource(
-	workflowId: RefOrComputedRef<string> | undefined,
+	workflowId: RefOrComputedRef<string>,
 	nodeType: MaybeRefOrGetter<IconNodeType | string | null | undefined>,
 	node?: MaybeRefOrGetter<INode | null>,
 ): ComputedRef<NodeIconSource | undefined> {
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId?.value ?? '')),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	return computed(() => {

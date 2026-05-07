@@ -52,7 +52,7 @@ const ITEM_ID = {
 	UNPUBLISH_WORKFLOW: 'unpublish-workflow',
 } as const;
 
-export function useWorkflowCommands(workflowId?: RefOrComputedRef<string>): CommandGroup {
+export function useWorkflowCommands(workflowId: RefOrComputedRef<string>): CommandGroup {
 	const i18n = useI18n();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
@@ -61,14 +61,13 @@ export function useWorkflowCommands(workflowId?: RefOrComputedRef<string>): Comm
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 
-	const wfId = computed(() => workflowId?.value ?? '');
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(wfId.value)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const router = useRouter();
 
-	const runWorkflow = useRunWorkflow(wfId, { router });
+	const runWorkflow = useRunWorkflow(workflowId, { router });
 
 	const telemetry = useTelemetry();
 
@@ -83,7 +82,7 @@ export function useWorkflowCommands(workflowId?: RefOrComputedRef<string>): Comm
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value) ||
-		!workflowsStore.isWorkflowSaved[wfId.value];
+		!workflowsStore.isWorkflowSaved[workflowId.value];
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
@@ -287,7 +286,7 @@ export function useWorkflowCommands(workflowId?: RefOrComputedRef<string>): Comm
 							uiStore.openModalWithData({
 								name: DUPLICATE_MODAL_KEY,
 								data: {
-									id: wfId.value,
+									id: workflowId.value,
 									name: workflowDocumentStore.value.name,
 									tags: workflowDocumentStore.value.tags,
 								},

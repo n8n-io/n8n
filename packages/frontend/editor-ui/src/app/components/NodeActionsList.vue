@@ -8,6 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { type INodeParameters } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
 const { node } = defineProps<{
@@ -19,8 +20,9 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
+const workflowId = useWorkflowId();
 const { generateMergedNodesAndActions } = useActionsGenerator();
-const { parseCategoryActions, getActionData } = useActions();
+const { parseCategoryActions, getActionData } = useActions(workflowId);
 const i18n = useI18n();
 
 const selectedActionRef = ref<HTMLElement>();

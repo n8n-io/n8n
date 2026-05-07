@@ -2,6 +2,7 @@
 import Modal from '@/app/components/Modal.vue';
 import { useInstallNode } from '../composables/useInstallNode';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -31,7 +32,8 @@ interface ModalData {
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { installNode, loading } = useInstallNode();
+const workflowId = useWorkflowId();
+const { installNode, loading } = useInstallNode(workflowId);
 const uiStore = useUIStore();
 
 const modalBus = createEventBus();

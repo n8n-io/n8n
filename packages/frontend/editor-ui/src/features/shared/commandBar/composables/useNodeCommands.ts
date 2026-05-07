@@ -28,7 +28,7 @@ const ITEM_ID = {
 } as const;
 
 export function useNodeCommands(
-	workflowId: RefOrComputedRef<string> | undefined,
+	workflowId: RefOrComputedRef<string>,
 	options: {
 		lastQuery: Ref<string>;
 		activeNodeId: Ref<string | null>;
@@ -37,8 +37,7 @@ export function useNodeCommands(
 	const i18n = useI18n();
 	const { lastQuery } = options;
 
-	const wfId = computed(() => workflowId?.value ?? '');
-	const { addNodes, setNodeActive } = useCanvasOperations(wfId);
+	const { addNodes, setNodeActive } = useCanvasOperations(workflowId);
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
@@ -47,7 +46,7 @@ export function useNodeCommands(
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(wfId.value)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const isReadOnly = computed(
@@ -61,7 +60,7 @@ export function useNodeCommands(
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
-		!workflowsStore.isWorkflowSaved[wfId.value];
+		!workflowsStore.isWorkflowSaved[workflowId.value];
 
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;

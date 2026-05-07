@@ -39,18 +39,17 @@ type InstallNodeResult = {
 	error?: Error;
 };
 
-export function useInstallNode(workflowId?: RefOrComputedRef<string>) {
+export function useInstallNode(workflowId: RefOrComputedRef<string>) {
 	const communityNodesStore = useCommunityNodesStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
-	const wfId = computed(() => workflowId?.value ?? '');
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(wfId.value)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const userStore = useUsersStore();
 	const loading = ref(false);
 	const toast = useToast(workflowId);
-	const canvasOperations = useCanvasOperations(wfId);
+	const canvasOperations = useCanvasOperations(workflowId);
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
 
