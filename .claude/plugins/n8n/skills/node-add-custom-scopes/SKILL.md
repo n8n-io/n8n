@@ -1,5 +1,5 @@
 ---
-description: Add user-editable custom OAuth2 scopes to an existing n8n credential that currently has fixed scopes. Use when the user says /node-add-custom-scopes, references the "Add custom scopes to ALL OAuth based nodes" Linear project, or asks to make scopes configurable for an existing OAuth2 credential.
+description: Add user-editable custom OAuth2 scopes to an existing n8n credential that currently has fixed scopes. Use when the user says /node-add-custom-scopes or asks to make scopes configurable for an existing OAuth2 credential.
 argument-hint: "[credential-file-or-service-name]"
 ---
 
@@ -197,17 +197,15 @@ Do not skip typecheck. Fix errors before reporting done.
 
 ## Commit & PR
 
-Branch name: `node-{ticket-id}-add-custom-scopes-to-{service}` (use the Linear
-suggestion if a ticket exists).
+Branch name: `node-{ticket-id}-add-custom-scopes-to-{service}` (use the
+ticket-suggested name if a ticket exists, otherwise omit the ticket prefix).
 
 Commit message format:
 ```
 feat: Add support for custom scopes in the {Service} credential
 ```
 
-PR description should reference the Linear project
-`https://linear.app/n8n/project/add-custom-scopes-to-all-oauth-based-nodes-that-support-them-9c7a07056dc6`
-and the specific issue, if one exists.
+If a tracking ticket exists, reference it in the PR description.
 
 ---
 
