@@ -266,12 +266,34 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, container } = renderComponent();
+		const { getByText, getByTestId, queryByTestId, container } = renderComponent();
 
 		await user.click(getByText('ChatGPT'));
 
 		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('chatgpt');
-		expect(container.textContent).toContain('[mcp_servers.n8n]');
+		expect(getByTestId('mcp-onboarding-chatgpt-developer-mode-step')).toBeInTheDocument();
+		expect(getByTestId('mcp-onboarding-chatgpt-custom-app-step')).toBeInTheDocument();
+		expect(container.textContent).toContain('Enable developer mode in ChatGPT');
+		expect(container.textContent).toContain('Turn on developer mode.');
+		expect(container.textContent).toContain('App name');
+		expect(container.textContent).toContain('n8n');
+		expect(container.textContent).toContain('https://example.n8n.cloud/mcp-server/http');
+		expect(container.textContent).not.toContain('After you turn it on');
+		expect(container.textContent).not.toContain('Click Create, then use these values:');
+		expect(container.textContent).not.toContain('Description');
+		expect(container.textContent).not.toContain(
+			'Connect ChatGPT to this n8n instance through MCP.',
+		);
+		expect(container.textContent).not.toContain('complete the n8n OAuth flow');
+		expect(container.textContent).not.toContain('[mcp_servers.n8n]');
+		expect(queryByTestId('mcp-onboarding-client-setup')).not.toBeInTheDocument();
+		expect(queryByTestId('mcp-onboarding-claude-server-url')).not.toBeInTheDocument();
+		expect(queryByTestId('mcp-onboarding-copy-prompt-button')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('mcp-onboarding-copy-chatgpt-server-url-button'));
+
+		expect(mockClipboardCopy).toHaveBeenCalledWith('https://example.n8n.cloud/mcp-server/http');
+		expect(mockExperimentStore.trackCopiedParameter).not.toHaveBeenCalled();
 	});
 
 	it('switches to Cursor setup instructions', async () => {

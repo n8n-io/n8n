@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import MCPOnboardingCopyBlock from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingCopyBlock.vue';
+import type { MCPOnboardingClient } from '@/features/ai/mcpAccess/components/onboarding/types';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
-type MCPOnboardingClient = 'claude' | 'claude_code' | 'codex' | 'cursor' | 'chatgpt';
+type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 
 const props = defineProps<{
-	client: MCPOnboardingClient;
+	client: MCPOnboardingPromptClient;
 	serverUrl: string;
 }>();
 
@@ -17,12 +18,11 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const promptKeys: Record<MCPOnboardingClient, BaseTextKey> = {
+const promptKeys: Record<MCPOnboardingPromptClient, BaseTextKey> = {
 	claude: 'settings.mcp.onboarding.prompt.claude' as BaseTextKey,
 	claude_code: 'settings.mcp.onboarding.prompt.claudeCode',
 	cursor: 'settings.mcp.onboarding.prompt.cursor' as BaseTextKey,
 	codex: 'settings.mcp.onboarding.prompt.codex',
-	chatgpt: 'settings.mcp.onboarding.prompt.codex',
 };
 
 const promptKey = computed(() => promptKeys[props.client]);

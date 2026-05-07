@@ -26,6 +26,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 type MCPOnboardingSurface = 'tile' | 'first_open_modal';
+type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 
 const MCP_ONBOARDING_DOCS_URL = 'https://docs.n8n.io/advanced-ai/mcp/accessing-n8n-mcp-server/';
 
@@ -77,7 +78,11 @@ const clientOptions = computed<MCPOnboardingClientOption[]>(() => [
 ]);
 
 const serverUrl = computed(() => `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
+const isChatGptClient = computed(() => activeClient.value === 'chatgpt');
 const showServerUrlStep = computed(() => activeClient.value === 'claude');
+const activePromptClient = computed<MCPOnboardingPromptClient>(() =>
+	activeClient.value === 'chatgpt' ? 'claude' : activeClient.value,
+);
 const activeClientLabel = computed(
 	() =>
 		clientOptions.value.find((option) => option.value === activeClient.value)?.label ??
@@ -88,6 +93,26 @@ const promptSectionTitle = computed(() =>
 		interpolate: { assistant: activeClientLabel.value },
 	}),
 );
+const chatGptCustomAppFields = computed(() => [
+	{
+		label: i18n.baseText(
+			'settings.mcp.onboarding.section.chatgptCustomApp.appName.label' as BaseTextKey,
+		),
+		content: i18n.baseText(
+			'settings.mcp.onboarding.section.chatgptCustomApp.appName.value' as BaseTextKey,
+		),
+		testId: 'mcp-onboarding-chatgpt-app-name',
+		copyButtonTestId: 'mcp-onboarding-copy-chatgpt-app-name-button',
+	},
+	{
+		label: i18n.baseText(
+			'settings.mcp.onboarding.section.chatgptCustomApp.serverUrl.label' as BaseTextKey,
+		),
+		content: serverUrl.value,
+		testId: 'mcp-onboarding-chatgpt-server-url',
+		copyButtonTestId: 'mcp-onboarding-copy-chatgpt-server-url-button',
+	},
+]);
 
 async function handleToggleMcpAccess() {
 	const nextValue = !mcpStore.mcpAccessEnabled;
@@ -227,40 +252,105 @@ onBeforeUnmount(() => {
 						</div>
 					</section>
 
-					<!-- Step 3: Paste the prompt -->
-					<section :class="[$style.section, $style.revealSection]">
-						<header :class="$style.sectionHeader">
-							<span :class="$style.sectionStep">3</span>
-							<h2 :class="$style.sectionTitle">
-								{{ promptSectionTitle }}
-							</h2>
-						</header>
-						<div :class="$style.sectionBody">
-							<MCPOnboardingClientSetup
-								:client="activeClient"
-								:server-url="serverUrl"
-								@copy="handleClientSetupCopy"
-							/>
-						</div>
-					</section>
+					<template v-if="isChatGptClient">
+						<!-- Step 3: Enable developer mode -->
+						<section
+							:class="[$style.section, $style.revealSection]"
+							data-test-id="mcp-onboarding-chatgpt-developer-mode-step"
+						>
+							<header :class="$style.sectionHeader">
+								<span :class="$style.sectionStep">3</span>
+								<h2 :class="$style.sectionTitle">
+									{{
+										i18n.baseText(
+											'settings.mcp.onboarding.section.chatgptDeveloperMode.title' as BaseTextKey,
+										)
+									}}
+								</h2>
+							</header>
+							<div :class="$style.sectionBody">
+								<N8nText tag="p" size="small" color="text-base" :class="$style.stepDescription">
+									{{
+										i18n.baseText(
+											'settings.mcp.onboarding.section.chatgptDeveloperMode.description' as BaseTextKey,
+										)
+									}}
+								</N8nText>
+							</div>
+						</section>
 
-					<section v-if="showServerUrlStep" :class="[$style.section, $style.revealSection]">
-						<header :class="$style.sectionHeader">
-							<span :class="$style.sectionStep">4</span>
-							<h2 :class="$style.sectionTitle">
-								{{
-									i18n.baseText('settings.mcp.onboarding.section.serverUrl.title' as BaseTextKey)
-								}}
-							</h2>
-						</header>
-						<div :class="$style.sectionBody">
-							<MCPOnboardingCopyBlock
-								:content="serverUrl"
-								copy-button-test-id="mcp-onboarding-copy-server-url-button"
-								data-test-id="mcp-onboarding-claude-server-url"
-							/>
-						</div>
-					</section>
+						<!-- Step 4: Create a custom app -->
+						<section
+							:class="[$style.section, $style.revealSection]"
+							data-test-id="mcp-onboarding-chatgpt-custom-app-step"
+						>
+							<header :class="$style.sectionHeader">
+								<span :class="$style.sectionStep">4</span>
+								<h2 :class="$style.sectionTitle">
+									{{
+										i18n.baseText(
+											'settings.mcp.onboarding.section.chatgptCustomApp.title' as BaseTextKey,
+										)
+									}}
+								</h2>
+							</header>
+							<div :class="$style.sectionBody">
+								<div :class="$style.copyFields">
+									<div
+										v-for="field in chatGptCustomAppFields"
+										:key="field.testId"
+										:class="$style.copyField"
+									>
+										<N8nText tag="p" size="small" color="text-light" :class="$style.copyFieldLabel">
+											{{ field.label }}
+										</N8nText>
+										<MCPOnboardingCopyBlock
+											:content="field.content"
+											:copy-button-test-id="field.copyButtonTestId"
+											:data-test-id="field.testId"
+										/>
+									</div>
+								</div>
+							</div>
+						</section>
+					</template>
+
+					<template v-else>
+						<!-- Step 3: Paste the prompt -->
+						<section :class="[$style.section, $style.revealSection]">
+							<header :class="$style.sectionHeader">
+								<span :class="$style.sectionStep">3</span>
+								<h2 :class="$style.sectionTitle">
+									{{ promptSectionTitle }}
+								</h2>
+							</header>
+							<div :class="$style.sectionBody">
+								<MCPOnboardingClientSetup
+									:client="activePromptClient"
+									:server-url="serverUrl"
+									@copy="handleClientSetupCopy"
+								/>
+							</div>
+						</section>
+
+						<section v-if="showServerUrlStep" :class="[$style.section, $style.revealSection]">
+							<header :class="$style.sectionHeader">
+								<span :class="$style.sectionStep">4</span>
+								<h2 :class="$style.sectionTitle">
+									{{
+										i18n.baseText('settings.mcp.onboarding.section.serverUrl.title' as BaseTextKey)
+									}}
+								</h2>
+							</header>
+							<div :class="$style.sectionBody">
+								<MCPOnboardingCopyBlock
+									:content="serverUrl"
+									copy-button-test-id="mcp-onboarding-copy-server-url-button"
+									data-test-id="mcp-onboarding-claude-server-url"
+								/>
+							</div>
+						</section>
+					</template>
 				</template>
 			</div>
 		</template>
@@ -430,6 +520,31 @@ onBeforeUnmount(() => {
 	align-items: flex-start;
 	gap: var(--spacing--xs);
 	padding-left: calc(22px + var(--spacing--2xs));
+}
+
+.stepDescription,
+.stepHelper {
+	margin: 0;
+	line-height: 1.5;
+}
+
+.copyFields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	width: 100%;
+}
+
+.copyField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	width: 100%;
+}
+
+.copyFieldLabel {
+	margin: 0;
+	font-weight: var(--font-weight--medium);
 }
 
 // --- Section 2: access toggle row -----------------------------------------

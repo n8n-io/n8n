@@ -56,14 +56,6 @@ describe('MCPOnboardingClientSetup', () => {
 		expect(text).toContain('complete the n8n OAuth flow');
 	});
 
-	it('reuses the Codex prompt for ChatGPT', () => {
-		const { container } = renderComponent({ props: { client: 'chatgpt' } });
-		const text = container.textContent ?? '';
-
-		expect(text).toContain('[mcp_servers.n8n]');
-		expect(text).toContain('~/.codex/config.toml');
-	});
-
 	it('keeps copy available', () => {
 		const { getByTestId } = renderComponent();
 
