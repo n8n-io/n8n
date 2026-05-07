@@ -189,6 +189,15 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		// --- Write API ---
 
 		function setActiveExecutionId(value: string | null | undefined) {
+			// When transitioning to a real execution id while a pending scaffold
+			// is staged (e.g. REST response arrives before executionStarted push),
+			// migrate the scaffold into the id-keyed executionData store so the
+			// executedNode/runData survive the id transition. Mirrors master's
+			// "data follows id" behavior when execution data was a single ref.
+			if (typeof value === 'string' && pendingExecution.value !== null) {
+				promotePendingExecution(value);
+				return;
+			}
 			if (value) {
 				previousExecutionId.value = activeExecutionId.value;
 				displayedExecutionId.value = value;

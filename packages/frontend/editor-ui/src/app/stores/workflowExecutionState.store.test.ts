@@ -181,6 +181,39 @@ describe('workflowExecutionState.store', () => {
 			expect(stateStore.activeExecutionId).toBe('exec-real');
 			expect(stateStore.pendingExecution).toBeNull();
 		});
+
+		it('setActiveExecutionId(string) migrates a staged pending scaffold into the id-keyed store', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+			const scaffold = makeExecution({
+				id: '__IN_PROGRESS__',
+				executedNode: 'Code',
+				data: {
+					resultData: { runData: {} },
+				} as never,
+			});
+			stateStore.setPendingExecution(scaffold);
+			stateStore.setActiveExecutionId(null);
+
+			stateStore.setActiveExecutionId('exec-real');
+
+			expect(stateStore.activeExecutionId).toBe('exec-real');
+			expect(stateStore.pendingExecution).toBeNull();
+
+			const dataStore = useExecutionDataStore(createExecutionDataId('exec-real'));
+			expect(dataStore.execution?.id).toBe('exec-real');
+			expect(dataStore.execution?.executedNode).toBe('Code');
+		});
+
+		it('setActiveExecutionId(string) without a pending scaffold does not promote', () => {
+			const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-1'));
+
+			stateStore.setActiveExecutionId('exec-real');
+
+			expect(stateStore.activeExecutionId).toBe('exec-real');
+			expect(stateStore.pendingExecution).toBeNull();
+			const dataStore = useExecutionDataStore(createExecutionDataId('exec-real'));
+			expect(dataStore.execution).toBeNull();
+		});
 	});
 
 	describe('isWorkflowRunning', () => {
