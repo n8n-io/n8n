@@ -298,9 +298,10 @@ export class CDPRelayServer {
 
 	private handlePlaywrightConnection(ws: WebSocket): void {
 		if (this.playwrightWs) {
-			log.debug('rejected duplicate Playwright connection');
-			ws.close(1000, 'Another CDP client already connected');
-			return;
+			const stale = this.playwrightWs;
+			this.playwrightWs = null;
+			stale.terminate();
+			log.debug('replaced stale Playwright connection');
 		}
 
 		log.debug('Playwright connected');
@@ -319,6 +320,7 @@ export class CDPRelayServer {
 		});
 
 		ws.on('close', () => {
+			log.debug('Adapter WS closed');
 			if (this.playwrightWs !== ws) return;
 			log.debug('Playwright disconnected');
 			this.playwrightWs = null;
@@ -366,6 +368,30 @@ export class CDPRelayServer {
 
 			case 'Target.disposeBrowserContext':
 				return {};
+
+			case 'Target.getTargets': {
+				const tabs = await this.listTabs();
+				return {
+					targetInfos: tabs.map((entry) => ({
+						targetId: entry.id,
+						type: 'page',
+						title: entry.title,
+						url: entry.url,
+						attached: false,
+						browserContextId: this.browserContextId,
+					})),
+				};
+			}
+
+			case 'Target.setDiscoverTargets':
+				return {};
+
+			case 'Target.attachToTarget': {
+				const targetId = (params as { targetId: string })?.targetId;
+				if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
+				await this.extensionConn.send('attachTab', { id: targetId });
+				return { sessionId: targetId };
+			}
 
 			case 'Target.setAutoAttach': {
 				// Child session auto-attach: forward to extension so Chrome attaches to iframes

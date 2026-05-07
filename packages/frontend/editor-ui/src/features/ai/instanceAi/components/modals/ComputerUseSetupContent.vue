@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -46,6 +46,29 @@ const osTabs = [
 ];
 
 const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
+const canCopyCommand = computed(() => store.setupCommand !== null);
+const nowMs = ref(Date.now());
+
+let expiryTimer: ReturnType<typeof setInterval> | null = null;
+
+const tokenExpiresInSeconds = computed(() => {
+	if (store.setupCommandTtlSeconds !== null && store.setupCommandFetchedAt !== null) {
+		const elapsedSeconds = Math.floor((nowMs.value - store.setupCommandFetchedAt) / 1000);
+		return Math.max(0, store.setupCommandTtlSeconds - elapsedSeconds);
+	}
+	return null;
+});
+
+const tokenExpiryText = computed(() => {
+	if (tokenExpiresInSeconds.value === null) return null;
+	if (tokenExpiresInSeconds.value === 0) {
+		return i18n.baseText('instanceAi.welcomeModal.gateway.tokenExpired');
+	}
+	const minutes = Math.max(1, Math.ceil(tokenExpiresInSeconds.value / 60));
+	return i18n.baseText('instanceAi.welcomeModal.gateway.tokenExpiresIn', {
+		interpolate: { minutes: String(minutes) },
+	});
+});
 
 const terminalInstructionsKey = computed(() => {
 	if (selectedOs.value === 'windows') return 'instanceAi.welcomeModal.gateway.instructions.windows';
@@ -112,7 +135,11 @@ function onCommandScroll(e: Event) {
 
 async function copyCommand() {
 	try {
-		await navigator.clipboard.writeText(displayCommand.value);
+		if (tokenExpiresInSeconds.value === 0) {
+			await store.fetchSetupCommand();
+		}
+		if (!store.setupCommand) return;
+		await navigator.clipboard.writeText(store.setupCommand);
 		copied.value = true;
 		setTimeout(() => {
 			copied.value = false;
@@ -126,6 +153,27 @@ async function copyCommand() {
 // the local daemon is only contacted when the user clicks Connect.
 onMounted(() => {
 	void store.fetchSetupCommand();
+});
+
+watch(
+	() => [store.setupCommandFetchedAt, store.setupCommandTtlSeconds] as const,
+	([fetchedAt, ttlSeconds]) => {
+		if (expiryTimer) {
+			clearInterval(expiryTimer);
+			expiryTimer = null;
+		}
+		if (!(fetchedAt !== null && ttlSeconds !== null)) return;
+		nowMs.value = Date.now();
+		expiryTimer = setInterval(() => {
+			nowMs.value = Date.now();
+		}, 1000);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	if (expiryTimer) clearInterval(expiryTimer);
+	store.clearSetupCommand();
 });
 </script>
 
@@ -205,8 +253,17 @@ onMounted(() => {
 						:class="$style.copyButton"
 						:aria-label="copyCommandAriaLabel"
 						data-test-id="computer-use-setup-copy-command"
+						:disabled="!canCopyCommand"
 						@click="copyCommand"
 					/>
+				</div>
+				<div :class="$style.commandMeta">
+					<N8nText v-if="tokenExpiryText" size="small" color="text-light">
+						{{ tokenExpiryText }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('instanceAi.welcomeModal.gateway.leadingSpaceHint') }}
+					</N8nText>
 				</div>
 				<div :class="$style.waitingRow">
 					<N8nIcon icon="spinner" color="primary" spin size="small" />
@@ -297,6 +354,14 @@ onMounted(() => {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs);
+	background: var(--color--background--shade-2);
+}
+
+.commandMeta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 	background: var(--color--background--shade-2);
 }
 

@@ -636,6 +636,20 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
+		// Inject get_environment unconditionally. It surfaces info the model
+		// can't know on its own (current date, instance timezone, day of week)
+		// via a tool call rather than the system prompt — so values that change
+		// per request don't bust system-prompt prompt caching.
+		try {
+			const { createGetEnvironmentTool } = await import('./tools/environment-tool');
+			agent.tool(createGetEnvironmentTool());
+		} catch (toolError) {
+			this.logger.warn('Failed to inject get_environment tool', {
+				agentId,
+				error: toolError instanceof Error ? toolError.message : String(toolError),
+			});
+		}
+
 		// Inject the rich_interaction tool only for platforms that can actually
 		// render its suspend/resume HITL cards. Two gates:
 		//   - A registered integration in ChatIntegrationRegistry. The in-app
