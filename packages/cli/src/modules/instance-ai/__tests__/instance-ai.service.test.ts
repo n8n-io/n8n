@@ -891,3 +891,25 @@ describe('InstanceAiService — AI temporary workflow cleanup', () => {
 		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 	});
 });
+
+describe('InstanceAiService — OAuth callback URL', () => {
+	// Regression: the OAuth callback URL handed to the browser-credential-setup
+	// sub-agent must come from urlService.getInstanceBaseUrl() (which honors
+	// WEBHOOK_URL on cloud), not from globalConfig.editorBaseUrl with a
+	// localhost fallback. With the old fallback the agent pasted
+	// http://localhost:5678/... into the user's Slack app on a cloud instance.
+	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).toContain(
+			'this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback',
+		);
+	});
+
+	it('does not fall back to localhost when editorBaseUrl is empty', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).not.toContain('http://localhost:${globalConfig.port}');
+		expect(source).not.toContain('globalConfig.editorBaseUrl ||');
+	});
+});
