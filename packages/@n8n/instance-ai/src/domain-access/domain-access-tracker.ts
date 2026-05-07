@@ -14,6 +14,10 @@ import { isAllowedDomain } from '@n8n/api-types';
  * 2. Trusted allowlist (shared `isAllowedDomain()` from @n8n/api-types)
  * 3. Per-host persistent approval set
  * 4. Per-run transient approval set (when `runId` is provided)
+ *
+ * Web-search approval is tracked separately because the action has no target
+ * host: approving "fetch from example.com" does not imply approval to query a
+ * search provider (and vice versa).
  */
 export interface DomainAccessTracker {
 	/** Check whether a host is allowed. Optionally pass a runId to also check transient approvals. */
@@ -28,12 +32,22 @@ export interface DomainAccessTracker {
 	approveOnce(runId: string, host: string): void;
 	/** Clear all transient approvals for a run (called when the run finishes). */
 	clearRun(runId: string): void;
+
+	/** Check whether web-search is allowed. Optionally pass a runId for transient approvals. */
+	isWebSearchAllowed(runId?: string): boolean;
+	/** Persistently approve web-search for this thread. */
+	approveWebSearch(): void;
+	/** Grant a one-time transient web-search approval scoped to a specific run. */
+	approveWebSearchOnce(runId: string): void;
 }
 
 export function createDomainAccessTracker(): DomainAccessTracker {
 	const approvedDomains = new Set<string>();
 	const transientApprovals = new Map<string, Set<string>>(); // runId → Set<host>
 	let allDomainsApproved = false;
+
+	let webSearchApproved = false;
+	const transientWebSearchApprovals = new Set<string>(); // Set<runId>
 
 	return {
 		isHostAllowed(host: string, runId?: string): boolean {
@@ -70,6 +84,21 @@ export function createDomainAccessTracker(): DomainAccessTracker {
 
 		clearRun(runId: string): void {
 			transientApprovals.delete(runId);
+			transientWebSearchApprovals.delete(runId);
+		},
+
+		isWebSearchAllowed(runId?: string): boolean {
+			if (webSearchApproved) return true;
+			if (runId && transientWebSearchApprovals.has(runId)) return true;
+			return false;
+		},
+
+		approveWebSearch(): void {
+			webSearchApproved = true;
+		},
+
+		approveWebSearchOnce(runId: string): void {
+			transientWebSearchApprovals.add(runId);
 		},
 	};
 }
