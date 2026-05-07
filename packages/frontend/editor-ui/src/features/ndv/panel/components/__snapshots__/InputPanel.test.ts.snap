@@ -266,12 +266,12 @@ exports[`InputPanel > should render 1`] = `
                   
                   <button
                     aria-live="polite"
-                    class="button button solid medium"
+                    class="button button subtle medium"
                     data-test-id="execute-previous-node"
                     square="false"
                     title=""
                     transparent-background="true"
-                    type="submit"
+                    type="button"
                   >
                     <transition-stub
                       appear="false"
