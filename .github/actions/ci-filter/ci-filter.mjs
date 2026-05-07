@@ -98,12 +98,28 @@ export function getChangedFiles(baseRef) {
 	if (!SAFE_REF.test(baseRef)) {
 		throw new Error(`Unsafe base ref: "${baseRef}"`);
 	}
-	execSync(`git fetch --depth=1 origin ${baseRef}`, { stdio: 'pipe' });
-	const output = execSync('git diff --name-only FETCH_HEAD HEAD', { encoding: 'utf-8' });
+	// Deepen the fetch so the merge base is reachable from this shallow clone.
+	// A 2-dot diff (FETCH_HEAD HEAD) reports anything that differs in either
+	// direction, so files added to base-branch after the PR diverged show up as
+	// "changed" — spuriously triggering path-filtered jobs. The merge base
+	// scopes the diff to PR-only changes.
+	execSync(`git fetch --no-tags --prune --deepen=200 origin ${baseRef}`, { stdio: 'pipe' });
+	const output = execSync('git diff --name-only --merge-base FETCH_HEAD HEAD', {
+		encoding: 'utf-8',
+	});
 	return output
 		.split('\n')
 		.map((f) => f.trim())
 		.filter(Boolean);
+}
+
+/**
+ * Resolve the merge-base SHA between FETCH_HEAD and HEAD.
+ * Used to give downstream tools (e.g. janitor's AST diff) a stable, PR-only
+ * comparison point that doesn't drift when the base branch moves forward.
+ */
+export function getMergeBase() {
+	return execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
 }
 
 // --- Filter evaluation ---
@@ -155,7 +171,9 @@ export function runFilter() {
 
 	const filters = parseFilters(filtersInput);
 	const changedFiles = getChangedFiles(baseRef);
+	const mergeBase = getMergeBase();
 
+	console.log(`Merge base: ${mergeBase}`);
 	console.log(`Changed files (${changedFiles.length}):`);
 	for (const f of changedFiles) {
 		console.log(`  ${f}`);
@@ -172,6 +190,7 @@ export function runFilter() {
 	setOutput('results', JSON.stringify(results));
 	setOutput('changed-files', changedFiles.join('\n'));
 	setOutput('base-ref', baseRef);
+	setOutput('merge-base', mergeBase);
 }
 
 // --- Mode: validate ---
