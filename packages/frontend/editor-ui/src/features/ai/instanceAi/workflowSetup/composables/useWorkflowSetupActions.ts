@@ -2,14 +2,19 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../../instanceAi.store';
-import type { WorkflowSetupApplyPayload, WorkflowSetupCard } from '../workflowSetup.types';
+import type {
+	WorkflowSetupApplyPayload,
+	WorkflowSetupSection,
+	WorkflowSetupStep,
+} from '../workflowSetup.types';
+import { getStepSections } from '../workflowSetup.helpers';
+import type { CredentialSelectionsMap } from './useWorkflowSetupInputs';
 
-interface SelectionAccessors {
-	selections: Ref<Record<string, Record<string, string>>>;
-	skippedCardIds: Ref<Set<string>>;
-	isCardComplete: (card: WorkflowSetupCard) => boolean;
-	isCardSkipped: (card: WorkflowSetupCard) => boolean;
-	markCardSkipped: (card: WorkflowSetupCard) => void;
+interface WorkflowSetupInputAccessors {
+	credentialSelections: Ref<CredentialSelectionsMap>;
+	isSectionComplete: (section: WorkflowSetupSection) => boolean;
+	isSectionSkipped: (section: WorkflowSetupSection) => boolean;
+	markSectionSkipped: (section: WorkflowSetupSection) => void;
 	buildCompletedSetupPayload: () => WorkflowSetupApplyPayload;
 }
 
@@ -20,21 +25,23 @@ interface ApplyMachine {
 
 export interface WorkflowSetupActions {
 	nextUnhandledIndex: ComputedRef<number>;
-	hasOtherUnhandledCards: ComputedRef<boolean>;
+	hasOtherUnhandledSteps: ComputedRef<boolean>;
 	canAdvanceToNextIncomplete: ComputedRef<boolean>;
+	isStepHandled: (step: WorkflowSetupStep) => boolean;
 	isActionPending: Ref<boolean>;
 	apply: () => Promise<void>;
-	skipCurrentCard: () => Promise<void>;
+	skipCurrentStep: () => Promise<void>;
 	goToNextIncomplete: () => void;
 }
 
 export function useWorkflowSetupActions(deps: {
 	requestId: Ref<string>;
-	cards: ComputedRef<WorkflowSetupCard[]>;
-	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
+	sections: ComputedRef<WorkflowSetupSection[]>;
+	steps: ComputedRef<WorkflowSetupStep[]>;
+	activeStep: ComputedRef<WorkflowSetupStep | undefined>;
 	currentStepIndex: Ref<number>;
 	goToStep: (index: number) => void;
-	selections: SelectionAccessors;
+	inputs: WorkflowSetupInputAccessors;
 	applyMachine: ApplyMachine;
 	store: ReturnType<typeof useInstanceAiStore>;
 }): WorkflowSetupActions {
@@ -43,43 +50,35 @@ export function useWorkflowSetupActions(deps: {
 
 	const isActionPending = ref(false);
 
-	function isCardHandled(card: WorkflowSetupCard): boolean {
-		return deps.selections.isCardComplete(card) || deps.selections.isCardSkipped(card);
+	function isStepHandled(step: WorkflowSetupStep): boolean {
+		const sections = getStepSections(step);
+		if (sections.length === 0) return true;
+		return sections.every(
+			(section) => deps.inputs.isSectionComplete(section) || deps.inputs.isSectionSkipped(section),
+		);
 	}
 
 	/**
-	 * Globally find the first unhandled card. Prefer indices after the current
-	 * step; fall back to indices before. Returns -1 if all cards are handled.
+	 * Globally find the first unhandled step. Prefer indices after the current
+	 * step; fall back to indices before. Returns -1 if every step is handled.
 	 */
 	const nextUnhandledIndex = computed(() => {
-		const cards = deps.cards.value;
+		const steps = deps.steps.value;
 		const current = deps.currentStepIndex.value;
-		for (let i = current + 1; i < cards.length; i++) {
-			if (!isCardHandled(cards[i])) return i;
+		for (let i = current + 1; i < steps.length; i++) {
+			if (!isStepHandled(steps[i])) return i;
 		}
-		for (let i = 0; i < Math.min(current, cards.length); i++) {
-			if (!isCardHandled(cards[i])) return i;
+		for (let i = 0; i < Math.min(current, steps.length); i++) {
+			if (!isStepHandled(steps[i])) return i;
 		}
 		return -1;
 	});
 
-	const hasOtherUnhandledCards = computed(() => {
-		const cards = deps.cards.value;
-		const current = deps.currentStepIndex.value;
-		for (let i = 0; i < cards.length; i++) {
-			if (i === current) continue;
-			if (!isCardHandled(cards[i])) return true;
-		}
-		return false;
-	});
+	const hasOtherUnhandledSteps = computed(() => nextUnhandledIndex.value >= 0);
 
 	const canAdvanceToNextIncomplete = computed(() => {
-		const card = deps.activeCard.value;
-		return (
-			card !== undefined &&
-			(deps.selections.isCardComplete(card) || deps.selections.isCardSkipped(card)) &&
-			nextUnhandledIndex.value >= 0
-		);
+		const step = deps.activeStep.value;
+		return step !== undefined && isStepHandled(step) && nextUnhandledIndex.value >= 0;
 	});
 
 	function goToNextIncomplete(): void {
@@ -94,20 +93,22 @@ export function useWorkflowSetupActions(deps: {
 		const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 		const skipped: Array<{ label: string; options: string[] }> = [];
 		const explicitlySkipped: Array<{ label: string; options: string[] }> = [];
-		for (const card of deps.cards.value) {
-			const label = card.credentialType ?? card.targetNodeName;
-			if (deps.selections.isCardComplete(card)) {
+		for (const section of deps.sections.value) {
+			const label = section.credentialType ?? section.targetNodeName;
+			if (deps.inputs.isSectionComplete(section)) {
+				const optionChosen = section.credentialType
+					? (deps.inputs.credentialSelections.value[section.targetNodeName]?.[
+							section.credentialType
+						] ?? '')
+					: section.parameterNames.join(',');
 				provided.push({
 					label,
 					options: [],
-					option_chosen:
-						card.credentialType !== undefined
-							? (deps.selections.selections.value[card.targetNodeName]?.[card.credentialType] ?? '')
-							: card.parameterNames.join(','),
+					option_chosen: optionChosen,
 				});
 			} else {
 				skipped.push({ label, options: [] });
-				if (deps.selections.isCardSkipped(card)) {
+				if (deps.inputs.isSectionSkipped(section)) {
 					explicitlySkipped.push({ label, options: [] });
 				}
 			}
@@ -120,34 +121,39 @@ export function useWorkflowSetupActions(deps: {
 			provided_inputs: provided,
 			skipped_inputs: skipped,
 			explicitly_skipped_inputs: explicitlySkipped,
-			num_tasks: deps.cards.value.length,
+			num_tasks: deps.sections.value.length,
 		});
 	}
 
 	async function apply(): Promise<void> {
 		trackSetupInput();
-		await deps.applyMachine.apply(deps.selections.buildCompletedSetupPayload());
+		await deps.applyMachine.apply(deps.inputs.buildCompletedSetupPayload());
 	}
 
-	async function skipCurrentCard(): Promise<void> {
+	async function skipCurrentStep(): Promise<void> {
 		if (isActionPending.value) return;
-		const card = deps.activeCard.value;
-		if (!card) return;
+		const step = deps.activeStep.value;
+		if (!step) return;
 
 		isActionPending.value = true;
 		try {
-			deps.selections.markCardSkipped(card);
+			// Skipping the active step only marks its incomplete sections — already-
+			// complete sections still contribute to the apply payload.
+			const stepSections = getStepSections(step);
+			for (const section of stepSections) {
+				if (!deps.inputs.isSectionComplete(section)) {
+					deps.inputs.markSectionSkipped(section);
+				}
+			}
 
-			// Non-terminal: more cards still need handling — advance & wait for the user.
-			if (hasOtherUnhandledCards.value) {
-				const next = nextUnhandledIndex.value;
-				if (next >= 0) deps.goToStep(next);
+			const next = nextUnhandledIndex.value;
+			if (next >= 0) {
+				deps.goToStep(next);
 				return;
 			}
 
-			// Terminal: every card is now complete or skipped.
 			trackSetupInput();
-			const completedPayload = deps.selections.buildCompletedSetupPayload();
+			const completedPayload = deps.inputs.buildCompletedSetupPayload();
 			const hasAnyCompleted =
 				Object.keys(completedPayload.nodeCredentials ?? {}).length > 0 ||
 				Object.keys(completedPayload.nodeParameters ?? {}).length > 0;
@@ -163,11 +169,12 @@ export function useWorkflowSetupActions(deps: {
 
 	return {
 		nextUnhandledIndex,
-		hasOtherUnhandledCards,
+		hasOtherUnhandledSteps,
 		canAdvanceToNextIncomplete,
+		isStepHandled,
 		isActionPending,
 		apply,
-		skipCurrentCard,
+		skipCurrentStep,
 		goToNextIncomplete,
 	};
 }

@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowSetupWizard from '../workflowSetup/components/WorkflowSetupWizard.vue';
 import type { WorkflowSetupContext } from '../workflowSetup/composables/useWorkflowSetupContext';
-import { makeWorkflowSetupCard } from '../workflowSetup/__tests__/factories';
-import type { WorkflowSetupCard } from '../workflowSetup/workflowSetup.types';
+import { makeWorkflowSetupSection } from '../workflowSetup/__tests__/factories';
+import type { WorkflowSetupSection, WorkflowSetupStep } from '../workflowSetup/workflowSetup.types';
 import type { INodeUi } from '@/Interface';
 
 const workflowSetupContext = vi.hoisted(() => ({
@@ -32,6 +32,10 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizard, {
 				template:
 					'<section data-test-id="instance-ai-workflow-setup-card"><slot name="footer" /></section>',
 			},
+			WorkflowSetupGroupCard: {
+				template:
+					'<section data-test-id="instance-ai-workflow-setup-group-card"><slot name="footer" /></section>',
+			},
 			N8nButton: {
 				props: ['disabled', 'label'],
 				emits: ['click'],
@@ -58,8 +62,8 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizard, {
 	},
 });
 
-const card = makeWorkflowSetupCard();
-const secondCard = makeWorkflowSetupCard({
+const sectionA = makeWorkflowSetupSection();
+const sectionB = makeWorkflowSetupSection({
 	id: 'Slack:slackApi',
 	credentialType: 'slackApi',
 	targetNodeName: 'Slack',
@@ -70,47 +74,59 @@ const secondCard = makeWorkflowSetupCard({
 });
 
 interface ContextOptions {
-	cards?: WorkflowSetupCard[];
+	sections?: WorkflowSetupSection[];
 	currentStepIndex?: Ref<number>;
 	isSkipped?: Ref<boolean>;
 	isCredentialTestFailed?: Ref<boolean>;
 	isActionPending?: Ref<boolean>;
-	hasOtherUnhandledCards?: Ref<boolean>;
+	hasOtherUnhandledSteps?: Ref<boolean>;
 }
 
 function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): WorkflowSetupContext {
-	const cards = options.cards ?? [card];
+	const sections = options.sections ?? [sectionA];
 	const currentStepIndex = options.currentStepIndex ?? ref(0);
+	const steps = computed<WorkflowSetupStep[]>(() =>
+		sections.map((section) => ({ kind: 'section', section })),
+	);
+
+	const isStepHandled = (step: WorkflowSetupStep): boolean => {
+		if (step.kind !== 'section') return false;
+		return isComplete.value || (options.isSkipped?.value ?? false);
+	};
 
 	return {
-		cards: computed(() => cards),
+		sections: computed(() => sections),
+		steps,
 		currentStepIndex,
-		activeCard: computed(() => cards[currentStepIndex.value]),
-		hasOtherUnhandledCards: computed(() => options.hasOtherUnhandledCards?.value ?? false),
+		activeStep: computed(() => steps.value[currentStepIndex.value]),
+		hasOtherUnhandledSteps: computed(() => options.hasOtherUnhandledSteps?.value ?? false),
 		canAdvanceToNextIncomplete: computed(() => false),
-		selections: ref({}),
+		credentialSelections: ref({}),
 		terminalState: ref(null),
 		isReady: ref(true),
 		projectId: computed(() => undefined),
 		credentialFlow: computed(() => undefined),
 		isActionPending: options.isActionPending ?? ref(false),
-		setSelection: vi.fn(),
+		setCredential: vi.fn(),
 		setParameterValue: vi.fn(),
-		getDisplayNode: (setupCard) => setupCard.node as INodeUi,
-		isCardComplete: () => isComplete.value,
+		getDisplayNode: (section) => section.node as INodeUi,
+		isSectionComplete: () => isComplete.value,
 		isCredentialTestFailed: () => options.isCredentialTestFailed?.value ?? false,
-		isCardSkipped: () => options.isSkipped?.value ?? false,
+		isSectionSkipped: () => options.isSkipped?.value ?? false,
+		isStepComplete: () => isComplete.value,
+		isStepSkipped: () => options.isSkipped?.value ?? false,
+		isStepHandled,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
 		goToNextIncomplete: vi.fn(),
-		apply: vi.fn(),
-		skipCurrentCard: vi.fn(),
+		apply: vi.fn(async () => {}),
+		skipCurrentStep: vi.fn(async () => {}),
 	};
 }
 
 describe('WorkflowSetupWizard', () => {
-	it('hides the skip action once the active setup card is complete', async () => {
+	it('hides the skip action once the active setup step is complete', async () => {
 		const isComplete = ref(false);
 		workflowSetupContext.current = makeContext(isComplete);
 
@@ -125,7 +141,7 @@ describe('WorkflowSetupWizard', () => {
 		expect(queryByTestId('instance-ai-workflow-setup-apply')).not.toBeNull();
 	});
 
-	it('hides footer navigation arrows when there is only one setup card', () => {
+	it('hides footer navigation arrows when there is only one setup step', () => {
 		workflowSetupContext.current = makeContext(ref(false));
 
 		const { queryByTestId } = renderComponent();
@@ -134,10 +150,10 @@ describe('WorkflowSetupWizard', () => {
 		expect(queryByTestId('instance-ai-workflow-setup-next')).toBeNull();
 	});
 
-	it('disables footer navigation arrows at the first and last setup cards', async () => {
+	it('disables footer navigation arrows at the first and last setup steps', async () => {
 		const currentStepIndex = ref(0);
 		workflowSetupContext.current = makeContext(ref(false), {
-			cards: [card, secondCard],
+			sections: [sectionA, sectionB],
 			currentStepIndex,
 		});
 
@@ -167,7 +183,7 @@ describe('WorkflowSetupWizard', () => {
 		expect(getByTestId('instance-ai-workflow-setup-later')).not.toHaveAttribute('disabled');
 	});
 
-	it('enables the primary footer action for skipped setup cards', async () => {
+	it('enables the primary footer action for skipped setup steps', async () => {
 		const isSkipped = ref(false);
 		workflowSetupContext.current = makeContext(ref(false), { isSkipped });
 
@@ -183,8 +199,8 @@ describe('WorkflowSetupWizard', () => {
 		expect(queryByTestId('instance-ai-workflow-setup-later')).toBeNull();
 	});
 
-	it('shows the continue footer action instead of apply when there are other unhandled cards', () => {
-		workflowSetupContext.current = makeContext(ref(true), { hasOtherUnhandledCards: ref(true) });
+	it('shows the continue footer action instead of apply when there are other unhandled steps', () => {
+		workflowSetupContext.current = makeContext(ref(true), { hasOtherUnhandledSteps: ref(true) });
 
 		const { getByTestId, queryByTestId } = renderComponent();
 

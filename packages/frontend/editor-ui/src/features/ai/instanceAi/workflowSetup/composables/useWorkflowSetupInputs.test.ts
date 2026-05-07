@@ -1,19 +1,13 @@
 import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeWorkflowSetupCard } from '../__tests__/factories';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
+import { makeWorkflowSetupSection } from '../__tests__/factories';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
 
 interface TestCredential {
 	id: string;
 	type: string;
 	name: string;
-}
-
-interface CredentialChangeListeners {
-	onCredentialCreated?: (credential: TestCredential) => void;
-	onCredentialUpdated?: (credential: TestCredential) => void;
-	onCredentialDeleted?: (credentialId: string) => void;
 }
 
 const credentialsStore = vi.hoisted(() => ({
@@ -23,11 +17,6 @@ const credentialsStore = vi.hoisted(() => ({
 	isCredentialTestedOk: vi.fn(
 		(id: string) => credentialsStore.credentialTestResults.get(id) === 'success',
 	),
-}));
-
-const credentialListeners = vi.hoisted(() => ({
-	current: null as CredentialChangeListeners | null,
-	stop: vi.fn(),
 }));
 
 const credentialTest = vi.hoisted(() => ({
@@ -42,10 +31,6 @@ const nodeTypesStore = vi.hoisted(() => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => credentialsStore,
-	listenForCredentialChanges: vi.fn((listeners: CredentialChangeListeners) => {
-		credentialListeners.current = listeners;
-		return credentialListeners.stop;
-	}),
 }));
 
 vi.mock('@/features/credentials/composables/useCredentialTestInBackground', () => ({
@@ -60,11 +45,10 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 interface Harness {
-	cardA: WorkflowSetupCard;
-	cardB: WorkflowSetupCard;
-	cardsRef: Ref<WorkflowSetupCard[]>;
-	cards: ComputedRef<WorkflowSetupCard[]>;
-	activeIndex: Ref<number>;
+	sectionA: WorkflowSetupSection;
+	sectionB: WorkflowSetupSection;
+	sectionsRef: Ref<WorkflowSetupSection[]>;
+	sections: ComputedRef<WorkflowSetupSection[]>;
 	inputs: ReturnType<typeof useWorkflowSetupInputs>;
 }
 
@@ -72,33 +56,29 @@ function addCredential(credential: TestCredential): void {
 	credentialsStore.credentials.set(credential.id, credential);
 }
 
-function setupHarness(cards?: WorkflowSetupCard[]): Harness {
-	const cardA = makeWorkflowSetupCard({
+function setupHarness(sections?: WorkflowSetupSection[]): Harness {
+	const sectionA = makeWorkflowSetupSection({
 		id: 'HTTP Request:httpBasicAuth',
 		targetNodeName: 'HTTP Request',
 		credentialType: 'httpBasicAuth',
 	});
-	const cardB = makeWorkflowSetupCard({
+	const sectionB = makeWorkflowSetupSection({
 		id: 'Slack:slackApi',
 		targetNodeName: 'Slack',
 		credentialType: 'slackApi',
 	});
-	const cardsRef = ref(cards ?? [cardA, cardB]);
-	const cardsComputed = computed(() => cardsRef.value);
-	const activeIndex = ref(0);
-	const activeCard = computed(() => cardsComputed.value[activeIndex.value]);
+	const sectionsRef = ref(sections ?? [sectionA, sectionB]);
+	const sectionsComputed = computed(() => sectionsRef.value);
 
 	const inputs = useWorkflowSetupInputs({
-		cards: cardsComputed,
-		activeCard,
+		sections: sectionsComputed,
 	});
 
 	return {
-		cardA,
-		cardB,
-		cardsRef,
-		cards: cardsComputed,
-		activeIndex,
+		sectionA,
+		sectionB,
+		sectionsRef,
+		sections: sectionsComputed,
 		inputs,
 	};
 }
@@ -109,8 +89,6 @@ describe('useWorkflowSetupInputs', () => {
 		credentialsStore.credentialTestResults.clear();
 		credentialsStore.getCredentialById.mockClear();
 		credentialsStore.isCredentialTestedOk.mockClear();
-		credentialListeners.current = null;
-		credentialListeners.stop.mockClear();
 		credentialTest.testableTypes.clear();
 		credentialTest.isCredentialTypeTestable.mockClear();
 		credentialTest.testCredentialInBackground.mockClear();
@@ -121,11 +99,11 @@ describe('useWorkflowSetupInputs', () => {
 	it('sets a selection, tests it in the background, and clears a previous skip', () => {
 		addCredential({ id: 'cred-1', type: 'httpBasicAuth', name: 'HTTP credential' });
 		const h = setupHarness();
-		h.inputs.markCardSkipped(h.cardA);
+		h.inputs.markSectionSkipped(h.sectionA);
 
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.sectionA, 'cred-1');
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'cred-1' },
 		});
 		expect(credentialTest.testCredentialInBackground).toHaveBeenCalledWith(
@@ -133,69 +111,67 @@ describe('useWorkflowSetupInputs', () => {
 			'HTTP credential',
 			'httpBasicAuth',
 		);
-		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(false);
 	});
 
 	it('removes a selected credential when set to null', () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.sectionA, 'cred-1');
 
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', null);
+		h.inputs.setCredential(h.sectionA, null);
 
-		expect(h.inputs.selections.value).toEqual({ 'HTTP Request': {} });
+		expect(h.inputs.credentialSelections.value).toEqual({ 'HTTP Request': {} });
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
 	});
 
-	it('reports card completion based on testability and credential test result', () => {
+	it('reports section completion based on testability and credential test result', () => {
 		const h = setupHarness();
 
-		expect(h.inputs.isCardComplete(h.cardA)).toBe(false);
+		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(false);
 
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		expect(h.inputs.isCardComplete(h.cardA)).toBe(true);
+		h.inputs.setCredential(h.sectionA, 'cred-1');
+		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(true);
 
 		credentialTest.testableTypes.add('httpBasicAuth');
-		expect(h.inputs.isCardComplete(h.cardA)).toBe(false);
+		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(false);
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
-		expect(h.inputs.isCardComplete(h.cardA)).toBe(true);
+		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(true);
 	});
 
 	it('reports credential test failures only for selected testable credentials', () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.sectionA, 'cred-1');
 		credentialsStore.credentialTestResults.set('cred-1', 'error');
 
-		expect(h.inputs.isCredentialTestFailed(h.cardA)).toBe(false);
+		expect(h.inputs.isCredentialTestFailed(h.sectionA)).toBe(false);
 
 		credentialTest.testableTypes.add('httpBasicAuth');
-		expect(h.inputs.isCredentialTestFailed(h.cardA)).toBe(true);
-		expect(h.inputs.isCredentialTestFailed(h.cardB)).toBe(false);
+		expect(h.inputs.isCredentialTestFailed(h.sectionA)).toBe(true);
+		expect(h.inputs.isCredentialTestFailed(h.sectionB)).toBe(false);
 	});
 
-	it('marks and clears skipped cards idempotently', () => {
+	it('marks skipped sections idempotently and clears them when input is provided', () => {
 		const h = setupHarness();
 
-		h.inputs.markCardSkipped(h.cardA);
-		h.inputs.markCardSkipped(h.cardA);
+		h.inputs.markSectionSkipped(h.sectionA);
+		h.inputs.markSectionSkipped(h.sectionA);
 
-		expect(h.inputs.isCardSkipped(h.cardA)).toBe(true);
-		expect(h.inputs.skippedCardIds.value).toEqual(new Set([h.cardA.id]));
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(true);
+		expect(h.inputs.skippedSectionIds.value).toEqual(new Set([h.sectionA.id]));
 
-		h.inputs.clearCardSkipped(h.cardA);
-		h.inputs.clearCardSkipped(h.cardA);
+		h.inputs.setCredential(h.sectionA, 'cred-1');
 
-		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
-		expect(h.inputs.skippedCardIds.value).toEqual(new Set());
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(false);
+		expect(h.inputs.skippedSectionIds.value).toEqual(new Set());
 	});
 
 	it('builds only completed selections into the payload', () => {
 		const h = setupHarness();
 		credentialTest.testableTypes.add('httpBasicAuth');
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		h.inputs.setSelection('Slack', 'slackApi', 'cred-2');
+		h.inputs.setCredential(h.sectionA, 'cred-1');
+		h.inputs.setCredential(h.sectionB, 'cred-2');
 
-		expect(h.inputs.allCardsComplete()).toBe(false);
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
 			nodeCredentials: {
 				Slack: { slackApi: 'cred-2' },
@@ -204,7 +180,6 @@ describe('useWorkflowSetupInputs', () => {
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
 
-		expect(h.inputs.allCardsComplete()).toBe(true);
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
 			nodeCredentials: {
 				'HTTP Request': { httpBasicAuth: 'cred-1' },
@@ -215,16 +190,16 @@ describe('useWorkflowSetupInputs', () => {
 
 	it('seeds selections from current credentials and tests seeded credentials', async () => {
 		addCredential({ id: 'current-cred', type: 'httpBasicAuth', name: 'Current credential' });
-		const card = makeWorkflowSetupCard({
+		const section = makeWorkflowSetupSection({
 			targetNodeName: 'HTTP Request',
 			credentialType: 'httpBasicAuth',
 			currentCredentialId: 'current-cred',
 		});
 
-		const h = setupHarness([card]);
+		const h = setupHarness([section]);
 		await nextTick();
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'current-cred' },
 		});
 		expect(credentialTest.testCredentialInBackground).toHaveBeenCalledWith(
@@ -234,85 +209,119 @@ describe('useWorkflowSetupInputs', () => {
 		);
 	});
 
-	it('does not overwrite an existing user selection when cards refresh', async () => {
+	it('does not overwrite an existing user selection when sections refresh', async () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'user-cred');
+		h.inputs.setCredential(h.sectionA, 'user-cred');
 
-		h.cardsRef.value = [
+		h.sectionsRef.value = [
 			{
-				...h.cardA,
+				...h.sectionA,
 				currentCredentialId: 'refreshed-current-cred',
 			},
 		];
 		await nextTick();
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'user-cred' },
 		});
 	});
 
-	it('prunes skipped card ids that no longer correspond to a card', async () => {
-		const h = setupHarness();
-		h.inputs.markCardSkipped(h.cardA);
-		h.inputs.markCardSkipped(h.cardB);
+	it('does not re-seed a credential after the user explicitly clears it', async () => {
+		addCredential({ id: 'current-cred', type: 'httpBasicAuth', name: 'Current credential' });
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpBasicAuth',
+			currentCredentialId: 'current-cred',
+		});
 
-		h.cardsRef.value = [h.cardB];
+		const h = setupHarness([section]);
 		await nextTick();
 
-		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
-		expect(h.inputs.isCardSkipped(h.cardB)).toBe(true);
+		expect(h.inputs.credentialSelections.value).toEqual({
+			'HTTP Request': { httpBasicAuth: 'current-cred' },
+		});
+
+		h.inputs.setCredential(section, null);
+		expect(h.inputs.credentialSelections.value).toEqual({ 'HTTP Request': {} });
+
+		// Sections re-emit with the same content (e.g. due to upstream reactive recomputation).
+		h.sectionsRef.value = [...h.sectionsRef.value];
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({ 'HTTP Request': {} });
 	});
 
-	it('clears a skip when the skipped card later becomes complete', async () => {
+	it('seeds only newly added sections without overwriting existing user selections', async () => {
+		addCredential({ id: 'b-cred', type: 'slackApi', name: 'B credential' });
+		const h = setupHarness();
+
+		h.inputs.setCredential(h.sectionA, 'user-cred-a');
+
+		const sectionC = makeWorkflowSetupSection({
+			id: 'GitHub:githubApi',
+			targetNodeName: 'GitHub',
+			credentialType: 'githubApi',
+			currentCredentialId: 'github-cred',
+		});
+		addCredential({ id: 'github-cred', type: 'githubApi', name: 'GitHub credential' });
+
+		h.sectionsRef.value = [...h.sectionsRef.value, sectionC];
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			'HTTP Request': { httpBasicAuth: 'user-cred-a' },
+			GitHub: { githubApi: 'github-cred' },
+		});
+	});
+
+	it('re-seeds a section that is removed and later added back', async () => {
+		addCredential({ id: 'current-cred', type: 'httpBasicAuth', name: 'Current credential' });
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpBasicAuth',
+			currentCredentialId: 'current-cred',
+		});
+
+		const h = setupHarness([section]);
+		await nextTick();
+
+		h.inputs.setCredential(section, null);
+		expect(h.inputs.credentialSelections.value).toEqual({ 'HTTP Request': {} });
+
+		h.sectionsRef.value = [];
+		await nextTick();
+
+		h.sectionsRef.value = [section];
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			'HTTP Request': { httpBasicAuth: 'current-cred' },
+		});
+	});
+
+	it('prunes skipped section ids that no longer correspond to a section', async () => {
+		const h = setupHarness();
+		h.inputs.markSectionSkipped(h.sectionA);
+		h.inputs.markSectionSkipped(h.sectionB);
+
+		h.sectionsRef.value = [h.sectionB];
+		await nextTick();
+
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(false);
+		expect(h.inputs.isSectionSkipped(h.sectionB)).toBe(true);
+	});
+
+	it('clears a skip when the skipped section later becomes complete', async () => {
 		const h = setupHarness();
 		credentialTest.testableTypes.add('httpBasicAuth');
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		h.inputs.markCardSkipped(h.cardA);
+		h.inputs.setCredential(h.sectionA, 'cred-1');
+		h.inputs.markSectionSkipped(h.sectionA);
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
-		h.cardsRef.value = [...h.cardsRef.value];
+		h.sectionsRef.value = [...h.sectionsRef.value];
 		await nextTick();
 
-		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
-	});
-
-	it('selects a newly created credential for the active matching card', () => {
-		const h = setupHarness();
-
-		credentialListeners.current?.onCredentialCreated?.({
-			id: 'created-cred',
-			type: 'httpBasicAuth',
-			name: 'Created credential',
-		});
-
-		expect(h.inputs.selections.value).toEqual({
-			'HTTP Request': { httpBasicAuth: 'created-cred' },
-		});
-	});
-
-	it('ignores created credentials that do not match the active card type', () => {
-		const h = setupHarness();
-
-		credentialListeners.current?.onCredentialCreated?.({
-			id: 'created-cred',
-			type: 'slackApi',
-			name: 'Created credential',
-		});
-
-		expect(h.inputs.selections.value).toEqual({});
-	});
-
-	it('clears selections that reference a deleted credential', () => {
-		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'deleted-cred');
-		h.inputs.setSelection('Slack', 'slackApi', 'other-cred');
-
-		credentialListeners.current?.onCredentialDeleted?.('deleted-cred');
-
-		expect(h.inputs.selections.value).toEqual({
-			'HTTP Request': {},
-			Slack: { slackApi: 'other-cred' },
-		});
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(false);
 	});
 
 	it('tracks parameter values and builds nodeParameters after issues clear', () => {
@@ -322,19 +331,19 @@ describe('useWorkflowSetupInputs', () => {
 				{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
 			],
 		});
-		const parameterCard = makeWorkflowSetupCard({
+		const parameterSection = makeWorkflowSetupSection({
 			id: 'HTTP Request:parameters',
 			credentialType: undefined,
 			parameterNames: ['url'],
 			node: { parameters: { url: '' } },
 		});
-		const h = setupHarness([parameterCard]);
+		const h = setupHarness([parameterSection]);
 
-		expect(h.inputs.isCardComplete(parameterCard)).toBe(false);
+		expect(h.inputs.isSectionComplete(parameterSection)).toBe(false);
 
-		h.inputs.setParameterValue(parameterCard, 'url', 'https://example.com/api');
+		h.inputs.setParameterValue(parameterSection, 'url', 'https://example.com/api');
 
-		expect(h.inputs.isCardComplete(parameterCard)).toBe(true);
+		expect(h.inputs.isSectionComplete(parameterSection)).toBe(true);
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
 			nodeParameters: {
 				'HTTP Request': { url: 'https://example.com/api' },
@@ -343,30 +352,137 @@ describe('useWorkflowSetupInputs', () => {
 	});
 
 	it('updates nested parameter values without flattening the path', () => {
-		const parameterCard = makeWorkflowSetupCard({
+		const parameterSection = makeWorkflowSetupSection({
 			id: 'HTTP Request:parameters',
 			credentialType: undefined,
 			parameterNames: ['options'],
 			node: { parameters: { options: { path: 'old', keep: true } } },
 		});
-		const h = setupHarness([parameterCard]);
+		const h = setupHarness([parameterSection]);
 
-		h.inputs.setParameterValue(parameterCard, 'options.path', 'new');
+		h.inputs.setParameterValue(parameterSection, 'options.path', 'new');
 
-		expect(h.inputs.getDisplayNode(parameterCard).parameters).toEqual({
+		expect(h.inputs.getDisplayNode(parameterSection).parameters).toEqual({
 			options: { path: 'new', keep: true },
 		});
-		expect(
-			Object.prototype.hasOwnProperty.call(
-				h.inputs.parameterValues.value['HTTP Request'],
-				'options.path',
-			),
-		).toBe(false);
-		expect(parameterCard.node.parameters).toEqual({ options: { path: 'old', keep: true } });
+		expect(parameterSection.node.parameters).toEqual({ options: { path: 'old', keep: true } });
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
 			nodeParameters: {
 				'HTTP Request': { options: { path: 'new', keep: true } },
 			},
 		});
+	});
+
+	it('mirrors a primary credential selection across grouped target nodes', () => {
+		const groupedSection = makeWorkflowSetupSection({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedSection]);
+
+		h.inputs.setCredential(groupedSection, 'cred-1');
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: { httpBasicAuth: 'cred-1' },
+			Follower: { httpBasicAuth: 'cred-1' },
+		});
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: {
+				Primary: { httpBasicAuth: 'cred-1' },
+				Follower: { httpBasicAuth: 'cred-1' },
+			},
+		});
+	});
+
+	it('clears mirrored credential selections across grouped target nodes', () => {
+		const groupedSection = makeWorkflowSetupSection({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedSection]);
+		h.inputs.setCredential(groupedSection, 'cred-1');
+
+		h.inputs.setCredential(groupedSection, null);
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: {},
+			Follower: {},
+		});
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
+	});
+
+	it('seeds current credentials across grouped target nodes', async () => {
+		addCredential({ id: 'current-cred', type: 'httpBasicAuth', name: 'Current credential' });
+		const groupedSection = makeWorkflowSetupSection({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			currentCredentialId: 'current-cred',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+
+		const h = setupHarness([groupedSection]);
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: { httpBasicAuth: 'current-cred' },
+			Follower: { httpBasicAuth: 'current-cred' },
+		});
+	});
+
+	it('writes only to an independent params-bearing section target', () => {
+		const groupedSection = makeWorkflowSetupSection({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const paramsSection = makeWorkflowSetupSection({
+			id: 'Params:httpBasicAuth',
+			targetNodeName: 'Params',
+			credentialType: 'httpBasicAuth',
+			parameterNames: ['url'],
+			credentialTargetNodes: [{ id: 'params', name: 'Params', type: 'n8n-nodes-base.httpRequest' }],
+		});
+		const h = setupHarness([groupedSection, paramsSection]);
+
+		h.inputs.setCredential(paramsSection, 'cred-params');
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Params: { httpBasicAuth: 'cred-params' },
+		});
+	});
+
+	it('excludes skipped grouped sections from completed setup payloads', () => {
+		const groupedSection = makeWorkflowSetupSection({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedSection]);
+		h.inputs.setCredential(groupedSection, 'cred-1');
+		h.inputs.markSectionSkipped(groupedSection);
+
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
 	});
 });

@@ -155,7 +155,18 @@ selection on single-node cards.
 **Working after this PR:** any single-node workflow — credentials + params
 end-to-end.
 
-### PR 4 — Grouping
+### PR 4 — Grouping (phase 1: by credential type)
+
+- Group setup requests by credentialType; HTTP nodes are also keyed by URL,
+  with expression URLs split per node
+- One primary card per group; non-params followers hidden, params followers
+  independent
+- Selection mirroring across credentialTargetNodes at init and write time
+- Skip-aware payload predicates exclude skipped cards from apply
+- "Used by N nodes" hint for grouped cards
+- Unit tests
+
+### PR 5 — Grouping (phase 2: parent + subnode display)
 
 - Grouped display (parent + subnode sections)
 - Per-section `ExpressionContextProvider`
@@ -165,7 +176,7 @@ end-to-end.
 **Working after this PR:** AI-agent-style grouped workflows — full parity
 with the current wizard minus the dropped testing features.
 
-### PR 5 — Confirm mode
+### PR 6 — Confirm mode
 
 - `allPreResolved` condensed summary UI with "Review details" toggle that
   opens the full wizard
@@ -174,7 +185,7 @@ with the current wizard minus the dropped testing features.
 **Working after this PR:** complete feature, with the nicer UX shortcut for
 pre-resolved cases.
 
-### PR 6 — Rebuild Playwright e2e
+### PR 7 — Rebuild Playwright e2e
 
 Rebuild the two specs deleted in PR 1 plus the `getWorkflowSetup*` methods in
 `InstanceAiPage.ts`. Optional in the sense that the feature can ship without
@@ -185,9 +196,9 @@ it, but recommended since CI had e2e coverage before the rewrite.
 - Unit tests added per PR for new model / composables / components.
 - The existing ~3,050 LOC of unit tests is deleted in PR 1 — accepted
   coverage gap while the rewrite is in progress.
-- E2E coverage rebuilt in PR 6.
+- E2E coverage rebuilt in PR 7.
 
-### PR 7 — Error + retry UI
+### PR 8 — Error + retry UI
 
 Split out of PR 2 to keep the initial credentials-only PR small and
 reviewable. Re-introduces explicit error recovery UX on top of the toast-only
@@ -207,5 +218,6 @@ fallback shipped in PR 2:
   `instanceAi.workflowSetup.tryAgain`.
 - Unit tests for the error/retry paths.
 
-
-TODOS: handle autoApplied credentials. Rn those are sent to the FE with needsWork: true and are shown in the wizard but they're shown as completed initially which is weird. Either show them as not completed initially or make the primary action button to be continue unless the user is on the last card so that the user also goes through those autoApplied nodes
+TODOS:
+* handle autoApplied credentials. Rn those are sent to the FE with needsWork: true and are shown in the wizard but they're shown as completed initially which is weird. Either show them as not completed initially or make the primary action button to be continue unless the user is on the last card so that the user also goes through those autoApplied nodes
+* openai message a model, model required empty param not detected by the backend setup requests building

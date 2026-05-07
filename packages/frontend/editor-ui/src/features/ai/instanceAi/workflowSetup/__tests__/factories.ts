@@ -1,5 +1,6 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
+import { buildSectionId } from '../workflowSetup.helpers';
 
 export function makeSetupRequest(
 	overrides: Omit<Partial<InstanceAiWorkflowSetupNode>, 'node'> & {
@@ -27,13 +28,12 @@ export function makeSetupRequest(
 		},
 	};
 }
-
-export function makeWorkflowSetupCard(
-	overrides: Omit<Partial<WorkflowSetupCard>, 'node'> & {
-		node?: Partial<WorkflowSetupCard['node']>;
+export function makeWorkflowSetupSection(
+	overrides: Omit<Partial<WorkflowSetupSection>, 'node'> & {
+		node?: Partial<WorkflowSetupSection['node']>;
 	} = {},
-): WorkflowSetupCard {
-	const node: WorkflowSetupCard['node'] = {
+): WorkflowSetupSection {
+	const node: WorkflowSetupSection['node'] = {
 		id: 'http-request',
 		name: 'HTTP Request',
 		type: 'n8n-nodes-base.httpRequest',
@@ -44,17 +44,21 @@ export function makeWorkflowSetupCard(
 
 	const credentialType = 'credentialType' in overrides ? overrides.credentialType : 'httpBasicAuth';
 	const targetNodeName = overrides.targetNodeName ?? overrides.node?.name ?? node.name;
+	const finalNode = {
+		...node,
+		name: targetNodeName,
+		...overrides.node,
+	};
 
 	return {
-		id: overrides.id ?? `${targetNodeName}:${credentialType ?? 'parameters'}`,
+		id: overrides.id ?? buildSectionId(targetNodeName, credentialType),
 		...(credentialType ? { credentialType } : {}),
 		targetNodeName,
-		node: {
-			...node,
-			name: targetNodeName,
-			...overrides.node,
-		},
+		node: finalNode,
 		currentCredentialId: overrides.currentCredentialId ?? null,
 		parameterNames: overrides.parameterNames ?? [],
+		credentialTargetNodes: overrides.credentialTargetNodes ?? [
+			{ id: finalNode.id, name: finalNode.name, type: finalNode.type },
+		],
 	};
 }

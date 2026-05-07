@@ -13,39 +13,47 @@ import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import type { INodeUi } from '@/Interface';
 import { useInstanceAiStore } from '../../instanceAi.store';
-import type { TerminalState, WorkflowSetupCard } from '../workflowSetup.types';
+import type {
+	TerminalState,
+	WorkflowSetupSection,
+	WorkflowSetupStep,
+} from '../workflowSetup.types';
+import { getStepSections } from '../workflowSetup.helpers';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 import { useWorkflowSetupApply } from './useWorkflowSetupApply';
 import { useWorkflowSetupBootstrap } from './useWorkflowSetupBootstrap';
-import { useWorkflowSetupCards } from './useWorkflowSetupCards';
-import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
-
-type SelectionsMap = Record<string, Record<string, string>>;
+import { useWorkflowSetupSections } from './useWorkflowSetupSections';
+import { useWorkflowSetupSteps } from './useWorkflowSetupSteps';
+import { useWorkflowSetupInputs, type CredentialSelectionsMap } from './useWorkflowSetupInputs';
 
 export interface WorkflowSetupContext {
-	cards: ComputedRef<WorkflowSetupCard[]>;
+	sections: ComputedRef<WorkflowSetupSection[]>;
+	steps: ComputedRef<WorkflowSetupStep[]>;
 	currentStepIndex: Ref<number>;
-	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
-	hasOtherUnhandledCards: ComputedRef<boolean>;
+	activeStep: ComputedRef<WorkflowSetupStep | undefined>;
+	hasOtherUnhandledSteps: ComputedRef<boolean>;
 	canAdvanceToNextIncomplete: ComputedRef<boolean>;
-	selections: Ref<SelectionsMap>;
+	credentialSelections: Ref<CredentialSelectionsMap>;
 	terminalState: Ref<TerminalState | null>;
 	isReady: Ref<boolean>;
 	projectId: ComputedRef<string | undefined>;
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	isActionPending: Ref<boolean>;
-	setSelection: (nodeName: string, credType: string, credId: string | null) => void;
-	setParameterValue: (card: WorkflowSetupCard, parameterName: string, value: unknown) => void;
-	getDisplayNode: (card: WorkflowSetupCard) => INodeUi;
-	isCardComplete: (card: WorkflowSetupCard) => boolean;
-	isCredentialTestFailed: (card: WorkflowSetupCard) => boolean;
-	isCardSkipped: (card: WorkflowSetupCard) => boolean;
+	setCredential: (section: WorkflowSetupSection, credId: string | null) => void;
+	setParameterValue: (section: WorkflowSetupSection, parameterName: string, value: unknown) => void;
+	getDisplayNode: (section: WorkflowSetupSection) => INodeUi;
+	isSectionComplete: (section: WorkflowSetupSection) => boolean;
+	isCredentialTestFailed: (section: WorkflowSetupSection) => boolean;
+	isSectionSkipped: (section: WorkflowSetupSection) => boolean;
+	isStepComplete: (step: WorkflowSetupStep) => boolean;
+	isStepSkipped: (step: WorkflowSetupStep) => boolean;
+	isStepHandled: (step: WorkflowSetupStep) => boolean;
 	goToStep: (index: number) => void;
 	goToNext: () => void;
 	goToPrev: () => void;
 	goToNextIncomplete: () => void;
 	apply: () => Promise<void>;
-	skipCurrentCard: () => Promise<void>;
+	skipCurrentStep: () => Promise<void>;
 }
 
 const WorkflowSetupContextKey: InjectionKey<WorkflowSetupContext> = Symbol('WorkflowSetupContext');
@@ -71,7 +79,8 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		}),
 	);
 
-	const { cards } = useWorkflowSetupCards(opts.setupRequests);
+	const { sections } = useWorkflowSetupSections(opts.setupRequests);
+	const { steps } = useWorkflowSetupSteps({ sections, setupRequests: opts.setupRequests });
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
 	const applyMachine = useWorkflowSetupApply({
 		requestId: opts.requestId,
@@ -79,21 +88,21 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	});
 
 	const currentStepIndex = ref(0);
-	const activeCard = computed(() => cards.value[currentStepIndex.value]);
+	const activeStep = computed(() => steps.value[currentStepIndex.value]);
 
-	const inputsState = useWorkflowSetupInputs({ cards, activeCard });
+	const inputsState = useWorkflowSetupInputs({ sections });
 
 	const projectId = computed(() => opts.projectId.value);
 	const credentialFlow = computed(() => opts.credentialFlow.value);
 
 	function goToStep(index: number) {
-		if (index >= 0 && index < cards.value.length) {
+		if (index >= 0 && index < steps.value.length) {
 			currentStepIndex.value = index;
 		}
 	}
 
 	function goToNext() {
-		if (currentStepIndex.value < cards.value.length - 1) {
+		if (currentStepIndex.value < steps.value.length - 1) {
 			currentStepIndex.value++;
 		}
 	}
@@ -106,16 +115,16 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	const actions = useWorkflowSetupActions({
 		requestId: opts.requestId,
-		cards,
-		activeCard,
+		sections,
+		steps,
+		activeStep,
 		currentStepIndex,
 		goToStep,
-		selections: {
-			selections: inputsState.selections,
-			skippedCardIds: inputsState.skippedCardIds,
-			isCardComplete: inputsState.isCardComplete,
-			isCardSkipped: inputsState.isCardSkipped,
-			markCardSkipped: inputsState.markCardSkipped,
+		inputs: {
+			credentialSelections: inputsState.credentialSelections,
+			isSectionComplete: inputsState.isSectionComplete,
+			isSectionSkipped: inputsState.isSectionSkipped,
+			markSectionSkipped: inputsState.markSectionSkipped,
 			buildCompletedSetupPayload: inputsState.buildCompletedSetupPayload,
 		},
 		applyMachine: {
@@ -125,9 +134,21 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		store,
 	});
 
-	// Clamp currentStepIndex when the card list shrinks beneath it.
+	function isStepComplete(step: WorkflowSetupStep): boolean {
+		const stepSections = getStepSections(step);
+		if (stepSections.length === 0) return false;
+		return stepSections.every(inputsState.isSectionComplete);
+	}
+
+	function isStepSkipped(step: WorkflowSetupStep): boolean {
+		const stepSections = getStepSections(step);
+		if (stepSections.length === 0) return false;
+		return stepSections.every(inputsState.isSectionSkipped);
+	}
+
+	// Clamp currentStepIndex when the step list shrinks beneath it.
 	watch(
-		() => cards.value.length,
+		() => steps.value.length,
 		(len) => {
 			if (currentStepIndex.value >= len) {
 				currentStepIndex.value = Math.max(0, len - 1);
@@ -140,29 +161,33 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	});
 
 	const context: WorkflowSetupContext = {
-		cards,
+		sections,
+		steps,
 		currentStepIndex,
-		activeCard,
-		hasOtherUnhandledCards: actions.hasOtherUnhandledCards,
+		activeStep,
+		hasOtherUnhandledSteps: actions.hasOtherUnhandledSteps,
 		canAdvanceToNextIncomplete: actions.canAdvanceToNextIncomplete,
-		selections: inputsState.selections,
+		credentialSelections: inputsState.credentialSelections,
 		terminalState: applyMachine.terminalState,
 		isReady: bootstrap.isReady,
 		projectId,
 		credentialFlow,
 		isActionPending: actions.isActionPending,
-		setSelection: inputsState.setSelection,
+		setCredential: inputsState.setCredential,
 		setParameterValue: inputsState.setParameterValue,
 		getDisplayNode: inputsState.getDisplayNode,
-		isCardComplete: inputsState.isCardComplete,
+		isSectionComplete: inputsState.isSectionComplete,
 		isCredentialTestFailed: inputsState.isCredentialTestFailed,
-		isCardSkipped: inputsState.isCardSkipped,
+		isSectionSkipped: inputsState.isSectionSkipped,
+		isStepComplete,
+		isStepSkipped,
+		isStepHandled: actions.isStepHandled,
 		goToStep,
 		goToNext,
 		goToPrev,
 		goToNextIncomplete: actions.goToNextIncomplete,
 		apply: actions.apply,
-		skipCurrentCard: actions.skipCurrentCard,
+		skipCurrentStep: actions.skipCurrentStep,
 	};
 
 	provide(WorkflowSetupContextKey, context);
