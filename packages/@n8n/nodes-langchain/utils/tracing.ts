@@ -119,15 +119,17 @@ export function getTracingConfig(
 
 	let callbacks: Callbacks | undefined = parentRunManager;
 
-	if (langsmithConfig?.apiKey) {
+	const apiKey = langsmithConfig?.apiKey || process.env.LANGSMITH_API_KEY;
+	if (apiKey) {
+		const project = langsmithConfig?.project || process.env.LANGSMITH_PROJECT;
 		const client = new Client({
-			apiKey: langsmithConfig.apiKey,
+			apiKey,
 			apiUrl: process.env.LANGCHAIN_ENDPOINT || undefined,
 		});
 
 		const tracer = new LangChainTracer({
 			client,
-			projectName: langsmithConfig.project ?? 'default',
+			projectName: project,
 		});
 
 		callbacks = parentRunManager ? [parentRunManager, tracer] : [tracer];
