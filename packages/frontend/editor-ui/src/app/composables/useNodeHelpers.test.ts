@@ -19,7 +19,7 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowState, useWorkflowState } from './useWorkflowState';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -28,22 +28,25 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => ({
+			name: '',
+			settings: {},
+			pinData: {},
 			usedCredentials: mockDocumentStoreUsedCredentials,
+			allNodes: [],
+			workflowTriggerNodes: [],
+			getNodeByName: vi.fn(),
+			setNodeIssue: vi.fn(),
+			updateNodeProperties: vi.fn(),
+			getExpressionHandler: vi.fn(() => ({})),
+			getPinDataSnapshot: vi.fn().mockReturnValue({}),
 		})),
-	};
-});
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
 	};
 });
 
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
+		mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
 	});
 
 	afterEach(() => {
@@ -52,23 +55,6 @@ describe('useNodeHelpers()', () => {
 		for (const key of Object.keys(mockDocumentStoreUsedCredentials)) {
 			delete mockDocumentStoreUsedCredentials[key];
 		}
-	});
-
-	describe('initialization', () => {
-		it('should use provided workflowState and not inject', () => {
-			const workflowState = useWorkflowState();
-			vi.clearAllMocks();
-
-			useNodeHelpers({ workflowState });
-
-			expect(injectWorkflowState).not.toBeCalled();
-		});
-
-		it('should create workflowState if not provided', () => {
-			useNodeHelpers();
-
-			expect(injectWorkflowState).toBeCalled();
-		});
 	});
 
 	describe('isNodeExecutable()', () => {
@@ -91,12 +77,18 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				id: 'workflow-id',
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
+			vi.mocked(useWorkflowDocumentStore).mockReturnValueOnce({
+				name: '',
+				settings: {},
+				usedCredentials: mockDocumentStoreUsedCredentials,
+				allNodes: [],
+				workflowTriggerNodes: [],
+				getNodeByName: vi.fn().mockReturnValue(node),
+				setNodeIssue: vi.fn(),
+				updateNodeProperties: vi.fn(),
+				getExpressionHandler: vi.fn(() => ({})),
+				getPinDataSnapshot: vi.fn().mockReturnValue({}),
+			} as unknown as ReturnType<typeof useWorkflowDocumentStore>);
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -119,11 +111,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -146,11 +133,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -173,11 +155,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => triggerNode,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(true);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -200,11 +177,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => toolNode,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(true);
@@ -227,11 +199,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -257,7 +224,6 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: false,
 			});
-			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
 			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
 			});
@@ -302,7 +268,6 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
 			});
-			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
 			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithAccess1.id]: credentialWithAccess1,
 				[credentialWithAccess2.id]: credentialWithAccess2,
@@ -341,7 +306,6 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
 			});
-			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
 			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithAccess.id]: credentialWithAccess,
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
@@ -719,6 +683,53 @@ describe('useNodeHelpers()', () => {
 		});
 	});
 
+	describe('credential issues with AI Gateway', () => {
+		const nodeTypeWithCreds: INodeTypeDescription = {
+			displayName: 'Google AI',
+			name: 'googleAi',
+			group: ['transform'],
+			version: 1,
+			description: 'Google AI node',
+			defaults: { name: 'Google AI' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [{ name: 'googlePalmApi', required: true }],
+			properties: [],
+		};
+
+		it('should return null (no credential issues) when credential is AI Gateway-managed', () => {
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithCreds);
+
+			const node: INodeUi = createTestNode({
+				type: 'googleAi',
+				credentials: {
+					googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+				},
+			});
+
+			const mockWorkflow = mock<Workflow>();
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithCreds, node, mockWorkflow, ['parameters']);
+
+			expect(result?.credentials).toBeUndefined();
+		});
+
+		it('should report credential issue when required credential is not set', () => {
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithCreds);
+
+			const node: INodeUi = createTestNode({
+				type: 'googleAi',
+				credentials: {},
+			});
+
+			const mockWorkflow = mock<Workflow>();
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithCreds, node, mockWorkflow, ['parameters']);
+
+			expect(result?.credentials?.googlePalmApi).toBeDefined();
+		});
+	});
+
 	describe('updateNodeParameterIssues()', () => {
 		it('should pass nodeTypeDescription to validation and respect @feature conditions', () => {
 			const nodeTypeWithFeatures: INodeTypeDescription = {
@@ -763,8 +774,7 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithFeatures);
 			const getNodeParametersIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
-			const workflowState = useWorkflowState();
-			const { updateNodeParameterIssues } = useNodeHelpers({ workflowState });
+			const { updateNodeParameterIssues } = useNodeHelpers();
 
 			updateNodeParameterIssues(node);
 

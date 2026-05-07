@@ -1,10 +1,10 @@
 import type { IHookFunctions } from 'n8n-workflow';
 
-import { pipedriveApiRequest } from '../GenericFunctions';
+import { pipedriveApiRequest } from '../v1/GenericFunctions';
 import { PipedriveTrigger } from '../PipedriveTrigger.node';
 
 jest.mock('basic-auth');
-jest.mock('../GenericFunctions');
+jest.mock('../v1/GenericFunctions');
 
 describe('PipedriveTrigger', () => {
 	let pipedriveTrigger: PipedriveTrigger;

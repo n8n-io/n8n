@@ -1,31 +1,40 @@
 #!/usr/bin/env node
 /**
- * Sends Docker build stats to a webhook for BigQuery ingestion.
+ * Sends Docker build stats to the unified QA metrics webhook.
  *
- * Reads manifests produced by build-n8n.mjs and dockerize-n8n.mjs,
- * enriches with git/CI/runner context, and POSTs to a webhook.
+ * Reads manifests produced by build-n8n.mjs and dockerize-n8n.mjs and emits
+ * per-image docker-image-size metrics and build duration metrics with
+ * {image, platform} dimensions.
  *
  * Usage: node send-docker-stats.mjs
  *
  * Environment variables:
- *   DOCKER_STATS_WEBHOOK_URL - Webhook URL (required to send)
+ *   QA_METRICS_WEBHOOK_URL      - Webhook URL (required to send)
+ *   QA_METRICS_WEBHOOK_USER     - Basic auth username
+ *   QA_METRICS_WEBHOOK_PASSWORD - Basic auth password
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import * as os from 'node:os';
+
+import { sendMetrics, metric } from './send-metrics.mjs';
+
+/** Parse human-readable sizes (e.g. "1.5G", "500M", "12K") to MB. */
+function parseSizeToMB(val) {
+	if (typeof val === 'number') return val / (1024 * 1024);
+	if (typeof val !== 'string') return null;
+	const match = val.match(/^([\d.]+)\s*([KMGT]?)i?B?$/i);
+	if (!match) return null;
+	const num = parseFloat(match[1]);
+	const suffix = match[2].toUpperCase();
+	const toMB = { '': 1 / (1024 * 1024), 'K': 1 / 1024, 'M': 1, 'G': 1024, 'T': 1024 * 1024 };
+	return Math.round(num * (toMB[suffix] ?? 1) * 100) / 100;
+}
 
 const buildManifestPath = 'compiled/build-manifest.json';
 const dockerManifestPath = 'docker-build-manifest.json';
 
 if (!existsSync(buildManifestPath) && !existsSync(dockerManifestPath)) {
 	console.log('No build or docker manifests found, skipping.');
-	process.exit(0);
-}
-
-const webhookUrl = process.env.DOCKER_STATS_WEBHOOK_URL;
-
-if (!webhookUrl) {
-	console.log('DOCKER_STATS_WEBHOOK_URL not set, skipping.');
 	process.exit(0);
 }
 
@@ -37,68 +46,43 @@ const dockerManifest = existsSync(dockerManifestPath)
 	? JSON.parse(readFileSync(dockerManifestPath, 'utf-8'))
 	: null;
 
-// Extract PR number from GITHUB_REF (refs/pull/123/merge)
-const ref = process.env.GITHUB_REF ?? '';
-const prMatch = ref.match(/refs\/pull\/(\d+)/);
+const metrics = [];
 
-// Detect runner provider (matches packages/testing/containers/telemetry.ts)
-function getRunnerProvider() {
-	if (!process.env.CI) return 'local';
-	if (process.env.RUNNER_ENVIRONMENT === 'github-hosted') return 'github';
-	return 'blacksmith';
+if (buildManifest) {
+	const sizeMB = parseSizeToMB(buildManifest.artifactSize);
+	if (sizeMB != null) {
+		metrics.push(metric('artifact-size', sizeMB, 'MB', { artifact: 'compiled' }));
+	}
+	const duration = buildManifest.buildDuration;
+	if (duration?.total != null) {
+		metrics.push(metric('build-duration', duration.total / 1000, 's', { artifact: 'compiled' }));
+	}
 }
 
-const payload = {
-	build: buildManifest
-		? {
-				artifactSize: buildManifest.artifactSize,
-				buildDuration: buildManifest.buildDuration,
-			}
-		: null,
+if (dockerManifest) {
+	const platform = dockerManifest.platform ?? 'unknown';
 
-	docker: dockerManifest
-		? {
-				platform: dockerManifest.platform,
-				images: dockerManifest.images,
-			}
-		: null,
+	for (const image of dockerManifest.images ?? []) {
+		const imageSizeMB = parseSizeToMB(image.size ?? image.sizeBytes);
+		const imageName = image.imageName ?? image.name ?? 'unknown';
+		const shortName = imageName.replace(/^n8nio\//, '').replace(/:.*$/, '');
+		if (imageSizeMB != null) {
+			metrics.push(
+				metric(`docker-image-size-${shortName}`, imageSizeMB, 'MB', { platform }),
+			);
+		}
+	}
 
-	git: {
-		sha: process.env.GITHUB_SHA?.slice(0, 8) || null,
-		branch: process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? null,
-		pr: prMatch ? parseInt(prMatch[1], 10) : null,
-	},
-
-	ci: {
-		runId: process.env.GITHUB_RUN_ID || null,
-		runUrl: process.env.GITHUB_RUN_ID
-			? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
-			: null,
-		job: process.env.GITHUB_JOB || null,
-		workflow: process.env.GITHUB_WORKFLOW || null,
-		attempt: process.env.GITHUB_RUN_ATTEMPT ? parseInt(process.env.GITHUB_RUN_ATTEMPT, 10) : null,
-	},
-
-	runner: {
-		provider: getRunnerProvider(),
-		cpuCores: os.cpus().length,
-		memoryGb: Math.round((os.totalmem() / (1024 * 1024 * 1024)) * 10) / 10,
-	},
-};
-
-const response = await fetch(webhookUrl, {
-	method: 'POST',
-	headers: {
-		'Content-Type': 'application/json',
-	},
-	body: JSON.stringify(payload),
-});
-
-if (!response.ok) {
-	console.error(`Webhook failed: ${response.status} ${response.statusText}`);
-	const body = await response.text();
-	if (body) console.error(`Response: ${body}`);
-	process.exit(1);
+	if (dockerManifest.buildDurationMs != null) {
+		metrics.push(
+			metric('docker-build-duration', dockerManifest.buildDurationMs / 1000, 's', { platform }),
+		);
+	}
 }
 
-console.log(`Docker build stats sent: ${response.status}`);
+if (metrics.length === 0) {
+	console.log('No metrics to send.');
+	process.exit(0);
+}
+
+await sendMetrics(metrics, 'docker-stats');

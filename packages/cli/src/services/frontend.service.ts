@@ -1,7 +1,7 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -24,7 +24,7 @@ import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -59,6 +59,9 @@ export type PublicFrontendSettings = {
 
 		/** Determines forgot password page UX */
 		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+
+		/** Configurable minimum password length for password requirement display */
+		passwordMinLength: FrontendSettings['userManagement']['passwordMinLength'];
 	};
 
 	enterprise: {
@@ -195,7 +198,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			endpointHealth: resolveHealthEndpointPath(this.globalConfig),
+			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -211,6 +214,7 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			evaluationConcurrencyLimit: this.globalConfig.executions.concurrency.evaluationLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -219,6 +223,7 @@ export class FrontendService {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
+			jwksUri: `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`,
 			versionNotifications: {
 				enabled: this.globalConfig.versionNotifications.enabled,
 				endpoint: this.globalConfig.versionNotifications.endpoint,
@@ -228,7 +233,7 @@ export class FrontendService {
 			},
 			dynamicBanners: {
 				endpoint: this.globalConfig.dynamicBanners.endpoint,
-				enabled: this.globalConfig.dynamicBanners.enabled,
+				enabled: this.globalConfig.dynamicBanners.enabled && this.globalConfig.diagnostics.enabled,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -249,8 +254,10 @@ export class FrontendService {
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
+				passwordMinLength: this.globalConfig.userManagement.password.minLength,
 			},
 			sso: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
 				saml: {
 					loginEnabled: false,
 					loginLabel: '',
@@ -265,6 +272,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			logStreaming: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.logStreamingManagedByEnv,
+			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
@@ -277,6 +287,7 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
+			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -319,7 +330,7 @@ export class FrontendService {
 				binaryDataS3: false,
 				workerView: false,
 				advancedPermissions: false,
-				apiKeyScopes: false,
+
 				workflowDiffs: false,
 				namedVersions: false,
 				provisioning: false,
@@ -330,6 +341,7 @@ export class FrontendService {
 				},
 				customRoles: false,
 				personalSpacePolicy: false,
+				dataRedaction: false,
 			},
 			mfa: {
 				enabled: false,
@@ -373,6 +385,9 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			chatTrigger: {
+				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
+			},
 			easyAIWorkflowOnboarded: false,
 			folders: {
 				enabled: false,
@@ -381,6 +396,7 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			canvasOnly: this.globalConfig.canvasOnly,
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}
@@ -412,6 +428,7 @@ export class FrontendService {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 		};
+		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
@@ -469,11 +486,12 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
-			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
+			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -520,6 +538,15 @@ export class FrontendService {
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
+		const isAiGatewayEnabled =
+			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+		if (isAiGatewayEnabled) {
+			this.settings.aiGateway = {
+				enabled: true,
+				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+			};
+		}
+
 		if (isAiBuilderEnabled) {
 			this.settings.aiBuilder.enabled = isAiBuilderEnabled;
 			this.settings.aiBuilder.setup =
@@ -556,7 +583,7 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
@@ -571,6 +598,7 @@ export class FrontendService {
 				authenticationMethod,
 				showSetupOnFirstLoad,
 				smtpSetup,
+				passwordMinLength,
 			},
 			sso: {
 				saml: {
@@ -666,6 +694,28 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			// JWE fields on `oAuth2Api` are baked into nodes-base's pre-rendered
+			// credentials.json by lazy loading, so feature gating and the
+			// instance-specific JWKS URI have to be applied here at runtime.
+			if (credential.name === 'oAuth2Api' && credential.properties) {
+				const isOAuth2JweEnabled = process.env.N8N_ENV_FEAT_OAUTH2_JWE === 'true';
+				if (!isOAuth2JweEnabled) {
+					credential.properties = credential.properties.filter(
+						(property) => property.name !== 'jweEnabled' && property.name !== 'jwksUriNotice',
+					);
+				} else {
+					const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+					credential.properties = credential.properties.map((property) =>
+						property.name === 'jwksUriNotice'
+							? {
+									...property,
+									displayName: `Provide this JWKS URI to your IdP so it can encrypt tokens to this instance's public key: \`${jwksUri}\``,
+								}
+							: property,
+					);
+				}
 			}
 		}
 	}

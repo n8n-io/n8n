@@ -41,6 +41,7 @@ const DEFAULT_IMAGES = {
 	kafka: 'confluentinc/cp-kafka:8.0.3',
 	mysql: 'mysql:9.6.0',
 	localstack: 'localstack/localstack:4.13.1',
+	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -117,4 +118,5 @@ export const TEST_CONTAINER_IMAGES = {
 	mysql: getImage('mysql'),
 	ngrok: getImage('ngrok'),
 	localstack: getImage('localstack'),
+	postgresExporter: getImage('postgresExporter'),
 } as const;

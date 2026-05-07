@@ -6,6 +6,12 @@ import UserStack from './UserStack.vue';
 export default {
 	title: 'Core/UserStack',
 	component: UserStack,
+
+	parameters: {
+		docs: {
+			description: { component: 'An overlapping avatar stack for displaying multiple users.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({

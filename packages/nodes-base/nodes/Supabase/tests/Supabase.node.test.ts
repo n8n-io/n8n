@@ -1,6 +1,7 @@
-import { mock } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
 import get from 'lodash/get';
 import {
+	type ILoadOptionsFunctions,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
@@ -16,6 +17,10 @@ describe('Test Supabase Node', () => {
 	const node = new Supabase();
 	const input = [{ json: {} }];
 	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
+	const mockGetCredentials = jest.fn().mockResolvedValue({
+		host: 'https://api.supabase.io',
+		serviceRole: 'service_role',
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -26,10 +31,7 @@ describe('Test Supabase Node', () => {
 		continueOnFail: boolean = false,
 	) => {
 		const fakeExecuteFunction = {
-			getCredentials: jest.fn().mockResolvedValue({
-				host: 'https://api.supabase.io',
-				serviceRole: 'service_role',
-			}),
+			getCredentials: mockGetCredentials,
 			getNodeParameter(
 				parameterName: string,
 				itemIndex: number,
@@ -330,6 +332,92 @@ describe('Test Supabase Node', () => {
 
 			expect(result).toEqual({ 'Accept-Profile': 'public' });
 			expect(mockExecuteContext.getNodeParameter).toHaveBeenCalledWith('schema', 0, 'public');
+		});
+	});
+
+	describe('loadOptions', () => {
+		describe('getTables', () => {
+			it('should return the tables and skip RPCs', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockRequestWithAuthentication.mockResolvedValue({
+					paths: {
+						'/': {
+							get: {},
+						},
+						'/table': {
+							get: {},
+						},
+						'/rpc/some': {
+							get: {},
+						},
+					},
+				});
+
+				const tables = await node.methods.loadOptions.getTables.call(mockLoadOptionsFunctions);
+
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				expect(tables).toEqual([{ name: 'table', value: 'table' }]);
+			});
+		});
+
+		describe('getTableColumns', () => {
+			it('should return table columns with their types', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {
+							properties: {
+								id: { type: 'integer' },
+								email: { type: 'string' },
+							},
+						},
+					},
+				});
+
+				const columns =
+					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
+
+				expect(columns).toEqual([
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-miscased-id
+					{ name: 'id - (integer)', value: 'id' },
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					{ name: 'email - (string)', value: 'email' },
+				]);
+			});
+
+			it('should return empty array when table definition has no properties', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {},
+					},
+				});
+
+				const columns =
+					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
+
+				expect(columns).toEqual([]);
+			});
 		});
 	});
 });

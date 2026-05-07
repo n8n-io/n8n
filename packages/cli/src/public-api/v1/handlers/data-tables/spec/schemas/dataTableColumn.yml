@@ -1,0 +1,24 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Column ID
+  name:
+    type: string
+    description: Column name
+  dataTableId:
+    type: string
+    description: ID of the data table this column belongs to
+  type:
+    type: string
+    enum: [string, number, boolean, date]
+    description: Column data type
+  index:
+    type: integer
+    description: Column position
+required:
+  - id
+  - name
+  - dataTableId
+  - type
+  - index

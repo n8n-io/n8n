@@ -12,6 +12,7 @@ const meta = {
 	component: Tooltip,
 	parameters: {
 		docs: {
+			description: { component: 'A small contextual overlay shown on hover or focus.' },
 			source: { type: 'dynamic' },
 		},
 	},

@@ -10,10 +10,27 @@ export function useClipboard({
 	onPaste?: ClipboardEventFn;
 } = {}) {
 	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
-	const { copy, copied, isSupported, text } = useClipboardCore({
-		navigator: popOutWindow?.value?.navigator ?? window.navigator,
+	const {
+		copy: coreCopy,
+		copied,
+		isSupported,
+		text,
+	} = useClipboardCore({
 		legacy: true,
 	});
+
+	// Find the correct navigator at copy-time so it works even when the
+	// pop-out window opens after the composable was created.
+	async function copy(value: string) {
+		const nav = popOutWindow?.value?.navigator;
+		if (nav?.clipboard) {
+			try {
+				await nav.clipboard.writeText(value);
+				return;
+			} catch {}
+		}
+		await coreCopy(value);
+	}
 
 	const ignoreClasses = ['el-messsage-box', 'ignore-key-press-canvas'];
 	const initialized = ref(false);

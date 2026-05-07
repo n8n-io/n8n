@@ -328,7 +328,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithCredHelp(credType);
 
-			expect(assistantStore.initCredHelp).toHaveBeenCalledWith(credType);
+			expect(assistantStore.initCredHelp).toHaveBeenCalledWith('', credType);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});
@@ -354,7 +354,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithErrorHelper(errorContext);
 
-			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith(errorContext);
+			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith('', errorContext);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});

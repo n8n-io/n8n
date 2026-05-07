@@ -4,15 +4,17 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { NodeConnectionTypes, WEBHOOK_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -74,6 +76,32 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 	},
 });
 
+const WEBHOOK_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
+	displayName: 'Webhook',
+	name: WEBHOOK_NODE_TYPE,
+	group: ['trigger'],
+	version: 1,
+	description: 'Starts the workflow when a webhook is called',
+	defaults: { name: 'Webhook' },
+	inputs: [],
+	outputs: [NodeConnectionTypes.Main],
+	properties: [],
+	webhooks: [{ name: 'default', httpMethod: 'GET', path: '' }],
+};
+
+const AI_GATEWAY_NODE = {
+	id: 'ai-node-1',
+	name: 'Message a model',
+	type: '@n8n/n8n-nodes-langchain.lmOpenAi',
+	typeVersion: 1,
+	position: [100, 100] as [number, number],
+	parameters: {},
+	disabled: false,
+	credentials: {
+		openAiApi: { id: null, name: '', __aiGatewayManaged: true },
+	},
+};
+
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
@@ -81,6 +109,10 @@ describe('WorkflowPublishModal', () => {
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		// Register the webhook node type so workflowTriggerNodes computed recognises triggers
+		const nodeTypesStore = useNodeTypesStore();
+		nodeTypesStore.setNodeTypes([WEBHOOK_NODE_TYPE_DESCRIPTION]);
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
 		workflowDocumentStore.setActiveState({
@@ -114,24 +146,19 @@ describe('WorkflowPublishModal', () => {
 			isArchived: false,
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
-			nodes: [],
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Webhook Trigger',
+					type: WEBHOOK_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					disabled: false,
+				},
+			],
 			connections: {},
 		};
-
-		workflowsStore.workflowTriggerNodes = [
-			{
-				id: 'trigger-1',
-				name: 'Webhook Trigger',
-				type: WEBHOOK_NODE_TYPE,
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-				disabled: false,
-			},
-		];
-
-		workflowsStore.nodesIssuesExist = false;
-		workflowsStore.nodesWithIssues = [];
 
 		mockPublishWorkflow.mockReset().mockResolvedValue({
 			success: true,
@@ -176,22 +203,10 @@ describe('WorkflowPublishModal', () => {
 			});
 		});
 
-		it('should show warning when publish fails with unhandled error', async () => {
+		it('should not show duplicate warning when publish fails with handled error', async () => {
 			mockPublishWorkflow.mockReset().mockResolvedValue({
 				success: false,
-				errorHandled: false,
-			});
-			workflowsListStore.fetchWorkflow.mockResolvedValue({
-				id: 'conflicting-workflow-123',
-				name: 'Conflicting Workflow Name',
-				active: true,
-				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				nodes: [],
-				connections: {},
-				versionId: 'version-123',
-				activeVersionId: 'version-123',
+				errorHandled: true,
 			});
 
 			const { getByTestId } = renderComponent();
@@ -203,14 +218,118 @@ describe('WorkflowPublishModal', () => {
 
 			await waitFor(() => {
 				expect(mockPublishWorkflow).toHaveBeenCalled();
-				expect(mockShowMessage).toHaveBeenCalledWith({
-					message: 'Sorry there was a problem requesting the error',
-					title: 'Problem activating workflow',
-					type: 'warning',
-					duration: 0,
-				});
+				expect(mockShowMessage).not.toHaveBeenCalled();
 				expect(mockTelemetryTrack).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('AI gateway warning', () => {
+		let settingsStore: MockedStore<typeof useSettingsStore>;
+
+		beforeEach(() => {
+			settingsStore = mockedStore(useSettingsStore);
+			Object.assign(settingsStore.settings, { aiGateway: { enabled: true } });
+		});
+
+		afterEach(() => {
+			Object.assign(settingsStore.settings, { aiGateway: { enabled: false } });
+		});
+
+		it('should not show warning when AI gateway is disabled', () => {
+			Object.assign(settingsStore.settings, { aiGateway: { enabled: false } });
+			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-ai-gateway-warning')).not.toBeInTheDocument();
+		});
+
+		it('should not show warning when no nodes have AI gateway credentials', () => {
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				nodes: [
+					{
+						id: 'regular-node',
+						name: 'Regular Node',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 100],
+						parameters: {},
+						disabled: false,
+					},
+				],
+			};
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-ai-gateway-warning')).not.toBeInTheDocument();
+		});
+
+		it('should not show warning when the only AI gateway node is disabled', () => {
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				nodes: [{ ...AI_GATEWAY_NODE, disabled: true }],
+			};
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-ai-gateway-warning')).not.toBeInTheDocument();
+		});
+
+		it('should show warning with node name for a single active AI gateway node', () => {
+			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+
+			const { getByTestId } = renderComponent();
+
+			const warning = getByTestId('workflow-publish-ai-gateway-warning');
+			expect(warning).toBeInTheDocument();
+			expect(warning).toHaveTextContent('Message a model');
+		});
+
+		it('should show singular copy for a single active AI gateway node', () => {
+			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+
+			const { getByTestId } = renderComponent();
+
+			const warning = getByTestId('workflow-publish-ai-gateway-warning');
+			expect(warning).toHaveTextContent('The node');
+			expect(warning).toHaveTextContent('uses an n8n Connect credential');
+			expect(warning).toHaveTextContent(
+				'Once your n8n Connect balance is depleted, this workflow will stop working.',
+			);
+			expect(warning).not.toHaveTextContent('Top-up');
+		});
+
+		it('should show warning with all node names for multiple active AI gateway nodes', () => {
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				nodes: [AI_GATEWAY_NODE, { ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' }],
+			};
+
+			const { getByTestId } = renderComponent();
+
+			const warning = getByTestId('workflow-publish-ai-gateway-warning');
+			expect(warning).toBeInTheDocument();
+			expect(warning).toHaveTextContent('Message a model');
+			expect(warning).toHaveTextContent('Generate Image');
+		});
+
+		it('should show plural copy for multiple active AI gateway nodes', () => {
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				nodes: [AI_GATEWAY_NODE, { ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' }],
+			};
+
+			const { getByTestId } = renderComponent();
+
+			const warning = getByTestId('workflow-publish-ai-gateway-warning');
+			expect(warning).toHaveTextContent('The nodes');
+			expect(warning).toHaveTextContent('use n8n Connect credentials');
+			expect(warning).toHaveTextContent(
+				'Once your n8n Connect balance is depleted, this workflow will stop working.',
+			);
+			expect(warning).not.toHaveTextContent('Top-up');
 		});
 	});
 

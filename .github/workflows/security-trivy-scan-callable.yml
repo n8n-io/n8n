@@ -40,7 +40,9 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Pull Docker image with retry
-        run: node .github/scripts/retry.mjs --attempts 4 --delay 15 'docker pull "${{ inputs.image_ref }}"'
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
+        run: node .github/scripts/retry.mjs --attempts 4 --delay 15 -- docker pull "$IMAGE_REF"
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
@@ -90,11 +92,13 @@ jobs:
 
       - name: Generate GitHub Job Summary
         if: always()
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
         run: |
           {
             echo "# 🛡️ Trivy Security Scan Results"
             echo ""
-            echo "**Image:** \`${{ inputs.image_ref }}\`"
+            echo "**Image:** \`$IMAGE_REF\`"
             echo "**Scan Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
@@ -125,7 +129,7 @@ jobs:
 
             {
               # Generate detailed vulnerability table
-              jq -r --arg image_ref "${{ inputs.image_ref }}" '
+              jq -r --arg image_ref "$IMAGE_REF" '
                 # Collect all vulnerabilities
                 [.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] |
                 # Group by CVE ID to avoid duplicates
@@ -165,8 +169,10 @@ jobs:
       - name: Generate Slack Blocks JSON
         if: steps.process_results.outputs.vulnerabilities_found == 'true'
         id: generate_blocks
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
         run: |
-          BLOCKS_JSON=$(jq -c --arg image_ref "${{ inputs.image_ref }}" \
+          BLOCKS_JSON=$(jq -c --arg image_ref "$IMAGE_REF" \
           --arg repo_url "${{ github.server_url }}/${{ github.repository }}" \
           --arg repo_name "${{ github.repository }}" \
           --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \

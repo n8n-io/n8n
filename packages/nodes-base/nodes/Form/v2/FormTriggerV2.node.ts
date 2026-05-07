@@ -36,7 +36,8 @@ const useWorkflowTimezone: INodeProperties = {
 const descriptionV2: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
-	icon: 'file:form.svg',
+	icon: 'node:form-trigger',
+	iconColor: 'teal',
 	group: ['trigger'],
 	// since trigger and node are sharing descriptions and logic we need to sync the versions
 	// and keep them aligned in both nodes
@@ -108,6 +109,10 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			],
 			default: 'none',
+			builderHint: {
+				message:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,

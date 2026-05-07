@@ -26,6 +26,11 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A highlighted information panel for announcements, tips, or warnings.',
+			},
+		},
 		design: {
 			type: 'figma',
 			url: 'https://www.figma.com/file/tPpJvbrnHbP8C496cYuwyW/Node-pinning?node-id=15%3A5777',

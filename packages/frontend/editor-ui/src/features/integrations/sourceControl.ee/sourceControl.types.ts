@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
 
 export type SshKeyTypes = ['ed25519', 'rsa'];
@@ -14,6 +15,10 @@ export type SourceControlPreferences = {
 	currentBranch?: string;
 	connectionType?: 'ssh' | 'https';
 };
+
+export type SourceControlTreeRow<T extends SourceControlledFile = SourceControlledFile> =
+	| { id: string; type: 'folder'; name: string; depth: number }
+	| { id: string; type: 'file'; depth: number; file: T };
 
 export interface SourceControlStatus {
 	ahead: number;

@@ -1,3 +1,4 @@
+import type { QuickReplyType } from '@n8n/api-types';
 import {
 	hasRevertVersionId,
 	type ChatRequest,
@@ -28,14 +29,15 @@ export async function createBuilderPayload(
 	text: string,
 	id: string,
 	options: {
-		quickReplyType?: string;
+		workflowId: string;
+		quickReplyType?: QuickReplyType;
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
 		mode?: 'build' | 'plan';
 		isPlanModeEnabled?: boolean;
 		allowSendingParameterValues?: boolean;
-	} = {},
+	},
 ): Promise<ChatRequest.UserChatMessage> {
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
@@ -77,16 +79,12 @@ export async function createBuilderPayload(
 
 	// Get feature flags from Posthog
 	const codeBuilderVariant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
-	const isCodeBuilderEnabled =
-		codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
-		codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 	const isPinDataEnabled = codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
 		templateExamples:
 			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
 			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
-		codeBuilder: isCodeBuilderEnabled,
 		pinData: isPinDataEnabled,
 		planMode: options.isPlanModeEnabled ?? false,
 		mergeAskBuild: posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name),
@@ -94,6 +92,7 @@ export async function createBuilderPayload(
 
 	if (options.nodesForSchema?.length) {
 		const { schemas, pinnedNodeNames } = assistantHelpers.getNodesSchemas(
+			options.workflowId,
 			options.nodesForSchema,
 			shouldExcludeParameterValues,
 		);

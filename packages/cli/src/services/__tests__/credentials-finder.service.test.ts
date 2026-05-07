@@ -5,8 +5,8 @@ import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
+	type User,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	PROJECT_ADMIN_ROLE_SLUG,
@@ -63,13 +63,8 @@ describe('CredentialsFinderService', () => {
 		const credentialsId = 'cred_123';
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
-		const owner = mock<User>({
-			role: GLOBAL_OWNER_ROLE,
-		});
-		const member = mock<User>({
-			role: GLOBAL_MEMBER_ROLE,
-			id: 'test',
-		});
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
 
 		test('should allow instance owner access to all credentials', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
@@ -706,6 +701,127 @@ describe('CredentialsFinderService', () => {
 				where: { isGlobal: true },
 				relations: { shared: true },
 			});
+		});
+	});
+
+	describe('findCredentialIdsWithScopeForUser', () => {
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		test('should return empty set for empty input', async () => {
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser([], member, [
+				'credential:read',
+			]);
+
+			expect(result).toEqual(new Set());
+			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		test('should return all requested IDs for global owner', async () => {
+			const ids = ['cred-1', 'cred-2'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+				mock<SharedCredentials>({ credentialsId: 'cred-2' }),
+			]);
+			// Global credentials query for read-only scope
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, owner, [
+				'credential:read',
+			]);
+
+			expect(result).toEqual(new Set(['cred-1', 'cred-2']));
+			// Owner should not trigger role resolution
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+				select: { credentialsId: true },
+				where: { credentialsId: In(ids) },
+			});
+		});
+
+		test('should filter by roles for regular member', async () => {
+			const ids = ['cred-1', 'cred-2', 'cred-3'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
+				'credential:read',
+			]);
+
+			expect(result).toEqual(new Set(['cred-1']));
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
+			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+				select: { credentialsId: true },
+				where: {
+					credentialsId: In(ids),
+					role: In(['credential:owner', 'credential:user']),
+					project: {
+						projectRelations: {
+							role: In([
+								PROJECT_ADMIN_ROLE_SLUG,
+								PROJECT_OWNER_ROLE_SLUG,
+								PROJECT_EDITOR_ROLE_SLUG,
+								PROJECT_VIEWER_ROLE_SLUG,
+							]),
+							userId: member.id,
+						},
+					},
+				},
+			});
+		});
+
+		test('should include global credentials for read-only scope', async () => {
+			const ids = ['cred-1', 'global-1'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'global-1' }),
+			]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
+				'credential:read',
+			]);
+
+			expect(result).toEqual(new Set(['cred-1', 'global-1']));
+			expect(credentialsRepository.find).toHaveBeenCalledWith({
+				where: { id: In(ids), isGlobal: true },
+				select: ['id'],
+			});
+		});
+
+		test('should not include global credentials for write scopes', async () => {
+			const ids = ['cred-1'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
+				'credential:update',
+			]);
+
+			expect(result).toEqual(new Set(['cred-1']));
+			expect(credentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		test('should return empty set when member has no access', async () => {
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
+				['cred-1', 'cred-2'],
+				member,
+				['credential:read'],
+			);
+
+			expect(result).toEqual(new Set());
 		});
 	});
 
