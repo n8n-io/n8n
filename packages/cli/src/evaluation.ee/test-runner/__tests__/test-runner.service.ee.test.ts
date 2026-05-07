@@ -2359,9 +2359,9 @@ describe('TestRunnerService', () => {
 				executionId: expect.stringContaining('test-run-id-case-'),
 			});
 
-			// And no test-case row should have been written for the evicted
-			// cases — they short-circuit before touching the DB. The legacy
-			// path would have produced UNKNOWN_ERROR rows here.
+			// And no test-case row should have been updated to an error state
+			// for the evicted cases — they short-circuit before touching the
+			// DB. The legacy path would have produced UNKNOWN_ERROR rows here.
 			const errorRows = testCaseExecutionRepository.createTestCaseExecution.mock.calls.filter(
 				([row]) => row.errorCode === 'UNKNOWN_ERROR',
 			);

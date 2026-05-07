@@ -191,15 +191,15 @@ async function onDropdownSelect(action: string) {
 }
 
 .indicatorPublished {
-	background-color: var(--text-color--success);
+	background-color: var(--color--mint-600);
 }
 
 .indicatorPublishedText {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .indicatorChanges {
-	background-color: var(--text-color--warning);
+	background-color: var(--color--yellow-500);
 }
 
 .flex {
