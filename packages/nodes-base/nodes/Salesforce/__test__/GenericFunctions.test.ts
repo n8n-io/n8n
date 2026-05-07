@@ -194,16 +194,20 @@ describe('Salesforce -> GenericFunctions', () => {
 
 	describe('getDefaultFields', () => {
 		it('should return default fields', () => {
-			expect(getDefaultFields('Account')).toBe('id,name,type');
+			expect(getDefaultFields('Account')).toBe('id,name,type,LastModifiedDate');
 			expect(getDefaultFields('Lead')).toBe(
-				'id,company,firstname,lastname,street,postalCode,city,email,status',
+				'id,company,firstname,lastname,street,postalCode,city,email,status,LastModifiedDate',
 			);
-			expect(getDefaultFields('Contact')).toBe('id,firstname,lastname,email');
-			expect(getDefaultFields('Opportunity')).toBe('id,accountId,amount,probability,type');
-			expect(getDefaultFields('Case')).toBe('id,accountId,contactId,priority,status,subject,type');
-			expect(getDefaultFields('Task')).toBe('id,subject,status,priority');
-			expect(getDefaultFields('Attachment')).toBe('id,name');
-			expect(getDefaultFields('User')).toBe('id,name,email');
+			expect(getDefaultFields('Contact')).toBe('id,firstname,lastname,email,LastModifiedDate');
+			expect(getDefaultFields('Opportunity')).toBe(
+				'id,accountId,amount,probability,type,LastModifiedDate',
+			);
+			expect(getDefaultFields('Case')).toBe(
+				'id,accountId,contactId,priority,status,subject,type,LastModifiedDate',
+			);
+			expect(getDefaultFields('Task')).toBe('id,subject,status,priority,LastModifiedDate');
+			expect(getDefaultFields('Attachment')).toBe('id,name,LastModifiedDate');
+			expect(getDefaultFields('User')).toBe('id,name,email,LastModifiedDate');
 		});
 	});
 
@@ -233,7 +237,7 @@ describe('Salesforce -> GenericFunctions', () => {
 
 			const result = getQuery(options, 'Account', true);
 
-			expect(result).toBe('SELECT id,name,type FROM Account ');
+			expect(result).toBe('SELECT id,name,type,LastModifiedDate FROM Account ');
 		});
 
 		it('should return query with a condition', () => {
@@ -469,6 +473,42 @@ describe('Salesforce -> GenericFunctions', () => {
 			const result = filterAndManageProcessedItems(responseData, processedIds);
 
 			expect(result.updatedProcessedIds).toEqual(['100', '200', '003', '001', '004']);
+		});
+
+		it('should trigger again when same Id has a different LastModifiedDate', () => {
+			const processedIds = ['001_2024-01-01T00:00:00Z'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-02T00:00:00Z', Name: 'Updated Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toContain('001_2024-01-02T00:00:00Z');
+		});
+
+		it('should not trigger again when same Id and LastModifiedDate already processed', () => {
+			const processedIds = ['001_2024-01-01T00:00:00Z'];
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toEqual([]);
+		});
+
+		it('should trigger for records stored with Id-only key before upgrade', () => {
+			const processedIds = ['001']; // old format from before fix
+			const responseData: IDataObject[] = [
+				{ Id: '001', LastModifiedDate: '2024-01-01T00:00:00Z', Name: 'Account' },
+			];
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			// One-time re-trigger on upgrade — old Id-only key does not match new composite key
+			expect(result.newItems).toEqual(responseData);
+			expect(result.updatedProcessedIds).toContain('001_2024-01-01T00:00:00Z');
 		});
 	});
 

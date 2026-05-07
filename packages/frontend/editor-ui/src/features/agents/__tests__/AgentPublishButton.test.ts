@@ -335,4 +335,36 @@ describe('AgentPublishButton', () => {
 		expect(unpublishAgent).not.toHaveBeenCalled();
 		expect(wrapper.emitted('unpublished')).toBeUndefined();
 	});
+
+	// Indicator dot styling — guards against regressions like
+	// using subtle text-color tokens that render an invisible dot.
+	describe('indicator dot', () => {
+		it('does not render the indicator when the agent is not published', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ publishedVersion: null }),
+			});
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+			expect(button.find('span[class*="indicatorDot"]').exists()).toBe(false);
+		});
+
+		it('renders the published indicator when latest version is published', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ versionId: 'v1', publishedVersion }),
+			});
+			const dot = wrapper.find('[data-testid="publish-agent-button"] span[class*="indicatorDot"]');
+			expect(dot.exists()).toBe(true);
+			expect(dot.classes().some((c) => c.includes('indicatorPublished'))).toBe(true);
+			expect(dot.classes().some((c) => c.includes('indicatorChanges'))).toBe(false);
+		});
+
+		it('renders the changes indicator when there are unpublished changes', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ versionId: 'v2', publishedVersion }),
+			});
+			const dot = wrapper.find('[data-testid="publish-agent-button"] span[class*="indicatorDot"]');
+			expect(dot.exists()).toBe(true);
+			expect(dot.classes().some((c) => c.includes('indicatorChanges'))).toBe(true);
+			expect(dot.classes().some((c) => c.includes('indicatorPublished'))).toBe(false);
+		});
+	});
 });
