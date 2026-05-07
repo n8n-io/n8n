@@ -161,12 +161,14 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Mock store ---
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
+	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	const store = reactive({
 		messages,
 		isStreaming,
+		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
 		currentThreadId: 'thread-1',

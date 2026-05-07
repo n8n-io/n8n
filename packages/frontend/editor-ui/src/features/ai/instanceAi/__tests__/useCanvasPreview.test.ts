@@ -53,12 +53,14 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 function createMockStore() {
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
+	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	return reactive({
 		messages,
 		isStreaming,
+		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
 		currentThreadId: 'thread-1',
@@ -255,7 +257,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeDataTableProjectId.value).toBeNull();
 		});
 
-		test('does not auto-restore preview after thread switch — historical artifacts stay closed', async () => {
+		test('clears the preview on thread switch, then stays closed while the new thread hydrates', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
@@ -267,8 +269,9 @@ describe('useCanvasPreview', () => {
 			// Preview was cleared by thread switch.
 			expect(ctx.isPreviewVisible.value).toBe(false);
 
-			// A build result that arrives without a fresh user-send / streaming
-			// signal is treated as historical — the panel stays closed.
+			// Past artifacts surfacing during the new thread's hydration shouldn't
+			// pop the panel — historical data, not a live build.
+			ctx.store.isHydratingThread = true;
 			registerWorkflow(ctx.store, 'wf-historical');
 			ctx.store.messages = [
 				makeMessage({
@@ -314,9 +317,11 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
-		test('does not auto-open for historical data when canvas was closed', async () => {
+		test('does not auto-open while hydrating historical messages', async () => {
 			const ctx = setup();
-			// Not streaming, canvas closed → treat any artifact as historical.
+			// Simulate the loadHistoricalMessages window: artifacts that surface
+			// as part of past data shouldn't pop the preview panel.
+			ctx.store.isHydratingThread = true;
 
 			ctx.store.messages = [
 				makeMessage({
@@ -415,8 +420,9 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeWorkflowId.value).toBeNull();
 		});
 
-		test('does not auto-open for historical data table results', async () => {
+		test('does not auto-open data table preview while hydrating', async () => {
 			const ctx = setup();
+			ctx.store.isHydratingThread = true;
 
 			ctx.store.messages = [
 				makeMessage({

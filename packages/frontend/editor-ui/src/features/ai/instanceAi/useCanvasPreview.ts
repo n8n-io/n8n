@@ -147,19 +147,14 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
-	//   - Preview already open: switch to this workflow and refresh
-	//   - Preview closed + agent streaming a build: auto-open
-	//   - Otherwise (historical data): stay closed
+	//   - During hydration (loading past conversations from the server) → skip,
+	//     so re-entering an old thread doesn't pop the panel for past artifacts.
+	//   - Otherwise (live build / late run-sync delivery) → open or switch tab.
 	watch(
 		() => latestBuildResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
-
-			const targetId = latestBuildResult.value.workflowId;
-
-			if (!isPreviewVisible.value && !store.isStreaming) {
-				return;
-			}
+			if (store.isHydratingThread) return;
 
 			// Note: previously we cleared workflowExecutions[targetId] here to
 			// drop "stale" prior-run state. We don't anymore — the build agent
@@ -169,7 +164,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 			// in useExecutionPushEvents when their executionId differs, so
 			// truly stale state can't leak across runs anyway.
 
-			activeTabId.value = targetId;
+			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
 		},
 	);
@@ -220,14 +215,9 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		() => latestDataTableResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestDataTableResult.value) return;
+			if (store.isHydratingThread) return;
 
-			const targetId = latestDataTableResult.value.dataTableId;
-
-			if (!isPreviewVisible.value && !store.isStreaming) {
-				return;
-			}
-
-			activeTabId.value = targetId;
+			activeTabId.value = latestDataTableResult.value.dataTableId;
 			dataTableRefreshKey.value++;
 		},
 	);
