@@ -99,6 +99,28 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = 
 	mistralCloud: 'mistralCloudApi',
 };
 
+/**
+ * Map of LLM providers to their langchain chat-model node type. Source of truth
+ * for cross-package consumers (evaluation LLM-judge form, llm-judge provider
+ * registry) so a single edit touches both ends.
+ */
+export const PROVIDER_LANGCHAIN_NODE_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
+	openai: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+	anthropic: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+	google: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+	azureOpenAi: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+	azureEntraId: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+	awsBedrock: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+	ollama: '@n8n/n8n-nodes-langchain.lmChatOllama',
+	vercelAiGateway: '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
+	xAiGrok: '@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+	groq: '@n8n/n8n-nodes-langchain.lmChatGroq',
+	openRouter: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+	deepSeek: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
+	cohere: '@n8n/n8n-nodes-langchain.lmChatCohere',
+	mistralCloud: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+};
+
 export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
 	{
 		pgvector: 'chatHubVectorStorePGVectorApi',
