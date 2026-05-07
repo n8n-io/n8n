@@ -87,19 +87,10 @@ describe('useWorkflowSetupApply', () => {
 
 		await h.applyMachine.apply({ nodeCredentials });
 
-		expect(h.store.confirmAction).toHaveBeenCalledWith(
-			'req-1',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'apply',
-				nodeCredentials,
-			},
-		);
+		expect(h.store.confirmAction).toHaveBeenCalledWith('req-1', {
+			kind: 'setupWorkflowApply',
+			nodeCredentials,
+		});
 	});
 
 	it('posts apply confirmation with node parameters', async () => {
@@ -108,19 +99,10 @@ describe('useWorkflowSetupApply', () => {
 
 		await h.applyMachine.apply({ nodeParameters });
 
-		expect(h.store.confirmAction).toHaveBeenCalledWith(
-			'req-1',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'apply',
-				nodeParameters,
-			},
-		);
+		expect(h.store.confirmAction).toHaveBeenCalledWith('req-1', {
+			kind: 'setupWorkflowApply',
+			nodeParameters,
+		});
 	});
 
 	it('resets state when posting apply confirmation fails', async () => {
@@ -171,13 +153,7 @@ describe('useWorkflowSetupApply', () => {
 
 		expect(h.store.confirmAction).toHaveBeenCalledWith(
 			'req-2',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			expect.any(Object),
+			expect.objectContaining({ kind: 'setupWorkflowApply' }),
 		);
 		expect(h.store.resolveConfirmation).toHaveBeenCalledWith('req-2', 'approved');
 	});
@@ -247,7 +223,10 @@ describe('useWorkflowSetupApply', () => {
 
 		await h.applyMachine.defer();
 
-		expect(h.store.confirmAction).toHaveBeenCalledWith('req-1', false);
+		expect(h.store.confirmAction).toHaveBeenCalledWith('req-1', {
+			kind: 'approval',
+			approved: false,
+		});
 		expect(h.applyMachine.terminalState.value).toBe('deferred');
 		expect(h.store.resolveConfirmation).toHaveBeenCalledWith('req-1', 'deferred');
 	});

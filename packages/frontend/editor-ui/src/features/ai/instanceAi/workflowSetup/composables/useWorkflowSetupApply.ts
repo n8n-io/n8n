@@ -89,19 +89,10 @@ export function useWorkflowSetupApply(deps: {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
-		const postSuccess = await deps.store.confirmAction(
-			deps.requestId.value,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'apply',
-				...payload,
-			},
-		);
+		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'setupWorkflowApply',
+			...payload,
+		});
 
 		// confirmAction already toasts on POST failure; just reset so the wizard
 		// re-renders with the user's selections and they can try again.
@@ -141,7 +132,10 @@ export function useWorkflowSetupApply(deps: {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
-		const success = await deps.store.confirmAction(deps.requestId.value, false);
+		const success = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'approval',
+			approved: false,
+		});
 		if (success) {
 			terminalState.value = 'deferred';
 			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');

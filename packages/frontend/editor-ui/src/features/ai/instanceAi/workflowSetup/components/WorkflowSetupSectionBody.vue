@@ -6,7 +6,6 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { createFrontendNodeTypes } from '@/app/utils/nodeTypes/createFrontendNodeTypes';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
@@ -24,7 +23,6 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const environmentsStore = useEnvironmentsStore();
-const frontendNodeTypes = createFrontendNodeTypes(nodeTypesStore);
 
 const credentialType = computed(() => props.section.credentialType);
 
@@ -99,7 +97,7 @@ const expressionContext = computed<ExpressionLocalResolveContext | undefined>(()
 		nodes: [node],
 		connections,
 		active: false,
-		nodeTypes: frontendNodeTypes,
+		nodeTypes: nodeTypesStore.getAllNodeTypes(),
 	});
 
 	return {
