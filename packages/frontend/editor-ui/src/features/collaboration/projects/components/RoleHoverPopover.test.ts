@@ -92,7 +92,7 @@ describe('RoleHoverPopover', () => {
 		it('should display permission count', () => {
 			const { getByText } = renderComponent();
 
-			expect(getByText('3/42 permissions')).toBeInTheDocument();
+			expect(getByText('3/50 permissions')).toBeInTheDocument();
 		});
 
 		it('should display role description when available', () => {

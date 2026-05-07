@@ -16,7 +16,6 @@ jest.mock('@mastra/core/tools', () => ({
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
-	layoutWorkflowJSON: jest.fn((wf: unknown) => wf),
 }));
 
 // `require` (rather than `import`) is needed because `submit-workflow.tool`

@@ -2,6 +2,20 @@ import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
+import type { JSONObject } from '../utils/json';
+
+/**
+ * Serializable descriptor returned by BuiltMemory.describe().
+ * Contains enough information to reconstruct the backend from a schema without exposing secrets.
+ */
+export interface MemoryDescriptor<TParams extends JSONObject = JSONObject> {
+	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
+	name: string;
+	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */
+	constructorName: string;
+	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
+	connectionParams: TParams | null;
+}
 
 export interface Thread {
 	id: string;
@@ -84,6 +98,8 @@ export interface BuiltMemory {
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
+	/** Return a serializable descriptor of this backend for schema persistence. */
+	describe(): MemoryDescriptor;
 }
 
 // --- Semantic Recall Config ---
@@ -103,6 +119,8 @@ export interface TitleGenerationConfig {
 	model?: ModelConfig;
 	/** Custom instructions for the title generation prompt. Replaces the defaults entirely. */
 	instructions?: string;
+	/** When true, title generation is awaited before returning the result. Default: false (fire-and-forget). */
+	sync?: boolean;
 }
 
 /** Full memory configuration bundle passed from builder to runtime. */

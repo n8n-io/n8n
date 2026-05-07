@@ -24,9 +24,8 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
 
-import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { fetchApiDocs } from './api-docs';
 import { extractNodeConfig } from './node-config';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
@@ -35,38 +34,28 @@ import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 // System prompt
 // ---------------------------------------------------------------------------
 
-const MOCK_SYSTEM_PROMPT = `You are an API mock server generating realistic HTTP responses for n8n workflow evaluation.
+const MOCK_SYSTEM_PROMPT = `You generate realistic HTTP responses for one specific request, mocking an API in n8n workflow evaluation.
 
-## Your tools
+You get everything you need in the user message: the request (service, method, URL, body, query), API docs for the endpoint, the n8n node's parameters, and optional context (globalContext, nodeHint, scenarioHints). Generate the response directly — do NOT call any tools.
 
-You have two tools. Call them before generating your response:
+Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
-"lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns). Pay special attention to what the real API returns for the exact HTTP method and URL path you're responding to.
+Node-config patterns to know:
+  - "__rl" object: "value" is the selected resource id
+  - "schema" array: each entry's "id" is the response field name (NOT "displayName"). e.g. {id:"timestamp",displayName:"Timestamp"} → response uses "timestamp"
+  - Strings starting with "=" are expressions (ignore)
 
-"get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
-  - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
-  - "schema" arrays list the columns/fields the node expects. CRITICAL: use the "id" field as the exact column/field name in your response — NOT "displayName". For example, if schema has {"id": "timestamp", "displayName": "Timestamp"}, the API response must use "timestamp" (lowercase), not "Timestamp"
-  - "operation" and "resource" describe what the node does (e.g. "send" a "message", "create" an "issue")
-  - Strings starting with "=" are expressions (ignore these) — all other strings are literal values
-
-## How to combine them
-
-The API docs tell you the response SHAPE. The node config tells you the exact DATA VALUES to put in that shape. All names, IDs, and identifiers from the node config are case-sensitive — use them character-for-character.
+Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. No pagination — always indicate end of results.
 
 ## Output format
 
-Respond with ONLY a JSON object. No explanation, no markdown, no prose.
+Return ONLY a JSON object, no prose, no markdown:
 
-{ "type": "json", "body": { ...realistic API response... } }
+{ "type": "json", "body": { ... } }
 { "type": "binary", "contentType": "application/pdf", "filename": "doc.pdf" }
-{ "type": "error", "statusCode": 404, "body": { ...service error format... } }
+{ "type": "error", "statusCode": 404, "body": { ... } }
 
-## Rules
-
-- A node may make MULTIPLE sequential HTTP requests in a single execution (e.g., first GET metadata, then GET headers, then POST data). You are responding to ONE specific request. Match your response to the URL + method of THIS request only. A GET to a metadata endpoint must return metadata — not a write result — even if the node's overall purpose is to write data.
-- Echo request values faithfully. If the request contains an identifier, name, or reference value (even one that looks like a placeholder such as "YOUR_CHAT_ID" or "YOUR_API_KEY"), echo it back exactly in the corresponding response field. The real API would reflect the same value the client sent.
-- Some APIs return empty or minimal responses on success (204 with no body, 202 with empty body). If the API documentation indicates an empty response body, return { "type": "json", "body": {} }. Don't invent additional response fields.
-- No pagination — always indicate end of results (has_more=false, nextPageToken=null, etc.)`;
+For APIs that return empty responses on success (204/202), use { "type": "json", "body": {} }.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,13 +95,13 @@ interface MockResponseSpec {
  * response spec, then materializes it into the correct format (JSON, Buffer, error).
  */
 export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockHandler {
-	// Pre-compute node configs so we don't re-extract on every request
 	const nodeConfigCache = new Map<string, string>();
 
 	return async (requestOptions, node) => {
 		if (!nodeConfigCache.has(node.name)) {
 			nodeConfigCache.set(node.name, extractNodeConfig(node));
 		}
+
 		return await generateMockResponse(requestOptions, node, {
 			scenarioHints: options?.scenarioHints,
 			globalContext: options?.globalContext,
@@ -177,6 +166,12 @@ async function generateMockResponse(
 		);
 	}
 
+	const apiDocs = await fetchApiDocs(
+		serviceName,
+		`${request.method ?? 'GET'} ${endpoint} response format`,
+	);
+	sections.push('', '## API documentation', apiDocs);
+
 	if (context.nodeConfig) {
 		sections.push('', '## Node Configuration', context.nodeConfig);
 	}
@@ -202,7 +197,7 @@ async function generateMockResponse(
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
-			const spec = await callLlm(userPrompt, context.nodeConfig);
+			const spec = await callLlm(userPrompt);
 			return materializeSpec(spec);
 		} catch (error) {
 			lastError = error instanceof Error ? error.message : String(error);
@@ -224,49 +219,10 @@ async function generateMockResponse(
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Tool definitions (@n8n/agents)
-// ---------------------------------------------------------------------------
-
-const apiDocsTool = new Tool('lookup_api_docs')
-	.description(
-		'Look up official API documentation for a specific REST endpoint to understand the exact response format.',
-	)
-	.input(
-		z.object({
-			serviceName: z
-				.string()
-				.describe('The API service name (e.g. "Google Sheets", "Gmail", "Slack")'),
-			endpointDescription: z
-				.string()
-				.describe('Description of the endpoint (e.g. "GET spreadsheets values response format")'),
-		}),
-	)
-	.handler(async (input: { serviceName: string; endpointDescription: string }) => {
-		return await fetchApiDocs(input.serviceName, input.endpointDescription);
-	})
-	.build();
-
-function createNodeConfigTool(nodeConfig: string) {
-	return new Tool('get_node_config')
-		.description(
-			"Get the n8n node's configuration parameters — resource IDs, field names, settings, etc. Your mock data must match these exact values.",
-		)
-		.input(z.object({}))
-		.handler(async () => nodeConfig)
-		.build();
-}
-
-// ---------------------------------------------------------------------------
-// LLM call with tool use (agent handles multi-round loop automatically)
-// ---------------------------------------------------------------------------
-
-async function callLlm(userPrompt: string, nodeConfig: string): Promise<MockResponseSpec> {
+async function callLlm(userPrompt: string): Promise<MockResponseSpec> {
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
-	})
-		.tool(apiDocsTool)
-		.tool(createNodeConfigTool(nodeConfig));
+	});
 
 	const result = await agent.generate(userPrompt);
 
