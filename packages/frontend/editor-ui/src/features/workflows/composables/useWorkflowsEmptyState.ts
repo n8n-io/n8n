@@ -6,16 +6,8 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
-import { useSurfaceMcpToNewCloudUsersEligibility } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility';
-import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { IUser } from 'n8n-workflow';
-
-type SurfaceMcpOpportunitySuppression =
-	| 'app_selection'
-	| 'builder_prompt'
-	| 'recommended_templates'
-	| 'no_create_permission';
 
 /**
  * Composable for managing workflows empty state display logic.
@@ -30,8 +22,6 @@ export function useWorkflowsEmptyState() {
 	const recommendedTemplatesStore = useRecommendedTemplatesStore();
 	const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 	const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
-	const surfaceMcpStore = useSurfaceMcpToNewCloudUsersStore();
-	const { isEligible: isSurfaceMcpEligible } = useSurfaceMcpToNewCloudUsersEligibility();
 
 	const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 	const personalProject = computed(() => projectsStore.personalProject);
@@ -68,50 +58,6 @@ export function useWorkflowsEmptyState() {
 			credentialsAppSelectionStore.isFeatureEnabled &&
 			!readOnlyEnv.value &&
 			projectPermissions.value.workflow.create
-		);
-	});
-
-	const showMcpOpportunity = computed(() => {
-		return isSurfaceMcpEligible.value && surfaceMcpStore.isEnabled;
-	});
-
-	const mcpOpportunitySuppressedBy = computed<SurfaceMcpOpportunitySuppression | null>(() => {
-		if (!showMcpOpportunity.value) {
-			return null;
-		}
-
-		if (!canCreateWorkflow.value) {
-			return 'no_create_permission';
-		}
-
-		if (showAppSelection.value) {
-			return 'app_selection';
-		}
-
-		if (showBuilderPrompt.value) {
-			return 'builder_prompt';
-		}
-
-		if (showRecommendedTemplatesInline.value) {
-			return 'recommended_templates';
-		}
-
-		return null;
-	});
-
-	const showMcpTile = computed(() => {
-		return (
-			showMcpOpportunity.value &&
-			surfaceMcpStore.isTileVariant &&
-			mcpOpportunitySuppressedBy.value === null
-		);
-	});
-
-	const showMcpReminder = computed(() => {
-		return (
-			isSurfaceMcpEligible.value &&
-			surfaceMcpStore.isFirstOpenModalVariant &&
-			surfaceMcpStore.hasDismissedFirstOpenModal
 		);
 	});
 
@@ -159,10 +105,6 @@ export function useWorkflowsEmptyState() {
 		showAppSelection,
 		showBuilderPrompt,
 		showRecommendedTemplatesInline,
-		showMcpOpportunity,
-		mcpOpportunitySuppressedBy,
-		showMcpTile,
-		showMcpReminder,
 		builderHeading,
 		emptyStateHeading,
 		emptyStateDescription,

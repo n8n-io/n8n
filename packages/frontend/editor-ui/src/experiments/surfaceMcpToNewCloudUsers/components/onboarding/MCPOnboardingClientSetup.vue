@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import MCPOnboardingCopyBlock from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingCopyBlock.vue';
-import type { MCPOnboardingClient } from '@/features/ai/mcpAccess/components/onboarding/types';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
+import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
+import type { MCPOnboardingClient } from './types';
 
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 
@@ -19,10 +19,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const promptKeys: Record<MCPOnboardingPromptClient, BaseTextKey> = {
-	claude: 'settings.mcp.onboarding.prompt.claude' as BaseTextKey,
-	claude_code: 'settings.mcp.onboarding.prompt.claudeCode',
-	cursor: 'settings.mcp.onboarding.prompt.cursor' as BaseTextKey,
-	codex: 'settings.mcp.onboarding.prompt.codex',
+	claude: 'experiments.surfaceMcpToNewCloudUsers.onboarding.prompt.claude' as BaseTextKey,
+	claude_code: 'experiments.surfaceMcpToNewCloudUsers.onboarding.prompt.claudeCode',
+	cursor: 'experiments.surfaceMcpToNewCloudUsers.onboarding.prompt.cursor' as BaseTextKey,
+	codex: 'experiments.surfaceMcpToNewCloudUsers.onboarding.prompt.codex',
 };
 
 const promptKey = computed(() => promptKeys[props.client]);
@@ -44,7 +44,7 @@ function handlePromptCopy() {
 	<div :class="$style.container" data-test-id="mcp-onboarding-client-setup">
 		<MCPOnboardingCopyBlock
 			:content="promptBody"
-			:copy-tooltip="i18n.baseText('settings.mcp.onboarding.copy.tooltip')"
+			:copy-tooltip="i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.copy.tooltip')"
 			copy-button-test-id="mcp-onboarding-copy-prompt-button"
 			@copy="handlePromptCopy"
 		/>

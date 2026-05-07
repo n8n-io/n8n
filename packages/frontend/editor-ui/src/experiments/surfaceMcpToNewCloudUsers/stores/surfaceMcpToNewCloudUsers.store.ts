@@ -5,12 +5,12 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
+import type { MCPOnboardingClient as SurfaceMcpOnboardingClient } from '../components/onboarding/types';
 
 const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_SEEN';
 const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
 
 type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
-type SurfaceMcpOnboardingClient = 'claude' | 'claude_code' | 'codex' | 'cursor' | 'chatgpt';
 type SurfaceMcpOnboardingEntryPoint = 'empty_state_tile';
 type SurfaceMcpOnboardingParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type SurfaceMcpOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';

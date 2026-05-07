@@ -20,7 +20,6 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { ref } from 'vue';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -36,16 +35,6 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 		isSharedSubPage: false,
 	}),
 }));
-const mcpEligibility = ref(true);
-
-vi.mock(
-	'@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility',
-	() => ({
-		useSurfaceMcpToNewCloudUsersEligibility: vi.fn(() => ({
-			isEligible: mcpEligibility,
-		})),
-	}),
-);
 vi.mock('@/experiments/utils', async (importOriginal) => {
 	const actual = await importOriginal<object>();
 
@@ -128,7 +117,6 @@ describe('WorkflowsView', () => {
 		// Mock getSimplifiedLayoutVisibility to return false so ResourcesListLayout is used
 		const readyToRunStore = mockedStore(useReadyToRunStore);
 		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
-		mcpEligibility.value = true;
 
 		projectPages = useProjectPages();
 	});

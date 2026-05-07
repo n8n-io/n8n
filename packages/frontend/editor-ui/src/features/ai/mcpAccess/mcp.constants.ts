@@ -11,4 +11,3 @@ export const MCP_TOOLTIP_DELAY = 100;
 export const MCP_CONNECT_POPOVER_WIDTH = 460;
 
 export const MCP_CONNECT_WORKFLOWS_MODAL_KEY = 'mcpConnectWorkflowsModal';
-export const MCP_ONBOARDING_MODAL_KEY = 'mcpOnboardingModal';

@@ -1,9 +1,12 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
-import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+import {
+	SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
+	SURFACE_MCP_ONBOARDING_MODAL_KEY,
+} from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import { MCP_ONBOARDING_MODAL_KEY, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
@@ -76,7 +79,7 @@ describe('SurfaceMcpFirstOpenIntroModal', () => {
 
 		expect(uiStore.closeModal).toHaveBeenCalledWith(SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY);
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: MCP_ONBOARDING_MODAL_KEY,
+			name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
 			data: { surface: 'first_open_modal' },
 		});
 		expect(surfaceMcpStore.dismissFirstOpenModal).not.toHaveBeenCalled();

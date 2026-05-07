@@ -1,11 +1,10 @@
 import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
 import {
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-	MCP_ONBOARDING_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
@@ -52,23 +51,6 @@ export const MCPModule: FrontendModuleDescription = {
 			component: async () => await import('./modals/MCPConnectWorkflowsModal.vue'),
 			initialState: { open: false },
 		},
-		{
-			key: MCP_ONBOARDING_MODAL_KEY,
-			component: async () => await import('./modals/MCPOnboardingModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					surface: 'tile',
-				},
-			},
-		},
-		{
-			key: SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
-			component: async () =>
-				await import(
-					'@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpFirstOpenIntroModal.vue'
-				),
-			initialState: { open: false },
-		},
+		...SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS,
 	],
 };

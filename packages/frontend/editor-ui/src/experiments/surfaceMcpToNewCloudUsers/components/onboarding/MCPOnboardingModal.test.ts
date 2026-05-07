@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { defineComponent, reactive } from 'vue';
@@ -102,8 +103,9 @@ describe('MCPOnboardingModal', () => {
 
 	it('enables MCP, loads the prompt, and tracks enable telemetry when toggled on', async () => {
 		const user = userEvent.setup();
-		const { getByRole, findByText } = renderComponent();
+		const { getByRole, findByText, getByTestId } = renderComponent();
 
+		expect(getByTestId(SURFACE_MCP_ONBOARDING_MODAL_KEY)).toBeInTheDocument();
 		await user.click(getByRole('switch'));
 
 		expect(mockMcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(true);

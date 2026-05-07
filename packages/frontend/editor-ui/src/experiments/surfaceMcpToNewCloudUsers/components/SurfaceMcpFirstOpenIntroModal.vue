@@ -2,9 +2,12 @@
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
-import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+import {
+	SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
+	SURFACE_MCP_ONBOARDING_MODAL_KEY,
+} from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import { MCP_ONBOARDING_MODAL_KEY, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nButton, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -47,7 +50,7 @@ function handleTryIt() {
 	exitMode.value = 'try';
 	uiStore.closeModal(modalName.value);
 	uiStore.openModalWithData({
-		name: MCP_ONBOARDING_MODAL_KEY,
+		name: SURFACE_MCP_ONBOARDING_MODAL_KEY,
 		data: { surface: 'first_open_modal' },
 	});
 }
@@ -92,22 +95,30 @@ onBeforeUnmount(() => {
 		<template #content>
 			<div :class="$style.content" data-test-id="surface-mcp-intro-content">
 				<N8nText size="xsmall" color="primary" :bold="true" :class="$style.eyebrow">
-					{{ i18n.baseText('settings.mcp.onboarding.intro.eyebrow') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.intro.eyebrow') }}
 				</N8nText>
 				<N8nHeading tag="h1" size="xlarge" :bold="true" :class="$style.title">
-					{{ i18n.baseText('settings.mcp.onboarding.intro.title') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.intro.title') }}
 				</N8nHeading>
 				<N8nText tag="p" size="medium" color="text-base" :class="$style.description">
-					{{ i18n.baseText('settings.mcp.onboarding.intro.description') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.intro.description') }}
 					{{ ' ' }}
-					<I18nT keypath="settings.mcp.onboarding.intro.settingsHint" tag="span" scope="global">
+					<I18nT
+						keypath="experiments.surfaceMcpToNewCloudUsers.onboarding.intro.settingsHint"
+						tag="span"
+						scope="global"
+					>
 						<template #settingsLink>
 							<N8nLink
 								:to="{ name: MCP_SETTINGS_VIEW }"
 								size="medium"
 								data-test-id="surface-mcp-intro-settings-link"
 							>
-								{{ i18n.baseText('settings.mcp.onboarding.intro.settingsLink' as BaseTextKey) }}
+								{{
+									i18n.baseText(
+										'experiments.surfaceMcpToNewCloudUsers.onboarding.intro.settingsLink' as BaseTextKey,
+									)
+								}}
 							</N8nLink>
 						</template>
 					</I18nT>
@@ -122,14 +133,14 @@ onBeforeUnmount(() => {
 					data-test-id="surface-mcp-intro-skip-button"
 					@click="handleSkip"
 				>
-					{{ i18n.baseText('settings.mcp.onboarding.intro.skip') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.intro.skip') }}
 				</N8nButton>
 				<N8nButton
 					data-test-id="surface-mcp-intro-try-button"
 					:class="$style.tryButton"
 					@click="handleTryIt"
 				>
-					{{ i18n.baseText('settings.mcp.onboarding.intro.tryIt') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.intro.tryIt') }}
 				</N8nButton>
 			</div>
 		</template>

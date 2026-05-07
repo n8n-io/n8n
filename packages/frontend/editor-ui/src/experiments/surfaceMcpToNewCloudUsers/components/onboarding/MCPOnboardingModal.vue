@@ -2,20 +2,10 @@
 import Modal from '@/app/components/Modal.vue';
 import { useToast } from '@/app/composables/useToast';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/McpAccessToggle.vue';
-import MCPOnboardingAgentPicker from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingAgentPicker.vue';
-import MCPOnboardingClientSetup from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingClientSetup.vue';
-import MCPOnboardingCopyBlock from '@/features/ai/mcpAccess/components/onboarding/MCPOnboardingCopyBlock.vue';
-import type {
-	MCPOnboardingClient,
-	MCPOnboardingClientOption,
-} from '@/features/ai/mcpAccess/components/onboarding/types';
-import {
-	MCP_ENDPOINT,
-	MCP_ONBOARDING_MODAL_KEY,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_ENDPOINT, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -24,6 +14,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
+import MCPOnboardingAgentPicker from './MCPOnboardingAgentPicker.vue';
+import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
+import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
+import type { MCPOnboardingClient, MCPOnboardingClientOption } from './types';
 
 type MCPOnboardingSurface = 'tile' | 'first_open_modal';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
@@ -56,27 +50,33 @@ const clientOptions = computed<MCPOnboardingClientOption[]>(() => [
 	{
 		value: 'claude',
 		slug: 'claude',
-		label: i18n.baseText('settings.mcp.onboarding.client.claude' as BaseTextKey),
+		label: i18n.baseText(
+			'experiments.surfaceMcpToNewCloudUsers.onboarding.client.claude' as BaseTextKey,
+		),
 	},
 	{
 		value: 'claude_code',
 		slug: 'claude-code',
-		label: i18n.baseText('settings.mcp.onboarding.client.claudeCode'),
+		label: i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.client.claudeCode'),
 	},
 	{
 		value: 'codex',
 		slug: 'codex',
-		label: i18n.baseText('settings.mcp.onboarding.client.codex'),
+		label: i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.client.codex'),
 	},
 	{
 		value: 'cursor',
 		slug: 'cursor',
-		label: i18n.baseText('settings.mcp.onboarding.client.cursor' as BaseTextKey),
+		label: i18n.baseText(
+			'experiments.surfaceMcpToNewCloudUsers.onboarding.client.cursor' as BaseTextKey,
+		),
 	},
 	{
 		value: 'chatgpt',
 		slug: 'chatgpt',
-		label: i18n.baseText('settings.mcp.onboarding.client.chatgpt' as BaseTextKey),
+		label: i18n.baseText(
+			'experiments.surfaceMcpToNewCloudUsers.onboarding.client.chatgpt' as BaseTextKey,
+		),
 	},
 ]);
 
@@ -92,17 +92,17 @@ const activeClientLabel = computed(
 		activeClient.value,
 );
 const promptSectionTitle = computed(() =>
-	i18n.baseText('settings.mcp.onboarding.section.prompt.title', {
+	i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.section.prompt.title', {
 		interpolate: { assistant: activeClientLabel.value },
 	}),
 );
 const chatGptCustomAppFields = computed(() => [
 	{
 		label: i18n.baseText(
-			'settings.mcp.onboarding.section.chatgptCustomApp.appName.label' as BaseTextKey,
+			'experiments.surfaceMcpToNewCloudUsers.onboarding.section.chatgptCustomApp.appName.label' as BaseTextKey,
 		),
 		content: i18n.baseText(
-			'settings.mcp.onboarding.section.chatgptCustomApp.appName.value' as BaseTextKey,
+			'experiments.surfaceMcpToNewCloudUsers.onboarding.section.chatgptCustomApp.appName.value' as BaseTextKey,
 		),
 		parameter: 'chatgpt-app-name' as const,
 		testId: 'mcp-onboarding-chatgpt-app-name',
@@ -110,7 +110,7 @@ const chatGptCustomAppFields = computed(() => [
 	},
 	{
 		label: i18n.baseText(
-			'settings.mcp.onboarding.section.chatgptCustomApp.serverUrl.label' as BaseTextKey,
+			'experiments.surfaceMcpToNewCloudUsers.onboarding.section.chatgptCustomApp.serverUrl.label' as BaseTextKey,
 		),
 		content: serverUrl.value,
 		parameter: 'server-url' as const,
@@ -210,8 +210,8 @@ onBeforeUnmount(() => {
 
 <template>
 	<Modal
-		:name="MCP_ONBOARDING_MODAL_KEY"
-		:title="i18n.baseText('settings.mcp.onboarding.title')"
+		:name="SURFACE_MCP_ONBOARDING_MODAL_KEY"
+		:title="i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.title')"
 		width="640px"
 		:event-bus="modalBus"
 		:close-on-click-modal="true"
@@ -223,7 +223,7 @@ onBeforeUnmount(() => {
 					<SurfaceMcpBridgeGraphic size="hero" />
 				</div>
 				<h1 :class="$style.headerTitle">
-					{{ i18n.baseText('settings.mcp.onboarding.title') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.title') }}
 				</h1>
 				<N8nText
 					tag="p"
@@ -232,7 +232,7 @@ onBeforeUnmount(() => {
 					align="center"
 					:class="$style.headerDescription"
 				>
-					{{ i18n.baseText('settings.mcp.onboarding.description') }}
+					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.description') }}
 				</N8nText>
 			</div>
 		</template>
@@ -258,7 +258,11 @@ onBeforeUnmount(() => {
 								<template v-else>1</template>
 							</span>
 							<h2 :class="$style.sectionTitle">
-								{{ i18n.baseText('settings.mcp.onboarding.section.access.title') }}
+								{{
+									i18n.baseText(
+										'experiments.surfaceMcpToNewCloudUsers.onboarding.section.access.title',
+									)
+								}}
 							</h2>
 						</div>
 						<MCPAccessToggle
@@ -278,7 +282,11 @@ onBeforeUnmount(() => {
 						<header :class="$style.sectionHeader">
 							<span :class="$style.sectionStep">2</span>
 							<h2 :class="$style.sectionTitle">
-								{{ i18n.baseText('settings.mcp.onboarding.section.client.title') }}
+								{{
+									i18n.baseText(
+										'experiments.surfaceMcpToNewCloudUsers.onboarding.section.client.title',
+									)
+								}}
 							</h2>
 						</header>
 						<div :class="$style.sectionBody">
@@ -301,7 +309,7 @@ onBeforeUnmount(() => {
 								<h2 :class="$style.sectionTitle">
 									{{
 										i18n.baseText(
-											'settings.mcp.onboarding.section.chatgptDeveloperMode.title' as BaseTextKey,
+											'experiments.surfaceMcpToNewCloudUsers.onboarding.section.chatgptDeveloperMode.title' as BaseTextKey,
 										)
 									}}
 								</h2>
@@ -310,7 +318,7 @@ onBeforeUnmount(() => {
 								<N8nText tag="p" size="small" color="text-base" :class="$style.stepDescription">
 									{{
 										i18n.baseText(
-											'settings.mcp.onboarding.section.chatgptDeveloperMode.description' as BaseTextKey,
+											'experiments.surfaceMcpToNewCloudUsers.onboarding.section.chatgptDeveloperMode.description' as BaseTextKey,
 										)
 									}}
 								</N8nText>
@@ -327,7 +335,7 @@ onBeforeUnmount(() => {
 								<h2 :class="$style.sectionTitle">
 									{{
 										i18n.baseText(
-											'settings.mcp.onboarding.section.chatgptCustomApp.title' as BaseTextKey,
+											'experiments.surfaceMcpToNewCloudUsers.onboarding.section.chatgptCustomApp.title' as BaseTextKey,
 										)
 									}}
 								</h2>
@@ -377,7 +385,9 @@ onBeforeUnmount(() => {
 								<span :class="$style.sectionStep">4</span>
 								<h2 :class="$style.sectionTitle">
 									{{
-										i18n.baseText('settings.mcp.onboarding.section.serverUrl.title' as BaseTextKey)
+										i18n.baseText(
+											'experiments.surfaceMcpToNewCloudUsers.onboarding.section.serverUrl.title' as BaseTextKey,
+										)
 									}}
 								</h2>
 							</header>
@@ -404,14 +414,22 @@ onBeforeUnmount(() => {
 				:class="$style.footer"
 				data-test-id="mcp-onboarding-footer"
 			>
-				<I18nT keypath="settings.mcp.onboarding.footer" tag="span" scope="global">
+				<I18nT
+					keypath="experiments.surfaceMcpToNewCloudUsers.onboarding.footer"
+					tag="span"
+					scope="global"
+				>
 					<template #settingsLink>
 						<N8nLink
 							:to="{ name: MCP_SETTINGS_VIEW }"
 							size="xsmall"
 							data-test-id="mcp-onboarding-settings-link"
 						>
-							{{ i18n.baseText('settings.mcp.onboarding.intro.settingsLink' as BaseTextKey) }}
+							{{
+								i18n.baseText(
+									'experiments.surfaceMcpToNewCloudUsers.onboarding.intro.settingsLink' as BaseTextKey,
+								)
+							}}
 						</N8nLink>
 					</template>
 					<template #docsLink>
@@ -422,7 +440,11 @@ onBeforeUnmount(() => {
 							size="xsmall"
 							data-test-id="mcp-onboarding-docs-link"
 						>
-							{{ i18n.baseText('settings.mcp.onboarding.footer.docsLink' as BaseTextKey) }}
+							{{
+								i18n.baseText(
+									'experiments.surfaceMcpToNewCloudUsers.onboarding.footer.docsLink' as BaseTextKey,
+								)
+							}}
 						</N8nLink>
 					</template>
 				</I18nT>

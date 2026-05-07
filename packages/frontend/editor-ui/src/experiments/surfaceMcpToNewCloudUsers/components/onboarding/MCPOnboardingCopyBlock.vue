@@ -29,7 +29,7 @@ let copyResetTimeout: ReturnType<typeof setTimeout> | null = null;
 const markdown = computed(() => `\`\`\`\n${props.content}\n\`\`\``);
 const copyTooltip = computed(() =>
 	justCopied.value
-		? i18n.baseText('settings.mcp.onboarding.copy.copied')
+		? i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.copy.copied')
 		: (props.copyTooltip ?? i18n.baseText('generic.copy')),
 );
 

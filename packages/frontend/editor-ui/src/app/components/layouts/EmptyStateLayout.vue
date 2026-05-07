@@ -1,25 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useI18n } from '@n8n/i18n';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
+import { useSurfaceMcpEmptyState } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
-import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import { MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
-import SurfaceMcpTileLogos from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpTileLogos.vue';
+import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
+import SurfaceMcpEmptyStateTile from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue';
 
 const emit = defineEmits<{
 	'click:add': [];
@@ -28,28 +25,28 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const route = useRoute();
 const bannersStore = useBannersStore();
-const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const projectPages = useProjectPages();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
-const mcpStore = useMCPStore();
-const surfaceMcpStore = useSurfaceMcpToNewCloudUsersStore();
 const readyToRunStore = useReadyToRunStore();
 
 const {
 	showAppSelection,
 	showBuilderPrompt,
 	showRecommendedTemplatesInline,
-	showMcpOpportunity,
-	mcpOpportunitySuppressedBy,
-	showMcpTile,
-	showMcpReminder,
 	builderHeading,
 	emptyStateHeading,
 	emptyStateDescription,
 	canCreateWorkflow,
 } = useWorkflowsEmptyState();
+
+const { showTile: showMcpTile, showReminder: showMcpReminder } = useSurfaceMcpEmptyState({
+	canCreateWorkflow: computed(() => Boolean(canCreateWorkflow.value)),
+	showAppSelection: computed(() => Boolean(showAppSelection.value)),
+	showBuilderPrompt: computed(() => Boolean(showBuilderPrompt.value)),
+	showRecommendedTemplatesInline: computed(() => Boolean(showRecommendedTemplatesInline.value)),
+});
 
 const addWorkflow = () => {
 	emit('click:add');
@@ -76,16 +73,6 @@ const containerStyle = computed(() => ({
 	minHeight: `calc(100vh - ${bannersStore.bannersHeight}px)`,
 }));
 
-const mcpTileCtaKey = computed<BaseTextKey>(() =>
-	surfaceMcpStore.currentVariant === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2
-		? 'workflows.empty.mcp.tile.variant2.cta'
-		: 'workflows.empty.mcp.tile.variant1.cta',
-);
-const showMcpTileCard = computed(() => showMcpTile.value && canCreateWorkflow.value);
-const showMcpTileOpportunity = computed(() => showMcpOpportunity.value);
-const hasTrackedMcpEntryPointViewed = ref(false);
-const hasTrackedMcpOpportunityViewed = ref(false);
-
 const builderProjectId = computed(() =>
 	projectPages.isOverviewSubPage
 		? projectsStore.personalProject?.id
@@ -104,45 +91,6 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 
 const handleAppSelectionContinue = () => {
 	credentialsAppSelectionStore.dismiss();
-};
-
-watch(
-	showMcpTileOpportunity,
-	(value) => {
-		if (value && !hasTrackedMcpOpportunityViewed.value) {
-			hasTrackedMcpOpportunityViewed.value = true;
-			surfaceMcpStore.trackOpportunityViewed(
-				'tile',
-				'empty_state_tile',
-				Boolean(showMcpTileCard.value),
-				mcpOpportunitySuppressedBy.value,
-				mcpStore.mcpAccessEnabled,
-			);
-		}
-	},
-	{ immediate: true },
-);
-
-watch(
-	showMcpTileCard,
-	(value, previousValue) => {
-		if (value && !previousValue && !hasTrackedMcpEntryPointViewed.value) {
-			hasTrackedMcpEntryPointViewed.value = true;
-			surfaceMcpStore.trackEntryPointViewed('tile', 'empty_state_tile', mcpStore.mcpAccessEnabled);
-		}
-	},
-	{ immediate: true },
-);
-
-const openMcpOnboardingFromTile = () => {
-	surfaceMcpStore.trackOpened('tile', {
-		entryPoint: 'empty_state_tile',
-		mcpAccessEnabled: mcpStore.mcpAccessEnabled,
-	});
-	uiStore.openModalWithData({
-		name: MCP_ONBOARDING_MODAL_KEY,
-		data: { surface: 'tile' },
-	});
 };
 </script>
 
@@ -219,15 +167,7 @@ const openMcpOnboardingFromTile = () => {
 					<N8nText tag="p" size="large" color="text-base">
 						{{ emptyStateDescription }}
 					</N8nText>
-					<N8nText
-						v-if="showMcpReminder"
-						size="small"
-						color="text-light"
-						data-test-id="mcp-onboarding-reminder"
-						:class="$style.reminder"
-					>
-						{{ i18n.baseText('workflows.empty.mcp.reminder') }}
-					</N8nText>
+					<SurfaceMcpEmptyStateReminder v-if="showMcpReminder" />
 
 					<!-- Two cards or single card depending on ready-to-run availability -->
 					<div
@@ -235,43 +175,12 @@ const openMcpOnboardingFromTile = () => {
 						:class="[
 							$style.actionCardsContainer,
 							{
-								[$style.singleCard]: !showReadyToRunCard && !showMcpTileCard,
-								[$style.threeCards]: showReadyToRunCard && showMcpTileCard,
+								[$style.singleCard]: !showReadyToRunCard && !showMcpTile,
+								[$style.threeCards]: showReadyToRunCard && showMcpTile,
 							},
 						]"
 					>
-						<N8nCard
-							v-if="showMcpTileCard"
-							:class="$style.actionCard"
-							hoverable
-							data-test-id="mcp-onboarding-card"
-							@click="openMcpOnboardingFromTile"
-						>
-							<span
-								:class="[$style.mcpBadge, { [$style.mcpBadgeEnabled]: mcpStore.mcpAccessEnabled }]"
-								data-test-id="mcp-onboarding-badge"
-							>
-								<N8nIcon
-									v-if="mcpStore.mcpAccessEnabled"
-									icon="check"
-									size="xsmall"
-									:stroke-width="2.5"
-								/>
-								{{
-									i18n.baseText(
-										mcpStore.mcpAccessEnabled
-											? 'workflows.empty.mcp.tile.badge.enabled'
-											: 'workflows.empty.mcp.tile.badge.new',
-									)
-								}}
-							</span>
-							<div :class="$style.mcpCardContent">
-								<SurfaceMcpTileLogos />
-								<N8nText size="large" :bold="true" :class="$style.mcpCta">
-									{{ i18n.baseText(mcpTileCtaKey) }}
-								</N8nText>
-							</div>
-						</N8nCard>
+						<SurfaceMcpEmptyStateTile v-if="showMcpTile" :class="$style.actionCard" />
 
 						<!-- Card 1: Try AI workflow (conditional) -->
 						<N8nCard
@@ -399,10 +308,6 @@ const openMcpOnboardingFromTile = () => {
 	}
 }
 
-.reminder {
-	margin-top: var(--spacing--xs);
-}
-
 .actionCard {
 	position: relative;
 	width: 192px;
@@ -440,46 +345,6 @@ const openMcpOnboardingFromTile = () => {
 	svg {
 		transition: color 0.3s ease;
 	}
-}
-
-// --- MCP tile (experiment) ------------------------------------------------
-
-.mcpCardContent {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--md);
-	gap: var(--spacing--sm);
-	width: 100%;
-}
-
-.mcpCta {
-	letter-spacing: var(--letter-spacing--tight);
-}
-
-.mcpBadge {
-	position: absolute;
-	top: var(--spacing--3xs);
-	right: var(--spacing--3xs);
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
-	padding: 2px var(--spacing--3xs);
-	border-radius: var(--radius--full);
-	background: var(--color--orange-100);
-	color: var(--color--orange-800);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	letter-spacing: var(--letter-spacing--wider);
-	text-transform: uppercase;
-	line-height: 1;
-	z-index: 1;
-}
-
-.mcpBadgeEnabled {
-	background: var(--color--green-100);
-	color: var(--color--green-800);
 }
 
 .orDivider {
