@@ -1,0 +1,13 @@
+diff --git a/lib/core/Axios.js b/lib/core/Axios.js
+index 0000000..0000001 100644
+--- a/lib/core/Axios.js
++++ b/lib/core/Axios.js
+@@ -47,7 +47,7 @@ class Axios {
+
+         // slice off the Error: ... line
+         const stack = (() => {
+-          if (!dummy.stack) {
++          if (typeof dummy.stack !== 'string') {
+             return '';
+           }
+

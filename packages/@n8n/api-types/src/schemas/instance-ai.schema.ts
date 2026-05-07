@@ -89,6 +89,11 @@ export const domainAccessMetaSchema = z.object({
 });
 export type DomainAccessMeta = z.infer<typeof domainAccessMetaSchema>;
 
+export const webSearchMetaSchema = z.object({
+	query: z.string(),
+});
+export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
+
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function isSafeObjectKey(key: string): boolean {
@@ -283,13 +288,29 @@ export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
 export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
 
-export const gatewayConfirmationRequiredPayloadSchema = z.object({
+export const instanceGatewayResourceDecisionSchema = z.enum([
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+]);
+export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
+
+export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
 	options: z.array(z.string()),
 });
+
+export type GatewayConfirmationRequiredWirePayload = z.infer<
+	typeof gatewayConfirmationRequiredWirePayloadSchema
+>;
+
+export const gatewayConfirmationRequiredPayloadSchema =
+	gatewayConfirmationRequiredWirePayloadSchema.extend({
+		options: z.array(instanceGatewayResourceDecisionSchema),
+	});
 
 export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema
@@ -355,6 +376,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
+	webSearch: webSearchMetaSchema
+		.optional()
+		.describe('When present, renders web-search approval UI instead of generic confirm'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -672,6 +696,7 @@ export interface InstanceAiConfirmation {
 	projectId?: string;
 	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
+	webSearch?: WebSearchMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
 	setupRequests?: InstanceAiWorkflowSetupNode[];
 	workflowId?: string;
@@ -880,6 +905,7 @@ const instanceAiPermissionsSchema = z.object({
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
 	readFilesystem: instanceAiPermissionModeSchema,
 	fetchUrl: instanceAiPermissionModeSchema,
+	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 });
 
@@ -903,6 +929,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	cleanupTestExecutions: 'require_approval',
 	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
+	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 };
 
@@ -912,6 +939,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'readFilesystem',
 	'fetchUrl',
+	'webSearch',
 	'publishWorkflow',
 	'deleteCredential',
 	'restoreWorkflowVersion',
