@@ -1,4 +1,4 @@
-import type { BuiltMemory, Thread } from '../types';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
 
 interface StoredMessage {
@@ -78,6 +78,8 @@ export class InMemoryMemory implements BuiltMemory {
 	/**
 	 * Save messages to the thread established by the most recent `saveThread` call.
 	 * Always call `saveThread` before `saveMessages` to set the thread context.
+	 * Upserts by message id — if a message with the same id already exists, it is
+	 * replaced in place (preserving insertion order). New messages are appended.
 	 */
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async saveMessages(args: {
@@ -86,8 +88,16 @@ export class InMemoryMemory implements BuiltMemory {
 		messages: AgentDbMessage[];
 	}): Promise<void> {
 		const existing = this.messagesByThread.get(args.threadId) ?? [];
+		const byId = new Map(existing.map((s, i) => [s.message.id, i]));
 		for (const msg of args.messages) {
-			existing.push({ message: msg, createdAt: msg.createdAt });
+			const entry: StoredMessage = { message: msg, createdAt: msg.createdAt };
+			const idx = byId.get(msg.id);
+			if (idx !== undefined) {
+				existing[idx] = entry;
+			} else {
+				byId.set(msg.id, existing.length);
+				existing.push(entry);
+			}
 		}
 		this.messagesByThread.set(args.threadId, existing);
 	}
@@ -101,6 +111,10 @@ export class InMemoryMemory implements BuiltMemory {
 				messages.filter((s) => !idSet.has(s.message.id)),
 			);
 		}
+	}
+
+	describe(): MemoryDescriptor {
+		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
 	}
 }
 

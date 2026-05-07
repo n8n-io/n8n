@@ -172,6 +172,15 @@ export function getProjects(): Project[] {
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
 		});
+		projects.push({
+			name: 'dev-server-smoke',
+			testDir: './tests/dev-server-smoke',
+			fullyParallel: false,
+			// Vite dev cold-start can take 15-25s on the first navigation while it
+			// pre-bundles deps. Subsequent navigations are sub-second.
+			timeout: 90_000,
+			use: { baseURL: getFrontendUrl(), navigationTimeout: 30_000 },
+		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
 			projects.push(

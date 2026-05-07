@@ -68,8 +68,12 @@ export class NodeTypeParser {
 	 * Search for nodes by name or description
 	 * Returns up to `limit` results
 	 */
-	searchNodeTypes(query: string, limit: number = 5): ParsedNodeType[] {
-		const results = this.searchEngine.searchByName(query, limit);
+	searchNodeTypes(
+		query: string,
+		limit: number = 5,
+		nodeFilter?: (nodeId: string) => boolean,
+	): ParsedNodeType[] {
+		const results = this.searchEngine.searchByName(query, limit, nodeFilter);
 
 		return results.map((result) => {
 			// Find the full node type to check if it's a trigger

@@ -6,7 +6,7 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
@@ -58,7 +58,7 @@ const emit = defineEmits<{
 }>();
 
 const telemetry = useTelemetry();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 
 const canvas = inject(CanvasKey, undefined);

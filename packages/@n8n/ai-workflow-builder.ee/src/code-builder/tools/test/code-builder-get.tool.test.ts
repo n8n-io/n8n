@@ -355,6 +355,101 @@ describe('CodeBuilderGetTool', () => {
 		});
 	});
 
+	describe('tool variant fallback', () => {
+		let tempDir: string;
+
+		beforeAll(() => {
+			tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tool-variant-test-'));
+
+			// Base node with flat version (e.g. emailSend)
+			const emailSendDir = path.join(tempDir, 'nodes/n8n-nodes-base/emailSend');
+			fs.mkdirSync(emailSendDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(emailSendDir, 'v21.ts'),
+				'export type EmailSendV21Config = { to: string; subject: string };',
+			);
+			fs.writeFileSync(path.join(emailSendDir, 'index.ts'), "export * from './v21';");
+
+			// Base node with split structure (e.g. slack)
+			const slackV24Dir = path.join(tempDir, 'nodes/n8n-nodes-base/slack/v24');
+			fs.mkdirSync(slackV24Dir, { recursive: true });
+			const slackMessageDir = path.join(slackV24Dir, 'resource_message');
+			fs.mkdirSync(slackMessageDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(slackMessageDir, 'operation_post.ts'),
+				"export type SlackV24MessagePostConfig = { resource: 'message'; operation: 'post'; channel: string };",
+			);
+			fs.writeFileSync(
+				path.join(tempDir, 'nodes/n8n-nodes-base/slack/index.ts'),
+				"export * from './v24';",
+			);
+
+			// Langchain-style base node (e.g. chat)
+			const chatDir = path.join(tempDir, 'nodes/n8n-nodes-langchain/chat');
+			fs.mkdirSync(chatDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(chatDir, 'v13.ts'),
+				'export type ChatV13Config = { mode: string };',
+			);
+			fs.writeFileSync(path.join(chatDir, 'index.ts'), "export * from './v13';");
+		});
+
+		afterAll(() => {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		});
+
+		it('should resolve a HitlTool variant to its base node (flat structure)', async () => {
+			const tool = createCodeBuilderGetTool({ nodeDefinitionDirs: [tempDir] });
+
+			const result = await tool.invoke({
+				nodeIds: ['n8n-nodes-base.emailSendHitlTool'],
+			});
+
+			expect(result).toContain('EmailSendV21Config');
+			expect(result).not.toContain('not found');
+		});
+
+		it('should resolve a HitlTool variant to its base node for langchain packages', async () => {
+			const tool = createCodeBuilderGetTool({ nodeDefinitionDirs: [tempDir] });
+
+			const result = await tool.invoke({
+				nodeIds: ['@n8n/n8n-nodes-langchain.chatHitlTool'],
+			});
+
+			expect(result).toContain('ChatV13Config');
+			expect(result).not.toContain('not found');
+		});
+
+		it('should resolve a HitlTool variant to a split-structure base node when discriminators are provided', async () => {
+			const tool = createCodeBuilderGetTool({ nodeDefinitionDirs: [tempDir] });
+
+			const result = await tool.invoke({
+				nodeIds: [
+					{
+						nodeId: 'n8n-nodes-base.slackHitlTool',
+						resource: 'message',
+						operation: 'post',
+					},
+				],
+			});
+
+			expect(result).toContain('SlackV24MessagePostConfig');
+			expect(result).not.toContain('not found');
+		});
+
+		it.each([
+			['n8n-nodes-base.unknownThingHitlTool', 'n8n-nodes-base.unknownThing'],
+			['n8n-nodes-base.unknownThingTool', 'n8n-nodes-base.unknownThing'],
+		])('should report the original node ID in the error: %s', async (nodeId, strippedName) => {
+			const tool = createCodeBuilderGetTool({ nodeDefinitionDirs: [tempDir] });
+
+			const result = await tool.invoke({ nodeIds: [nodeId] });
+
+			expect(result).toContain(`'${nodeId}'`);
+			expect(result).not.toContain(`'${strippedName}'`);
+		});
+	});
+
 	describe('path traversal security', () => {
 		describe('isValidPathComponent', () => {
 			it('should accept valid alphanumeric components', () => {
