@@ -57,7 +57,7 @@ runs:
         # Exclude first-party @n8n/* packages from SafeChain's minimum-package-age
         # filter so freshly-published versions stay visible to every subsequent
         # step in the job (install, build, and publish).
-        echo "SAFE_CHAIN_MINIMUM_PACKAGE_AGE_EXCLUSIONS=@n8n/*" >> "$GITHUB_ENV"
+        echo "SAFE_CHAIN_MINIMUM_PACKAGE_AGE_EXCLUSIONS=@n8n/*,n8n,n8n-containers,n8n-core,n8n-editor-ui,n8n-node-dev,n8n-nodes-base,n8n-playwright,n8n-workflow" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Install Dependencies

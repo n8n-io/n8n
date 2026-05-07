@@ -8,7 +8,7 @@ import {
 	createAgentWithConcurrentMixedTools,
 	collectTextDeltas,
 } from './helpers';
-import { isLlmMessage, type StreamChunk } from '../../index';
+import type { StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
 
@@ -120,7 +120,7 @@ describe('concurrent tool execution integration', () => {
 			const resumedStream = await agent.resume(
 				'stream',
 				{ approved: true },
-				{ runId: next.runId!, toolCallId: next.toolCallId! },
+				{ runId: next.runId, toolCallId: next.toolCallId },
 			);
 
 			const resumedChunks = await collectStreamChunks(resumedStream.stream);
@@ -147,13 +147,8 @@ describe('concurrent tool execution integration', () => {
 
 		const chunks = await collectStreamChunks(fullStream);
 
-		// list_files should auto-execute — its result should appear as a message chunk
-		const toolResultChunks = chunks.filter(
-			(c) =>
-				c.type === 'message' &&
-				isLlmMessage(c.message) &&
-				c.message.content.some((p) => p.type === 'tool-result'),
-		);
+		// list_files should auto-execute — its result should appear as a discrete tool-result chunk
+		const toolResultChunks = chunksOfType(chunks, 'tool-result');
 
 		// delete_file should be suspended
 		const suspendedChunks = chunksOfType(chunks, 'tool-call-suspended');
@@ -170,12 +165,7 @@ describe('concurrent tool execution integration', () => {
 			);
 
 			// list_files result should be present even though delete_file suspended
-			const listResult = toolResultChunks.find(
-				(c) =>
-					c.type === 'message' &&
-					isLlmMessage(c.message) &&
-					c.message.content.some((p) => p.type === 'tool-result' && p.toolName === 'list_files'),
-			);
+			const listResult = toolResultChunks.find((c) => c.toolName === 'list_files');
 			expect(listResult).toBeDefined();
 		}
 	});
@@ -204,7 +194,7 @@ describe('concurrent tool execution integration', () => {
 					'content' in m
 						? m.content
 								.filter((c) => c.type === 'text')
-								.map((c) => ({ type: 'text-delta' as const, delta: c.text }))
+								.map((c) => ({ type: 'text-delta' as const, id: '', delta: c.text }))
 						: [],
 				),
 		);
