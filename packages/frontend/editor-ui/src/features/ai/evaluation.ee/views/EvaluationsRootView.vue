@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { EVALUATIONS_DOCS_URL } from '@/app/constants';
+import { EVALUATIONS_AS_CONFIG_EXPERIMENT, EVALUATIONS_DOCS_URL } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
+import EvaluationConfigView from './EvaluationConfigView.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
@@ -23,6 +25,14 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const posthogStore = usePostHog();
+
+const isConfigDrivenFlowEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		EVALUATIONS_AS_CONFIG_EXPERIMENT.name,
+		EVALUATIONS_AS_CONFIG_EXPERIMENT.variant,
+	),
+);
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -70,9 +80,20 @@ const evaluationsQuotaExceeded = computed(() => {
 const { isReady } = useAsyncState(async () => {
 	try {
 		await usageStore.getLicenseInfo();
+	} catch {
+		// Non-fatal — license info is best-effort on mount.
+	}
+	try {
 		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
+	}
+	if (isConfigDrivenFlowEnabled.value) {
+		try {
+			await evaluationStore.fetchEvaluationConfigs(props.workflowId);
+		} catch {
+			// Non-fatal — wizard still works without configs.
+		}
 	}
 }, undefined);
 
@@ -107,7 +128,11 @@ watch(
 <template>
 	<div :class="$style.evaluationsView">
 		<template v-if="isReady && showWizard">
-			<div :class="$style.setupContent">
+			<EvaluationConfigView
+				v-if="isConfigDrivenFlowEnabled && evaluationsLicensed && !isProtectedEnvironment"
+				:workflow-id="props.workflowId"
+			/>
+			<div v-else :class="$style.setupContent">
 				<div>
 					<N8nText size="large" color="text-dark" tag="h3" bold>
 						{{ locale.baseText('evaluations.setupWizard.title') }}

@@ -2,6 +2,7 @@ import type { StartTestRunPayload } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { JsonObject } from 'n8n-workflow';
+import type { EvaluationConfigDto, UpsertEvaluationConfigDto } from '@n8n/api-types';
 
 export interface TestRunRecord {
 	id: string;
@@ -121,4 +122,63 @@ export const getTestCaseExecutions = async (
 		'GET',
 		getRunExecutionsEndpoint(workflowId, runId),
 	);
+};
+
+const evaluationConfigsEndpoint = (workflowId: string, configId?: string) =>
+	`/workflows/${workflowId}/evaluation-configs${configId ? `/${configId}` : ''}`;
+
+export const listEvaluationConfigs = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<EvaluationConfigDto[]> =>
+	await makeRestApiRequest(context, 'GET', evaluationConfigsEndpoint(workflowId));
+
+export const getEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+): Promise<EvaluationConfigDto> =>
+	await makeRestApiRequest(context, 'GET', evaluationConfigsEndpoint(workflowId, configId));
+
+export const createEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	payload: UpsertEvaluationConfigDto,
+): Promise<EvaluationConfigDto> =>
+	await makeRestApiRequest(context, 'POST', evaluationConfigsEndpoint(workflowId), payload);
+
+export const updateEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+	payload: UpsertEvaluationConfigDto,
+): Promise<EvaluationConfigDto> =>
+	await makeRestApiRequest(
+		context,
+		'PUT',
+		evaluationConfigsEndpoint(workflowId, configId),
+		payload,
+	);
+
+export const deleteEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', evaluationConfigsEndpoint(workflowId, configId));
+};
+
+// Dispatch a config-driven test run. Returns the new test run id (202).
+export const startConfigTestRun = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+): Promise<{ testRunId: string }> => {
+	const response = await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${evaluationConfigsEndpoint(workflowId, configId)}/test-runs`,
+		headers: { 'push-ref': context.pushRef },
+	});
+	return response as { testRunId: string };
 };

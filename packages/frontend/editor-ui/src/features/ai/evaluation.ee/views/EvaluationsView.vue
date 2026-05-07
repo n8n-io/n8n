@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import ConcurrencySlider from '../components/ConcurrencySlider';
 import RunsSection from '../components/ListRuns/RunsSection.vue';
@@ -8,6 +9,8 @@ import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { EVALUATIONS_AS_CONFIG_EXPERIMENT, VIEWS } from '@/app/constants';
 
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
@@ -17,6 +20,8 @@ const props = defineProps<{
 
 const locale = useI18n();
 const toast = useToast();
+const router = useRouter();
+const posthogStore = usePostHog();
 
 const evaluationStore = useEvaluationStore();
 const parallelEvalStore = useParallelEvalStore();
@@ -43,16 +48,41 @@ const concurrencyLabel = computed(() =>
 		: locale.baseText('evaluation.runInParallel.label.sequential'),
 );
 
+const isConfigDrivenFlowEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		EVALUATIONS_AS_CONFIG_EXPERIMENT.name,
+		EVALUATIONS_AS_CONFIG_EXPERIMENT.variant,
+	),
+);
+
+const primaryConfigId = computed<string | null>(() => {
+	const configs = evaluationStore.configsByWorkflowId[props.workflowId] ?? [];
+	return configs[0]?.id ?? null;
+});
+
+const canRunConfig = computed(() => isConfigDrivenFlowEnabled.value && !!primaryConfigId.value);
+
+function navigateToConfig() {
+	void router.push({
+		name: VIEWS.EVALUATION_CONFIG,
+		params: { workflowId: props.workflowId },
+	});
+}
+
 async function runTest() {
 	try {
-		// When the rollout flag is off, omit `concurrency` entirely so the BE
-		// safety net is a no-op and behaviour matches the legacy sequential
-		// path. Flag-on cohort sends the slider value (1 = sequential, >1 =
-		// concurrent fan-out).
-		const options = parallelEvalStore.isFeatureEnabled
-			? { concurrency: concurrencyModel.value }
-			: undefined;
-		await evaluationStore.startTestRun(props.workflowId, options);
+		if (canRunConfig.value && primaryConfigId.value) {
+			await evaluationStore.startConfigTestRun(props.workflowId, primaryConfigId.value);
+		} else {
+			// When the rollout flag is off, omit `concurrency` entirely so the BE
+			// safety net is a no-op and behaviour matches the legacy sequential
+			// path. Flag-on cohort sends the slider value (1 = sequential, >1 =
+			// concurrent fan-out).
+			const options = parallelEvalStore.isFeatureEnabled
+				? { concurrency: concurrencyModel.value }
+				: undefined;
+			await evaluationStore.startTestRun(props.workflowId, options);
+		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
@@ -132,25 +162,36 @@ watch(runningTestRun, (run) => {
 						data-test-id="run-in-parallel-concurrency"
 					/>
 				</div>
-				<N8nButton
-					variant="subtle"
-					v-if="runningTestRun"
-					:disabled="cancellingTestRun"
-					:class="$style.runOrStopTestButton"
-					size="small"
-					data-test-id="stop-test-button"
-					:label="locale.baseText('evaluation.stopTest')"
-					@click="stopTest"
-				/>
-				<N8nButton
-					variant="solid"
-					v-else
-					:class="$style.runOrStopTestButton"
-					size="small"
-					data-test-id="run-test-button"
-					:label="locale.baseText('evaluation.runTest')"
-					@click="runTest"
-				/>
+				<div :class="$style.actions">
+					<N8nButton
+						v-if="isConfigDrivenFlowEnabled"
+						variant="outline"
+						size="small"
+						icon="settings"
+						data-test-id="evaluation-configure-button"
+						:label="locale.baseText('evaluations.runs.editConfig')"
+						@click="navigateToConfig"
+					/>
+					<N8nButton
+						variant="subtle"
+						v-if="runningTestRun"
+						:disabled="cancellingTestRun"
+						:class="$style.runOrStopTestButton"
+						size="small"
+						data-test-id="stop-test-button"
+						:label="locale.baseText('evaluation.stopTest')"
+						@click="stopTest"
+					/>
+					<N8nButton
+						variant="solid"
+						v-else
+						:class="$style.runOrStopTestButton"
+						size="small"
+						data-test-id="run-test-button"
+						:label="locale.baseText('evaluation.runTest')"
+						@click="runTest"
+					/>
+				</div>
 			</div>
 		</div>
 		<div :class="$style.wrapper">
@@ -210,12 +251,18 @@ watch(runningTestRun, (run) => {
 	padding-left: 58px;
 }
 
-.runOrStopTestButton {
-	white-space: nowrap;
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	// Anchor to the right edge of `.headerInner` regardless of which
 	// siblings render. Works for the flag-off case (only the button is
 	// rendered) and the flag-on case (parallel controls take the left).
 	margin-left: auto;
+}
+
+.runOrStopTestButton {
+	white-space: nowrap;
 }
 
 .parallelControls {

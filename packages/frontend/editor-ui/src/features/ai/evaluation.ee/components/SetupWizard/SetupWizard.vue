@@ -3,11 +3,12 @@ import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import { VIEWS } from '@/app/constants';
+import { EVALUATIONS_AS_CONFIG_EXPERIMENT, VIEWS } from '@/app/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
@@ -21,6 +22,21 @@ const workflowsStore = useWorkflowsStore();
 const evaluationStore = useEvaluationStore();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const posthogStore = usePostHog();
+
+const isConfigDrivenFlowEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		EVALUATIONS_AS_CONFIG_EXPERIMENT.name,
+		EVALUATIONS_AS_CONFIG_EXPERIMENT.variant,
+	),
+);
+
+const navigateToConfig = () => {
+	void router.push({
+		name: VIEWS.EVALUATION_CONFIG,
+		params: { workflowId: workflowsStore.workflowId },
+	});
+};
 
 const hasRuns = computed(() => {
 	return evaluationStore.testRunsByWorkflowId[workflowsStore.workflowId]?.length > 0;
@@ -90,6 +106,16 @@ function onSeePlans() {
 
 <template>
 	<div :class="$style.container" data-test-id="evaluation-setup-wizard">
+		<div v-if="isConfigDrivenFlowEnabled" :class="$style.configCta">
+			<N8nButton
+				variant="solid"
+				size="medium"
+				icon="settings"
+				data-test-id="evaluation-setup-wizard-configure"
+				:label="locale.baseText('evaluations.runs.editConfig')"
+				@click="navigateToConfig"
+			/>
+		</div>
 		<div :class="$style.steps">
 			<!-- Step 1 -->
 			<div :class="[$style.step, $style.completed]">
@@ -265,6 +291,12 @@ function onSeePlans() {
 <style module lang="scss">
 .container {
 	background-color: var(--color--background--light-2);
+}
+
+.configCta {
+	display: flex;
+	justify-content: flex-end;
+	padding-bottom: var(--spacing--sm);
 }
 
 .steps {

@@ -22,7 +22,11 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import {
+	EVALUATIONS_AS_CONFIG_EXPERIMENT,
+	RESOURCE_CENTER_EXPERIMENT,
+	TEMPLATE_SETUP_EXPERIENCE,
+} from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
@@ -102,6 +106,8 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const EvaluationConfigView = async () =>
+	await import('@/features/ai/evaluation.ee/views/EvaluationConfigView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const SettingsAiGatewayView = async () =>
 	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
@@ -383,6 +389,30 @@ export const routes: RouteRecordRaw[] = [
 				props: true,
 			},
 		],
+	},
+	{
+		path: '/workflow/:workflowId/evaluations/config',
+		name: VIEWS.EVALUATION_CONFIG,
+		component: EvaluationConfigView,
+		props: true,
+		meta: {
+			layout: 'workflow',
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (_to, _from, next) => {
+			const posthogStore = usePostHog();
+			if (
+				posthogStore.isVariantEnabled(
+					EVALUATIONS_AS_CONFIG_EXPERIMENT.name,
+					EVALUATIONS_AS_CONFIG_EXPERIMENT.variant,
+				)
+			) {
+				next();
+				return;
+			}
+			next({ name: VIEWS.EVALUATION_EDIT, params: _to.params });
+		},
 	},
 	{
 		path: '/workflow/:workflowId/history/:versionId?',

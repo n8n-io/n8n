@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
+import type { EvaluationConfigDto, UpsertEvaluationConfigDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -21,6 +22,8 @@ export const useEvaluationStore = defineStore(
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
+		const configsByWorkflowId = ref<Record<string, EvaluationConfigDto[]>>({});
+		const configLoading = ref<Record<string, boolean>>({});
 
 		// Store instances
 		const rootStore = useRootStore();
@@ -158,6 +161,7 @@ export const useEvaluationStore = defineStore(
 		// TODO: This is a temporary solution to poll for test run status.
 		// We should use a more efficient polling mechanism in the future.
 		const startPollingTestRun = (workflowId: string, runId: string) => {
+			if (pollingTimeouts.value[runId]) return;
 			const poll = async () => {
 				try {
 					const run = await getTestRun({ workflowId, runId });
@@ -174,6 +178,79 @@ export const useEvaluationStore = defineStore(
 			void poll();
 		};
 
+		const pendingConfigFetches = new Map<string, Promise<EvaluationConfigDto[]>>();
+
+		const fetchEvaluationConfigs = async (workflowId: string): Promise<EvaluationConfigDto[]> => {
+			const existing = pendingConfigFetches.get(workflowId);
+			if (existing) return await existing;
+			configLoading.value[workflowId] = true;
+			const promise = evaluationsApi
+				.listEvaluationConfigs(rootStore.restApiContext, workflowId)
+				.then((configs) => {
+					configsByWorkflowId.value[workflowId] = configs;
+					return configs;
+				})
+				.finally(() => {
+					configLoading.value[workflowId] = false;
+					pendingConfigFetches.delete(workflowId);
+				});
+			pendingConfigFetches.set(workflowId, promise);
+			return await promise;
+		};
+
+		const createEvaluationConfig = async (
+			workflowId: string,
+			payload: UpsertEvaluationConfigDto,
+		): Promise<EvaluationConfigDto> => {
+			const created = await evaluationsApi.createEvaluationConfig(
+				rootStore.restApiContext,
+				workflowId,
+				payload,
+			);
+			const existing = configsByWorkflowId.value[workflowId] ?? [];
+			configsByWorkflowId.value[workflowId] = [...existing, created];
+			return created;
+		};
+
+		const updateEvaluationConfig = async (
+			workflowId: string,
+			configId: string,
+			payload: UpsertEvaluationConfigDto,
+		): Promise<EvaluationConfigDto> => {
+			const updated = await evaluationsApi.updateEvaluationConfig(
+				rootStore.restApiContext,
+				workflowId,
+				configId,
+				payload,
+			);
+			const existing = configsByWorkflowId.value[workflowId] ?? [];
+			const index = existing.findIndex((config) => config.id === configId);
+			if (index >= 0) {
+				const next = [...existing];
+				next[index] = updated;
+				configsByWorkflowId.value[workflowId] = next;
+			} else {
+				configsByWorkflowId.value[workflowId] = [...existing, updated];
+			}
+			return updated;
+		};
+
+		const deleteEvaluationConfig = async (workflowId: string, configId: string): Promise<void> => {
+			await evaluationsApi.deleteEvaluationConfig(rootStore.restApiContext, workflowId, configId);
+			const existing = configsByWorkflowId.value[workflowId] ?? [];
+			configsByWorkflowId.value[workflowId] = existing.filter((config) => config.id !== configId);
+		};
+
+		const startConfigTestRun = async (workflowId: string, configId: string) => {
+			const result = await evaluationsApi.startConfigTestRun(
+				rootStore.restApiContext,
+				workflowId,
+				configId,
+			);
+			startPollingTestRun(workflowId, result.testRunId);
+			return result;
+		};
+
 		const cleanupPolling = () => {
 			Object.values(pollingTimeouts.value).forEach((timeout) => {
 				clearTimeout(timeout);
@@ -185,6 +262,8 @@ export const useEvaluationStore = defineStore(
 			// State
 			testRunsById,
 			testCaseExecutionsById,
+			configsByWorkflowId,
+			configLoading,
 
 			// Computed
 			isLoading,
@@ -201,6 +280,11 @@ export const useEvaluationStore = defineStore(
 			startTestRun,
 			cancelTestRun,
 			deleteTestRun,
+			fetchEvaluationConfigs,
+			createEvaluationConfig,
+			updateEvaluationConfig,
+			deleteEvaluationConfig,
+			startConfigTestRun,
 			cleanupPolling,
 		};
 	},
