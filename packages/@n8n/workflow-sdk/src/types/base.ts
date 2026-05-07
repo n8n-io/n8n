@@ -785,7 +785,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -797,10 +798,12 @@ export type IfElseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -812,7 +815,8 @@ export type SwitchCaseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
  * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,

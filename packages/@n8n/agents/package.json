@@ -24,23 +24,31 @@
     "test:integration": "vitest run --config vitest.integration.config.mjs"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "catalog:",
     "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/azure": "catalog:",
+    "@ai-sdk/cohere": "catalog:",
+    "@ai-sdk/deepseek": "catalog:",
+    "@ai-sdk/gateway": "catalog:",
     "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/groq": "catalog:",
+    "@ai-sdk/mistral": "catalog:",
     "@ai-sdk/openai": "^3.0.41",
-    "@ai-sdk/xai": "^3.0.67",
     "@ai-sdk/provider-utils": "^4.0.21",
-    "@modelcontextprotocol/sdk": "1.26.0",
-    "ajv": "^8.18.0",
+    "@ai-sdk/xai": "^3.0.67",
     "@libsql/client": "^0.17.0",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",
+    "ajv": "^8.18.0",
     "pg": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "langsmith": ">=0.3.0",
-    "@opentelemetry/sdk-trace-node": ">=1.0.0",
+    "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
     "@opentelemetry/sdk-trace-base": ">=1.0.0",
-    "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0"
+    "@opentelemetry/sdk-trace-node": ">=1.0.0",
+    "langsmith": ">=0.3.0"
   },
   "peerDependenciesMeta": {
     "langsmith": {

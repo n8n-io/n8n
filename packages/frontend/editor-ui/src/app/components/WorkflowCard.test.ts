@@ -169,7 +169,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		await waitFor(() => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
@@ -178,7 +178,7 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await userEvent.click(actions.querySelectorAll('li')[0]);
+		await userEvent.click(within(actions).getByTestId('action-open'));
 		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
@@ -244,7 +244,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -272,7 +272,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -301,7 +301,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -332,7 +332,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -357,7 +357,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -393,7 +393,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -420,7 +420,7 @@ describe('WorkflowCard', () => {
 		});
 
 		const { getByTestId, emitted, rerender } = renderComponent({ props: { data } });
-		await userEvent.click(getByTestId('workflow-card-actions'));
+		await userEvent.click(within(getByTestId('workflow-card-actions')).getByRole('button'));
 		await userEvent.click(getByTestId('action-archive'));
 
 		expect(toast.showToast).toHaveBeenCalledTimes(1);
@@ -449,7 +449,7 @@ describe('WorkflowCard', () => {
 		});
 
 		const { getByTestId } = renderComponent({ props: { data } });
-		await userEvent.click(getByTestId('workflow-card-actions'));
+		await userEvent.click(within(getByTestId('workflow-card-actions')).getByRole('button'));
 		await userEvent.click(getByTestId('action-archive'));
 
 		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
@@ -479,7 +479,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -513,7 +513,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -560,7 +560,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -591,7 +591,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -617,7 +617,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -775,7 +775,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -834,7 +834,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -874,7 +874,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -899,7 +899,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -919,7 +919,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -939,7 +939,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -959,7 +959,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');

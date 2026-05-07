@@ -57,6 +57,7 @@ import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
+import '@/node-execution/ephemeral-node-executor';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';

@@ -703,7 +703,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const unpublishItem = getByTestId('version-menu-item-unpublish');
 			expect(unpublishItem).toBeInTheDocument();
-			expect(unpublishItem.closest('.el-dropdown-menu__item')).toHaveClass('is-disabled');
+			expect(unpublishItem).toHaveClass('is-disabled');
 		});
 	});
 
