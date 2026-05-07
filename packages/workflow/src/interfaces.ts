@@ -2546,7 +2546,7 @@ export interface IBuilderHint {
 	/** Declarative output availability — which outputs the node exposes per parameter values */
 	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
-	message?: string;
+	searchHint?: string;
 	/** Related nodes that work together with this node */
 	relatedNodes?: IRelatedNode[];
 }

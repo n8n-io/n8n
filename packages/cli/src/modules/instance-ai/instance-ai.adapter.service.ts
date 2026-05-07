@@ -1705,8 +1705,8 @@ export class InstanceAiAdapterService {
 					}
 					if (n.builderHint) {
 						result.builderHint = {};
-						if (n.builderHint.message) {
-							result.builderHint.message = n.builderHint.message;
+						if (n.builderHint.searchHint) {
+							result.builderHint.message = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -1815,7 +1815,7 @@ export class InstanceAiAdapterService {
 					nodeType,
 					normalizeNodeVersion(result.version ?? options?.version),
 				);
-				const builderHint = nodeDesc?.builderHint?.message;
+				const builderHint = nodeDesc?.builderHint?.searchHint;
 
 				return {
 					content: result.content,
