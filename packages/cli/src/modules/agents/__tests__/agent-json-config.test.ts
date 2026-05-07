@@ -99,6 +99,14 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		expect(parsed.success).toBe(true);
 	});
 
+	it('rejects unsupported memory storage presets', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: { enabled: true, storage: 'sqlite' },
+		});
+		expect(parsed.success).toBe(false);
+	});
+
 	it('accepts observationalMemory: { enabled: true } alone', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,

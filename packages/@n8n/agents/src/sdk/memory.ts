@@ -19,6 +19,56 @@ type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
 const DEFAULT_LAST_MESSAGES = 10;
 
+function withObservationalMemoryDefaults(
+	config: ObservationalMemoryConfig,
+): ObservationalMemoryConfig {
+	return {
+		...config,
+		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOCK_TTL_MS,
+		compactionThreshold: config.compactionThreshold ?? DEFAULT_OBSERVATION_COMPACTION_THRESHOLD,
+		trigger: config.trigger ?? { type: 'per-turn' },
+		gapThresholdMs:
+			config.gapThresholdMs ??
+			(config.trigger?.type === 'idle-timer' ? config.trigger.gapThresholdMs : undefined) ??
+			DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
+	};
+}
+
+export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
+	if (!config.observationalMemory) {
+		return config;
+	}
+
+	if (!hasObservationStore(config.memory)) {
+		throw new Error(
+			"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. n8n's N8nMemory).",
+		);
+	}
+
+	if (!config.workingMemory) {
+		throw new Error(
+			'Observational memory requires working memory. Add .freeform(template) or .structured(schema) before .observationalMemory().',
+		);
+	}
+
+	if (config.workingMemory.scope !== 'thread') {
+		throw new Error(
+			"Observational memory requires thread-scoped working memory. Add .scope('thread') before .observationalMemory().",
+		);
+	}
+
+	if (!config.memory.saveWorkingMemory) {
+		throw new Error(
+			'Observational memory requires a storage backend that implements saveWorkingMemory().',
+		);
+	}
+
+	return {
+		...config,
+		observationalMemory: withObservationalMemoryDefaults(config.observationalMemory),
+	};
+}
+
 /**
  * Builder for configuring conversation memory.
  *
@@ -226,50 +276,19 @@ export class Memory {
 		};
 
 		if (!this.observationalMemoryConfig) {
-			return baseConfig;
+			return normalizeMemoryConfig(baseConfig);
 		}
 
 		if (!hasObservationStore(memory)) {
 			throw new Error(
-				"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. SqliteMemory or n8n's N8nMemory).",
+				"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. n8n's N8nMemory).",
 			);
 		}
 
-		if (!workingMemory) {
-			throw new Error(
-				'Observational memory requires working memory. Add .freeform(template) or .structured(schema) before .observationalMemory().',
-			);
-		}
-
-		if (workingMemory.scope !== 'thread') {
-			throw new Error(
-				"Observational memory requires thread-scoped working memory. Add .scope('thread') before .observationalMemory().",
-			);
-		}
-
-		if (!memory.saveWorkingMemory) {
-			throw new Error(
-				'Observational memory requires a storage backend that implements saveWorkingMemory().',
-			);
-		}
-
-		return {
+		return normalizeMemoryConfig({
 			...baseConfig,
 			memory,
-			observationalMemory: {
-				...this.observationalMemoryConfig,
-				lockTtlMs: this.observationalMemoryConfig.lockTtlMs ?? DEFAULT_OBSERVATION_LOCK_TTL_MS,
-				compactionThreshold:
-					this.observationalMemoryConfig.compactionThreshold ??
-					DEFAULT_OBSERVATION_COMPACTION_THRESHOLD,
-				trigger: this.observationalMemoryConfig.trigger ?? { type: 'per-turn' },
-				gapThresholdMs:
-					this.observationalMemoryConfig.gapThresholdMs ??
-					(this.observationalMemoryConfig.trigger?.type === 'idle-timer'
-						? this.observationalMemoryConfig.trigger.gapThresholdMs
-						: undefined) ??
-					DEFAULT_OBSERVATION_GAP_THRESHOLD_MS,
-			},
-		};
+			observationalMemory: this.observationalMemoryConfig,
+		});
 	}
 }

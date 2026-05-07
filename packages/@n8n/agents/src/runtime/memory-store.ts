@@ -118,23 +118,12 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 		opts?: {
 			limit?: number;
 			before?: Date;
-			since?: { sinceCreatedAt: Date; sinceMessageId: string };
 		},
 	): Promise<AgentDbMessage[]> {
 		let stored = this.messagesByThread.get(threadId) ?? [];
 		if (opts?.before) {
 			const cutoff = opts.before.getTime();
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
-		}
-		if (opts?.since) {
-			const { sinceCreatedAt, sinceMessageId } = opts.since;
-			stored = stored.filter(
-				(s) =>
-					compareKeyset(
-						{ createdAt: s.createdAt, id: s.message.id },
-						{ createdAt: sinceCreatedAt, id: sinceMessageId },
-					) > 0,
-			);
 		}
 		stored = [...stored].sort((a, b) =>
 			compareKeyset(

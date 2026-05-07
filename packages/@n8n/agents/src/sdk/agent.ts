@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
-import { Memory } from './memory';
+import { Memory, normalizeMemoryConfig } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
@@ -208,8 +208,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
 		} else if ('memory' in m && 'lastMessages' in m) {
-			// MemoryConfig — use directly
-			this.memoryConfig = m;
+			// MemoryConfig — validate the same invariants as the builder path
+			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
 			typeof m === 'object' &&
 			m !== null &&

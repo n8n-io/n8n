@@ -166,8 +166,7 @@ export interface AgentJsonConfig {
 	instructions: string;
 	memory?: {
 		enabled: boolean;
-		storage: 'n8n' | 'sqlite' | 'postgres';
-		connection?: Record<string, unknown>;
+		storage: 'n8n';
 		lastMessages?: number;
 		semanticRecall?: {
 			topK: number;
