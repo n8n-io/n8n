@@ -115,7 +115,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			if (gatewayBrowserTools.length > 0 && context.localMcpServer) {
 				// Gateway path: create Mastra tools from gateway, keep only browser category tools
 				const gatewayBrowserNames = new Set(gatewayBrowserTools.map((t) => t.name));
-				const allGatewayTools = createToolsFromLocalMcpServer(context.localMcpServer);
+				const allGatewayTools = createToolsFromLocalMcpServer(
+					context.localMcpServer,
+					context.logger,
+				);
 				for (const [name, tool] of Object.entries(allGatewayTools)) {
 					if (gatewayBrowserNames.has(name)) {
 						browserTools[name] = tool;

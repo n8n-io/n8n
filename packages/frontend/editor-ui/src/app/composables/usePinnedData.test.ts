@@ -10,7 +10,11 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	STICKY_NODE_TYPE,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
@@ -96,6 +100,32 @@ describe('usePinnedData', () => {
 				createWorkflowDocumentId(workflowsStore.workflow.id),
 			);
 			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
+		});
+
+		it('should throw and not pin data when input contains the trimmed-execution-data marker', () => {
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
+			const telemetry = useTelemetry();
+			const trackSpy = vi.spyOn(telemetry, 'track');
+			const node = ref({ name: 'testNode' } as INodeUi);
+			const { setData } = usePinnedData(node);
+			const trimmedData = [
+				{
+					json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+					pairedItem: { item: 0 },
+				},
+			];
+
+			expect(() => setData(trimmedData, 'pin-icon-click')).toThrow();
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
+			expect(trackSpy).toHaveBeenCalledWith(
+				'Ndv data pinning failure',
+				expect.objectContaining({ error_type: 'trimmed-data' }),
+			);
 		});
 	});
 

@@ -1,5 +1,5 @@
 import { InMemoryMemory } from '../runtime/memory-store';
-import type { AgentDbMessage } from '../types/sdk/message';
+import type { AgentDbMessage, Message } from '../types/sdk/message';
 
 describe('InMemoryMemory working memory', () => {
 	it('returns null for unknown key', async () => {
@@ -115,5 +115,61 @@ describe('InMemoryMemory — message createdAt', () => {
 		expect(loaded[0].createdAt.getTime()).toBe(t1.getTime());
 		expect(loaded[1].createdAt).toBeInstanceOf(Date);
 		expect(loaded[1].createdAt.getTime()).toBe(t2.getTime());
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Upsert contract
+// ---------------------------------------------------------------------------
+
+describe('InMemoryMemory — saveMessages upsert by id', () => {
+	it('upserts by id (no duplicate rows after a re-save)', async () => {
+		const mem = new InMemoryMemory();
+		const t1 = new Date('2020-01-01T00:00:01.000Z');
+
+		await mem.saveMessages({
+			threadId: 't1',
+			messages: [makeDbMsg('msg-1', t1, 'original')],
+		});
+
+		const updated = { ...makeDbMsg('msg-1', t1, 'updated content') };
+		await mem.saveMessages({ threadId: 't1', messages: [updated] });
+
+		const result = await mem.getMessages('t1');
+		expect(result).toHaveLength(1);
+		expect(((result[0] as Message).content[0] as { type: string; text: string }).text).toBe(
+			'updated content',
+		);
+	});
+
+	it('preserves insertion order on upsert', async () => {
+		const mem = new InMemoryMemory();
+		const t1 = new Date('2020-01-01T00:00:01.000Z');
+		const t2 = new Date('2020-01-01T00:00:02.000Z');
+		const t3 = new Date('2020-01-01T00:00:03.000Z');
+
+		await mem.saveMessages({
+			threadId: 't1',
+			messages: [
+				makeDbMsg('m1', t1, 'first'),
+				makeDbMsg('m2', t2, 'second'),
+				makeDbMsg('m3', t3, 'third'),
+			],
+		});
+
+		// Update m2 in place
+		await mem.saveMessages({
+			threadId: 't1',
+			messages: [makeDbMsg('m2', t2, 'second-updated')],
+		});
+
+		const result = await mem.getMessages('t1');
+		expect(result).toHaveLength(3);
+		// Original order preserved
+		expect(result[0].id).toBe('m1');
+		expect(result[1].id).toBe('m2');
+		expect(result[2].id).toBe('m3');
+		// Updated content
+		expect(((result[1] as Message).content[0] as { text: string }).text).toBe('second-updated');
 	});
 });
