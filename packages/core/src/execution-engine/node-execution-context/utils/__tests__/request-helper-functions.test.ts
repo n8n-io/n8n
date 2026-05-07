@@ -13,6 +13,7 @@ import type {
 	PaginationOptions,
 	Workflow,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 
@@ -500,7 +501,7 @@ describe('Request Helper Functions', () => {
 					hostname: 'example.de',
 					href: requestObject.uri,
 				};
-				axiosOptions.beforeRedirect!(redirectOptions, mock());
+				axiosOptions.beforeRedirect!(redirectOptions, mock(), mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
 				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
@@ -1154,6 +1155,9 @@ describe('Request Helper Functions', () => {
 		const mockThis = mockDeep<IAllExecuteFunctions>();
 		const mockNode = mockDeep<INode>();
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		// mockDeep auto-creates a proxy for module-augmented keys; the OAuth2
+		// flow tests must opt out of the JWE proxy unless they wire one in.
+		(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
 		const mockCredentialData = {
 			clientId: 'test-client-id',
 			clientSecret: 'test-client-secret',
@@ -1335,6 +1339,111 @@ describe('Request Helper Functions', () => {
 				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 			).not.toHaveBeenCalled();
 		});
+
+		describe('JWE decryption via oauth-jwe proxy', () => {
+			beforeEach(() => {
+				nock.cleanAll();
+				jest.resetAllMocks();
+				mockNode.name = 'test-node-name';
+				mockNode.credentials = {
+					'test-credentials-type': { id: 'test-credentials-id', name: 'test-credentials-name' },
+				};
+			});
+
+			test('decrypts the refreshed token via the proxy when present', async () => {
+				const oauthJweProxyProvider = {
+					decryptOAuth2TokenData: jest.fn().mockResolvedValue({
+						access_token: 'decrypted-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				};
+				const additionalDataWithProxy = {
+					...mockAdditionalData,
+					'oauth-jwe': { oauthJweProxyProvider },
+				} as unknown as IWorkflowExecuteAdditionalData;
+
+				mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData, jweEnabled: true });
+				nock(baseUrl).post('/token').reply(200, {
+					access_token: 'jwe-blob',
+					refresh_token: 'new-refresh-token',
+				});
+
+				await refreshOAuth2Token.call(
+					mockThis,
+					'test-credentials-type',
+					mockNode,
+					additionalDataWithProxy,
+				);
+
+				expect(oauthJweProxyProvider.decryptOAuth2TokenData).toHaveBeenCalledWith(
+					expect.objectContaining({ access_token: 'jwe-blob' }),
+				);
+				expect(
+					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					'test-credentials-type',
+					expect.objectContaining({
+						oauthTokenData: expect.objectContaining({ access_token: 'decrypted-token' }),
+					}),
+					additionalDataWithProxy,
+				);
+			});
+
+			test('passes refreshed token through unchanged when proxy is absent', async () => {
+				mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+				nock(baseUrl).post('/token').reply(200, {
+					access_token: 'plaintext-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+				const result = await refreshOAuth2Token.call(
+					mockThis,
+					'test-credentials-type',
+					mockNode,
+					mockAdditionalData,
+				);
+
+				expect(result.access_token).toBe('plaintext-token');
+				expect(
+					mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+				).toHaveBeenCalled();
+			});
+
+			test('propagates plaintext rejection thrown by the proxy', async () => {
+				const oauthJweProxyProvider = {
+					decryptOAuth2TokenData: jest
+						.fn()
+						.mockRejectedValue(
+							new UserError(
+								'Expected at least one JWE-encrypted token but received only plaintext',
+							),
+						),
+				};
+				const additionalDataWithProxy = {
+					...mockAdditionalData,
+					'oauth-jwe': { oauthJweProxyProvider },
+				} as unknown as IWorkflowExecuteAdditionalData;
+
+				mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData, jweEnabled: true });
+				nock(baseUrl).post('/token').reply(200, {
+					access_token: 'plaintext',
+					refresh_token: 'new-refresh-token',
+				});
+
+				await expect(
+					refreshOAuth2Token.call(
+						mockThis,
+						'test-credentials-type',
+						mockNode,
+						additionalDataWithProxy,
+					),
+				).rejects.toThrow('Expected at least one JWE-encrypted token but received only plaintext');
+				expect(
+					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
+				).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('requestOAuth2 - tokenExpiredStatusCode', () => {
@@ -1343,6 +1452,7 @@ describe('Request Helper Functions', () => {
 		const mockThis = mockDeep<IAllExecuteFunctions>();
 		const mockNode = mockDeep<INode>();
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
 
 		const makeCredentialData = (overrides?: Record<string, unknown>) => ({
 			clientId: 'test-client-id',
@@ -1536,6 +1646,7 @@ describe('Request Helper Functions', () => {
 		const mockThis = mockDeep<IAllExecuteFunctions>();
 		const mockNode = mockDeep<INode>();
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
 
 		beforeEach(() => {
 			nock.cleanAll();
@@ -2129,7 +2240,7 @@ describe('Request Helper Functions', () => {
 					};
 
 					expect(axiosOptions.beforeRedirect).toBeDefined();
-					expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock())).toThrow(
+					expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock(), mock())).toThrow(
 						'Domain not allowed',
 					);
 				});
@@ -2148,7 +2259,9 @@ describe('Request Helper Functions', () => {
 						};
 
 						expect(axiosOptions.beforeRedirect).toBeDefined();
-						expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock())).not.toThrow();
+						expect(() =>
+							axiosOptions.beforeRedirect!(redirectOptions, mock(), mock()),
+						).not.toThrow();
 					},
 				);
 			});
@@ -2167,7 +2280,7 @@ describe('Request Helper Functions', () => {
 					};
 
 					expect(axiosConfig.beforeRedirect).toBeDefined();
-					expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock())).toThrow(
+					expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock(), mock())).toThrow(
 						'Domain not allowed',
 					);
 				});
@@ -2187,7 +2300,9 @@ describe('Request Helper Functions', () => {
 						};
 
 						expect(axiosConfig.beforeRedirect).toBeDefined();
-						expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock())).not.toThrow();
+						expect(() =>
+							axiosConfig.beforeRedirect!(redirectOptions, mock(), mock()),
+						).not.toThrow();
 					},
 				);
 			});

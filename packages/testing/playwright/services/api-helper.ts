@@ -1,5 +1,5 @@
 // services/api-helper.ts
-import type { ClusterInfoResponse } from '@n8n/api-types';
+import type { ClusterInfoResponse, InstanceAiPermissions } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -276,7 +276,6 @@ export class ApiHelpers {
 
 	/**
 	 * Fetch cluster info from the instance registry endpoint.
-	 * Requires `N8N_ENV_FEAT_INSTANCE_REGISTRY=true` on every container.
 	 */
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
 		const response = await this.request.get('/rest/instance-registry');
@@ -300,6 +299,17 @@ export class ApiHelpers {
 
 		const body = (await response.json()) as { data?: { events?: unknown[] } };
 		return body.data?.events ?? [];
+	}
+
+	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', {
+			data: { permissions },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**

@@ -8,7 +8,7 @@ import {
 	createAgentWithMixedTools,
 	createAgentWithParallelInterruptibleCalls,
 } from './helpers';
-import { isLlmMessage, type StreamChunk } from '../../index';
+import type { StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
 
@@ -36,13 +36,8 @@ describe('tool interrupt integration', () => {
 		);
 
 		// No tool-result should appear (tool is suspended)
-		const contentChunks = chunks.filter(
-			(c) =>
-				c.type === 'message' &&
-				'content' in c &&
-				(c.content as { type: string }).type === 'tool-result',
-		);
-		expect(contentChunks).toHaveLength(0);
+		const toolResultChunks = chunksOfType(chunks, 'tool-result');
+		expect(toolResultChunks).toHaveLength(0);
 	});
 
 	it('resumes the stream after resume with approval', async () => {
@@ -58,19 +53,14 @@ describe('tool interrupt integration', () => {
 		const resumedStream = await agent.resume(
 			'stream',
 			{ approved: true },
-			{ runId: suspended.runId!, toolCallId: suspended.toolCallId! },
+			{ runId: suspended.runId, toolCallId: suspended.toolCallId },
 		);
 
 		const resumedChunks = await collectStreamChunks(resumedStream.stream);
 		const resumedTypes = resumedChunks.map((c) => c.type);
 
-		// After approval, tool-result should appear as content chunk
-		const toolResultChunks = resumedChunks.filter(
-			(c) =>
-				c.type === 'message' &&
-				isLlmMessage(c.message) &&
-				c.message.content.some((c) => c.type === 'tool-result'),
-		);
+		// After approval, a discrete tool-result chunk should appear
+		const toolResultChunks = chunksOfType(resumedChunks, 'tool-result');
 		expect(toolResultChunks.length).toBeGreaterThan(0);
 
 		expect(resumedTypes).toContain('text-delta');
@@ -89,7 +79,7 @@ describe('tool interrupt integration', () => {
 		const resumedStream = await agent.resume(
 			'stream',
 			{ approved: false },
-			{ runId: suspended.runId!, toolCallId: suspended.toolCallId! },
+			{ runId: suspended.runId, toolCallId: suspended.toolCallId },
 		);
 
 		const resumedChunks = await collectStreamChunks(resumedStream.stream);
@@ -119,7 +109,7 @@ describe('tool interrupt integration', () => {
 		const stream2 = await agent.resume(
 			'stream',
 			{ approved: true },
-			{ runId: suspended1.runId!, toolCallId: suspended1.toolCallId! },
+			{ runId: suspended1.runId, toolCallId: suspended1.toolCallId },
 		);
 
 		const chunks2 = await collectStreamChunks(stream2.stream);
@@ -136,7 +126,7 @@ describe('tool interrupt integration', () => {
 		const stream3 = await agent.resume(
 			'stream',
 			{ approved: true },
-			{ runId: suspended2.runId!, toolCallId: suspended2.toolCallId! },
+			{ runId: suspended2.runId, toolCallId: suspended2.toolCallId },
 		);
 
 		const chunks3 = await collectStreamChunks(stream3.stream);
@@ -162,13 +152,8 @@ describe('tool interrupt integration', () => {
 
 		const chunks = await collectStreamChunks(fullStream);
 
-		// list_files should auto-execute — its result should appear as content
-		const toolResultChunks = chunks.filter(
-			(c) =>
-				c.type === 'message' &&
-				isLlmMessage(c.message) &&
-				c.message.content.some((c) => c.type === 'tool-result'),
-		);
+		// list_files should auto-execute — its result should appear as a discrete tool-result chunk
+		const toolResultChunks = chunksOfType(chunks, 'tool-result');
 		expect(toolResultChunks.length).toBeGreaterThan(0);
 
 		// delete_file should be suspended

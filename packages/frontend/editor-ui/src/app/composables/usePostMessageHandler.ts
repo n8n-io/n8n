@@ -252,6 +252,8 @@ export function usePostMessageHandler({
 						type: 'error',
 					});
 				}
+			} else if (json?.command === 'resetWorkflow') {
+				resetWorkspace();
 			} else if (json?.command === 'setActiveExecution') {
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
