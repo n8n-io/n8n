@@ -21,6 +21,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Client as LangSmithClient } from 'langsmith';
+import { nanoid } from 'nanoid';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -32,7 +33,9 @@ import {
 	type SimpleWorkflow,
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
+import { buildSubAgentBriefing } from '../../src/agent/sub-agent-briefing';
 import type { Logger } from '../../src/logger';
+import { DETACHED_BUILDER_REQUIREMENTS } from '../../src/tools/orchestration/build-workflow-agent.tool';
 import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
 import type { SandboxConfig } from '../../src/workspace/create-workspace';
 import { SnapshotManager } from '../../src/workspace/snapshot-manager';
@@ -43,6 +46,13 @@ import {
 } from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
+
+/** Default dataset — orchestrator-plan-derived spec rows. Each row's prompt
+ * is the spec the production planner hands the builder via
+ * `dispatchPlannedTask`. Pair this with the production briefing wrapper
+ * (`DETACHED_BUILDER_REQUIREMENTS`) below to keep the eval aligned with
+ * what the builder sees in production. */
+const DEFAULT_DATASET = 'instance-ai-builder-from-plans';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -86,7 +96,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	}
 
 	return {
-		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
+		dataset: get('--dataset') ?? DEFAULT_DATASET,
 		judges: parsePositiveInt(get('--judges'), '--judges') ?? Number(DEFAULTS.NUM_JUDGES),
 		iterations:
 			parsePositiveInt(get('--iterations'), '--iterations') ?? Number(DEFAULTS.REPETITIONS),
@@ -230,24 +240,6 @@ interface ExampleRecord {
 	feedback: Feedback[];
 }
 
-/**
- * Eval-only suffix appended to every dataset prompt. Pushes the agent past
- * its production "ask before assuming / set up credentials first" instinct
- * — there is no human in the loop, so a clarification turn is a guaranteed
- * `no_workflow_built`. Lives in the harness, not the production builder
- * prompt, so production behavior is unaffected.
- *
- * Strictly describes the eval environment and the required terminal action
- * (call `submit-workflow`). Does not name SDK helpers or otherwise lead the
- * agent toward specific implementation choices — those are what the eval
- * measures.
- */
-const EVAL_PROMPT_SUFFIX =
-	'\n\n---\n' +
-	'You are running inside an automated, non-interactive evaluation. ' +
-	'There is no human to answer follow-up questions. ' +
-	'Do not call `ask-user` and do not ask for clarification — pick reasonable defaults and proceed.';
-
 async function runExample(
 	example: DatasetExample,
 	iteration: number,
@@ -262,8 +254,25 @@ async function runExample(
 		'chunks',
 		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
 	);
+	// Wrap the prompt the same way the production orchestrator wraps the spec
+	// it hands to the builder sub-agent (see `build-workflow-agent.tool.ts`).
+	// Keeping this aligned with prod is what closes the eval/prod gap —
+	// `DETACHED_BUILDER_REQUIREMENTS` is what tells the builder it must
+	// `submit-workflow` then `verify-built-workflow` before stopping.
+	//
+	// `workItemId` round-trips: the briefing's `additionalContext` tells the
+	// agent its work-item ID, the agent passes it to `verify-built-workflow`,
+	// which reads back the build outcome from the in-memory
+	// `workflowTaskService` keyed on the same ID.
+	const workItemId = 'wi_' + nanoid(8);
+	const builderPrompt = await buildSubAgentBriefing({
+		task: example.prompt,
+		additionalContext: `[WORK ITEM ID: ${workItemId}]`,
+		requirements: DETACHED_BUILDER_REQUIREMENTS,
+	});
 	const build = await buildInProcess({
-		prompt: example.prompt + EVAL_PROMPT_SUFFIX,
+		prompt: builderPrompt,
+		workItemId,
 		timeoutMs: args.timeoutMs,
 		logPath,
 		sandboxFactory,
