@@ -1,18 +1,19 @@
 /**
  * SDK reference content for MCP workflow builder tools.
  *
- * Imports the raw (unescaped) prompt constants from the code-builder package
+ * Imports the raw (unescaped) prompt constants from the workflow-sdk package
  * and assembles them into structured SDK reference documentation.
  * Served both as an MCP resource and via the n8n_get_workflow_sdk_reference tool.
  */
 
+import { SDK_IMPORT_STATEMENT } from '@n8n/ai-workflow-builder';
 import {
-	SDK_IMPORT_STATEMENT,
 	EXPRESSION_REFERENCE,
-	WORKFLOW_PATTERNS,
+	WORKFLOW_SDK_PATTERNS,
+	WORKFLOW_PATTERNS_DETAILED,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-} from '@n8n/ai-workflow-builder';
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 // NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are MCP-only constants defined
 // below. They are NOT shared with the code-builder agent (which has its own
@@ -47,6 +48,7 @@ const DESIGN_GUIDANCE = `Design guidance:
  */
 export type SdkReferenceSection =
 	| 'patterns'
+	| 'patterns_detailed'
 	| 'expressions'
 	| 'functions'
 	| 'rules'
@@ -57,13 +59,18 @@ export type SdkReferenceSection =
 
 const SDK_IMPORT_SECTION = `## SDK Import Statement\n\n\`\`\`javascript\n${SDK_IMPORT_STATEMENT}\n\`\`\``;
 
+const WORKFLOW_PATTERNS_SECTION = `## Workflow Patterns\n\n${WORKFLOW_SDK_PATTERNS}`;
+
+const WORKFLOW_PATTERNS_DETAILED_SECTION = `## Workflow Patterns Detailed\n\n${WORKFLOW_PATTERNS_DETAILED}`;
+
 const CODING_GUIDELINES_SECTION = `## Coding Guidelines\n\n${CODING_GUIDELINES}`;
 
 const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 
 const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	import: SDK_IMPORT_SECTION,
-	patterns: WORKFLOW_PATTERNS,
+	patterns: WORKFLOW_PATTERNS_SECTION,
+	patterns_detailed: WORKFLOW_PATTERNS_DETAILED_SECTION,
 	expressions: EXPRESSION_REFERENCE,
 	functions: ADDITIONAL_FUNCTIONS,
 	rules: WORKFLOW_RULES,
@@ -85,6 +92,8 @@ export function getSdkReferenceContent(section?: SdkReferenceSection): string {
 		SECTIONS.import,
 		'',
 		SECTIONS.patterns,
+		'',
+		SECTIONS.patterns_detailed,
 		'',
 		SECTIONS.expressions,
 		'',
