@@ -336,6 +336,28 @@ export class AgentsService {
 		});
 	}
 
+	/**
+	 * Same scoping as {@link findByUser}, but only returns agents that have a
+	 * `publishedVersion`. Used by the MessageAnAgent node's listSearch so the
+	 * dropdown can't surface unpublished agents — `executeForWorkflow` rejects
+	 * those at runtime, and showing them would just lead to a confusing
+	 * "Agent is not published" error after the user picks one.
+	 */
+	async findPublishedByUser(userId: string): Promise<Agent[]> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+
+		if (projectIds.length === 0) return [];
+
+		const agents = await this.agentRepository.find({
+			where: { projectId: In(projectIds) },
+			relations: { publishedVersion: true },
+			order: { updatedAt: 'DESC' },
+		});
+
+		return agents.filter((agent) => agent.publishedVersion);
+	}
+
 	async publishAgent(agentId: string, projectId: string, userId: string): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {

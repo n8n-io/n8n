@@ -26,6 +26,13 @@ export class MessageAnAgent implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName:
+					'Only published agents are listed below. Publish an agent before referencing it from a workflow.',
+				name: 'publishedAgentNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Agent',
 				name: 'agentId',
 				type: 'resourceLocator',
