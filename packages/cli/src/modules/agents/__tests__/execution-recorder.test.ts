@@ -111,6 +111,27 @@ describe('ExecutionRecorder', () => {
 			]);
 			expect(record.timeline.map((e) => e.type)).toEqual(['text', 'tool-call']);
 		});
+
+		it('does not derive execution working memory from update_working_memory calls', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'tool-call',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+				input: { memory: 'first' },
+			} as StreamChunk);
+			recorder.record({
+				type: 'tool-call',
+				toolCallId: 'wm-2',
+				toolName: 'update_working_memory',
+				input: { memory: 'second' },
+			} as StreamChunk);
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+			expect(record.workingMemory).toBeNull();
+		});
 	});
 
 	describe('suspension', () => {

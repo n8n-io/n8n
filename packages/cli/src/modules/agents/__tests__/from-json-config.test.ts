@@ -525,6 +525,9 @@ describe('buildFromJson()', () => {
 			'remember, add, save, or update memory',
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
+			'update_working_memory',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
 			'current-state snapshot',
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain('Keep it concise');

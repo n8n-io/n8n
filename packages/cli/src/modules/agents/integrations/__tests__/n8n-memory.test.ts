@@ -159,12 +159,12 @@ describe('N8nMemory', () => {
 
 	describe('getMessages — persisted JSON hydration', () => {
 		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			const entity = makeMessageEntity('m2', createdAt, 'middle');
-			entity.content = {
-				...(entity.content as Record<string, unknown>),
-				createdAt: createdAt.toISOString(),
-			} as AgentMessageEntity['content'];
+				const createdAt = new Date('2026-01-01T00:00:02.000Z');
+				const entity = makeMessageEntity('m2', createdAt, 'middle');
+				entity.content = {
+					...entity.content,
+					createdAt: createdAt.toISOString(),
+				} as AgentMessageEntity['content'];
 			messageRepository.find.mockResolvedValue([entity]);
 
 			const [result] = await memory.getMessages('thread-1');
@@ -216,12 +216,12 @@ describe('N8nMemory', () => {
 		});
 
 		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			const entity = makeMessageEntity('m2', createdAt, 'middle');
-			entity.content = {
-				...(entity.content as Record<string, unknown>),
-				createdAt: createdAt.toISOString(),
-			} as AgentMessageEntity['content'];
+				const createdAt = new Date('2026-01-01T00:00:02.000Z');
+				const entity = makeMessageEntity('m2', createdAt, 'middle');
+				entity.content = {
+					...entity.content,
+					createdAt: createdAt.toISOString(),
+				} as AgentMessageEntity['content'];
 			messageRepository.find.mockResolvedValue([entity]);
 
 			const [result] = await memory.getMessagesForScope('thread', 'thread-1');
