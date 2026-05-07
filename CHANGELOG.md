@@ -1,3 +1,13 @@
+## [2.20.1](https://github.com/n8n-io/n8n/compare/n8n@2.20.0...n8n@2.20.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* **core:** Add support for context establishment hooks in webhook mode ([#29900](https://github.com/n8n-io/n8n/issues/29900)) ([71d4122](https://github.com/n8n-io/n8n/commit/71d41224385e64098000569bf9ac4838a61c669c))
+* **core:** Allow GIT_SSH_COMMAND in simple-git after 3.36.0 upgrade ([#29946](https://github.com/n8n-io/n8n/issues/29946)) ([2f31aca](https://github.com/n8n-io/n8n/commit/2f31aca2dc4b5258492a678a44464146a2a29d01))
+* **Snowflake Node:** Fix issue with Insert and Update operations not working ([#29809](https://github.com/n8n-io/n8n/issues/29809)) ([98004c6](https://github.com/n8n-io/n8n/commit/98004c6269456c3bfe600da951856c81b3861034))
+
+
 # [2.20.0](https://github.com/n8n-io/n8n/compare/n8n@2.19.0...n8n@2.20.0) (2026-05-05)
 
 
