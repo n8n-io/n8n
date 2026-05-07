@@ -140,6 +140,9 @@ import IconLucideHandshake from '~icons/lucide/handshake';
 import IconLucideHardDrive from '~icons/lucide/hard-drive';
 import IconLucideHardDriveDownload from '~icons/lucide/hard-drive-download';
 import IconLucideHash from '~icons/lucide/hash';
+import IconLucideHeading1 from '~icons/lucide/heading-1';
+import IconLucideHeading2 from '~icons/lucide/heading-2';
+import IconLucideHeading3 from '~icons/lucide/heading-3';
 import IconLucideHistory from '~icons/lucide/history';
 import IconLucideHourglass from '~icons/lucide/hourglass';
 import IconLucideHouse from '~icons/lucide/house';
@@ -615,6 +618,9 @@ export const updatedIconSet = {
 	'hard-drive': IconLucideHardDrive,
 	'hard-drive-download': IconLucideHardDriveDownload,
 	hash: IconLucideHash,
+	'heading-1': IconLucideHeading1,
+	'heading-2': IconLucideHeading2,
+	'heading-3': IconLucideHeading3,
 	history: IconLucideHistory,
 	hourglass: IconLucideHourglass,
 	house: IconLucideHouse,

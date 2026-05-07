@@ -18,6 +18,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { computed, watch } from 'vue';
 
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
+import { MarkdownSlashCommandExtension, renderSlashCommandMenu } from './extensions';
 import type { N8nMarkdownEditorProps } from './MarkdownEditor.types';
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
@@ -96,6 +97,9 @@ const baseExtensions = [
 			gfm: true,
 			breaks: false,
 		},
+	}),
+	MarkdownSlashCommandExtension.configure({
+		render: renderSlashCommandMenu,
 	}),
 ];
 

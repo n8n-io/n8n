@@ -130,6 +130,7 @@ export default {
 	'markdownEditor.linkUrlPlaceholder': 'https://example.com',
 	'markdownEditor.applyLink': 'Apply link',
 	'markdownEditor.removeLink': 'Remove link',
+	'markdownEditor.slashCommandMenuLabel': 'Markdown commands',
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',
 	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
 	'aiAssistant.versionCard.restoreModal.description':

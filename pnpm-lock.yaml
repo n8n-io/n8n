@@ -132,6 +132,9 @@ catalogs:
     '@tiptap/starter-kit':
       specifier: 3.22.5
       version: 3.22.5
+    '@tiptap/suggestion':
+      specifier: 3.22.5
+      version: 3.22.5
     '@tiptap/vue-3':
       specifier: 3.22.5
       version: 3.22.5
@@ -3343,6 +3346,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: 'catalog:'
         version: 3.22.5
+      '@tiptap/suggestion':
+        specifier: 'catalog:'
+        version: 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)
       '@tiptap/vue-3':
         specifier: 'catalog:'
         version: 3.22.5(@floating-ui/dom@1.7.0)(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)(vue@3.5.26(typescript@6.0.2))
@@ -11366,6 +11372,12 @@ packages:
 
   '@tiptap/starter-kit@3.22.5':
     resolution: {integrity: sha512-LZ/LYbwH6rnDi5DnRyagkuNsYAVyhM+yJvvz+ZuYA0JkPiTXJV86J5PWSKew8M0gVfMHcNVtKjfQCvViFCeIgw==}
+
+  '@tiptap/suggestion@3.22.5':
+    resolution: {integrity: sha512-Uv79Ht/o4mx1GWIT65jeQTE67LMrA+K7d8p51XOe9PJw0H0fS3iCdeMJ8tAo3h6QrMJFejdsB7z8jJL9UbAnhA==}
+    peerDependencies:
+      '@tiptap/core': 3.22.5
+      '@tiptap/pm': 3.22.5
 
   '@tiptap/vue-3@3.22.5':
     resolution: {integrity: sha512-xwSXPwDjauIVktMXBMaNaSgFyq3O1sXcX1vWyHyyCFlq4+8ekq4uXbjkD6y6IhZyr/AQoRYnjgosus+apGyGuA==}
@@ -31866,6 +31878,11 @@ snapshots:
       '@tiptap/extension-text': 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
       '@tiptap/extension-underline': 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
       '@tiptap/extensions': 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)
+      '@tiptap/pm': 3.22.5
+
+  '@tiptap/suggestion@3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)':
+    dependencies:
+      '@tiptap/core': 3.22.5(@tiptap/pm@3.22.5)
       '@tiptap/pm': 3.22.5
 
   '@tiptap/vue-3@3.22.5(@floating-ui/dom@1.7.0)(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)(vue@3.5.26(typescript@6.0.2))':

@@ -64,6 +64,7 @@
     "@tiptap/extension-task-list": "catalog:",
     "@tiptap/markdown": "catalog:",
     "@tiptap/starter-kit": "catalog:",
+    "@tiptap/suggestion": "catalog:",
     "@tiptap/vue-3": "catalog:",
     "clsx": "^2.1.1",
     "element-plus": "catalog:frontend",

@@ -73,6 +73,10 @@ interface Props
 	 * Whether to teleport the popover to the body element
 	 */
 	teleported?: boolean;
+	/**
+	 * ARIA role for the popover content
+	 */
+	contentRole?: string;
 }
 
 interface Emits {
@@ -98,6 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showArrow: false,
 	teleported: true,
 	positionStrategy: undefined,
+	contentRole: 'dialog',
 });
 
 const emit = defineEmits<Emits>();
@@ -143,7 +148,7 @@ watch(
 		</PopoverTrigger>
 		<PopoverPortal :disabled="!teleported">
 			<PopoverContent
-				role="dialog"
+				:role="contentRole"
 				:side="side"
 				:side-flip="sideFlip"
 				:align="align"

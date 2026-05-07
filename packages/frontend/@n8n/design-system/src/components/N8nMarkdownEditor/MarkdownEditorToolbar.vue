@@ -7,21 +7,17 @@ import N8nDropdown, { type N8nDropdownOption } from '../N8nDropdown';
 import N8nIcon from '../N8nIcon';
 import N8nInput from '../N8nInput';
 import N8nPopover from '../N8nPopover';
-import type { IconName } from '../N8nIcon';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import { t } from '../../locale';
 import type { MarkdownEditorVariant } from './MarkdownEditor.types';
 import type { MarkdownEditorToolbarMode } from './MarkdownEditor.types';
+import { createMarkdownSlashCommands } from './extensions/slashCommands';
+import type { MarkdownSlashCommand } from './extensions/slashCommands/types';
 
 const translate = (path: string) => t(path, undefined);
 
-type ToolbarControl = {
-	value: string;
-	label: string;
-	icon?: IconName;
-	action: (editor: Editor) => void;
-};
+type ToolbarControl = Pick<MarkdownSlashCommand, 'id' | 'label' | 'icon' | 'command'>;
 
 const props = defineProps<{
 	editor: Editor;
@@ -34,86 +30,53 @@ const linkPopoverOpen = ref(false);
 const linkUrl = ref('');
 const linkInput = ref<InstanceType<typeof N8nInput>>();
 
-const markControls = computed<ToolbarControl[]>(() => [
-	{
-		value: 'bold',
-		label: translate('markdownEditor.bold'),
-		icon: 'bold',
-		action: (editor) => editor.chain().focus().toggleBold().run(),
-	},
-	{
-		value: 'italic',
-		label: translate('markdownEditor.italic'),
-		icon: 'italic',
-		action: (editor) => editor.chain().focus().toggleItalic().run(),
-	},
-	{
-		value: 'strike',
-		label: translate('markdownEditor.strikethrough'),
-		icon: 'strikethrough',
-		action: (editor) => editor.chain().focus().toggleStrike().run(),
-	},
-]);
+const markdownCommands = computed(() => createMarkdownSlashCommands());
 
-const blockControls = computed<ToolbarControl[]>(() => [
-	{
-		value: 'bulletList',
-		label: translate('markdownEditor.bulletList'),
-		icon: 'list',
-		action: (editor) => editor.chain().focus().toggleBulletList().run(),
-	},
-	{
-		value: 'taskList',
-		label: translate('markdownEditor.taskList'),
-		icon: 'list-checks',
-		action: (editor) => editor.chain().focus().toggleTaskList().run(),
-	},
-	{
-		value: 'codeBlock',
-		label: translate('markdownEditor.codeBlock'),
-		icon: 'file-code',
-		action: (editor) => editor.chain().focus().toggleCodeBlock().run(),
-	},
-	{
-		value: 'blockquote',
-		label: translate('markdownEditor.blockquote'),
-		icon: 'quote',
-		action: (editor) => editor.chain().focus().toggleBlockquote().run(),
-	},
-]);
+const getCommand = (id: string) => markdownCommands.value.get(id);
+
+const getCommands = (ids: string[]) =>
+	ids
+		.map((id) => getCommand(id))
+		.filter((command): command is ToolbarControl => command !== undefined);
+
+const markControls = computed<ToolbarControl[]>(() => getCommands(['bold', 'italic', 'strike']));
+
+const blockControls = computed<ToolbarControl[]>(() =>
+	getCommands(['bulletList', 'taskList', 'codeBlock', 'blockquote']),
+);
 
 const historyControls = computed<ToolbarControl[]>(() => [
 	{
-		value: 'undo',
+		id: 'undo',
 		label: translate('markdownEditor.undo'),
 		icon: 'undo-2',
-		action: (editor) => editor.chain().focus().undo().run(),
+		command: ({ editor }) => editor.chain().focus().undo().run(),
 	},
 	{
-		value: 'redo',
+		id: 'redo',
 		label: translate('markdownEditor.redo'),
 		icon: 'redo-2',
-		action: (editor) => editor.chain().focus().redo().run(),
+		command: ({ editor }) => editor.chain().focus().redo().run(),
 	},
 ]);
 
-const textStyleOptions = computed<Array<N8nDropdownOption<string>>>(() => [
-	{ label: translate('markdownEditor.text'), value: 'paragraph' },
-	{ label: translate('markdownEditor.heading1'), value: 'heading-1' },
-	{ label: translate('markdownEditor.heading2'), value: 'heading-2' },
-	{ label: translate('markdownEditor.heading3'), value: 'heading-3' },
-]);
+const textStyleOptions = computed<Array<N8nDropdownOption<string>>>(() =>
+	getCommands(['paragraph', 'heading-1', 'heading-2', 'heading-3']).map((command) => ({
+		label: command.label,
+		value: command.id,
+	})),
+);
 
 const activeMarks = computed(() =>
 	markControls.value
-		.filter((control) => props.editor.isActive(control.value))
-		.map((control) => control.value),
+		.filter((control) => props.editor.isActive(control.id))
+		.map((control) => control.id),
 );
 
 const activeBlocks = computed(() =>
 	blockControls.value
-		.filter((control) => props.editor.isActive(control.value))
-		.map((control) => control.value),
+		.filter((control) => props.editor.isActive(control.id))
+		.map((control) => control.id),
 );
 
 const activeTextStyle = computed(() => {
@@ -131,32 +94,18 @@ const activeTextStyleLabel = computed(
 );
 
 const linkValue = computed(() => (props.editor.isActive('link') ? ['link'] : []));
+const linkControl = computed(() => getCommand('link'));
 
 const runControl = (control: ToolbarControl) => {
 	if (props.disabled) return;
 
-	control.action(props.editor);
+	control.command({ editor: props.editor });
 };
 
 const setTextStyle = (value: string | number) => {
 	if (props.disabled) return;
 
-	if (value === 'heading-1') {
-		props.editor.chain().focus().toggleHeading({ level: 1 }).run();
-		return;
-	}
-
-	if (value === 'heading-2') {
-		props.editor.chain().focus().toggleHeading({ level: 2 }).run();
-		return;
-	}
-
-	if (value === 'heading-3') {
-		props.editor.chain().focus().toggleHeading({ level: 3 }).run();
-		return;
-	}
-
-	props.editor.chain().focus().setParagraph().run();
+	getCommand(String(value))?.command({ editor: props.editor });
 };
 
 const getActiveLinkHref = () => {
@@ -240,8 +189,8 @@ const handleLinkInputKeydown = (event: KeyboardEvent) => {
 				<template #default="slotProps">
 					<N8nToggle
 						v-for="control in markControls"
-						:key="control.value"
-						:value="control.value"
+						:key="control.id"
+						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
 						:disabled="disabled"
@@ -262,8 +211,8 @@ const handleLinkInputKeydown = (event: KeyboardEvent) => {
 				<template #default="slotProps">
 					<N8nToggle
 						v-for="control in blockControls"
-						:key="control.value"
-						:value="control.value"
+						:key="control.id"
+						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
 						:disabled="disabled"
@@ -292,7 +241,7 @@ const handleLinkInputKeydown = (event: KeyboardEvent) => {
 						<template #default="slotProps">
 							<N8nToggle
 								value="link"
-								:label="translate('markdownEditor.link')"
+								:label="linkControl?.label ?? translate('markdownEditor.link')"
 								icon="link"
 								:disabled="disabled"
 								v-bind="slotProps"
@@ -346,8 +295,8 @@ const handleLinkInputKeydown = (event: KeyboardEvent) => {
 				<template #default="slotProps">
 					<N8nToggle
 						v-for="control in historyControls"
-						:key="control.value"
-						:value="control.value"
+						:key="control.id"
+						:value="control.id"
 						:label="control.label"
 						:icon="control.icon"
 						:disabled="disabled"
