@@ -52,6 +52,12 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import {
+	attachTemplateTelemetrySession,
+	createTemplateTelemetrySession,
+	detachTemplateTelemetrySession,
+	type TemplateTelemetrySession,
+} from '../../workspace/template-telemetry';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import {
@@ -766,6 +772,8 @@ export async function startBuildWorkflowAgentTask(
 				await withTraceContextActor(traceContext, async () => {
 					let builderWs: BuilderWorkspace | undefined;
 					let activeBuilderSession: BuilderSandboxSession | undefined = reusedBuilderSession;
+					let telemetrySession: TemplateTelemetrySession | undefined;
+					let telemetryWorkspace: BuilderWorkspace['workspace'] | undefined;
 					const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 					// Append-only history so a later failed submit for the main path
 					// cannot mask an earlier successful submit during post-error recovery.
@@ -782,6 +790,18 @@ export async function startBuildWorkflowAgentTask(
 								workspace = builderWs.workspace;
 								root = await getWorkspaceRoot(workspace);
 							}
+
+							// Bind a template-telemetry session to the workspace so any grep on
+							// examples/index.txt or cat on examples/*.ts gets observed via runInSandbox.
+							telemetrySession = createTemplateTelemetrySession({
+								context,
+								threadId: context.threadId,
+								runId: context.runId,
+								workItemId,
+								userRequestExcerpt: input.task,
+							});
+							telemetryWorkspace = workspace;
+							attachTemplateTelemetrySession(workspace, telemetrySession);
 
 							prompt = createSandboxBuilderAgentPrompt(root);
 							if (!activeBuilderSession && builderWs) {
@@ -1222,6 +1242,16 @@ export async function startBuildWorkflowAgentTask(
 						await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 						return { text: toolFinalText };
 					} finally {
+						if (telemetrySession && telemetryWorkspace) {
+							try {
+								telemetrySession.flush();
+								detachTemplateTelemetrySession(telemetryWorkspace);
+							} catch (error) {
+								context.logger.warn('build-workflow-agent: failed to flush template telemetry', {
+									error: error instanceof Error ? error.message : String(error),
+								});
+							}
+						}
 						if (activeBuilderSession && context.builderSandboxSessionRegistry) {
 							await context.builderSandboxSessionRegistry.release(activeBuilderSession.sessionId, {
 								keep: !signal.aborted,

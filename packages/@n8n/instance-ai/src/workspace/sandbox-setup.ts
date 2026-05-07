@@ -22,6 +22,7 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
+import { getExampleFiles } from '@n8n/workflow-sdk';
 import { createRequire } from 'node:module';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
@@ -349,6 +350,22 @@ export async function setupSandboxWorkspace(
 	const nodeTypes = await context.nodeService.listSearchable();
 	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
 	files.set('node-types/index.txt', catalogLines.join('\n'));
+
+	// Curated workflow examples — generated on demand from the committed manifest
+	// in @n8n/workflow-sdk. Read-only reference for the builder agent.
+	const exampleStart = Date.now();
+	const { files: exampleFiles, indexTxt } = getExampleFiles();
+	if (exampleFiles.length > 0) {
+		files.set('examples/index.txt', indexTxt);
+		for (const example of exampleFiles) {
+			files.set(`examples/${example.filename}`, example.content);
+		}
+	}
+	const exampleDuration = Date.now() - exampleStart;
+	if (exampleFiles.length > 0) {
+		// Visible in sandbox-init traces; revisit if p95 regresses materially.
+		console.log(`[sandbox-setup] prepared ${exampleFiles.length} examples in ${exampleDuration}ms`);
+	}
 
 	// Existing workflows as JSON (fetch in parallel)
 	try {
