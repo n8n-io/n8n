@@ -293,6 +293,13 @@ async function handleSetup(
 	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 	state: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null },
 ) {
+	// `setup` mutates workflow nodes via applyNodeChanges (credentials and
+	// parameters are workflow-record fields), so it's gated under
+	// `updateWorkflow` like other workflow-mutating actions.
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
 	const resumeData = ctx?.agent?.resumeData as z.infer<typeof setupResumeSchema> | undefined;
 	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<unknown>) | undefined;
 
@@ -642,12 +649,56 @@ async function handleRestoreVersion(
 async function handleUpdateVersion(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'update-version' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
-	await context.workflowService.updateVersion!(input.workflowId, input.versionId, {
-		name: input.name,
-		description: input.description,
-	});
-	return { success: true };
+	// Gated under `updateWorkflow` — version metadata edits are workflow-record
+	// mutations, treated the same as live-workflow updates.
+	const resumeData = ctx?.agent?.resumeData as { approved: boolean } | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const fields: string[] = [];
+		if (input.name !== undefined) fields.push(`name to ${formatFieldValue(input.name)}`);
+		if (input.description !== undefined) {
+			fields.push(`description to ${formatFieldValue(input.description)}`);
+		}
+		const summary = fields.length > 0 ? fields.join(', ') : 'metadata';
+
+		await suspend?.({
+			requestId: nanoid(),
+			message: `Update workflow version "${input.versionId}" — set ${summary}?`,
+			severity: 'info' as const,
+		});
+		return { success: false };
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	try {
+		await context.workflowService.updateVersion!(input.workflowId, input.versionId, {
+			name: input.name,
+			description: input.description,
+		});
+		return { success: true };
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : 'Update failed',
+		};
+	}
+}
+
+function formatFieldValue(value: string | null): string {
+	if (value === null) return '(cleared)';
+	return `"${value}"`;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
@@ -696,7 +747,7 @@ export function createWorkflowsTool(
 				case 'restore-version':
 					return await handleRestoreVersion(context, input, ctx);
 				case 'update-version':
-					return await handleUpdateVersion(context, input);
+					return await handleUpdateVersion(context, input, ctx);
 				default:
 					return { error: `Unknown action: ${(input as { action: string }).action}` };
 			}

@@ -643,6 +643,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../ai-utilities
       '@openrouter/ai-sdk-provider':
         specifier: 'catalog:'
         version: 2.8.1(ai@6.0.134(zod@3.25.67))(zod@3.25.67)
@@ -778,6 +781,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types
