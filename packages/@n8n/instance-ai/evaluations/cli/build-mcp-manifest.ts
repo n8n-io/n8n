@@ -31,6 +31,18 @@ interface CliArgs {
 	slugs: string[];
 	maxAttempts: number;
 	mcpTimeoutMs: number;
+	/** When set, instructs the model to pass `projectId` to
+	 *  `create_workflow_from_code` so workflows land in a specific n8n project.
+	 *  When unset, workflows go to the user's personal project (MCP default). */
+	projectId?: string;
+	/** Override the test-case JSON directory. Defaults to the n8n repo's
+	 *  evaluations/data/workflows/, derived via `git rev-parse`. Setting this
+	 *  lets the script run from outside the n8n repo. */
+	workflowDir?: string;
+	/** Working directory for the build subprocess. Lets the user spawn the
+	 *  builder from a project where they have skills/settings configured,
+	 *  independent of where the script itself runs. */
+	buildCwd?: string;
 }
 
 const HELP = `
@@ -63,6 +75,17 @@ Flags:
                           (default: claude-sonnet-4-6).
   --max-attempts N        Retries per build when WORKFLOW_ID is missing (default: 3).
   --mcp-timeout-ms N      MCP_TIMEOUT env passed to claude -p (default: 120000).
+  --project-id ID         n8n project to create the workflows in. Defaults
+                          to the user's personal project.
+  --workflow-dir DIR      Test-case JSON directory. Defaults to
+                          evaluations/data/workflows/ derived from the n8n
+                          repo (via git). Set this to run from outside the
+                          n8n repo.
+  --build-cwd DIR         Working directory for the build subprocess.
+                          Defaults to the n8n repo root when running inside
+                          it, otherwise process.cwd(). Set this to spawn
+                          the builder from a project where you have skills /
+                          settings configured.
   -h, --help              Show this help.
 
 Positional args:
@@ -143,6 +166,18 @@ function parseArgs(argv: string[]): ParseResult {
 				result.mcpTimeoutMs = parseIntArg(argv, i, arg);
 				i += 2;
 				break;
+			case '--project-id':
+				result.projectId = nextArg(argv, i, arg);
+				i += 2;
+				break;
+			case '--workflow-dir':
+				result.workflowDir = nextArg(argv, i, arg);
+				i += 2;
+				break;
+			case '--build-cwd':
+				result.buildCwd = nextArg(argv, i, arg);
+				i += 2;
+				break;
 			case '-h':
 			case '--help':
 				return { helpRequested: true };
@@ -206,19 +241,22 @@ const claudeConfigSchema = z.object({
 		.optional(),
 });
 
-function stageMcpConfig(serverName: string, repoRoot: string): string {
+function stageMcpConfig(serverName: string, repoRoot: string | undefined): string {
 	const claudeConfigPath = join(homedir(), '.claude.json');
 	if (!existsSync(claudeConfigPath)) {
 		throw new Error(`${claudeConfigPath} not found`);
 	}
 	const parsed = claudeConfigSchema.parse(readJson(claudeConfigPath, 'Claude Code config'));
 
-	const block =
-		parsed.projects?.[repoRoot]?.mcpServers?.[serverName] ?? parsed.mcpServers?.[serverName];
+	const projectScopedBlock = repoRoot
+		? parsed.projects?.[repoRoot]?.mcpServers?.[serverName]
+		: undefined;
+	const block = projectScopedBlock ?? parsed.mcpServers?.[serverName];
 	if (!block) {
-		throw new Error(
-			`MCP server "${serverName}" not configured in ${claudeConfigPath} (project-scope under "${repoRoot}" or global)`,
-		);
+		const scope = repoRoot
+			? `project-scope under "${repoRoot}" or global`
+			: 'global (no repo root, project-scope skipped)';
+		throw new Error(`MCP server "${serverName}" not configured in ${claudeConfigPath} (${scope})`);
 	}
 
 	const tmpPath = join(tmpdir(), `n8n-mcp-config-${process.pid}-${Date.now()}.json`);
@@ -295,6 +333,7 @@ async function runClaude(
 		const child = spawn('claude', claudeArgs, {
 			env: { ...process.env, MCP_TIMEOUT: String(args.mcpTimeoutMs) },
 			stdio: ['ignore', 'pipe', 'pipe'],
+			cwd: args.buildCwd,
 		});
 		let stdout = '';
 		let stderr = '';
@@ -353,7 +392,11 @@ async function buildOne(
 	}
 	const testCase = testCaseSchema.parse(readJson(scenarioFile, `test case ${slug}`));
 
-	const userMessage = `${testCase.prompt}
+	const projectInstruction = args.projectId
+		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
+		: '';
+
+	const userMessage = `${testCase.prompt}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:
@@ -491,8 +534,34 @@ async function main(): Promise<void> {
 		throw new Error('claude not on PATH');
 	}
 
-	const repoRoot = execSync('git rev-parse --show-toplevel').toString().trim();
-	const workflowDir = join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows');
+	// `--workflow-dir` lets the script run from outside the n8n repo. When
+	// not provided, we derive both the workflow dir and the repo root from
+	// `git rev-parse` (the script must then be invoked inside the n8n repo).
+	let workflowDir: string;
+	let repoRoot: string | undefined;
+	if (args.workflowDir) {
+		workflowDir = args.workflowDir;
+		try {
+			repoRoot = execSync('git rev-parse --show-toplevel', { stdio: ['ignore', 'pipe', 'ignore'] })
+				.toString()
+				.trim();
+		} catch {
+			repoRoot = undefined;
+		}
+	} else {
+		try {
+			repoRoot = execSync('git rev-parse --show-toplevel').toString().trim();
+		} catch {
+			throw new Error(
+				'Could not determine repo root via git. Run from inside the n8n repo, or pass --workflow-dir to point at a test-case directory directly.',
+			);
+		}
+		workflowDir = join(repoRoot, 'packages/@n8n/instance-ai/evaluations/data/workflows');
+	}
+
+	if (args.buildCwd && !existsSync(args.buildCwd)) {
+		throw new Error(`--build-cwd directory does not exist: ${args.buildCwd}`);
+	}
 
 	if (args.slugs.length === 0) {
 		args.slugs = discoverSlugs(workflowDir);

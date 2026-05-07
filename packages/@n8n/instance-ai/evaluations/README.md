@@ -246,6 +246,12 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
   --experiment-name mcp-cohort
 ```
 
+For runs that need to leave the n8n repo (for example, driving the build from a separate Claude project where you have skills configured), three flags decouple the script from its default assumptions:
+
+- `--workflow-dir <path>` — read test-case JSONs from a directory other than the n8n repo's `evaluations/data/workflows/`. When set, the script no longer needs `git rev-parse` to find the repo.
+- `--build-cwd <path>` — set the working directory the `claude` subprocess spawns from. Affects which `~/.claude.json` `projects` entry (and which skills) Claude loads.
+- `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
+
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
 ## Pairwise evals
