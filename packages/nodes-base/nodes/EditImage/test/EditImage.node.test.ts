@@ -118,6 +118,127 @@ describe('EditImage Node', () => {
 		mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(undefined as any);
 	});
 
+	// GHC-8193: Regression test for "Stream yields empty buffer" error in composite operation
+	describe('composite operation regression (GHC-8193)', () => {
+		it('should successfully composite two binary images without "Stream yields empty buffer" error', async () => {
+			// Create test buffers representing valid images
+			const baseImageBuffer = createTestBuffer();
+			const overlayImageBuffer = createTestBuffer();
+
+			// Setup item with two binary properties (matches user's scenario)
+			const items: INodeExecutionData[] = [
+				{
+					json: {
+						size: {
+							width: 500,
+							height: 500,
+						},
+					},
+					binary: {
+						'data-bg': {
+							data: baseImageBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'base.png',
+						},
+						data: {
+							data: overlayImageBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'overlay.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'composite';
+				if (paramName === 'dataPropertyName') return 'data-bg';
+				if (paramName === 'dataPropertyNameComposite') return 'data';
+				if (paramName === 'operator') return 'Over';
+				if (paramName === 'positionX') return Math.floor((1000 - 500) / 2); // User's formula
+				if (paramName === 'positionY') return Math.floor((1110 - 500) / 2); // User's formula
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			// Mock getBinaryDataBuffer to return buffers for both properties
+			let callCount = 0;
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockImplementation(async () => {
+				callCount++;
+				if (callCount === 1) return baseImageBuffer;
+				if (callCount === 2) return overlayImageBuffer;
+				throw new Error(`Unexpected call to getBinaryDataBuffer (call ${callCount})`);
+			});
+
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: baseImageBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			// Execute and verify success (not "Stream yields empty buffer" error)
+			const result = await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].binary).toHaveProperty('data-bg');
+			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledTimes(2);
+		});
+
+		it('should handle composite operation when expressions are used for positioning', async () => {
+			const baseImageBuffer = createTestBuffer();
+			const overlayImageBuffer = createTestBuffer();
+
+			const items: INodeExecutionData[] = [
+				{
+					json: { size: { width: 800, height: 600 } },
+					binary: {
+						'data-bg': {
+							data: baseImageBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'background.png',
+						},
+						data: {
+							data: overlayImageBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'foreground.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'composite';
+				if (paramName === 'dataPropertyName') return 'data-bg';
+				if (paramName === 'dataPropertyNameComposite') return 'data';
+				if (paramName === 'operator') return 'Over';
+				if (paramName === 'positionX') return 100;
+				if (paramName === 'positionY') return 255;
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			let callCount = 0;
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockImplementation(async () => {
+				callCount++;
+				return callCount === 1 ? baseImageBuffer : overlayImageBuffer;
+			});
+
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: baseImageBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await expect(editImageNode.execute.call(mockExecuteFunctions)).resolves.toBeDefined();
+		});
+	});
+
+
 	describe('dataPropertyName parameter', () => {
 		it('should handle IBinaryData type', async () => {
 			const testBuffer = createTestBuffer();
