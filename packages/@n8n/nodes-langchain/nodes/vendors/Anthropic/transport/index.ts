@@ -14,6 +14,7 @@ type RequestParameters = {
 	enableAnthropicBetas?: {
 		promptTools?: boolean;
 		codeExecution?: boolean;
+		mcpClient?: boolean;
 	};
 };
 
@@ -36,6 +37,10 @@ export async function apiRequest(
 
 	if (parameters?.enableAnthropicBetas?.codeExecution) {
 		betas.push('code-execution-2025-05-22');
+	}
+
+	if (parameters?.enableAnthropicBetas?.mcpClient) {
+		betas.push('mcp-client-2025-11-20');
 	}
 
 	const requestHeaders: IDataObject = {

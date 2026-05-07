@@ -77,7 +77,19 @@ export type Tool =
 	| {
 			type: 'code_execution_20250522';
 			name: 'code_execution';
+	  }
+	| {
+			type: 'mcp_client_20251120';
+			name: 'mcp_client';
+			mcp_server_name: string;
 	  };
+
+export type McpServer = {
+	name: string;
+	type: string;
+	url: string;
+	authorizationToken?: string;
+};
 
 export interface MessagesResponse {
 	content: Content[];
