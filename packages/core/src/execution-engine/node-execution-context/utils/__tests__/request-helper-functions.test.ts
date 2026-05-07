@@ -33,10 +33,6 @@ import {
 } from '../request-helper-functions';
 
 const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
-type RedirectResponseDetails = Parameters<
-	NonNullable<Awaited<ReturnType<typeof parseRequestObject>>['beforeRedirect']>
->[1];
-const redirectResponseDetails: RedirectResponseDetails = { headers: {}, statusCode: 302 };
 
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
@@ -505,7 +501,7 @@ describe('Request Helper Functions', () => {
 					hostname: 'example.de',
 					href: requestObject.uri,
 				};
-				axiosOptions.beforeRedirect!(redirectOptions, redirectResponseDetails);
+				axiosOptions.beforeRedirect!(redirectOptions, mock(), mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
 				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
@@ -2244,9 +2240,9 @@ describe('Request Helper Functions', () => {
 					};
 
 					expect(axiosOptions.beforeRedirect).toBeDefined();
-					expect(() =>
-						axiosOptions.beforeRedirect!(redirectOptions, redirectResponseDetails),
-					).toThrow('Domain not allowed');
+					expect(() => axiosOptions.beforeRedirect!(redirectOptions, mock(), mock())).toThrow(
+						'Domain not allowed',
+					);
 				});
 
 				test.each([['example.com'], [undefined]])(
@@ -2264,7 +2260,7 @@ describe('Request Helper Functions', () => {
 
 						expect(axiosOptions.beforeRedirect).toBeDefined();
 						expect(() =>
-							axiosOptions.beforeRedirect!(redirectOptions, redirectResponseDetails),
+							axiosOptions.beforeRedirect!(redirectOptions, mock(), mock()),
 						).not.toThrow();
 					},
 				);
@@ -2284,9 +2280,9 @@ describe('Request Helper Functions', () => {
 					};
 
 					expect(axiosConfig.beforeRedirect).toBeDefined();
-					expect(() =>
-						axiosConfig.beforeRedirect!(redirectOptions, redirectResponseDetails),
-					).toThrow('Domain not allowed');
+					expect(() => axiosConfig.beforeRedirect!(redirectOptions, mock(), mock())).toThrow(
+						'Domain not allowed',
+					);
 				});
 
 				test.each([['example.com'], [undefined]])(
@@ -2305,7 +2301,7 @@ describe('Request Helper Functions', () => {
 
 						expect(axiosConfig.beforeRedirect).toBeDefined();
 						expect(() =>
-							axiosConfig.beforeRedirect!(redirectOptions, redirectResponseDetails),
+							axiosConfig.beforeRedirect!(redirectOptions, mock(), mock()),
 						).not.toThrow();
 					},
 				);
