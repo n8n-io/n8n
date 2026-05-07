@@ -15,9 +15,8 @@
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:capture-plans": "tsx evaluations/cli/capture-plans.ts",
-    "eval:subagent": "tsx evaluations/subagent/cli.ts"
+    "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "prompts:print": "tsx scripts/print-prompts.ts"
->>>>>>> 9b3b29b5058da42ec736c14cc8af5726b2a64e4b
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
