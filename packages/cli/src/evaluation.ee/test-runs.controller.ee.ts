@@ -56,13 +56,17 @@ export class TestRunsController {
 	}
 
 	/**
-	 * Get the test run (or just check that it exists and the user has access to it)
+	 * Get the test run (or just check that it exists and the user has access to it).
+	 *
+	 * The lookup is scoped to the route's `workflowId` so a user with access
+	 * to one workflow cannot reach another workflow's run by guessing IDs —
+	 * absent or cross-workflow runs return the same 404.
 	 */
 	private async getTestRun(testRunId: string, workflowId: string, user: User) {
 		await this.assertUserHasAccessToWorkflow(workflowId, user);
 
 		const testRun = await this.testRunRepository.findOne({
-			where: { id: testRunId },
+			where: { id: testRunId, workflow: { id: workflowId } },
 		});
 
 		if (!testRun) throw new NotFoundError('Test run not found');

@@ -12,6 +12,7 @@ import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '../executions.types';
 import { useToast } from '@/app/composables/useToast';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showToast = vi.fn();
@@ -251,6 +252,56 @@ describe('useExecutionDebugging()', () => {
 		await executionDebugging.applyExecutionData('1');
 
 		expect(uiStore.markStateDirty).toHaveBeenCalledTimes(1);
+	});
+
+	it('should skip pinning nodes whose run data contains the trimmed-execution-data marker but still pin clean nodes', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						TrimmedTrigger: [
+							{
+								data: {
+									main: [
+										[
+											{
+												json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+												pairedItem: { item: 0 },
+											},
+										],
+									],
+								},
+							},
+						],
+						CleanTrigger: [
+							{
+								data: {
+									main: [[{ json: { ok: true } }]],
+								},
+							},
+						],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		mockWorkflowDocumentStore.allNodes = [
+			{ name: 'TrimmedTrigger' },
+			{ name: 'CleanTrigger' },
+		] as INodeUi[];
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledTimes(1);
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith('CleanTrigger', [
+			{ json: { ok: true } },
+		]);
+		expect(mockWorkflowDocumentStore.pinNodeData).not.toHaveBeenCalledWith(
+			'TrimmedTrigger',
+			expect.anything(),
+		);
 	});
 
 	it('should not mark workflow state dirty when nothing is pinned or unpinned', async () => {
