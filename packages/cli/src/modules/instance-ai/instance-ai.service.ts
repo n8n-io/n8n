@@ -1276,6 +1276,10 @@ export class InstanceAiService {
 		return this.gatewayRegistry.generatePairingToken(userId);
 	}
 
+	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
+	}
+
 	getPairingToken(userId: string): string | null {
 		return this.gatewayRegistry.getPairingToken(userId);
 	}
