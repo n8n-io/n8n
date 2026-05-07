@@ -35,12 +35,10 @@ export function useWorkflowState() {
 	// Workflow editing state
 	////
 
-	function getStateStore() {
-		return useWorkflowExecutionStateStore(createWorkflowExecutionStateId(ws.workflowId));
-	}
-
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		const stateStore = getStateStore();
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		);
 		if (workflowResultData === null) {
 			stateStore.setPendingExecution(null);
 			stateStore.clearDisplayedExecution();
@@ -63,7 +61,9 @@ export function useWorkflowState() {
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		getStateStore().setActiveExecutionId(id);
+		useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		).setActiveExecutionId(id);
 	}
 
 	async function getNewWorkflowData(
@@ -101,7 +101,9 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		const stateStore = getStateStore();
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		);
 		const aid = stateStore.activeExecutionId;
 
 		stateStore.setActiveExecutionId(undefined);
@@ -121,7 +123,9 @@ export function useWorkflowState() {
 	}
 
 	function resetState() {
-		const stateStore = getStateStore();
+		const stateStore = useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		);
 		stateStore.setPendingExecution(null);
 		stateStore.setActiveExecutionId(undefined);
 		stateStore.setExecutionWaitingForWebhook(false);
