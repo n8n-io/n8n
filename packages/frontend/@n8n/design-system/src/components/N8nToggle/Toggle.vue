@@ -76,82 +76,69 @@ const handleUpdate = (value: boolean) => {
 
 <template>
 	<N8nTooltip v-if="!disabled" :content="label">
-		<ToggleGroupItem v-if="value !== undefined" :value="value" as-child>
-			<button
-				v-bind="attrs"
-				type="button"
-				:class="classes"
-				:aria-label="label"
-				data-icon-only="true"
-			>
-				<span :class="$style['toggle-inner']">
-					<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-					<slot />
-				</span>
-			</button>
+		<ToggleGroupItem
+			v-if="value !== undefined"
+			v-bind="attrs"
+			:value="value"
+			:class="classes"
+			:aria-label="label"
+			data-icon-only="true"
+		>
+			<span :class="$style['toggle-inner']">
+				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+				<slot />
+			</span>
 		</ToggleGroupItem>
 
 		<Toggle
 			v-else
+			v-bind="attrs"
 			v-model="pressed"
 			:name="name"
 			:required="required"
-			as-child
-			@update:model-value="handleUpdate"
-		>
-			<button
-				v-bind="attrs"
-				type="button"
-				:class="classes"
-				:aria-label="label"
-				data-icon-only="true"
-			>
-				<span :class="$style['toggle-inner']">
-					<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-					<slot />
-				</span>
-			</button>
-		</Toggle>
-	</N8nTooltip>
-
-	<ToggleGroupItem v-else-if="value !== undefined" :value="value" disabled as-child>
-		<button
-			v-bind="attrs"
-			type="button"
-			disabled
 			:class="classes"
 			:aria-label="label"
 			data-icon-only="true"
+			@update:model-value="handleUpdate"
 		>
 			<span :class="$style['toggle-inner']">
 				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
 				<slot />
 			</span>
-		</button>
+		</Toggle>
+	</N8nTooltip>
+
+	<ToggleGroupItem
+		v-else-if="value !== undefined"
+		v-bind="attrs"
+		:value="value"
+		disabled
+		:class="classes"
+		:aria-label="label"
+		data-icon-only="true"
+	>
+		<span :class="$style['toggle-inner']">
+			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+			<slot />
+		</span>
 	</ToggleGroupItem>
 
 	<Toggle
 		v-else
+		v-bind="attrs"
 		v-model="pressed"
 		disabled
 		:name="name"
 		:required="required"
-		as-child
+		:class="classes"
+		:aria-label="label"
+		data-icon-only="true"
 		@update:model-value="handleUpdate"
 	>
-		<button
-			v-bind="attrs"
-			type="button"
-			disabled
-			:class="classes"
-			:aria-label="label"
-			data-icon-only="true"
-		>
-			<span :class="$style['toggle-inner']">
-				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
-				<slot />
-			</span>
-		</button>
+		<span :class="$style['toggle-inner']">
+			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+			<slot />
+		</span>
 	</Toggle>
 </template>
 
