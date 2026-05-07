@@ -10,7 +10,7 @@ import {
 
 const props = defineProps<{
 	name: string;
-	value: number | boolean | undefined;
+	value: number | undefined;
 	category?: MetricCategory;
 	sourceNodeName?: string;
 }>();

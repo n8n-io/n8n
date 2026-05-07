@@ -1213,12 +1213,11 @@ describe('utils', () => {
 		it('returns numbers unchanged', () => {
 			expect(normalizeMetricValue(0.42)).toBe(0.42);
 		});
-		it('coerces booleans to 1/0', () => {
-			expect(normalizeMetricValue(true)).toBe(1);
-			expect(normalizeMetricValue(false)).toBe(0);
-		});
 		it('returns undefined for undefined input', () => {
 			expect(normalizeMetricValue(undefined)).toBeUndefined();
+		});
+		it('returns undefined for NaN', () => {
+			expect(normalizeMetricValue(Number.NaN)).toBeUndefined();
 		});
 	});
 

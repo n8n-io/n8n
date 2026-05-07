@@ -138,6 +138,7 @@ describe('TestRunDetailView', () => {
 		evaluationStore = useEvaluationStore();
 
 		vi.mocked(evaluationStore.getTestRun).mockResolvedValue(mockTestRun);
+		vi.spyOn(evaluationStore, 'fetchTestRuns').mockResolvedValue([mockTestRun, mockPreviousRun]);
 		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
 			// Seed the store directly so `testCases` (now a computed) reads from it.
 			evaluationStore.testCaseExecutionsById = mockTestCases.reduce(

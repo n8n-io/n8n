@@ -6,7 +6,7 @@ import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useEvaluationStore } from '../evaluation.store';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
@@ -66,8 +66,8 @@ const orderedTestCases = computed(() =>
 
 const metricSources = computed(() => evaluationStore.metricSourceByKey);
 
-const caseValuesByKey = computed<Record<string, Array<number | boolean | undefined>>>(() => {
-	const result: Record<string, Array<number | boolean | undefined>> = {};
+const caseValuesByKey = computed(() => {
+	const result: Record<string, Array<number | undefined>> = {};
 	for (const name of getUserDefinedMetricNames(run.value?.metrics)) {
 		result[name] = orderedTestCases.value.map((testCase) => testCase.metrics?.[name]);
 	}
@@ -93,8 +93,7 @@ const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
 };
 
 const fetchExecutionTestCases = async () => {
-	if (!runId.value || !workflowId.value) return;
-
+	if (!runId.value || !workflowId.value) return false;
 	isLoading.value = true;
 	try {
 		const testRun = await evaluationStore.getTestRun({
@@ -106,8 +105,10 @@ const fetchExecutionTestCases = async () => {
 			runId: testRun.id,
 		});
 		await evaluationStore.fetchTestRuns(run.value.workflowId);
+		return true;
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.toast.error.fetchTestCases'));
+		return false;
 	} finally {
 		isLoading.value = false;
 	}
@@ -124,16 +125,22 @@ const trackViewedRunDetail = () => {
 	});
 };
 
-onMounted(async () => {
-	await fetchExecutionTestCases();
-	trackViewedRunDetail();
-});
+// `router.back()` no-ops on shared links with no prior history; nav explicitly.
+const navigateBackToRuns = () =>
+	workflowId.value &&
+	void router.push({ name: VIEWS.EVALUATION_EDIT, params: { workflowId: workflowId.value } });
+
+// Skip telemetry on fetch error to avoid all-zero events.
+onMounted(async () => (await fetchExecutionTestCases()) && trackViewedRunDetail());
+
+// fetchTestRuns auto-starts polling — clear it on teardown.
+onBeforeUnmount(() => evaluationStore.cleanupPolling());
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
 		<div :class="$style.header">
-			<button :class="$style.backButton" @click="router.back()">
+			<button :class="$style.backButton" @click="navigateBackToRuns">
 				<N8nIcon icon="arrow-left" size="small" />
 				<N8nText size="medium">{{ locale.baseText('evaluation.runDetail.backToRuns') }}</N8nText>
 			</button>
@@ -174,12 +181,6 @@ onMounted(async () => {
 		</div>
 	</div>
 </template>
-
-<style lang="scss" scoped>
-:global(tr:hover:has(.open-execution-link:hover)) {
-	--table--row--color--background--hover: transparent;
-}
-</style>
 
 <style module lang="scss">
 .container {

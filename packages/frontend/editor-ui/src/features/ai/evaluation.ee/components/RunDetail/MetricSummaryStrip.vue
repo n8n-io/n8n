@@ -10,14 +10,11 @@ import {
 import MetricSummaryCard from './MetricSummaryCard.vue';
 
 const props = defineProps<{
-	currentMetrics: Record<string, number | boolean> | null | undefined;
-	previousMetrics: Record<string, number | boolean> | null | undefined;
+	currentMetrics: Record<string, number> | null | undefined;
+	previousMetrics: Record<string, number> | null | undefined;
 	metricSources?: Record<string, MetricSource>;
-	/**
-	 * Per-metric arrays of per-test-case raw values. Used to surface a sum
-	 * form ("x1+x2+x3 / y1+y2+y3") under AI-based metric cards.
-	 */
-	caseValuesByKey?: Record<string, Array<number | boolean | undefined>>;
+	// Per-case raw values per metric — surfaces "sum/count" tooltips on each card.
+	caseValuesByKey?: Record<string, Array<number | undefined>>;
 }>();
 
 const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetrics));

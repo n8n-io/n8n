@@ -44,22 +44,20 @@ const PREDEFINED_METRIC_KEYS: ReadonlySet<string> = new Set([
 
 // Excludes predefined keys (token counts, execution time) emitted by every run.
 export function getUserDefinedMetricNames(
-	metrics: Record<string, number | boolean> | null | undefined,
+	metrics: Record<string, number> | null | undefined,
 ): string[] {
 	if (!metrics) return [];
 	return Object.keys(metrics).filter((key) => !PREDEFINED_METRIC_KEYS.has(key));
 }
 
-// Booleans map to 1/0 so delta math stays consistent across metric types.
-export function normalizeMetricValue(value: number | boolean | undefined): number | undefined {
-	if (value === undefined) return undefined;
-	if (typeof value === 'boolean') return value ? 1 : 0;
+export function normalizeMetricValue(value: number | undefined): number | undefined {
+	if (value === undefined || Number.isNaN(value)) return undefined;
 	return value;
 }
 
 export function computeDelta(
-	current: number | boolean | undefined,
-	previous: number | boolean | undefined,
+	current: number | undefined,
+	previous: number | undefined,
 ): number | undefined {
 	const currentNum = normalizeMetricValue(current);
 	const previousNum = normalizeMetricValue(previous);
@@ -89,11 +87,11 @@ export function getMetricScale(category: MetricCategory | undefined): MetricScal
 // aiBased: 1-5 → value/5*100 (so 5 → 100%). Otherwise: |v|≤1 is a 0-1 score
 // scaled to percent; out-of-range values are assumed to be percentages already.
 export function formatMetricPercent(
-	value: number | boolean | undefined,
+	value: number | undefined,
 	options: { category?: MetricCategory } = {},
 ): string {
 	const num = normalizeMetricValue(value);
-	if (num === undefined || Number.isNaN(num)) return '–';
+	if (num === undefined) return '–';
 	const scaled =
 		getMetricScale(options.category) === 'oneToFive'
 			? (num / 5) * 100
@@ -132,23 +130,21 @@ function formatScoreNumerator(value: number): string {
 
 // `x/5` form for AI-based per-case rows (only — 0-1 metrics duplicate the %).
 export function formatMetricRawScore(
-	value: number | boolean | undefined,
+	value: number | undefined,
 	options: { category?: MetricCategory } = {},
 ): string {
 	if (getMetricScale(options.category) !== 'oneToFive') return '';
 	const num = normalizeMetricValue(value);
-	if (num === undefined || Number.isNaN(num)) return '';
+	if (num === undefined) return '';
 	return `${formatScoreNumerator(num)}/5`;
 }
 
 // Run-level totals: "13/15" (AI-based: sum / 5×count) or "1.11/6" (0-1: sum / count).
 export function formatMetricRawScoreSum(
-	values: Array<number | boolean | undefined>,
+	values: Array<number | undefined>,
 	options: { category?: MetricCategory } = {},
 ): string {
-	const usable = values
-		.map(normalizeMetricValue)
-		.filter((v): v is number => v !== undefined && !Number.isNaN(v));
+	const usable = values.map(normalizeMetricValue).filter((v): v is number => v !== undefined);
 	if (usable.length === 0) return '';
 	const isOneToFive = getMetricScale(options.category) === 'oneToFive';
 	const perCaseMax = isOneToFive ? 5 : 1;

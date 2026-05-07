@@ -13,15 +13,12 @@ import TrendDeltaBadge from './TrendDeltaBadge.vue';
 
 const props = defineProps<{
 	name: string;
-	currentValue: number | boolean | undefined;
+	currentValue: number | undefined;
 	delta: number | undefined;
 	category?: MetricCategory;
 	sourceNodeName?: string;
-	/**
-	 * Per-test-case raw values for this metric. The sum form (e.g. "13/15")
-	 * is surfaced on hover only — it would otherwise crowd the inline card.
-	 */
-	caseValues?: Array<number | boolean | undefined>;
+	// Per-case raw values; sum form ("13/15") shows on hover only.
+	caseValues?: Array<number | undefined>;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
