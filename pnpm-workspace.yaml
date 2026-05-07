@@ -57,6 +57,7 @@ catalog:
   '@tiptap/extension-task-list': 3.22.5
   '@tiptap/markdown': 3.22.5
   '@tiptap/starter-kit': 3.22.5
+  '@tiptap/suggestion': 3.22.5
   '@tiptap/vue-3': 3.22.5
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
