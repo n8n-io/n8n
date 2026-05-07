@@ -17,7 +17,7 @@
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
 
-import type { CredentialMap } from './resolve-credentials';
+import type { CredentialEntry, CredentialMap } from './resolve-credentials';
 import {
 	createSubmitWorkflowTool,
 	resolveSandboxWorkflowFilePath,
@@ -215,6 +215,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	context: InstanceAiContext;
 	workspace: Workspace;
 	credentialMap?: CredentialMap;
+	availableCredentials?: CredentialEntry[];
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
 	currentRunId?: string;
@@ -229,6 +230,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		async (attempt) => {
 			await args.onAttempt(budgetTracker.recordAttempt(attempt));
 		},
+		args.availableCredentials,
 	);
 
 	const underlyingExecute = underlying.execute as SubmitExecute | undefined;
