@@ -8,6 +8,31 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
+export * from './agents';
+export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
+export {
+	ASK_LLM_TOOL_NAME,
+	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_QUESTION_TOOL_NAME,
+	interactiveToolNameSchema,
+	askLlmInputSchema,
+	askLlmResumeSchema,
+	askCredentialInputSchema,
+	askCredentialResumeSchema,
+	askQuestionOptionSchema,
+	askQuestionInputSchema,
+	askQuestionResumeSchema,
+	interactiveResumeDataSchema,
+	type InteractiveToolName,
+	type AskLlmInput,
+	type AskLlmResume,
+	type AskCredentialInput,
+	type AskCredentialResume,
+	type AskQuestionOption,
+	type AskQuestionInput,
+	type AskQuestionResume,
+	type InteractiveResumeData,
+} from './agent-builder-interactive';
 export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
@@ -299,7 +324,9 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	instanceGatewayResourceDecisionSchema,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -376,7 +403,9 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
+	InstanceGatewayResourceDecision,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,

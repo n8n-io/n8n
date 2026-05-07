@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { computed } from 'vue';
 
 import { N8nIconButton, N8nInputNumber, N8nText, N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const hoveringItem = computed(() => ndvStore.getHoveringItem);
 const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
