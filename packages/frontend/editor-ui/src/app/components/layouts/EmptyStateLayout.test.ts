@@ -101,6 +101,7 @@ describe('EmptyStateLayout', () => {
 		mcpStore.mcpAccessEnabled = false;
 		mcpEligibility.value = true;
 		surfaceMcpStore.isTileVariant = false;
+		surfaceMcpStore.isEnabled = false;
 		surfaceMcpStore.isFirstOpenModalVariant = false;
 		surfaceMcpStore.hasDismissedFirstOpenModal = false;
 
@@ -195,6 +196,7 @@ describe('EmptyStateLayout', () => {
 
 		it('renders the variant 1 MCP tile CTA with a New badge', () => {
 			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.isEnabled = true;
 			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
 			mcpStore.mcpAccessEnabled = false;
 
@@ -207,10 +209,64 @@ describe('EmptyStateLayout', () => {
 			expect(
 				queryByText(/Connect MCP clients like Claude Code and Cursor/),
 			).not.toBeInTheDocument();
+			expect(surfaceMcpStore.trackEntryPointViewed).toHaveBeenCalledWith(
+				'tile',
+				'empty_state_tile',
+				false,
+			);
+			expect(surfaceMcpStore.trackOpportunityViewed).toHaveBeenCalledWith(
+				'tile',
+				'empty_state_tile',
+				true,
+				null,
+				false,
+			);
+		});
+
+		it('tracks an MCP opportunity for control users without rendering the tile', () => {
+			surfaceMcpStore.isEnabled = true;
+			surfaceMcpStore.isTileVariant = false;
+			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control;
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('mcp-onboarding-card')).not.toBeInTheDocument();
+			expect(surfaceMcpStore.trackOpportunityViewed).toHaveBeenCalledWith(
+				'tile',
+				'empty_state_tile',
+				false,
+				null,
+				false,
+			);
+			expect(surfaceMcpStore.trackEntryPointViewed).not.toHaveBeenCalled();
+		});
+
+		it('does not track the MCP tile as viewed when the user cannot create workflows', () => {
+			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.isEnabled = true;
+			projectsStore.personalProject = {
+				id: 'personal-project-1',
+				name: 'Personal Project',
+				type: 'personal',
+				scopes: ['workflow:read'],
+			} as unknown as ReturnType<typeof useProjectsStore>['personalProject'];
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('mcp-onboarding-card')).not.toBeInTheDocument();
+			expect(surfaceMcpStore.trackOpportunityViewed).toHaveBeenCalledWith(
+				'tile',
+				'empty_state_tile',
+				false,
+				'no_create_permission',
+				false,
+			);
+			expect(surfaceMcpStore.trackEntryPointViewed).not.toHaveBeenCalled();
 		});
 
 		it('renders the variant 2 MCP tile CTA with a New badge', () => {
 			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.isEnabled = true;
 			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2;
 			mcpStore.mcpAccessEnabled = false;
 
@@ -227,6 +283,7 @@ describe('EmptyStateLayout', () => {
 
 		it('renders the Enabled badge when MCP access is enabled', () => {
 			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.isEnabled = true;
 			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
 			mcpStore.mcpAccessEnabled = true;
 
@@ -237,11 +294,16 @@ describe('EmptyStateLayout', () => {
 
 		it('opens the onboarding modal when the MCP card is clicked', async () => {
 			surfaceMcpStore.isTileVariant = true;
+			surfaceMcpStore.isEnabled = true;
 			surfaceMcpStore.currentVariant = SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1;
 			const { getByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('mcp-onboarding-card'));
 
+			expect(surfaceMcpStore.trackOpened).toHaveBeenCalledWith('tile', {
+				entryPoint: 'empty_state_tile',
+				mcpAccessEnabled: false,
+			});
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: 'mcpOnboardingModal',
 				data: { surface: 'tile' },

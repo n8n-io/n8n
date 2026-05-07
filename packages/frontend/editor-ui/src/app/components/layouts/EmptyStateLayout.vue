@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -41,6 +41,8 @@ const {
 	showAppSelection,
 	showBuilderPrompt,
 	showRecommendedTemplatesInline,
+	showMcpOpportunity,
+	mcpOpportunitySuppressedBy,
 	showMcpTile,
 	showMcpReminder,
 	builderHeading,
@@ -79,6 +81,10 @@ const mcpTileCtaKey = computed<BaseTextKey>(() =>
 		? 'workflows.empty.mcp.tile.variant2.cta'
 		: 'workflows.empty.mcp.tile.variant1.cta',
 );
+const showMcpTileCard = computed(() => showMcpTile.value && canCreateWorkflow.value);
+const showMcpTileOpportunity = computed(() => showMcpOpportunity.value);
+const hasTrackedMcpEntryPointViewed = ref(false);
+const hasTrackedMcpOpportunityViewed = ref(false);
 
 const builderProjectId = computed(() =>
 	projectPages.isOverviewSubPage
@@ -101,17 +107,38 @@ const handleAppSelectionContinue = () => {
 };
 
 watch(
-	showMcpTile,
+	showMcpTileOpportunity,
+	(value) => {
+		if (value && !hasTrackedMcpOpportunityViewed.value) {
+			hasTrackedMcpOpportunityViewed.value = true;
+			surfaceMcpStore.trackOpportunityViewed(
+				'tile',
+				'empty_state_tile',
+				Boolean(showMcpTileCard.value),
+				mcpOpportunitySuppressedBy.value,
+				mcpStore.mcpAccessEnabled,
+			);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	showMcpTileCard,
 	(value, previousValue) => {
-		if (value && !previousValue) {
-			surfaceMcpStore.trackSurfaced('tile');
+		if (value && !previousValue && !hasTrackedMcpEntryPointViewed.value) {
+			hasTrackedMcpEntryPointViewed.value = true;
+			surfaceMcpStore.trackEntryPointViewed('tile', 'empty_state_tile', mcpStore.mcpAccessEnabled);
 		}
 	},
 	{ immediate: true },
 );
 
 const openMcpOnboardingFromTile = () => {
-	surfaceMcpStore.trackOpened('tile');
+	surfaceMcpStore.trackOpened('tile', {
+		entryPoint: 'empty_state_tile',
+		mcpAccessEnabled: mcpStore.mcpAccessEnabled,
+	});
 	uiStore.openModalWithData({
 		name: MCP_ONBOARDING_MODAL_KEY,
 		data: { surface: 'tile' },
@@ -208,13 +235,13 @@ const openMcpOnboardingFromTile = () => {
 						:class="[
 							$style.actionCardsContainer,
 							{
-								[$style.singleCard]: !showReadyToRunCard && !showMcpTile,
-								[$style.threeCards]: showReadyToRunCard && showMcpTile,
+								[$style.singleCard]: !showReadyToRunCard && !showMcpTileCard,
+								[$style.threeCards]: showReadyToRunCard && showMcpTileCard,
 							},
 						]"
 					>
 						<N8nCard
-							v-if="showMcpTile"
+							v-if="showMcpTileCard"
 							:class="$style.actionCard"
 							hoverable
 							data-test-id="mcp-onboarding-card"

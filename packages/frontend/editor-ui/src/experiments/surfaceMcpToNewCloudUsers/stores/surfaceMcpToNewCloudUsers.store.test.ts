@@ -95,15 +95,59 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 
 	it('tracks copied parameter payload with the current variant', () => {
 		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1);
-		expectTypeOf<CopiedParameter>().toEqualTypeOf<'agent-prompt'>();
+		expectTypeOf<CopiedParameter>().toEqualTypeOf<
+			'agent-prompt' | 'server-url' | 'chatgpt-app-name'
+		>();
 
-		store.trackCopiedParameter('tile', 'chatgpt', 'agent-prompt');
+		store.trackCopiedParameter('tile', 'chatgpt', 'server-url');
 
 		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding copied parameter', {
 			surface: 'tile',
 			client: 'chatgpt',
-			parameter: 'agent-prompt',
+			parameter: 'server-url',
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant1,
+		});
+	});
+
+	it('tracks entry point views with the current variant', () => {
+		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2);
+
+		store.trackEntryPointViewed('tile', 'empty_state_tile', false);
+
+		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding entry point viewed', {
+			surface: 'tile',
+			entry_point: 'empty_state_tile',
+			mcp_access_enabled: false,
+			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
+		});
+	});
+
+	it('tracks eligible empty-state opportunities with the current variant', () => {
+		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control);
+
+		store.trackOpportunityViewed('tile', 'empty_state_tile', false, null, false);
+
+		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding opportunity viewed', {
+			surface: 'tile',
+			entry_point: 'empty_state_tile',
+			eligible: true,
+			surface_available: false,
+			suppressed_by: null,
+			mcp_access_enabled: false,
+			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control,
+		});
+	});
+
+	it('tracks setup visibility with the current variant', () => {
+		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2);
+
+		store.trackSetupShown('tile', 'chatgpt', 'chatgpt_custom_app');
+
+		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding setup shown', {
+			surface: 'tile',
+			client: 'chatgpt',
+			setup_type: 'chatgpt_custom_app',
+			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2,
 		});
 	});
 });

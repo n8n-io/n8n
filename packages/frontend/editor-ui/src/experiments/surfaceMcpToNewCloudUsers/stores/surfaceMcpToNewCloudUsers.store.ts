@@ -11,7 +11,14 @@ const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIR
 
 type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
 type SurfaceMcpOnboardingClient = 'claude' | 'claude_code' | 'codex' | 'cursor' | 'chatgpt';
-type SurfaceMcpOnboardingParameter = 'agent-prompt';
+type SurfaceMcpOnboardingEntryPoint = 'empty_state_tile';
+type SurfaceMcpOnboardingParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
+type SurfaceMcpOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
+type SurfaceMcpOnboardingSuppression =
+	| 'app_selection'
+	| 'builder_prompt'
+	| 'recommended_templates'
+	| 'no_create_permission';
 
 export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 	STORES.EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS,
@@ -53,16 +60,78 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			firstOpenDismissedStorage.value = 'true';
 		}
 
-		function trackSurfaced(surface: SurfaceMcpOnboardingSurface) {
-			telemetry.track('MCP onboarding surfaced', getTelemetryPayload({ surface }));
+		function trackEntryPointViewed(
+			surface: SurfaceMcpOnboardingSurface,
+			entryPoint: SurfaceMcpOnboardingEntryPoint,
+			mcpAccessEnabled: boolean,
+		) {
+			telemetry.track(
+				'MCP onboarding entry point viewed',
+				getTelemetryPayload({
+					surface,
+					entry_point: entryPoint,
+					mcp_access_enabled: mcpAccessEnabled,
+				}),
+			);
 		}
 
-		function trackOpened(surface: SurfaceMcpOnboardingSurface) {
-			telemetry.track('MCP onboarding opened', getTelemetryPayload({ surface }));
+		function trackOpportunityViewed(
+			surface: SurfaceMcpOnboardingSurface,
+			entryPoint: SurfaceMcpOnboardingEntryPoint,
+			surfaceAvailable: boolean,
+			suppressedBy: SurfaceMcpOnboardingSuppression | null,
+			mcpAccessEnabled: boolean,
+		) {
+			telemetry.track(
+				'MCP onboarding opportunity viewed',
+				getTelemetryPayload({
+					surface,
+					entry_point: entryPoint,
+					eligible: true,
+					surface_available: surfaceAvailable,
+					suppressed_by: suppressedBy,
+					mcp_access_enabled: mcpAccessEnabled,
+				}),
+			);
 		}
 
-		function trackDismissed(surface: SurfaceMcpOnboardingSurface) {
-			telemetry.track('MCP onboarding dismissed', getTelemetryPayload({ surface }));
+		function trackOpened(
+			surface: SurfaceMcpOnboardingSurface,
+			payload: { entryPoint?: SurfaceMcpOnboardingEntryPoint; mcpAccessEnabled?: boolean } = {},
+		) {
+			telemetry.track(
+				'MCP onboarding opened',
+				getTelemetryPayload({
+					surface,
+					...(payload.entryPoint ? { entry_point: payload.entryPoint } : {}),
+					...(payload.mcpAccessEnabled !== undefined
+						? { mcp_access_enabled: payload.mcpAccessEnabled }
+						: {}),
+				}),
+			);
+		}
+
+		function trackDismissed(
+			surface: SurfaceMcpOnboardingSurface,
+			payload: {
+				activeClient?: SurfaceMcpOnboardingClient;
+				enabledDuringThisOpen?: boolean;
+				mcpAccessEnabled?: boolean;
+			} = {},
+		) {
+			telemetry.track(
+				'MCP onboarding dismissed',
+				getTelemetryPayload({
+					surface,
+					...(payload.activeClient ? { active_client: payload.activeClient } : {}),
+					...(payload.enabledDuringThisOpen !== undefined
+						? { enabled_during_this_open: payload.enabledDuringThisOpen }
+						: {}),
+					...(payload.mcpAccessEnabled !== undefined
+						? { mcp_access_enabled: payload.mcpAccessEnabled }
+						: {}),
+				}),
+			);
 		}
 
 		function trackEnableClicked(surface: SurfaceMcpOnboardingSurface) {
@@ -73,8 +142,29 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			telemetry.track('MCP onboarding enabled', getTelemetryPayload({ surface }));
 		}
 
-		function trackClientSelected(client: SurfaceMcpOnboardingClient) {
-			telemetry.track('MCP onboarding client selected', getTelemetryPayload({ client }));
+		function trackEnableFailed(surface: SurfaceMcpOnboardingSurface, errorType: string) {
+			telemetry.track(
+				'MCP onboarding enable failed',
+				getTelemetryPayload({ surface, error_type: errorType }),
+			);
+		}
+
+		function trackClientSelected(
+			surface: SurfaceMcpOnboardingSurface,
+			client: SurfaceMcpOnboardingClient,
+		) {
+			telemetry.track('MCP onboarding client selected', getTelemetryPayload({ surface, client }));
+		}
+
+		function trackSetupShown(
+			surface: SurfaceMcpOnboardingSurface,
+			client: SurfaceMcpOnboardingClient,
+			setupType: SurfaceMcpOnboardingSetupType,
+		) {
+			telemetry.track(
+				'MCP onboarding setup shown',
+				getTelemetryPayload({ surface, client, setup_type: setupType }),
+			);
 		}
 
 		function trackCopiedParameter(
@@ -102,12 +192,15 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			hasDismissedFirstOpenModal,
 			markFirstEligibleOpenSeen,
 			dismissFirstOpenModal,
-			trackSurfaced,
+			trackEntryPointViewed,
+			trackOpportunityViewed,
 			trackOpened,
 			trackDismissed,
 			trackEnableClicked,
 			trackEnabled,
+			trackEnableFailed,
 			trackClientSelected,
+			trackSetupShown,
 			trackCopiedParameter,
 			reset,
 		};

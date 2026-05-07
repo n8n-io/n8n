@@ -11,6 +11,12 @@ import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNew
 import { getResourcePermissions } from '@n8n/permissions';
 import type { IUser } from 'n8n-workflow';
 
+type SurfaceMcpOpportunitySuppression =
+	| 'app_selection'
+	| 'builder_prompt'
+	| 'recommended_templates'
+	| 'no_create_permission';
+
 /**
  * Composable for managing workflows empty state display logic.
  * Handles heading, description, and permission-based visibility
@@ -65,13 +71,39 @@ export function useWorkflowsEmptyState() {
 		);
 	});
 
+	const showMcpOpportunity = computed(() => {
+		return isSurfaceMcpEligible.value && surfaceMcpStore.isEnabled;
+	});
+
+	const mcpOpportunitySuppressedBy = computed<SurfaceMcpOpportunitySuppression | null>(() => {
+		if (!showMcpOpportunity.value) {
+			return null;
+		}
+
+		if (!canCreateWorkflow.value) {
+			return 'no_create_permission';
+		}
+
+		if (showAppSelection.value) {
+			return 'app_selection';
+		}
+
+		if (showBuilderPrompt.value) {
+			return 'builder_prompt';
+		}
+
+		if (showRecommendedTemplatesInline.value) {
+			return 'recommended_templates';
+		}
+
+		return null;
+	});
+
 	const showMcpTile = computed(() => {
 		return (
-			isSurfaceMcpEligible.value &&
+			showMcpOpportunity.value &&
 			surfaceMcpStore.isTileVariant &&
-			!showAppSelection.value &&
-			!showBuilderPrompt.value &&
-			!showRecommendedTemplatesInline.value
+			mcpOpportunitySuppressedBy.value === null
 		);
 	});
 
@@ -127,6 +159,8 @@ export function useWorkflowsEmptyState() {
 		showAppSelection,
 		showBuilderPrompt,
 		showRecommendedTemplatesInline,
+		showMcpOpportunity,
+		mcpOpportunitySuppressedBy,
 		showMcpTile,
 		showMcpReminder,
 		builderHeading,

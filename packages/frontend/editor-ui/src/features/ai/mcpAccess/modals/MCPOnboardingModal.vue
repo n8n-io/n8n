@@ -27,6 +27,8 @@ import { I18nT } from 'vue-i18n';
 
 type MCPOnboardingSurface = 'tile' | 'first_open_modal';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
+type MCPOnboardingCopiedParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
+type MCPOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
 
 const MCP_ONBOARDING_DOCS_URL = 'https://docs.n8n.io/advanced-ai/mcp/accessing-n8n-mcp-server/';
 
@@ -46,6 +48,7 @@ const modalBus = createEventBus();
 const activeClient = ref<MCPOnboardingClient>('claude');
 const isToggling = ref(false);
 const enabledDuringThisOpen = ref(false);
+const setupShownClients = new Set<MCPOnboardingClient>();
 
 const surface = computed<MCPOnboardingSurface>(() => props.data?.surface ?? 'tile');
 
@@ -101,6 +104,7 @@ const chatGptCustomAppFields = computed(() => [
 		content: i18n.baseText(
 			'settings.mcp.onboarding.section.chatgptCustomApp.appName.value' as BaseTextKey,
 		),
+		parameter: 'chatgpt-app-name' as const,
 		testId: 'mcp-onboarding-chatgpt-app-name',
 		copyButtonTestId: 'mcp-onboarding-copy-chatgpt-app-name-button',
 	},
@@ -109,10 +113,28 @@ const chatGptCustomAppFields = computed(() => [
 			'settings.mcp.onboarding.section.chatgptCustomApp.serverUrl.label' as BaseTextKey,
 		),
 		content: serverUrl.value,
+		parameter: 'server-url' as const,
 		testId: 'mcp-onboarding-chatgpt-server-url',
 		copyButtonTestId: 'mcp-onboarding-copy-chatgpt-server-url-button',
 	},
 ]);
+
+function getSetupType(client: MCPOnboardingClient): MCPOnboardingSetupType {
+	return client === 'chatgpt' ? 'chatgpt_custom_app' : 'prompt';
+}
+
+function trackCurrentSetupShown() {
+	if (!mcpStore.mcpAccessEnabled || setupShownClients.has(activeClient.value)) {
+		return;
+	}
+
+	setupShownClients.add(activeClient.value);
+	experimentStore.trackSetupShown(
+		surface.value,
+		activeClient.value,
+		getSetupType(activeClient.value),
+	);
+}
 
 async function handleToggleMcpAccess() {
 	const nextValue = !mcpStore.mcpAccessEnabled;
@@ -130,11 +152,18 @@ async function handleToggleMcpAccess() {
 
 			enabledDuringThisOpen.value = true;
 			experimentStore.trackEnabled(surface.value);
+			trackCurrentSetupShown();
 			return;
 		}
 
 		await mcpStore.setMcpAccessEnabled(false);
 	} catch (error) {
+		if (nextValue) {
+			experimentStore.trackEnableFailed(
+				surface.value,
+				error instanceof Error ? error.constructor.name : 'unknown',
+			);
+		}
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
 		isToggling.value = false;
@@ -142,27 +171,36 @@ async function handleToggleMcpAccess() {
 }
 
 function handleModalClosed() {
-	if (
-		surface.value === 'first_open_modal' &&
-		!enabledDuringThisOpen.value &&
-		!mcpStore.mcpAccessEnabled
-	) {
-		experimentStore.dismissFirstOpenModal();
-		experimentStore.trackDismissed(surface.value);
+	if (!enabledDuringThisOpen.value && !mcpStore.mcpAccessEnabled) {
+		if (surface.value === 'first_open_modal') {
+			experimentStore.dismissFirstOpenModal();
+		}
+
+		experimentStore.trackDismissed(surface.value, {
+			activeClient: activeClient.value,
+			enabledDuringThisOpen: enabledDuringThisOpen.value,
+			mcpAccessEnabled: mcpStore.mcpAccessEnabled,
+		});
 	}
 }
 
 function handleClientChange(value: MCPOnboardingClient) {
+	if (activeClient.value === value) {
+		return;
+	}
+
 	activeClient.value = value;
-	experimentStore.trackClientSelected(activeClient.value);
+	experimentStore.trackClientSelected(surface.value, activeClient.value);
+	trackCurrentSetupShown();
 }
 
-function handleClientSetupCopy(parameter: 'agent-prompt') {
+function handleCopyParameter(parameter: MCPOnboardingCopiedParameter) {
 	experimentStore.trackCopiedParameter(surface.value, activeClient.value, parameter);
 }
 
 onMounted(() => {
 	modalBus.on('closed', handleModalClosed);
+	trackCurrentSetupShown();
 });
 
 onBeforeUnmount(() => {
@@ -308,6 +346,7 @@ onBeforeUnmount(() => {
 											:content="field.content"
 											:copy-button-test-id="field.copyButtonTestId"
 											:data-test-id="field.testId"
+											@copy="handleCopyParameter(field.parameter)"
 										/>
 									</div>
 								</div>
@@ -328,7 +367,7 @@ onBeforeUnmount(() => {
 								<MCPOnboardingClientSetup
 									:client="activePromptClient"
 									:server-url="serverUrl"
-									@copy="handleClientSetupCopy"
+									@copy="handleCopyParameter"
 								/>
 							</div>
 						</section>
@@ -347,6 +386,7 @@ onBeforeUnmount(() => {
 									:content="serverUrl"
 									copy-button-test-id="mcp-onboarding-copy-server-url-button"
 									data-test-id="mcp-onboarding-claude-server-url"
+									@copy="handleCopyParameter('server-url')"
 								/>
 							</div>
 						</section>
