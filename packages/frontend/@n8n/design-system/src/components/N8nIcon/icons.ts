@@ -6,6 +6,7 @@ import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
@@ -22,6 +23,7 @@ import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
+import Slack from './custom/slack.svg';
 import Spinner from './custom/spinner.svg';
 import StarFilled from './custom/star-filled.svg';
 import StatusCanceled from './custom/status-canceled.svg';
@@ -31,6 +33,7 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
@@ -163,6 +166,7 @@ import IconLucideMaximize from '~icons/lucide/maximize';
 import IconLucideMaximize2 from '~icons/lucide/maximize-2';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
+import IconLucideMessageCirclePlus from '~icons/lucide/message-circle-plus';
 import IconLucideMessageSquare from '~icons/lucide/message-square';
 import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
@@ -278,6 +282,9 @@ export const deprecatedIconSet = {
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
+	slack: Slack,
+	linear: Linear,
+	telegram: Telegram,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -494,6 +501,9 @@ export const updatedIconSet = {
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
+	slack: Slack,
+	linear: Linear,
+	telegram: Telegram,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -634,6 +644,7 @@ export const updatedIconSet = {
 	'message-circle': IconLucideMessageCircle,
 	'message-square': IconLucideMessageSquare,
 	'message-square-plus': IconLucideMessageSquarePlus,
+	'message-circle-plus': IconLucideMessageCirclePlus,
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
