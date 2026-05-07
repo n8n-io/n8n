@@ -228,6 +228,11 @@ export class NavigationHelper {
 		await this.instanceAi.enableInstanceAiIfPrompted();
 	}
 
+	async dismissInstanceAiOptinModalIfPresent(page?: Page): Promise<void> {
+		const instanceAi = page ? new InstanceAiPage(page) : this.instanceAi;
+		await instanceAi.enableInstanceAiIfPrompted();
+	}
+
 	/**
 	 * Navigate to ChatHub chat page
 	 * URL: /home/chat

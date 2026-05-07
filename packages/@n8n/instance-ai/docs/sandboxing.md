@@ -6,15 +6,18 @@ Today the main consumer is the workflow builder. The agent writes TypeScript fil
 
 ## How the Pieces Fit Together
 
-There are three layers between the agent and actual code execution: a workspace abstraction from Mastra, a sandbox provider (Daytona, n8n sandbox service, or local), and the execution runtime inside the sandbox. Here is how they relate:
+There are three layers between the agent and actual code execution: the native
+agents workspace abstraction, a sandbox provider (Daytona, n8n sandbox service,
+or local), and the execution runtime inside the sandbox. Here is how they
+relate:
 
 ```mermaid
 graph TB
     subgraph Agent ["Agent Layer"]
-        LLM[LLM] --> AgentRuntime["Agent Runtime (Mastra)"]
+        LLM[LLM] --> AgentRuntime["Native Agent Runtime"]
     end
 
-    subgraph WorkspaceLayer ["Workspace Abstraction (Mastra)"]
+    subgraph WorkspaceLayer ["Native Workspace Abstraction"]
         AgentRuntime --> Workspace["Workspace"]
         Workspace --> FS["Filesystem Interface<br/>(read, write, list, edit files)"]
         Workspace --> Sandbox["Sandbox Interface<br/>(execute shell commands)"]
@@ -46,14 +49,19 @@ graph TB
 
 The agent never talks to Daytona, the n8n sandbox service, or the host filesystem directly. It only sees the Workspace, which exposes two capabilities: a filesystem (read/write/list files) and a sandbox (run shell commands). The Workspace routes those operations to whichever provider is configured.
 
-## Mastra Workspaces
+## Native Agent Workspaces
 
-Mastra is the agent framework that Instance AI uses. A Mastra **Workspace** is a pairing of two things:
+Instance AI uses the workspace abstraction from `@n8n/agents`. A native
+**Workspace** is a pairing of two things:
 
 1. **A Sandbox** — an interface for executing shell commands. It accepts a command string and returns stdout, stderr, and an exit code. Think of it as a remote terminal.
 2. **A Filesystem** — an interface for file operations: read, write, list, delete, copy, move. Think of it as a remote disk.
 
-When a Workspace is attached to an agent, Mastra automatically exposes built-in tools to the LLM: `read_file`, `write_file`, `edit_file`, `list_files`, `grep`, `execute_command`, and others. The agent uses these tools naturally in its reasoning loop — it writes a file, runs a command, reads the output, and decides what to do next.
+When a Workspace is attached to an agent, the native runtime exposes workspace
+tools to the LLM, including `workspace_read_file`, `workspace_write_file`,
+`workspace_list_files`, and `workspace_execute_command`. The agent uses these
+tools naturally in its reasoning loop — it writes a file, runs a command, reads
+the output, and decides what to do next.
 
 The key design property is that the Workspace abstraction is provider-agnostic. The agent's code and prompts are identical regardless of whether the workspace is backed by a remote container or a local directory. The provider choice is purely an infrastructure decision.
 
@@ -66,12 +74,12 @@ graph LR
     end
 
     subgraph "Agent Tools (auto-generated)"
-        T1["execute_command"]
-        T2["read_file"]
-        T3["write_file"]
-        T4["edit_file"]
-        T5["list_files"]
-        T6["grep"]
+        T1["workspace_execute_command"]
+        T2["workspace_read_file"]
+        T3["workspace_write_file"]
+        T4["workspace_str_replace_file"]
+        T5["workspace_list_files"]
+        T6["workspace_file_stat / mkdir / delete / copy / move"]
     end
 
     SB --> T1
@@ -110,7 +118,7 @@ sequenceDiagram
     D-->>n8n: Sandbox ID
 
     n8n->>S: Write node-types catalog via filesystem API
-    n8n->>n8n: Wrap sandbox as Mastra Workspace
+    n8n->>n8n: Wrap sandbox as native Workspace
     n8n->>n8n: Inject Workspace into builder agent
 
     Note over S: Agent works inside sandbox
@@ -128,7 +136,10 @@ The process starts with a **pre-warmed image**. On first use, n8n builds a Dayto
 
 One thing that cannot be baked into the image is the **node-types catalog** (a searchable index of all available n8n nodes). It is too large for the image build API, so it is written to each sandbox after creation via the filesystem API.
 
-Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Mastra Workspace and hands it to the builder agent. From that point, the agent works autonomously inside the sandbox — writing files, running the compiler, fixing errors, iterating — until it produces a valid workflow.
+Once the sandbox is provisioned and the catalog is written, n8n wraps it in a
+native Workspace and hands it to the builder agent. From that point, the agent
+works autonomously inside the sandbox — writing files, running the compiler,
+fixing errors, iterating — until it produces a valid workflow.
 
 ### What is inside a Daytona sandbox
 
@@ -143,7 +154,9 @@ Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Ma
 
 ## n8n Sandbox Service: API-Backed Alternative
 
-The n8n sandbox service exposes a simple HTTP API for creating sandboxes, executing shell commands, and manipulating files. Instance AI uses it through a custom Mastra sandbox and filesystem adapter.
+The n8n sandbox service exposes a simple HTTP API for creating sandboxes,
+executing shell commands, and manipulating files. Instance AI uses it through
+native sandbox and filesystem adapters.
 
 Builder prewarming follows Daytona-like lazy image instantiation semantics:
 - the builder creates an in-memory image placeholder from setup commands
@@ -151,7 +164,7 @@ Builder prewarming follows Daytona-like lazy image instantiation semantics:
 - the returned `image_id` is cached on that placeholder
 - later builder sandboxes reuse the cached image directly
 
-This provider supports the builder's file and command workflow, but it does not expose interactive process handles. That means `execute_command` works, while process-manager-backed features such as long-lived spawned subprocesses are out of scope for this provider.
+This provider supports the builder's file and command workflow, but it does not expose interactive process handles. That means `workspace_execute_command` works, while process-manager-backed features such as long-lived spawned subprocesses are out of scope for this provider.
 
 ## Local: The Development Fallback
 
@@ -213,7 +226,7 @@ graph TB
 ```
 
 - **Thread-scoped workspace.** The service can maintain a single workspace per conversation thread, reused across messages. This workspace is destroyed on server shutdown.
-- **Per-builder ephemeral workspace.** Each time the workflow builder is invoked, it gets its own isolated workspace. Multiple concurrent builders in the same thread do not share a workspace. In Daytona mode, the container is deleted after the builder finishes (best-effort). In local mode, the directory persists for debugging.
+- **Per-builder workspace.** Each time the workflow builder is invoked, it gets its own isolated workspace. Multiple concurrent builders in the same thread do not share a workspace. Completed builder sessions can be kept warm for follow-up fixes until `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` expires; otherwise cleanup is best-effort. In local mode, the directory persists for debugging.
 
 ### Pre-warmed images
 
@@ -267,3 +280,4 @@ If any step fails, the agent reads the error output, fixes the code, and retries
 | `N8N_SANDBOX_SERVICE_API_KEY` | — | n8n sandbox service API key (optional when using an `httpHeaderAuth` credential) |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Base container image for Daytona |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Command timeout in milliseconds |
+| `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` | `600000` | Warm-session TTL for completed builder sandboxes |

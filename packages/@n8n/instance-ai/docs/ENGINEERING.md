@@ -30,11 +30,11 @@ const data: ExecutionResult = parseExecutionResult(response);
 ### Zod schemas are the source of truth
 
 Every tool has an input schema (what the LLM sends) and an output schema
-(what the tool returns). Mastra uses these schemas to generate tool
+(what the tool returns). Native agents use these schemas to generate tool
 descriptions for the LLM, validate inputs at runtime, and type-check the
-execute function. If the TypeScript type and the Zod schema are defined
-separately, they drift — the LLM sees one contract, the code enforces
-another, and bugs hide until production.
+handler function. If the TypeScript type and the Zod schema are defined
+separately, they drift — the LLM sees one contract, the code enforces another,
+and bugs hide until production.
 
 ```typescript
 // NEVER — separate schema and type that can drift
@@ -118,10 +118,10 @@ it('should stream tool-call event when agent uses a tool', async () => {
 
 ### Test the contract, not the internals
 
-The clean interface boundary (ADR-002) makes each layer testable in
-isolation. Verify the contract at each boundary — not the wiring between
-them. Tools can be tested without Mastra, the reducer without SSE, adapters
-without the agent.
+The clean interface boundary (ADR-002) makes each layer testable in isolation.
+Verify the contract at each boundary — not the wiring between them. Tools can
+be tested without an agent run, the reducer without SSE, adapters without the
+agent.
 
 For each tool, test:
 - Valid input → expected output shape
@@ -144,7 +144,7 @@ hardest to debug after the fact.
 ```typescript
 it('should handle run-finish after connection drop and reconnect', ...);
 it('should not lose events when sub-agent completes during page reload', ...);
-it('should reject delegate with MCP tool names', ...);
+it('should reject delegate with orchestration tool names', ...);
 it('should not leak credentials in tool-call args for credential tools', ...);
 ```
 
@@ -203,50 +203,50 @@ When backend and frontend both switch on event types with duplicated logic,
 a change to the format requires updating both in lockstep. Extract the
 shared part into `@n8n/api-types` or a shared utility.
 
-## Mastra Patterns
+## Native Agent Tool Patterns
 
 ### Tool definitions
 
-Mastra uses Zod schemas for both runtime validation and LLM tool
-descriptions. The `.describe()` strings on schema fields become the
-parameter descriptions the LLM sees when deciding how to call a tool.
-Missing or vague descriptions lead to bad tool calls. The `outputSchema`
-lets Mastra validate return values and gives the LLM structured expectations.
+Native agents use Zod schemas for runtime input validation and LLM tool
+descriptions. The `.describe()` strings on schema fields become the parameter
+descriptions the LLM sees when deciding how to call a tool. Missing or vague
+descriptions lead to bad tool calls. Output schemas are optional, but they are
+useful for stable structured outputs and for tools whose contract is reused by
+tests or traces.
 
-- Always define both `inputSchema` and `outputSchema`
+- Always define `.input(...)`; add `.output(...)` for stable structured outputs
 - Use `.describe()` on Zod fields — these are the LLM's parameter docs
 - Capture service context via closure in the factory function, not globals
-- Keep `execute` focused — delegate to service methods, no business logic
+- Keep `handler` focused — delegate to service methods, no business logic
   in tools
 
 ```typescript
 export function createListWorkflowsTool(context: InstanceAiContext) {
-  return createTool({
-    id: 'list-workflows',
-    description: 'List workflows accessible to the current user.',
-    inputSchema: z.object({
-      query: z.string().optional().describe('Filter workflows by name'),
-      limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
-    }),
-    outputSchema: z.object({
-      workflows: z.array(workflowSummarySchema),
-    }),
-    execute: async ({ query, limit }) => {
+  return new Tool('list-workflows')
+    .description('List workflows accessible to the current user.')
+    .input(
+      z.object({
+        query: z.string().optional().describe('Filter workflows by name'),
+        limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
+      }),
+    )
+    .output(z.object({ workflows: z.array(workflowSummarySchema) }))
+    .handler(async ({ query, limit }) => {
       const workflows = await context.workflowService.list({ query, limit });
       return { workflows };
-    },
-  });
+    })
+    .build();
 }
 ```
 
 ### Memory usage
 
-The memory system is thread-scoped. Writing observations from a sub-agent
-corrupts the orchestrator's context, and manually summarizing tool results
-fights with the Observer doing the same thing.
+The memory system is thread-scoped. Writing conversation state from a sub-agent
+corrupts the orchestrator's context, and ad hoc summaries fight the rolling
+compaction service.
 
 - Never read/write memory from sub-agents — they're stateless by design
-- Let observational memory handle compression — don't manually summarize
+- Let the compaction service handle compression — don't manually summarize
 
 ### Agent creation
 
@@ -280,11 +280,10 @@ Tool (thin wrapper)  →  Service interface  →  Adapter (n8n bridge)  →  n8n
 
 ### Abstract over transport, not around it
 
-n8n runs single instance (in-process) and queue mode (Redis). The same agent
-code must work in both without knowing which. If the interface leaks
-transport details, every event publisher needs Redis knowledge and testing
-locally requires a Redis dependency. Domain-level interfaces keep agent code
-portable and tests simple.
+Agent code should publish events through the domain-level event bus interface.
+The current backend implementation is in-process, but the agent core should not
+depend on that detail. If the interface leaks transport details, every event
+publisher needs infrastructure knowledge and tests become harder to keep small.
 
 ```typescript
 // GOOD — domain-level

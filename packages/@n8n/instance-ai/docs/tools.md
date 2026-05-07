@@ -2,8 +2,9 @@
 
 All tools the Instance AI agent has access to. Tools are organized into
 orchestration tools (used by the orchestrator for loop control) and domain tools
-(used by the orchestrator directly or delegated to sub-agents). Each tool defines
-its input/output schema via Zod.
+(used by the orchestrator directly or delegated to sub-agents). Each tool
+defines an input schema via Zod and may define an output schema for stable
+structured outputs.
 
 ## Orchestration Tools (up to 10)
 
@@ -26,7 +27,7 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
@@ -47,6 +48,7 @@ for approval before execution starts.
 - `manage-data-tables` → data table agent (all `*-data-table*` tools)
 - `research` → research agent (web-search + fetch-url)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
+- `checkpoint` → orchestrator-run verification step for workflow tasks
 
 ### `delegate`
 
@@ -58,7 +60,7 @@ fixed taxonomy of sub-agent types.
 |-------|------|----------|-------------|
 | `role` | string | yes | Free-form role description (e.g., "workflow builder") |
 | `instructions` | string | yes | Task-specific system prompt for the sub-agent |
-| `tools` | string[] | yes | Subset of registered native domain tool names |
+| `tools` | string[] | yes | Subset of registered native domain tool names or safe MCP tool names |
 | `briefing` | string | yes | The specific task to accomplish |
 | `artifacts` | object | no | Relevant IDs, data, or context (workflow IDs, etc.) |
 | `conversationContext` | string | no | Summary of what was discussed so far — prevents repeating what user already knows |
@@ -66,25 +68,39 @@ fixed taxonomy of sub-agent types.
 **Returns**: `{ result: string }` — the sub-agent's synthesized answer.
 
 **Behavior**:
-- Validates `tools` against registered native domain tool names
-- Forbids orchestration tools (`plan`, `delegate`) and MCP tools
-- Creates a fresh agent with specified tools and low `maxSteps` (default 10)
+- Validates `tools` against registered native domain tools and safe MCP tools
+- Forbids orchestration tools (`plan`, `create-tasks`, `delegate`)
+- Creates a fresh agent with specified tools and `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` (default 100; fallback 10 if unset)
 - Sub-agent publishes events directly to the event bus
 - Sub-agent has no memory — receives context only via the briefing
 - Past failed attempts from `iterationLog` are appended to the briefing (if available)
 
-### `update-tasks`
+### `task-control`
 
-Update a visible task checklist for the user. Used for lightweight progress
-tracking during synchronous work.
+Manage visible task checklists and running background tasks.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `tasks` | array | yes | List of `{id, description, status}` items |
+| `action` | enum | yes | `update-checklist`, `cancel-task`, or `correct-task` |
+| `tasks` | array | for `update-checklist` | List of `{id, description, status}` items |
+| `taskId` | string | for `cancel-task` / `correct-task` | Background task ID |
+| `correction` | string | for `correct-task` | Correction message |
 
 **Returns**: `{ result: string }`
 
-**Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
+**Behavior**:
+- `update-checklist` saves to storage and publishes `tasks-update`
+- `cancel-task` calls the backend background-task cancellation path
+- `correct-task` queues a correction for the running task to consume on its next step
+
+**Cancellation flow** (three surfaces converge):
+```
+User clicks stop button  → POST /chat/:threadId/tasks/:taskId/cancel ─┐
+User says "stop that"    → orchestrator calls task-control             ─┤
+cancelRun (global stop)  → cancelBackgroundTasks(threadId)             ─┤
+                                                                       ▼
+                                           service.cancelBackgroundTask()
+```
 
 ### `build-workflow-with-agent`
 
@@ -103,46 +119,16 @@ the builder runs detached from the orchestrator.
 
 - **Sandbox mode** (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
   to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
-  Gets filesystem and `execute_command` tools from the workspace.
+  Gets workspace filesystem tools and `workspace_execute_command` from the workspace.
 - **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
   `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
 
-Both modes: max 30 steps, publishes events to the event bus, non-blocking.
+Both modes: max 60 steps, publishes events to the event bus, non-blocking.
 
 **Sandbox-only tools** (not in `createAllTools`, only available to the builder):
 - `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
 - `materialize-node-type` — fetches `.d.ts` definitions and writes to sandbox for `tsc`
 - `write-sandbox-file` — writes files to sandbox workspace (path-traversal protected)
-
-### `cancel-background-task` *(conditional)*
-
-Cancel a running background task by its ID.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Background task ID (from `<running-tasks>` context) |
-
-**Returns**: `{ result: "Background task {taskId} cancelled." }`
-
-**Cancellation flow** (three surfaces converge):
-```
-User clicks stop button  → POST /chat/:threadId/tasks/:taskId/cancel ─┐
-User says "stop that"    → orchestrator calls cancel-background-task  ─┤
-cancelRun (global stop)  → cancelBackgroundTasks(threadId)             ─┤
-                                                                       ▼
-                                           service.cancelBackgroundTask()
-```
-
-### `correct-background-task` *(conditional)*
-
-Send a course correction to a running background task.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Background task ID |
-| `correction` | string | yes | Correction message |
-
-**Returns**: `{ result: string }` — 'queued', 'task-completed', or 'task-not-found'
 
 ### `verify-built-workflow` *(conditional)*
 
@@ -714,20 +700,20 @@ everything; sub-agents receive only what they need.
 | Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
 | Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
-| MCP tools | ✅ | ❌ | ❌ |
-| Browser MCP tools | ❌ | ❌ | ✅ (browser-credential-setup only) |
+| MCP tools | ✅ | ✅ (via delegate by exact name) | ❌ |
+| Browser MCP tools | ❌ | ✅ (exact-name delegate; prefer `browser-credential-setup`) | ✅ (browser-credential-setup only) |
 
 ---
 
 ## Adding New Tools
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
-2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
-3. Export a factory function that takes the service context and returns a Mastra tool
+2. Define an input schema with Zod and an output schema when the tool has a stable structured result (`.describe()` on fields — these are the LLM's parameter docs)
+3. Export a factory function that takes the service context and returns a native `Tool`
 4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
 6. New native domain tools are automatically available for delegation — the
    orchestrator can include them in sub-agent tool subsets via `delegate`
-7. For HITL tools, define `suspendSchema` and `resumeSchema` — Mastra handles
-   the suspension/resume lifecycle automatically
+7. For HITL tools, define native suspend/resume schemas so the agent runtime
+   handles the suspension/resume lifecycle automatically

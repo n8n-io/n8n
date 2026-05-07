@@ -4,7 +4,7 @@
 // Rather than wire up the full orchestrator (which requires a
 // BackgroundTaskManager, workflowTaskService, trace context, etc.), we
 // invoke the same builder sub-agent that the orchestrator would delegate
-// to — a native Agent given the sandbox builder prompt plus
+// to — a native n8n Agent given the sandbox builder prompt plus
 // `submit-workflow` and a few supporting domain tools. For single-workflow
 // prompts in the pairwise dataset the orchestrator's only job is to route
 // here, so skipping it loses nothing material.

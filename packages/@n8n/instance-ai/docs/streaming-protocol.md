@@ -375,23 +375,24 @@ graph LR
         S2[Sub-Agent B] -->|publish| Bus
     end
 
-    Bus --> Store[Thread Storage]
+    Bus --> Store[Bounded Recent Event Buffer]
     Bus --> SSE[SSE Endpoint]
     SSE --> FE[Frontend]
 ```
 
 All events are published to a per-thread channel on the event bus. Events are
-simultaneously persisted to thread storage and delivered to connected SSE clients.
+kept in a bounded recent-event buffer for SSE replay and delivered to connected
+SSE clients. Durable page refresh/session restore uses native messages and run
+snapshots rather than raw persisted SSE events.
 
 ### Implementations
 
 | Deployment | Transport | Why |
 |---|---|---|
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
-| Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Event persistence uses thread storage regardless of transport — this provides
-replay capability for reconnection.
+Replay for reconnects comes from the event bus buffer. Long-lived historical
+restore comes from the message store plus `instance_ai_run_snapshots`.
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -405,11 +406,11 @@ Three scenarios:
 |---|---|---|
 | **Auto-reconnect** (connection drop) | `Last-Event-ID` header, set by the browser automatically | Replay events after cursor, then switch to live |
 | **Page reload** (same thread) | `?lastEventId=N` query parameter, from the frontend's per-thread stored cursor | Replay events after cursor, then switch to live |
-| **Thread switch** (or first open) | No cursor (neither header nor query param) | Replay full event history from the beginning |
+| **Thread switch** (or first open) | No cursor (neither header nor query param) | Replay available buffered event history from the beginning |
 
 The backend must accept the cursor from both `Last-Event-ID` header and
 `?lastEventId` query parameter. If neither is present, replay starts from
-event ID 0 (full history).
+event ID 0 for the available buffered history.
 
 IDs are monotonically increasing integers per thread. Replay does not
 require dedup.
@@ -482,14 +483,15 @@ replaying all SSE events.
 
 ### How It Works
 
-1. **Mastra V2 messages** — Mastra persists tool invocations, reasoning, and
-   text in its V2 message format. The backend parses these into rich
-   `InstanceAiMessage[]` objects with tool calls and flat agent trees.
+1. **Native agent messages** — native memory persists tool invocations,
+   reasoning, and text as `AgentDbMessage` records. The backend parses these
+   into rich `InstanceAiMessage[]` objects with tool calls and flat agent trees.
 
 2. **Agent tree snapshots** — after each `run-finish`, the backend replays
    events through `buildAgentTreeFromEvents()` and stores the resulting tree
-   in thread metadata. This preserves the full sub-agent hierarchy (tool
-   calls, text, reasoning) that the V2 message format alone cannot capture.
+   in `instance_ai_run_snapshots`. This preserves the full sub-agent hierarchy
+   (tool calls, text, reasoning) that the V2 message format alone cannot
+   capture.
 
 3. **SSE cursor** — the messages response includes `nextEventId`. The frontend
    sets its SSE cursor to `nextEventId - 1` so the SSE connection only receives
