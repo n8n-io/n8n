@@ -15,7 +15,7 @@ import type {
 	IDataObject,
 	GraphNode,
 } from '../../../types/base';
-import { START_X, DEFAULT_Y } from '../../constants';
+import { START_X, DEFAULT_Y, STICKY_NODE_TYPE } from '../../constants';
 import { calculateNodePositions, calculateNodePositionsDagre } from '../../layout-utils';
 import {
 	normalizeResourceLocators,
@@ -41,6 +41,7 @@ function serializeNode(
 	mapKey: string,
 	graphNode: GraphNode,
 	nodePositions: Map<string, [number, number]>,
+	stickyDimensions: Map<string, { width: number; height: number }>,
 ): NodeJSON | undefined {
 	const instance = graphNode.instance;
 
@@ -50,7 +51,16 @@ function serializeNode(
 	}
 
 	const config = instance.config ?? {};
-	const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
+	// Layout-derived position takes priority over the eagerly-computed
+	// config.position for stickies that recorded wrapped node ids — the
+	// layout pass knows where the wrapped nodes actually ended up after
+	// dagre, so it produces a tighter, correct bounding box.
+	const layoutPosition = nodePositions.get(mapKey);
+	const stickyDim = stickyDimensions.get(mapKey);
+	const position =
+		stickyDim && layoutPosition
+			? layoutPosition
+			: (config.position ?? layoutPosition ?? [START_X, DEFAULT_Y]);
 
 	// Determine node name:
 	// - If config has _originalName, use that (preserves undefined for sticky notes from fromJSON)
@@ -84,6 +94,16 @@ function serializeNode(
 			const normalized = normalizeResourceLocators(parsed);
 			serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
 		}
+	}
+
+	// Apply layout-derived dimensions for stickies that recorded wrapped
+	// nodes — their pre-layout width/height was computed from the wrapped
+	// nodes' default (0, 0) positions and is stale once dagre has spread
+	// them out.
+	if (stickyDim && instance.type === STICKY_NODE_TYPE) {
+		serializedParams = serializedParams ?? {};
+		serializedParams.width = stickyDim.width;
+		serializedParams.height = stickyDim.height;
 	}
 
 	const n8nNode: NodeJSON = {
@@ -208,14 +228,15 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 		const connections: IConnections = {};
 
 		// Calculate positions for nodes without explicit positions
-		const nodePositions = ctx.tidyUp
+		const layout = ctx.tidyUp
 			? calculateNodePositionsDagre(ctx.nodes)
 			: calculateNodePositions(ctx.nodes);
+		const { positions: nodePositions, stickyDimensions } = layout;
 
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
 			// Serialize node
-			const serializedNode = serializeNode(mapKey, graphNode, nodePositions);
+			const serializedNode = serializeNode(mapKey, graphNode, nodePositions, stickyDimensions);
 			if (!serializedNode) continue;
 
 			nodes.push(serializedNode);

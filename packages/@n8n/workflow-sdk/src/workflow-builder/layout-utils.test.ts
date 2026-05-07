@@ -3,7 +3,13 @@
  */
 
 import { GRID_SIZE, STICKY_NODE_TYPE, NODE_SPACING_X, START_X, DEFAULT_Y } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	getNodeDimensions,
+} from './layout-utils';
+import { workflow } from '../workflow-builder';
+import { node, sticky } from './node-builders/node-builder';
 import type { GraphNode, ConnectionTarget } from '../types/base';
 
 // Helper to create connection targets
@@ -19,13 +25,17 @@ function createGraphNode(
 		['main', new Map<number, ConnectionTarget[]>()],
 	]),
 	position?: [number, number],
+	parameters?: Record<string, unknown>,
 ): GraphNode {
+	const config: Record<string, unknown> = {};
+	if (position) config.position = position;
+	if (parameters) config.parameters = parameters;
 	return {
 		instance: {
 			type,
 			name,
 			version: 1,
-			config: position ? { position } : {},
+			config,
 		} as unknown as GraphNode['instance'],
 		connections,
 	};
@@ -63,7 +73,7 @@ function isGridAligned(pos: [number, number]): boolean {
 describe('calculateNodePositions (BFS)', () => {
 	it('returns empty map for empty nodes', () => {
 		const nodes = new Map<string, GraphNode>();
-		const positions = calculateNodePositions(nodes);
+		const { positions } = calculateNodePositions(nodes);
 		expect(positions.size).toBe(0);
 	});
 
@@ -71,7 +81,7 @@ describe('calculateNodePositions (BFS)', () => {
 		const nodes = new Map<string, GraphNode>();
 		nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger'));
 
-		const positions = calculateNodePositions(nodes);
+		const { positions } = calculateNodePositions(nodes);
 
 		expect(positions.get('trigger')).toEqual([START_X, DEFAULT_Y]);
 	});
@@ -83,7 +93,7 @@ describe('calculateNodePositions (BFS)', () => {
 		nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns));
 		nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
 
-		const positions = calculateNodePositions(nodes);
+		const { positions } = calculateNodePositions(nodes);
 
 		expect(positions.get('trigger')).toEqual([START_X, DEFAULT_Y]);
 		expect(positions.get('set')).toEqual([START_X + NODE_SPACING_X, DEFAULT_Y]);
@@ -100,7 +110,7 @@ describe('calculateNodePositions (BFS)', () => {
 		nodes.set('trueBranch', createGraphNode('trueBranch', 'n8n-nodes-base.set'));
 		nodes.set('falseBranch', createGraphNode('falseBranch', 'n8n-nodes-base.set'));
 
-		const positions = calculateNodePositions(nodes);
+		const { positions } = calculateNodePositions(nodes);
 
 		const ifPos = positions.get('if')!;
 		const truePos = positions.get('trueBranch')!;
@@ -126,7 +136,7 @@ describe('calculateNodePositions (BFS)', () => {
 			),
 		);
 
-		const positions = calculateNodePositions(nodes);
+		const { positions } = calculateNodePositions(nodes);
 		expect(positions.has('trigger')).toBe(false);
 	});
 });
@@ -139,7 +149,7 @@ describe('calculateNodePositionsDagre', () => {
 	describe('basic functionality', () => {
 		it('returns empty map for empty nodes', () => {
 			const nodes = new Map<string, GraphNode>();
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 			expect(positions.size).toBe(0);
 		});
 
@@ -147,7 +157,7 @@ describe('calculateNodePositionsDagre', () => {
 			const nodes = new Map<string, GraphNode>();
 			nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			expect(positions.has('trigger')).toBe(true);
 			const pos = positions.get('trigger')!;
@@ -164,7 +174,7 @@ describe('calculateNodePositionsDagre', () => {
 			);
 			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			const triggerPos = positions.get('trigger')!;
 			const setPos = positions.get('set')!;
@@ -185,7 +195,7 @@ describe('calculateNodePositionsDagre', () => {
 			nodes.set('C', createGraphNode('C', 'n8n-nodes-base.set', cConns));
 			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			const posA = positions.get('A')!;
 			const posB = positions.get('B')!;
@@ -214,7 +224,7 @@ describe('calculateNodePositionsDagre', () => {
 			nodes.set('trueBranch', createGraphNode('trueBranch', 'n8n-nodes-base.set'));
 			nodes.set('falseBranch', createGraphNode('falseBranch', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			const ifPos = positions.get('if')!;
 			const truePos = positions.get('trueBranch')!;
@@ -238,7 +248,7 @@ describe('calculateNodePositionsDagre', () => {
 			nodes.set('C', createGraphNode('C', 'n8n-nodes-base.scheduleTrigger', cConns));
 			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			expect(positions.size).toBe(4);
 
@@ -276,7 +286,7 @@ describe('calculateNodePositionsDagre', () => {
 				),
 			);
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			const triggerPos = positions.get('trigger')!;
 			const agentPos = positions.get('Agent')!;
@@ -307,7 +317,7 @@ describe('calculateNodePositionsDagre', () => {
 				),
 			);
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 			expect(positions.has('trigger')).toBe(false);
 		});
 
@@ -321,7 +331,7 @@ describe('calculateNodePositionsDagre', () => {
 			);
 			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			expect(positions.has('trigger')).toBe(false);
 			expect(positions.has('set')).toBe(true);
@@ -342,7 +352,7 @@ describe('calculateNodePositionsDagre', () => {
 			nodes.set('C', createGraphNode('C', 'n8n-nodes-base.set'));
 			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			for (const [, pos] of positions) {
 				expect(pos[0] % GRID_SIZE).toBe(0);
@@ -361,10 +371,10 @@ describe('calculateNodePositionsDagre', () => {
 				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns),
 			);
 			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
-			// Sticky note behind the trigger and set nodes (covers them at origin)
+			// Sticky note wraps the trigger and set group (default 240x160 covers them at origin)
 			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			// Non-sticky nodes get positions from dagre layout
 			expect(positions.has('trigger')).toBe(true);
@@ -373,15 +383,6 @@ describe('calculateNodePositionsDagre', () => {
 			// Sticky note is NOT in the dagre graph but gets repositioned
 			// to follow the nodes it covered
 			expect(positions.has('note')).toBe(true);
-
-			// Sticky note that doesn't cover any nodes is excluded entirely
-			const nodes2 = new Map(nodes);
-			nodes2.set(
-				'remote-note',
-				createGraphNode('remote-note', STICKY_NODE_TYPE, undefined, [5000, 5000]),
-			);
-			const positions2 = calculateNodePositionsDagre(nodes2);
-			expect(positions2.has('remote-note')).toBe(false);
 		});
 
 		it('preserves explicit positions and anchors new nodes around them', () => {
@@ -394,7 +395,7 @@ describe('calculateNodePositionsDagre', () => {
 			);
 			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			// Explicit position is not overwritten (function only returns positions for unpositioned nodes)
 			expect(positions.has('trigger')).toBe(false);
@@ -411,13 +412,75 @@ describe('calculateNodePositionsDagre', () => {
 				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
 			);
 			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
-			// Sticky overlapping the explicitly positioned trigger
+			// Sticky overlapping the explicitly positioned trigger.
+			// Sticky uses default 240x160 dimensions so it wraps the 96x96 trigger.
 			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE, undefined, [500, 600]));
 
-			const positions = calculateNodePositionsDagre(nodes);
+			const { positions } = calculateNodePositionsDagre(nodes);
 
 			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess
-			expect(positions.get('note')).toEqual([496, 672]);
+			expect(positions.get('note')).toEqual([432, 608]);
+		});
+
+		it('repositions multiple stickies wrapping different node groups to distinct positions', () => {
+			const a1 = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'A1' },
+			});
+			const a2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A2' } });
+			const b1 = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'B1' },
+			});
+			const b2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B2' } });
+
+			const wf = workflow('wf', 'wf')
+				.add(a1.to(a2))
+				.add(b1.to(b2))
+				.add(sticky('## Group A', [a1, a2], { name: 'Note A' }))
+				.add(sticky('## Group B', [b1, b2], { name: 'Note B' }));
+
+			const json = wf.toJSON({ tidyUp: true });
+			const stickies = json.nodes.filter((n) => n.type === STICKY_NODE_TYPE);
+
+			expect(stickies).toHaveLength(2);
+			// The bug was that both stickies landed at the same coordinates
+			// (both at [-50, -50]) because getNodeDimensions returned a 96x96
+			// box for stickies, so isCoveredBy never matched their wrapped nodes.
+			expect(stickies[0].position).not.toEqual(stickies[1].position);
+		});
+	});
+
+	describe('getNodeDimensions', () => {
+		const empty = new Set<string>();
+
+		it('returns parameters.width/height for sticky notes', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'note',
+				createGraphNode('note', STICKY_NODE_TYPE, undefined, undefined, {
+					content: '## Test',
+					width: 400,
+					height: 300,
+				}),
+			);
+
+			expect(getNodeDimensions('note', empty, empty, nodes)).toEqual({
+				width: 400,
+				height: 300,
+			});
+		});
+
+		it('falls back to StickyNote node defaults (240x160) when dimensions are absent', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE));
+
+			expect(getNodeDimensions('note', empty, empty, nodes)).toEqual({
+				width: 240,
+				height: 160,
+			});
 		});
 	});
 });

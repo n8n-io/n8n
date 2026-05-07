@@ -23,6 +23,8 @@ import {
 	AI_Y_SPACING,
 	STICKY_BOTTOM_PADDING,
 	STICKY_NODE_TYPE,
+	DEFAULT_STICKY_WIDTH,
+	DEFAULT_STICKY_HEIGHT,
 	NODE_SPACING_X,
 	DEFAULT_Y,
 	START_X,
@@ -33,14 +35,21 @@ import type { GraphNode } from '../types/base';
 // BFS Layout (default)
 // ===========================================================================
 
+export interface LayoutResult {
+	positions: Map<string, [number, number]>;
+	// Updated sticky dimensions when the layout pass re-anchors a sticky around
+	// its tracked wrapped nodes. Only populated when wrapped node ids were
+	// recorded on the sticky's config.
+	stickyDimensions: Map<string, { width: number; height: number }>;
+}
+
 /**
  * Calculate positions for nodes using BFS left-to-right layout.
  * Only sets positions for nodes without explicit config.position.
  */
-export function calculateNodePositions(
-	nodes: ReadonlyMap<string, GraphNode>,
-): Map<string, [number, number]> {
+export function calculateNodePositions(nodes: ReadonlyMap<string, GraphNode>): LayoutResult {
 	const positions = new Map<string, [number, number]>();
+	const stickyDimensions = new Map<string, { width: number; height: number }>();
 
 	// Find root nodes (nodes with no incoming connections)
 	const hasIncoming = new Set<string>();
@@ -99,7 +108,7 @@ export function calculateNodePositions(
 		}
 	}
 
-	return positions;
+	return { positions, stickyDimensions };
 }
 
 // ===========================================================================
@@ -203,6 +212,22 @@ export function getNodeDimensions(
 	aiConfigNames: Set<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
 ): { width: number; height: number } {
+	const graphNode = nodes.get(nodeName);
+
+	// Sticky notes carry their own dimensions on parameters.width/height.
+	// Without this branch, repositionStickyNotes uses DEFAULT_NODE_SIZE (96x96)
+	// and isCoveredBy fails for groups larger than ~96px, leaving stickies
+	// stranded at their pre-layout coordinates.
+	if (graphNode?.instance.type === STICKY_NODE_TYPE) {
+		const params = graphNode.instance.config?.parameters;
+		const rawWidth = params?.width;
+		const rawHeight = params?.height;
+		const width = typeof rawWidth === 'number' && rawWidth > 0 ? rawWidth : DEFAULT_STICKY_WIDTH;
+		const height =
+			typeof rawHeight === 'number' && rawHeight > 0 ? rawHeight : DEFAULT_STICKY_HEIGHT;
+		return { width, height };
+	}
+
 	if (aiConfigNames.has(nodeName)) {
 		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
 	}
@@ -383,17 +408,73 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 // Sticky note repositioning
 // ---------------------------------------------------------------------------
 
+const WRAPPED_STICKY_PADDING = 50;
+
+function getWrappedNodeIds(graphNode: GraphNode | undefined): string[] | undefined {
+	const raw = (graphNode?.instance.config as Record<string, unknown> | undefined)?._wrappedNodeIds;
+	if (!Array.isArray(raw)) return undefined;
+	const ids = raw.filter((id): id is string => typeof id === 'string');
+	return ids.length > 0 ? ids : undefined;
+}
+
 function repositionStickyNotes(
 	stickyNames: string[],
 	nonStickyNames: string[],
 	positionsBefore: Map<string, BoundingBox>,
 	positionsAfter: Map<string, BoundingBox>,
-	result: Map<string, [number, number]>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	positions: Map<string, [number, number]>,
+	stickyDimensions: Map<string, { width: number; height: number }>,
 ): void {
+	let idToName: Map<string, string> | undefined;
+	const getIdToName = () => {
+		if (idToName) return idToName;
+		idToName = new Map<string, string>();
+		for (const [name, graphNode] of nodes) {
+			const id = graphNode.instance.id;
+			if (typeof id === 'string') idToName.set(id, name);
+		}
+		return idToName;
+	};
+
 	for (const stickyName of stickyNames) {
 		const stickyBoxBefore = positionsBefore.get(stickyName);
 		if (!stickyBoxBefore) continue;
 
+		const graphNode = nodes.get(stickyName);
+		const wrappedIds = getWrappedNodeIds(graphNode);
+
+		// Path 1: sticky was created with `sticky(content, [n1, n2, ...])`.
+		// Use the recorded wrapped node ids as the source of truth so multiple
+		// stickies that share the same pre-layout footprint (the typical AI
+		// builder case where wrapped nodes lack explicit positions) still end
+		// up over their own group, with dimensions resized to match the
+		// post-layout spread of those nodes.
+		if (wrappedIds) {
+			const ids = getIdToName();
+			const wrappedNames = wrappedIds
+				.map((id) => ids.get(id))
+				.filter((name): name is string => name !== undefined);
+			const wrappedBoxesAfter = wrappedNames
+				.map((name) => positionsAfter.get(name))
+				.filter((box): box is BoundingBox => box !== undefined);
+
+			if (wrappedBoxesAfter.length === 0) continue;
+
+			const wrappedAfter = compositeBoundingBox(wrappedBoxesAfter);
+			const newX = wrappedAfter.x - WRAPPED_STICKY_PADDING;
+			const newY = wrappedAfter.y - WRAPPED_STICKY_PADDING;
+			const newWidth = wrappedAfter.width + WRAPPED_STICKY_PADDING * 2;
+			const newHeight = wrappedAfter.height + WRAPPED_STICKY_PADDING * 2;
+
+			positions.set(stickyName, [snapToGrid(newX), snapToGrid(newY)]);
+			stickyDimensions.set(stickyName, { width: newWidth, height: newHeight });
+			continue;
+		}
+
+		// Path 2: sticky has no recorded wrapped nodes — fall back to spatial
+		// coverage detection to re-anchor a sticky that visually overlaps
+		// nodes (e.g. imported workflows or stickies authored directly).
 		const coveredNames = nonStickyNames.filter((name) => {
 			const nodeBox = positionsBefore.get(name);
 			return nodeBox && isCoveredBy(stickyBoxBefore, nodeBox);
@@ -412,7 +493,7 @@ function repositionStickyNotes(
 		const newY =
 			coveredAfter.y + coveredAfter.height - stickyBoxBefore.height + STICKY_BOTTOM_PADDING;
 
-		result.set(stickyName, [snapToGrid(newX), snapToGrid(newY)]);
+		positions.set(stickyName, [snapToGrid(newX), snapToGrid(newY)]);
 	}
 }
 
@@ -426,12 +507,11 @@ function repositionStickyNotes(
  *
  * Only sets positions for nodes without explicit config.position.
  */
-export function calculateNodePositionsDagre(
-	nodes: ReadonlyMap<string, GraphNode>,
-): Map<string, [number, number]> {
+export function calculateNodePositionsDagre(nodes: ReadonlyMap<string, GraphNode>): LayoutResult {
 	const positions = new Map<string, [number, number]>();
+	const stickyDimensions = new Map<string, { width: number; height: number }>();
 
-	if (nodes.size === 0) return positions;
+	if (nodes.size === 0) return { positions, stickyDimensions };
 
 	// Classify nodes
 	const aiParentNames = getAiParentNames(nodes);
@@ -448,7 +528,7 @@ export function calculateNodePositionsDagre(
 		}
 	}
 
-	if (nonStickyNames.length === 0) return positions;
+	if (nonStickyNames.length === 0) return { positions, stickyDimensions };
 
 	// Check if any nodes actually need positioning
 	const needsLayout = nonStickyNames.some((name) => {
@@ -456,7 +536,7 @@ export function calculateNodePositionsDagre(
 		return node && !node.instance.config?.position;
 	});
 
-	if (!needsLayout) return positions;
+	if (!needsLayout) return { positions, stickyDimensions };
 
 	// Build parent dagre graph with all non-sticky nodes
 	const parentGraph = new dagre.graphlib.Graph();
@@ -661,8 +741,16 @@ export function calculateNodePositionsDagre(
 			}
 		}
 
-		repositionStickyNotes(stickyNames, nonStickyNames, positionsBefore, positionsAfter, positions);
+		repositionStickyNotes(
+			stickyNames,
+			nonStickyNames,
+			positionsBefore,
+			positionsAfter,
+			nodes,
+			positions,
+			stickyDimensions,
+		);
 	}
 
-	return positions;
+	return { positions, stickyDimensions };
 }

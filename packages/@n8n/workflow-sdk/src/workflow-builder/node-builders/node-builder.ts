@@ -988,17 +988,14 @@ const DEFAULT_NODE_HEIGHT = 100;
 const STICKY_PADDING = 50;
 
 /**
- * Calculate bounding box around a set of nodes
+ * Normalize wrapped-node arguments into their underlying NodeInstances.
+ * Mirrors the unwrapping logic used by calculateNodesBoundingBox so the
+ * sticky tracks the same nodes the bounding box was computed against.
  */
-function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unknown>>): {
-	position: [number, number];
-	width: number;
-	height: number;
-} | null {
-	if (nodes.length === 0) return null;
-
-	// Normalize builder objects to their underlying NodeInstance
-	const normalizedNodes = nodes
+function normalizeWrappedNodes(
+	nodes: Array<NodeInstance<string, string, unknown>>,
+): Array<NodeInstance<string, string, unknown>> {
+	return nodes
 		.map((item): NodeInstance<string, string, unknown> | null => {
 			if (isSplitInBatchesBuilder(item)) {
 				return extractSplitInBatchesBuilder(item).sibNode;
@@ -1015,7 +1012,23 @@ function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unk
 			return null;
 		})
 		.filter((n): n is NodeInstance<string, string, unknown> => n !== null);
+}
 
+function collectWrappedNodeIds(nodes: Array<NodeInstance<string, string, unknown>>): string[] {
+	return normalizeWrappedNodes(nodes).map((n) => n.id);
+}
+
+/**
+ * Calculate bounding box around a set of nodes
+ */
+function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unknown>>): {
+	position: [number, number];
+	width: number;
+	height: number;
+} | null {
+	if (nodes.length === 0) return null;
+
+	const normalizedNodes = normalizeWrappedNodes(nodes);
 	if (normalizedNodes.length === 0) return null;
 
 	let minX = Infinity;
@@ -1064,6 +1077,12 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		// If nodes are provided, calculate bounding box to wrap around them
 		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
 
+		// Track wrapped node ids so the layout pass can re-anchor and re-size the
+		// sticky around those exact nodes after dagre has assigned them positions.
+		// Without this, multiple stickies whose wrapped nodes share the default
+		// (0, 0) position before layout end up at the same coordinates.
+		const wrappedNodeIds = collectWrappedNodeIds(nodes);
+
 		this.config = {
 			name: this.name,
 			position: stickyConfig.position ?? boundingBox?.position,
@@ -1077,6 +1096,9 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 					height: stickyConfig.height ?? boundingBox?.height,
 				}),
 			},
+			...(wrappedNodeIds.length > 0
+				? ({ _wrappedNodeIds: wrappedNodeIds } as Record<string, unknown>)
+				: {}),
 		};
 	}
 
@@ -1118,10 +1140,15 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 }
 
 /**
- * Create a sticky note for workflow documentation
+ * Create a sticky note for workflow documentation.
+ *
+ * Like any other node, the returned sticky must be passed to
+ * `workflow(...)` (or `.add(...)`) to appear on the canvas. The optional
+ * `nodes` array is **only** used to size and anchor the sticky around the
+ * given nodes — it does **not** add them to the workflow.
  *
  * @param content - Markdown content for the sticky note
- * @param nodesOrConfig - Optional nodes to wrap (auto-positions sticky around them), or config for backward compatibility
+ * @param nodesOrConfig - Optional nodes to wrap (sizes the sticky around them; the nodes themselves still need to be added to the workflow). Pass a config object to skip wrapping.
  * @param config - Optional configuration (color, position, size)
  * @returns A sticky note node instance
  *
@@ -1133,10 +1160,11 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
  *   position: [80, -176]
  * });
  *
- * // Auto-position around nodes
+ * // Anchor a sticky around two nodes (the nodes still need to be added separately):
  * const httpNode = node({ type: 'n8n-nodes-base.httpRequest', ... });
  * const setNode = node({ type: 'n8n-nodes-base.set', ... });
  * const note = sticky('## Data Processing', [httpNode, setNode], { color: 2 });
+ * workflow('id', 'name').add(httpNode.to(setNode)).add(note);
  *
  * // Backward compatible: config as second param (no nodes)
  * const note = sticky('## Note', { color: 4 });
