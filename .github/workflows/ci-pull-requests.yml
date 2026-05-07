@@ -30,6 +30,7 @@ jobs:
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
+      merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
@@ -73,7 +74,6 @@ jobs:
               packages/testing/playwright/playwright-projects.ts
               packages/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
-              .github/workflows/ci-pull-requests.yml
             workflows: .github/**
             workflow-scripts: .github/scripts/**
             performance:
@@ -120,9 +120,10 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
           FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate --impact "--files=$FILES_CSV" --base=FETCH_HEAD)
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate --impact "--files=$FILES_CSV" "--base=$MERGE_BASE")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 

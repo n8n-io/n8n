@@ -7,7 +7,9 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	checkDomainAccess,
+	checkWebSearchAccess,
 	applyDomainAccessResume,
+	applyWebSearchAccessResume,
 	domainGatingSuspendSchema,
 	domainGatingResumeSchema,
 } from '../domain-access';
@@ -59,9 +61,44 @@ type Input = z.infer<typeof inputSchema>;
 async function handleWebSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'web-search' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	if (!context.webResearchService?.search) {
 		return { query: input.query, results: [] };
+	}
+
+	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
+	const suspend = ctx?.agent?.suspend as
+		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
+		| undefined;
+
+	// ── Resume path: apply user's decision ─────────────────────────
+	if (resumeData !== undefined && resumeData !== null) {
+		const { proceed } = applyWebSearchAccessResume({
+			resumeData,
+			tracker: context.domainAccessTracker,
+			runId: context.runId,
+		});
+		if (!proceed) {
+			return { query: input.query, results: [] };
+		}
+	}
+
+	// ── Initial check: is web-search allowed? ──────────────────────
+	if (resumeData === undefined || resumeData === null) {
+		const check = checkWebSearchAccess({
+			query: input.query,
+			tracker: context.domainAccessTracker,
+			permissionMode: context.permissions?.webSearch,
+			runId: context.runId,
+		});
+		if (!check.allowed) {
+			if (check.blocked) {
+				return { query: input.query, results: [] };
+			}
+			await suspend?.(check.suspendPayload!);
+			return { query: input.query, results: [] };
+		}
 	}
 
 	const result = await context.webResearchService.search(input.query, {
@@ -194,7 +231,7 @@ export function createResearchTool(context: InstanceAiContext) {
 		execute: async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'web-search':
-					return await handleWebSearch(context, input);
+					return await handleWebSearch(context, input, ctx);
 				case 'fetch-url':
 					return await handleFetchUrl(context, input, ctx);
 			}
