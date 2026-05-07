@@ -11,16 +11,12 @@ import N8nToggleGroup from '../N8nToggleGroup';
 import { t } from '../../locale';
 import type { MarkdownEditorVariant } from './MarkdownEditor.types';
 import type { MarkdownEditorToolbarMode } from './MarkdownEditor.types';
-import type { IconName } from '../N8nIcon';
+import { createMarkdownSlashCommands } from './extensions/slashCommands';
+import type { MarkdownSlashCommand } from './extensions/slashCommands/types';
 
 const translate = (path: string) => t(path, undefined);
 
-type ToolbarControl = {
-	id: string;
-	label: string;
-	icon: IconName;
-	command: ({ editor }: { editor: Editor }) => void;
-};
+type ToolbarControl = Pick<MarkdownSlashCommand, 'id' | 'label' | 'icon' | 'command'>;
 
 const props = defineProps<{
 	editor: Editor;
@@ -34,53 +30,20 @@ const emit = defineEmits<{
 	'update:isRawMode': [value: boolean];
 }>();
 
-const markControls = computed<ToolbarControl[]>(() => [
-	{
-		id: 'bold',
-		label: translate('markdownEditor.bold'),
-		icon: 'bold',
-		command: ({ editor }) => editor.chain().focus().toggleBold().run(),
-	},
-	{
-		id: 'italic',
-		label: translate('markdownEditor.italic'),
-		icon: 'italic',
-		command: ({ editor }) => editor.chain().focus().toggleItalic().run(),
-	},
-	{
-		id: 'strike',
-		label: translate('markdownEditor.strikethrough'),
-		icon: 'strikethrough',
-		command: ({ editor }) => editor.chain().focus().toggleStrike().run(),
-	},
-]);
+const markdownCommands = computed(() => createMarkdownSlashCommands());
 
-const blockControls = computed<ToolbarControl[]>(() => [
-	{
-		id: 'bulletList',
-		label: translate('markdownEditor.bulletList'),
-		icon: 'list',
-		command: ({ editor }) => editor.chain().focus().toggleBulletList().run(),
-	},
-	{
-		id: 'taskList',
-		label: translate('markdownEditor.taskList'),
-		icon: 'list-checks',
-		command: ({ editor }) => editor.chain().focus().toggleTaskList().run(),
-	},
-	{
-		id: 'codeBlock',
-		label: translate('markdownEditor.codeBlock'),
-		icon: 'file-code',
-		command: ({ editor }) => editor.chain().focus().toggleCodeBlock().run(),
-	},
-	{
-		id: 'blockquote',
-		label: translate('markdownEditor.blockquote'),
-		icon: 'quote',
-		command: ({ editor }) => editor.chain().focus().toggleBlockquote().run(),
-	},
-]);
+const getCommand = (id: string) => markdownCommands.value.get(id);
+
+const getCommands = (ids: string[]) =>
+	ids
+		.map((id) => getCommand(id))
+		.filter((command): command is ToolbarControl => command !== undefined);
+
+const markControls = computed<ToolbarControl[]>(() => getCommands(['bold', 'italic', 'strike']));
+
+const blockControls = computed<ToolbarControl[]>(() =>
+	getCommands(['bulletList', 'taskList', 'codeBlock', 'blockquote']),
+);
 
 const historyControls = computed<ToolbarControl[]>(() => [
 	{
@@ -97,28 +60,13 @@ const historyControls = computed<ToolbarControl[]>(() => [
 	},
 ]);
 
-const textStyleOptions = computed<Array<N8nDropdownOption<string>>>(() => [
-	{
-		label: translate('markdownEditor.text'),
-		value: 'paragraph',
-		active: activeTextStyle.value === 'paragraph',
-	},
-	{
-		label: translate('markdownEditor.heading1'),
-		value: 'heading-1',
-		active: activeTextStyle.value === 'heading-1',
-	},
-	{
-		label: translate('markdownEditor.heading2'),
-		value: 'heading-2',
-		active: activeTextStyle.value === 'heading-2',
-	},
-	{
-		label: translate('markdownEditor.heading3'),
-		value: 'heading-3',
-		active: activeTextStyle.value === 'heading-3',
-	},
-]);
+const textStyleOptions = computed<Array<N8nDropdownOption<string>>>(() =>
+	getCommands(['paragraph', 'heading-1', 'heading-2', 'heading-3']).map((command) => ({
+		label: command.label,
+		value: command.id,
+		active: command.id === activeTextStyle.value,
+	})),
+);
 
 const activeMarks = computed(() =>
 	markControls.value
@@ -146,13 +94,7 @@ const activeTextStyleLabel = computed(
 		translate('markdownEditor.text'),
 );
 
-const activeTextStyleIcon = computed<IconName>(() => {
-	if (activeTextStyle.value === 'heading-1') return 'heading-1';
-	if (activeTextStyle.value === 'heading-2') return 'heading-2';
-	if (activeTextStyle.value === 'heading-3') return 'heading-3';
-
-	return 'type';
-});
+const activeTextStyleIcon = computed(() => getCommand(activeTextStyle.value)?.icon ?? 'type');
 
 const runControl = (control: ToolbarControl) => {
 	if (props.disabled || props.isRawMode) return;
@@ -163,22 +105,7 @@ const runControl = (control: ToolbarControl) => {
 const setTextStyle = (value: string | number) => {
 	if (props.disabled || props.isRawMode) return;
 
-	if (value === 'heading-1') {
-		props.editor.chain().focus().toggleHeading({ level: 1 }).run();
-		return;
-	}
-
-	if (value === 'heading-2') {
-		props.editor.chain().focus().toggleHeading({ level: 2 }).run();
-		return;
-	}
-
-	if (value === 'heading-3') {
-		props.editor.chain().focus().toggleHeading({ level: 3 }).run();
-		return;
-	}
-
-	props.editor.chain().focus().setParagraph().run();
+	getCommand(String(value))?.command({ editor: props.editor });
 };
 </script>
 

@@ -15,6 +15,7 @@ import { useEditor } from '@tiptap/vue-3';
 import { watch } from 'vue';
 import type { SetupContext } from 'vue';
 
+import { MarkdownSlashCommandExtension, renderSlashCommandMenu } from '../extensions';
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from '../MarkdownEditor.types';
 import {
 	copyMarkdown,
@@ -52,6 +53,9 @@ export const useMarkdownEditor = (
 				gfm: true,
 				breaks: false,
 			},
+		}),
+		MarkdownSlashCommandExtension.configure({
+			render: renderSlashCommandMenu,
 		}),
 	];
 
