@@ -37,7 +37,7 @@ export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 
 DATASET="${DATASET:-instance-ai-builder-from-plans}"
 JUDGES="${JUDGES:-1}"
-CONCURRENCY="${CONCURRENCY:-4}"
+CONCURRENCY="${CONCURRENCY:-6}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-pairwise-from-plans}"
 
 ARGS=(
