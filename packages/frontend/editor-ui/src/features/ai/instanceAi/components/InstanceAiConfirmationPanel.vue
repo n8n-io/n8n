@@ -191,6 +191,17 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	void store.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
+function handleContinue(conf: InstanceAiConfirmation) {
+	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
+	trackInputCompleted(
+		conf,
+		[{ label: conf.message, options: ['continue'], option_chosen: 'continue' }],
+		[],
+	);
+	store.resolveConfirmation(conf.requestId, 'approved');
+	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+}
+
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
 	const questionsById = new Map((conf.questions ?? []).map((q) => [q.id, q]));
 	const provided: Array<{
@@ -383,6 +394,26 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						</div>
 					</N8nCard>
 				</div>
+				<!-- Continue (pause-for-user) — single-button acknowledgement -->
+				<div
+					v-else-if="chunk.item.toolCall.confirmation.inputType === 'continue'"
+					:key="'continue-' + chunk.item.toolCall.confirmation.requestId"
+					:class="$style.confirmation"
+				>
+					<N8nCard :class="$style.textCard">
+						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
+						<div :class="$style.continueRow">
+							<N8nButton
+								data-test-id="instance-ai-panel-continue"
+								size="medium"
+								variant="solid"
+								@click="handleContinue(chunk.item.toolCall.confirmation)"
+							>
+								{{ i18n.baseText('instanceAi.confirmation.continue') }}
+							</N8nButton>
+						</div>
+					</N8nCard>
+				</div>
 				<!-- Resource-access decision (gateway permission mode) -->
 				<GatewayResourceDecision
 					v-else-if="
@@ -531,6 +562,12 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+}
+
+.continueRow {
+	display: flex;
+	justify-content: flex-end;
 	margin-top: var(--spacing--2xs);
 }
 

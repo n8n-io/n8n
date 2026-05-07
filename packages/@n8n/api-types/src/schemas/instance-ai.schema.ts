@@ -303,6 +303,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'plan-review',
 	'resource-decision',
+	'continue',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -329,7 +330,8 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
-				'resource-decision shows 5-option gateway permission dialog',
+				'resource-decision shows 5-option gateway permission dialog, ' +
+				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
 		.array(
@@ -403,6 +405,7 @@ export function isDisplayableConfirmationRequest(
 	switch (inputType) {
 		case 'approval':
 		case 'text':
+		case 'continue':
 			return isNonEmptyString(payload.message);
 		case 'questions':
 			return hasItems(payload.questions);
@@ -667,7 +670,7 @@ export interface InstanceAiConfirmation {
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
 	setupRequests?: InstanceAiWorkflowSetupNode[];

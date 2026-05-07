@@ -188,7 +188,7 @@ export function mapMastraChunkToEvent(
 		const projectId =
 			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
 
-		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision')
+		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision', 'continue')
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
 		const validInputTypes = [
@@ -197,6 +197,7 @@ export function mapMastraChunkToEvent(
 			'questions',
 			'plan-review',
 			'resource-decision',
+			'continue',
 		] as const;
 		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
 			? (rawInputType as (typeof validInputTypes)[number])
