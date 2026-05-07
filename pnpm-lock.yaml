@@ -30458,7 +30458,7 @@ snapshots:
       '@slack/types': 2.20.1
       '@types/node': 20.19.21
       '@types/retry': 0.12.0
-      axios: 1.15.0
+      axios: 1.15.0(patch_hash=d862e214ea9e6eb9abaef9414a626ca7ad9fc23d23e36b950f1eb14b6fdbded7)
       eventemitter3: 5.0.1
       form-data: 4.0.4
       is-electron: 2.2.2
