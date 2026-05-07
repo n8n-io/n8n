@@ -13,7 +13,7 @@
 # ==============================================================================
 
 ARG NODE_VERSION=24.14.1
-ARG PYTHON_VERSION=3.13
+ARG PYTHON_VERSION=3.14
 
 
 # ==============================================================================
@@ -59,6 +59,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 FROM python:${PYTHON_VERSION}-slim-bookworm AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
+
+RUN pip install --no-cache-dir "pip>=26.1"
 
 RUN set -e; \
   apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
@@ -138,11 +140,12 @@ FROM node:${NODE_VERSION}-bookworm-slim AS node-debian
 # create symlinks and organize files properly.
 # ==============================================================================
 FROM debian:bookworm-slim AS runtime-prep
+ARG PYTHON_VERSION
 
 # Copy Python runtime
-COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/bin/python3.13
-COPY --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
-COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
+COPY --from=python-runner-builder /usr/local/bin/python${PYTHON_VERSION} /runtime/usr/local/bin/
+COPY --from=python-runner-builder /usr/local/lib/python${PYTHON_VERSION} /runtime/usr/local/lib/python${PYTHON_VERSION}
+COPY --from=python-runner-builder /usr/local/lib/libpython${PYTHON_VERSION}.so* /runtime/usr/local/lib/
 
 # Copy Python dependencies (architecture-specific directories)
 # The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu

@@ -1,5 +1,5 @@
 ARG NODE_VERSION=24.14.1
-ARG PYTHON_VERSION=3.13
+ARG PYTHON_VERSION=3.14
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
@@ -131,7 +131,7 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
     apk upgrade --no-cache && \
-    pip install --no-cache-dir "pip>=26.0" && \
+    pip install --no-cache-dir "pip>=26.1" && \
     apk del apk-tools
 
 # Bring corepack and pnpm over, to make the image easier to extend
