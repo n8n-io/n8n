@@ -1364,6 +1364,80 @@ describe('generate-types', () => {
 			expect(result).not.toContain('GmailV21Params');
 		});
 
+		it('should emit option-level builderHint as JSDoc above the discriminator literal in narrowed types', () => {
+			const vectorStoreLikeNode: NodeTypeDescription = {
+				name: 'n8n-nodes-test.vectorStoreLike',
+				displayName: 'Vector Store Like',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Operation Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Insert',
+								value: 'insert',
+								builderHint: {
+									message: 'Wires with documentLoader subnode',
+									extraTypeDefContent: '<patterns>\n<pattern>insert example</pattern>\n</patterns>',
+								},
+							},
+							{
+								name: 'Retrieve as Tool',
+								value: 'retrieve-as-tool',
+								builderHint: {
+									message: 'Use the tool() factory, plug into agent.subnodes.tools',
+								},
+							},
+						],
+						default: 'insert',
+					},
+					{
+						displayName: 'Insert Field',
+						name: 'insertField',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+					{
+						displayName: 'Tool Description',
+						name: 'toolDescription',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(vectorStoreLikeNode);
+
+			// Insert-narrowed type should carry the insert option's hint and pattern.
+			expect(result).toMatch(
+				/@builderHint Wires with documentLoader subnode[\s\S]*?<patterns>[\s\S]*?<pattern>insert example<\/pattern>[\s\S]*?<\/patterns>[\s\S]*?mode: 'insert'/,
+			);
+
+			// Retrieve-as-tool narrowed type should carry only its own hint (no insert pattern).
+			expect(result).toMatch(
+				/@builderHint Use the tool\(\) factory, plug into agent\.subnodes\.tools[\s\S]*?mode: 'retrieve-as-tool'/,
+			);
+
+			// Each pattern stays inside its own narrowed type — no cross-bleed.
+			// Split on the type-name boundary so each section contains exactly one type's body.
+			const sections = result.split(/export type /);
+			const insertSection = sections.find((s) => s.startsWith('VectorStoreLikeInsertParams'));
+			const retrieveSection = sections.find((s) =>
+				s.startsWith('VectorStoreLikeRetrieveAsToolParams'),
+			);
+			expect(insertSection).toBeDefined();
+			expect(retrieveSection).toBeDefined();
+			expect(insertSection!).not.toContain('Use the tool() factory');
+			expect(retrieveSection!).not.toContain('insert example');
+		});
+
 		it('should generate simple interface for HTTP Request (no discriminators)', () => {
 			const result = generateTypes.generateDiscriminatedUnion(mockHttpRequestNode);
 

@@ -16,12 +16,33 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		value: 'load',
 		description: 'Get many ranked documents from vector store for query',
 		action: 'Get ranked documents from vector store',
+		builderHint: {
+			message:
+				"Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Performs a one-shot similarity search on the main flow using the `prompt` parameter — use this when you need a lookup outside an agent's tool-calling loop.",
+		},
 	},
 	{
 		name: 'Insert Documents',
 		value: 'insert',
 		description: 'Insert documents into vector store',
 		action: 'Add documents to vector store',
+		builderHint: {
+			message:
+				'Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding, documentLoader }`. Sits on the main flow — pipe the documents you want to embed into this node.',
+			extraTypeDefContent: `<patterns>
+<pattern title="Insert mode — upsert documents into the store">
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+  version: 1.2,
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'insert', options: {}, pineconeIndex: { __rl: true, mode: 'list', value: 'kb' } },
+    subnodes: { embedding: embeddingsOpenAi, documentLoader: defaultDataLoader }
+  }
+});
+</pattern>
+</patterns>`,
+		},
 	},
 	{
 		name: 'Retrieve Documents (As Vector Store for Chain/Tool)',
@@ -29,6 +50,10 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		description: 'Retrieve documents from vector store to be used as vector store with AI nodes',
 		action: 'Retrieve documents for Chain/Tool as Vector Store',
 		outputConnectionType: NodeConnectionTypes.AiVectorStore,
+		builderHint: {
+			message:
+				"Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Plug the resulting node into another node's `subnodes` (e.g. a `toolVectorStore` node's `subnodes: { vectorStore }`).",
+		},
 	},
 	{
 		name: 'Retrieve Documents (As Tool for AI Agent)',
@@ -36,11 +61,47 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		description: 'Retrieve documents from vector store to be used as tool with AI nodes',
 		action: 'Retrieve documents for AI Agent as Tool',
 		outputConnectionType: NodeConnectionTypes.AiTool,
+		builderHint: {
+			message:
+				"Declare with the `tool({...})` factory (NOT `vectorStore`). Required subnodes: `{ embedding }`. Set `toolDescription` so the agent knows when to call it. Plug into an AI Agent's `subnodes.tools` array — this is the canonical RAG pattern.",
+			extraTypeDefContent: `<patterns>
+<pattern title="retrieve-as-tool mode — RAG via AI Agent">
+const knowledgeBase = tool({
+  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+  version: 1.2,
+  config: {
+    name: 'Knowledge Base',
+    parameters: {
+      mode: 'retrieve-as-tool',
+      toolDescription: 'Search the product knowledge base',
+      pineconeIndex: { __rl: true, mode: 'list', value: 'kb' },
+      options: {}
+    },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+
+const agent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Support Agent',
+    parameters: { promptType: 'define', text: expr('{{ $json.question }}') },
+    subnodes: { model: openAiModel, tools: [knowledgeBase] }
+  }
+});
+</pattern>
+</patterns>`,
+		},
 	},
 	{
 		name: 'Update Documents',
 		value: 'update',
 		description: 'Update documents in vector store by ID',
 		action: 'Update vector store documents',
+		builderHint: {
+			message:
+				'Declare with the `vectorStore({...})` factory. Required subnodes: `{ embedding }`. Updates documents by ID — only available on stores whose `operationModes` explicitly enables it.',
+		},
 	},
 ];

@@ -385,6 +385,34 @@ function emitBuilderHint(
 	}
 }
 
+/**
+ * Emit the discriminator literal fields for a single discriminator combination
+ * (e.g. `mode: 'insert';`). When the matching option of the source property
+ * carries a `builderHint`, surface it as JSDoc above the literal — this is the
+ * only place per-option hints can reach the narrowed type, since
+ * `getPropertiesForCombination` excludes the discriminator property itself.
+ */
+function emitDiscriminatorFields(
+	lines: string[],
+	combo: DiscriminatorCombination,
+	properties: NodeProperty[],
+): void {
+	for (const [key, value] of Object.entries(combo)) {
+		if (value === undefined) continue;
+
+		const discProp = properties.find((p) => p.name === key);
+		const matchingOpt = discProp?.options?.find((o) => String(o.value) === value);
+		if (matchingOpt?.builderHint) {
+			const hintLines: string[] = [`${INDENT}/**`];
+			emitBuilderHint(hintLines, INDENT, matchingOpt.builderHint);
+			hintLines.push(`${INDENT} */`);
+			lines.push(...hintLines);
+		}
+
+		lines.push(`${INDENT}${key}: '${value}';`);
+	}
+}
+
 // =============================================================================
 // Schema Discovery & JSON Schema to TypeScript Conversion
 // =============================================================================
@@ -1880,12 +1908,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 		lines.push(`export type ${configName} = {`);
 
-		// Add discriminator fields
-		for (const [key, value] of Object.entries(combo)) {
-			if (value !== undefined) {
-				lines.push(`${INDENT}${key}: '${value}';`);
-			}
-		}
+		emitDiscriminatorFields(lines, combo, node.properties);
 
 		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
 		// so the emitted type def reflects the OR of variants accurately.
@@ -3402,12 +3425,7 @@ function generateDiscriminatedUnionForEntry(
 
 		lines.push(`export type ${configName} = {`);
 
-		// Add discriminator fields
-		for (const [key, value] of Object.entries(combo)) {
-			if (value !== undefined) {
-				lines.push(`${INDENT}${key}: '${value}';`);
-			}
-		}
+		emitDiscriminatorFields(lines, combo, node.properties);
 
 		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
 		// so the emitted type def reflects the OR of variants accurately.

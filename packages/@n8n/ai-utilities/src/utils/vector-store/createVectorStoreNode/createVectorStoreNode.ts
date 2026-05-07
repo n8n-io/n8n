@@ -154,49 +154,6 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					noDataExpression: true,
 					default: 'retrieve',
 					options: getOperationModeOptions(args),
-					builderHint: {
-						message:
-							"Mode picks both the SDK factory and the required subnodes. `insert`: declare with `vectorStore({...})`, subnodes `{ embedding, documentLoader }`, sits on the main flow. `retrieve`: `vectorStore({...})`, subnodes `{ embedding }`, plug into another node's subnodes (e.g. an AI Agent via `subnodes.vectorStore`). `retrieve-as-tool`: declare with `tool({...})` (NOT `vectorStore`), subnodes `{ embedding }`, set `toolDescription`, plug into an AI Agent's `subnodes.tools` array. `load`: `vectorStore({...})`, subnodes `{ embedding }`, performs a one-shot similarity search on the main flow with a `prompt` parameter.",
-						extraTypeDefContent: `<patterns>
-<pattern title="Insert mode — upsert documents into the store">
-const store = vectorStore({
-  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-  version: 1.2,
-  config: {
-    name: 'Knowledge Base',
-    parameters: { mode: 'insert', options: {}, pineconeIndex: { __rl: true, mode: 'list', value: 'kb' } },
-    subnodes: { embedding: embeddingsOpenAi, documentLoader: defaultDataLoader }
-  }
-});
-</pattern>
-<pattern title="retrieve-as-tool mode — RAG via AI Agent">
-const knowledgeBase = tool({
-  type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-  version: 1.2,
-  config: {
-    name: 'Knowledge Base',
-    parameters: {
-      mode: 'retrieve-as-tool',
-      toolDescription: 'Search the product knowledge base',
-      pineconeIndex: { __rl: true, mode: 'list', value: 'kb' },
-      options: {}
-    },
-    subnodes: { embedding: embeddingsOpenAi }
-  }
-});
-
-const agent = node({
-  type: '@n8n/n8n-nodes-langchain.agent',
-  version: 3.1,
-  config: {
-    name: 'Support Agent',
-    parameters: { promptType: 'define', text: expr('{{ $json.question }}') },
-    subnodes: { model: openAiModel, tools: [knowledgeBase] }
-  }
-});
-</pattern>
-</patterns>`,
-					},
 				},
 				{
 					...getConnectionHintNoticeField([NodeConnectionTypes.AiRetriever]),
