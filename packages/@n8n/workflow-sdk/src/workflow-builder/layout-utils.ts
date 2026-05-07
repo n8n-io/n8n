@@ -410,11 +410,12 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 
 const WRAPPED_STICKY_PADDING = 50;
 
-function getWrappedNodeIds(graphNode: GraphNode | undefined): string[] | undefined {
-	const raw = (graphNode?.instance.config as Record<string, unknown> | undefined)?._wrappedNodeIds;
+function getWrappedNodeNames(graphNode: GraphNode | undefined): string[] | undefined {
+	const raw = (graphNode?.instance.config as Record<string, unknown> | undefined)
+		?._wrappedNodeNames;
 	if (!Array.isArray(raw)) return undefined;
-	const ids = raw.filter((id): id is string => typeof id === 'string');
-	return ids.length > 0 ? ids : undefined;
+	const names = raw.filter((name): name is string => typeof name === 'string');
+	return names.length > 0 ? names : undefined;
 }
 
 function repositionStickyNotes(
@@ -426,35 +427,20 @@ function repositionStickyNotes(
 	positions: Map<string, [number, number]>,
 	stickyDimensions: Map<string, { width: number; height: number }>,
 ): void {
-	let idToName: Map<string, string> | undefined;
-	const getIdToName = () => {
-		if (idToName) return idToName;
-		idToName = new Map<string, string>();
-		for (const [name, graphNode] of nodes) {
-			const id = graphNode.instance.id;
-			if (typeof id === 'string') idToName.set(id, name);
-		}
-		return idToName;
-	};
-
 	for (const stickyName of stickyNames) {
 		const stickyBoxBefore = positionsBefore.get(stickyName);
 		if (!stickyBoxBefore) continue;
 
 		const graphNode = nodes.get(stickyName);
-		const wrappedIds = getWrappedNodeIds(graphNode);
+		const wrappedNames = getWrappedNodeNames(graphNode);
 
 		// Path 1: sticky was created with `sticky(content, [n1, n2, ...])`.
-		// Use the recorded wrapped node ids as the source of truth so multiple
+		// Use the recorded wrapped node names as the source of truth so multiple
 		// stickies that share the same pre-layout footprint (the typical AI
 		// builder case where wrapped nodes lack explicit positions) still end
 		// up over their own group, with dimensions resized to match the
 		// post-layout spread of those nodes.
-		if (wrappedIds) {
-			const ids = getIdToName();
-			const wrappedNames = wrappedIds
-				.map((id) => ids.get(id))
-				.filter((name): name is string => name !== undefined);
+		if (wrappedNames) {
 			const wrappedBoxesAfter = wrappedNames
 				.map((name) => positionsAfter.get(name))
 				.filter((box): box is BoundingBox => box !== undefined);

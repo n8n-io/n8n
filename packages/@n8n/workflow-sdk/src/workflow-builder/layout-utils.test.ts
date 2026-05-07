@@ -451,6 +451,38 @@ describe('calculateNodePositionsDagre', () => {
 			// box for stickies, so isCoveredBy never matched their wrapped nodes.
 			expect(stickies[0].position).not.toEqual(stickies[1].position);
 		});
+
+		it('repositions stickies correctly after regenerateNodeIds reshuffles ids', () => {
+			// The AI builder calls regenerateNodeIds after parsing user code, which
+			// rewrites every node's id. Wrapped-node tracking has to survive that —
+			// otherwise stickies stack at their pre-layout placeholder coordinates.
+			const a1 = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'A1' },
+			});
+			const a2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A2' } });
+			const b1 = node({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'B1' },
+			});
+			const b2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B2' } });
+
+			const wf = workflow('wf', 'wf')
+				.add(a1.to(a2))
+				.add(b1.to(b2))
+				.add(sticky('## Group A', [a1, a2], { name: 'Note A' }))
+				.add(sticky('## Group B', [b1, b2], { name: 'Note B' }));
+
+			wf.regenerateNodeIds();
+
+			const json = wf.toJSON({ tidyUp: true });
+			const stickies = json.nodes.filter((n) => n.type === STICKY_NODE_TYPE);
+
+			expect(stickies).toHaveLength(2);
+			expect(stickies[0].position).not.toEqual(stickies[1].position);
+		});
 	});
 
 	describe('getNodeDimensions', () => {

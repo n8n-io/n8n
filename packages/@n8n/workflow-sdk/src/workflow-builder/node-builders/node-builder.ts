@@ -1014,8 +1014,8 @@ function normalizeWrappedNodes(
 		.filter((n): n is NodeInstance<string, string, unknown> => n !== null);
 }
 
-function collectWrappedNodeIds(nodes: Array<NodeInstance<string, string, unknown>>): string[] {
-	return normalizeWrappedNodes(nodes).map((n) => n.id);
+function collectWrappedNodeNames(nodes: Array<NodeInstance<string, string, unknown>>): string[] {
+	return normalizeWrappedNodes(nodes).map((n) => n.name);
 }
 
 /**
@@ -1077,11 +1077,11 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		// If nodes are provided, calculate bounding box to wrap around them
 		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
 
-		// Track wrapped node ids so the layout pass can re-anchor and re-size the
-		// sticky around those exact nodes after dagre has assigned them positions.
-		// Without this, multiple stickies whose wrapped nodes share the default
-		// (0, 0) position before layout end up at the same coordinates.
-		const wrappedNodeIds = collectWrappedNodeIds(nodes);
+		// Track wrapped node names so the layout pass can re-anchor and re-size
+		// the sticky around those exact nodes after dagre has assigned them
+		// positions. Names survive regenerateNodeIds (which the AI builder runs
+		// on every parse) — instance ids do not.
+		const wrappedNodeNames = collectWrappedNodeNames(nodes);
 
 		this.config = {
 			name: this.name,
@@ -1096,8 +1096,8 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 					height: stickyConfig.height ?? boundingBox?.height,
 				}),
 			},
-			...(wrappedNodeIds.length > 0
-				? ({ _wrappedNodeIds: wrappedNodeIds } as Record<string, unknown>)
+			...(wrappedNodeNames.length > 0
+				? ({ _wrappedNodeNames: wrappedNodeNames } as Record<string, unknown>)
 				: {}),
 		};
 	}
