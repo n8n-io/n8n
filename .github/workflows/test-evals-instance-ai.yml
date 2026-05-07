@@ -143,7 +143,7 @@ jobs:
             --base-url "$BASE_URLS" \
             --concurrency 32 \
             --verbose \
-            --iterations 3 \
+            --iterations 5 \
             ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
 
       - name: Stop n8n containers
@@ -160,22 +160,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RESULTS_FILE="packages/@n8n/instance-ai/eval-results.json"
-          if [ ! -f "$RESULTS_FILE" ]; then
-            echo "No eval results file found"
+          # The eval CLI writes the full PR comment as eval-pr-comment.md
+          # (see comparison/format.ts:formatComparisonMarkdown). It includes
+          # the alert, aggregate, comparison sections, per-test-case results
+          # collapsed, and failure details collapsed. CI just relays it.
+          COMMENT_FILE="packages/@n8n/instance-ai/eval-pr-comment.md"
+          if [ ! -f "$COMMENT_FILE" ]; then
+            echo "No PR comment file found (eval likely cancelled before writing results)"
             exit 0
           fi
-
-          # Build the full comment body with jq
-          jq -r '
-            "### Instance AI Workflow Eval Results\n\n" +
-            "**\(.summary.built)/\(.summary.testCases) built | \(.totalRuns) run(s) | pass@\(.totalRuns): \(.summary.passAtK * 100 | floor)% | pass^\(.totalRuns): \(.summary.passHatK * 100 | floor)% | iterations: \(.summary.passRatePerIter)**\n\n" +
-            "| Workflow | Build | pass@\(.totalRuns) | pass^\(.totalRuns) |\n|---|---|---|---|\n" +
-            ([.testCases[] as $tc | "| \($tc.name) | \($tc.buildSuccessCount)/\($tc.totalRuns) | \(([$tc.scenarios[] | .passAtK] | add) / ($tc.scenarios | length) * 100 | floor)% | \(([$tc.scenarios[] | .passHatK] | add) / ($tc.scenarios | length) * 100 | floor)% |"] | join("\n")) +
-            "\n\n<details><summary>Failure details</summary>\n\n" +
-            ([.testCases[] as $tc | $tc.scenarios[] | select(.passHatK < 1) | "**\($tc.name) / \(.name)** — \(.passCount)/\(.totalRuns) passed" + "\n" + ([.runs[] | select(.passed == false) | "> Run\(if .failureCategory then " [\(.failureCategory)]" else "" end): \(.reasoning | .[0:200])"] | join("\n"))] | join("\n\n")) +
-            "\n</details>"
-          ' "$RESULTS_FILE" > /tmp/eval-comment.md
+          cp "$COMMENT_FILE" /tmp/eval-comment.md
 
           # Find and update existing eval comment, or create new one
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \

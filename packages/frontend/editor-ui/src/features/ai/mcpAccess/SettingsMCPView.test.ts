@@ -96,6 +96,8 @@ describe('SettingsMCPView', () => {
 				mcpManagedByEnv: false,
 			},
 		};
+
+		mcpStore.getAllOAuthClients.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -464,6 +466,92 @@ describe('SettingsMCPView', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('Instance capacity notice', () => {
+		beforeEach(() => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.getInstanceClientStats.mockResolvedValue(null);
+		});
+
+		it('should render the notice for an instance owner when atCapacity is true', async () => {
+			usersStore.isInstanceOwner = true;
+			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
+
+			const { findByTestId } = createComponent({ pinia });
+
+			const notice = await findByTestId('mcp-instance-capacity-notice');
+			expect(notice).toBeVisible();
+			expect(notice.textContent).toContain('2/2');
+		});
+
+		it('should render the notice for an admin when atCapacity is true', async () => {
+			usersStore.isAdmin = true;
+			mcpStore.instanceClientStats = { count: 5, limit: 5, atCapacity: true };
+
+			const { findByTestId } = createComponent({ pinia });
+
+			const notice = await findByTestId('mcp-instance-capacity-notice');
+			expect(notice).toBeVisible();
+		});
+
+		it('should NOT render the notice for a non-admin member', async () => {
+			usersStore.isInstanceOwner = false;
+			usersStore.isAdmin = false;
+			// Even if a stats payload sneaks in (shouldn't happen — store guards 403),
+			// the view should still hide the notice for non-admins.
+			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('mcp-instance-capacity-notice')).not.toBeInTheDocument();
+		});
+
+		it('should NOT render the notice when atCapacity is false', async () => {
+			usersStore.isInstanceOwner = true;
+			mcpStore.instanceClientStats = { count: 1, limit: 5, atCapacity: false };
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('mcp-instance-capacity-notice')).not.toBeInTheDocument();
+		});
+
+		it('should NOT render the notice when stats have not been fetched', async () => {
+			usersStore.isInstanceOwner = true;
+			mcpStore.instanceClientStats = null;
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('mcp-instance-capacity-notice')).not.toBeInTheDocument();
+		});
+
+		it('should fetch instance stats on mount for an admin/owner', async () => {
+			usersStore.isInstanceOwner = true;
+
+			createComponent({ pinia });
+			await nextTick();
+
+			expect(mcpStore.getInstanceClientStats).toHaveBeenCalled();
+		});
+
+		it('should not fetch instance stats on mount for a regular member', async () => {
+			usersStore.isInstanceOwner = false;
+			usersStore.isAdmin = false;
+
+			createComponent({ pinia });
+			await nextTick();
+
+			expect(mcpStore.getInstanceClientStats).not.toHaveBeenCalled();
 		});
 	});
 });

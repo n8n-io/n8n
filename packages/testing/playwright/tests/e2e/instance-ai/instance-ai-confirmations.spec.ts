@@ -1,5 +1,3 @@
-import type { InstanceAiPermissions } from '@n8n/api-types';
-import type { APIRequestContext } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
@@ -8,19 +6,13 @@ test.use(instanceAiTestConfig);
 
 const APPROVE_EDIT_WORKFLOW_NAME = 'INS-171 Approval Edit Target';
 const DENY_EDIT_WORKFLOW_NAME = 'INS-171 Deny Edit Target';
+const RESTORE_ARCHIVED_WORKFLOW_NAME = 'INS-199 Archived Restore Target';
+const RESTORE_ARCHIVED_WORKFLOW_ID = 'ins-199-archived-restore-target';
 const INITIAL_STATUS_VALUE = 'before approval';
 const APPROVED_STATUS_VALUE = 'approved edit was applied';
 const DENIED_STATUS_VALUE = 'denied edit should not apply';
 
-async function configureInstanceAiPermissions(
-	request: APIRequestContext,
-	permissions: Partial<InstanceAiPermissions>,
-): Promise<void> {
-	const response = await request.put('/rest/instance-ai/settings', {
-		data: { permissions },
-	});
-	expect(response.ok(), await response.text()).toBe(true);
-}
+type WorkflowWithArchiveState = IWorkflowBase & { isArchived?: boolean };
 
 function seededEditableWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
@@ -81,9 +73,59 @@ test.describe(
 		test.describe.configure({ timeout: 180_000 });
 
 		test.beforeEach(async ({ api }) => {
-			await configureInstanceAiPermissions(api.request, {
+			await api.setInstanceAiPermissions({
 				updateWorkflow: 'require_approval',
 			});
+		});
+
+		test('should list archived workflows and restore one via Instance AI', async ({
+			api,
+			n8n,
+			n8nContainer,
+		}, testInfo) => {
+			test.skip(!n8nContainer, 'LLM replay requires the container proxy harness');
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Trace replay state is process-local and not stable in multi-main mode',
+			);
+
+			await api.setInstanceAiPermissions({
+				deleteWorkflow: 'always_allow',
+			});
+
+			try {
+				const workflow = await n8n.api.workflows.createWorkflow({
+					id: RESTORE_ARCHIVED_WORKFLOW_ID,
+					...seededEditableWorkflow(RESTORE_ARCHIVED_WORKFLOW_NAME),
+				});
+				expect(workflow.id).toBe(RESTORE_ARCHIVED_WORKFLOW_ID);
+				await n8n.api.workflows.archive(workflow.id);
+
+				await expect
+					.poll(async () => {
+						const archivedWorkflow = (await n8n.api.workflows.getWorkflow(
+							workflow.id,
+						)) as WorkflowWithArchiveState;
+						return archivedWorkflow.isArchived;
+					})
+					.toBe(true);
+
+				const prompt = `Restore the archived workflow named "${RESTORE_ARCHIVED_WORKFLOW_NAME}".`;
+
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(prompt);
+				await n8n.instanceAi.waitForResponseComplete();
+				await expect(
+					n8n.instanceAi.getAssistantMessageText('Restored the archived workflow.'),
+				).toBeVisible();
+				await expect(n8n.instanceAi.getToolCallsButton('2 tool calls')).toBeVisible();
+			} finally {
+				// Settings are merged, not replaced — reset deleteWorkflow so the
+				// override does not leak into later tests in this describe block.
+				await api.setInstanceAiPermissions({
+					deleteWorkflow: 'require_approval',
+				});
+			}
 		});
 
 		test('should show approval panel and approve workflow execution', async ({ n8n }) => {
@@ -141,9 +183,9 @@ test.describe(
 			);
 
 			await expect(
-				n8n.page.getByText(`Edit existing workflow "${APPROVE_EDIT_WORKFLOW_NAME}"`, {
-					exact: false,
-				}),
+				n8n.instanceAi.getConfirmationText(
+					`Edit existing workflow "${APPROVE_EDIT_WORKFLOW_NAME}"`,
+				),
 			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			const whileAwaitingApproval = await n8n.api.workflows.getWorkflow(workflow.id);
@@ -177,9 +219,7 @@ test.describe(
 			);
 
 			await expect(
-				n8n.page.getByText(`Edit existing workflow "${DENY_EDIT_WORKFLOW_NAME}"`, {
-					exact: false,
-				}),
+				n8n.instanceAi.getConfirmationText(`Edit existing workflow "${DENY_EDIT_WORKFLOW_NAME}"`),
 			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();

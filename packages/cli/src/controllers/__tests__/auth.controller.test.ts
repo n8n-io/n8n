@@ -153,6 +153,36 @@ describe('AuthController', () => {
 				body.password,
 			);
 			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail: body.emailOrLdapLoginId,
+				reason: 'SSO is enabled, please log in with SSO',
+			});
+		});
+
+		it('should emit login failed event on invalid password if SSO is enabled', async () => {
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'wrong-password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				body,
+			});
+			const res = mock<Response>();
+
+			emailAuthHandler.handleLogin.mockResolvedValue(undefined);
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			await expect(controller.login(req, res, body)).rejects.toThrowError(
+				new AuthError('SSO is enabled, please log in with SSO'),
+			);
+
+			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail: body.emailOrLdapLoginId,
+				reason: 'SSO is enabled, please log in with SSO',
+			});
 		});
 
 		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {

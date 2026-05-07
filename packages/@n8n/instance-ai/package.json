@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -16,6 +16,8 @@
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:capture-plans": "tsx evaluations/cli/capture-plans.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts"
+    "prompts:print": "tsx scripts/print-prompts.ts"
+>>>>>>> 9b3b29b5058da42ec736c14cc8af5726b2a64e4b
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
