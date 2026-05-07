@@ -55,6 +55,7 @@ export function getToolId(toolName: string, args?: Record<string, unknown>): str
  */
 const ACTION_PHRASES: Record<string, string> = {
 	'workflows.delete': 'archive workflow',
+	'workflows.unarchive': 'restore workflow',
 	'workflows.publish': 'publish workflow',
 	'workflows.unpublish': 'unpublish workflow',
 	'workflows.restore-version': 'restore workflow',
@@ -74,6 +75,7 @@ const ACTION_PHRASES: Record<string, string> = {
 	'workspace.delete-folder': 'delete folder',
 	'workspace.move-workflow-to-folder': 'move workflow',
 	'submit-workflow': 'submit workflow',
+	'build-workflow-with-agent': 'edit workflow',
 	'research.fetch-url': 'fetch URL',
 	'filesystem.read': 'read file',
 };

@@ -86,6 +86,9 @@ const builderAgents = computed(() => collectActiveBuilderAgents(store.messages))
 // approval-wrapped group (generic approvals + domain access). Other types
 // (questions, plan review, text input, setup, gateway resource) render
 // inline in the chat flow and don't trigger the floating panel.
+// Must stay aligned with `isApprovalWrapped` in InstanceAiConfirmationPanel.vue —
+// otherwise an explicit `inputType: 'approval'` would be filtered out of both
+// inline and floating renders, leaving the run with no approval UI.
 const hasFloatingConfirmation = computed(() =>
 	store.pendingConfirmations.some((item) => {
 		const conf = item.toolCall.confirmation;
@@ -93,7 +96,7 @@ const hasFloatingConfirmation = computed(() =>
 		return (
 			!conf.credentialRequests?.length &&
 			!conf.setupRequests?.length &&
-			!conf.inputType &&
+			(!conf.inputType || conf.inputType === 'approval') &&
 			!conf.questions?.length
 		);
 	}),

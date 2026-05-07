@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import { getToolIcon, useToolLabel } from '../toolLabels';
+import { getToolActionPhrase, getToolIcon, useToolLabel } from '../toolLabels';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
 vi.mock('@n8n/i18n', () => ({
@@ -123,5 +123,27 @@ describe('useToolLabel', () => {
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
 		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
+	});
+});
+
+describe('getToolActionPhrase', () => {
+	// Backstop for the "Allow AI Assistant to {action}?" prompt — every confirmable
+	// tool that routes through the generic approval card needs an imperative phrase
+	// here, otherwise the prompt falls back to a gerund display label
+	// (e.g. "Building workflow") and reads ungrammatically.
+	test.each([
+		['build-workflow-with-agent', undefined, 'edit workflow'],
+		['workflows', { action: 'unarchive' }, 'restore workflow'],
+		['workflows', { action: 'delete' }, 'archive workflow'],
+		['executions', { action: 'run' }, 'execute workflow'],
+		['submit-workflow', undefined, 'submit workflow'],
+	])('returns imperative phrase for %s/%o', (toolName, args, expected) => {
+		expect(getToolActionPhrase(toolName, args as Record<string, unknown> | undefined)).toBe(
+			expected,
+		);
+	});
+
+	test('returns undefined for tools without a mapping', () => {
+		expect(getToolActionPhrase('nodes', { action: 'list' })).toBeUndefined();
 	});
 });

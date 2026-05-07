@@ -379,6 +379,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		);
 		store.submitFeedback('resp-1', { rating: 'up' });
 		store.resolveConfirmation('request-1', 'approved');
+		store.addAlwaysAllowKey('workflows', { action: 'list' });
 
 		expect(store.currentThreadId).toBe(seededThreadId);
 		expect(store.messages).toHaveLength(1);
@@ -386,6 +387,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.debugEvents).toHaveLength(1);
 		expect(store.feedbackByResponseId).toEqual({ 'resp-1': { rating: 'up' } });
 		expect(store.resolvedConfirmationIds.size).toBe(1);
+		expect(store.sessionAlwaysAllowKeys.size).toBe(1);
 
 		store.switchThread('thread-2');
 
@@ -396,6 +398,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.debugEvents).toEqual([]);
 		expect(store.feedbackByResponseId).toEqual({});
 		expect(store.resolvedConfirmationIds.size).toBe(0);
+		expect(store.sessionAlwaysAllowKeys.size).toBe(0);
 
 		resolveFetchThreadMessages?.({
 			threadId: 'thread-2',
@@ -944,6 +947,27 @@ describe('useInstanceAiStore - feedback integration', () => {
 		});
 
 		expect(Object.keys(store.feedbackByResponseId)).toHaveLength(0);
+	});
+
+	test('sessionAlwaysAllowKeys is cleared when creating a new thread', async () => {
+		store.addAlwaysAllowKey('workflows', { action: 'list' });
+		expect(store.sessionAlwaysAllowKeys.size).toBe(1);
+
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+
+		expect(store.sessionAlwaysAllowKeys.size).toBe(0);
+	});
+
+	test('sessionAlwaysAllowKeys is cleared when clearing the current thread', () => {
+		store.addAlwaysAllowKey('workflows', { action: 'list' });
+		expect(store.sessionAlwaysAllowKeys.size).toBe(1);
+
+		store.clearCurrentThread();
+
+		expect(store.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
 	// -----------------------------------------------------------------
