@@ -243,6 +243,28 @@ describe('FrontendService', () => {
 
 			expect(settings.logStreaming).toEqual({ managedByEnv: false });
 		});
+
+		it('should surface communityNodesManagedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(true);
+		});
+
+		it('should default communityNodesManagedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(false);
+		});
 	});
 
 	describe('getPublicSettings', () => {

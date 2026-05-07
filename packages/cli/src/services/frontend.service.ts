@@ -214,6 +214,7 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			evaluationConcurrencyLimit: this.globalConfig.executions.concurrency.evaluationLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -304,6 +305,8 @@ export class FrontendService {
 			// @TODO: Move to community-packages module
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
+			communityNodesManagedByEnv:
+				this.globalConfig.instanceSettingsLoader.communityPackagesManagedByEnv,
 
 			deployment: {
 				type: this.globalConfig.deployment.type,
