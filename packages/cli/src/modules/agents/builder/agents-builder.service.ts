@@ -168,7 +168,12 @@ export class AgentsBuilderService {
 			builderModel: BUILDER_MODEL,
 		});
 
-		const tools = this.agentsBuilderToolsService.getTools(agentId, projectId, credentialProvider);
+		const tools = this.agentsBuilderToolsService.getTools(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+		);
 
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 

@@ -202,10 +202,23 @@ Inputs: optional \`provider\`, optional \`model\`.
   \`"anthropic/claude-sonnet-4.6"\`.
 
 On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
-\`model = "{provider}/{model}"\` and \`credential = credentialName\`.
+\`model = "{provider}/{model}"\` and \`credential = credentialName\`. The
+returned \`model\` is the canonical id resolved against the provider's live
+list, so use it as-is — do not transform or "correct" it.
 
-On \`ok: false\`: use ask_llm only when the user needs to choose/configure a
-credential or model. Do not guess credential names from list_credentials.
+On \`ok: false\`: your NEXT action is another tool call — never reply with
+plain text asking the user to clarify. Do not guess credential names from
+list_credentials. Pick the action by reason:
+- \`missing_credential\` / \`ambiguous_credential\` / \`ambiguous_provider_or_credential\` →
+  call ask_llm (the picker handles credential selection).
+- \`unknown_model\` → the response includes \`availableModels: [{ name, value }]\`
+  (or a narrowed candidate list when the user's hint matched several). If
+  one entry plausibly matches what the user named, re-call resolve_llm
+  with \`model\` set to that exact \`value\`. Otherwise call ask_llm.
+- \`model_lookup_failed\` (the live list could not be fetched, e.g. invalid
+  credentials) → call ask_llm.
+- \`unsupported_provider\` → call ask_llm. Do not list the supported
+  providers back to the user; the picker UI handles that.
 
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.

@@ -283,13 +283,29 @@ export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
 export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
 
-export const gatewayConfirmationRequiredPayloadSchema = z.object({
+export const instanceGatewayResourceDecisionSchema = z.enum([
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+]);
+export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
+
+export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
 	options: z.array(z.string()),
 });
+
+export type GatewayConfirmationRequiredWirePayload = z.infer<
+	typeof gatewayConfirmationRequiredWirePayloadSchema
+>;
+
+export const gatewayConfirmationRequiredPayloadSchema =
+	gatewayConfirmationRequiredWirePayloadSchema.extend({
+		options: z.array(instanceGatewayResourceDecisionSchema),
+	});
 
 export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema

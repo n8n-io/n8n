@@ -41,6 +41,11 @@ const recentMessageSchema = z.object({
 	text: z.string(),
 });
 
+const plannerBriefingContextSchema = z.object({
+	collectedAnswers: z.array(z.string()),
+	discoveredResources: z.array(z.string()),
+});
+
 export const delegateHandoffInputSchema = z.object({
 	role: z.string(),
 	instructions: z.string(),
@@ -101,6 +106,7 @@ export const plannerHandoffInputSchema = z.object({
 	recentMessages: z.array(recentMessageSchema),
 	guidance: z.string().optional(),
 	timeZone: z.string().optional(),
+	briefingContext: plannerBriefingContextSchema.optional(),
 });
 export type PlannerHandoffInput = z.infer<typeof plannerHandoffInputSchema>;
 
