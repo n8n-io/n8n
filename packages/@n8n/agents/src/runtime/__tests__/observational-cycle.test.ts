@@ -292,6 +292,18 @@ describe('runObservationalCycle', () => {
 		const call = mockGenerateText.mock.calls[0][0];
 		expect(call.system).toBe(DEFAULT_OBSERVER_PROMPT);
 		expect(call.system).toContain('category');
+		expect(call.system).toContain('Do not record assistant-only uncertainty');
+		expect(call.system).toContain(
+			'Record a follow-up or active item only when the user asks for it',
+		);
+		expect(call.system).toContain('User messages are authoritative');
+		expect(call.system).toContain('A normal assistant reply is not verification evidence');
+		expect(call.system).toContain('Do not record assistant-created checklists');
+		expect(call.system).toContain('Assistant statements like "we should check X"');
+		expect(call.system).toContain('which file/table handles Y?');
+		expect(call.system).toContain('Do not record assistant self-assessments');
+		expect(call.system).toContain('memory drawer shows it');
+		expect(call.system).toContain('the test passed');
 		expect(call.system).toContain('Do not emit temporal-gap rows');
 		expect(call.prompt).toContain('Computed temporal gap:');
 		expect(call.prompt).toContain('User returned after 2h of inactivity.');
@@ -317,6 +329,19 @@ describe('runObservationalCycle', () => {
 		expect(compactorCall.system).toBe(DEFAULT_COMPACTOR_PROMPT);
 		expect(compactorCall.system).toContain(
 			'Do not delete useful thread context merely because it is old',
+		);
+		expect(compactorCall.system).toContain('Preserve the template structure');
+		expect(compactorCall.system).toContain(
+			'Remove claims that this memory is available in other sessions, new threads, or cross-thread profiles',
+		);
+		expect(compactorCall.system).toContain('Do not write assistant self-assessments');
+		expect(compactorCall.system).toContain('memory worked');
+		expect(compactorCall.system).toContain('A queued row based only on an assistant claim');
+		expect(compactorCall.system).toContain('Prune assistant-originated debugging scaffolding');
+		expect(compactorCall.system).toContain('memory drawer shows it');
+		expect(compactorCall.system).toContain('Open follow-ups must be user-requested');
+		expect(compactorCall.system).toContain(
+			'Remove existing follow-ups that came only from assistant questions',
 		);
 		expect(compactorCall.prompt).toContain('### continuity / gap');
 		expect(compactorCall.prompt).toContain('duration=2h');

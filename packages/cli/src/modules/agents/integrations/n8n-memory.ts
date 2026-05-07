@@ -134,11 +134,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			entities.reverse();
 		}
 
-		return entities.map((e) => {
-			const msg = e.content as AgentMessage & { id?: string };
-			msg.id = e.id;
-			return msg as AgentDbMessage;
-		});
+		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
 	async saveMessages(args: {
@@ -295,11 +291,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			where,
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
-		return entities.map((e) => {
-			const msg = e.content as AgentMessage & { id?: string };
-			msg.id = e.id;
-			return msg as AgentDbMessage;
-		});
+		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
 	async deleteObservations(ids: string[]): Promise<void> {
@@ -391,6 +383,13 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────
+
+	private toAgentDbMessage(entity: AgentMessageEntity): AgentDbMessage {
+		const msg = entity.content as AgentMessage & { id?: string; createdAt?: Date };
+		msg.id = entity.id;
+		msg.createdAt = entity.createdAt;
+		return msg as AgentDbMessage;
+	}
 
 	private toObservation(entity: AgentObservationEntity): Observation {
 		return {

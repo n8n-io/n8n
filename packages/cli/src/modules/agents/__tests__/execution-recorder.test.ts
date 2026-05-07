@@ -110,6 +110,7 @@ describe('ExecutionRecorder', () => {
 				},
 			]);
 			expect(record.timeline.some((e) => e.type === 'working-memory')).toBe(false);
+			expect(record.timeline.map((e) => e.type)).toEqual(['text', 'tool-call']);
 		});
 
 		it('does not derive execution working memory from update_working_memory calls', () => {

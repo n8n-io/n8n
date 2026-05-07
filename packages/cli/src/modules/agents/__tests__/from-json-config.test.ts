@@ -53,11 +53,44 @@ describe('buildFromJson()', () => {
 						scope: 'resource' | 'thread';
 						instruction?: string;
 					};
+					observationalMemory?: {
+						trigger?:
+							| { type: 'per-turn' }
+							| { type: 'idle-timer'; idleMs: number; gapThresholdMs?: number };
+						compactionThreshold?: number;
+						gapThresholdMs?: number;
+						lockTtlMs?: number;
+						observerPrompt?: string;
+						compactorPrompt?: string;
+					};
 				};
 			}
 		).memoryConfig;
 
 	const makeMockMemoryFactory = () => jest.fn();
+
+	const makeMockMemoryBackend = () => ({
+		getThread: jest.fn(),
+		saveThread: jest.fn(),
+		deleteThread: jest.fn(),
+		getMessages: jest.fn().mockResolvedValue([]),
+		saveMessages: jest.fn(),
+		deleteMessages: jest.fn(),
+		getWorkingMemory: jest.fn().mockResolvedValue(null),
+		saveWorkingMemory: jest.fn(),
+		appendObservations: jest.fn(),
+		getObservations: jest.fn(),
+		getMessagesForScope: jest.fn(),
+		deleteObservations: jest.fn(),
+		getCursor: jest.fn(),
+		setCursor: jest.fn(),
+		acquireObservationLock: jest.fn(),
+		releaseObservationLock: jest.fn(),
+		describe: jest
+			.fn()
+			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
+		close: jest.fn(),
+	});
 
 	it('sets name, model, and instructions', async () => {
 		const agent = await buildFromJson(
@@ -415,21 +448,20 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures memory when enabled', async () => {
-		const mockMemory = {
-			getThread: jest.fn(),
-			saveThread: jest.fn(),
-			deleteThread: jest.fn(),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn(),
-			deleteMessages: jest.fn(),
-			describe: jest
-				.fn()
-				.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
-			close: jest.fn(),
-		};
-
+		const mockMemory = makeMockMemoryBackend();
 		const config = makeConfig({
-			memory: { enabled: true, storage: 'n8n', lastMessages: 15 },
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				lastMessages: 15,
+				observationalMemory: {
+					trigger: { type: 'idle-timer', idleMs: 10_000 },
+					compactionThreshold: 7,
+					gapThresholdMs: 30 * 60_000,
+					observerPrompt: 'Observe.',
+					compactorPrompt: 'Compact.',
+				},
+			},
 		});
 
 		const memoryFactory = jest.fn().mockReturnValue(mockMemory);
@@ -451,10 +483,15 @@ describe('buildFromJson()', () => {
 			structured: false,
 			scope: 'thread',
 		});
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Thread memory');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Current goal/task');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Key active items');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Resolved or superseded');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('# Thread memory');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Current goal/task');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Key active items');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Continuity notes');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Resolved or superseded');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).not.toContain('- Current goal/task:');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
+			'Treat working memory as internal context',
+		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
 			'only to this same session/thread',
 		);
@@ -462,11 +499,92 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('new thread');
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('cross-thread profile');
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
-			'Treat working memory as internal context',
+			'instead of dumping the document',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('Use it silently');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
+			'current-state snapshot',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain('Keep it concise');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
+			'Do not delete useful thread context merely because it is old',
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
 			'update_working_memory',
 		);
+		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
+			trigger: { type: 'idle-timer', idleMs: 10_000 },
+			compactionThreshold: 7,
+			gapThresholdMs: 30 * 60_000,
+			observerPrompt: 'Observe.',
+			compactorPrompt: 'Compact.',
+		});
+	});
+
+	it('applies observational memory defaults when memory is enabled', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
+			trigger: { type: 'per-turn' },
+			compactionThreshold: 5,
+			gapThresholdMs: 60 * 60_000,
+		});
+	});
+
+	it('enables observational memory by default when memory is enabled', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(agent.snapshot.hasObservationalMemory).toBe(true);
+		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
+			trigger: { type: 'per-turn' },
+			compactionThreshold: 5,
+			lockTtlMs: 30_000,
+		});
+	});
+
+	it('can disable observational memory while keeping working memory', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n', observationalMemory: { enabled: false } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(agent.snapshot.hasMemory).toBe(true);
+		expect(agent.snapshot.hasObservationalMemory).toBe(false);
+		expect(getMemoryConfig(agent)?.workingMemory).toBeDefined();
+		expect(getMemoryConfig(agent)?.observationalMemory).toBeUndefined();
 	});
 
 	it('skips memory when memory.enabled is false', async () => {

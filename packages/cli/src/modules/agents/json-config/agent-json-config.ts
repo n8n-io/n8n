@@ -14,13 +14,32 @@ const SemanticRecallSchema = z.object({
 	embedder: z.string().optional(),
 });
 
-// TODO: Create a list of all supported memory storages, define connection params for each storage
+const ObservationalMemoryTriggerSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('per-turn') }),
+	z.object({
+		type: z.literal('idle-timer'),
+		idleMs: z.number().int().min(0),
+		gapThresholdMs: z.number().int().min(0).optional(),
+	}),
+]);
+
+const ObservationalMemoryConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	trigger: ObservationalMemoryTriggerSchema.optional(),
+	compactionThreshold: z.number().int().min(1).optional(),
+	gapThresholdMs: z.number().int().min(0).optional(),
+	lockTtlMs: z.number().int().min(0).optional(),
+	sync: z.boolean().optional(),
+	observerPrompt: z.string().optional(),
+	compactorPrompt: z.string().optional(),
+});
+
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
-	storage: z.enum(['n8n', 'sqlite', 'postgres']),
-	connection: z.record(z.unknown()).optional(),
+	storage: z.enum(['n8n']),
 	lastMessages: z.number().int().min(1).max(200).optional(),
 	semanticRecall: SemanticRecallSchema.optional(),
+	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 });
 
 const ThinkingConfigSchema = z.object({

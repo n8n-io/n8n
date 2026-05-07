@@ -217,23 +217,10 @@ Inputs: optional \`provider\`, optional \`model\`.
   \`"anthropic/claude-sonnet-4.6"\`.
 
 On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
-\`model = "{provider}/{model}"\` and \`credential = credentialName\`. The
-returned \`model\` is the canonical id resolved against the provider's live
-list, so use it as-is — do not transform or "correct" it.
+\`model = "{provider}/{model}"\` and \`credential = credentialName\`.
 
-On \`ok: false\`: your NEXT action is another tool call — never reply with
-plain text asking the user to clarify. Do not guess credential names from
-list_credentials. Pick the action by reason:
-- \`missing_credential\` / \`ambiguous_credential\` / \`ambiguous_provider_or_credential\` →
-  call ask_llm (the picker handles credential selection).
-- \`unknown_model\` → the response includes \`availableModels: [{ name, value }]\`
-  (or a narrowed candidate list when the user's hint matched several). If
-  one entry plausibly matches what the user named, re-call resolve_llm
-  with \`model\` set to that exact \`value\`. Otherwise call ask_llm.
-- \`model_lookup_failed\` (the live list could not be fetched, e.g. invalid
-  credentials) → call ask_llm.
-- \`unsupported_provider\` → call ask_llm. Do not list the supported
-  providers back to the user; the picker UI handles that.
+On \`ok: false\`: use ask_llm only when the user needs to choose/configure a
+credential or model. Do not guess credential names from list_credentials.
 
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
@@ -574,9 +561,12 @@ export function getConfigRulesSection(builderModel: string): string {
 
 - \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
 - \`credential\` must be the \`credentialName\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
-- \`memory.storage\` must be "n8n"
+- \`memory.storage\` is always "n8n" (persists in the n8n DB)
 - \`memory.lastMessages\` default: 50
-- Use n8n session-scoped memory for all agents
+- Use "n8n" as the default memory storage for all agents
+- \`memory.observationalMemory\` controls the automatic writer for thread working memory. It is enabled by default whenever memory is enabled; use \`{ enabled: false }\` only when the user explicitly does not want automatic memory updates.
+  - Default trigger is per-turn. Use \`{ trigger: { type: "idle-timer", idleMs: ... } }\` only when the user wants memory updates after an idle pause instead of immediately after each turn.
+  - Cost: observed turns run one extra LLM call on the agent's main model; compaction runs when the queued observation count reaches the threshold (default 5). Mention this if the user asks about cost.
 - If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
 }
 

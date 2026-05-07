@@ -214,15 +214,18 @@ export class AgentMessageList {
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
 
-		if (this.workingMemory) {
+		const wmState = this.workingMemory?.state?.trim();
+		if (this.workingMemory && wmState) {
 			const wmInstruction = buildWorkingMemoryInstruction(
 				this.workingMemory.template,
 				this.workingMemory.structured,
 				this.workingMemory.instruction,
 			);
-			const wmState = this.workingMemory.state ?? this.workingMemory.template;
 			systemPrompt +=
-				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```\n';
+				wmInstruction +
+				'\n\nThread working memory (private, read-only):\n```\n' +
+				wmState +
+				'\n```\n';
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions

@@ -63,6 +63,7 @@ export interface AgentExecution {
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+	workingMemory: string | null;
 }
 
 export interface ThreadsPage {

@@ -8,8 +8,12 @@ type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
  */
 export const WORKING_MEMORY_DEFAULT_INSTRUCTION = [
 	'You have thread working memory that is maintained automatically by an out-of-band observer.',
-	'Your current working memory state is shown below. Use it as context for this conversation.',
-	'Do not try to edit working memory directly. The observer updates it after turns when durable thread state changes.',
+	'Thread working memory applies only to this same session/thread.',
+	'Do not claim it is available in a different session, new thread, or cross-thread profile unless the product explicitly provides that context.',
+	'When a saved memory document is provided, use it silently as private read-only context for this conversation.',
+	'Treat working memory as internal context. Do not reveal, quote, append, or reproduce the raw working-memory document in user-visible replies.',
+	'If the user asks what you remember, answer conversationally from relevant memory instead of dumping the document.',
+	'Do not try to edit, summarize, refresh, or maintain working memory directly. The observer updates it after turns when durable thread state changes.',
 ].join('\n');
 
 /**
@@ -22,28 +26,16 @@ export const WORKING_MEMORY_DEFAULT_INSTRUCTION = [
  *   {@link WORKING_MEMORY_DEFAULT_INSTRUCTION}.
  */
 export function buildWorkingMemoryInstruction(
-	template: string,
+	_template: string,
 	structured: boolean,
 	instruction?: string,
 ): string {
-	const format = structured
-		? 'The working memory document is valid JSON matching this schema'
-		: 'The working memory document follows this template';
-
 	const body = instruction ?? WORKING_MEMORY_DEFAULT_INSTRUCTION;
+	const format = structured
+		? 'The saved working memory document may be structured JSON.'
+		: 'The saved working memory document may be markdown or freeform text.';
 
-	return [
-		'',
-		'## Working Memory',
-		'',
-		body,
-		`${format}.`,
-		'',
-		'Current template:',
-		'```',
-		template,
-		'```',
-	].join('\n');
+	return ['', '## Working Memory', '', body, format].join('\n');
 }
 
 /**

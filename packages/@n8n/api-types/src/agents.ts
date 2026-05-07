@@ -175,6 +175,18 @@ export interface AgentJsonConfig {
 			messageRange?: { before: number; after: number };
 			embedder?: string;
 		};
+		observationalMemory?: {
+			enabled?: boolean;
+			trigger?:
+				| { type: 'per-turn' }
+				| { type: 'idle-timer'; idleMs: number; gapThresholdMs?: number };
+			compactionThreshold?: number;
+			gapThresholdMs?: number;
+			lockTtlMs?: number;
+			sync?: boolean;
+			observerPrompt?: string;
+			compactorPrompt?: string;
+		};
 	};
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];

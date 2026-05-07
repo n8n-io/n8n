@@ -33,14 +33,24 @@ export interface ToolExecutor {
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
 const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
-- User facts:
-- User preferences/instructions:
-- Current goal/task:
-- Current state:
-- Key active items:
-- Decisions made:
-- Open follow-ups:
-- Resolved or superseded:`;
+
+## User facts
+
+## User preferences/instructions
+
+## Current goal/task
+
+## Current state
+
+## Key active items
+
+## Decisions made
+
+## Open follow-ups
+
+## Continuity notes
+
+## Resolved or superseded`;
 
 const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
 	'Thread working memory is maintained automatically after turns by an out-of-band observer.',
@@ -78,19 +88,8 @@ export async function buildFromJson(
 ): Promise<Agent> {
 	const agent = new Agent(config.name);
 
-	// Derive the provider prefix for credential field remapping.
-	const slashIdx = config.model.indexOf('/');
-	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
-
-	// Resolve credentials upfront and embed them directly in the model config
-	// object so createModel() receives the full set of fields it needs.
-	if (config.credential) {
-		const raw = await options.credentialProvider.resolve(config.credential);
-		const mapped = mapCredentialForProvider(providerPrefix, raw);
-		agent.model({ id: config.model, ...mapped } as ModelConfig);
-	} else {
-		agent.model(config.model);
-	}
+	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
+	agent.model(resolvedModelConfig);
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
 	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
@@ -281,6 +280,9 @@ async function resolveToolRef(
 	}
 }
 
+const DEFAULT_OBSERVATIONAL_COMPACTION_THRESHOLD = 5;
+const DEFAULT_OBSERVATIONAL_GAP_THRESHOLD_MS = 60 * 60_000;
+
 async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
@@ -303,7 +305,51 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
+	if (memoryConfig.observationalMemory?.enabled !== false) {
+		const observationalMemory = memoryConfig.observationalMemory;
+		const gapThresholdMs =
+			observationalMemory?.gapThresholdMs ??
+			(observationalMemory?.trigger?.type === 'idle-timer'
+				? observationalMemory.trigger.gapThresholdMs
+				: undefined) ??
+			DEFAULT_OBSERVATIONAL_GAP_THRESHOLD_MS;
+
+		memory.observationalMemory({
+			...(observationalMemory?.trigger !== undefined && {
+				trigger: observationalMemory.trigger,
+			}),
+			compactionThreshold:
+				observationalMemory?.compactionThreshold ?? DEFAULT_OBSERVATIONAL_COMPACTION_THRESHOLD,
+			gapThresholdMs,
+			...(observationalMemory?.lockTtlMs !== undefined && {
+				lockTtlMs: observationalMemory.lockTtlMs,
+			}),
+			...(observationalMemory?.sync !== undefined && {
+				sync: observationalMemory.sync,
+			}),
+			...(observationalMemory?.observerPrompt !== undefined && {
+				observerPrompt: observationalMemory.observerPrompt,
+			}),
+			...(observationalMemory?.compactorPrompt !== undefined && {
+				compactorPrompt: observationalMemory.compactorPrompt,
+			}),
+		});
+	}
+
 	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
+}
+
+async function resolveModelConfig(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	if (!config.credential) return config.model;
+
+	const slashIdx = config.model.indexOf('/');
+	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(providerPrefix, raw);
+	return { id: config.model, ...mapped } as ModelConfig;
 }
