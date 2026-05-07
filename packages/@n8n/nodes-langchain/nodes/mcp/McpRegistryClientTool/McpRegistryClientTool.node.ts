@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { McpToolIncludeMode } from '../McpClientTool/types';
@@ -190,10 +191,16 @@ function resolveConfig(
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
 ): McpAuthenticationOption {
-	const credentials = ctx.getNode().credentials ?? {};
+	const node = ctx.getNode();
+	const credentials = node.credentials ?? {};
 	const credentialType = Object.keys(credentials).find(
 		// for now we support only OAuth2
 		(credentialType) => isMcpOAuth2Authentication(credentialType),
 	);
-	return credentialType ?? 'mcpOAuth2Api';
+
+	if (!credentialType) {
+		throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+	}
+
+	return credentialType;
 }
