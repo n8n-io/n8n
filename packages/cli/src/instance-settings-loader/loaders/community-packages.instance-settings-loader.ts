@@ -254,30 +254,46 @@ export class CommunityPackagesInstanceSettingsLoader {
 		const items = result.data;
 		const seenNames = new Set<string>();
 
-		items.forEach((item, index) => {
+		const normalized: EnvPackage[] = items.map((item, index) => {
+			let parsed;
 			try {
-				this.communityPackagesService.parseNpmPackageName(item.name);
+				parsed = this.communityPackagesService.parseNpmPackageName(item.name);
 			} catch (error) {
 				throw new Error(
 					`N8N_COMMUNITY_PACKAGES has an invalid package name "${item.name}" at index ${index}: ${(error as Error).message}`,
 				);
 			}
 
-			if (item.version !== undefined && !isValidVersionSpecifier(item.version)) {
+			if (
+				parsed.version !== undefined &&
+				item.version !== undefined &&
+				parsed.version !== item.version
+			) {
 				throw new Error(
-					`N8N_COMMUNITY_PACKAGES has an invalid version "${item.version}" for package "${item.name}" at index ${index}`,
+					`N8N_COMMUNITY_PACKAGES has conflicting versions for "${parsed.packageName}" at index ${index}: "${parsed.version}" in name vs "${item.version}" in version field`,
 				);
 			}
 
-			if (seenNames.has(item.name)) {
+			const name = parsed.packageName;
+			const version = item.version ?? parsed.version;
+
+			if (version !== undefined && !isValidVersionSpecifier(version)) {
 				throw new Error(
-					`N8N_COMMUNITY_PACKAGES has duplicate package name "${item.name}" at index ${index}`,
+					`N8N_COMMUNITY_PACKAGES has an invalid version "${version}" for package "${name}" at index ${index}`,
 				);
 			}
-			seenNames.add(item.name);
+
+			if (seenNames.has(name)) {
+				throw new Error(
+					`N8N_COMMUNITY_PACKAGES has duplicate package name "${name}" at index ${index}`,
+				);
+			}
+			seenNames.add(name);
+
+			return { name, version, checksum: item.checksum };
 		});
 
-		return items;
+		return normalized;
 	}
 }
 

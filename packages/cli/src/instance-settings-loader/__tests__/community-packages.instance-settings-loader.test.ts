@@ -165,6 +165,77 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 
 			await expectBootstrapError(loader, /invalid package name/);
 		});
+
+		it('throws when name suffix and version field disagree', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementation((name?: string) => ({
+				packageName: 'n8n-nodes-foo',
+				scope: undefined,
+				version: '1.0.0',
+				rawString: name ?? '',
+			}));
+			const loader = createLoader({
+				communityPackages: JSON.stringify([{ name: 'n8n-nodes-foo@1.0.0', version: '2.0.0' }]),
+			});
+
+			await expectBootstrapError(loader, /conflicting versions/);
+		});
+	});
+
+	describe('name normalization', () => {
+		it('reconciles using the parsed package name when name includes a version suffix', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementation((name?: string) => {
+				const raw = name ?? '';
+				const at = raw.lastIndexOf('@');
+				const hasVersion = at > 0;
+				return {
+					packageName: hasVersion ? raw.slice(0, at) : raw,
+					scope: undefined,
+					version: hasVersion ? raw.slice(at + 1) : undefined,
+					rawString: raw,
+				};
+			});
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([
+				installedPackage('n8n-nodes-foo', '1.0.0'),
+			]);
+
+			const loader = createLoader({
+				communityPackages: JSON.stringify([{ name: 'n8n-nodes-foo@1.0.0' }]),
+			});
+
+			await expect(loader.run()).resolves.toBe('skipped');
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
+		});
+
+		it('updates when name suffix version differs from installed version', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementation((name?: string) => {
+				const raw = name ?? '';
+				const at = raw.lastIndexOf('@');
+				const hasVersion = at > 0;
+				return {
+					packageName: hasVersion ? raw.slice(0, at) : raw,
+					scope: undefined,
+					version: hasVersion ? raw.slice(at + 1) : undefined,
+					rawString: raw,
+				};
+			});
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([
+				installedPackage('n8n-nodes-foo', '1.0.0'),
+			]);
+
+			const loader = createLoader({
+				communityPackages: JSON.stringify([{ name: 'n8n-nodes-foo@2.0.0' }]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
+				'n8n-nodes-foo',
+				expect.objectContaining({ packageName: 'n8n-nodes-foo' }),
+				'2.0.0',
+				undefined,
+			);
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('reconcile', () => {
