@@ -99,7 +99,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
 			tokensUsageParser?: TokensUsageParser;
-			errorDescriptionMapper?: (error: NodeError) => string | null | undefined;
+			errorDescriptionMapper?: (error: NodeError) => string;
 		},
 	) {
 		super();
