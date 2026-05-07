@@ -65,7 +65,7 @@ export const Default: Story = {
 		variant: 'solid',
 		size: 'medium',
 		loading: false,
-		default: 'Button (Smoke test)',
+		default: 'Button',
 	},
 };
 
