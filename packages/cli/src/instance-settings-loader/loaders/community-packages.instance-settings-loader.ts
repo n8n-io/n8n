@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -42,6 +43,7 @@ export class CommunityPackagesInstanceSettingsLoader {
 		private readonly communityPackagesConfig: CommunityPackagesConfig,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
+		private readonly workflowRepository: WorkflowRepository,
 		private logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
@@ -121,10 +123,17 @@ export class CommunityPackagesInstanceSettingsLoader {
 		for (const pkg of toRemove) {
 			const { packageName } = pkg;
 			const dependentNodeCount = pkg.installedNodes?.length ?? 0;
+			const affectedWorkflows = await this.findWorkflowsReferencingPackage(pkg);
 			try {
 				await this.communityPackagesService.removePackage(packageName, pkg);
 				this.logger.warn(
 					`Removed community package '${packageName}' (had ${dependentNodeCount} registered node type(s)) — not declared in N8N_COMMUNITY_PACKAGES`,
+					{
+						packageName,
+						installedVersion: pkg.installedVersion,
+						workflowIds: affectedWorkflows.map((w) => w.id),
+						activeWorkflowIds: affectedWorkflows.filter((w) => w.active).map((w) => w.id),
+					},
 				);
 				changed = true;
 			} catch (error) {
@@ -135,6 +144,23 @@ export class CommunityPackagesInstanceSettingsLoader {
 		}
 
 		return changed ? 'created' : 'skipped';
+	}
+
+	private async findWorkflowsReferencingPackage(
+		pkg: InstalledPackages,
+	): Promise<Array<{ id: string; active: boolean }>> {
+		const nodeTypes = pkg.installedNodes?.map((node) => node.type) ?? [];
+		if (nodeTypes.length === 0) return [];
+
+		try {
+			return await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+		} catch (error) {
+			this.logger.warn(
+				`Failed to check workflows referencing community package '${pkg.packageName}' before removal`,
+				{ packageName: pkg.packageName, error: ensureError(error) },
+			);
+			return [];
+		}
 	}
 
 	private buildReconciliationPlan(resolved: ResolvedPackage[], installed: InstalledPackages[]) {

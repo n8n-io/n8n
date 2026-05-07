@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
@@ -27,6 +28,7 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	const createLoader = (
 		configOverrides: Partial<InstanceSettingsLoaderConfig> = {},
@@ -49,6 +51,7 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 			communityPackagesConfig,
 			communityPackagesService,
 			communityNodeTypesService,
+			workflowRepository,
 			logger,
 		);
 	};
@@ -66,6 +69,7 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 		communityNodeTypesService.findVetted.mockResolvedValue(
 			undefined as unknown as Awaited<ReturnType<CommunityNodeTypesService['findVetted']>>,
 		);
+		workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
 	});
 
 	describe('gating', () => {
@@ -254,6 +258,99 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 
 			expect(communityPackagesService.removePackage).toHaveBeenCalledTimes(2);
 			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('n8n-nodes-stuck'));
+		});
+	});
+
+	describe('toRemove with workflow impact', () => {
+		const installedPackageWithNodes = (
+			packageName: string,
+			installedVersion: string,
+			nodeTypes: string[],
+		) =>
+			({
+				packageName,
+				installedVersion,
+				installedNodes: nodeTypes.map((type) => ({ type })),
+			}) as unknown as InstalledPackages;
+
+		it('includes affected workflow ids in the removal warning', async () => {
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([
+				installedPackageWithNodes('n8n-nodes-extra', '1.2.3', ['extraNode']),
+			]);
+			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([
+				{ id: 'wf-1', name: 'Workflow 1', active: true, activeVersionId: 'v1' },
+				{ id: 'wf-2', name: 'Workflow 2', active: false, activeVersionId: 'v2' },
+			]);
+
+			const loader = createLoader({ communityPackages: JSON.stringify([]) });
+
+			await expect(loader.run()).resolves.toBe('created');
+
+			expect(workflowRepository.findWorkflowsWithNodeType).toHaveBeenCalledWith(['extraNode']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				"Removed community package 'n8n-nodes-extra' (had 1 registered node type(s)) — not declared in N8N_COMMUNITY_PACKAGES",
+				{
+					packageName: 'n8n-nodes-extra',
+					installedVersion: '1.2.3',
+					workflowIds: ['wf-1', 'wf-2'],
+					activeWorkflowIds: ['wf-1'],
+				},
+			);
+			expect(communityPackagesService.removePackage).toHaveBeenCalledWith(
+				'n8n-nodes-extra',
+				expect.objectContaining({ packageName: 'n8n-nodes-extra' }),
+			);
+		});
+
+		it('emits empty workflow-id arrays when no workflows reference the package', async () => {
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([
+				installedPackageWithNodes('n8n-nodes-extra', '1.0.0', ['extraNode']),
+			]);
+			workflowRepository.findWorkflowsWithNodeType.mockResolvedValue([]);
+
+			const loader = createLoader({ communityPackages: JSON.stringify([]) });
+
+			await expect(loader.run()).resolves.toBe('created');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining("Removed community package 'n8n-nodes-extra'"),
+				expect.objectContaining({ workflowIds: [], activeWorkflowIds: [] }),
+			);
+			expect(communityPackagesService.removePackage).toHaveBeenCalled();
+		});
+
+		it('still removes the package when the workflow lookup fails', async () => {
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([
+				installedPackageWithNodes('n8n-nodes-extra', '1.0.0', ['extraNode']),
+			]);
+			workflowRepository.findWorkflowsWithNodeType.mockRejectedValue(new Error('db down'));
+
+			const loader = createLoader({ communityPackages: JSON.stringify([]) });
+
+			await expect(loader.run()).resolves.toBe('created');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				"Failed to check workflows referencing community package 'n8n-nodes-extra' before removal",
+				expect.objectContaining({ packageName: 'n8n-nodes-extra' }),
+			);
+			expect(communityPackagesService.removePackage).toHaveBeenCalled();
+		});
+
+		it('does not query workflows for packages on the install/update paths', async () => {
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([
+				installedPackageWithNodes('n8n-nodes-update', '1.0.0', ['updateNode']),
+			]);
+
+			const loader = createLoader({
+				communityPackages: JSON.stringify([
+					{ name: 'n8n-nodes-update', version: '2.0.0' },
+					{ name: 'n8n-nodes-new', version: '0.1.0' },
+				]),
+			});
+
+			await loader.run();
+
+			expect(workflowRepository.findWorkflowsWithNodeType).not.toHaveBeenCalled();
 		});
 	});
 
