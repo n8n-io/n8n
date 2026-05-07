@@ -7,7 +7,6 @@ import { z } from 'zod';
 import {
 	Agent,
 	type ContentToolCall,
-	type ContentToolResult,
 	filterLlmMessages,
 	Tool,
 	type StreamChunk,
@@ -404,10 +403,10 @@ export const findAllToolCalls = (messages: AgentMessage[]): ContentToolCall[] =>
 		.map((m) => m.content.filter((c) => c.type === 'tool-call'))
 		.flat();
 };
-export const findAllToolResults = (messages: AgentMessage[]): ContentToolResult[] => {
-	return filterLlmMessages(messages)
-		.filter((m) => m.content.find((c) => c.type === 'tool-result'))
-		.map((m) => m.content.find((c) => c.type === 'tool-result') as ContentToolResult);
+export const findAllToolResults = (messages: AgentMessage[]): ContentToolCall[] => {
+	return filterLlmMessages(messages).flatMap((m) =>
+		m.content.filter((c): c is ContentToolCall => c.type === 'tool-call' && c.state !== 'pending'),
+	);
 };
 export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 	return chunks
