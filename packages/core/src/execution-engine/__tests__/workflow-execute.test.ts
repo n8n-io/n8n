@@ -32,6 +32,7 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
+	IPairedItemData,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -3401,6 +3402,95 @@ describe('WorkflowExecute', () => {
 			const result = await waitPromise.promise;
 
 			expect(result.finished).toBe(true);
+		});
+	});
+
+	describe('Agent branching and pairedItem reconstruction logic (#26592)', () => {
+		test('resumed agent correctly sets pairedItem.input and pairedItem.item and overrides taskSource', async () => {
+			const agentNode = createNodeData({ name: 'AI Agent' });
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { result: 'tool response' },
+					pairedItem: {
+						item: 0,
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+
+					expect(typeof pairedItem).toBe('object');
+					const pairedItemObj = (
+						Array.isArray(pairedItem) ? pairedItem[0] : pairedItem
+					) as IPairedItemData;
+
+					// pairedItem.input should come from previousNodeOutput (2) instead of inputIndex (0)
+					expect(pairedItemObj.input).toBe(2);
+					// pairedItem.item should come from originalPairedItemIndex (42) instead of loop index (0)
+					expect(pairedItemObj.item).toBe(42);
+
+					return [[{ json: { done: true } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(agentNode)
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: agentNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'Switch', previousNodeOutput: 2, previousNodeRun: 1 }],
+							},
+							metadata: {
+								nodeWasResumed: true,
+								originalPairedItemIndex: 42,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+
+			// Verify taskStartedData.source was corrected
+			const agentTaskData = result.data.resultData.runData['AI Agent'][0];
+			expect(agentTaskData.source[0]!.previousNodeOutput).toBe(2);
 		});
 	});
 });
