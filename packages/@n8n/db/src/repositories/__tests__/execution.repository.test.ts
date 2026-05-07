@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 import { ExecutionEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
@@ -366,6 +367,18 @@ describe('ExecutionRepository', () => {
 			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
 			expect(entityManager.update).toBeCalledTimes(2);
 		});
+
+		test('should clear waitTill when marking executions as crashed', async () => {
+			const executionIds = ['1', '2'];
+
+			await executionRepository.markAsCrashed(executionIds);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: In(executionIds) },
+				expect.objectContaining({ status: 'crashed', waitTill: null }),
+			);
+		});
 	});
 
 	describe('stopDuringRun', () => {
@@ -447,6 +460,40 @@ describe('ExecutionRepository', () => {
 				{ status: 'running', startedAt: existingStartedAt, waitTill: null },
 			);
 			expect(result).toBe(existingStartedAt);
+		});
+	});
+
+	describe('cancelMany', () => {
+		test('should clear waitTill when canceling executions', async () => {
+			const executionIds = ['1', '2', '3'];
+
+			await executionRepository.cancelMany(executionIds);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: In(executionIds) },
+				expect.objectContaining({ status: 'canceled', waitTill: null }),
+			);
+		});
+	});
+
+	describe('stopBeforeRun', () => {
+		test('should clear waitTill when stopping execution before run', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: '1',
+				status: 'waiting',
+				waitTill: new Date('2025-01-01T00:00:00.000Z'),
+			});
+
+			await executionRepository.stopBeforeRun(execution);
+
+			expect(execution.waitTill).toBeNull();
+			expect(execution.status).toBe('canceled');
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: '1' },
+				expect.objectContaining({ status: 'canceled', waitTill: null }),
+			);
 		});
 	});
 });

@@ -5,7 +5,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { In, LessThanOrEqual } from '@n8n/typeorm';
+import { LessThanOrEqual } from '@n8n/typeorm';
 import { mockEntityManager } from '@test/mocking';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
@@ -74,81 +74,6 @@ describe('ExecutionRepository', () => {
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
 				{ type: 'execution', executionId: '1', workflowId },
 			]);
-		});
-	});
-
-	describe('cancelMany()', () => {
-		test('should clear waitTill when canceling executions', async () => {
-			const executionIds = ['1', '2', '3'];
-			entityManager.update.mockResolvedValue({ affected: 3, raw: [], generatedMaps: [] });
-
-			await executionRepository.cancelMany(executionIds);
-
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: In(executionIds) },
-				expect.objectContaining({ status: 'canceled', waitTill: null }),
-			);
-		});
-	});
-
-	describe('markAsCrashed()', () => {
-		test('should clear waitTill when marking executions as crashed', async () => {
-			const executionIds = ['1', '2'];
-			entityManager.update.mockResolvedValue({ affected: 2, raw: [], generatedMaps: [] });
-
-			await executionRepository.markAsCrashed(executionIds);
-
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: In(executionIds) },
-				expect.objectContaining({ status: 'crashed', waitTill: null }),
-			);
-		});
-	});
-
-	describe('setRunning()', () => {
-		test('should clear waitTill when marking execution as running', async () => {
-			const executionId = '1';
-			const txCallback = jest.fn();
-			entityManager.transaction.mockImplementation(async (cb) => {
-				// @ts-expect-error Mock
-				await cb(entityManager);
-				txCallback();
-			});
-			entityManager.findOneBy.mockResolvedValue(null);
-			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
-
-			entityManager.update.mockClear();
-			await executionRepository.setRunning(executionId);
-
-			expect(txCallback).toHaveBeenCalledTimes(1);
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: executionId },
-				expect.objectContaining({ status: 'running', waitTill: null }),
-			);
-		});
-	});
-
-	describe('stopBeforeRun()', () => {
-		test('should clear waitTill when stopping execution before run', async () => {
-			const execution = mock<IExecutionResponse>({
-				id: '1',
-				status: 'waiting',
-				waitTill: new Date('2023-12-28T13:00:00.000Z'),
-			});
-			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
-
-			await executionRepository.stopBeforeRun(execution);
-
-			expect(execution.waitTill).toBeNull();
-			expect(execution.status).toBe('canceled');
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: '1' },
-				expect.objectContaining({ status: 'canceled', waitTill: null }),
-			);
 		});
 	});
 
