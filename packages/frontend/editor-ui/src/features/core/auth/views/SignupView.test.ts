@@ -1,5 +1,4 @@
 import { useRoute, useRouter } from 'vue-router';
-import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -52,7 +51,7 @@ describe('SignupView', () => {
 
 		route = useRoute();
 		router = useRouter();
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 
 		usersStore = mockedStore(useUsersStore);
 

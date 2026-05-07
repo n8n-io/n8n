@@ -1628,7 +1628,7 @@ describe('useCanvasOperations', () => {
 
 		it('should show error toast and return false when renameNode throws an error', async () => {
 			const ndvStore = mockedStore(useNDVStore);
-			const toast = useToast(ref(workflowId));
+			const toast = useToast();
 			const oldName = 'Old Node';
 			const newName = 'New Node';
 			const errorMessage = 'Node name already exists';
@@ -1659,7 +1659,7 @@ describe('useCanvasOperations', () => {
 
 		it('should not show error toast when showErrorToast is false', async () => {
 			const ndvStore = mockedStore(useNDVStore);
-			const toast = useToast(ref(workflowId));
+			const toast = useToast();
 			const oldName = 'Old Node';
 			const newName = 'New Node';
 			const errorMessage = 'Node name already exists';
@@ -4203,7 +4203,7 @@ describe('useCanvasOperations', () => {
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { openExecution } = useCanvasOperations(ref(workflowId));
-			const toast = useToast(ref(workflowId));
+			const toast = useToast();
 
 			const executionId = '123';
 			const executionData: IExecutionResponse = {
@@ -4263,7 +4263,7 @@ describe('useCanvasOperations', () => {
 		it('should show error when nodeId is provided but node does not exist', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { openExecution } = useCanvasOperations(ref(workflowId));
-			const toast = useToast(ref(workflowId));
+			const toast = useToast();
 
 			const executionId = '123';
 			const nodeId = 'non-existent-node';
@@ -4613,7 +4613,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
-			const toast = useToast(ref(workflowId));
+			const toast = useToast();
 			const nodeTypesStore = useNodeTypesStore();
 
 			// Create a node type with maxNodes: 1

@@ -7,7 +7,7 @@ import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-cl
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import { useToast } from '@/app/composables/useToast';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import { VIEWS } from '@/app/constants';
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -68,7 +68,7 @@ const whatsNew: WhatsNewSection = {
 	updatedAt: '2025-06-19T12:41:44.919Z',
 };
 
-const toast = useToast(ref('test-workflow-id'));
+const toast = useToast();
 
 describe('versions.store', () => {
 	beforeEach(() => {

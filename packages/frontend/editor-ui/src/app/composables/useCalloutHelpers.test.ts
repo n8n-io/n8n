@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { createTestingPinia } from '@pinia/testing';
@@ -72,7 +71,7 @@ describe('useCalloutHelpers()', () => {
 			vi.spyOn(window, 'open').mockImplementation(() => null);
 			mocks.resolve.mockReturnValue({ href: 'n8n.io' });
 
-			const { openSampleWorkflowTemplate } = useCalloutHelpers(ref('test-workflow-id'));
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 			const nodeType = 'testNode';
 
 			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
@@ -92,7 +91,7 @@ describe('useCalloutHelpers()', () => {
 			vi.spyOn(window, 'open').mockImplementation(() => null);
 			mocks.resolve.mockReturnValue({ href: 'n8n.io' });
 
-			const { openSampleWorkflowTemplate } = useCalloutHelpers(ref('test-workflow-id'));
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
 				telemetry: {
@@ -111,7 +110,7 @@ describe('useCalloutHelpers()', () => {
 			vi.spyOn(window, 'open').mockImplementation(() => null);
 			mocks.resolve.mockReturnValue({ href: 'n8n.io' });
 
-			const { openSampleWorkflowTemplate } = useCalloutHelpers(ref('test-workflow-id'));
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 			openSampleWorkflowTemplate('self-building-ai-agent', {
 				telemetry: {
@@ -128,7 +127,7 @@ describe('useCalloutHelpers()', () => {
 			vi.spyOn(window, 'open').mockImplementation(() => null);
 			mocks.resolve.mockReturnValue({ href: 'n8n.io/template/test' });
 
-			const { openSampleWorkflowTemplate } = useCalloutHelpers(ref('test-workflow-id'));
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
 				telemetry: {
@@ -155,7 +154,7 @@ describe('useCalloutHelpers()', () => {
 				params: { folderId: 'my-folder-id' },
 			});
 
-			const { openSampleWorkflowTemplate } = useCalloutHelpers(ref('test-workflow-id'));
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 			openSampleWorkflowTemplate(SampleTemplates.EasyAiTemplate, {
 				telemetry: {
@@ -178,7 +177,7 @@ describe('useCalloutHelpers()', () => {
 
 	describe('isRagStarterCalloutVisible', () => {
 		it('should be true if current route is not on the RAG starter template', () => {
-			const { isRagStarterCalloutVisible } = useCalloutHelpers(ref('test-workflow-id'));
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
 			expect(isRagStarterCalloutVisible.value).toBe(true);
 		});
 
@@ -188,7 +187,7 @@ describe('useCalloutHelpers()', () => {
 				params: {},
 			});
 
-			const { isRagStarterCalloutVisible } = useCalloutHelpers(ref('test-workflow-id'));
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
 			expect(isRagStarterCalloutVisible.value).toBe(false);
 		});
 
@@ -197,14 +196,14 @@ describe('useCalloutHelpers()', () => {
 				meta: { templateId: SampleTemplates.RagStarterTemplate },
 			});
 
-			const { isRagStarterCalloutVisible } = useCalloutHelpers(ref('test-workflow-id'));
+			const { isRagStarterCalloutVisible } = useCalloutHelpers();
 			expect(isRagStarterCalloutVisible.value).toBe(false);
 		});
 	});
 
 	describe('isCalloutDismissed()', () => {
 		it('should return false if callout is not dismissed', () => {
-			const { isCalloutDismissed } = useCalloutHelpers(ref('test-workflow-id'));
+			const { isCalloutDismissed } = useCalloutHelpers();
 			const result = isCalloutDismissed('testNode');
 			expect(result).toBe(false);
 		});
@@ -212,7 +211,7 @@ describe('useCalloutHelpers()', () => {
 		it('should return true if callout is dismissed', () => {
 			mocks.isCalloutDismissed.mockReturnValueOnce(true);
 
-			const { isCalloutDismissed } = useCalloutHelpers(ref('test-workflow-id'));
+			const { isCalloutDismissed } = useCalloutHelpers();
 			const result = isCalloutDismissed('testNode');
 			expect(result).toBe(true);
 		});
@@ -220,7 +219,7 @@ describe('useCalloutHelpers()', () => {
 
 	describe('dismissCallout()', () => {
 		it('should dismiss the callout and update user settings', async () => {
-			const { dismissCallout } = useCalloutHelpers(ref('test-workflow-id'));
+			const { dismissCallout } = useCalloutHelpers();
 
 			await dismissCallout('testCallout');
 			expect(mocks.setCalloutDismissed).toHaveBeenCalledWith('testCallout');

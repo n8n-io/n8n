@@ -412,7 +412,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should prevent execution and show error when binary mode is "combined" with filesystem mode "default"', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
-			const toast = useToast(ref('test-workflow-id'));
+			const toast = useToast();
 			const rootStore = useRootStore();
 			const { runWorkflow } = useRunWorkflow(ref('test-workflow-id'), { router });
 
@@ -874,7 +874,7 @@ describe('useRunWorkflow({ router })', () => {
 
 		describe('Chat trigger warnings', () => {
 			const mockExecutionResponse = { executionId: '123' };
-			const toast = useToast(ref('test-workflow-id'));
+			const toast = useToast();
 			const i18n = useI18n();
 
 			beforeEach(() => {

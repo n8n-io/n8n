@@ -1,6 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { ref } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPlusEnrollmentModal from './CommunityPlusEnrollmentModal.vue';
@@ -71,7 +70,7 @@ describe('CommunityPlusEnrollmentModal', () => {
 	it('should test enrolling', async () => {
 		const closeCallbackSpy = vi.fn();
 		const usageStore = mockedStore(useUsageStore);
-		const toast = useToast(ref('test-workflow-id'));
+		const toast = useToast();
 
 		usageStore.registerCommunityEdition.mockResolvedValue({
 			title: 'Title',
@@ -112,7 +111,7 @@ describe('CommunityPlusEnrollmentModal', () => {
 	it('should test enrolling error', async () => {
 		const closeCallbackSpy = vi.fn();
 		const usageStore = mockedStore(useUsageStore);
-		const toast = useToast(ref('test-workflow-id'));
+		const toast = useToast();
 
 		usageStore.registerCommunityEdition.mockRejectedValue(
 			new Error('Failed to register community edition'),

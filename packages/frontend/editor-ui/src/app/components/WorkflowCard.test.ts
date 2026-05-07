@@ -1,5 +1,4 @@
 import type { MockInstance } from 'vitest';
-import { ref } from 'vue';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -115,7 +114,7 @@ describe('WorkflowCard', () => {
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 
 		settingsStore.settings = {
 			envFeatureFlags: {

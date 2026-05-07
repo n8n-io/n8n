@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -208,7 +207,7 @@ describe('WorkflowDetails', () => {
 		sourceControlStore.preferences = { branchReadOnly: false } as SourceControlPreferences;
 
 		message = useMessage();
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 		router = useRouter();
 	});
 

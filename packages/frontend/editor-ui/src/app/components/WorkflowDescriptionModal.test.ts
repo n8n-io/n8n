@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -78,7 +77,7 @@ describe('WorkflowDescriptionModal', () => {
 		uiStore = mockedStore(useUIStore);
 		settingsStore = mockedStore(useSettingsStore);
 		telemetry = useTelemetry();
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 
 		// Reset mocks
 		workflowsStore.updateWorkflow.mockResolvedValue({

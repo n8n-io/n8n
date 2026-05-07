@@ -156,7 +156,7 @@ describe('NodeExecuteButton', () => {
 		runWorkflow = useRunWorkflow(ref('test-workflow-id'), { router: useRouter() });
 		externalHooks = useExternalHooks();
 		message = useMessage();
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 	});
 
 	afterEach(() => {

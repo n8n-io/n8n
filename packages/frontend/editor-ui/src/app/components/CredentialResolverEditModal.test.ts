@@ -7,7 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
 import * as restApiClient from '@n8n/rest-api-client';
 import type { CredentialResolverType } from '@n8n/api-types';
-import { defineComponent, h, ref, watch, toRefs } from 'vue';
+import { defineComponent, h, watch, toRefs } from 'vue';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -167,7 +167,7 @@ describe('CredentialResolverEditModal', () => {
 		pinia = createTestingPinia();
 
 		rootStore = mockedStore(useRootStore);
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 
 		rootStore.restApiContext = {
 			baseUrl: 'http://localhost',

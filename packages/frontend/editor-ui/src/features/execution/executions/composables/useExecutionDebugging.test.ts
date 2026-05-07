@@ -66,7 +66,7 @@ describe('useExecutionDebugging()', () => {
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.workflow.id = 'test-workflow';
 
-		toast = useToast(ref('test-workflow-id'));
+		toast = useToast();
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);

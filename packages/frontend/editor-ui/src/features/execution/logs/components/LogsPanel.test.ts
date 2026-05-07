@@ -667,7 +667,7 @@ describe('LogsPanel', () => {
 				expect(typeof copiedSessionId).toBe('string');
 
 				// Verify toast was shown
-				const toast = useToast(ref('test-workflow-id'));
+				const toast = useToast();
 				expect(toast.showMessage).toHaveBeenCalledWith({
 					message: '',
 					title: 'Copied to clipboard',
