@@ -229,14 +229,16 @@ export function prepareContactFields(fields: IDataObject) {
 	return returnData;
 }
 
-export function prepareEventFields(fields: IDataObject) {
-	if (fields.location) {
-		fields.location = { displayName: fields.location };
+export function prepareEventFields(fields: IDataObject): IDataObject {
+	const result = { ...fields };
+
+	if (result.location) {
+		result.location = { displayName: result.location };
 	}
 
-	if (fields.attendees) {
-		const attendeeEntries = ((fields.attendees as IDataObject).values as IDataObject[]) ?? [];
-		fields.attendees = attendeeEntries.map((entry) => ({
+	if (result.attendees) {
+		const attendeeEntries = ((result.attendees as IDataObject).values as IDataObject[]) ?? [];
+		result.attendees = attendeeEntries.map((entry) => ({
 			emailAddress: {
 				address: entry.email,
 				...(entry.name ? { name: entry.name } : {}),
@@ -244,6 +246,8 @@ export function prepareEventFields(fields: IDataObject) {
 			type: entry.type,
 		}));
 	}
+
+	return result;
 }
 
 export function prepareFilterString(filters: IDataObject) {

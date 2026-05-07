@@ -3,7 +3,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC, eventRLC } from '../../descriptions';
+import { calendarRLC, eventAttendeesField, eventLocationField, eventRLC } from '../../descriptions';
 import { decodeOutlookId, prepareEventFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -18,57 +18,8 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attendees',
-				name: 'attendees',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				placeholder: 'Add Attendee',
+				...eventAttendeesField,
 				description: 'Setting attendees on update replaces the entire attendee list',
-				options: [
-					{
-						displayName: 'Attendee',
-						name: 'values',
-						values: [
-							{
-								displayName: 'Email',
-								name: 'email',
-								type: 'string',
-								placeholder: 'name@email.com',
-								required: true,
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								default: 'required',
-								options: [
-									{
-										name: 'Optional',
-										value: 'optional',
-									},
-									{
-										name: 'Required',
-										value: 'required',
-									},
-									{
-										name: 'Resource',
-										value: 'resource',
-									},
-								],
-							},
-						],
-					},
-				],
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
@@ -155,14 +106,7 @@ export const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 			},
-			{
-				displayName: 'Location',
-				name: 'location',
-				type: 'string',
-				default: '',
-				description:
-					'The location of the event (e.g. a meeting room name, address, or meeting link)',
-			},
+			eventLocationField,
 			{
 				displayName: 'Sensitivity',
 				name: 'sensitivity',
@@ -271,7 +215,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, index: number) {
-	const additionalFields = this.getNodeParameter('additionalFields', index);
+	let additionalFields = this.getNodeParameter('additionalFields', index);
 
 	const eventId = decodeOutlookId(
 		this.getNodeParameter('eventId', index, undefined, {
@@ -293,7 +237,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		};
 	}
 
-	prepareEventFields(additionalFields);
+	additionalFields = prepareEventFields(additionalFields);
 
 	let startDateTime = additionalFields.start as string;
 	let endDateTime = additionalFields.end as string;

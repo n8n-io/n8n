@@ -5,7 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC } from '../../descriptions';
+import { calendarRLC, eventAttendeesField, eventLocationField } from '../../descriptions';
 import { prepareEventFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -39,58 +39,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
-			{
-				displayName: 'Attendees',
-				name: 'attendees',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				placeholder: 'Add Attendee',
-				options: [
-					{
-						displayName: 'Attendee',
-						name: 'values',
-						values: [
-							{
-								displayName: 'Email',
-								name: 'email',
-								type: 'string',
-								placeholder: 'name@email.com',
-								required: true,
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								default: 'required',
-								options: [
-									{
-										name: 'Optional',
-										value: 'optional',
-									},
-									{
-										name: 'Required',
-										value: 'required',
-									},
-									{
-										name: 'Resource',
-										value: 'resource',
-									},
-								],
-							},
-						],
-					},
-				],
-			},
+			eventAttendeesField,
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Categories',
@@ -170,14 +119,7 @@ export const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 			},
-			{
-				displayName: 'Location',
-				name: 'location',
-				type: 'string',
-				default: '',
-				description:
-					'The location of the event (e.g. a meeting room name, address, or meeting link)',
-			},
+			eventLocationField,
 			{
 				displayName: 'Sensitivity',
 				name: 'sensitivity',
@@ -312,7 +254,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		};
 	}
 
-	prepareEventFields(additionalFields);
+	additionalFields = prepareEventFields(additionalFields);
 
 	let startDateTime = this.getNodeParameter('startDateTime', index) as string;
 	let endDateTime = this.getNodeParameter('endDateTime', index) as string;
