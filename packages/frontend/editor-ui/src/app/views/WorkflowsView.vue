@@ -44,9 +44,6 @@ import RecommendedTemplatesSection from '@/features/workflows/templates/recommen
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
-import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
-import { useSurfaceMcpToNewCloudUsersEligibility } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility';
-import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
@@ -154,14 +151,12 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
-const surfaceMcpStore = useSurfaceMcpToNewCloudUsersStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
 const { fetchDependencyCounts } = useDependencies();
-const { isEligible: isSurfaceMcpEligible } = useSurfaceMcpToNewCloudUsersEligibility();
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -471,29 +466,6 @@ const shouldUseSimplifiedLayout = computed(() => {
 	return !loading.value && simplifiedLayoutVisible;
 });
 
-const maybeOpenSurfaceMcpModal = () => {
-	if (!shouldUseSimplifiedLayout.value) {
-		return;
-	}
-
-	if (!isSurfaceMcpEligible.value) {
-		return;
-	}
-
-	if (!surfaceMcpStore.isFirstOpenModalVariant) {
-		return;
-	}
-
-	if (surfaceMcpStore.hasSeenFirstEligibleOpen) {
-		return;
-	}
-
-	surfaceMcpStore.markFirstEligibleOpenSeen();
-	surfaceMcpStore.trackSurfaced('first_open_modal');
-	surfaceMcpStore.trackOpened('first_open_modal');
-	uiStore.openModal(SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY);
-};
-
 const hasActiveCallouts = computed(() => {
 	return (
 		showAIStarterCollectionCallout.value ||
@@ -533,19 +505,6 @@ watch(
 			),
 		]);
 	},
-);
-
-watch(
-	[
-		shouldUseSimplifiedLayout,
-		isSurfaceMcpEligible,
-		() => surfaceMcpStore.isFirstOpenModalVariant,
-		() => surfaceMcpStore.hasSeenFirstEligibleOpen,
-	],
-	() => {
-		maybeOpenSurfaceMcpModal();
-	},
-	{ immediate: true },
 );
 
 sourceControlStore.$onAction(({ name, after }) => {

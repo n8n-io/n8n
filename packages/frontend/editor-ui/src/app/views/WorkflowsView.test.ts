@@ -21,7 +21,6 @@ import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { ref } from 'vue';
 
@@ -642,7 +641,7 @@ describe('Simplified Layout', () => {
 		expect(lastCall[0]).toHaveProperty('params'); // route object
 	});
 
-	it('auto-opens the MCP intro modal once for the first-open variant', async () => {
+	it('does not auto-open the retained MCP intro modal', async () => {
 		const readyToRunStore = mockedStore(useReadyToRunStore);
 		const projectsStore = mockedStore(useProjectsStore);
 		const surfaceMcpStore = mockedStore(useSurfaceMcpToNewCloudUsersStore);
@@ -657,10 +656,11 @@ describe('Simplified Layout', () => {
 		renderComponent({ pinia });
 		await waitAllPromises();
 
-		expect(surfaceMcpStore.markFirstEligibleOpenSeen).toHaveBeenCalled();
-		expect(surfaceMcpStore.trackSurfaced).toHaveBeenCalledWith('first_open_modal');
-		expect(surfaceMcpStore.trackOpened).toHaveBeenCalledWith('first_open_modal');
-		expect(uiStore.openModal).toHaveBeenCalledWith(SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY);
+		expect(surfaceMcpStore.markFirstEligibleOpenSeen).not.toHaveBeenCalled();
+		expect(surfaceMcpStore.trackSurfaced).not.toHaveBeenCalledWith('first_open_modal');
+		expect(surfaceMcpStore.trackOpened).not.toHaveBeenCalledWith('first_open_modal');
+		expect(uiStore.openModal).not.toHaveBeenCalled();
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-open the modal for the tile variant', async () => {
