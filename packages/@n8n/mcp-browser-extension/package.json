@@ -1,6 +1,6 @@
 {
 	"name": "@n8n/mcp-browser-extension",
-	"version": "0.0.1",
+	"version": "0.0.3",
 	"private": true,
 	"description": "Chrome extension that lets n8n AI control browser tabs via CDP",
 	"scripts": {

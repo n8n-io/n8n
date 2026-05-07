@@ -170,6 +170,7 @@
       "fast-xml-parser": "5.7.0"
     },
     "patchedDependencies": {
+      "axios@1.15.0": "patches/axios@1.15.0.patch",
       "bull@4.16.4": "patches/bull@4.16.4.patch",
       "pdfjs-dist@5.3.31": "patches/pdfjs-dist@5.3.31.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",

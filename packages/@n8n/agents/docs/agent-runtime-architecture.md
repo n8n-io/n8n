@@ -367,7 +367,7 @@ At end of turn, `saveToMemory()` uses `list.turnDelta()` and
 `saveMessagesToThread`. If **semantic recall** is configured with an embedder
 and `memory.saveEmbeddings`, new messages are embedded and stored.
 
-**Working memory:** when configured, the runtime injects an `updateWorkingMemory`
+**Working memory:** when configured, the runtime injects an `update_working_memory`
 tool into the agent's tool set. The current state is included in the system prompt
 so the model can read it; when new information should be persisted the model calls
 the tool, which validates the input and asynchronously persists via
@@ -415,7 +415,7 @@ src/
     tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend / agent-result guards
     stream.ts                     — convertChunk, toTokenUsage
     runtime-helpers.ts            — normalizeInput, usage merge, stream error helpers, …
-    working-memory.ts             — instruction text, updateWorkingMemory tool builder
+    working-memory.ts             — instruction text, update_working_memory tool builder
     strip-orphaned-tool-messages.ts
     title-generation.ts
     logger.ts

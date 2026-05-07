@@ -39,3 +39,38 @@ export type {
 	ChecklistItem,
 	ChecklistResult,
 } from './types';
+
+// -- Comparison (regression detection) --
+export {
+	compareBuckets,
+	byVerdict,
+	improvements,
+	hardRegressions,
+	softRegressions,
+	watchList,
+} from './comparison/compare';
+export type {
+	ComparisonResult,
+	ScenarioComparison,
+	ScenarioCounts,
+	ExperimentBucket,
+	AggregateComparison,
+	FailureCategoryComparison,
+} from './comparison/compare';
+export {
+	classifyScenario,
+	fishersExactOneSidedLeft,
+	wilsonInterval,
+} from './comparison/statistics';
+export type {
+	ScenarioVerdict,
+	ScenarioClassification,
+	ClassifyOptions,
+	TierThresholds,
+} from './comparison/statistics';
+export { formatComparisonMarkdown, formatComparisonTerminal } from './comparison/format';
+export {
+	fetchBaselineBucket,
+	findLatestBaseline,
+	BASELINE_EXPERIMENT_PREFIX,
+} from './comparison/fetch-baseline';

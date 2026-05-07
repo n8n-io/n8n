@@ -38,6 +38,35 @@ function parseWsData(data: unknown): string {
 	return Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
 }
 
+async function sendCDPCommand<T = unknown>(
+	ws: WebSocket,
+	id: number,
+	method: string,
+	params?: unknown,
+): Promise<{ id: number; result?: T; error?: { message: string } }> {
+	type Response = { id: number; result?: T; error?: { message: string } };
+	return await new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error(`Timeout waiting for response to ${method}`)),
+			5_000,
+		);
+		const handler = (data: unknown) => {
+			try {
+				const msg = JSON.parse(parseWsData(data)) as Response;
+				if (msg.id === id) {
+					ws.off('message', handler);
+					clearTimeout(timer);
+					resolve(msg);
+				}
+			} catch {
+				// ignore parse errors
+			}
+		};
+		ws.on('message', handler);
+		ws.send(JSON.stringify({ id, method, params }));
+	});
+}
+
 /**
  * Create a fake extension that auto-responds to relay commands.
  * Override `handlers` to customize responses.
@@ -171,6 +200,88 @@ describe('CDPRelayServer', () => {
 
 		// Restore real timers before afterEach cleanup (ws.close uses setTimeout)
 		jest.useRealTimers();
+	});
+
+	it('should return targetInfos shape from Target.getTargets', async () => {
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		createFakeExtension(ext);
+		await relay.waitForExtension();
+
+		const pw = connectPlaywright();
+		await waitForOpen(pw);
+
+		const response = await sendCDPCommand<{ targetInfos: unknown[] }>(pw, 10, 'Target.getTargets');
+
+		expect(response.error).toBeUndefined();
+		expect(Array.isArray(response.result?.targetInfos)).toBe(true);
+		expect(response.result?.targetInfos[0]).toMatchObject({
+			targetId: 'tab-1',
+			type: 'page',
+			title: 'Test Page',
+			url: 'https://example.com',
+		});
+
+		pw.close();
+		ext.close();
+	});
+
+	it('should return { sessionId: targetId } from Target.attachToTarget', async () => {
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		createFakeExtension(ext);
+		await relay.waitForExtension();
+
+		const pw = connectPlaywright();
+		await waitForOpen(pw);
+
+		const response = await sendCDPCommand<{ sessionId: string }>(pw, 11, 'Target.attachToTarget', {
+			targetId: 'tab-1',
+		});
+
+		expect(response.error).toBeUndefined();
+		expect(response.result?.sessionId).toBe('tab-1');
+
+		pw.close();
+		ext.close();
+	});
+
+	it('should return an error from Target.attachToTarget when extension is not connected', async () => {
+		// Connect Playwright without an extension
+		const pw = connectPlaywright();
+		await waitForOpen(pw);
+
+		const response = await sendCDPCommand(pw, 12, 'Target.attachToTarget', {
+			targetId: 'tab-1',
+		});
+
+		expect(response.error).toBeDefined();
+		expect(response.error?.message).toContain('connection lost');
+
+		pw.close();
+	});
+
+	it('should replace a stale Playwright connection when a new one arrives', async () => {
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		createFakeExtension(ext);
+		await relay.waitForExtension();
+
+		const pw1 = connectPlaywright();
+		await waitForOpen(pw1);
+
+		const pw1Closed = new Promise<void>((resolve) => pw1.on('close', resolve));
+
+		const pw2 = connectPlaywright();
+		await waitForOpen(pw2);
+		await pw1Closed; // pw1 must be terminated
+
+		// pw2 should be the active connection and able to respond
+		const response = await sendCDPCommand<{ product: string }>(pw2, 99, 'Browser.getVersion');
+		expect(response.result?.product).toContain('Chrome');
+
+		pw2.close();
+		ext.close();
 	});
 
 	it('should allow extension to reconnect within grace window', async () => {
