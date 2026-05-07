@@ -213,7 +213,7 @@ const isDataRedactionLicensed = computed(
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
 const isRedactionSettingLocked = computed(
-	() => isDataRedactionLicensed.value && !!workflowPermissions.value.updateRedactionSetting,
+	() => isDataRedactionLicensed.value && !workflowPermissions.value.updateRedactionSetting,
 );
 
 const redactionMembersModalOpen = ref(false);
@@ -1551,14 +1551,14 @@ onBeforeUnmount(() => {
 					@click="saveSettings"
 				/>
 			</div>
+			<RedactionMembersModal
+				v-if="workflow?.homeProject?.id"
+				:open="redactionMembersModalOpen"
+				:project-id="workflow.homeProject.id"
+				@update:open="redactionMembersModalOpen = $event"
+			/>
 		</template>
 	</Modal>
-	<RedactionMembersModal
-		v-if="workflow?.homeProject?.id"
-		:open="redactionMembersModalOpen"
-		:project-id="workflow.homeProject.id"
-		@update:open="redactionMembersModalOpen = $event"
-	/>
 </template>
 
 <style module lang="scss">
