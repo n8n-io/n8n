@@ -997,6 +997,30 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				// Setup flows scope to a workflow or project so the candidates match what
+				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
+				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
+				// so the editor's credential picker and the AI's setup card stay aligned.
+				if (options?.workflowId || options?.projectId) {
+					const scoped = options.workflowId
+						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								workflowId: options.workflowId,
+							})
+						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								projectId: options.projectId!,
+							});
+
+					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;
+
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+						}),
+					);
+				}
+
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,

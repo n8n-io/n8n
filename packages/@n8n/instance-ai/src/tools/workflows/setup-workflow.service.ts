@@ -19,16 +19,21 @@ import type { InstanceAiContext } from '../../types';
 
 /** Cache for deduplicating credential fetches across nodes with the same types. */
 export interface CredentialCache {
-	/** Credential list promises, keyed by credential type. */
+	/** Credential list promises, keyed by `${workflowId ?? ''}|${credentialType}` —
+	 *  scope is part of the key so a cache shared across workflows stays correct. */
 	lists: Map<string, Promise<Array<{ id: string; name: string }>>>;
-	/** Testability check promises, keyed by credential type. */
+	/** Testability check promises, keyed by credential type (workflow-independent). */
 	testability: Map<string, Promise<boolean>>;
-	/** Credential test result promises, keyed by credential ID. */
+	/** Credential test result promises, keyed by credential ID (workflow-independent). */
 	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
 }
 
 export function createCredentialCache(): CredentialCache {
 	return { lists: new Map(), testability: new Map(), tests: new Map() };
+}
+
+function listCacheKey(workflowId: string | undefined, credentialType: string): string {
+	return `${workflowId ?? ''}|${credentialType}`;
 }
 
 // ── Node analysis ───────────────────────────────────────────────────────────
@@ -160,6 +165,7 @@ export async function buildSetupRequests(
 	node: NodeJSON,
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
 	cache?: CredentialCache,
+	workflowId?: string,
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -294,13 +300,17 @@ export async function buildSetupRequests(
 			: undefined;
 
 		if (credentialType) {
-			// Use cache to avoid duplicate fetches for the same credential type across nodes
-			let listPromise = cache?.lists.get(credentialType);
+			// Use cache to avoid duplicate fetches for the same credential type across nodes.
+			// Scope to the workflow so we list only credentials the save path will accept —
+			// the editor's credential picker uses the same scoping. The cache key includes
+			// workflowId so a cache shared across workflows stays correct.
+			const cacheKey = listCacheKey(workflowId, credentialType);
+			let listPromise = cache?.lists.get(cacheKey);
 			if (!listPromise) {
 				listPromise = context.credentialService
-					.list({ type: credentialType })
+					.list({ type: credentialType, ...(workflowId ? { workflowId } : {}) })
 					.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
-				cache?.lists.set(credentialType, listPromise);
+				cache?.lists.set(cacheKey, listPromise);
 			}
 			const sortedCreds = await listPromise;
 			existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
@@ -835,7 +845,13 @@ export async function analyzeWorkflow(
 	const cache = createCredentialCache();
 	const allRequestArrays = await Promise.all(
 		workflowJson.nodes.map(async (node) => {
-			return await buildSetupRequests(context, node, triggerResults?.[node.name ?? ''], cache);
+			return await buildSetupRequests(
+				context,
+				node,
+				triggerResults?.[node.name ?? ''],
+				cache,
+				workflowId,
+			);
 		}),
 	);
 

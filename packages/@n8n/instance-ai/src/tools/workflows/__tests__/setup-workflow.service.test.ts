@@ -376,6 +376,45 @@ describe('buildSetupRequests', () => {
 		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
 	});
 
+	it('forwards workflowId to credentialService.list so candidates match save-time scope', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		await buildSetupRequests(context, node, undefined, undefined, 'wf-1');
+
+		expect(context.credentialService.list).toHaveBeenCalledWith({
+			type: 'slackApi',
+			workflowId: 'wf-1',
+		});
+	});
+
+	it('omits workflowId from credentialService.list when not provided', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		await buildSetupRequests(context, node);
+
+		expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
+	});
+
+	it('cache discriminates by workflowId so a shared cache stays correct across workflows', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const cache = createCredentialCache();
+		const node = makeNode();
+
+		await buildSetupRequests(context, node, undefined, cache, 'wf-1');
+		await buildSetupRequests(context, node, undefined, cache, 'wf-1');
+		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
+
+		await buildSetupRequests(context, node, undefined, cache, 'wf-2');
+		expect(context.credentialService.list).toHaveBeenCalledTimes(2);
+		expect(context.credentialService.list).toHaveBeenLastCalledWith({
+			type: 'slackApi',
+			workflowId: 'wf-2',
+		});
+	});
+
 	it('does not generate credential request for HTTP Request with auth=none and stale node.credentials', async () => {
 		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
 			.fn()
