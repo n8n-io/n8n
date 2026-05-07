@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "description": "n8n workflow execution engine (v2)",
   "scripts": {
-    "clean": "rimraf dist .turbo",
+    "clean": "rimraf dist .turbo compiled",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:docker": "pnpm build && rimraf compiled && DOCKER_BUILD=true NODE_ENV=production pnpm --filter . --prod --legacy deploy --no-optional compiled && docker build -t n8n-engine:local .",
     "start": "node dist/serve.js",
     "format": "biome format --write src",
     "format:check": "biome ci src",

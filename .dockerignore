@@ -39,8 +39,3 @@
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
 
-# === @n8n/engine image (packages/@n8n/engine/Dockerfile) ===
-!packages/@n8n/engine
-!packages/@n8n/engine/**
-!packages/@n8n/vitest-config
-!packages/@n8n/vitest-config/package.json
