@@ -1,3 +1,25 @@
+## [1.123.40](https://github.com/n8n-io/n8n/compare/n8n@1.123.39...n8n@1.123.40) (2026-05-07)
+
+
+### Bug Fixes
+
+* **core:** Allow GIT_SSH_COMMAND in simple-git after 3.36.0 upgrade ([#29947](https://github.com/n8n-io/n8n/issues/29947)) ([1bb7d11](https://github.com/n8n-io/n8n/commit/1bb7d110e58960affbdf5e3a6e9fe663a8b229a8))
+* **Snowflake Node:** Fix issue with Insert and Update operations not working ([#29812](https://github.com/n8n-io/n8n/issues/29812)) ([aec110f](https://github.com/n8n-io/n8n/commit/aec110f19889174374274f5a1ff209515a169d9a))
+
+
+## [1.123.39](https://github.com/n8n-io/n8n/compare/n8n@1.123.38...n8n@1.123.39) (2026-05-06)
+
+
+### Bug Fixes
+
+* **core:** Add timeout to external secrets provider update to prevent startup hang ([#29682](https://github.com/n8n-io/n8n/issues/29682)) ([77eb533](https://github.com/n8n-io/n8n/commit/77eb53363d7db1e0b439ae81cdd101964e3ec1f7))
+
+
+### Features
+
+* **core:** Add flag to import workflow cli to activate workflow on import ([#29341](https://github.com/n8n-io/n8n/issues/29341)) ([db3b57b](https://github.com/n8n-io/n8n/commit/db3b57b040c8fd771af13069ff180bee236d11ad))
+
+
 ## [1.123.38](https://github.com/n8n-io/n8n/compare/n8n@1.123.37...n8n@1.123.38) (2026-04-29)
 
 

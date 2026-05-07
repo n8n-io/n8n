@@ -324,9 +324,15 @@ describe('SourceControlGitService', () => {
 			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
 				connectionType: 'ssh',
 			} as never);
+			(simpleGit as jest.Mock).mockClear();
 
 			await sourceControlGitService.setGitCommand();
 
+			expect(simpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					unsafe: { allowUnsafeSshCommand: true },
+				}),
+			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
 				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=no -i "private-key"',
