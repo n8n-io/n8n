@@ -1,75 +1,9 @@
 import type { User } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
 import type { EntityManager } from '@n8n/typeorm';
+import type { INode } from 'n8n-workflow';
 
-import type { PackageReader } from './package-reader';
-import type { PackageWriter } from './package-writer';
-import type { ManifestProjectEntry } from './project/project.types';
-
-export type { ManifestProjectEntry } from './project/project.types';
-
-// ---------------------------------------------------------------------------
-// Entity keys — the canonical list of entity types in a package
-// ---------------------------------------------------------------------------
-
-export const ENTITY_KEYS = [
-	'folders',
-	'workflows',
-	'credentials',
-	'variables',
-	'dataTables',
-] as const;
-export type EntityKey = (typeof ENTITY_KEYS)[number];
-
-// ---------------------------------------------------------------------------
-// Manifest entry — a single entity reference in the package manifest
-// ---------------------------------------------------------------------------
-
-export interface ManifestEntry {
-	id: string;
-	name: string;
-	target: string;
-}
-
-// ---------------------------------------------------------------------------
-// Entity entries — the typed result of running the export/import pipeline
-// ---------------------------------------------------------------------------
-
-export type EntityEntries = Record<EntityKey, ManifestEntry[]>;
-
-// ---------------------------------------------------------------------------
-// Package requirements — dependencies that workflows need but aren't in the package
-// ---------------------------------------------------------------------------
-
-export interface PackageRequirements {
-	credentials: PackageCredentialRequirement[];
-	subWorkflows: PackageSubWorkflowRequirement[];
-	nodeTypes: PackageNodeTypeRequirement[];
-	variables: PackageVariableRequirement[];
-}
-
-export interface PackageCredentialRequirement {
-	id: string;
-	name: string;
-	type: string;
-	usedByWorkflows: string[];
-}
-
-export interface PackageSubWorkflowRequirement {
-	id: string;
-	usedByWorkflows: string[];
-}
-
-export interface PackageNodeTypeRequirement {
-	type: string;
-	typeVersion: number;
-	usedByWorkflows: string[];
-}
-
-export interface PackageVariableRequirement {
-	name: string;
-	usedByWorkflows: string[];
-}
+import type { PackageReader } from './io/package-reader';
+import type { PackageWriter } from './io/package-writer';
 
 // ---------------------------------------------------------------------------
 // Import bindings — remapping source IDs to target IDs during import
@@ -97,42 +31,15 @@ export interface ImportRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Package manifest
-// ---------------------------------------------------------------------------
-
-export interface PackageManifest {
-	packageFormatVersion: string;
-	exportedAt: string;
-	sourceN8nVersion: string;
-	sourceId: string;
-
-	/** Project-scoped exports */
-	projects?: ManifestProjectEntry[];
-
-	/** Top-level standalone exports (not scoped to a project) */
-	workflows?: ManifestEntry[];
-	folders?: ManifestEntry[];
-	credentials?: ManifestEntry[];
-	variables?: ManifestEntry[];
-	dataTables?: ManifestEntry[];
-
-	/** Dependencies that workflows require but are not included in the package */
-	requirements?: PackageRequirements;
-}
-
-// ---------------------------------------------------------------------------
-// Export scope — passed through the export pipeline
+// Export scope — config + IO threaded through the export pipeline.
+// Scope is *input-only*: it does not carry mutable cross-phase state.
+// Cross-phase data lives on the pipeline as typed phase outputs.
 // ---------------------------------------------------------------------------
 
 export interface ExportEntityOptions {
 	variables?: {
 		includeValues: boolean;
 	};
-}
-
-export interface ExportPipelineState {
-	folderPathMap: Map<string, string>;
-	nodesByWorkflow: Array<{ workflowId: string; nodes: INode[] }>;
 }
 
 export interface ExportScope {
@@ -151,13 +58,24 @@ export interface ExportScope {
 
 	/** Entity-specific options — handlers check for keys they care about */
 	entityOptions: ExportEntityOptions;
+}
 
-	/** Mutable pipeline state — populated by handlers during pipeline execution */
-	state: ExportPipelineState;
+/**
+ * Phase outputs accumulated during the export pipeline run.
+ * Each field is produced by exactly one phase and consumed by zero or more
+ * downstream phases. The pipeline owns this struct; entity exporters that
+ * need a specific output declare it as a typed dependency in their signature.
+ */
+export interface ExportPipelineOutputs {
+	/** Produced by FolderExporter; consumed by WorkflowExporter (path resolution). */
+	folderPathMap: Map<string, string>;
+	/** Produced by WorkflowExporter; consumed by PackageRequirementsExtractor. */
+	nodesByWorkflow: Array<{ workflowId: string; nodes: INode[] }>;
 }
 
 // ---------------------------------------------------------------------------
-// Import scope — passed through the import pipeline
+// Import scope — config + IO threaded through the import pipeline.
+// Like ExportScope, this is *input-only*. Phase outputs live on the pipeline.
 // ---------------------------------------------------------------------------
 
 export interface ImportEntityOptions {
@@ -165,12 +83,6 @@ export interface ImportEntityOptions {
 		withValues: boolean;
 		overwriteValues: boolean;
 	};
-}
-
-export interface ImportPipelineState {
-	folderIdMap: Map<string, string>;
-	credentialBindings: Map<string, string>;
-	subWorkflowBindings: Map<string, string>;
 }
 
 export interface ImportScope {
@@ -187,9 +99,21 @@ export interface ImportScope {
 
 	/** Entity-specific options — handlers check for keys they care about */
 	entityOptions: ImportEntityOptions;
+}
 
-	/** Mutable pipeline state — populated by handlers during pipeline execution */
-	state: ImportPipelineState;
+/**
+ * Phase outputs accumulated during the import pipeline run.
+ * Seeded with bindings from BindingResolver (subWorkflowBindings, optionally
+ * credentialBindings) and grown by FolderImporter / CredentialImporter as
+ * phases run. WorkflowImporter consumes the lot.
+ */
+export interface ImportPipelineOutputs {
+	/** Produced by FolderImporter; consumed by WorkflowImporter. */
+	folderIdMap: Map<string, string>;
+	/** Seeded by BindingResolver; mutated by CredentialImporter (stubs path). */
+	credentialBindings: Map<string, string>;
+	/** Seeded by BindingResolver; mutated by WorkflowImporter (when assigning new IDs). */
+	subWorkflowBindings: Map<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,4 +142,5 @@ export interface ImportResult {
 	credentials: number;
 	variables: number;
 	dataTables: number;
+	tags: number;
 }

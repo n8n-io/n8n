@@ -1,0 +1,14 @@
+import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
+
+export interface SerializedWorkflow {
+	id: string;
+	name: string;
+	nodes: INode[];
+	connections: IConnections;
+	settings?: IWorkflowSettings;
+	versionId: string;
+	parentFolderId: string | null;
+	isArchived: boolean;
+	/** Source tag IDs the workflow is linked to. Remapped on import via tagIdMap. */
+	tagIds?: string[];
+}

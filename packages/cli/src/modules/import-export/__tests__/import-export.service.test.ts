@@ -1,4 +1,4 @@
-import type { Project, SharedCredentialsRepository, User, VariablesRepository } from '@n8n/db';
+import type { Project, User, VariablesRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -7,20 +7,18 @@ import { Readable } from 'node:stream';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ProjectService } from '@/services/project.service.ee';
 
-import type { BindingResolver } from '../binding-resolver';
-import type { ExportPipeline } from '../export-pipeline';
-import type { ImportPipeline } from '../import-pipeline';
-import type { ProjectExporter, ProjectExportResult } from '../project/project.exporter';
-import type { ProjectImporter } from '../project/project.importer';
+import type { BindingResolver } from '../engine/binding-resolver';
+import type { ExportPipeline } from '../engine/export.pipeline';
+import type { ImportPipeline } from '../engine/import.pipeline';
+import type { ProjectExporter, ProjectExportResult } from '../scopes/project.exporter';
+import type { ProjectImporter } from '../scopes/project.importer';
 import { ImportExportService } from '../import-export.service';
-import type {
-	ImportRequest,
-	ManifestProjectEntry,
-	PackageRequirements,
-} from '../import-export.types';
+import type { ImportRequest } from '../import-export.types';
+import type { PackageRequirements } from '../spec/requirements.types';
+import type { ManifestProjectEntry } from '../spec/serialized/project.serialized';
 
 // Mock the TarPackageWriter and constants
-jest.mock('../tar-package-writer', () => ({
+jest.mock('../io/tar/tar-package-writer', () => ({
 	TarPackageWriter: jest.fn().mockImplementation(() => ({
 		writeFile: jest.fn(),
 		writeDirectory: jest.fn(),
@@ -34,7 +32,7 @@ jest.mock('../tar-package-writer', () => ({
 	})),
 }));
 
-jest.mock('../tar-package-reader', () => ({
+jest.mock('../io/tar/tar-package-reader', () => ({
 	TarPackageReader: {
 		fromBuffer: jest.fn(),
 	},
@@ -54,7 +52,6 @@ describe('ImportExportService', () => {
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
 	let mockLoadNodesAndCredentials: MockProxy<LoadNodesAndCredentials>;
 	let mockBindingResolver: MockProxy<BindingResolver>;
-	let mockSharedCredentialsRepository: MockProxy<SharedCredentialsRepository>;
 	let mockVariablesRepository: MockProxy<VariablesRepository>;
 	let mockUser: MockProxy<User>;
 
@@ -69,7 +66,6 @@ describe('ImportExportService', () => {
 		mockInstanceSettings = mock<InstanceSettings>({ instanceId: 'test-instance-id' });
 		mockLoadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 		mockBindingResolver = mock<BindingResolver>();
-		mockSharedCredentialsRepository = mock<SharedCredentialsRepository>();
 		mockVariablesRepository = mock<VariablesRepository>();
 		mockUser = mock<User>();
 
@@ -91,7 +87,6 @@ describe('ImportExportService', () => {
 			mockInstanceSettings,
 			mockLoadNodesAndCredentials,
 			mockBindingResolver,
-			mockSharedCredentialsRepository,
 			mockVariablesRepository,
 		);
 	});
@@ -107,6 +102,7 @@ describe('ImportExportService', () => {
 				credentials: [],
 				variables: [],
 				dataTables: [],
+				tags: [],
 			},
 			requirements: { credentials: [], subWorkflows: [], nodeTypes: [], variables: [] },
 		};
@@ -192,7 +188,7 @@ describe('ImportExportService', () => {
 			expect(mockProjectExporter.export).toHaveBeenCalledTimes(1);
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageWriter } = jest.requireMock('../tar-package-writer') as {
+			const { TarPackageWriter } = jest.requireMock('../io/tar/tar-package-writer') as {
 				TarPackageWriter: jest.Mock;
 			};
 			const writerInstance = TarPackageWriter.mock.results[0].value;
@@ -219,6 +215,7 @@ describe('ImportExportService', () => {
 				credentials: [],
 				variables: [],
 				dataTables: [],
+				tags: [],
 				requirements: { credentials: [], subWorkflows: [], nodeTypes: [], variables: [] },
 			});
 
@@ -250,6 +247,7 @@ describe('ImportExportService', () => {
 				credentials: [],
 				variables: [],
 				dataTables: [],
+				tags: [],
 				requirements,
 			});
 
@@ -268,7 +266,7 @@ describe('ImportExportService', () => {
 			);
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageWriter } = jest.requireMock('../tar-package-writer') as {
+			const { TarPackageWriter } = jest.requireMock('../io/tar/tar-package-writer') as {
 				TarPackageWriter: jest.Mock;
 			};
 			const writerInstance = TarPackageWriter.mock.results[0].value;
@@ -326,7 +324,7 @@ describe('ImportExportService', () => {
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
 				TarPackageReader: { fromBuffer: jest.Mock };
 			};
 			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
@@ -341,6 +339,7 @@ describe('ImportExportService', () => {
 				variables: 0,
 				dataTables: 0,
 				folders: 1,
+				tags: 0,
 			});
 			expect(result.requirements.credentials).toHaveLength(1);
 			// Only the unrecognized community node should remain
@@ -374,7 +373,7 @@ describe('ImportExportService', () => {
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
 				TarPackageReader: { fromBuffer: jest.Mock };
 			};
 			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
@@ -399,7 +398,7 @@ describe('ImportExportService', () => {
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
 				TarPackageReader: { fromBuffer: jest.Mock };
 			};
 			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
@@ -428,7 +427,7 @@ describe('ImportExportService', () => {
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
 				TarPackageReader: { fromBuffer: jest.Mock };
 			};
 			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
@@ -455,7 +454,7 @@ describe('ImportExportService', () => {
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
 				TarPackageReader: { fromBuffer: jest.Mock };
 			};
 			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
@@ -484,6 +483,10 @@ describe('ImportExportService', () => {
 				expect.objectContaining({
 					createCredentialStubs: false,
 				}),
+				expect.objectContaining({
+					credentialBindings: expect.any(Map),
+					subWorkflowBindings: expect.any(Map),
+				}),
 			);
 			expect(result).toMatchObject({ projects: [], workflows: 1 });
 		});
@@ -503,7 +506,7 @@ describe('ImportExportService', () => {
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
 				TarPackageReader: { fromBuffer: jest.Mock };
 			};
 			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);

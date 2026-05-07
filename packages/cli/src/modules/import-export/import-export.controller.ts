@@ -4,7 +4,7 @@ import {
 	ExportWorkflowsRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
+import { Body, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import multer from 'multer';
 import type { Readable } from 'node:stream';
@@ -49,7 +49,7 @@ export class ImportExportController {
 
 	@Post('/export')
 	@GlobalScope('project:read')
-	// @Licensed('feat:packageExport')
+	@Licensed('feat:packageExport')
 	async exportPackage(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -68,7 +68,7 @@ export class ImportExportController {
 
 	@Post('/export/workflows')
 	@GlobalScope('workflow:read')
-	// @Licensed('feat:packageExport')
+	@Licensed('feat:packageExport')
 	async exportWorkflows(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -87,7 +87,7 @@ export class ImportExportController {
 
 	@Post('/export/folders')
 	@GlobalScope('workflow:read')
-	// @Licensed('feat:packageExport')
+	@Licensed('feat:packageExport')
 	async exportFolders(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -106,7 +106,7 @@ export class ImportExportController {
 
 	@Post('/analyze', { middlewares: [upload.single('file')] })
 	@GlobalScope('project:read')
-	// @Licensed('feat:packageExport')
+	@Licensed('feat:packageExport')
 	async analyzePackage(req: AuthenticatedRequestWithFile): Promise<AnalyzePackageResult> {
 		if (!req.file) {
 			throw new BadRequestError('No file uploaded. Send a .n8np file as multipart form data.');
@@ -117,7 +117,7 @@ export class ImportExportController {
 
 	@Post('/import', { middlewares: [upload.single('file')] })
 	@GlobalScope('project:create')
-	// @Licensed('feat:packageExport')
+	@Licensed('feat:packageExport')
 	async importPackage(req: AuthenticatedRequestWithFile): Promise<ImportResult> {
 		if (!req.file) {
 			throw new BadRequestError('No file uploaded. Send a .n8np file as multipart form data.');

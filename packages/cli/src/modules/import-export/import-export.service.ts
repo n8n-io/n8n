@@ -1,42 +1,47 @@
+import { VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { SharedCredentialsRepository, VariablesRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { BindingResolver } from './binding-resolver';
-import type { SerializedCredential } from './credential/credential.types';
-import { ExportPipeline } from './export-pipeline';
-import { ImportPipeline } from './import-pipeline';
-import type { ImportPipelineOptions } from './import-pipeline';
-import { FORMAT_VERSION } from './import-export.constants';
+import { BindingResolver } from './engine/binding-resolver';
+import { ExportPipeline } from './engine/export.pipeline';
+import { ImportPipeline } from './engine/import.pipeline';
+import type { ImportPipelineOptions, ImportPipelineSeed } from './engine/import.pipeline';
+import { PackageRequirementsExtractor } from './engine/requirements-extractor';
 import {
-	ENTITY_KEYS,
-	type EntityEntries,
 	type ExportRequest,
 	type ExportScope,
 	type ImportRequest,
 	type ImportResult,
 	type ImportScope,
-	type ManifestEntry,
-	type ManifestProjectEntry,
-	type PackageCredentialRequirement,
-	type PackageManifest,
-	type PackageRequirements,
-	type PackageVariableRequirement,
 } from './import-export.types';
-import type { PackageReader } from './package-reader';
-import { PackageRequirementsExtractor } from './package-requirements-extractor';
-import { ProjectExporter } from './project/project.exporter';
-import { ProjectImporter } from './project/project.importer';
-import { TarPackageReader } from './tar-package-reader';
-import { TarPackageWriter } from './tar-package-writer';
+import type { PackageReader } from './io/package-reader';
+import { TarPackageReader } from './io/tar/tar-package-reader';
+import { TarPackageWriter } from './io/tar/tar-package-writer';
+import { ProjectExporter } from './scopes/project.exporter';
+import { ProjectImporter } from './scopes/project.importer';
+import { FORMAT_VERSION } from './spec/constants';
+import {
+	ENTITY_KEYS,
+	type EntityEntries,
+	type EntityKey,
+	type ManifestEntry,
+	type PackageManifest,
+} from './spec/manifest.types';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirements,
+	PackageVariableRequirement,
+} from './spec/requirements.types';
+import type { SerializedCredential } from './spec/serialized/credential.serialized';
+import type { ManifestProjectEntry } from './spec/serialized/project.serialized';
 
 export interface AnalyzePackageResult {
 	packageFormatVersion: string;
@@ -58,7 +63,6 @@ export class ImportExportService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly bindingResolver: BindingResolver,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly variablesRepository: VariablesRepository,
 	) {}
 
@@ -162,13 +166,14 @@ export class ImportExportService {
 		const reader = await TarPackageReader.fromBuffer(buffer);
 		const manifest = this.parseAndValidateManifest(reader);
 
-		const summary = {
+		const summary: Record<'projects' | EntityKey, number> = {
 			projects: 0,
+			folders: 0,
 			workflows: 0,
 			credentials: 0,
 			variables: 0,
 			dataTables: 0,
-			folders: 0,
+			tags: 0,
 		};
 
 		if (manifest.projects?.length) {
@@ -315,16 +320,12 @@ export class ImportExportService {
 			entityOptions: {
 				variables: { includeValues: params.includeVariableValues },
 			},
-			state: {
-				folderPathMap: new Map(),
-				nodesByWorkflow: [],
-			},
 		};
 	}
 
 	private applyEntityEntriesToManifest(manifest: PackageManifest, entries: EntityEntries): void {
 		for (const key of ENTITY_KEYS) {
-			if (entries[key].length > 0) {
+			if (entries[key]?.length) {
 				manifest[key] = entries[key];
 			}
 		}
@@ -405,10 +406,6 @@ export class ImportExportService {
 			reader,
 			assignNewIds: !!request.targetProjectId,
 			entityOptions: { variables: variableOptions },
-			state: ImportPipeline.createPipelineState(
-				resolvedBindings.credentialBindings,
-				resolvedBindings.subWorkflowBindings,
-			),
 		};
 
 		const entries: Partial<EntityEntries> = {};
@@ -416,12 +413,12 @@ export class ImportExportService {
 			entries[key] = manifest[key];
 		}
 
-		await this.importPipeline.importEntities(scope, entries, pipelineOptions);
+		const seed: ImportPipelineSeed = {
+			credentialBindings: resolvedBindings.credentialBindings,
+			subWorkflowBindings: resolvedBindings.subWorkflowBindings,
+		};
 
-		// Share auto-resolved credentials to the target project so workflows can use them
-		if (request.targetProjectId && resolvedBindings.credentialBindings.size > 0) {
-			await this.shareResolvedCredentials(resolvedBindings.credentialBindings, projectId);
-		}
+		await this.importPipeline.importEntities(scope, entries, pipelineOptions, seed);
 
 		const totals: Record<string, number> = {};
 		for (const key of ENTITY_KEYS) {
@@ -526,29 +523,6 @@ export class ImportExportService {
 				`Missing required variables: ${details.join(', ')}. ` +
 					'Use mode "force" to import anyway, or ensure the variables exist on the target instance.',
 			);
-		}
-	}
-
-	private async shareResolvedCredentials(
-		credentialBindings: Map<string, string>,
-		targetProjectId: string,
-	): Promise<void> {
-		const targetCredentialIds = [...new Set(credentialBindings.values())];
-		if (targetCredentialIds.length === 0) return;
-
-		for (const credentialId of targetCredentialIds) {
-			const existing = await this.sharedCredentialsRepository.findOne({
-				where: { credentialsId: credentialId, projectId: targetProjectId },
-			});
-
-			if (!existing) {
-				const shared = this.sharedCredentialsRepository.create({
-					credentialsId: credentialId,
-					projectId: targetProjectId,
-					role: 'credential:user',
-				});
-				await this.sharedCredentialsRepository.save(shared);
-			}
 		}
 	}
 

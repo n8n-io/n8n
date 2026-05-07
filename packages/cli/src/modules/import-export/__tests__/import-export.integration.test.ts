@@ -5,8 +5,11 @@ import {
 	FolderRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	VariablesRepository,
+	WorkflowHistoryRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 	generateNanoId,
 	ProjectRepository,
 } from '@n8n/db';
@@ -16,6 +19,7 @@ import type { Readable } from 'node:stream';
 
 import { createOwner } from '@test-integration/db/users';
 import { createCredentials } from '@test-integration/db/credentials';
+import { createTag, assignTagToWorkflow } from '@test-integration/db/tags';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -83,6 +87,8 @@ beforeEach(async () => {
 		'Folder',
 		'Variables',
 		'Project',
+		'TagEntity',
+		'WorkflowTagMapping',
 	]);
 });
 
@@ -717,6 +723,175 @@ describe('import-export integration', () => {
 					projectIds: [personalProject.id],
 				}),
 			).rejects.toThrow(/personal project.*cannot be exported/i);
+		});
+	});
+
+	describe('workflow versioning', () => {
+		it('should add a new WorkflowHistory entry when re-importing a workflow', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Versioned', owner);
+
+			const wf = await createWorkflow(
+				{
+					name: 'My Workflow',
+					nodes: [],
+					connections: {},
+				},
+				project,
+			);
+
+			// Capture history count before any import
+			const historyRepo = Container.get(WorkflowHistoryRepository);
+			const beforeCount = await historyRepo.count({ where: { workflowId: wf.id } });
+
+			// Export and re-import the same workflow into the same project
+			const stream = await service.exportPackage({
+				type: 'workflows',
+				user: owner,
+				workflowIds: [wf.id],
+			});
+			const buffer = await streamToBuffer(stream);
+
+			await service.importPackage(buffer, {
+				user: owner,
+				targetProjectId: project.id,
+				mode: 'force',
+				createCredentialStubs: false,
+				withVariableValues: true,
+				overwriteVariableValues: false,
+			});
+
+			// Find the new (deterministic-id) workflow that the import wrote
+			const importedWorkflowId = `${project.id}-${wf.id}`;
+			const afterCount = await historyRepo.count({
+				where: { workflowId: importedWorkflowId },
+			});
+
+			// At least one history row exists for the imported version, so the
+			// user can roll back to a pre-import state via the existing UI.
+			expect(afterCount).toBeGreaterThan(beforeCount);
+
+			const newest = await historyRepo.findOne({
+				where: { workflowId: importedWorkflowId },
+				order: { createdAt: 'DESC' },
+			});
+			expect(newest?.name).toBe('Imported from package');
+			expect(newest?.description).toContain(`source workflow id: ${wf.id}`);
+		});
+	});
+
+	describe('tags round-trip', () => {
+		it('should export tags referenced by workflows and re-link them on cross-instance import', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Tagged Project', owner);
+
+			const wf = await createWorkflow(
+				{
+					name: 'Tagged Workflow',
+					nodes: [],
+					connections: {},
+				},
+				sourceProject,
+			);
+
+			// Two tags, one used and one not, to verify only referenced tags are exported.
+			const usedTag = await createTag({ name: 'production' });
+			await createTag({ name: 'unused' });
+			await assignTagToWorkflow(usedTag, wf);
+
+			const stream = await service.exportPackage({
+				type: 'projects',
+				user: owner,
+				projectIds: [sourceProject.id],
+			});
+			const buffer = await streamToBuffer(stream);
+
+			await testDb.truncate([
+				'WorkflowEntity',
+				'SharedWorkflow',
+				'CredentialsEntity',
+				'SharedCredentials',
+				'Folder',
+				'Variables',
+				'Project',
+				'TagEntity',
+				'WorkflowTagMapping',
+			]);
+			const newOwner = await createOwner();
+
+			const result = await service.importPackage(buffer, {
+				user: newOwner,
+				mode: 'force',
+				createCredentialStubs: false,
+				withVariableValues: true,
+				overwriteVariableValues: false,
+			});
+
+			expect(result.projects).toHaveLength(1);
+			expect(result.tags).toBe(1);
+
+			// Tag was created on the target instance
+			const tags = await Container.get(TagRepository).find();
+			expect(tags).toHaveLength(1);
+			expect(tags[0].name).toBe('production');
+
+			// Workflow → tag mapping was re-established
+			const newWf = (await Container.get(WorkflowRepository).find({ relations: ['tags'] }))[0];
+			expect(newWf.tags).toHaveLength(1);
+			expect(newWf.tags?.[0].name).toBe('production');
+		});
+
+		it('should reuse an existing tag with the same name on the target instance', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Reuse Tag Project', owner);
+
+			const wf = await createWorkflow(
+				{ name: 'Tagged Workflow', nodes: [], connections: {} },
+				sourceProject,
+			);
+			const sourceTag = await createTag({ name: 'shared-tag' });
+			await assignTagToWorkflow(sourceTag, wf);
+
+			const stream = await service.exportPackage({
+				type: 'projects',
+				user: owner,
+				projectIds: [sourceProject.id],
+			});
+			const buffer = await streamToBuffer(stream);
+
+			// Clear workflow data but keep a tag with the same name pre-existing on target.
+			await testDb.truncate([
+				'WorkflowEntity',
+				'SharedWorkflow',
+				'CredentialsEntity',
+				'SharedCredentials',
+				'Folder',
+				'Variables',
+				'Project',
+				'TagEntity',
+				'WorkflowTagMapping',
+			]);
+			const newOwner = await createOwner();
+			const preExistingTag = await createTag({ name: 'shared-tag' });
+
+			await service.importPackage(buffer, {
+				user: newOwner,
+				mode: 'force',
+				createCredentialStubs: false,
+				withVariableValues: true,
+				overwriteVariableValues: false,
+			});
+
+			// Only one tag exists — the pre-existing one was reused.
+			const tags = await Container.get(TagRepository).find();
+			expect(tags).toHaveLength(1);
+			expect(tags[0].id).toBe(preExistingTag.id);
+
+			// Workflow is mapped to the pre-existing tag
+			const mappingRepo = Container.get(WorkflowTagMappingRepository);
+			const mappings = await mappingRepo.find();
+			expect(mappings).toHaveLength(1);
+			expect(mappings[0].tagId).toBe(preExistingTag.id);
 		});
 	});
 });
