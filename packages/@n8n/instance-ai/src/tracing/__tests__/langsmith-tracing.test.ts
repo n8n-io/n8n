@@ -635,6 +635,7 @@ describe('createInstanceAiTraceContext', () => {
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {
 			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
 				'ai.prompt.messages': JSON.stringify([
 					{
 						role: 'user',
@@ -657,10 +658,12 @@ describe('createInstanceAiTraceContext', () => {
 			},
 		};
 
-		const redacted = redactLangSmithTelemetrySpan(span);
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
 
-		expect(redacted).toEqual({
-			attributes: {
+		expect(redacted.attributes).toEqual(
+			expect.objectContaining({
 				'ai.prompt.messages': JSON.stringify([
 					{
 						role: 'user',
@@ -675,22 +678,62 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.usage.cachedInputTokens': 67,
 				'ai.usage.inputTokenDetails.cacheReadTokens': 67,
 				'gen_ai.usage.input_tokens': 56,
+				'gen_ai.usage.output_tokens': 45,
+				'gen_ai.usage.total_tokens': 101,
 				'gen_ai.usage.input_token_details': JSON.stringify({
 					cache_read: 67,
 					cache_creation: 0,
 					regular: 56,
 					original_input_tokens: 123,
 				}),
+				'langsmith.usage_metadata': JSON.stringify({
+					input_tokens: 56,
+					output_tokens: 45,
+					total_tokens: 101,
+					input_token_details: { cache_read: 67 },
+				}),
 				'headers.authorization': '[redacted]',
 				'metadata.access_token': '[redacted]',
 				'langsmith.span.parent_id': 'parent-run-1',
+				'langsmith.span.kind': 'llm',
 				'langsmith.is_root': true,
 				'langsmith.metadata.anthropic_original_input_tokens': 123,
 				'langsmith.metadata.anthropic_regular_input_tokens': 56,
 				'langsmith.metadata.anthropic_cache_read_input_tokens': 67,
 				'langsmith.metadata.anthropic_cache_creation_input_tokens': 0,
+				'ai_sdk.operation': 'ai.streamText.doStream',
+			}),
+		);
+		expect(redacted.attributes['ai.operationId']).toBeUndefined();
+		expect(redacted.attributes['instance_ai.usage.ai.usage.inputTokens']).toBeUndefined();
+	});
+
+	it('moves counted usage attributes off non-LLM spans', () => {
+		const span = {
+			attributes: {
+				'langsmith.span.kind': 'chain',
+				'gen_ai.usage.input_tokens': 100,
+				'ai.usage.outputTokens': 5,
+				'langsmith.usage_metadata': JSON.stringify({
+					input_tokens: 100,
+					output_tokens: 5,
+					total_tokens: 105,
+				}),
 			},
-		});
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+
+		expect(redacted.attributes['gen_ai.usage.input_tokens']).toBeUndefined();
+		expect(redacted.attributes['ai.usage.outputTokens']).toBeUndefined();
+		expect(redacted.attributes['langsmith.usage_metadata']).toBeUndefined();
+		expect(redacted.attributes['instance_ai.usage.gen_ai.usage.input_tokens']).toBe(100);
+		expect(redacted.attributes['instance_ai.usage.ai.usage.outputTokens']).toBe(5);
+		expect(redacted.attributes['instance_ai.usage.langsmith.usage_metadata']).toBe(
+			JSON.stringify({ input_tokens: 100, output_tokens: 5, total_tokens: 105 }),
+		);
 	});
 
 	it('adds LangSmith prompt input with tool specs for native AI SDK spans', () => {
@@ -770,7 +813,10 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(redacted.name).toBe('llm: workflow-builder');
 		expect(redacted.attributes['langsmith.trace.name']).toBe('llm: workflow-builder');
+		expect(redacted.attributes['langsmith.span.kind']).toBe('llm');
+		expect(redacted.attributes['gen_ai.operation.name']).toBe('chat');
 		expect(redacted.attributes['ai_sdk.operation']).toBe('ai.streamText.doStream');
+		expect(redacted.attributes['ai.operationId']).toBeUndefined();
 		expect(redacted.attributes['instance_ai.canonical_name']).toBe('ai.streamText.doStream');
 		expect(redacted.attributes.display_kind).toBe('llm');
 		expect(redacted.attributes.display_group).toBe('workflow-builder');

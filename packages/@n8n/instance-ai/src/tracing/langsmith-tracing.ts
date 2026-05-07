@@ -84,8 +84,15 @@ const LANGSMITH_TRACEABLE = 'langsmith.traceable';
 const LANGSMITH_TRACE_NAME = 'langsmith.trace.name';
 const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
 const LANGSMITH_SPAN_TAGS = 'langsmith.span.tags';
+const LANGSMITH_USAGE_METADATA = 'langsmith.usage_metadata';
 const GEN_AI_PROMPT = 'gen_ai.prompt';
 const GEN_AI_COMPLETION = 'gen_ai.completion';
+const GEN_AI_OPERATION_NAME = 'gen_ai.operation.name';
+const GEN_AI_USAGE_INPUT_TOKENS = 'gen_ai.usage.input_tokens';
+const GEN_AI_USAGE_OUTPUT_TOKENS = 'gen_ai.usage.output_tokens';
+const GEN_AI_USAGE_TOTAL_TOKENS = 'gen_ai.usage.total_tokens';
+const GEN_AI_USAGE_INPUT_TOKEN_DETAILS = 'gen_ai.usage.input_token_details';
+const AI_OPERATION_ID = 'ai.operationId';
 const LLM_AI_SDK_OPERATION_IDS = new Set([
 	'ai.generateText.doGenerate',
 	'ai.streamText.doStream',
@@ -1051,6 +1058,27 @@ function readTokenDetail(details: unknown, keys: string[]): number | undefined {
 	return undefined;
 }
 
+function readNestedRecord(
+	record: Record<string, unknown>,
+	keys: string[],
+): Record<string, unknown> {
+	let current: unknown = record;
+	for (const key of keys) {
+		if (!isRecord(current)) {
+			return {};
+		}
+		current = current[key];
+	}
+	return isRecord(current) ? current : {};
+}
+
+function readProviderAnthropicUsage(attributes: Record<string, unknown>): Record<string, unknown> {
+	const providerMetadata = parseTelemetryJson(attributes['ai.response.providerMetadata']);
+	return isRecord(providerMetadata)
+		? readNestedRecord(providerMetadata, ['anthropic', 'usage'])
+		: {};
+}
+
 function firstNumberAttribute(
 	attributes: Record<string, unknown>,
 	keys: string[],
@@ -1064,23 +1092,34 @@ function firstNumberAttribute(
 	return undefined;
 }
 
-function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>): void {
+function buildLangSmithUsageMetadata(
+	attributes: Record<string, unknown>,
+): Record<string, unknown> | undefined {
 	const inputTokens = firstNumberAttribute(attributes, [
-		'gen_ai.usage.input_tokens',
+		GEN_AI_USAGE_INPUT_TOKENS,
 		'ai.usage.inputTokens',
 		'ai.usage.promptTokens',
 	]);
-	if (inputTokens === undefined) {
+
+	const outputTokens =
+		firstNumberAttribute(attributes, [
+			GEN_AI_USAGE_OUTPUT_TOKENS,
+			'ai.usage.outputTokens',
+			'ai.usage.completionTokens',
+		]) ?? 0;
+	if (inputTokens === undefined && outputTokens === 0) {
 		return;
 	}
 
-	const inputDetails = attributes['gen_ai.usage.input_token_details'];
+	const providerAnthropicUsage = readProviderAnthropicUsage(attributes);
+	const inputDetails = attributes[GEN_AI_USAGE_INPUT_TOKEN_DETAILS];
 	const cacheReadTokens =
 		firstNumberAttribute(attributes, [
 			'ai.usage.inputTokenDetails.cacheReadTokens',
 			'ai.usage.cachedInputTokens',
 			'ai.usage.cacheReadInputTokens',
 		]) ??
+		firstNumberAttribute(providerAnthropicUsage, ['cache_read_input_tokens']) ??
 		readTokenDetail(inputDetails, [
 			'cache_read',
 			'cache_read_tokens',
@@ -1095,6 +1134,10 @@ function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>
 			'ai.usage.inputTokenDetails.cacheWriteTokens',
 			'ai.usage.cacheWriteInputTokens',
 		]) ??
+		firstNumberAttribute(providerAnthropicUsage, [
+			'cache_creation_input_tokens',
+			'cache_write_input_tokens',
+		]) ??
 		readTokenDetail(inputDetails, [
 			'cache_creation',
 			'cache_creation_tokens',
@@ -1105,22 +1148,67 @@ function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>
 		]) ??
 		0;
 
-	if (cacheReadTokens === 0 && cacheCreationTokens === 0) {
+	const regularInputTokens =
+		inputTokens === undefined
+			? 0
+			: Math.max(0, inputTokens - cacheReadTokens - cacheCreationTokens);
+	const inputTokenDetails: Record<string, number> = {};
+	if (cacheReadTokens > 0) {
+		inputTokenDetails.cache_read = cacheReadTokens;
+	}
+	if (cacheCreationTokens > 0) {
+		inputTokenDetails.cache_creation = cacheCreationTokens;
+		inputTokenDetails.ephemeral_5m_input_tokens = cacheCreationTokens;
+	}
+
+	return {
+		input_tokens: regularInputTokens,
+		output_tokens: outputTokens,
+		total_tokens: regularInputTokens + outputTokens,
+		...(Object.keys(inputTokenDetails).length > 0
+			? { input_token_details: inputTokenDetails }
+			: {}),
+	};
+}
+
+function normalizeAnthropicUsageForLangSmith(attributes: Record<string, unknown>): void {
+	const usageMetadata = buildLangSmithUsageMetadata(attributes);
+	if (!usageMetadata) {
 		return;
 	}
 
-	const regularInputTokens = Math.max(0, inputTokens - cacheReadTokens - cacheCreationTokens);
-	attributes['gen_ai.usage.input_tokens'] = regularInputTokens;
+	const inputTokens = firstNumberAttribute(attributes, [
+		GEN_AI_USAGE_INPUT_TOKENS,
+		'ai.usage.inputTokens',
+		'ai.usage.promptTokens',
+	]);
+	const regularInputTokens = numberFromAttribute(usageMetadata.input_tokens) ?? 0;
+	const outputTokens = numberFromAttribute(usageMetadata.output_tokens) ?? 0;
+	const inputTokenDetails = isRecord(usageMetadata.input_token_details)
+		? usageMetadata.input_token_details
+		: {};
+	const cacheReadTokens = numberFromAttribute(inputTokenDetails.cache_read) ?? 0;
+	const cacheCreationTokens =
+		numberFromAttribute(inputTokenDetails.cache_creation) ??
+		numberFromAttribute(inputTokenDetails.ephemeral_5m_input_tokens) ??
+		0;
+
+	attributes[GEN_AI_USAGE_INPUT_TOKENS] = regularInputTokens;
+	attributes[GEN_AI_USAGE_OUTPUT_TOKENS] = outputTokens;
+	attributes[GEN_AI_USAGE_TOTAL_TOKENS] = regularInputTokens + outputTokens;
 	attributes['ai.usage.inputTokens'] = regularInputTokens;
-	attributes['langsmith.metadata.anthropic_original_input_tokens'] = inputTokens;
+	attributes[LANGSMITH_USAGE_METADATA] = JSON.stringify(usageMetadata);
+	if (inputTokens !== undefined) {
+		attributes['langsmith.metadata.anthropic_original_input_tokens'] = inputTokens;
+	}
 	attributes['langsmith.metadata.anthropic_regular_input_tokens'] = regularInputTokens;
 	attributes['langsmith.metadata.anthropic_cache_read_input_tokens'] = cacheReadTokens;
 	attributes['langsmith.metadata.anthropic_cache_creation_input_tokens'] = cacheCreationTokens;
-	attributes['gen_ai.usage.input_token_details'] = JSON.stringify({
+	attributes[GEN_AI_USAGE_INPUT_TOKEN_DETAILS] = JSON.stringify({
 		cache_read: cacheReadTokens,
 		cache_creation: cacheCreationTokens,
 		regular: regularInputTokens,
-		original_input_tokens: inputTokens,
+		...(inputTokens !== undefined ? { original_input_tokens: inputTokens } : {}),
 	});
 }
 
@@ -1182,7 +1270,7 @@ function renameNativeLlmSpanForLangSmith(
 	span: Record<string, unknown>,
 	attributes: Record<string, unknown>,
 ): void {
-	const operationId = readStringAttribute(attributes, ['ai.operationId']);
+	const operationId = readStringAttribute(attributes, [AI_OPERATION_ID]);
 	if (!operationId || !LLM_AI_SDK_OPERATION_IDS.has(operationId)) {
 		return;
 	}
@@ -1190,6 +1278,8 @@ function renameNativeLlmSpanForLangSmith(
 	const displayName = displayNameForNativeLlmSpan(attributes);
 	span.name = displayName;
 	attributes[LANGSMITH_TRACE_NAME] = displayName;
+	attributes[LANGSMITH_SPAN_KIND] = 'llm';
+	attributes[GEN_AI_OPERATION_NAME] = 'chat';
 	const displayGroup = inferNativeLlmRole(attributes);
 	setLangSmithMetadataAttribute(attributes, 'display_name', displayName);
 	setLangSmithMetadataAttribute(attributes, 'display_kind', 'llm');
@@ -1210,6 +1300,50 @@ function renameNativeLlmSpanForLangSmith(
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.display_name', displayName);
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.canonical_name', operationId);
 	setLangSmithMetadataAttribute(attributes, 'instance_ai.run_name', operationId);
+	delete attributes[AI_OPERATION_ID];
+}
+
+function isLangSmithLlmSpan(attributes: Record<string, unknown>): boolean {
+	const operationId = readStringAttribute(attributes, [AI_OPERATION_ID]);
+	return (
+		attributes[LANGSMITH_SPAN_KIND] === 'llm' ||
+		attributes.display_kind === 'llm' ||
+		(typeof operationId === 'string' && LLM_AI_SDK_OPERATION_IDS.has(operationId))
+	);
+}
+
+function isCountedUsageAttribute(key: string): boolean {
+	return (
+		key === LANGSMITH_USAGE_METADATA ||
+		key === 'usage_metadata' ||
+		key === 'prompt_tokens' ||
+		key === 'completion_tokens' ||
+		key === 'total_tokens' ||
+		key === 'input_tokens' ||
+		key === 'output_tokens' ||
+		key.startsWith('gen_ai.usage.') ||
+		key.startsWith('ai.usage.') ||
+		key.startsWith('llm.usage.')
+	);
+}
+
+function neutralUsageAttributeKey(key: string): string {
+	return `instance_ai.usage.${key}`;
+}
+
+function moveNonLlmUsageAttributes(attributes: Record<string, unknown>): void {
+	if (isLangSmithLlmSpan(attributes)) {
+		return;
+	}
+
+	for (const key of Object.keys(attributes)) {
+		if (!isCountedUsageAttribute(key)) {
+			continue;
+		}
+
+		attributes[neutralUsageAttributeKey(key)] = attributes[key];
+		delete attributes[key];
+	}
 }
 
 export function redactLangSmithTelemetrySpan(span: unknown): unknown {
@@ -1224,6 +1358,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeAnthropicUsageForLangSmith(attributes);
 	renameNativeLlmSpanForLangSmith(span, attributes);
+	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
 	return span;
 }
