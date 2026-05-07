@@ -2,11 +2,11 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
-import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
-import { Agent } from '@/modules/agents/entities/agent.entity';
-import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
+import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
+import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 describe('AgentExecutionRepository', () => {
