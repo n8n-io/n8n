@@ -166,8 +166,11 @@
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
       "hono": "4.12.16",
-      "axios": "1.16.0",
-      "fast-xml-parser": "5.7.2"
+      "fast-xml-parser": "5.7.2",
+      "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
+      "vm2@<=3.11.2": "3.11.2",
+      "uuid@<=13.0.1": "13.0.1",
+      "axios": "1.15.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
