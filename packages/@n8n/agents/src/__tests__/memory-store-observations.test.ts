@@ -169,6 +169,25 @@ describe('InMemoryMemory — cursors', () => {
 		});
 		expect(await mem.getCursor('thread', 'B')).toBeNull();
 	});
+
+	it('returns cursor copies so callers cannot mutate stored state', async () => {
+		const mem = new InMemoryMemory();
+		const cursor: ObservationCursor = {
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			lastObservedMessageId: 'm-1',
+			lastObservedAt: new Date(2026, 0, 1),
+			updatedAt: new Date(2026, 0, 2),
+		};
+		await mem.setCursor(cursor);
+
+		const loaded = await mem.getCursor('thread', 't-1');
+		expect(loaded).not.toBeNull();
+		loaded!.lastObservedMessageId = 'mutated';
+		loaded!.lastObservedAt.setTime(new Date(2030, 0, 1).getTime());
+
+		expect(await mem.getCursor('thread', 't-1')).toEqual(cursor);
+	});
 });
 
 describe('InMemoryMemory — observation locks', () => {

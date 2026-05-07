@@ -5,6 +5,7 @@ export type ObservationScopeKind = 'thread' | 'resource' | 'agent';
 
 @Entity({ name: 'agents_observations' })
 @Index(['scopeKind', 'scopeId', 'kind', 'createdAt'])
+@Index(['scopeKind', 'scopeId', 'createdAt', 'id'])
 export class AgentObservationEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 20 })
 	scopeKind: ObservationScopeKind;

@@ -81,6 +81,26 @@ describe('InMemoryMemory working memory', () => {
 			'data for thread 2',
 		);
 	});
+
+	it('isolates entries by scope when threadId and resourceId match', async () => {
+		const mem = new InMemoryMemory();
+		await mem.saveWorkingMemory({ threadId: 'shared-id', scope: 'thread' }, 'thread memory');
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'shared-id', scope: 'resource' },
+			'resource memory',
+		);
+
+		expect(await mem.getWorkingMemory({ threadId: 'shared-id', scope: 'thread' })).toBe(
+			'thread memory',
+		);
+		expect(
+			await mem.getWorkingMemory({
+				threadId: 'thread-1',
+				resourceId: 'shared-id',
+				scope: 'resource',
+			}),
+		).toBe('resource memory');
+	});
 });
 
 // ---------------------------------------------------------------------------
