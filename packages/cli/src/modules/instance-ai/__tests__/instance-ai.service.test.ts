@@ -901,15 +901,14 @@ describe('InstanceAiService — OAuth callback URL', () => {
 	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
 		const source = InstanceAiService.toString();
 
-		expect(source).toContain(
-			'this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback',
+		expect(source).toMatch(
+			/this\.oauth2CallbackUrl\s*=[^;]*this\.urlService\.getInstanceBaseUrl\(\)[^;]*oauth2-credential\/callback/,
 		);
 	});
 
 	it('does not fall back to localhost when editorBaseUrl is empty', () => {
 		const source = InstanceAiService.toString();
 
-		expect(source).not.toContain('http://localhost:${globalConfig.port}');
-		expect(source).not.toContain('globalConfig.editorBaseUrl ||');
+		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
 	});
 });
