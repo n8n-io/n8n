@@ -33,6 +33,16 @@ const DEFAULT_TITLE_INSTRUCTIONS = [
 	'Title: Scryfall random card workflow',
 ].join('\n');
 
+const DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS = [
+	'Generate a short title and a single emoji for a conversation based on the user message.',
+	'Respond with ONLY a JSON object: {"title": "...", "emoji": "..."}',
+	'Rules:',
+	'- Title: 2 to 6 words, max 50 characters, sentence case',
+	'- Title must not contain emoji, quotes, colons, or markdown formatting',
+	'- Emoji: exactly one emoji that represents the topic',
+	'- Respond with the JSON object only, no other text',
+].join('\n');
+
 const TRIVIAL_MESSAGE_MAX_CHARS = 15;
 const TRIVIAL_MESSAGE_MAX_WORDS = 3;
 const MAX_TITLE_LENGTH = 80;
@@ -117,7 +127,67 @@ export async function generateTitleFromMessage(
 }
 
 /**
- * Generate a title for a thread if it doesn't already have one.
+ * Generate a sanitized title and a representative emoji from a user message.
+ *
+ * Asks the LLM for a `{"title": "...", "emoji": "..."}` JSON object and parses
+ * it; falls back to treating the whole response as a plain title if the model
+ * ignores the JSON format.
+ *
+ * Returns `null` on empty/trivial input or empty LLM output.
+ */
+export async function generateTitleAndEmojiFromMessage(
+	model: LanguageModel,
+	userMessage: string,
+	opts?: { instructions?: string },
+): Promise<{ title: string; emoji?: string } | null> {
+	const trimmed = userMessage.trim();
+	if (!trimmed) return null;
+
+	if (isTrivialMessage(trimmed)) {
+		return null;
+	}
+
+	const result = await generateText({
+		model,
+		messages: [
+			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS },
+			{ role: 'user', content: trimmed },
+		],
+	});
+
+	let text = result.text?.trim();
+	if (!text) return null;
+
+	// Strip <think>...</think> blocks (e.g. from DeepSeek R1) before JSON parsing.
+	text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+	if (!text) return null;
+
+	let rawTitle = '';
+	let emoji: string | undefined;
+
+	const jsonMatch = /\{[\s\S]*\}/.exec(text);
+	if (jsonMatch) {
+		try {
+			const parsed = JSON.parse(jsonMatch[0]) as { title?: string; emoji?: string };
+			rawTitle = parsed.title?.trim() ?? '';
+			emoji = parsed.emoji?.trim() ?? undefined;
+		} catch {
+			// Model returned something that looked like JSON but wasn't parseable —
+			// fall back to using the whole response as the title.
+			rawTitle = text;
+		}
+	} else {
+		rawTitle = text;
+	}
+
+	const title = sanitizeTitle(rawTitle);
+	if (!title) return null;
+
+	return { title, emoji };
+}
+
+/**
+ * Generate a title and emoji for a thread if it doesn't already have one.
  *
  * Designed to run fire-and-forget after the agent response is complete.
  * All errors are caught and logged — title generation failures never
@@ -148,16 +218,21 @@ export async function generateThreadTitle(opts: {
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
 		const titleModel = createModel(titleModelId);
-		const title = await generateTitleFromMessage(titleModel, userText, {
+		const generated = await generateTitleAndEmojiFromMessage(titleModel, userText, {
 			instructions: opts.titleConfig.instructions,
 		});
-		if (!title) return;
+		if (!generated) return;
+
+		const { title, emoji } = generated;
+
+		// Store emoji in thread metadata
+		const metadata = { ...(thread?.metadata ?? {}), ...(emoji && { emoji }) };
 
 		await opts.memory.saveThread({
 			id: opts.threadId,
 			resourceId: opts.resourceId,
 			title,
-			metadata: thread?.metadata,
+			metadata,
 		});
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });

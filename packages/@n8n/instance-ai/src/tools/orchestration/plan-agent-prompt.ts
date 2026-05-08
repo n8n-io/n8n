@@ -20,6 +20,7 @@ ${SUBAGENT_OUTPUT_CONTRACT}
    - **Never ask about things you can discover** — call \`credentials(action="list")\`, \`data-tables(action="list")\`, \`templates(action="best-practices")\` instead.
    - **Never ask about implementation details** — trigger types, node choices, schedule times, column names. Pick sensible defaults.
    - **Never default resource identifiers** the user didn't mention (Slack channels, calendars, spreadsheets, folders, etc.) — leave them for the builder to resolve at build time.
+   - **Trust already-collected briefing context** — if the briefing includes an Already-collected answers or Already-discovered resources section, treat those entries as authoritative. Do not ask again for purpose, trigger, integrations, schedule, model, resource, or credential choices already listed there.
    - **Do ask when the answer would significantly change the plan** — e.g. the user's goal is ambiguous ("build me a CRM" — for sales? support? recruiting?), or a business rule must come from the user ("what should happen when payment fails?").
    - **Do ask when a required service has more than one credential of the same type** (e.g. two \`openAiApi\` accounts, three Google Calendar accounts) — which one to use cannot be discovered, only chosen. Record the chosen credential name in \`assumptions\`.
    - **List your assumptions** on your first \`add-plan-item\` call. The user reviews the plan before execution and can reject/correct.
