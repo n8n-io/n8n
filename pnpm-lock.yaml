@@ -4248,8 +4248,8 @@ importers:
         specifier: 'catalog:'
         version: 4.4.0
       csv-parse:
-        specifier: 6.2.1
-        version: 6.2.1
+        specifier: 5.5.0
+        version: 5.5.0
       currency-codes:
         specifier: 2.1.0
         version: 2.1.0
@@ -14068,6 +14068,9 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  csv-parse@5.5.0:
+    resolution: {integrity: sha512-RxruSK3M4XgzcD7Trm2wEN+SJ26ChIb903+IWxNOcB5q4jT2Cs+hFr6QP39J05EohshRFEvyzEBoZ/466S2sbw==}
 
   csv-parse@6.2.1:
     resolution: {integrity: sha512-LRLMV+UCyfMokp8Wb411duBf1gaBKJfOfBWU9eHMJ+b+cJYZsNu3AFmjJf3+yPGd59Exz1TsMjaSFyxnYB9+IQ==}
@@ -35048,6 +35051,8 @@ snapshots:
   csstype@3.1.2: {}
 
   csstype@3.2.3: {}
+
+  csv-parse@5.5.0: {}
 
   csv-parse@6.2.1: {}
 
