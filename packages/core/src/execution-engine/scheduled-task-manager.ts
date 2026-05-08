@@ -1,9 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { CronLoggingConfig } from '@n8n/config';
+import { CronLoggingConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob, CronTime } from 'cron';
 import type { CronContext, Workflow } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
@@ -36,6 +37,7 @@ export class ScheduledTaskManager {
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -81,6 +83,8 @@ export class ScheduledTaskManager {
 		const cronTime = new CronTime(expression, timezone);
 		const computeNext = (): Date => cronTime.sendAt().toJSDate();
 		let scheduledTime: Date = computeNext();
+
+		this.assertMinScheduleInterval(cronTime, ctx);
 
 		const handleTick = () => {
 			if (!this.instanceSettings.isLeader) return;
@@ -151,6 +155,29 @@ export class ScheduledTaskManager {
 
 		clearInterval(this.logInterval);
 		this.logInterval = undefined;
+	}
+
+	/**
+	 * Enforces `N8N_MIN_SCHEDULE_INTERVAL_SECONDS`. The minimum is computed by
+	 * taking two consecutive next-fire times from the cron expression — this
+	 * works uniformly for cron strings and for any of the Schedule Trigger's
+	 * higher-level rule shapes, since they are all canonicalised to a cron
+	 * expression before reaching this point. Set the env var to 0 to disable.
+	 */
+	private assertMinScheduleInterval(cronTime: CronTime, ctx: CronContext) {
+		const minSeconds = this.globalConfig.workflows.minScheduleIntervalSeconds;
+		if (!Number.isFinite(minSeconds) || minSeconds <= 0) return;
+
+		const next = cronTime.sendAt().toMillis();
+		const after = cronTime.getNextDateFrom(new Date(next)).toMillis();
+		const intervalSeconds = (after - next) / 1000;
+
+		if (intervalSeconds < minSeconds) {
+			throw new UserError(
+				`Schedule interval too short: minimum allowed is ${minSeconds}s, requested ~${Math.ceil(intervalSeconds)}s`,
+				{ extra: { workflowId: ctx.workflowId, nodeId: ctx.nodeId, expression: ctx.expression } },
+			);
+		}
 	}
 
 	private toCronKey(ctx: CronContext): CronKey {

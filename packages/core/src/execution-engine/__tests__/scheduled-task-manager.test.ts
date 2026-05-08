@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { CronContext, Workflow } from 'n8n-workflow';
 
@@ -7,6 +8,9 @@ import type { InstanceSettings } from '@/instance-settings';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 
 const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
+
+const globalConfigWithMinInterval = (minScheduleIntervalSeconds: number) =>
+	mock<GlobalConfig>({ workflows: { minScheduleIntervalSeconds } });
 
 describe('ScheduledTaskManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
@@ -20,7 +24,13 @@ describe('ScheduledTaskManager', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
-		scheduledTaskManager = new ScheduledTaskManager(instanceSettings, logger, mock(), mock());
+		scheduledTaskManager = new ScheduledTaskManager(
+			instanceSettings,
+			logger,
+			mock(),
+			mock(),
+			globalConfigWithMinInterval(0),
+		);
 	});
 
 	it('should not register duplicate crons', () => {
@@ -109,6 +119,7 @@ describe('ScheduledTaskManager', () => {
 			logger,
 			mock(),
 			mock(),
+			globalConfigWithMinInterval(0),
 		);
 
 		const ctx: CronContext = {
@@ -167,9 +178,63 @@ describe('ScheduledTaskManager', () => {
 			logger,
 			configWithZeroInterval,
 			mock(),
+			globalConfigWithMinInterval(0),
 		);
 
 		// @ts-expect-error Private property
 		expect(manager.logInterval).toBeUndefined();
+	});
+
+	describe('N8N_MIN_SCHEDULE_INTERVAL_SECONDS enforcement', () => {
+		const buildCtx = (expression: string): CronContext => ({
+			workflowId: workflow.id,
+			nodeId: 'test-node-id',
+			timezone: workflow.timezone,
+			expression,
+		});
+
+		it('does not enforce a minimum when the env var is 0', () => {
+			scheduledTaskManager = new ScheduledTaskManager(
+				instanceSettings,
+				logger,
+				mock(),
+				mock(),
+				globalConfigWithMinInterval(0),
+			);
+
+			expect(() =>
+				scheduledTaskManager.registerCron(buildCtx('* * * * * *'), onTick),
+			).not.toThrow();
+		});
+
+		it('throws a UserError when the cron interval is below the configured minimum', () => {
+			scheduledTaskManager = new ScheduledTaskManager(
+				instanceSettings,
+				logger,
+				mock(),
+				mock(),
+				globalConfigWithMinInterval(300),
+			);
+
+			expect(() => scheduledTaskManager.registerCron(buildCtx(everyMinute), onTick)).toThrow(
+				/Schedule interval too short/,
+			);
+			expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toBeUndefined();
+		});
+
+		it('allows cron intervals at or above the configured minimum', () => {
+			scheduledTaskManager = new ScheduledTaskManager(
+				instanceSettings,
+				logger,
+				mock(),
+				mock(),
+				globalConfigWithMinInterval(300),
+			);
+
+			expect(() =>
+				scheduledTaskManager.registerCron(buildCtx('0 */5 * * * *'), onTick),
+			).not.toThrow();
+			expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(1);
+		});
 	});
 });
