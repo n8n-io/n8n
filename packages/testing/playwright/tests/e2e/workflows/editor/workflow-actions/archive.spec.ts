@@ -153,8 +153,7 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/workflows$/);
 		});
 
-		// Flaky in multi-main mode
-		test.fixme('should archive published workflow and then delete it', async ({ n8n, api }) => {
+		test('should archive published workflow and then delete it', async ({ n8n, api }) => {
 			const workflowId = await createWorkflowWithSingleNode(api);
 			await n8n.navigate.toWorkflow(workflowId);
 			await n8n.canvas.publishWorkflow();
@@ -236,8 +235,7 @@ test.describe(
 			await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 		});
 
-		// Flaky in multi-main mode
-		test.fixme('should unpublish published workflow on archive', async ({ n8n, api }) => {
+		test('should unpublish published workflow on archive', async ({ n8n, api }) => {
 			const workflowId = await createWorkflowWithSingleNode(api);
 			await n8n.navigate.toWorkflow(workflowId);
 			await n8n.canvas.publishWorkflow();
