@@ -806,7 +806,7 @@ export async function startBuildWorkflowAgentTask(
 									// multiple credentials of the same type.
 									rawCode = rawCode.replace(
 										/newCredential\('([^']*)',\s*'([^']*)'\)/g,
-										"existingCredential('$2', '$1')",
+										"{ id: '$2', name: '$1' }",
 									);
 									const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
 									if (workspace.filesystem) {

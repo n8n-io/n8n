@@ -569,7 +569,7 @@ describe('Node Builder', () => {
 			expect(stored.name).toBe('Slack Bot');
 		});
 
-		it('passes existingCredential through unchanged', () => {
+		it('passes a raw {id, name} CredentialReference through unchanged', () => {
 			const n = node({
 				type: 'n8n-nodes-base.slack',
 				version: 2.2,

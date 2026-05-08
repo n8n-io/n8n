@@ -11,7 +11,7 @@ import * as path from 'node:path';
  * This is prepended to workflow code so the LLM knows what's available.
  */
 export const SDK_IMPORT_STATEMENT =
-	"import { workflow, node, trigger, sticky, placeholder, newCredential, existingCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, fromAi, expr } from '@n8n/workflow-sdk';";
+	"import { workflow, node, trigger, sticky, placeholder, newCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, fromAi, expr } from '@n8n/workflow-sdk';";
 
 /** Matches any import statement (single-line, multi-line, side-effect, default, namespace) */
 const IMPORT_REGEX = /^\s*import\s+(?:[\s\S]*?from\s+)?['"]([^'"]+)['"];?\s*$/gm;

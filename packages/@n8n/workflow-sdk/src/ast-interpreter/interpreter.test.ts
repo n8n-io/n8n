@@ -963,17 +963,15 @@ describe('AST Interpreter', () => {
 		});
 	});
 
-	describe('expr(placeholder(...)) error', () => {
-		it('should throw clear error when expr receives a placeholder marker', () => {
+	describe('expr(placeholder(...)) round-trip', () => {
+		it('prepends = to the placeholder marker so it parses as an n8n expression', () => {
 			const funcs: SDKFunctions = {
 				...createMockSDKFunctions(),
 				expr,
 			};
 			const code = `const val = expr(placeholder('Your ID'));
 export default val;`;
-			expect(() => interpretSDKCode(code, funcs)).toThrow(
-				"expr(placeholder('Your ID')) is invalid",
-			);
+			expect(interpretSDKCode(code, funcs)).toBe('=<__PLACEHOLDER_VALUE__Your ID__>');
 		});
 	});
 });

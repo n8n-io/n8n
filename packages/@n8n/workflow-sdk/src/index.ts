@@ -90,7 +90,6 @@ export {
 	sticky,
 	placeholder,
 	newCredential,
-	existingCredential,
 	ifElse,
 	switchCase,
 	merge,

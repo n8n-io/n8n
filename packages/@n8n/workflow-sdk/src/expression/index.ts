@@ -47,17 +47,6 @@ function isNewCredentialLike(value: unknown): value is { __newCredential: true; 
 	);
 }
 
-const PLACEHOLDER_MARKER_PREFIX = '<__PLACEHOLDER_VALUE__';
-const PLACEHOLDER_MARKER_SUFFIX = '__>';
-
-function isPlaceholderMarker(value: string): boolean {
-	return value.startsWith(PLACEHOLDER_MARKER_PREFIX) && value.endsWith(PLACEHOLDER_MARKER_SUFFIX);
-}
-
-function placeholderHint(marker: string): string {
-	return marker.slice(PLACEHOLDER_MARKER_PREFIX.length, -PLACEHOLDER_MARKER_SUFFIX.length);
-}
-
 export function expr(expression: string): string {
 	if (typeof expression !== 'string') {
 		// At runtime, the AST interpreter may pass non-string values (e.g. NewCredentialImpl objects).
@@ -70,11 +59,6 @@ export function expr(expression: string): string {
 			);
 		}
 		throw new Error(`expr() requires a string argument, but received ${typeof value}.`);
-	}
-	if (isPlaceholderMarker(expression)) {
-		throw new Error(
-			`expr(placeholder('${placeholderHint(expression)}')) is invalid. Use placeholder() directly as the value, not inside expr().`,
-		);
 	}
 	// Strip any leading '=' to prevent double-equals patterns from LLM output
 	const normalized = expression.startsWith('=') ? expression.slice(1) : expression;

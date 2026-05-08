@@ -8,7 +8,7 @@
  * (enriched parameter examples, no positions/output).
  */
 const SDK_IMPORT =
-	"import { workflow, node, trigger, sticky, placeholder, newCredential, existingCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, reranker, fromAi, expr } from '@n8n/workflow-sdk';";
+	"import { workflow, node, trigger, sticky, placeholder, newCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, reranker, fromAi, expr } from '@n8n/workflow-sdk';";
 
 export const WORKFLOW_PATTERNS_DETAILED = `<linear_chain>
 \`\`\`javascript

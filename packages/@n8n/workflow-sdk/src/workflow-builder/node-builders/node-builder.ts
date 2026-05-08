@@ -1286,30 +1286,6 @@ export function newCredential(name: string, id?: string): NewCredentialValue {
 }
 
 /**
- * Reference an existing credential by its known id.
- *
- * Use when the credential id is already known (e.g. from
- * `credentials(action="list")` results, or from a roundtripped pre-loaded
- * workflow whose credentials came back as `{id, name}`). For credentials that
- * still need to be created by the user, use {@link newCredential} instead.
- *
- * Equivalent to writing the raw `{ id, name }` object literal, but typed and
- * symmetric with `newCredential`.
- *
- * @param id - The known credential id.
- * @param name - Optional display name. Defaults to the id when omitted.
- *
- * @example
- * ```typescript
- * credentials: { slackApi: existingCredential('cred-123', 'Slack Bot') }
- * // → { slackApi: { id: 'cred-123', name: 'Slack Bot' } }
- * ```
- */
-export function existingCredential(id: string, name?: string): CredentialReference {
-	return { id, name: name ?? id };
-}
-
-/**
  * Clone a NodeInstance with a new ID.
  * Preserves all other properties including connections.
  * Used by regenerateNodeIds() to create deterministic IDs.
