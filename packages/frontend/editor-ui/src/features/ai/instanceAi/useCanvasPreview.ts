@@ -150,23 +150,20 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	//   - During hydration (loading past conversations from the server) → skip,
 	//     so re-entering an old thread doesn't pop the panel for past artifacts.
 	//   - Otherwise (live build / late run-sync delivery) → open or switch tab.
+	//
+	// `flush: 'sync'` is required: hydration runs `messages.value = […]` then
+	// clears `hydratingThreadId` in the same microtask. With the default `pre`
+	// flush the callback would fire AFTER that clear and skip the gate.
 	watch(
 		() => latestBuildResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
 			if (store.isHydratingThread) return;
 
-			// Note: previously we cleared workflowExecutions[targetId] here to
-			// drop "stale" prior-run state. We don't anymore — the build agent
-			// usually runs the workflow during build to verify it, and those
-			// push events are exactly what we want to surface on the canvas
-			// after the build completes. New executions overwrite the eventLog
-			// in useExecutionPushEvents when their executionId differs, so
-			// truly stale state can't leak across runs anyway.
-
 			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
@@ -220,6 +217,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 			activeTabId.value = latestDataTableResult.value.dataTableId;
 			dataTableRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Close data table preview if the active table is deleted ---
