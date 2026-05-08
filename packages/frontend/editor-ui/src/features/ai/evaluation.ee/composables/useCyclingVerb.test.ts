@@ -17,6 +17,11 @@ describe('useCyclingVerb', () => {
 		// inlining English in the composable. Asserting on the key shape here
 		// pins the contract so a future change can't quietly regress to
 		// returning a string value.
+		// `useFakeTimers` here avoids leaking the composable's `setInterval`:
+		// the test calls `useCyclingVerb` outside a component, so its
+		// `onBeforeUnmount(stop)` never fires — without fake timers the real
+		// interval would keep running after the test ends.
+		vi.useFakeTimers();
 		const enabled = ref(true);
 		const verbKey = useCyclingVerb(enabled);
 

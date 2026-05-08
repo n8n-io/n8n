@@ -132,13 +132,27 @@ const rows = computed(() => {
 </style>
 
 <style scoped lang="scss">
+// Pull duration + easing from design-system tokens (see `_primitives.scss` /
+// `_tokens.scss`) instead of hard-coding ms values, and disable the
+// animation entirely under `prefers-reduced-motion: reduce`. Keeps the
+// custom `-4px` translate (rows fade in from above) — the design-system
+// `fade-in` mixin uses a +8px translate intended for full-component
+// entrances, which feels too eager at the per-row scale here.
 .tc-rows-fade-in-enter-active,
 .tc-rows-fade-in-appear-active {
-	animation: tc-rows-fade-in 0.32s ease-out;
+	animation: tc-rows-fade-in var(--duration--snappy) var(--easing--ease-out);
 }
 
 .tc-rows-fade-in-leave-active {
-	animation: tc-rows-fade-in 0.18s ease-in reverse;
+	animation: tc-rows-fade-in var(--duration--snappy) var(--easing--ease-in) reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tc-rows-fade-in-enter-active,
+	.tc-rows-fade-in-appear-active,
+	.tc-rows-fade-in-leave-active {
+		animation: none;
+	}
 }
 
 @keyframes tc-rows-fade-in {

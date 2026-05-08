@@ -90,7 +90,7 @@ const cyclingVerbKey = useCyclingVerb(isRunning);
 			</template>
 			<template v-else-if="isFailed">
 				<N8nButton
-					type="secondary"
+					variant="outline"
 					size="mini"
 					:label="locale.baseText('evaluation.runDetail.testCase.rerun')"
 					data-test-id="test-case-rerun-button"
