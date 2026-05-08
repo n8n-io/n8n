@@ -1653,6 +1653,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -1780,6 +1781,11 @@ export interface INodeProperties {
 	builderHint?: IParameterBuilderHint;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
+	/**
+	 * Hides the property unless the named instance-level env feature flag is
+	 * truthy. The value is the flag suffix without the `N8N_ENV_FEAT_` prefix
+	 */
+	envFeatureFlag?: Uppercase<string>;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
 	isNodeSetting?: boolean;

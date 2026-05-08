@@ -176,6 +176,7 @@ export interface FrontendSettings {
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	unverifiedCommunityNodesEnabled: boolean;
+	communityNodesManagedByEnv: boolean;
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
@@ -293,7 +294,6 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
-		optinModalDismissed: boolean;
 		cloudManaged: boolean;
 	};
 
