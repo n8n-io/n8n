@@ -3,10 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
+
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
 
 const ENV_PROVISIONING_MODES = [
 	'disabled',
@@ -45,7 +46,7 @@ export class ProvisioningInstanceSettingsLoader {
 	async apply(): Promise<void> {
 		const parsed = provisioningSchema.safeParse(this.config);
 		if (!parsed.success) {
-			throw new OperationalError(parsed.error.issues[0].message);
+			throw new InstanceBootstrappingError(parsed.error.issues[0].message);
 		}
 
 		await this.settingsRepository.upsert(

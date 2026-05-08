@@ -2,10 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
+
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
 
 const samlEnvSchema = z
 	.object({
@@ -42,7 +43,7 @@ export class SamlInstanceSettingsLoader {
 		this.logger.info('SAML login is enabled — applying SAML SSO env vars');
 		const parsed = samlEnvSchema.safeParse(this.config);
 		if (!parsed.success) {
-			throw new OperationalError(parsed.error.issues[0].message);
+			throw new InstanceBootstrappingError(parsed.error.issues[0].message);
 		}
 		await this.writePreferences(parsed.data);
 	}

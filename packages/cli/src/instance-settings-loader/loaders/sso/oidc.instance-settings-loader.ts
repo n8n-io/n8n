@@ -4,10 +4,11 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
+
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
 
 const oidcEnvSchema = z
 	.object({
@@ -63,7 +64,7 @@ export class OidcInstanceSettingsLoader {
 		this.logger.info('OIDC login is enabled — applying OIDC SSO env vars');
 		const parsed = oidcEnvSchema.safeParse(this.config);
 		if (!parsed.success) {
-			throw new OperationalError(parsed.error.issues[0].message);
+			throw new InstanceBootstrappingError(parsed.error.issues[0].message);
 		}
 		await this.writePreferences(parsed.data);
 	}

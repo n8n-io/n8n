@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 
 import {
 	getCurrentAuthenticationMethod,
@@ -11,6 +10,7 @@ import {
 import { OidcInstanceSettingsLoader } from './oidc.instance-settings-loader';
 import { ProvisioningInstanceSettingsLoader } from './provisioning.instance-settings-loader';
 import { SamlInstanceSettingsLoader } from './saml.instance-settings-loader';
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
 
 @Service()
 export class SsoInstanceSettingsLoader {
@@ -33,7 +33,7 @@ export class SsoInstanceSettingsLoader {
 		const { samlLoginEnabled, oidcLoginEnabled } = this.config;
 
 		if (samlLoginEnabled && oidcLoginEnabled) {
-			throw new OperationalError(
+			throw new InstanceBootstrappingError(
 				'N8N_SSO_SAML_LOGIN_ENABLED and N8N_SSO_OIDC_LOGIN_ENABLED cannot both be true. Only one SSO protocol can be enabled at a time.',
 			);
 		}
@@ -54,17 +54,26 @@ export class SsoInstanceSettingsLoader {
 
 		if (samlLoginEnabled) {
 			await setCurrentAuthenticationMethod('saml');
+			this.logger.debug(
+				'Switching authentication method to SAML. Current authentication method: saml',
+			);
 			return;
 		}
 
 		if (oidcLoginEnabled) {
 			await setCurrentAuthenticationMethod('oidc');
+			this.logger.debug(
+				'Switching authentication method to OIDC. Current authentication method: oidc',
+			);
 			return;
 		}
 
 		const current = getCurrentAuthenticationMethod();
 		if (current === 'saml' || current === 'oidc') {
 			await setCurrentAuthenticationMethod('email');
+			this.logger.debug(
+				`Switching authentication method to email because SAML or OIDC is disabled. Current authentication method: ${current}`,
+			);
 		}
 	}
 }
