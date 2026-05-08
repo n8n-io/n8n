@@ -187,6 +187,14 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
+// Convert 0/1 or '0'/'1' to booleans, leaving other values unchanged
+function normalizeBoolean<T>(value: T): T | boolean {
+	if (typeof value === 'boolean') return value;
+	if (value === 1 || value === '1') return true;
+	if (value === 0 || value === '0') return false;
+	return value;
+}
+
 // Convert date objects or strings to dates in UTC
 export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
@@ -229,14 +237,7 @@ export function normalizeRows(
 			const type = typeMap[key];
 
 			if (type === 'boolean') {
-				// Convert boolean values to true/false
-				if (typeof value === 'boolean') {
-					normalized[key] = value;
-				} else if (value === 1 || value === '1') {
-					normalized[key] = true;
-				} else if (value === 0 || value === '0') {
-					normalized[key] = false;
-				}
+				normalized[key] = normalizeBoolean(value);
 			}
 
 			if (type === 'date' && value !== null && value !== undefined) {
@@ -310,10 +311,7 @@ export function normalizeUserRowValueForDatabase(
 	if (value === null || value === undefined) return null;
 
 	if (columnType === 'boolean') {
-		if (typeof value === 'boolean') return value;
-		if (value === 1 || value === '1') return true;
-		if (value === 0 || value === '0') return false;
-		return value;
+		return normalizeBoolean(value);
 	}
 
 	if (columnType === 'date') {
