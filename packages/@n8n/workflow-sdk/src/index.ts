@@ -41,7 +41,6 @@ export type {
 	// Split in batches types
 	SplitInBatchesBuilder,
 	// Other types
-	PlaceholderValue,
 	NewCredentialValue,
 	AllItemsContext,
 	EachItemContext,
@@ -91,6 +90,7 @@ export {
 	sticky,
 	placeholder,
 	newCredential,
+	existingCredential,
 	ifElse,
 	switchCase,
 	merge,

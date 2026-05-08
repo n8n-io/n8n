@@ -8,11 +8,16 @@
  */
 export const WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
-1. **Always use newCredential() for authentication**
-   - When a node needs credentials, always use \`newCredential('Name')\` in the credentials config
-   - NEVER use placeholder strings, fake API keys, or hardcoded auth values
-   - Example: \`credentials: { slackApi: newCredential('Slack Bot') }\`
-   - The credential type must match what the node expects
+1. **Use the credential helpers — never raw object literals**
+   - When a node needs credentials, choose the helper that matches your intent:
+     - \`newCredential('Name')\` — credential the user must create (no id known yet).
+     - \`existingCredential(id, name)\` — known credential id (e.g. from \`credentials(action="list")\` results, or from a roundtripped pre-loaded workflow whose credentials came back as \`{id, name}\`).
+   - NEVER write raw \`{ id, name }\` object literals — use \`existingCredential(id, name)\` instead. NEVER pass \`placeholder()\` to \`existingCredential\`.
+   - NEVER use placeholder strings, fake API keys, or hardcoded auth values for new credentials.
+   - Examples:
+     - \`credentials: { slackApi: newCredential('Slack Bot') }\`
+     - \`credentials: { slackApi: existingCredential('cred-abc123', 'Slack Bot') }\`
+   - The credential type must match what the node expects.
 
 2. **Trust empty item lists — don't synthesize fake items**
    - When a query returns 0 items, downstream nodes simply don't run for that execution. For scheduled or polling triggers this is the correct "nothing to do this round" signal — the next run will execute normally when data appears.

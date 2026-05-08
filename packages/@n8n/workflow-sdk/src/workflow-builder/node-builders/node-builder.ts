@@ -9,7 +9,6 @@ import {
 	type NodeInput,
 	type TriggerInput,
 	type StickyNoteConfig,
-	type PlaceholderValue,
 	type NewCredentialValue,
 	type CredentialReference,
 	type DeclaredConnection,
@@ -27,6 +26,7 @@ import {
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
+import { extractHint, isPlaceholderValue } from '../string-utils';
 import { assertPlainObject } from '../validation-helpers';
 
 /**
@@ -100,32 +100,77 @@ function generateNodeName(type: string): string {
 }
 
 /**
- * Collapse `placeholder('hint')` markers inside a credentials map into
- * `newCredential('hint')`. The two have identical intent in this slot —
- * "a credential is required, no real one is bound yet" — so we normalize at
- * config ingest. Downstream code (resolveCredentials, hasNewCredential, the
- * `__newCredential` toJSON path) only ever sees `__newCredential` markers in
- * credential slots, never `__placeholder` ones.
+ * Normalize the various credential-slot shapes the agent (or hand-written code)
+ * may emit into the canonical `CredentialReference | NewCredentialValue` form
+ * downstream code expects.
+ *
+ * Accepted shapes (all converge to `NewCredentialValue` or `CredentialReference`):
+ * - bare placeholder marker string → `newCredential(extractedHint)`
+ * - `{ value: <string|placeholder> }` → `newCredential(<hint or literal>)`
+ * - `{ id: <placeholder>, name: <string|placeholder> }` → `newCredential(<name or id-hint>)`
+ * - `{ id: <string>, name: <string> }` → unchanged `CredentialReference`
+ * - `NewCredentialValue` instance → unchanged
  *
  * Returns a new config object when any normalization happens; otherwise a
  * shallow copy (matching the previous `{ ...config }` semantics).
  */
 export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
-	const creds = config?.credentials;
+	const creds = config?.credentials as Record<string, unknown> | undefined;
 	if (!creds) return { ...config };
 
 	let normalizedCreds:
-		| Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>
+		| Record<string, CredentialReference | NewCredentialValue | string>
 		| undefined;
+	const setNormalized = (key: string, next: CredentialReference | NewCredentialValue | string) => {
+		normalizedCreds ??= { ...creds } as Record<
+			string,
+			CredentialReference | NewCredentialValue | string
+		>;
+		normalizedCreds[key] = next;
+	};
+
 	for (const [key, value] of Object.entries(creds)) {
-		if (value && typeof value === 'object' && '__placeholder' in value) {
-			normalizedCreds ??= { ...creds };
-			normalizedCreds[key] = new NewCredentialImpl(value.hint);
+		// 1. Bare placeholder marker string → newCredential(extractedHint)
+		if (typeof value === 'string' && isPlaceholderValue(value)) {
+			setNormalized(key, new NewCredentialImpl(extractHint(value)));
+			continue;
 		}
+		if (!value || typeof value !== 'object') {
+			continue;
+		}
+		const obj = value as Record<string, unknown>;
+		// Already a NewCredentialValue — leave alone
+		if ('__newCredential' in obj) continue;
+
+		// 2. { value: ... } → newCredential
+		if ('value' in obj && !('id' in obj)) {
+			const v = String(obj.value);
+			const name = isPlaceholderValue(v) ? extractHint(v) : v;
+			setNormalized(key, new NewCredentialImpl(name));
+			continue;
+		}
+
+		// 3. { id, name } where id is a placeholder marker → newCredential(name)
+		if ('id' in obj) {
+			const idStr = typeof obj.id === 'string' ? obj.id : '';
+			if (isPlaceholderValue(idStr)) {
+				const rawName = obj.name;
+				const name =
+					typeof rawName === 'string' && rawName.length > 0 && !isPlaceholderValue(rawName)
+						? rawName
+						: typeof rawName === 'string' && isPlaceholderValue(rawName)
+							? extractHint(rawName)
+							: extractHint(idStr);
+				setNormalized(key, new NewCredentialImpl(name));
+				continue;
+			}
+		}
+
+		// 4. else: leave as CredentialReference / plain string
 	}
 
 	if (!normalizedCreds) return { ...config };
-	return { ...config, credentials: normalizedCreds };
+	return { ...config, credentials: normalizedCreds } as NodeConfig;
 }
 
 /**
@@ -1159,38 +1204,23 @@ export function sticky(
 }
 
 /**
- * Placeholder implementation
- */
-class PlaceholderImpl implements PlaceholderValue {
-	readonly __placeholder = true as const;
-	readonly hint: string;
-
-	constructor(hint: string) {
-		this.hint = hint;
-	}
-
-	toString(): string {
-		return `<__PLACEHOLDER_VALUE__${this.hint}__>`;
-	}
-
-	toJSON(): string {
-		return this.toString();
-	}
-}
-
-/**
- * Create a placeholder value for template parameters
+ * Create a placeholder value for template parameters.
  *
- * Placeholders are used to mark values that need to be filled in
- * when a workflow template is instantiated.
+ * Returns the marker string `<__PLACEHOLDER_VALUE__<hint>__>`, which is
+ * structurally a `string` — so it flows through every string-typed slot in
+ * generated node types without TypeScript complaints. The workflow compiler
+ * recognises the marker via {@link isPlaceholderValue} and treats the slot as
+ * "to be filled in by the user before execution".
  *
- * Inside a node's `credentials` slot, `placeholder(hint)` is normalized to
- * `newCredential(hint)` at config ingest — the two have identical intent
- * there ("a credential is required, no real one bound yet"). Outside the
- * credentials slot the original placeholder semantics are unchanged.
+ * Inside a node's `credentials` slot, the marker is normalised to
+ * `newCredential(hint)` at config ingest — see {@link normalizeNodeConfig}.
+ *
+ * Note: a small number of parameters carry `placeholderSupported: false` in
+ * their description (e.g. webhook `path`) and the workflow compiler will throw
+ * a clear error if a placeholder lands in such a slot.
  *
  * @param hint - Description shown to users (e.g., 'Enter Channel')
- * @returns A placeholder value that serializes to the placeholder format
+ * @returns The placeholder marker string.
  *
  * @example
  * ```typescript
@@ -1200,8 +1230,8 @@ class PlaceholderImpl implements PlaceholderValue {
  * // Serializes channel as: '<__PLACEHOLDER_VALUE__Enter Channel__>'
  * ```
  */
-export function placeholder(hint: string): PlaceholderValue {
-	return new PlaceholderImpl(hint);
+export function placeholder(hint: string): string {
+	return `<__PLACEHOLDER_VALUE__${hint}__>`;
 }
 
 /**
@@ -1253,6 +1283,30 @@ class NewCredentialImpl implements NewCredentialValue {
  */
 export function newCredential(name: string, id?: string): NewCredentialValue {
 	return new NewCredentialImpl(name, id);
+}
+
+/**
+ * Reference an existing credential by its known id.
+ *
+ * Use when the credential id is already known (e.g. from
+ * `credentials(action="list")` results, or from a roundtripped pre-loaded
+ * workflow whose credentials came back as `{id, name}`). For credentials that
+ * still need to be created by the user, use {@link newCredential} instead.
+ *
+ * Equivalent to writing the raw `{ id, name }` object literal, but typed and
+ * symmetric with `newCredential`.
+ *
+ * @param id - The known credential id.
+ * @param name - Optional display name. Defaults to the id when omitted.
+ *
+ * @example
+ * ```typescript
+ * credentials: { slackApi: existingCredential('cred-123', 'Slack Bot') }
+ * // → { slackApi: { id: 'cred-123', name: 'Slack Bot' } }
+ * ```
+ */
+export function existingCredential(id: string, name?: string): CredentialReference {
+	return { id, name: name ?? id };
 }
 
 /**

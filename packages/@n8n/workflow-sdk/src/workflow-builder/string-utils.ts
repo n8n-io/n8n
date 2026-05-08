@@ -69,6 +69,18 @@ export function isPlaceholderValue(value: unknown): boolean {
 }
 
 /**
+ * Extract the original hint from a placeholder marker string.
+ * Returns the input unchanged if it does not match the marker format.
+ *
+ * @example
+ * extractHint('<__PLACEHOLDER_VALUE__OpenAI key__>') // → 'OpenAI key'
+ */
+export function extractHint(value: string): string {
+	if (!isPlaceholderValue(value)) return value;
+	return value.slice('<__PLACEHOLDER_VALUE__'.length, -'__>'.length);
+}
+
+/**
  * Check if an object looks like a resource locator value.
  * Resource locators have a 'mode' property (typically 'list', 'id', 'url', or 'name')
  * and a 'value' property.

@@ -1218,7 +1218,7 @@ export default workflow('test-id', 'Test Workflow')
 			});
 		});
 
-		it('should roundtrip credentials via newCredential(name, id)', () => {
+		it('should roundtrip credentials via existingCredential(id, name)', () => {
 			const originalJson: WorkflowJSON = {
 				id: 'cred-roundtrip',
 				name: 'Credential Roundtrip',
@@ -1239,8 +1239,8 @@ export default workflow('test-id', 'Test Workflow')
 			};
 
 			const code = generateWorkflowCode(originalJson);
-			// Code should contain newCredential('Slack Bot', 'cred-abc')
-			expect(code).toContain("newCredential('Slack Bot', 'cred-abc')");
+			// Code should contain existingCredential('cred-abc', 'Slack Bot')
+			expect(code).toContain("existingCredential('cred-abc', 'Slack Bot')");
 
 			const parsedJson = parseWorkflowCode(code);
 			const slackNode = parsedJson.nodes.find((n) => n.name === 'Slack');

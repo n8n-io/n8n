@@ -61,11 +61,13 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
 // The AI Agent subnode example below differs by mode:
-//   tool mode  → `newCredential('OpenAI')`
-//   sandbox    → raw `{ id, name }` object (newCredential() serializes to undefined)
+//   tool mode  → `newCredential('OpenAI')`     (credential to be created)
+//   sandbox    → `existingCredential('credId', 'OpenAI account')` (known id from credentials list)
 function buildBuilderSpecificPatterns(mode: 'tool' | 'sandbox'): string {
 	const openAiCredExample =
-		mode === 'sandbox' ? "{ id: 'credId', name: 'OpenAI account' }" : "newCredential('OpenAI')";
+		mode === 'sandbox'
+			? "existingCredential('credId', 'OpenAI account')"
+			: "newCredential('OpenAI')";
 	return `## Critical Patterns (Common Mistakes)
 
 **Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
@@ -278,15 +280,18 @@ const BUILDER_SPECIFIC_PATTERNS_SANDBOX = buildBuilderSpecificPatterns('sandbox'
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
-// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) uses raw {id, name}
-// objects because `submit-workflow` runs the code natively via tsx and expects that
-// form. Rules 2 and 3 are mode-agnostic and mirror the shared WORKFLOW_RULES.
+// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) requires existingCredential()
+// because `submit-workflow` runs the code natively via tsx and expects a fully serialized
+// {id, name} pair. Bare `newCredential('Name')` (without an id) serializes to undefined and
+// the credential is silently dropped. Rules 2 and 3 are mode-agnostic.
 const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
-1. **Always use raw credential objects from \`credentials(action="list")\`**
-   - Wire credentials as \`{ id, name }\` objects returned by \`credentials(action="list")\`
+1. **Always use \`existingCredential(id, name)\` with values from \`credentials(action="list")\`**
+   - Wire credentials with \`existingCredential(id, name)\` using the \`id\` and \`name\` returned by \`credentials(action="list")\`
+   - NEVER write raw \`{ id, name }\` object literals — use \`existingCredential\` instead
+   - NEVER use \`newCredential('Name')\` in sandbox mode — it serializes to undefined and the credential is silently dropped
    - NEVER use placeholder strings, fake API keys, or hardcoded auth values
-   - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
+   - Example: \`credentials: { slackApi: existingCredential('yXYBqho73obh58ZS', 'Slack Bot') }\`
    - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
 
 2. **Trust empty item lists — don't synthesize fake items**
@@ -313,13 +318,13 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	// form is correct for tool mode but serializes to undefined in sandbox mode
 	// (see submit-workflow.tool.ts — `NewCredentialImpl.toJSON() === undefined`).
 	// Prepend an override note when composing for sandbox so the LLM substitutes
-	// raw `{id, name}` objects in the shared examples below.
+	// `existingCredential(id, name)` calls in the shared examples below.
 	const sandboxOverride =
 		mode === 'sandbox'
 			? "> **Sandbox credential override**: The SDK pattern examples below use `newCredential('X')`. " +
-				"In sandbox mode, replace every `newCredential('X')` with the raw `{ id, name }` object from " +
-				'`credentials(action="list")`. `newCredential()` serializes to `undefined` in sandbox and will ' +
-				'silently drop credentials from the saved workflow.'
+				"In sandbox mode, replace every `newCredential('X')` with `existingCredential(id, name)` using " +
+				'`id` and `name` from `credentials(action="list")`. `newCredential()` (no id) serializes to ' +
+				'`undefined` in sandbox and the credential is silently dropped from the saved workflow.'
 			: null;
 	return [
 		SDK_CODE_RULES,
@@ -360,9 +365,9 @@ ${PLACEHOLDERS_RULE}
 Do NOT produce visible output until step 5. All reasoning happens internally.
 
 ## Credential Rules (tool mode)
-- Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
-- NEVER use raw credential objects like \`{ id: '...', name: '...' }\` — that form is for sandbox mode only.
-- When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
+- Use \`newCredential('Credential Name')\` for credentials the user must create — never fake keys or placeholder strings.
+- Use \`existingCredential(id, name)\` when the credential id is already known (e.g. when editing a roundtripped workflow whose credentials came back as \`{id, name}\` — convert each to \`existingCredential(id, name)\`).
+- NEVER write raw credential objects like \`{ id: '...', name: '...' }\` — use \`existingCredential\` instead. NEVER pass \`placeholder()\` to \`existingCredential\` — use \`newCredential\` for that intent.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
 ${SDK_RULES_AND_PATTERNS_TOOL}
@@ -407,7 +412,7 @@ export const weatherNode = node({
   config: {
     name: 'Get Weather',
     parameters: { locationSelection: 'cityName', cityName: 'London' },
-    credentials: { openWeatherMapApi: { id: 'credId', name: 'OpenWeatherMap account' } }
+    credentials: { openWeatherMapApi: existingCredential('credId', 'OpenWeatherMap account') }
   }
 });
 \`\`\`
@@ -463,7 +468,7 @@ const fetchWeather = node({
       cityName: '={{ $json.city }}',
       format: '={{ $json.units }}'
     },
-    credentials: { openWeatherMapApi: { id: 'credId', name: 'OpenWeatherMap account' } }
+    credentials: { openWeatherMapApi: existingCredential('credId', 'OpenWeatherMap account') }
   }
 });
 
@@ -565,15 +570,15 @@ ${ASK_USER_FALLBACK}
 
 ## Credentials (sandbox mode)
 
-Sandbox mode uses **raw credential objects** (not \`newCredential()\`). Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
+Sandbox mode requires \`existingCredential(id, name)\` (not \`newCredential()\`). Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
 
 \`\`\`typescript
 credentials: {
-  openWeatherMapApi: { id: 'yXYBqho73obh58ZS', name: 'OpenWeatherMap account' }
+  openWeatherMapApi: existingCredential('yXYBqho73obh58ZS', 'OpenWeatherMap account')
 }
 \`\`\`
 
-The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
+The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`. Do not write raw \`{id, name}\` literals — use \`existingCredential\`. Do not use \`newCredential('Name')\` (no id) here — it serializes to undefined and the credential is silently dropped.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 

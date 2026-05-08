@@ -21,9 +21,10 @@ import {
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 
 /**
- * Format a credentials object using newCredential() calls.
- * Emits `newCredential('name', 'id')` for credentials with an id,
- * or `newCredential('name')` for placeholder credentials.
+ * Format a credentials object using helper-call calls.
+ * - Known id + name → `existingCredential('id', 'name')`
+ * - Name only (no id, "to be created") → `newCredential('name')`
+ * - id only (no name) → raw object literal to preserve the shape we received
  */
 export function formatCredentials(
 	credentials: Record<string, { id?: string; name?: string }>,
@@ -34,18 +35,15 @@ export function formatCredentials(
 		return `'${escapeString(credentials)}'`;
 	}
 	const entries = Object.entries(credentials).map(([key, value]) => {
-		// If credential has a name, use newCredential() call
-		if (value.name !== undefined || value.id !== undefined) {
-			if (value.name !== undefined) {
-				if (value.id !== undefined) {
-					return `${formatKey(key)}: newCredential('${escapeString(value.name)}', '${escapeString(value.id)}')`;
-				}
-				return `${formatKey(key)}: newCredential('${escapeString(value.name)}')`;
-			}
-			// id-only credential (no name property) — emit raw object to preserve shape
-			if (value.id !== undefined) {
-				return `${formatKey(key)}: { id: '${escapeString(value.id)}' }`;
-			}
+		if (value.name !== undefined && value.id !== undefined) {
+			return `${formatKey(key)}: existingCredential('${escapeString(value.id)}', '${escapeString(value.name)}')`;
+		}
+		if (value.name !== undefined) {
+			return `${formatKey(key)}: newCredential('${escapeString(value.name)}')`;
+		}
+		// id-only credential (no name property) — emit raw object to preserve shape
+		if (value.id !== undefined) {
+			return `${formatKey(key)}: { id: '${escapeString(value.id)}' }`;
 		}
 		// Empty credential object — preserve as-is
 		return `${formatKey(key)}: ${formatValue(value)}`;
