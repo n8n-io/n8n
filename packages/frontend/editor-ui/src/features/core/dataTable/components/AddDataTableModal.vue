@@ -199,9 +199,21 @@ const reset = (clearTableName = false) => {
 	creationMode.value = 'select';
 };
 
+const deriveNameFromFileName = (fileName: string): string => {
+	return fileName
+		.replace(/\.csv$/i, '')
+		.replace(/[^a-zA-Z0-9]+/g, ' ')
+		.trim()
+		.slice(0, 128)
+		.trim();
+};
+
 const handleFileChange = (uploadFile: UploadFile) => {
 	if (uploadFile.raw) {
 		selectedFile.value = uploadFile.raw;
+		if (!dataTableName.value) {
+			dataTableName.value = deriveNameFromFileName(uploadFile.raw.name);
+		}
 	}
 };
 
@@ -231,11 +243,6 @@ const uploadFile = async () => {
 				csvColumnName: col.name,
 			};
 		});
-
-		if (!dataTableName.value) {
-			const fileName = selectedFile.value.name.replace(/\.csv$/i, '');
-			dataTableName.value = fileName;
-		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
 		reset();
