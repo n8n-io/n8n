@@ -160,7 +160,7 @@ describe('WorkflowsView', () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-				const { getByText, queryByText } = renderComponent({ pinia });
+				const { getByText } = renderComponent({ pinia });
 				await waitAllPromises();
 				expect(getByText('What do you want to build?')).toBeInTheDocument();
 			});
