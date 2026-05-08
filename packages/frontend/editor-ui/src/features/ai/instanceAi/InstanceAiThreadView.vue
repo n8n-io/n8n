@@ -18,7 +18,7 @@ import {
 	N8nScrollArea,
 	N8nText,
 } from '@n8n/design-system';
-import { useScroll, useWindowSize } from '@vueuse/core';
+import { useElementSize, useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -102,12 +102,16 @@ const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
 // --- Preview panel resize (when canvas is visible) ---
-const { width: windowWidth } = useWindowSize();
-const previewPanelWidth = ref(Math.round(windowWidth.value / 2));
+// Cap the preview at 50% of the *available* thread area, not the full window —
+// with the layout sidebar open the chat side would otherwise get less than 50%.
+const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
+const { width: threadAreaWidth } = useElementSize(threadAreaRef);
+const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
-const previewMaxWidth = computed(() => Math.round(windowWidth.value / 2));
+const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
 
-// Clamp preview width when the window shrinks
+// Clamp preview width when the available area shrinks (sidebar open, window
+// resize, etc.)
 watch(previewMaxWidth, (max) => {
 	if (previewPanelWidth.value > max) {
 		previewPanelWidth.value = max;
@@ -118,10 +122,11 @@ function handlePreviewResize({ width }: { width: number }) {
 	previewPanelWidth.value = width;
 }
 
-// Re-compute default width when preview opens so it starts at 50%
+// Re-compute default width when preview opens so it starts at 50% of the
+// currently-available thread area.
 watch(preview.isPreviewVisible, (visible) => {
 	if (visible) {
-		previewPanelWidth.value = Math.round(windowWidth.value / 2);
+		previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
 	}
 });
 
@@ -305,7 +310,7 @@ function handleStop() {
 </script>
 
 <template>
-	<div :class="$style.threadArea">
+	<div ref="threadArea" :class="$style.threadArea">
 		<!-- Main chat area -->
 		<div :class="$style.chatArea">
 			<InstanceAiViewHeader>
