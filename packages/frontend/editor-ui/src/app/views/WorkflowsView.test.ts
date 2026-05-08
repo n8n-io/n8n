@@ -160,9 +160,9 @@ describe('WorkflowsView', () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-				const { getByText } = renderComponent({ pinia });
+				const { getByRole } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByText('What do you want to build?')).toBeInTheDocument();
+				expect(getByRole('heading', { name: 'What do you want to build?' })).toBeInTheDocument();
 			});
 		});
 	});
