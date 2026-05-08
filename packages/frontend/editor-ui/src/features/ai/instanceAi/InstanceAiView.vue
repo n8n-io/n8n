@@ -191,6 +191,9 @@ const artifactsPreviewToggleLabel = computed(() =>
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
 );
+const artifactsPanelTransitionName = computed(() =>
+	preview.isPreviewVisible.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
+);
 const showArtifactsPanelEdge = computed(
 	() =>
 		canShowArtifactsPanel.value && !preview.isPreviewVisible.value && !isArtifactsPanelPinned.value,
@@ -784,7 +787,7 @@ function handleStop() {
 					@keydown.enter.prevent="revealArtifactsPanel"
 					@keydown.space.prevent="revealArtifactsPanel"
 				/>
-				<Transition name="artifacts-panel-fade" :css="isArtifactsPanelTransitionEnabled">
+				<Transition :name="artifactsPanelTransitionName" :css="isArtifactsPanelTransitionEnabled">
 					<div
 						v-if="showArtifactsPanel"
 						:class="[
@@ -882,6 +885,9 @@ function handleStop() {
 
 <style lang="scss" module>
 .container {
+	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
+	--instance-ai-panel-transition-easing: var(--easing--ease-in-out);
+
 	display: flex;
 	height: 100%;
 	width: 100%;
@@ -1071,6 +1077,12 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	transition:
+		max-width var(--instance-ai-panel-transition-duration)
+			var(--instance-ai-panel-transition-easing),
+		transform var(--instance-ai-panel-transition-duration)
+			var(--instance-ai-panel-transition-easing);
+	will-change: transform;
 }
 
 .contentAreaWithPinnedArtifacts {
@@ -1104,6 +1116,9 @@ function handleStop() {
 	justify-content: center;
 	pointer-events: none;
 	z-index: 3;
+	transition: transform var(--instance-ai-panel-transition-duration)
+		var(--instance-ai-panel-transition-easing);
+	will-change: transform;
 }
 
 .scrollToBottomButton {
@@ -1136,6 +1151,21 @@ function handleStop() {
 .inputConstraint {
 	max-width: 750px;
 	margin: 0 auto;
+	transition:
+		max-width var(--instance-ai-panel-transition-duration)
+			var(--instance-ai-panel-transition-easing),
+		transform var(--instance-ai-panel-transition-duration)
+			var(--instance-ai-panel-transition-easing);
+	will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.messageList,
+	.scrollButtonContainer,
+	.inputConstraint {
+		transition: none;
+		will-change: auto;
+	}
 }
 
 .previewPanel {
@@ -1185,18 +1215,30 @@ function handleStop() {
 
 .preview-panel-slide-enter-active,
 .preview-panel-slide-leave-active {
-	--preview-panel-slide-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--preview-panel-slide-easing: var(--easing--ease-in-out);
 
+	transition:
+		width var(--instance-ai-panel-transition-duration, var(--duration--snappy))
+			var(--preview-panel-slide-easing),
+		min-width var(--instance-ai-panel-transition-duration, var(--duration--snappy))
+			var(--preview-panel-slide-easing),
+		opacity var(--instance-ai-panel-transition-duration, var(--duration--snappy))
+			var(--preview-panel-slide-easing);
 	overflow: hidden;
-	will-change: opacity, transform;
+	will-change: width, min-width, opacity, transform;
 
 	@media (prefers-reduced-motion: reduce) {
+		transition: none;
 		will-change: auto;
 	}
 }
 
 .preview-panel-slide-enter-active {
 	--animation--fade-in-right--easing: var(--preview-panel-slide-easing);
+	--animation--fade-in-right--duration: var(
+		--instance-ai-panel-transition-duration,
+		var(--duration--snappy)
+	);
 	--animation--fade-in-right--translate: var(--spacing--sm);
 
 	@include motion.fade-in-right;
@@ -1204,14 +1246,25 @@ function handleStop() {
 
 .preview-panel-slide-leave-active {
 	--animation--fade-out-right--easing: var(--preview-panel-slide-easing);
+	--animation--fade-out-right--duration: var(
+		--instance-ai-panel-transition-duration,
+		var(--duration--snappy)
+	);
 	--animation--fade-out-right--translate: var(--spacing--sm);
 
 	@include motion.fade-out-right;
 }
 
+.preview-panel-slide-enter-from,
+.preview-panel-slide-leave-to {
+	width: 0 !important;
+	min-width: 0 !important;
+	opacity: 0;
+}
+
 .artifacts-panel-fade-enter-active,
 .artifacts-panel-fade-leave-active {
-	--artifacts-panel-fade-enter-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--artifacts-panel-fade-enter-easing: var(--easing--ease-out);
 	--artifacts-panel-fade-exit-easing: var(--easing--ease-in);
 	--animation--fade-in-right--easing: var(--artifacts-panel-fade-enter-easing);
 	--animation--fade-in-right--translate: 100%;
@@ -1233,6 +1286,14 @@ function handleStop() {
 	--animation--fade-out-right--duration: calc(var(--duration--snappy) - 40ms);
 
 	@include motion.fade-out-right;
+	pointer-events: none;
+}
+
+.artifacts-panel-preview-leave-active {
+	--animation--fade-out--duration: calc(var(--duration--snappy) - 80ms);
+	--animation--fade-out--easing: var(--easing--ease-out);
+
+	@include motion.fade-out;
 	pointer-events: none;
 }
 
