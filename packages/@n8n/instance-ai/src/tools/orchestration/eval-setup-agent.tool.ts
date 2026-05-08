@@ -35,8 +35,42 @@ import {
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
+import { createWorkflowsTool } from '../workflows.tool';
 
 const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
+
+/**
+ * Build the eval-setup sub-agent's tool set.
+ *
+ * The `workflows` tool is overridden so its `update` action never prompts —
+ * the eval offer card already captured the user's approval for adding eval
+ * nodes, so a second confirmation here is redundant. If admin has blocked
+ * workflow updates outright (`updateWorkflow: 'blocked'`), the original tool
+ * is left in place so the sub-agent receives the standard `denied` result.
+ */
+export function buildEvalSetupTools(context: OrchestrationContext): ToolsInput {
+	const tools: ToolsInput = {};
+	for (const name of EVAL_SETUP_TOOL_NAMES) {
+		if (name in context.domainTools) {
+			tools[name] = context.domainTools[name];
+		}
+	}
+
+	const domainContext = context.domainContext;
+	const parentPermissions = domainContext?.permissions;
+	if (
+		domainContext &&
+		parentPermissions &&
+		parentPermissions.updateWorkflow !== 'blocked' &&
+		'workflows' in tools
+	) {
+		tools.workflows = createWorkflowsTool({
+			...domainContext,
+			permissions: { ...parentPermissions, updateWorkflow: 'always_allow' },
+		});
+	}
+	return tools;
+}
 
 export interface StartEvalSetupAgentInput {
 	workflowId: string;
@@ -57,13 +91,7 @@ export async function startEvalSetupAgentTask(
 	context: OrchestrationContext,
 	input: StartEvalSetupAgentInput,
 ): Promise<StartedEvalSetupAgentTask> {
-	// Extract the restricted tool set from domain tools
-	const evalSetupTools: ToolsInput = {};
-	for (const name of EVAL_SETUP_TOOL_NAMES) {
-		if (name in context.domainTools) {
-			evalSetupTools[name] = context.domainTools[name];
-		}
-	}
+	const evalSetupTools = buildEvalSetupTools(context);
 	if (!('workflows' in evalSetupTools)) {
 		return { result: 'Error: workflows tool not available.', taskId: '', agentId: '' };
 	}

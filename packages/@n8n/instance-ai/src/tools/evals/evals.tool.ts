@@ -128,10 +128,14 @@ type QuestionsResume = z.infer<typeof questionsResumeSchema>;
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): string {
-	const baseMessage =
+	const subject =
 		aiNodeNames.length === 1
-			? `Generate an eval suite for AI node \`${aiNodeNames[0]}\`?`
-			: `Generate an eval suite for ${aiNodeNames.length} AI nodes in this workflow?`;
+			? `This workflow uses AI node \`${aiNodeNames[0]}\`.`
+			: `This workflow uses ${aiNodeNames.length} AI nodes.`;
+	const baseMessage =
+		`${subject} Because AI outputs can vary between runs, an eval suite lets you ` +
+		`measure quality and catch regressions when you change prompts, models, or tools. ` +
+		`Want to set one up?`;
 
 	if (namedRefs.length === 0) return baseMessage;
 

@@ -271,7 +271,7 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 		const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
 		expect(payload).toMatchObject({
 			severity: 'info',
-			message: expect.stringMatching(/Generate an eval suite/i) as unknown,
+			message: expect.stringMatching(/AI outputs can vary between runs/i) as unknown,
 		});
 		expect(payload).toHaveProperty('requestId');
 		expect(payload).not.toHaveProperty('inputType');
@@ -287,7 +287,10 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 			agent: { suspend, resumeData: undefined },
 		} as never);
 
-		expect(suspend.mock.calls[0][0].message).toBe('Generate an eval suite for AI node `Agent`?');
+		const message = suspend.mock.calls[0][0].message as string;
+		expect(message).toContain('This workflow uses AI node `Agent`.');
+		expect(message).toContain('AI outputs can vary between runs');
+		expect(message).toContain('Want to set one up?');
 	});
 
 	it('returns approved:true with aiNodeNames when the user approves', async () => {
@@ -764,7 +767,7 @@ describe('evals tool — offer with named refs', () => {
 
 		expect(suspend).toHaveBeenCalled();
 		const message = (suspend.mock.calls[0][0] as Record<string, unknown>).message as string;
-		expect(message).toMatch(/Generate an eval suite/);
+		expect(message).toMatch(/This workflow uses AI node/);
 		expect(message).toMatch(/Voice or Text/);
 		expect(message).toMatch(/Set node in the production path/);
 		expect(message).toMatch(/`text`/);
