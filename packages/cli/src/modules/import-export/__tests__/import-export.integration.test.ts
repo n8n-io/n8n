@@ -15,7 +15,17 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { Readable } from 'node:stream';
+import { existsSync } from 'fs';
+import { mkdir, mkdtemp, readdir, readFile as fsReadFile, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { dirname, join, relative } from 'path';
+import { Readable as ReadableImpl } from 'stream';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
+import { createGunzip } from 'zlib';
+import * as tar from 'tar-stream';
+
+import { TarPackageWriter } from '../io/tar/tar-package-writer';
 
 import { createOwner } from '@test-integration/db/users';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -42,6 +52,64 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as ArrayBuffer));
 	}
 	return Buffer.concat(chunks);
+}
+
+/** Unpack a gzipped-tar package into the on-disk folder layout under `dir`. */
+async function unpackTarToDir(buffer: Buffer, dir: string): Promise<void> {
+	type Collected = { name: string; type: string; content: Buffer };
+	const collected: Collected[] = [];
+	const extract = tar.extract();
+
+	extract.on('entry', (header, entryStream, next) => {
+		const chunks: Buffer[] = [];
+		entryStream.on('data', (c: Buffer) => chunks.push(c));
+		entryStream.on('end', () => {
+			if (typeof header.name === 'string' && header.name.length > 0) {
+				collected.push({
+					name: header.name,
+					type: header.type ?? 'file',
+					content: Buffer.concat(chunks),
+				});
+			}
+			next();
+		});
+		entryStream.resume();
+	});
+
+	await pipeline(ReadableImpl.from(buffer), createGunzip(), extract);
+
+	for (const entry of collected) {
+		if (typeof entry.name !== 'string' || entry.name.length === 0) continue;
+		const target = join(dir, entry.name);
+		if (entry.type === 'directory') {
+			await mkdir(target, { recursive: true });
+		} else {
+			await mkdir(dirname(target), { recursive: true });
+			await writeFile(target, entry.content);
+		}
+	}
+}
+
+/** Walk a folder layout under `dir` and pack it into a fresh gzipped-tar package. */
+async function packDirToTar(dir: string): Promise<Buffer> {
+	const writer = new TarPackageWriter();
+
+	async function walk(current: string): Promise<void> {
+		const entries = await readdir(current, { withFileTypes: true });
+		for (const entry of entries) {
+			const full = join(current, entry.name);
+			const rel = relative(dir, full);
+			if (entry.isDirectory()) {
+				writer.writeDirectory(rel);
+				await walk(full);
+			} else {
+				writer.writeFile(rel, await fsReadFile(full));
+			}
+		}
+	}
+
+	await walk(dir);
+	return await streamToBuffer(writer.finalize());
 }
 
 async function createFolder(name: string, projectId: string, parentFolderId?: string) {
@@ -893,6 +961,77 @@ describe('import-export integration', () => {
 			const mappings = await mappingRepo.find();
 			expect(mappings).toHaveLength(1);
 			expect(mappings[0].tagId).toBe(preExistingTag.id);
+		});
+	});
+
+	describe('bundle ↔ folder layout duality', () => {
+		it('should round-trip losslessly through the unpacked folder layout', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Layout Source', owner);
+			const wf = await createWorkflow(
+				{
+					name: 'Daily Sync',
+					nodes: [
+						{
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				},
+				sourceProject,
+			);
+
+			// Export → bundle (gzipped tar)
+			const stream = await service.exportPackage({
+				type: 'workflows',
+				user: owner,
+				workflowIds: [wf.id],
+			});
+			const bundle = await streamToBuffer(stream);
+
+			// Unpack the bundle into a folder layout, then repack from disk into a
+			// fresh bundle. Both forms must produce equivalent imports.
+			const tempDir = await mkdtemp(join(tmpdir(), 'n8n-pkg-roundtrip-'));
+			try {
+				await unpackTarToDir(bundle, tempDir);
+
+				// Sanity-check: the unpacked layout has the expected files on disk.
+				expect(existsSync(join(tempDir, 'manifest.json'))).toBe(true);
+				const workflowFiles = (await readdir(join(tempDir, 'workflows'))).filter(
+					(entry) => !entry.endsWith('.json'),
+				);
+				expect(workflowFiles.length).toBeGreaterThanOrEqual(1);
+
+				// Repack the layout into a fresh bundle and import it into a target project.
+				const repacked = await packDirToTar(tempDir);
+
+				const targetProject = await createTeamProject('Layout Target', owner);
+				const result = await service.importPackage(repacked, {
+					user: owner,
+					targetProjectId: targetProject.id,
+					mode: 'auto',
+					includeCredentialStubs: false,
+					includeVariableValues: true,
+					overwriteVariableValues: false,
+				});
+
+				expect(result.workflows).toBe(1);
+
+				// The repacked bundle imported the workflow with the same content.
+				const importedId = Container.get(IdDeriver).derive(targetProject.id, wf.id);
+				const imported = await Container.get(WorkflowRepository).findOne({
+					where: { id: importedId },
+				});
+				expect(imported?.name).toBe('Daily Sync');
+				expect(imported?.nodes).toHaveLength(1);
+				expect(imported?.nodes[0].type).toBe('n8n-nodes-base.start');
+			} finally {
+				await rm(tempDir, { recursive: true, force: true });
+			}
 		});
 	});
 });
