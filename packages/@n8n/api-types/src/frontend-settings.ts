@@ -101,6 +101,7 @@ export interface FrontendSettings {
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
 	concurrency: number;
+	evaluationConcurrencyLimit: number;
 	authCookie: {
 		secure: boolean;
 	};
@@ -175,6 +176,7 @@ export interface FrontendSettings {
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	unverifiedCommunityNodesEnabled: boolean;
+	communityNodesManagedByEnv: boolean;
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;

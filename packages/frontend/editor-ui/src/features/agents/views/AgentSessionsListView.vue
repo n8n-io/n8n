@@ -192,11 +192,15 @@ async function loadMore() {
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .tableContainer {
 	width: 100%;
 	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .clickableRow {
