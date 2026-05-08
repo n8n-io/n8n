@@ -79,6 +79,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
 
+	/**
+	 * @deprecated use useWorkflowId() in Vue components/composables instead.
+	 */
 	const workflowId = ref('');
 
 	// A workflow is new if it hasn't been saved to the backend yet.

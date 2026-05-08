@@ -424,18 +424,22 @@ export function disposeWorkflowDocumentStore(store: ReturnType<typeof useWorkflo
 
 /**
  * Injects the workflow document store from the current component tree.
- * Returns null if not within a component context that has provided the store.
+ * Returns fallback document store if not within a component context
  *
  * Use this in composables/stores that need to interact with the current workflow's
- * document store but may be called outside of the NodeView tree.
+ * document store and avoid calling this outside a component tree.
  */
 export function injectWorkflowDocumentStore(): ShallowRef<
 	ReturnType<typeof useWorkflowDocumentStore>
 > {
 	const workflowsStore = useWorkflowsStore();
-	const fallback = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const fallback = computed(() => {
+		// TODO: once usages outside of a component tree is eliminated,
+		// this can be replaced with useWorkflowId()
+		const fallbackWorkflowId = workflowsStore.workflowId;
+
+		return useWorkflowDocumentStore(createWorkflowDocumentId(fallbackWorkflowId));
+	});
 	const injected = inject(WorkflowDocumentStoreKey, null);
 
 	return computed(() => injected?.value ?? fallback.value);

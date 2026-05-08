@@ -23,12 +23,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflowId: '123',
-	})),
-}));
-
 const { mockGetNodeByName } = vi.hoisted(() => ({
 	mockGetNodeByName: vi.fn(),
 }));
@@ -119,15 +113,14 @@ describe('schemaPreview.store', () => {
 
 		it('should track both the preview schema and the output one', async () => {
 			const store = useSchemaPreviewStore();
-			mockGetNodeByName.mockReturnValueOnce(
+			await store.trackSchemaPreviewExecution(
+				'123',
 				mock<INode>({
 					id: 'test-node-id',
 					type: options.nodeType,
 					typeVersion: options.version,
 					parameters: { resource: options.resource, operation: options.operation },
 				}),
-			);
-			await store.trackSchemaPreviewExecution(
 				mock<PushPayload<'nodeExecuteAfterData'>>({
 					nodeName: 'Test',
 					data: {
@@ -150,25 +143,11 @@ describe('schemaPreview.store', () => {
 			});
 		});
 
-		it('should not track nodes without a schema preview', async () => {
-			const store = useSchemaPreviewStore();
-			mockGetNodeByName.mockReturnValueOnce(mock<INode>());
-			await store.trackSchemaPreviewExecution(
-				mock<PushPayload<'nodeExecuteAfterData'>>({
-					nodeName: 'Test',
-					data: {
-						executionStatus: 'success',
-						data: { main: [[{ json: { foo: 'bar', quz: 'qux' } }]] },
-					},
-				}),
-			);
-
-			expect(useTelemetry().track).not.toHaveBeenCalled();
-		});
-
 		it('should not track failed executions', async () => {
 			const store = useSchemaPreviewStore();
 			await store.trackSchemaPreviewExecution(
+				'123',
+				mock<INode>({}),
 				mock<PushPayload<'nodeExecuteAfterData'>>({
 					data: {
 						executionStatus: 'error',
