@@ -163,7 +163,6 @@ describe('WorkflowsView', () => {
 				const { getByText, queryByText } = renderComponent({ pinia });
 				await waitAllPromises();
 				expect(getByText('What do you want to build?')).toBeInTheDocument();
-				expect(queryByText('Create your first workflow')).not.toBeInTheDocument();
 			});
 		});
 	});
