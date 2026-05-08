@@ -30,11 +30,8 @@ export class FilterV2 implements INodeType {
 			outputNames: ['Kept', 'Discarded'],
 			parameterPane: 'wide',
 			builderHint: {
-				searchHint: `parameters.conditions must always contain these three sibling keys:
-- "combinator": "and" or "or", default to "and"
-- "conditions": [ {a list of condition objects } ]
-- "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 }
-Filter emits 0 items when nothing matches and the chain stops cleanly — no IF gate needed before downstream loops.`,
+				searchHint:
+					'Filter emits 0 items when nothing matches and the chain stops cleanly — no IF gate needed before downstream loops.',
 			},
 			properties: [
 				{
@@ -49,6 +46,13 @@ Filter emits 0 items when nothing matches and the chain stops cleanly — no IF 
 							typeValidation: getTypeValidationStrictness(2.1),
 							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
+					},
+					builderHint: {
+						propertyHint: `Must always contain these three sibling keys:
+- combinator: 'and' or 'or', default to 'and'
+- conditions: [ a list of condition objects ]
+- options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 1 }
+e.g.: { combinator: 'and', options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 }, conditions: [{ leftValue: expr('{{ $json.field }}'), rightValue: 'value', operator: { type: 'string', operation: 'equals' } }] }`,
 					},
 				},
 				{

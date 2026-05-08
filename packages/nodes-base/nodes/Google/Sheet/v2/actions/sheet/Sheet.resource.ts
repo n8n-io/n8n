@@ -83,7 +83,7 @@ export const descriptions: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				'Default to mode: \'list\' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper. Use IDs from `nodes(action="explore-resources")`.',
+				"Default to mode: 'list' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
 		},
 		modes: [
 			{
@@ -144,7 +144,7 @@ export const descriptions: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				'Default to mode: \'list\' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper. Use IDs from `nodes(action="explore-resources")`.',
+				"Default to mode: 'list' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
 		},
 		typeOptions: {
 			loadOptionsDependsOn: ['documentId.value'],
