@@ -131,7 +131,7 @@ export const nodeProperties: INodeProperties[] = [
 			rows: 2,
 		},
 		builderHint: {
-			message:
+			propertyHint:
 				"Use expressions to include dynamic data from previous nodes (e.g., expr('{{ $json.input }}')). Static text prompts ignore incoming data.",
 		},
 		displayOptions: {

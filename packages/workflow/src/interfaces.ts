@@ -1903,7 +1903,7 @@ export interface INodePropertyCollection {
 }
 
 export interface IParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 

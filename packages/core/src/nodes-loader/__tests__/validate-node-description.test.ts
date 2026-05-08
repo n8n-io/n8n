@@ -26,7 +26,7 @@ describe('validateNodeDescription', () => {
 					type: 'options',
 					default: '',
 					options: [{ name: 'A', value: 'a' }],
-					builderHint: { message: 'unrendered' },
+					builderHint: { propertyHint: 'unrendered' },
 				},
 			]);
 
@@ -45,7 +45,7 @@ describe('validateNodeDescription', () => {
 					{
 						name: 'Classify',
 						value: 'classify',
-						builderHint: { message: 'rendered on the option' },
+						builderHint: { propertyHint: 'rendered on the option' },
 					},
 				],
 			},
@@ -61,7 +61,7 @@ describe('validateNodeDescription', () => {
 				name: 'conditions',
 				type: 'filter',
 				default: {},
-				builderHint: { message: 'this renders' },
+				builderHint: { propertyHint: 'this renders' },
 			},
 		]);
 
@@ -75,7 +75,7 @@ describe('validateNodeDescription', () => {
 				name: 'operation',
 				type: 'string',
 				default: '',
-				builderHint: { message: 'free-form text, not a discriminator' },
+				builderHint: { propertyHint: 'free-form text, not a discriminator' },
 			},
 		]);
 
@@ -96,7 +96,7 @@ describe('validateNodeDescription', () => {
 						type: 'options',
 						default: '',
 						options: [{ name: 'A', value: 'a' }],
-						builderHint: { message: 'still unrendered' },
+						builderHint: { propertyHint: 'still unrendered' },
 					},
 				],
 			},
@@ -113,7 +113,7 @@ describe('validateNodeDescription', () => {
 				type: 'options',
 				default: '',
 				options: [{ name: 'A', value: 'a' }],
-				builderHint: { message: 'oops' },
+				builderHint: { propertyHint: 'oops' },
 			},
 		]);
 		description.name = 'myNode';

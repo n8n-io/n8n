@@ -8,11 +8,11 @@ ruleTester.run('no-builder-hint-leakage', NoBuilderHintLeakageRule, {
 	valid: [
 		{
 			name: 'builderHint with no forbidden patterns',
-			code: 'const x = { builderHint: { message: "use expr() to embed expressions" } };',
+			code: 'const x = { builderHint: { propertyHint: "use expr() to embed expressions" } };',
 		},
 		{
 			name: 'builderHint using expr() form in example',
-			code: 'const x = { builderHint: { message: "e.g. expr(\'{{ $json.field }}\')" } };',
+			code: 'const x = { builderHint: { propertyHint: "e.g. expr(\'{{ $json.field }}\')" } };',
 		},
 		{
 			name: 'connection-type names as keys are allowed (wire-format structural data)',
@@ -45,12 +45,12 @@ ruleTester.run('no-builder-hint-leakage', NoBuilderHintLeakageRule, {
 	invalid: [
 		{
 			name: 'wire-format ={{ ... }} inside builderHint message',
-			code: 'const x = { builderHint: { message: "e.g. ={{ $json.field }}" } };',
+			code: 'const x = { builderHint: { propertyHint: "e.g. ={{ $json.field }}" } };',
 			errors: [{ messageId: 'wireExpression' }],
 		},
 		{
 			name: 'wire-format ={{ ... }} inside template literal in builderHint',
-			code: 'const x = { builderHint: { message: `e.g. ={{ $json.field }}` } };',
+			code: 'const x = { builderHint: { propertyHint: `e.g. ={{ $json.field }}` } };',
 			errors: [{ messageId: 'wireExpression' }],
 		},
 		{
@@ -60,7 +60,7 @@ ruleTester.run('no-builder-hint-leakage', NoBuilderHintLeakageRule, {
 		},
 		{
 			name: 'multiple connection-type literals in one string',
-			code: 'const x = { builderHint: { message: "needs ai_languageModel and ai_tool" } };',
+			code: 'const x = { builderHint: { propertyHint: "needs ai_languageModel and ai_tool" } };',
 			errors: [{ messageId: 'connectionTypeLiteral' }, { messageId: 'connectionTypeLiteral' }],
 		},
 		{

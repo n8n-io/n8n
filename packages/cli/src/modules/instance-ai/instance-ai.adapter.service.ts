@@ -2381,7 +2381,7 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.message` of the property that references a given
+ * Find the `builderHint.propertyHint` of the property that references a given
  * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
  * Returns undefined if no matching property is found.
  *
@@ -2424,8 +2424,8 @@ function findBuilderHintForMethod(
 				continue;
 			}
 			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.message) {
-				return item.builderHint.message;
+			if (referencesMethod(item) && item.builderHint?.propertyHint) {
+				return item.builderHint.propertyHint;
 			}
 			const nested = searchProps(item.options);
 			if (nested) return nested;

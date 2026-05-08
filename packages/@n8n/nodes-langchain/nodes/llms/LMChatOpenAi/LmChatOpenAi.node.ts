@@ -35,7 +35,7 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 };
 
 const OPENAI_MODEL_BUILDER_HINT = {
-	message:
+	propertyHint:
 		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 };
 

@@ -44,7 +44,7 @@ export class IfV2 implements INodeType {
 						},
 					},
 					builderHint: {
-						message: `Must always contain these three sibling keys:
+						propertyHint: `Must always contain these three sibling keys:
 - combinator: 'and' or 'or', default to 'and'
 - conditions: [ a list of condition objects ]
 - options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 1 }
