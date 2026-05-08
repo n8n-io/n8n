@@ -40,8 +40,12 @@ const emojiRanges = [
 
 type Props = {
 	buttonTooltip: string;
-	buttonSize?: 'small' | 'large';
+	buttonSize?: 'small' | 'large' | 'xlarge';
 	isReadOnly?: boolean;
+	/** Additional CSS class(es) for the outer container element */
+	containerClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
+	/** Additional CSS class(es) for the trigger button */
+	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 };
 
 const { t } = useI18n();
@@ -166,11 +170,14 @@ async function loadEmojiMetadataMap() {
 <template>
 	<div
 		ref="container"
-		:class="{
-			[$style.container]: true,
-			[$style.isReadOnly]: isReadOnly,
-			[$style[props.buttonSize]]: true,
-		}"
+		:class="[
+			{
+				[$style.container]: true,
+				[$style.isReadOnly]: isReadOnly,
+				[$style[props.buttonSize]]: true,
+			},
+			containerClass,
+		]"
 		:aria-expanded="popupVisible"
 		role="button"
 		aria-haspopup="true"
@@ -182,7 +189,7 @@ async function loadEmojiMetadataMap() {
 				</template>
 				<N8nIconButton
 					v-if="model.type === 'icon'"
-					:class="$style['icon-button']"
+					:class="[$style['icon-button'], buttonClass]"
 					:icon="model.value"
 					:size="buttonSize"
 					icon-only
@@ -194,7 +201,7 @@ async function loadEmojiMetadataMap() {
 				/>
 				<N8nButton
 					v-else-if="model.type === 'emoji'"
-					:class="$style['emoji-button']"
+					:class="[$style['emoji-button'], buttonClass]"
 					:size="buttonSize"
 					icon-only
 					variant="subtle"
@@ -299,6 +306,16 @@ async function loadEmojiMetadataMap() {
 		width: 18px;
 		height: 18px;
 	}
+
+	.xlarge & {
+		width: 24px;
+		height: 24px;
+	}
+
+	.xxlarge & {
+		width: 32px;
+		height: 32px;
+	}
 }
 
 .emoji-button {
@@ -307,6 +324,14 @@ async function loadEmojiMetadataMap() {
 
 	.small & {
 		font-size: 18px;
+	}
+
+	.xlarge & {
+		font-size: 32px;
+	}
+
+	.xxlarge & {
+		font-size: 40px;
 	}
 }
 

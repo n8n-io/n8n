@@ -22,10 +22,43 @@ Read these docs before starting any implementation:
 - `docs/architecture.md` — system diagram, deep agent pillars, package responsibilities
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
 - `docs/tools.md` — tool reference, orchestration tools, domain tools, tool distribution
-- `docs/memory.md` — memory tiers, scoping model, sub-agent working memory
+- `docs/memory.md` — memory tiers, scoping model, sub-agent memory
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
 - `docs/configuration.md` — environment variables, minimal setup, storage, event bus
+
+## E2E Testing
+
+Tests live in `packages/testing/playwright/tests/e2e/instance-ai/`.
+
+### Local-build mode (no docker, no recording — hits real Anthropic API)
+
+```bash
+cd packages/testing/playwright
+export ANTHROPIC_API_KEY=sk-ant-...
+pnpm test:local:instance-ai                  # full suite
+pnpm test:local:instance-ai --grep "preview" # single test
+```
+
+Each run gets a random port + throwaway DB — safe to run in parallel, never
+touches `~/.n8n`. This mode does **not** record proxy expectations; it
+bypasses the proxy stack entirely and calls Anthropic directly.
+
+### Recording expectations (docker required)
+
+To record (or re-record) proxy expectations for CI replay, run in container
+mode with a real key. This captures LLM traffic + tool traces into
+`expectations/instance-ai/<test-slug>/`:
+
+```bash
+pnpm build:docker   # from repo root — build the local n8n image first
+cd packages/testing/playwright
+ANTHROPIC_API_KEY=sk-ant-... pnpm test:container:sqlite tests/e2e/instance-ai --workers 1
+```
+
+Commit the regenerated `expectations/` files alongside the test.
+
+See `docs/e2e-tests.md` for the full recording/replay architecture.
 
 ## Key Conventions
 
@@ -35,4 +68,4 @@ Read these docs before starting any implementation:
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
 - **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
 - **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
-- **Memory**: working memory = user-scoped, observational memory = thread-scoped
+- **Memory**: observational memory = thread-scoped, working memory is disabled

@@ -139,6 +139,10 @@ export class LmChatAwsBedrock implements INodeType {
 					},
 				},
 				default: '',
+				builderHint: {
+					message:
+						'Default to the latest Claude Sonnet on Bedrock (anthropic.claude-sonnet-4-6 family). For Claude Sonnet 4+, switch Model Source to Inference Profiles. Avoid claude-sonnet-4-5, claude-3.x, and non-Claude legacy models unless requested.',
+				},
 			},
 			{
 				displayName: 'Model',
@@ -195,6 +199,10 @@ export class LmChatAwsBedrock implements INodeType {
 					},
 				},
 				default: '',
+				builderHint: {
+					message:
+						'Default to the latest Claude Sonnet inference profile (anthropic.claude-sonnet-4-6 family). Avoid claude-sonnet-4-5 and claude-3.x profiles unless specifically requested.',
+				},
 			},
 			{
 				displayName: 'Options',

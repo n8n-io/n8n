@@ -2,9 +2,22 @@ import { describe, it, expect } from 'vitest';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,
+	computeDelta,
+	computeDurationMs,
+	formatDeltaPercent,
+	formatDuration,
+	formatMetricLabel,
+	formatMetricPercent,
+	formatMetricRawScore,
+	formatMetricRawScoreSum,
+	formatTokens,
 	getDefaultOrderedColumns,
+	getDeltaTone,
+	getMetricCategory,
 	getTestCasesColumns,
 	getTestTableHeaders,
+	getUserDefinedMetricNames,
+	normalizeMetricValue,
 } from './evaluation.utils';
 import type { TestCaseExecutionRecord } from './evaluation.api';
 
@@ -467,7 +480,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -478,7 +491,7 @@ describe('utils', () => {
 					id: '2',
 					testRunId: 'run1',
 					executionId: 'exec2',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -500,7 +513,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -528,7 +541,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -539,7 +552,7 @@ describe('utils', () => {
 					id: '2',
 					testRunId: 'run1',
 					executionId: 'exec2',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -560,7 +573,7 @@ describe('utils', () => {
 			const run = {
 				id: 'run1',
 				workflowId: 'workflow1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -579,7 +592,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -672,7 +685,7 @@ describe('utils', () => {
 			const run = {
 				id: 'run1',
 				workflowId: 'workflow1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -684,7 +697,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -717,7 +730,7 @@ describe('utils', () => {
 			const run = {
 				id: 'run1',
 				workflowId: 'workflow1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -785,7 +798,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -823,7 +836,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -838,7 +851,7 @@ describe('utils', () => {
 				id: '1',
 				testRunId: 'run1',
 				executionId: 'exec1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -866,7 +879,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -881,7 +894,7 @@ describe('utils', () => {
 				id: '1',
 				testRunId: 'run1',
 				executionId: 'exec1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -912,7 +925,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -927,7 +940,7 @@ describe('utils', () => {
 				id: '1',
 				testRunId: 'run1',
 				executionId: 'exec1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -957,7 +970,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -972,7 +985,7 @@ describe('utils', () => {
 				id: '1',
 				testRunId: 'run1',
 				executionId: 'exec1',
-				status: 'completed' as const,
+				status: 'success' as const,
 				createdAt: '2023-01-01',
 				updatedAt: '2023-01-01',
 				runAt: '2023-01-01',
@@ -1018,7 +1031,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1050,7 +1063,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1080,7 +1093,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1111,7 +1124,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1141,7 +1154,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1171,7 +1184,7 @@ describe('utils', () => {
 					id: '1',
 					testRunId: 'run1',
 					executionId: 'exec1',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1181,7 +1194,7 @@ describe('utils', () => {
 					id: '2',
 					testRunId: 'run1',
 					executionId: 'exec2',
-					status: 'completed' as const,
+					status: 'success' as const,
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					runAt: '2023-01-01',
@@ -1193,6 +1206,228 @@ describe('utils', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]?.minWidth).toBe(250); // Should be 250 because second test case has long content
+		});
+	});
+
+	describe('normalizeMetricValue', () => {
+		it('returns numbers unchanged', () => {
+			expect(normalizeMetricValue(0.42)).toBe(0.42);
+		});
+		it('returns undefined for undefined input', () => {
+			expect(normalizeMetricValue(undefined)).toBeUndefined();
+		});
+		it('returns undefined for NaN', () => {
+			expect(normalizeMetricValue(Number.NaN)).toBeUndefined();
+		});
+	});
+
+	describe('computeDelta', () => {
+		it('returns the signed difference when both values are present', () => {
+			expect(computeDelta(0.9, 0.85)).toBeCloseTo(0.05);
+			expect(computeDelta(0.4, 0.7)).toBeCloseTo(-0.3);
+		});
+		it('returns undefined when previous is missing', () => {
+			expect(computeDelta(0.9, undefined)).toBeUndefined();
+		});
+		it('returns undefined when current is missing', () => {
+			expect(computeDelta(undefined, 0.5)).toBeUndefined();
+		});
+	});
+
+	describe('getDeltaTone', () => {
+		it('returns positive for an increase', () => {
+			expect(getDeltaTone(0.1)).toBe('positive');
+		});
+		it('returns negative for a decrease', () => {
+			expect(getDeltaTone(-0.1)).toBe('negative');
+		});
+		it('returns default for zero or missing comparison', () => {
+			expect(getDeltaTone(0)).toBe('default');
+			expect(getDeltaTone(undefined)).toBe('default');
+		});
+	});
+
+	describe('formatTokens', () => {
+		it('renders with a t suffix and locale grouping', () => {
+			expect(formatTokens(3912)).toBe('3,912t');
+		});
+		it('renders – when undefined', () => {
+			expect(formatTokens(undefined)).toBe('–');
+		});
+	});
+
+	describe('formatMetricPercent', () => {
+		describe('without category (heuristic)', () => {
+			it('rescales 0–1 values to percent', () => {
+				expect(formatMetricPercent(0.94)).toBe('94%');
+			});
+			it('passes through values already above 1', () => {
+				expect(formatMetricPercent(85)).toBe('85%');
+			});
+		});
+
+		describe('aiBased (1–5 scale)', () => {
+			it('renders a perfect 5 as 100%', () => {
+				expect(formatMetricPercent(5, { category: 'aiBased' })).toBe('100%');
+			});
+			it('renders 4 as 80%', () => {
+				expect(formatMetricPercent(4, { category: 'aiBased' })).toBe('80%');
+			});
+			it('renders 1 as 20%', () => {
+				expect(formatMetricPercent(1, { category: 'aiBased' })).toBe('20%');
+			});
+		});
+
+		describe('normalized categories (heuristic kept)', () => {
+			it('rescales 0–1 stringSimilarity to percent', () => {
+				expect(formatMetricPercent(0.74, { category: 'stringSimilarity' })).toBe('74%');
+			});
+			it('rescales custom 0–1 values to percent', () => {
+				expect(formatMetricPercent(0.5, { category: 'custom' })).toBe('50%');
+			});
+		});
+	});
+
+	describe('formatMetricRawScore', () => {
+		it('returns the integer x/5 form for AI-based metrics', () => {
+			expect(formatMetricRawScore(5, { category: 'aiBased' })).toBe('5/5');
+			expect(formatMetricRawScore(4, { category: 'aiBased' })).toBe('4/5');
+			expect(formatMetricRawScore(1, { category: 'aiBased' })).toBe('1/5');
+		});
+		it('keeps one decimal for non-integer aiBased values', () => {
+			expect(formatMetricRawScore(4.5, { category: 'aiBased' })).toBe('4.5/5');
+		});
+		it('returns empty for normalized 0-1 categories (hidden on per-row)', () => {
+			expect(formatMetricRawScore(0.74, { category: 'stringSimilarity' })).toBe('');
+			expect(formatMetricRawScore(0.5, { category: 'custom' })).toBe('');
+			expect(formatMetricRawScore(1, { category: 'categorization' })).toBe('');
+		});
+		it('returns empty when no category is provided', () => {
+			expect(formatMetricRawScore(0.94)).toBe('');
+		});
+		it('returns empty for missing or NaN', () => {
+			expect(formatMetricRawScore(undefined, { category: 'aiBased' })).toBe('');
+			expect(formatMetricRawScore(NaN, { category: 'aiBased' })).toBe('');
+		});
+	});
+
+	describe('formatMetricRawScoreSum', () => {
+		it('returns sum/total for AI-based metrics', () => {
+			expect(formatMetricRawScoreSum([4, 5, 4], { category: 'aiBased' })).toBe('13/15');
+			expect(formatMetricRawScoreSum([5], { category: 'aiBased' })).toBe('5/5');
+		});
+		it('keeps one decimal for non-integer aiBased totals', () => {
+			expect(formatMetricRawScoreSum([4.5, 5], { category: 'aiBased' })).toBe('9.5/10');
+		});
+		it('drops missing/NaN values when computing the totals', () => {
+			expect(formatMetricRawScoreSum([4, undefined, 5, NaN], { category: 'aiBased' })).toBe('9/10');
+		});
+		it('returns sum/n with two decimals for normalized categories', () => {
+			expect(formatMetricRawScoreSum([0.5, 0.6], { category: 'custom' })).toBe('1.10/2');
+			expect(formatMetricRawScoreSum([0.34, 0.25, 0.2], { category: 'stringSimilarity' })).toBe(
+				'0.79/3',
+			);
+		});
+		it('returns empty when there are no usable values', () => {
+			expect(formatMetricRawScoreSum([], { category: 'aiBased' })).toBe('');
+			expect(formatMetricRawScoreSum([undefined, NaN], { category: 'aiBased' })).toBe('');
+		});
+	});
+
+	describe('formatDeltaPercent', () => {
+		describe('without category (heuristic)', () => {
+			it('formats positive delta with a leading +', () => {
+				expect(formatDeltaPercent(0.04)).toBe('+4%');
+			});
+			it('formats negative delta with a leading -', () => {
+				expect(formatDeltaPercent(-0.28)).toBe('-28%');
+			});
+		});
+
+		describe('aiBased deltas (1–5 scale)', () => {
+			it('+1 (4→5) reads as +20%', () => {
+				expect(formatDeltaPercent(1, { category: 'aiBased' })).toBe('+20%');
+			});
+			it('-2 (5→3) reads as -40%', () => {
+				expect(formatDeltaPercent(-2, { category: 'aiBased' })).toBe('-40%');
+			});
+		});
+	});
+
+	describe('getUserDefinedMetricNames', () => {
+		it('excludes predefined token + execution-time keys', () => {
+			const names = getUserDefinedMetricNames({
+				accuracy: 0.9,
+				totalTokens: 100,
+				promptTokens: 50,
+				completionTokens: 50,
+				executionTime: 1000,
+			});
+			expect(names).toEqual(['accuracy']);
+		});
+	});
+
+	describe('computeDurationMs', () => {
+		it('returns the diff in milliseconds for valid timestamps', () => {
+			expect(computeDurationMs('2023-10-01T10:00:00Z', '2023-10-01T10:00:01.243Z')).toBe(1243);
+		});
+		it('returns undefined when end is missing', () => {
+			expect(computeDurationMs('2023-10-01T10:00:00Z', undefined)).toBeUndefined();
+		});
+	});
+
+	describe('formatDuration', () => {
+		it('renders sub-second durations as ms', () => {
+			expect(formatDuration(243)).toBe('243ms');
+			expect(formatDuration(999)).toBe('999ms');
+		});
+		it('renders 1s+ durations as seconds, dropping trailing .0', () => {
+			expect(formatDuration(1000)).toBe('1s');
+			expect(formatDuration(8000)).toBe('8s');
+			expect(formatDuration(1243)).toBe('1.2s');
+			expect(formatDuration(59500)).toBe('59.5s');
+		});
+		it('switches to minutes past 60s', () => {
+			expect(formatDuration(60000)).toBe('1m');
+			expect(formatDuration(90000)).toBe('1m 30s');
+			expect(formatDuration(125000)).toBe('2m 5s');
+		});
+		it('promotes to minutes when sub-60s rounds up to exactly 60', () => {
+			// 59.999s would otherwise render as "60s" — should be "1m" instead.
+			expect(formatDuration(59999)).toBe('1m');
+			expect(formatDuration(59950)).toBe('1m');
+		});
+		it('returns – for missing or invalid input', () => {
+			expect(formatDuration(undefined)).toBe('–');
+			expect(formatDuration(NaN)).toBe('–');
+			expect(formatDuration(-100)).toBe('–');
+		});
+	});
+
+	describe('formatMetricLabel', () => {
+		it('Title-cases snake_case input', () => {
+			expect(formatMetricLabel('count_accuracy')).toBe('Count Accuracy');
+		});
+		it('Title-cases camelCase input', () => {
+			expect(formatMetricLabel('helpfulness')).toBe('Helpfulness');
+			expect(formatMetricLabel('stringSimilarity')).toBe('String Similarity');
+		});
+	});
+
+	describe('getMetricCategory', () => {
+		it('collapses correctness and helpfulness into aiBased', () => {
+			expect(getMetricCategory('correctness')).toBe('aiBased');
+			expect(getMetricCategory('helpfulness')).toBe('aiBased');
+		});
+		it('returns the matching category for built-in heuristic metrics', () => {
+			expect(getMetricCategory('stringSimilarity')).toBe('stringSimilarity');
+			expect(getMetricCategory('categorization')).toBe('categorization');
+			expect(getMetricCategory('toolsUsed')).toBe('toolsUsed');
+		});
+		it('falls back to custom for unknown values', () => {
+			expect(getMetricCategory('customMetrics')).toBe('custom');
+			expect(getMetricCategory(undefined)).toBe('custom');
+			expect(getMetricCategory('madeUpType')).toBe('custom');
 		});
 	});
 });

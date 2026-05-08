@@ -2,6 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { executionStarted } from './executionStarted';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -20,7 +24,7 @@ describe('executionStarted', () => {
 	}
 
 	beforeEach(() => {
-		const pinia = createTestingPinia({ stubActions: true });
+		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -41,9 +45,10 @@ describe('executionStarted', () => {
 
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
 		workflowsStore.activeExecutionId = null;
-		workflowsStore.workflowExecutionData = null;
-		workflowsStore.workflow.id = 'wf-123';
-		workflowsStore.workflow.name = 'My Workflow';
+		workflowsStore.setWorkflowId('wf-123');
+		workflowsStore.setWorkflowExecutionData(null);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
+		workflowDocumentStore.setName('My Workflow');
 
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 
@@ -59,10 +64,10 @@ describe('executionStarted', () => {
 
 	it('should not reinitialize when same execution ID arrives', async () => {
 		workflowsStore.activeExecutionId = 'exec-1';
-		workflowsStore.workflowExecutionData = {
+		workflowsStore.setWorkflowExecutionData({
 			id: 'exec-1',
 			data: { resultData: { runData: {} } },
-		} as never;
+		} as never);
 
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 
@@ -92,10 +97,10 @@ describe('executionStarted', () => {
 
 		it('should accept execution when activeExecutionId is undefined in iframe (post-executionFinished)', async () => {
 			workflowsStore.activeExecutionId = undefined;
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				id: 'old-exec',
 				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
-			} as never;
+			} as never);
 
 			await executionStarted(makeEvent('exec-2'), mockOptions);
 
@@ -107,10 +112,10 @@ describe('executionStarted', () => {
 
 		it('should accept new execution and reset state when re-executing in iframe', async () => {
 			workflowsStore.activeExecutionId = 'exec-1';
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				id: 'exec-1',
 				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
-			} as never;
+			} as never);
 
 			await executionStarted(makeEvent('exec-2'), mockOptions);
 
@@ -122,10 +127,10 @@ describe('executionStarted', () => {
 
 		it('should not reset when same execution ID arrives in iframe', async () => {
 			workflowsStore.activeExecutionId = 'exec-1';
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.setWorkflowExecutionData({
 				id: 'exec-1',
 				data: { resultData: { runData: {} } },
-			} as never;
+			} as never);
 
 			await executionStarted(makeEvent('exec-1'), mockOptions);
 

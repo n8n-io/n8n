@@ -37,9 +37,23 @@ export interface RoleMappingConfig {
 	fallbackInstanceRole: string;
 }
 
+export interface ResolvedInstanceRole {
+	role: string;
+	matchedRuleId: string | null;
+	expression: string | null;
+	isFallback: boolean;
+}
+
+export interface ResolvedProjectRole {
+	projectId: string;
+	role: string;
+	matchedRuleId: string;
+	expression: string;
+}
+
 export interface ResolvedRoles {
-	instanceRole: string;
-	projectRoles: Map<string, string>;
+	instanceRole: ResolvedInstanceRole;
+	projectRoles: Map<string, ResolvedProjectRole>;
 }
 
 export interface ProjectInfo {

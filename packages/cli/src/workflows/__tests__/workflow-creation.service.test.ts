@@ -5,9 +5,14 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { NodeTypes } from '@/node-types';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 jest.mock('@/permissions.ee/check-access');
@@ -49,6 +54,7 @@ describe('WorkflowCreationService', () => {
 			credentialsServiceMock,
 			mock(), // folderService
 			enterpriseWorkflowServiceMock,
+			mock<NodeTypes>(),
 		);
 	});
 
@@ -80,6 +86,24 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
+		it('should throw BadRequestError for invalid workflow structure', async () => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
+				throw new BadRequestError('Workflow structure is invalid. nodes[0].type: Required');
+			});
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.name = 'Test';
+			newWorkflow.nodes = [{ name: 'Start', position: [0, 0], parameters: {} }] as never;
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+			).rejects.toThrow('Workflow structure is invalid.');
+		});
+
 		describe('credential retrieval', () => {
 			it('should include global credentials when checking credential permissions', async () => {
 				/**
@@ -270,6 +294,64 @@ describe('WorkflowCreationService', () => {
 			 * Assert
 			 */
 			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('when user cannot create in the target project', () => {
+		it('throws NotFoundError when the target project does not exist', async () => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue(null);
+			projectRepositoryMock.exists.mockResolvedValue(false);
+			setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, {
+					projectId: 'missing-project',
+				}),
+			).rejects.toBeInstanceOf(NotFoundError);
+
+			expect(projectRepositoryMock.exists).toHaveBeenCalledWith({
+				where: { id: 'missing-project' },
+			});
+		});
+
+		it('throws BadRequestError when the project exists but user lacks workflow:create there', async () => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue(null);
+			projectRepositoryMock.exists.mockResolvedValue(true);
+			setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, {
+					projectId: 'other-project',
+				}),
+			).rejects.toBeInstanceOf(BadRequestError);
+		});
+
+		it('throws ForbiddenError for the same case when publicApi is true', async () => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue(null);
+			projectRepositoryMock.exists.mockResolvedValue(true);
+			setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, {
+					projectId: 'other-project',
+					publicApi: true,
+				}),
+			).rejects.toBeInstanceOf(ForbiddenError);
 		});
 	});
 });

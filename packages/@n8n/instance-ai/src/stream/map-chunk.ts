@@ -2,12 +2,14 @@ import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
+	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 } from '@n8n/api-types';
 import type {
 	InstanceAiCredentialRequest,
 	InstanceAiEvent,
 	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
 	TaskList,
 	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
@@ -83,11 +85,13 @@ export function mapMastraChunkToEvent(
 	runId: string,
 	agentId: string,
 	chunk: unknown,
+	responseId?: string,
 ): InstanceAiEvent | null {
 	if (!isRecord(chunk)) return null;
 
 	const { type } = chunk;
 	const payload = isRecord(chunk.payload) ? chunk.payload : {};
+	const base = { runId, agentId, ...(responseId ? { responseId } : {}) };
 
 	// Mastra payload uses `text` (not `textDelta`) for text-delta chunks
 	const textValue =
@@ -100,8 +104,7 @@ export function mapMastraChunkToEvent(
 	if (type === 'text-delta' && textValue !== undefined) {
 		return {
 			type: 'text-delta',
-			runId,
-			agentId,
+			...base,
 			payload: { text: textValue },
 		};
 	}
@@ -109,8 +112,7 @@ export function mapMastraChunkToEvent(
 	if ((type === 'reasoning-delta' || type === 'reasoning') && textValue !== undefined) {
 		return {
 			type: 'reasoning-delta',
-			runId,
-			agentId,
+			...base,
 			payload: { text: textValue },
 		};
 	}
@@ -118,8 +120,7 @@ export function mapMastraChunkToEvent(
 	if (type === 'tool-call') {
 		return {
 			type: 'tool-call',
-			runId,
-			agentId,
+			...base,
 			payload: {
 				toolCallId: typeof payload.toolCallId === 'string' ? payload.toolCallId : '',
 				toolName: typeof payload.toolName === 'string' ? payload.toolName : '',
@@ -136,8 +137,7 @@ export function mapMastraChunkToEvent(
 		if (payload.isError === true) {
 			return {
 				type: 'tool-error',
-				runId,
-				agentId,
+				...base,
 				payload: {
 					toolCallId,
 					error: typeof payload.result === 'string' ? payload.result : 'Tool execution failed',
@@ -147,8 +147,7 @@ export function mapMastraChunkToEvent(
 
 		return {
 			type: 'tool-result',
-			runId,
-			agentId,
+			...base,
 			payload: {
 				toolCallId,
 				result: payload.result,
@@ -189,7 +188,7 @@ export function mapMastraChunkToEvent(
 		const projectId =
 			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
 
-		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision')
+		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision', 'continue')
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
 		const validInputTypes = [
@@ -198,6 +197,7 @@ export function mapMastraChunkToEvent(
 			'questions',
 			'plan-review',
 			'resource-decision',
+			'continue',
 		] as const;
 		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
 			? (rawInputType as (typeof validInputTypes)[number])
@@ -228,6 +228,18 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
+		// Extract optional full planned task items (for plan-review panel details)
+		let planItems: PlannedTaskArg[] | undefined;
+		if (Array.isArray(suspendPayload.planItems)) {
+			const parsed = suspendPayload.planItems
+				.map((item) => plannedTaskArgSchema.safeParse(item))
+				.filter((r) => r.success)
+				.map((r) => r.data);
+			if (parsed.length > 0) {
+				planItems = parsed;
+			}
+		}
+
 		// Extract optional domainAccess metadata (for domain-gated tools like fetch-url)
 		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
 			? suspendPayload.domainAccess
@@ -237,6 +249,13 @@ export function mapMastraChunkToEvent(
 			typeof rawDomainAccess.url === 'string' &&
 			typeof rawDomainAccess.host === 'string'
 				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
+				: undefined;
+
+		// Extract optional webSearch metadata (for the web-search action of the research tool)
+		const rawWebSearch = isRecord(suspendPayload.webSearch) ? suspendPayload.webSearch : undefined;
+		const webSearch =
+			rawWebSearch && typeof rawWebSearch.query === 'string'
+				? { query: rawWebSearch.query }
 				: undefined;
 
 		// Extract optional credentialFlow for credential setup stage
@@ -282,8 +301,7 @@ export function mapMastraChunkToEvent(
 
 		return {
 			type: 'confirmation-request',
-			runId,
-			agentId,
+			...base,
 			payload: {
 				requestId,
 				toolCallId,
@@ -298,12 +316,14 @@ export function mapMastraChunkToEvent(
 				...(projectId ? { projectId } : {}),
 				...(inputType ? { inputType } : {}),
 				...(domainAccess ? { domainAccess } : {}),
+				...(webSearch ? { webSearch } : {}),
 				...(credentialFlow ? { credentialFlow } : {}),
 				...(setupRequests ? { setupRequests } : {}),
 				...(workflowId ? { workflowId } : {}),
 				...(questions ? { questions } : {}),
 				...(introMessage ? { introMessage } : {}),
 				...(tasks ? { tasks } : {}),
+				...(planItems ? { planItems } : {}),
 				...(resourceDecision ? { resourceDecision } : {}),
 			},
 		};
@@ -313,8 +333,7 @@ export function mapMastraChunkToEvent(
 		const errorInfo = extractErrorInfo(payload.error);
 		return {
 			type: 'error',
-			runId,
-			agentId,
+			...base,
 			payload: {
 				content: errorInfo.content,
 				...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),

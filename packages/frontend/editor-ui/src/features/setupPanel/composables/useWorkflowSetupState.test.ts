@@ -10,6 +10,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 let mockOnCredentialDeleted: ((credentialId: string) => void) | undefined;
 const mockProjectsStore = {
@@ -36,11 +37,17 @@ const mockUpdateNodeProperties = vi.fn();
 const mockUpdateNodeCredentialIssuesByName = vi.fn();
 const mockUpdateNodesCredentialsIssues = vi.fn();
 
-const mockWorkflowDocumentStore = {
-	allNodes: [] as INodeUi[],
-	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
-	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
+
+const mockWorkflowDocumentStore: Writable<Partial<ReturnType<typeof useWorkflowDocumentStore>>> = {
+	allNodes: [],
 	updateNodeProperties: mockUpdateNodeProperties,
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	connectionsBySourceNode: {},
+	connectionsByDestinationNode: {},
+	workflowTriggerNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -132,7 +139,8 @@ describe('useWorkflowSetupState', () => {
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.getNodeByName = vi.fn();
-		mockWorkflowDocumentStore.getNodes = vi.fn();
+		mockWorkflowDocumentStore.connectionsBySourceNode = {};
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {};
 		mockUpdateNodeProperties.mockReset();
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();

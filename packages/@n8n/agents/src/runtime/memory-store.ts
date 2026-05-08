@@ -1,6 +1,5 @@
-import { toDbMessage } from '../sdk/message';
-import type { BuiltMemory, Thread } from '../types';
-import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
+import type { AgentDbMessage } from '../types/sdk/message';
 
 interface StoredMessage {
 	message: AgentDbMessage;
@@ -73,23 +72,32 @@ export class InMemoryMemory implements BuiltMemory {
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
 		}
 		if (opts?.limit) stored = stored.slice(-opts.limit);
-		return stored.map((s) => s.message);
+		return stored.map((s) => ({ ...s.message, createdAt: s.createdAt }));
 	}
 
 	/**
 	 * Save messages to the thread established by the most recent `saveThread` call.
 	 * Always call `saveThread` before `saveMessages` to set the thread context.
+	 * Upserts by message id — if a message with the same id already exists, it is
+	 * replaced in place (preserving insertion order). New messages are appended.
 	 */
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async saveMessages(args: {
 		threadId: string;
 		resourceId?: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void> {
 		const existing = this.messagesByThread.get(args.threadId) ?? [];
-		const now = new Date();
+		const byId = new Map(existing.map((s, i) => [s.message.id, i]));
 		for (const msg of args.messages) {
-			existing.push({ message: toDbMessage(msg), createdAt: now });
+			const entry: StoredMessage = { message: msg, createdAt: msg.createdAt };
+			const idx = byId.get(msg.id);
+			if (idx !== undefined) {
+				existing[idx] = entry;
+			} else {
+				byId.set(msg.id, existing.length);
+				existing.push(entry);
+			}
 		}
 		this.messagesByThread.set(args.threadId, existing);
 	}
@@ -104,6 +112,10 @@ export class InMemoryMemory implements BuiltMemory {
 			);
 		}
 	}
+
+	describe(): MemoryDescriptor {
+		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
+	}
 }
 
 /**
@@ -115,7 +127,7 @@ export async function saveMessagesToThread(
 	memory: BuiltMemory,
 	threadId: string,
 	resourceId: string,
-	messages: AgentMessage[],
+	messages: AgentDbMessage[],
 ): Promise<void> {
 	await memory.saveThread({ id: threadId, resourceId });
 	await memory.saveMessages({ threadId, resourceId, messages });

@@ -4,6 +4,7 @@ import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
@@ -235,6 +236,26 @@ describe('WorkflowService', () => {
 		function createUpdateData(settings: Record<string, unknown>) {
 			return { settings } as unknown as WorkflowEntity;
 		}
+
+		test('should throw BadRequestError for invalid workflow structure', async () => {
+			setupExistingWorkflow();
+			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
+				throw new BadRequestError('Workflow structure is invalid. nodes[0].position: Required');
+			});
+
+			const user = mock<User>();
+
+			await expect(
+				workflowService.update(
+					user,
+					{
+						nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
+					} as unknown as WorkflowEntity,
+					'workflow-1',
+					{ forceSave: true },
+				),
+			).rejects.toThrow('Workflow structure is invalid.');
+		});
 
 		test('should strip redactionPolicy when user lacks scope and value is changing', async () => {
 			setupExistingWorkflow({ redactionPolicy: 'none' });

@@ -10,7 +10,7 @@ import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
@@ -131,6 +131,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'save:workflow': [];
 }>();
 
 const props = withDefaults(
@@ -141,6 +142,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
@@ -155,6 +157,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		canExecute: false,
 		executing: false,
 		keyBindings: true,
 		loading: false,
@@ -165,6 +168,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
@@ -359,6 +363,9 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
+	if (props.readOnly && props.canExecute) {
+		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
+	}
 	if (props.readOnly) return readOnlyKeymap;
 
 	const fullKeymap: KeyMap = {
@@ -381,7 +388,8 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		// override the default cmd+s which saves the page html as file
-		ctrl_s: () => {},
+		// also triggers manual save when autosave is disabled
+		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
@@ -720,6 +728,10 @@ async function onFitBounds(nodes: GraphNode[]) {
 }
 
 async function onFitView() {
+	if (document.hidden) {
+		fitViewWhileHidden = true;
+		return;
+	}
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
 
@@ -948,6 +960,19 @@ const initialized = ref(false);
 let pendingFitViewOnInit = false;
 let pendingConnections: IConnections | null = null;
 
+// When fitView runs while the browser tab is in the background, VueFlow's
+// container dimensions are 0 (offsetWidth/offsetHeight return 0 for hidden
+// tabs) and fall back to 500×500, producing a wrong viewport transform.
+// Track this so we can re-run fitView once the tab becomes visible.
+let fitViewWhileHidden = false;
+
+function onVisibilityChange() {
+	if (!document.hidden && fitViewWhileHidden) {
+		fitViewWhileHidden = false;
+		void onFitView();
+	}
+}
+
 function onRequestFitViewOnInit() {
 	if (initialized.value) {
 		void onFitView();
@@ -972,6 +997,7 @@ onMounted(() => {
 	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
+	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onUnmounted(() => {
@@ -981,6 +1007,7 @@ onUnmounted(() => {
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
+	document.removeEventListener('visibilitychange', onVisibilityChange);
 });
 
 onPaneReady(async () => {
@@ -998,7 +1025,7 @@ onNodesInitialized(() => {
 	if (pendingConnections) {
 		const connections = pendingConnections;
 		pendingConnections = null;
-		useWorkflowsStore().setConnections(connections);
+		workflowDocumentStore?.value?.setConnections(connections);
 	}
 
 	if (pendingFitViewOnInit) {
@@ -1104,6 +1131,7 @@ defineExpose({
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
+					:can-execute="canExecute"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"

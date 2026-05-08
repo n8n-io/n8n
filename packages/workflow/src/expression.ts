@@ -1,5 +1,5 @@
 import { ApplicationError } from '@n8n/errors';
-import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
@@ -246,9 +246,12 @@ export class Expression {
 	 */
 	static async initExpressionEngine(options: {
 		engine: 'legacy' | 'vm';
-		timeout?: number;
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
 		poolSize: number;
 		maxCodeCacheSize: number;
+		observability?: ObservabilityProvider;
+		idleTimeoutMs?: number;
 	}): Promise<void> {
 		if (options.engine !== 'vm' || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -258,14 +261,20 @@ export class Expression {
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
 			this.vmEvaluator = new ExpressionEvaluator({
 				createBridge: () =>
-					new IsolatedVmBridge({ timeout: options.timeout ?? 5000, logger: LoggerProxy }),
+					new IsolatedVmBridge({
+						timeout: options.bridgeTimeout,
+						memoryLimit: options.bridgeMemoryLimit,
+						logger: LoggerProxy,
+					}),
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
+				idleTimeoutMs: options.idleTimeoutMs,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
 				},
 				logger: LoggerProxy,
+				observability: options.observability,
 			});
 			await this.vmEvaluator.initialize();
 		}
