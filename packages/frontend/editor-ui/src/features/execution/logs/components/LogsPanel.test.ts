@@ -403,6 +403,7 @@ describe('LogsPanel', () => {
 		const operations = useCanvasOperations(ref('test-workflow-id'));
 
 		const workflow = deepCopy(aiChatWorkflow);
+		workflow.id = 'test-workflow-id';
 		setWorkflow(workflow);
 		logsStore.toggleOpen(true);
 		workflowState.setWorkflowExecutionData({

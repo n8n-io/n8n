@@ -47,9 +47,9 @@ describe('useSetupCards', () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('test-workflow');
+		workflowsStore.setWorkflowId('test-workflow-id');
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId('test-workflow'),
+			createWorkflowDocumentId('test-workflow-id'),
 		);
 		workflowDocumentStore.setNodes([
 			{

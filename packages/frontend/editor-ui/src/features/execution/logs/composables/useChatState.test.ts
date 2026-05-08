@@ -146,7 +146,7 @@ describe('useChatState', () => {
 	};
 
 	function setWorkflowNodes(nodes: INode[]) {
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123'));
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 		docStore.setNodes(nodes);
 	}
 
@@ -156,15 +156,15 @@ describe('useChatState', () => {
 		});
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('workflow-123');
+		workflowsStore.setWorkflowId('test-workflow-id');
 
 		const testWorkflow = createTestWorkflow({
-			id: 'workflow-123',
+			id: 'test-workflow-id',
 			name: 'Test Workflow',
 			nodes: [mockChatTriggerNode],
 			connections: {},
 		});
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123'));
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 		docStore.hydrate(testWorkflow);
 
 		logsStore = useLogsStore();

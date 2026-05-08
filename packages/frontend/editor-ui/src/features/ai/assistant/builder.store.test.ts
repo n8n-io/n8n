@@ -20,7 +20,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
-import { nextTick, reactive } from 'vue';
+import { computed, nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
@@ -77,6 +77,11 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 		injectWorkflowState: vi.fn(),
 	};
 });
+
+// Mock useWorkflowId so the store and composables key off the test's workflow id
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => computed(() => 'test-workflow-id'),
+}));
 
 // Mock useWorkflowSaving
 const saveCurrentWorkflowMock = vi.fn().mockResolvedValue(true);

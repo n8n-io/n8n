@@ -126,10 +126,12 @@ beforeEach(() => {
 		version: '1.0.0',
 	} as unknown as CommunityNodeType);
 
-	workflowsStore.workflowId = 'test-workflow';
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+	workflowsStore.workflowId = 'test-workflow-id';
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId('test-workflow-id'),
+	);
 	workflowDocumentStore.hydrate({
-		id: 'test-workflow',
+		id: 'test-workflow-id',
 		name: 'Test Workflow',
 		active: false,
 		isArchived: false,
@@ -325,7 +327,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 			store.setNodes(mockNodes);
 
 			const { installNode } = useInstallNode(ref('test-workflow-id'));
@@ -350,7 +352,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not initialize nodes when nodeType is not provided', async () => {
-			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes([
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')).setNodes([
 				{
 					id: 'node-1',
 					type: 'test-node',
@@ -372,7 +374,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not initialize nodes when workflow has no nodes', async () => {
-			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes([]);
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id')).setNodes([]);
 
 			const { installNode } = useInstallNode(ref('test-workflow-id'));
 
@@ -579,7 +581,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 			store.setNodes(mockNodes);
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
@@ -632,7 +634,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 			store.setNodes(mockNodes);
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');

@@ -106,7 +106,9 @@ describe('usePinnedData', () => {
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow'),
+			);
 			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
 		});
 
