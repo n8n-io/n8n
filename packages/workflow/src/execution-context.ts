@@ -237,7 +237,10 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  * };
  * ```
  */
-export type PlaintextExecutionContext = Omit<IExecutionContext, 'credentials' | 'secureArtifacts'> & {
+export type PlaintextExecutionContext = Omit<
+	IExecutionContext,
+	'credentials' | 'secureArtifacts'
+> & {
 	credentials?: ICredentialContext;
 	secureArtifacts?: ISecureArtifacts;
 };
