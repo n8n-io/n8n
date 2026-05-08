@@ -166,8 +166,8 @@ describe('useWorkflowSetupActions', () => {
 			'User finished providing input',
 			expect.objectContaining({
 				type: 'setup',
-				explicitly_skipped_inputs: [{ label: 'typeB', options: [] }],
-				provided_inputs: [expect.objectContaining({ label: 'typeA', option_chosen: 'cred-id' })],
+				explicitly_skipped_inputs: [{ label: 'B - typeB', options: [] }],
+				provided_inputs: [expect.objectContaining({ label: 'A - typeA', option_chosen: 'true' })],
 			}),
 		);
 	});
@@ -264,6 +264,27 @@ describe('useWorkflowSetupActions', () => {
 
 		expect(h.apply).toHaveBeenCalledWith({ nodeCredentials: { A: { typeA: 'cred-id' } } });
 		expect(telemetryTrack).toHaveBeenCalledTimes(1);
+	});
+
+	it('tracks both credential and parameter inputs for a completed mixed section', async () => {
+		const h = setupHarness();
+		h.sectionA.parameterNames = ['url', 'method'];
+		h.completedSet.add(h.sectionA.id);
+		h.credentialSelections.value = { A: { typeA: 'cred-id' } };
+
+		await h.actions.apply();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({
+				provided_inputs: [
+					{ label: 'A - typeA', options: [], option_chosen: 'true' },
+					{ label: 'A - url', options: [], option_chosen: 'true' },
+					{ label: 'A - method', options: [], option_chosen: 'true' },
+				],
+				num_tasks: 4,
+			}),
+		);
 	});
 
 	describe('group steps', () => {

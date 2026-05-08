@@ -23,6 +23,9 @@ interface ApplyMachine {
 	defer: () => Promise<void>;
 }
 
+type ProvidedSetupInput = { label: string; options: string[]; option_chosen: string };
+type SkippedSetupInput = { label: string; options: string[] };
+
 export interface WorkflowSetupActions {
 	nextUnhandledIndex: ComputedRef<number>;
 	hasOtherUnhandledSteps: ComputedRef<boolean>;
@@ -90,26 +93,18 @@ export function useWorkflowSetupActions(deps: {
 	function trackSetupInput(): void {
 		const tc = deps.store.findToolCallByRequestId(deps.requestId.value);
 		const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
-		const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
-		const skipped: Array<{ label: string; options: string[] }> = [];
-		const explicitlySkipped: Array<{ label: string; options: string[] }> = [];
+		const provided: ProvidedSetupInput[] = [];
+		const skipped: SkippedSetupInput[] = [];
+		const explicitlySkipped: SkippedSetupInput[] = [];
 		for (const section of deps.sections.value) {
-			const label = section.credentialType ?? section.targetNodeName;
+			const sectionInputs = getSectionTelemetryInputs(section);
 			if (deps.inputs.isSectionComplete(section)) {
-				const optionChosen = section.credentialType
-					? (deps.inputs.credentialSelections.value[section.targetNodeName]?.[
-							section.credentialType
-						] ?? '')
-					: section.parameterNames.join(',');
-				provided.push({
-					label,
-					options: [],
-					option_chosen: optionChosen,
-				});
+				provided.push(...sectionInputs);
 			} else {
-				skipped.push({ label, options: [] });
+				const skippedInputs = sectionInputs.map(toSkippedInput);
+				skipped.push(...skippedInputs);
 				if (deps.inputs.isSectionSkipped(section)) {
-					explicitlySkipped.push({ label, options: [] });
+					explicitlySkipped.push(...skippedInputs);
 				}
 			}
 		}
@@ -121,8 +116,35 @@ export function useWorkflowSetupActions(deps: {
 			provided_inputs: provided,
 			skipped_inputs: skipped,
 			explicitly_skipped_inputs: explicitlySkipped,
-			num_tasks: deps.sections.value.length,
+			num_tasks: provided.length + skipped.length,
 		});
+	}
+
+	function getSectionTelemetryInputs(section: WorkflowSetupSection): ProvidedSetupInput[] {
+		const inputs: ProvidedSetupInput[] = [];
+		if (section.credentialType) {
+			inputs.push({
+				label: getSetupInputLabel(section.targetNodeName, section.credentialType),
+				options: [],
+				option_chosen: 'true',
+			});
+		}
+		for (const parameterName of section.parameterNames) {
+			inputs.push({
+				label: getSetupInputLabel(section.targetNodeName, parameterName),
+				options: [],
+				option_chosen: 'true',
+			});
+		}
+		return inputs;
+	}
+
+	function getSetupInputLabel(nodeName: string, inputName: string): string {
+		return `${nodeName} - ${inputName}`;
+	}
+
+	function toSkippedInput(input: ProvidedSetupInput): SkippedSetupInput {
+		return { label: input.label, options: input.options };
 	}
 
 	async function apply(): Promise<void> {
