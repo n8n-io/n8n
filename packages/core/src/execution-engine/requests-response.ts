@@ -289,7 +289,7 @@ export function handleRequest({
 		parentOutputIndex: executionData.source?.main?.[0]?.previousNodeOutput ?? 0,
 		parentNode: result.parentNode,
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
-		runIndex: executionData.source?.main?.[0]?.previousNodeRun ?? runIndex,
+		runIndex,
 		nodeRunIndex: runIndex,
 		metadata: {
 			nodeWasResumed: true,
