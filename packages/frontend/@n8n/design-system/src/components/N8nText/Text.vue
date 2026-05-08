@@ -166,7 +166,7 @@ const classes = computed(() => {
 }
 
 .text-xlight {
-	color: var(--color--text--tint-3);
+	color: var(--text-color--disabled);
 }
 
 .danger {

@@ -7,12 +7,14 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	checkDomainAccess,
+	checkWebSearchAccess,
 	applyDomainAccessResume,
+	applyWebSearchAccessResume,
 	domainGatingSuspendSchema,
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
-import { sanitizeWebContent, wrapInBoundaryTags } from './web-research/sanitize-web-content';
+import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -59,17 +61,56 @@ type Input = z.infer<typeof inputSchema>;
 async function handleWebSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'web-search' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
 	if (!context.webResearchService?.search) {
 		return { query: input.query, results: [] };
+	}
+
+	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
+	const suspend = ctx?.agent?.suspend as
+		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
+		| undefined;
+
+	// ── Resume path: apply user's decision ─────────────────────────
+	if (resumeData !== undefined && resumeData !== null) {
+		const { proceed } = applyWebSearchAccessResume({
+			resumeData,
+			tracker: context.domainAccessTracker,
+			runId: context.runId,
+		});
+		if (!proceed) {
+			return { query: input.query, results: [] };
+		}
+	}
+
+	// ── Initial check: is web-search allowed? ──────────────────────
+	if (resumeData === undefined || resumeData === null) {
+		const check = checkWebSearchAccess({
+			query: input.query,
+			tracker: context.domainAccessTracker,
+			permissionMode: context.permissions?.webSearch,
+			runId: context.runId,
+		});
+		if (!check.allowed) {
+			if (check.blocked) {
+				return { query: input.query, results: [] };
+			}
+			await suspend?.(check.suspendPayload!);
+			return { query: input.query, results: [] };
+		}
 	}
 
 	const result = await context.webResearchService.search(input.query, {
 		maxResults: input.maxResults ?? undefined,
 		includeDomains: input.includeDomains ?? undefined,
 	});
+	// Snippets come from arbitrary third-party pages — sanitize against hidden
+	// payloads, then wrap so the LLM treats the content as data, not instructions.
+	// The wrapper also escapes any closing boundary tag in the snippet to
+	// prevent breakout into the surrounding prompt context.
 	for (const r of result.results) {
-		r.snippet = sanitizeWebContent(r.snippet);
+		r.snippet = wrapUntrustedData(sanitizeWebContent(r.snippet), r.url, r.title);
 	}
 	return result;
 }
@@ -174,7 +215,7 @@ async function handleFetchUrl(
 		maxContentLength: input.maxContentLength ?? undefined,
 		authorizeUrl,
 	});
-	result.content = wrapInBoundaryTags(sanitizeWebContent(result.content), result.finalUrl);
+	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
 	return result;
 }
 
@@ -190,7 +231,7 @@ export function createResearchTool(context: InstanceAiContext) {
 		execute: async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'web-search':
-					return await handleWebSearch(context, input);
+					return await handleWebSearch(context, input, ctx);
 				case 'fetch-url':
 					return await handleFetchUrl(context, input, ctx);
 			}

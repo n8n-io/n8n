@@ -100,6 +100,30 @@ describe('useGlobalEntityCreation', () => {
 			expect(menu.value[1].submenu?.length).toBe(4);
 		});
 
+		it('should not show submenus when team feature is enabled but no team projects exist', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.teamProjectsLimit = -1;
+
+			const personalProjectId = 'personal-project';
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.personalProject = { id: personalProjectId } as Project;
+			projectsStore.myProjects = [];
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value).toHaveLength(3);
+			expect(menu.value[0].submenu).toBeUndefined();
+			expect(menu.value[0].route).toEqual({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: personalProjectId },
+			});
+			expect(menu.value[1].submenu).toBeUndefined();
+			expect(menu.value[1].route).toEqual({
+				name: VIEWS.PROJECTS_CREDENTIALS,
+				params: { projectId: personalProjectId, credentialId: 'create' },
+			});
+		});
+
 		it('disables project creation item if user has no rbac permission', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.canCreateProjects = true;

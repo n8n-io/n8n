@@ -171,6 +171,11 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
+		}
 
 		// When the thread didn't exist at connect time, another user could create
 		// and own it before events start flowing. We re-check once on the first
@@ -325,27 +330,21 @@ export class InstanceAiController {
 
 	@Post('/confirm/:requestId')
 	@GlobalScope('instanceAi:message')
-	async confirm(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('requestId') requestId: string,
-		@Body body: InstanceAiConfirmRequestDto,
-	) {
+	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
 		this.requireInstanceAiEnabled();
-		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved: body.approved,
-			credentialId: body.credentialId,
-			credentials: body.credentials,
-			nodeCredentials: body.nodeCredentials,
-			autoSetup: body.autoSetup,
-			userInput: body.userInput,
-			domainAccessAction: body.domainAccessAction,
-			action: body.action,
-			nodeParameters: body.nodeParameters,
-			testTriggerNode: body.testTriggerNode,
-			answers: body.answers,
-			resourceDecision: body.resourceDecision,
-		});
+
+		// Manual parse: `@Body` decorator can't resolve zod discriminated unions via reflection,
+		// so validate the request body against the union schema directly.
+		const parseResult = InstanceAiConfirmRequestDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+
+		const resolved = await this.instanceAiService.resolveConfirmation(
+			req.user.id,
+			requestId,
+			parseResult.data,
+		);
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
@@ -553,6 +552,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
@@ -631,9 +631,13 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
+		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const ttlSeconds = expiresAt
+			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
+			: null;
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command };
+		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })

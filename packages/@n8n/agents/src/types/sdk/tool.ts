@@ -26,8 +26,16 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 export interface BuiltTool {
 	readonly name: string;
 	readonly description: string;
-	readonly suspendSchema?: ZodType;
-	readonly resumeSchema?: ZodType;
+	/**
+	 * Behavioural directive paired with the tool, injected into the agent's
+	 * system prompt under a `<built_in_rules>` block when the tool is added.
+	 * Use for guidance the LLM needs to *decide whether to call* the tool —
+	 * tool descriptions answer "what does this do?" but are weighted lower
+	 * than system instructions for usage decisions.
+	 */
+	readonly systemInstruction?: string;
+	readonly suspendSchema?: ZodType | JSONSchema7;
+	readonly resumeSchema?: ZodType | JSONSchema7;
 	readonly withDefaultApproval?: boolean;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
@@ -44,7 +52,7 @@ export interface BuiltTool {
 	 * (MCP tools). Use `isZodSchema()` to distinguish between the two at runtime.
 	 */
 	readonly inputSchema?: ZodType | JSONSchema7;
-	readonly outputSchema?: ZodType;
+	readonly outputSchema?: ZodType | JSONSchema7;
 	/** True for tools sourced from an MCP server. */
 	readonly mcpTool?: boolean;
 	/** Name of the MCP server this tool belongs to. Set when mcpTool is true. */
@@ -56,6 +64,17 @@ export interface BuiltTool {
 	 * Example: `{ anthropic: { eagerInputStreaming: true } }`
 	 */
 	readonly providerOptions?: Record<string, JSONObject>;
+	/**
+	 * Arbitrary platform-specific metadata attached to the tool.
+	 */
+	readonly metadata?: Record<string, unknown>;
+	/**
+	 * Whether the tool has source code that can be introspected.
+	 * When `false`, the tool is treated as a platform-managed marker (e.g. an
+	 * externally-resolved tool) and its source is not introspected.
+	 * Defaults to `true` when absent.
+	 */
+	readonly editable?: boolean;
 }
 
 /**

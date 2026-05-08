@@ -123,7 +123,6 @@ export interface InstanceAiHarness {
 	// Reactive state from composables (for assertions)
 	activeTabId: Ref<string | undefined>;
 	activeWorkflowId: ReturnType<typeof useCanvasPreview>['activeWorkflowId'];
-	activeExecutionId: Ref<string | null>;
 	activeDataTableId: ReturnType<typeof useCanvasPreview>['activeDataTableId'];
 	isPreviewVisible: ReturnType<typeof useCanvasPreview>['isPreviewVisible'];
 	allArtifactTabs: ReturnType<typeof useCanvasPreview>['allArtifactTabs'];
@@ -140,6 +139,7 @@ export interface InstanceAiHarness {
 	removeResource: (key: string) => void;
 	simulatePushEvent: (event: PushMessage) => void;
 	simulateIframeReady: () => Promise<void>;
+	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
 	markUserSentMessage: () => void;
@@ -199,7 +199,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const preview = useCanvasPreview({
 		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
 		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
-		workflowExecutions: executionTracking.workflowExecutions,
 	});
 
 	const relayedEvents: PushMessage[] = [];
@@ -252,6 +251,11 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 
 	async function simulateIframeReady() {
 		eventRelay.handleIframeReady();
+		await nextTick();
+	}
+
+	async function simulateWorkflowLoaded(wfId: string) {
+		eventRelay.handleWorkflowLoaded(wfId);
 		await nextTick();
 	}
 
@@ -375,7 +379,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		// State
 		activeTabId: preview.activeTabId,
 		activeWorkflowId: preview.activeWorkflowId,
-		activeExecutionId: preview.activeExecutionId,
 		activeDataTableId: preview.activeDataTableId,
 		isPreviewVisible: preview.isPreviewVisible,
 		allArtifactTabs: preview.allArtifactTabs,
@@ -390,6 +393,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		removeResource,
 		simulatePushEvent,
 		simulateIframeReady,
+		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
 		markUserSentMessage: preview.markUserSentMessage,
