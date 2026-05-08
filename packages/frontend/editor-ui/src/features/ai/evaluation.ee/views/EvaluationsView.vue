@@ -4,6 +4,9 @@ import { computed, ref, watch } from 'vue';
 
 import ConcurrencySlider from '../components/ConcurrencySlider';
 import RunsSection from '../components/ListRuns/RunsSection.vue';
+// TODO(TRUST-70 follow-up): wire `RunComparison.vue` from `../components/RunDetail/`
+// here once the feature is built. The placeholder lives next to the run-detail
+// components since comparison reuses the delta/tone helpers.
 import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
@@ -125,7 +128,7 @@ watch(runningTestRun, (run) => {
 					<ConcurrencySlider
 						v-model="concurrencyModel"
 						:min="1"
-						:max="10"
+						:max="parallelEvalStore.maxConcurrency"
 						:step="1"
 						show-stops
 						:class="$style.concurrencySlider"
