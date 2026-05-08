@@ -6,7 +6,7 @@ import type {
 	IWorkflowBase,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -151,17 +151,29 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const sanitizeUnsafeKeys = (value: unknown): unknown => {
+	if (Array.isArray(value)) return value.map(sanitizeUnsafeKeys);
+	if (!isPlainObject(value)) return value;
+	const out: Record<string, unknown> = {};
+	for (const [key, v] of Object.entries(value)) {
+		if (!isSafeObjectProperty(key)) continue;
+		out[key] = sanitizeUnsafeKeys(v);
+	}
+	return out;
+};
+
 const deepMerge = (
 	target: Record<string, unknown>,
 	source: Record<string, unknown>,
 ): Record<string, unknown> => {
 	const result: Record<string, unknown> = { ...target };
 	for (const [key, value] of Object.entries(source)) {
-		const existing = result[key];
+		if (!isSafeObjectProperty(key)) continue;
+		const existing = Object.prototype.hasOwnProperty.call(result, key) ? result[key] : undefined;
 		if (isPlainObject(existing) && isPlainObject(value)) {
 			result[key] = deepMerge(existing, value);
 		} else {
-			result[key] = value;
+			result[key] = sanitizeUnsafeKeys(value);
 		}
 	}
 	return result;
@@ -273,14 +285,18 @@ export function applyOperations(
 			case 'updateNodeParameters': {
 				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
+				const sanitized = sanitizeUnsafeKeys(op.parameters) as Record<string, unknown>;
 				const merged = op.replace
-					? op.parameters
-					: deepMerge((node.parameters ?? {}) as Record<string, unknown>, op.parameters);
+					? sanitized
+					: deepMerge((node.parameters ?? {}) as Record<string, unknown>, sanitized);
 				node.parameters = merged as INodeParameters;
 				break;
 			}
 
 			case 'addNode': {
+				if (!isSafeObjectProperty(op.node.name)) {
+					return fail(i, `node name '${op.node.name}' is not allowed`);
+				}
 				if (nodeByName.has(op.node.name)) {
 					return fail(i, `a node named '${op.node.name}' already exists`);
 				}
@@ -290,15 +306,17 @@ export function applyOperations(
 					type: op.node.type,
 					typeVersion: op.node.typeVersion,
 					position: op.node.position ?? [0, 0],
-					parameters: (op.node.parameters ?? {}) as INodeParameters,
+					parameters: (sanitizeUnsafeKeys(op.node.parameters ?? {}) ?? {}) as INodeParameters,
 				};
 				if (op.node.credentials) {
-					node.credentials = Object.fromEntries(
-						Object.entries(op.node.credentials).map(([key, cred]) => [
-							key,
-							{ id: cred.id ?? null, name: cred.name },
-						]),
-					);
+					const credentialEntries: Array<[string, { id: string | null; name: string }]> = [];
+					for (const [key, cred] of Object.entries(op.node.credentials)) {
+						if (!isSafeObjectProperty(key)) {
+							return fail(i, `credential key '${key}' is not allowed`);
+						}
+						credentialEntries.push([key, { id: cred.id ?? null, name: cred.name }]);
+					}
+					node.credentials = Object.fromEntries(credentialEntries);
 				}
 				if (op.node.disabled !== undefined) node.disabled = op.node.disabled;
 				if (op.node.notes !== undefined) node.notes = op.node.notes;
@@ -320,6 +338,9 @@ export function applyOperations(
 
 			case 'renameNode': {
 				if (op.oldName === op.newName) break;
+				if (!isSafeObjectProperty(op.newName)) {
+					return fail(i, `node name '${op.newName}' is not allowed`);
+				}
 				const node = nodeByName.get(op.oldName);
 				if (!node) return fail(i, `node '${op.oldName}' not found`);
 				if (nodeByName.has(op.newName)) {
@@ -342,6 +363,9 @@ export function applyOperations(
 				}
 				const connectionType = (op.connectionType ??
 					NodeConnectionTypes.Main) as NodeConnectionType;
+				if (!isSafeObjectProperty(op.source) || !isSafeObjectProperty(connectionType)) {
+					return fail(i, 'connection name is not allowed');
+				}
 				const sourceIndex = op.sourceIndex ?? 0;
 				const targetIndex = op.targetIndex ?? 0;
 				const slot = ensureOutputSlot(workflow.connections, op.source, connectionType, sourceIndex);
@@ -382,6 +406,9 @@ export function applyOperations(
 			case 'setNodeCredential': {
 				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
+				if (!isSafeObjectProperty(op.credentialKey)) {
+					return fail(i, `credential key '${op.credentialKey}' is not allowed`);
+				}
 				node.credentials = {
 					...(node.credentials ?? {}),
 					[op.credentialKey]: { id: op.credentialId, name: op.credentialName },

@@ -24,13 +24,16 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
+const MAX_OPERATIONS_PER_CALL = 100;
+
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
 	operations: z
 		.array(partialUpdateOperationSchema)
 		.min(1)
+		.max(MAX_OPERATIONS_PER_CALL)
 		.describe(
-			'Ordered list of operations to apply. Operations are applied atomically: if any operation fails (e.g. node not found, duplicate name), the whole batch is rejected and no changes are saved.',
+			`Ordered list of operations to apply (max ${MAX_OPERATIONS_PER_CALL}). Operations are applied atomically: if any operation fails (e.g. node not found, duplicate name), the whole batch is rejected and no changes are saved.`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -66,8 +69,12 @@ const outputSchema = {
 /**
  * MCP tool that updates a workflow by applying a small list of named operations
  * (addNode, removeNode, updateNodeParameters, addConnection, …) directly to the
- * stored JSON. Avoids the full code → JSON parse pass of `update_workflow`,
- * keeping per-edit payloads small for iterative agent use.
+ * stored JSON. The agent emits a tiny diff per call instead of re-sending the
+ * full SDK code, which keeps output-token cost roughly constant per edit.
+ *
+ * The same JSON-level validation (graph + schema) that `update_workflow` runs
+ * post-parse still runs here on the resulting workflow, so validation guarantees
+ * are equivalent — only the TS-code → JSON parse step is skipped.
  */
 export const createUpdatePartialWorkflowTool = (
 	user: User,
@@ -83,7 +90,7 @@ export const createUpdatePartialWorkflowTool = (
 	name: MCP_UPDATE_PARTIAL_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Apply a small list of operations (addNode, removeNode, updateNodeParameters, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setWorkflowMetadata) to an existing workflow. Prefer this over update_workflow for iterative edits — it avoids re-sending the full workflow code. The whole batch is atomic: if any op fails the workflow is left unchanged.',
+			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). Prefer this over update_workflow for iterative edits — it avoids re-sending the full workflow code. The whole batch is atomic: if any op fails the workflow is left unchanged.',
 		inputSchema,
 		outputSchema,
 		annotations: {

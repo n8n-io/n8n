@@ -376,4 +376,107 @@ describe('applyOperations', () => {
 			expect(JSON.stringify(wf)).toBe(before);
 		});
 	});
+
+	describe('object key safety', () => {
+		test('strips unsafe keys from updateNodeParameters merge', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'updateNodeParameters',
+					nodeName: 'B',
+					parameters: { __proto__: { polluted: true }, url: 'https://safe' } as Record<
+						string,
+						unknown
+					>,
+				},
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+			const params = result.workflow.nodes.find((n) => n.name === 'B')!.parameters as Record<
+				string,
+				unknown
+			>;
+			expect(params.url).toBe('https://safe');
+			expect(Object.prototype.hasOwnProperty.call(params, '__proto__')).toBe(false);
+		});
+
+		test('strips unsafe keys from nested parameters', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'updateNodeParameters',
+					nodeName: 'B',
+					parameters: {
+						options: { constructor: { polluted: true }, mode: 'manual' },
+					} as Record<string, unknown>,
+				},
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const params = result.workflow.nodes.find((n) => n.name === 'B')!.parameters as Record<
+				string,
+				Record<string, unknown>
+			>;
+			expect(params.options.mode).toBe('manual');
+			expect(Object.prototype.hasOwnProperty.call(params.options, 'constructor')).toBe(false);
+		});
+
+		test('rejects addNode with unsafe name', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'addNode',
+					node: { name: '__proto__', type: 'n8n-nodes-base.set', typeVersion: 1 },
+				},
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects renameNode to unsafe name', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'renameNode', oldName: 'A', newName: 'constructor' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects addConnection with unsafe source', () => {
+			const wf = baseWorkflow();
+			wf.nodes.push(makeNode({ id: 'p', name: '__proto__' }));
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addConnection', source: '__proto__', target: 'B' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects addConnection with unsafe connectionType', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addConnection', source: 'A', target: 'B', connectionType: '__proto__' },
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects setNodeCredential with unsafe credentialKey', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [
+				{
+					type: 'setNodeCredential',
+					nodeName: 'B',
+					credentialKey: '__proto__',
+					credentialId: 'c1',
+					credentialName: 'cred',
+				},
+			];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+		});
+	});
 });
