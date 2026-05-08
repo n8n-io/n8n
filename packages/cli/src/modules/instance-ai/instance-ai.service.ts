@@ -39,7 +39,7 @@ import {
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
-	isStructuredAttachment,
+	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	InstanceAiTerminalResponseGuard,
 	MastraTaskStorage,
@@ -2685,14 +2685,20 @@ export class InstanceAiService {
 			});
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			let nonStructuredAttachments: InstanceAiAttachment[] = [];
+			// Parseable formats (csv/tsv/json/xlsx/text/markdown/html/pdf/docx) go
+			// through parse-file; image/* is sent to the model as raw multimodal
+			// content. Anything else has been rejected upstream by the controller —
+			// but we filter defensively here so corrupt requests cannot pollute
+			// LLM memory.
+			let multimodalAttachments: InstanceAiAttachment[] = [];
 			let attachmentManifest = '';
 			let hasParseableAttachment = false;
 
 			if (attachments && attachments.length > 0) {
 				const classifiedAttachments = classifyAttachments(attachments);
-				nonStructuredAttachments = attachments.filter(
-					(attachment) => !isStructuredAttachment(attachment),
+				multimodalAttachments = attachments.filter(
+					(attachment) =>
+						!isParseableAttachment(attachment) && attachment.mimeType.startsWith('image/'),
 				);
 				hasParseableAttachment = classifiedAttachments.some(
 					(attachment: { parseable: boolean }) => attachment.parseable,
@@ -2791,14 +2797,16 @@ export class InstanceAiService {
 					? `${conversationSummary}\n\n${messageWithoutSummary}`
 					: messageWithoutSummary;
 
-				// Only include non-structured attachments as raw multimodal content
-				if (nonStructuredAttachments.length > 0) {
+				// Only include image attachments as raw multimodal content. Parseable
+				// formats are handled by the parse-file tool; everything else has
+				// been rejected at the controller boundary.
+				if (multimodalAttachments.length > 0) {
 					streamInput = [
 						{
 							role: 'user' as const,
 							content: [
 								{ type: 'text' as const, text: fullMessage },
-								...nonStructuredAttachments.map((attachment) => ({
+								...multimodalAttachments.map((attachment) => ({
 									type: 'file' as const,
 									data: attachment.data,
 									mimeType: attachment.mimeType,
@@ -2818,7 +2826,7 @@ export class InstanceAiService {
 							: {
 									fullMessage,
 									attachmentCount: attachments?.length ?? 0,
-									nonStructuredAttachmentCount: nonStructuredAttachments.length,
+									multimodalAttachmentCount: multimodalAttachments.length,
 								};
 					await tracing.finishRun(promptBuildRun, {
 						outputs: traceOutput,

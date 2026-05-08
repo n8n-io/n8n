@@ -640,7 +640,8 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
+	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });

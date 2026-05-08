@@ -162,6 +162,9 @@ import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddRunIndexToTestCaseExecution1777996709110 } from '../common/1777996709110-AddRunIndexToTestCaseExecution';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
+import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
+import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import type { Migration } from '../migration-types';
@@ -331,6 +334,9 @@ const sqliteMigrations: Migration[] = [
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	AddRunIndexToTestCaseExecution1777996709110,
 	AddExecutionDeduplicationKey1778000000000,
+	CreateEvaluationConfig1778100000000,
+	AddWorkflowVersionToTestRun1778100001000,
+	AddEvaluationConfigColumnsToTestRun1778100002000,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 ];

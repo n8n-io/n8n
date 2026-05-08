@@ -10,23 +10,19 @@
  */
 import { computed } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type { AgentSchema } from '../types';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(defineProps<{ schema?: AgentSchema | null }>(), {
 	schema: null,
 });
 
+const i18n = useI18n();
 const evals = computed(() => props.schema?.evaluations ?? []);
 </script>
 
 <template>
 	<div :class="$style.panel" data-testid="agent-evals-panel">
-		<AgentPanelHeader
-			title="Evaluations"
-			:description="`${evals.length} evaluation${evals.length === 1 ? '' : 's'} configured in code`"
-		/>
-
 		<template v-if="evals.length > 0">
 			<N8nCard v-for="evalItem in evals" :key="evalItem.name" :class="$style.evalCard">
 				<div :class="$style.evalHeader">
@@ -38,7 +34,9 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 						]"
 					>
 						<N8nText size="xsmall" :bold="true">{{
-							evalItem.type === 'check' ? 'Check' : 'Judge'
+							evalItem.type === 'check'
+								? i18n.baseText('agents.builder.evaluations.type.check')
+								: i18n.baseText('agents.builder.evaluations.type.judge')
 						}}</N8nText>
 					</span>
 				</div>
@@ -46,7 +44,10 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 				<div v-if="evalItem.hasCredential" :class="$style.credentialRow">
 					<N8nIcon icon="lock" size="xsmall" :class="$style.keyIcon" />
 					<N8nText size="xsmall" color="text-light">
-						{{ evalItem.credentialName ?? 'Credential configured' }}
+						{{
+							evalItem.credentialName ??
+							i18n.baseText('agents.builder.evaluations.credentialConfigured')
+						}}
 					</N8nText>
 				</div>
 
@@ -58,7 +59,7 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 
 		<div v-else :class="$style.dashedCard">
 			<N8nText size="small" color="text-light">
-				No evaluations configured — add evaluations in code using
+				{{ i18n.baseText('agents.builder.evaluations.emptyPrefix') }}
 				<code :class="$style.code">.eval(new Eval()...)</code>
 			</N8nText>
 		</div>
@@ -69,6 +70,8 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 .panel {
 	padding: var(--spacing--lg);
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
 	display: flex;
 	flex-direction: column;

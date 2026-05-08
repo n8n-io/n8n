@@ -14,7 +14,11 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { resolveCredentials, type CredentialMap } from './resolve-credentials';
+import {
+	resolveCredentials,
+	type CredentialEntry,
+	type CredentialMap,
+} from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
@@ -235,6 +239,17 @@ export function classifySubmitFailure(
 	errors: string[],
 	reason = 'submit_failed',
 ): RemediationMetadata {
+	const text = errors.join('\n').toLowerCase();
+	if (isCredentialSaveFailure(text)) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed because a credential is missing or inaccessible. Stop editing and route the user to credential setup.',
+		});
+	}
+
 	if (reason === 'workflow_save_failed') {
 		return createRemediation({
 			category: 'blocked',
@@ -245,7 +260,6 @@ export function classifySubmitFailure(
 		});
 	}
 
-	const text = errors.join('\n').toLowerCase();
 	if (
 		text.includes('blocked by admin') ||
 		text.includes('read-only') ||
@@ -274,6 +288,7 @@ export function createSubmitWorkflowTool(
 	workspace: Workspace,
 	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
+	availableCredentials?: CredentialEntry[],
 ) {
 	return createTool({
 		id: 'submit-workflow',
@@ -419,7 +434,13 @@ export function createSubmitWorkflowTool(
 			// For updates: restore from the existing workflow's resolved credentials.
 			// For new nodes: look up credentials by name from the credential service.
 			// Unresolved credentials are mocked via pinned data when available.
-			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
+			const mockResult = await resolveCredentials(
+				json,
+				workflowId,
+				context,
+				credentialMap,
+				availableCredentials,
+			);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale
@@ -519,4 +540,19 @@ export function createSubmitWorkflowTool(
 			};
 		},
 	});
+}
+
+function isCredentialSaveFailure(text: string): boolean {
+	if (!text.includes('credential')) return false;
+
+	return (
+		text.includes('not found') ||
+		text.includes('missing') ||
+		text.includes('not accessible') ||
+		text.includes('no access') ||
+		text.includes('do not have access') ||
+		text.includes("don't have access") ||
+		text.includes('not shared') ||
+		text.includes('permission')
+	);
 }

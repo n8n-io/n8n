@@ -10,9 +10,9 @@ import type {
 	WriteOptions,
 } from '@mastra/core/workspace';
 import { MastraFilesystem } from '@mastra/core/workspace';
+import { SandboxServiceError } from '@n8n/sandbox-client';
 import { dirname } from 'node:path/posix';
 
-import { N8nSandboxServiceError } from './n8n-sandbox-client';
 import type { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 
 function getParentDirectory(path: string): string | null {
@@ -129,7 +129,7 @@ export class N8nSandboxFilesystem extends MastraFilesystem {
 			await client.stat(sandboxId, path);
 			return true;
 		} catch (error) {
-			if (error instanceof N8nSandboxServiceError && error.status === 404) {
+			if (error instanceof SandboxServiceError && error.status === 404) {
 				return false;
 			}
 			throw error;
