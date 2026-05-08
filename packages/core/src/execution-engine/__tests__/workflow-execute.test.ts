@@ -3470,7 +3470,7 @@ describe('WorkflowExecute', () => {
 							},
 							metadata: {
 								nodeWasResumed: true,
-								originalPairedItemIndex: 42,
+								originalPairedItemIndices: [42],
 							},
 						},
 					],
@@ -3491,6 +3491,81 @@ describe('WorkflowExecute', () => {
 			// Verify taskStartedData.source was corrected
 			const agentTaskData = result.data.resultData.runData['AI Agent'][0];
 			expect(agentTaskData.source[0]!.previousNodeOutput).toBe(2);
+		});
+		test('resumed agent correctly sets pairedItem.item for multiple items using originalPairedItemIndices', async () => {
+			const agentNode = createNodeData({ name: 'AI Agent' });
+
+			const inputData: INodeExecutionData[] = [
+				{ json: { id: 1 }, pairedItem: { item: 0 } },
+				{ json: { id: 2 }, pairedItem: { item: 1 } },
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+
+					expect(items).toHaveLength(2);
+
+					const pairedItem0 = items[0].pairedItem as IPairedItemData;
+					const pairedItem1 = items[1].pairedItem as IPairedItemData;
+
+					expect(pairedItem0.item).toBe(100);
+					expect(pairedItem1.item).toBe(200);
+
+					return [[{ json: { done: true } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(agentNode)
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: agentNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'Start', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								nodeWasResumed: true,
+								originalPairedItemIndices: [100, 200],
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
 		});
 	});
 });

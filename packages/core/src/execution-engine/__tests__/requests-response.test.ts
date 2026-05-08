@@ -723,7 +723,7 @@ describe('handleRequests', () => {
 			});
 
 			const resumingNode = result.nodesToBeExecuted[0];
-			expect(resumingNode.metadata!.originalPairedItemIndex).toBe(42);
+			expect(resumingNode.metadata!.originalPairedItemIndices).toEqual([42]);
 		});
 
 		test('metadata includes originalPairedItemIndex equal to pairedItem.item (array case)', () => {
@@ -756,7 +756,39 @@ describe('handleRequests', () => {
 			});
 
 			const resumingNode = result.nodesToBeExecuted[0];
-			expect(resumingNode.metadata!.originalPairedItemIndex).toBe(73);
+			expect(resumingNode.metadata!.originalPairedItemIndices).toEqual([73]);
+		});
+
+		test('metadata includes originalPairedItemIndices for multiple items', () => {
+			const executionData: IExecuteData = {
+				data: {
+					main: [
+						[
+							{ json: {}, pairedItem: { item: 10 } },
+							{ json: {}, pairedItem: { item: 20 } },
+							{ json: {}, pairedItem: { item: 30 } },
+						],
+					],
+				},
+				source: {
+					main: [{ previousNode: 'Start', previousNodeOutput: 0, previousNodeRun: 0 }],
+				},
+				node: agentNode,
+			};
+
+			const request: EngineRequest = { actions: [], metadata: {} };
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 0,
+				executionData,
+				runData: {},
+			});
+
+			const resumingNode = result.nodesToBeExecuted[0];
+			expect(resumingNode.metadata!.originalPairedItemIndices).toEqual([10, 20, 30]);
 		});
 	});
 });
