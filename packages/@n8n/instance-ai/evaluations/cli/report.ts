@@ -34,6 +34,11 @@ interface SummaryJson {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
+		submitCallsTotal?: number;
+		avgSubmitCalls?: number;
+		toolCallsTotal?: number;
+		toolCallErrors?: number;
+		toolCallErrorRate?: number;
 	};
 	interactivity: {
 		askUserCount: number;
@@ -412,6 +417,16 @@ function renderRun(run: Run, index: number): string {
       <span class="total ${totalFailures > 0 ? 'fail' : ''}"><strong>Build fail:</strong> ${totalFailures}${failureDetail ? ` (${escapeHtml(failureDetail)})` : ''}</span>
       <span class="total"><strong>Primary pass rate:</strong> ${pct(s.totals.primaryPassRate)}</span>
       <span class="total"><strong>Avg diagnostic:</strong> ${s.totals.avgDiagnostic.toFixed(2)}</span>
+      ${
+				s.totals.toolCallErrorRate !== undefined
+					? `<span class="total ${s.totals.toolCallErrorRate > 0.1 ? 'fail' : ''}"><strong>Tool error rate:</strong> ${pct(s.totals.toolCallErrorRate)}${s.totals.toolCallErrors !== undefined && s.totals.toolCallsTotal !== undefined ? ` (${s.totals.toolCallErrors}/${s.totals.toolCallsTotal})` : ''}</span>`
+					: ''
+			}
+      ${
+				s.totals.avgSubmitCalls !== undefined
+					? `<span class="total"><strong>Submit calls:</strong> ${s.totals.submitCallsTotal ?? 0} total, ${s.totals.avgSubmitCalls.toFixed(2)} avg/build</span>`
+					: ''
+			}
     </div>
     ${
 			s.interactivity.askUserCount > 0 ||

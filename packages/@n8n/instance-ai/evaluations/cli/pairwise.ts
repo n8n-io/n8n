@@ -345,6 +345,21 @@ interface Summary {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
+		/** Total `submit-workflow` tool invocations across all records. */
+		submitCallsTotal: number;
+		/** Mean `submit-workflow` invocations per build. 1.0 = every build called
+		 *  submit exactly once; >1.0 = builds had to fix and re-submit. */
+		avgSubmitCalls: number;
+		/** (errored tool calls) / (total tool calls) micro-averaged across all
+		 *  runs. Captures how rough the build path was even on builds that
+		 *  eventually succeeded — every TypeScript compile error or failed
+		 *  domain tool call shows up here. */
+		toolCallErrorRate: number;
+		/** Total tool calls observed (used as the error-rate denominator and
+		 *  surfaced for context). */
+		toolCallsTotal: number;
+		/** Total errored tool calls observed (numerator of `toolCallErrorRate`). */
+		toolCallErrors: number;
 	};
 	interactivity: {
 		askUserCount: number;
@@ -395,12 +410,17 @@ async function writeOutputs(
 		'durationMs',
 		'askUserCount',
 		'planToolCount',
+		'submitCalls',
+		'toolCalls',
+		'toolCallErrors',
 		'pairwisePrimary',
 		'pairwiseDiagnostic',
 		'pairwiseJudgesPassed',
 	].join(',');
 	const csvRows = records.map((r) => {
 		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
+		const submits = r.toolCalls.filter((tc) => tc.toolName === 'submit-workflow').length;
+		const errors = r.toolCalls.filter(isErroredToolCall).length;
 		return [
 			r.exampleId,
 			r.iteration,
@@ -409,6 +429,9 @@ async function writeOutputs(
 			r.build.durationMs,
 			r.build.interactivity.askUserCount,
 			r.build.interactivity.planToolCount,
+			submits,
+			r.toolCalls.length,
+			errors,
 			find('pairwise_primary'),
 			find('pairwise_diagnostic'),
 			find('pairwise_judges_passed'),
@@ -429,6 +452,9 @@ async function writeOutputs(
 	let askUserCount = 0;
 	let planToolCount = 0;
 	let autoApprovedSuspensions = 0;
+	let submitCallsTotal = 0;
+	let toolCallsTotal = 0;
+	let toolCallErrors = 0;
 
 	for (const record of records) {
 		if (record.build.success) buildSuccess++;
@@ -440,6 +466,18 @@ async function writeOutputs(
 		autoApprovedSuspensions += record.build.interactivity.autoApprovedSuspensions;
 		for (const type of record.build.interactivity.mockedCredentialTypes) {
 			allMockedCreds.add(type);
+		}
+
+		// `toolCalls` is the ordered timeline captured by the trace collector.
+		// We count any tool call that errored OR returned a failed result —
+		// hard Mastra tool failures are rare, but `submit-workflow` rejections
+		// and `execute_command` returning a non-zero `tsc` exit are common and
+		// dominate the "rough path" signal we care about. Suspensions are
+		// benign (auto-approved or surfaced via `errorClass` separately).
+		for (const tc of record.toolCalls) {
+			toolCallsTotal++;
+			if (isErroredToolCall(tc)) toolCallErrors++;
+			if (tc.toolName === 'submit-workflow') submitCallsTotal++;
 		}
 
 		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
@@ -478,6 +516,11 @@ async function writeOutputs(
 			buildFailures,
 			primaryPassRate: primaryPassCount ? primaryPassSum / primaryPassCount : 0,
 			avgDiagnostic: diagnosticCount ? diagnosticSum / diagnosticCount : 0,
+			submitCallsTotal,
+			avgSubmitCalls: records.length ? submitCallsTotal / records.length : 0,
+			toolCallsTotal,
+			toolCallErrors,
+			toolCallErrorRate: toolCallsTotal ? toolCallErrors / toolCallsTotal : 0,
 		},
 		interactivity: {
 			askUserCount,
@@ -652,6 +695,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function safeFilename(s: string): string {
 	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
+}
+
+/**
+ * Whether a tool call should count toward the "tool error rate" metric.
+ *
+ * Catches three flavours:
+ * 1. **Hard Mastra failure** (`trace.error` set) — tool threw / rejected.
+ * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
+ *    returning `{ success: false, errors: [...] }`. Looks at top-level
+ *    `success === false` or non-empty `errors` array, plus a string
+ *    `error` field.
+ * 3. **`execute_command` returned a non-zero exit code** — e.g. `tsc`
+ *    spitting out compile errors. Looks for an `Exit code: <non-zero>`
+ *    marker in the result text.
+ */
+function isErroredToolCall(trace: ToolCallTrace): boolean {
+	if (trace.error !== undefined) return true;
+	const r = trace.result;
+	if (r === null || r === undefined) return false;
+
+	if (typeof r === 'object' && !Array.isArray(r)) {
+		const obj = r as Record<string, unknown>;
+		if (obj.success === false) return true;
+		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	}
+
+	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) {
+		return true;
+	}
+
+	return false;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
