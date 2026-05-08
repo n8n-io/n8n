@@ -45,6 +45,13 @@ runs:
             mkdir -p "$PNPM_STORE_PATH"
         fi
 
+    - name: Configure SafeChain
+      shell: bash
+      run: |
+        # SafeChain only reads configs from this directory https://github.com/AikidoSec/safe-chain#configuration-options-1
+        mkdir -p "$HOME/.safe-chain"
+        cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
+
     - name: Install Aikido SafeChain
       run: |
         VERSION="1.5.1"
@@ -54,10 +61,6 @@ runs:
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
-        # Exclude first-party @n8n/* packages from SafeChain's minimum-package-age
-        # filter so freshly-published versions stay visible to every subsequent
-        # step in the job (install, build, and publish).
-        echo "SAFE_CHAIN_MINIMUM_PACKAGE_AGE_EXCLUSIONS=@n8n/*,n8n,n8n-containers,n8n-core,n8n-editor-ui,n8n-node-dev,n8n-nodes-base,n8n-playwright,n8n-workflow" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Install Dependencies

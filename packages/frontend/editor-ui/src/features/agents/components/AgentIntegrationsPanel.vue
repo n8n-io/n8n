@@ -131,9 +131,13 @@ function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
 
+// Webhook URLs in the integration manifests must use the instance's configured
+// `WEBHOOK_URL` (`urlBaseWebhook`), not the editor URL: in production the
+// editor and webhook receiver may be on different hosts, and the chat platform
+// (Slack, Linear) needs the publicly reachable webhook host.
 function webhookUrlFor(platform: string): string {
-	const base = rootStore.urlBaseEditor;
-	return `${base}rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/${platform}`;
+	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
+	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/${platform}`;
 }
 
 const linearCopied = ref(false);
@@ -516,6 +520,8 @@ onMounted(async () => {
 <style module>
 .panel {
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
 }
 
@@ -622,6 +628,8 @@ onMounted(async () => {
 	overflow-x: auto;
 	max-height: 300px;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	white-space: pre;
 	font-family: monospace;
 	color: var(--color--text);
