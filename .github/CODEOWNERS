@@ -196,7 +196,7 @@ packages/@n8n/codemirror-lang/                          @n8n-io/nodes
 packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
 packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
-packages/@n8n/decorators/                               @n8n-io/nodes
+packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/create-node/                              @n8n-io/nodes
 packages/@n8n/node-cli/                                 @n8n-io/nodes
