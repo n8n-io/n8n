@@ -130,14 +130,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		 *  - otherwise null
 		 */
 		const activeExecution = computed(() => {
-			const aid = activeExecutionId.value;
-			if (aid === null) return pendingExecution.value;
-			if (typeof aid === 'string') {
-				return useExecutionDataStore(createExecutionDataId(aid)).execution;
+			if (activeExecutionId.value === null) return pendingExecution.value;
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value)).execution;
 			}
-			const did = displayedExecutionId.value;
-			if (typeof did === 'string') {
-				return useExecutionDataStore(createExecutionDataId(did)).execution;
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value)).execution;
 			}
 			return null;
 		});
@@ -147,21 +145,21 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		);
 
 		const activeExecutionStartedData = computed(() => {
-			const aid = activeExecutionId.value;
-			if (typeof aid !== 'string') return undefined;
-			return useExecutionDataStore(createExecutionDataId(aid)).executionStartedData;
+			if (typeof activeExecutionId.value !== 'string') return undefined;
+			return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+				.executionStartedData;
 		});
 
 		const activeExecutionPairedItemMappings = computed(() => {
-			const aid = activeExecutionId.value;
-			if (typeof aid !== 'string') return {};
-			return useExecutionDataStore(createExecutionDataId(aid)).executionPairedItemMappings;
+			if (typeof activeExecutionId.value !== 'string') return {};
+			return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+				.executionPairedItemMappings;
 		});
 
 		const activeExecutionResultDataLastUpdate = computed(() => {
-			const aid = activeExecutionId.value;
-			if (typeof aid !== 'string') return undefined;
-			return useExecutionDataStore(createExecutionDataId(aid)).executionResultDataLastUpdate;
+			if (typeof activeExecutionId.value !== 'string') return undefined;
+			return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+				.executionResultDataLastUpdate;
 		});
 
 		function getActiveExecutionRunDataByNodeName(nodeName: string) {
@@ -292,9 +290,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		}
 
 		function clearActiveNodeExecutionData(nodeName: string) {
-			const aid = activeExecutionId.value;
-			if (typeof aid !== 'string') return;
-			useExecutionDataStore(createExecutionDataId(aid)).clearNodeExecutionData(nodeName);
+			if (typeof activeExecutionId.value !== 'string') return;
+			useExecutionDataStore(createExecutionDataId(activeExecutionId.value)).clearNodeExecutionData(
+				nodeName,
+			);
 		}
 
 		function setExecutionWaitingForWebhook(value: boolean) {

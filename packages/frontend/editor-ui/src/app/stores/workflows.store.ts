@@ -416,18 +416,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resolveActiveExecId(): string | undefined {
-		const aid = currentState.value.activeExecutionId;
-		if (typeof aid === 'string') return aid;
-		if (aid === null) return IN_PROGRESS_EXECUTION_ID;
-		const did = currentState.value.displayedExecutionId;
-		if (typeof did === 'string') return did;
+		if (typeof currentState.value.activeExecutionId === 'string')
+			return currentState.value.activeExecutionId;
+		if (currentState.value.activeExecutionId === null) return IN_PROGRESS_EXECUTION_ID;
+		const displayedExecutionId = currentState.value.displayedExecutionId;
+		if (typeof displayedExecutionId === 'string') return displayedExecutionId;
 		return undefined;
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
-		const aid = resolveActiveExecId();
-		if (aid) {
-			useExecutionDataStore(createExecutionDataId(aid)).setExecutionRunData(workflowResultData);
+		const activeExecutionId = resolveActiveExecId();
+		if (activeExecutionId) {
+			useExecutionDataStore(createExecutionDataId(activeExecutionId)).setExecutionRunData(
+				workflowResultData,
+			);
 		}
 	}
 
@@ -456,9 +458,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function clearExecutionStartedData(): void {
-		const aid = resolveActiveExecId();
-		if (aid) {
-			useExecutionDataStore(createExecutionDataId(aid)).clearExecutionStartedData();
+		const activeExecutionId = resolveActiveExecId();
+		if (activeExecutionId) {
+			useExecutionDataStore(createExecutionDataId(activeExecutionId)).clearExecutionStartedData();
 		}
 	}
 
@@ -490,9 +492,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.markStateDirty();
 
 		// Execution-data rename (runData keys, pinData, sources, workflowData, executedNode)
-		const aid = resolveActiveExecId();
-		if (aid) {
-			useExecutionDataStore(createExecutionDataId(aid)).renameExecutionDataNode(
+		const activeExecutionId = resolveActiveExecId();
+		if (activeExecutionId) {
+			useExecutionDataStore(createExecutionDataId(activeExecutionId)).renameExecutionDataNode(
 				nameData.old,
 				nameData.new,
 			);
@@ -516,16 +518,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function addNodeExecutionStartedData(data: NodeExecuteBefore['data']): void {
-		const aid = resolveActiveExecId();
-		if (aid) {
-			useExecutionDataStore(createExecutionDataId(aid)).addNodeExecutionStartedData(data);
+		const activeExecutionId = resolveActiveExecId();
+		if (activeExecutionId) {
+			useExecutionDataStore(createExecutionDataId(activeExecutionId)).addNodeExecutionStartedData(
+				data,
+			);
 		}
 	}
 
 	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		const aid = resolveActiveExecId();
-		if (!aid) return;
-		const executionDataStore = useExecutionDataStore(createExecutionDataId(aid));
+		const activeExecutionId = resolveActiveExecId();
+		if (!activeExecutionId) return;
+		const executionDataStore = useExecutionDataStore(createExecutionDataId(activeExecutionId));
 		executionDataStore.updateNodeExecutionStatus(pushData);
 
 		const { data } = pushData;
@@ -537,9 +541,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		const aid = resolveActiveExecId();
-		if (aid) {
-			useExecutionDataStore(createExecutionDataId(aid)).updateNodeExecutionRunData(pushData);
+		const activeExecutionId = resolveActiveExecId();
+		if (activeExecutionId) {
+			useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionRunData(
+				pushData,
+			);
 		}
 	}
 

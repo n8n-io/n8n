@@ -106,7 +106,7 @@ export function useWorkflowState() {
 		const stateStore = useWorkflowExecutionStateStore(
 			createWorkflowExecutionStateId(ws.workflowId),
 		);
-		const aid = stateStore.activeExecutionId;
+		const activeExecutionId = stateStore.activeExecutionId;
 
 		stateStore.setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
@@ -115,11 +115,11 @@ export function useWorkflowState() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
-		if (typeof aid === 'string') {
-			const executionDataStore = useExecutionDataStore(createExecutionDataId(aid));
+		if (typeof activeExecutionId === 'string') {
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(activeExecutionId));
 			executionDataStore.clearExecutionStartedData();
 			executionDataStore.markAsStopped(stopData);
-		} else if (aid === null) {
+		} else if (activeExecutionId === null) {
 			// Pending scaffold: filter the IN_PROGRESS placeholder data and
 			// mirror status onto the pendingExecution ref so the UI sees the canceled state.
 			const executionDataStore = useExecutionDataStore(
@@ -131,11 +131,13 @@ export function useWorkflowState() {
 				stateStore.applyStopDataToPendingExecution(stopData);
 			}
 		} else {
-			// aid === undefined: fall back to displayedExecutionId for the
+			// activeExecutionId === undefined: fall back to displayedExecutionId for the
 			// stop-race-with-finished case where active was just cleared.
-			const did = stateStore.displayedExecutionId;
-			if (typeof did === 'string') {
-				const executionDataStore = useExecutionDataStore(createExecutionDataId(did));
+			const displayedExecutionId = stateStore.displayedExecutionId;
+			if (typeof displayedExecutionId === 'string') {
+				const executionDataStore = useExecutionDataStore(
+					createExecutionDataId(displayedExecutionId),
+				);
 				executionDataStore.clearExecutionStartedData();
 				executionDataStore.markAsStopped(stopData);
 			}
