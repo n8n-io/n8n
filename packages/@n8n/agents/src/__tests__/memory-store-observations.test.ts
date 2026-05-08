@@ -128,6 +128,37 @@ describe('InMemoryMemory — observations', () => {
 		const rows = await mem.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
 		expect(rows.map((r) => r.id)).toEqual([r1.id]);
 	});
+
+	it('deleteThread removes only the deleted thread observation state', async () => {
+		const mem = new InMemoryMemory();
+		await mem.appendObservations([
+			makeRow({ scopeKind: 'thread', scopeId: 't-1', payload: 'deleted-thread' }),
+			makeRow({ scopeKind: 'thread', scopeId: 't-2', payload: 'other-thread' }),
+			makeRow({ scopeKind: 'resource', scopeId: 't-1', payload: 'resource-scope' }),
+		]);
+		await mem.setCursor({
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			lastObservedMessageId: 'm-1',
+			lastObservedAt: new Date(),
+			updatedAt: new Date(),
+		});
+		await mem.acquireObservationLock('thread', 't-1', { ttlMs: 60_000, holderId: 'A' });
+
+		await mem.deleteThread('t-1');
+
+		await expect(mem.getObservations({ scopeKind: 'thread', scopeId: 't-1' })).resolves.toEqual([]);
+		await expect(mem.getCursor('thread', 't-1')).resolves.toBeNull();
+		await expect(
+			mem.acquireObservationLock('thread', 't-1', { ttlMs: 60_000, holderId: 'B' }),
+		).resolves.toEqual(expect.objectContaining({ holderId: 'B' }));
+		await expect(mem.getObservations({ scopeKind: 'thread', scopeId: 't-2' })).resolves.toEqual([
+			expect.objectContaining({ payload: 'other-thread' }),
+		]);
+		await expect(mem.getObservations({ scopeKind: 'resource', scopeId: 't-1' })).resolves.toEqual([
+			expect.objectContaining({ payload: 'resource-scope' }),
+		]);
+	});
 });
 
 describe('InMemoryMemory — cursors', () => {

@@ -2,7 +2,7 @@ import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
-import type { ObservationalMemoryConfig } from './observation';
+import type { BuiltObservationStore, ObservationalMemoryConfig } from './observation';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -129,9 +129,9 @@ export interface TitleGenerationConfig {
 	sync?: boolean;
 }
 
-/** Full memory configuration bundle passed from builder to runtime. */
-export interface MemoryConfig {
-	memory: BuiltMemory;
+export type ObservationCapableMemory = BuiltMemory & BuiltObservationStore;
+
+interface MemoryConfigBase {
 	lastMessages: number;
 	workingMemory?: {
 		template: string;
@@ -146,8 +146,18 @@ export interface MemoryConfig {
 	};
 	semanticRecall?: SemanticRecallConfig;
 	titleGeneration?: TitleGenerationConfig;
-	observationalMemory?: ObservationalMemoryConfig;
 }
+
+/** Full memory configuration bundle passed from builder to runtime. */
+export type MemoryConfig =
+	| (MemoryConfigBase & {
+			memory: BuiltMemory;
+			observationalMemory?: undefined;
+	  })
+	| (MemoryConfigBase & {
+			memory: ObservationCapableMemory;
+			observationalMemory: ObservationalMemoryConfig;
+	  });
 
 /**
  * Interface for persisting agent execution snapshots (used for tool approval / human-in-the-loop).

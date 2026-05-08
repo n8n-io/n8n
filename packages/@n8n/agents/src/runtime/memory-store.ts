@@ -106,6 +106,10 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 	async deleteThread(threadId: string): Promise<void> {
 		this.threads.delete(threadId);
 		this.messagesByThread.delete(threadId);
+		const key = scopeKey('thread', threadId);
+		this.observationsByScope.delete(key);
+		this.cursorsByScope.delete(key);
+		this.locksByScope.delete(key);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await

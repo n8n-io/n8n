@@ -1,5 +1,5 @@
 import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '@n8n/agents';
-import { Equal, In, LessThan, LessThanOrEqual, MoreThan } from '@n8n/typeorm';
+import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
@@ -276,6 +276,28 @@ describe('N8nMemory', () => {
 				threadId: 'thread-1',
 				resourceId: '',
 			});
+		});
+	});
+
+	describe('deleteThread', () => {
+		it('deletes thread-scoped observation state before deleting the thread row', async () => {
+			await memory.deleteThread('thread-1');
+
+			const scope = { scopeKind: 'thread' as const, scopeId: 'thread-1' };
+			expect(observationRepository.delete).toHaveBeenCalledWith(scope);
+			expect(observationCursorRepository.delete).toHaveBeenCalledWith(scope);
+			expect(observationLockRepository.delete).toHaveBeenCalledWith(scope);
+			expect(threadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
+		});
+
+		it('deletes thread-scoped observation state by thread id prefix', async () => {
+			await memory.deleteThreadsByPrefix('test-agent-1');
+
+			const scope = { scopeKind: 'thread' as const, scopeId: Like('test-agent-1%') };
+			expect(observationRepository.delete).toHaveBeenCalledWith(scope);
+			expect(observationCursorRepository.delete).toHaveBeenCalledWith(scope);
+			expect(observationLockRepository.delete).toHaveBeenCalledWith(scope);
+			expect(threadRepository.delete).toHaveBeenCalledWith({ id: Like('test-agent-1%') });
 		});
 	});
 

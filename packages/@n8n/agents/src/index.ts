@@ -29,6 +29,7 @@ export type {
 	AgentRunState,
 	MemoryConfig,
 	MemoryDescriptor,
+	ObservationCapableMemory,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,

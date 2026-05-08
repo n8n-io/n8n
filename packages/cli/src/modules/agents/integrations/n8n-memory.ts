@@ -88,10 +88,17 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
+		await this.observationRepository.delete({ scopeKind: 'thread', scopeId: threadId });
+		await this.observationCursorRepository.delete({ scopeKind: 'thread', scopeId: threadId });
+		await this.observationLockRepository.delete({ scopeKind: 'thread', scopeId: threadId });
 		await this.threadRepository.delete({ id: threadId });
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
+		const scopeId = Like(`${threadIdPrefix}%`);
+		await this.observationRepository.delete({ scopeKind: 'thread', scopeId });
+		await this.observationCursorRepository.delete({ scopeKind: 'thread', scopeId });
+		await this.observationLockRepository.delete({ scopeKind: 'thread', scopeId });
 		await this.threadRepository.delete({ id: Like(`${threadIdPrefix}%`) });
 	}
 

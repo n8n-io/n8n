@@ -60,6 +60,7 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	ObservationCapableMemory,
 	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
