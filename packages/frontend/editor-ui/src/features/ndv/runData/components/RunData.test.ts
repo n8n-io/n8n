@@ -16,7 +16,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import type { ExecutionStatus, INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
@@ -1298,6 +1299,65 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('trimmed execution data placeholder', () => {
+		const trimmedRun = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
+			data: {
+				main: [
+					[
+						{
+							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+							pairedItem: { item: 0 },
+						},
+					],
+				],
+			},
+			source: [null],
+		} as unknown as ITaskData;
+
+		it('shows the loading spinner for trimmed data while the workflow execution is still running', () => {
+			const { getByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'running',
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state with an unpin button for trimmed pinned data after the workflow execution finished', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				pinnedData: [
+					{
+						json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+						pairedItem: { item: 0 },
+					},
+				],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted-unpin')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state without an unpin button when the trimmed marker is on a different node', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1322,6 +1382,7 @@ describe('RunData', () => {
 		overrideOutputs,
 		lastSuccessfulExecution,
 		redactionInfo,
+		executionStatus,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1333,6 +1394,7 @@ describe('RunData', () => {
 		runs?: ITaskData[];
 		overrideOutputs?: number[];
 		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
+		executionStatus?: ExecutionStatus;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1372,6 +1434,7 @@ describe('RunData', () => {
 						finished: true,
 						mode: 'trigger',
 						startedAt: new Date(),
+						...(executionStatus ? { status: executionStatus } : {}),
 						workflowData: {
 							id: '1',
 							name: 'Test Workflow',

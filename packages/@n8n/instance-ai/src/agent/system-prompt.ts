@@ -63,7 +63,7 @@ The following operations remain available:
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
 - Restoring workflow versions
-- Browsing the filesystem and fetching URLs
+- Browsing the filesystem, fetching URLs, and searching the web
 
 If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
 `;
