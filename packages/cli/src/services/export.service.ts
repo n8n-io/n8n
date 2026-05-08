@@ -93,17 +93,9 @@ export class ExportService {
 		return systemTablesExported;
 	}
 
-	private async exportDataTableUserTables(
-		outputDir: string,
-		customEncryptionKey?: string,
-	): Promise<{ totalTables: number; totalRows: number }> {
-		const dbType = this.dataSource.options.type;
+	private async loadDataTableIds(): Promise<string[]> {
 		const tablePrefix = this.dataSource.options.entityPrefix || '';
 		const dataTableTableName = `${tablePrefix}data_table`;
-		const dataTableColumnTableName = `${tablePrefix}data_table_column`;
-
-		this.logger.info('\n📚 Exporting data table user rows:');
-		this.logger.info('==================================');
 
 		let dataTables: Array<{ id: string }>;
 		try {
@@ -115,132 +107,127 @@ export class ExportService {
 				`   ⚠️  ${dataTableTableName} registry not found, skipping data-table row export...`,
 				{ error },
 			);
-			return { totalTables: 0, totalRows: 0 };
+			return [];
 		}
 
 		if (dataTables.length === 0) {
 			this.logger.info('   ℹ️  No data tables found, nothing to export.');
-			return { totalTables: 0, totalRows: 0 };
+			return [];
 		}
 
-		const escapedColumnTable = this.dataSource.driver.escape(dataTableColumnTableName);
-		const escapedDataTableId = this.dataSource.driver.escape('dataTableId');
-		const escapedIndex = this.dataSource.driver.escape('index');
+		return dataTables.map((t) => t.id);
+	}
 
-		const columnRows: Array<{
-			dataTableId: string;
-			name: string;
-			type: string;
-			index: number;
-		}> = await this.dataSource.query(
-			`SELECT ${escapedDataTableId}, name, type, ${escapedIndex} FROM ${escapedColumnTable}`,
-		);
+	private async exportSingleDataTable(
+		dataTableId: string,
+		outputDir: string,
+		customEncryptionKey: string | undefined,
+	): Promise<number> {
+		const dbType = this.dataSource.options.type;
+		const userTableName = toTableName(dataTableId);
+		const fileBaseName = `${DATA_TABLE_ROWS_FILE_PREFIX}${dataTableId}`;
 
-		const columnsByDataTableId = new Map<
-			string,
-			Array<{ name: string; type: string; index: number }>
-		>();
-		for (const row of columnRows) {
-			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
-			list.push({ name: row.name, type: row.type, index: row.index });
-			columnsByDataTableId.set(row.dataTableId, list);
-		}
+		this.logger.info(`\n📊 Processing data table: ${userTableName}`);
 
+		await this.clearExistingEntityFiles(outputDir, fileBaseName);
+
+		const escapedUserTable = quoteIdentifier(userTableName, dbType);
 		const pageSize = 500;
 		const entitiesPerFile = 500;
 
-		let totalRows = 0;
+		let lastId = 0;
+		let fileIndex = 1;
+		let currentFileEntityCount = 0;
+		let totalEntityCount = 0;
+		let hasNextPage = true;
 
-		for (const { id: dataTableId } of dataTables) {
-			const userTableName = toTableName(dataTableId);
-			const fileBaseName = `${DATA_TABLE_ROWS_FILE_PREFIX}${dataTableId}`;
-			this.logger.info(`\n📊 Processing data table: ${userTableName}`);
-
-			await this.clearExistingEntityFiles(outputDir, fileBaseName);
-
-			const escapedUserTable = quoteIdentifier(userTableName, dbType);
-			let lastId = 0;
-			let fileIndex = 1;
-			let currentFileEntityCount = 0;
-			let totalEntityCount = 0;
-			let hasNextPage = true;
-
-			do {
-				let pageRows: Array<Record<string, unknown>>;
-				try {
-					pageRows = await this.dataSource.query(
-						`SELECT * FROM ${escapedUserTable} WHERE "id" > ${lastId} ORDER BY "id" LIMIT ${pageSize}`,
-					);
-				} catch (error) {
-					this.logger.warn(
-						`   ⚠️  Could not read rows from ${userTableName}; skipping. The dynamic table may be missing on the source instance.`,
-						{ error },
-					);
-					hasNextPage = false;
-					break;
-				}
-
-				if (pageRows.length === 0) {
-					hasNextPage = false;
-					break;
-				}
-
-				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-				const fileName =
-					targetFileIndex === 1
-						? `${fileBaseName}.jsonl`
-						: `${fileBaseName}.${targetFileIndex}.jsonl`;
-				const filePath = safeJoinPath(outputDir, fileName);
-
-				if (targetFileIndex > fileIndex) {
-					this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
-					fileIndex = targetFileIndex;
-					currentFileEntityCount = 0;
-				}
-
-				const rowsJsonl = pageRows.map((row) => JSON.stringify(row)).join('\n');
-				await appendFile(
-					filePath,
-					(await this.cipher.encryptV2(rowsJsonl, customEncryptionKey)) + '\n',
-					'utf8',
+		do {
+			let pageRows: Array<Record<string, unknown>>;
+			try {
+				pageRows = await this.dataSource.query(
+					`SELECT * FROM ${escapedUserTable} WHERE "id" > ${lastId} ORDER BY "id" LIMIT ${pageSize}`,
 				);
-
-				const lastRowId = Number((pageRows[pageRows.length - 1] as { id: unknown }).id);
-				if (!Number.isFinite(lastRowId)) {
-					throw new Error(
-						`Unexpected non-numeric id in ${userTableName}; cannot continue keyset pagination`,
-					);
-				}
-				lastId = lastRowId;
-
-				totalEntityCount += pageRows.length;
-				currentFileEntityCount += pageRows.length;
-
-				this.logger.info(
-					`      Fetched ${pageRows.length} rows (last id: ${lastId}, total: ${totalEntityCount})`,
+			} catch (error) {
+				this.logger.warn(
+					`   ⚠️  Could not read rows from ${userTableName}; skipping. The dynamic table may be missing on the source instance.`,
+					{ error },
 				);
-
-				if (pageRows.length < pageSize) {
-					hasNextPage = false;
-				}
-			} while (hasNextPage);
-
-			if (currentFileEntityCount > 0) {
-				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
+				break;
 			}
 
-			this.logger.info(
-				`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${fileIndex} file(s)`,
+			if (pageRows.length === 0) break;
+
+			const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
+			const fileName =
+				targetFileIndex === 1
+					? `${fileBaseName}.jsonl`
+					: `${fileBaseName}.${targetFileIndex}.jsonl`;
+			const filePath = safeJoinPath(outputDir, fileName);
+
+			if (targetFileIndex > fileIndex) {
+				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
+				fileIndex = targetFileIndex;
+				currentFileEntityCount = 0;
+			}
+
+			const rowsJsonl = pageRows.map((row) => JSON.stringify(row)).join('\n');
+			await appendFile(
+				filePath,
+				(await this.cipher.encryptV2(rowsJsonl, customEncryptionKey)) + '\n',
+				'utf8',
 			);
 
-			totalRows += totalEntityCount;
+			const lastRowId = Number((pageRows[pageRows.length - 1] as { id: unknown }).id);
+			if (!Number.isFinite(lastRowId)) {
+				throw new Error(
+					`Unexpected non-numeric id in ${userTableName}; cannot continue keyset pagination`,
+				);
+			}
+			lastId = lastRowId;
+
+			totalEntityCount += pageRows.length;
+			currentFileEntityCount += pageRows.length;
+
+			this.logger.info(
+				`      Fetched ${pageRows.length} rows (last id: ${lastId}, total: ${totalEntityCount})`,
+			);
+
+			hasNextPage = pageRows.length >= pageSize;
+		} while (hasNextPage);
+
+		if (currentFileEntityCount > 0) {
+			this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
 		}
 
 		this.logger.info(
-			`\n📊 Data table row export summary: ${dataTables.length} table(s), ${totalRows} row(s)`,
+			`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${fileIndex} file(s)`,
 		);
 
-		return { totalTables: dataTables.length, totalRows };
+		return totalEntityCount;
+	}
+
+	private async exportDataTableUserTables(
+		outputDir: string,
+		customEncryptionKey?: string,
+	): Promise<{ totalTables: number; totalRows: number }> {
+		this.logger.info('\n📚 Exporting data table user rows:');
+		this.logger.info('==================================');
+
+		const dataTableIds = await this.loadDataTableIds();
+		if (dataTableIds.length === 0) {
+			return { totalTables: 0, totalRows: 0 };
+		}
+
+		let totalRows = 0;
+		for (const dataTableId of dataTableIds) {
+			totalRows += await this.exportSingleDataTable(dataTableId, outputDir, customEncryptionKey);
+		}
+
+		this.logger.info(
+			`\n📊 Data table row export summary: ${dataTableIds.length} table(s), ${totalRows} row(s)`,
+		);
+
+		return { totalTables: dataTableIds.length, totalRows };
 	}
 
 	async exportEntities(
