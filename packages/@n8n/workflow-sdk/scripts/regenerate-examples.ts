@@ -16,6 +16,7 @@
  *   pnpm regenerate-examples --target=100     # explicit target
  *   pnpm regenerate-examples --candidates=2000 # detail-fetch budget
  */
+import AdmZip from 'adm-zip';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -40,6 +41,7 @@ import {
 const EXAMPLES_DIR = path.resolve(__dirname, '../examples');
 const WORKFLOWS_DIR = path.join(EXAMPLES_DIR, 'workflows');
 const MANIFEST_PATH = path.join(EXAMPLES_DIR, 'manifest.json');
+const ZIP_PATH = path.join(EXAMPLES_DIR, 'templates.zip');
 const SNAPSHOT_PATH = path.join(EXAMPLES_DIR, '_catalog-snapshot.json');
 const FAILURES_LOG = path.join(EXAMPLES_DIR, '_failures.log');
 
@@ -469,6 +471,13 @@ async function main() {
 
 	fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(snapshot, null, 2));
 
+	// Pack workflow JSONs into the committed zip so the unpacked dir can be gitignored.
+	const zip = new AdmZip();
+	for (const entry of manifestEntries) {
+		zip.addLocalFile(path.join(WORKFLOWS_DIR, `${entry.slug}.json`));
+	}
+	zip.writeZip(ZIP_PATH);
+
 	// Bucket distribution report
 	const bucketDistribution = new Map<string, number>();
 	for (const e of manifestEntries) {
@@ -485,6 +494,7 @@ async function main() {
 		`Wrote ${manifestEntries.length} entries to ${path.relative(process.cwd(), MANIFEST_PATH)}`,
 	);
 	console.log(`Wrote workflow JSONs to ${path.relative(process.cwd(), WORKFLOWS_DIR)}/`);
+	console.log(`Wrote zip to ${path.relative(process.cwd(), ZIP_PATH)}`);
 	console.log(`Catalog snapshot: ${path.relative(process.cwd(), SNAPSHOT_PATH)}`);
 	if (fs.existsSync(FAILURES_LOG)) {
 		const failuresCount = fs.readFileSync(FAILURES_LOG, 'utf-8').split('\n').filter(Boolean).length;

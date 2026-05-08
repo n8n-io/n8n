@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { emitInstanceAi } from './codegen/emit-instance-ai';
+import { ensureExtracted } from './examples-zip';
 import type { WorkflowJSON } from './types/base';
 
 // Resolve relative to this file. At runtime this lives at <package>/dist/examples-loader.js,
@@ -82,6 +83,7 @@ export function resetExampleFilesCache(): void {
 
 function loadFromDisk(): ExampleFilesBundle {
 	if (!fs.existsSync(MANIFEST_PATH)) return { files: [], indexTxt: '' };
+	ensureExtracted();
 
 	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Internal manifest file
 	const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as ManifestFile;

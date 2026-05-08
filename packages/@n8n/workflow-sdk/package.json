@@ -57,6 +57,7 @@
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
+    "create-examples-zip": "npx tsx scripts/create-examples-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
     "code-to-json": "npx tsx src/cli/index.ts code-to-json",
     "fetch-templates": "npx tsx scripts/fetch-templates.ts",
@@ -89,7 +90,7 @@
   "files": [
     "dist/**/*",
     "examples/manifest.json",
-    "examples/workflows/**/*"
+    "examples/templates.zip"
   ],
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
