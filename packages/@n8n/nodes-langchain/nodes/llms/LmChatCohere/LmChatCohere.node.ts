@@ -1,16 +1,17 @@
 import { ChatCohere } from '@langchain/cohere';
 import type { LLMResult } from '@langchain/core/outputs';
-import {
-	makeN8nLlmFailedAttemptHandler,
-	N8nLlmTracing,
-	getConnectionHintNoticeField,
-} from '@n8n/ai-utilities';
 import type {
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
+
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
