@@ -100,7 +100,7 @@ describe('usePinnedData', () => {
 
 		it('should throw and not pin data when input contains the trimmed-execution-data marker', () => {
 			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow';
+			workflowsStore.workflowId = 'test-workflow';
 			const telemetry = useTelemetry();
 			const trackSpy = vi.spyOn(telemetry, 'track');
 			const node = ref({ name: 'testNode' } as INodeUi);
@@ -115,7 +115,7 @@ describe('usePinnedData', () => {
 			expect(() => setData(trimmedData, 'pin-icon-click')).toThrow();
 
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
+				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
 			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
 			expect(trackSpy).toHaveBeenCalledWith(
