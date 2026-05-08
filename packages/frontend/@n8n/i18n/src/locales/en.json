@@ -5992,6 +5992,7 @@
 	"instanceAi.welcomeModal.skip": "Skip for now",
 	"instanceAi.welcomeModal.gateway.title": "Connect AI Assistant to your computer",
 	"instanceAi.welcomeModal.gateway.description": "Allow AI Assistant to work with local files, run terminal commands, and control your browser so it can help build automations on your machine. It connects through n8n Computer Use, a lightweight local process you can disconnect anytime.",
+	"instanceAi.welcomeModal.gateway.warning": "AI Assistant is a preview and can be unpredictable. Be aware of allowing access to sensitive data. Permissions can be adjusted during setup.",
 	"instanceAi.welcomeModal.gateway.os.mac": "Mac",
 	"instanceAi.welcomeModal.gateway.os.windows": "Windows",
 	"instanceAi.welcomeModal.gateway.os.linux": "Linux",
@@ -6001,8 +6002,6 @@
 	"instanceAi.welcomeModal.gateway.instructions.mac": "Open Terminal (Cmd + Space, type \"Terminal\") and paste the command below.",
 	"instanceAi.welcomeModal.gateway.instructions.windows": "Open Terminal (Windows key, type \"Terminal\") and paste the command below.",
 	"instanceAi.welcomeModal.gateway.instructions.linux": "Open your terminal and paste the command below.",
-	"instanceAi.welcomeModal.gateway.tokenExpiresIn": "This token expires in {minutes} min.",
-	"instanceAi.welcomeModal.gateway.tokenExpired": "This token has expired. Copy the command again.",
-	"instanceAi.welcomeModal.gateway.leadingSpaceHint": "If your shell supports it, start the command with a space to keep it out of history.",
-	"instanceAi.welcomeModal.gateway.browserAutomationHint": "Want browser automation? Install the <a href=\"{url}\" target=\"_blank\" rel=\"noopener\">n8n Browser Use Chrome extension</a> so the agent can control your browser."
+	"instanceAi.welcomeModal.gateway.tokenExpiresIn": "Token expires in {minutes} min",
+	"instanceAi.welcomeModal.gateway.tokenExpired": "Token has expired. Copy the command again."
 }
