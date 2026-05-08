@@ -509,6 +509,45 @@ export class GithubTrigger implements INodeType {
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
 				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
 
+				const webhookData = this.getWorkflowStaticData('node');
+
+				// Check for existing webhooks first to prevent duplicates
+				// See: https://github.com/n8n-io/n8n/issues/25381
+				let existingWebhooks;
+				try {
+					existingWebhooks = await githubApiRequest.call(this, 'GET', endpoint, {});
+				} catch (error) {
+					if (error.httpCode === '404') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Check that the repository exists and that you have permission to create the webhooks this node requires',
+							{ level: 'warning' },
+						);
+					}
+					throw error;
+				}
+
+				// Check if a webhook with the same URL already exists
+				for (const webhook of existingWebhooks as IDataObject[]) {
+					if ((webhook.config! as IDataObject).url! === webhookUrl) {
+						// Webhook with same URL found
+						if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
+							// Same events, reuse existing webhook
+							webhookData.webhookId = webhook.id as string;
+							webhookData.webhookEvents = webhook.events as string[];
+							// Legacy webhook without secret - signature verification skipped
+							return true;
+						} else {
+							// Different events, throw error
+							throw new NodeOperationError(
+								this.getNode(),
+								'A webhook with the identical URL but different events exists already. Please delete it manually on Github!',
+								{ level: 'warning' },
+							);
+						}
+					}
+				}
+
 				// Generate a secure random secret for webhook signature verification
 				const webhookSecret = randomBytes(32).toString('hex');
 
@@ -524,40 +563,10 @@ export class GithubTrigger implements INodeType {
 					active: true,
 				};
 
-				const webhookData = this.getWorkflowStaticData('node');
-
 				let responseData;
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.httpCode === '422') {
-						// Webhook exists already
-
-						// Get the data of the already registered webhook
-						responseData = await githubApiRequest.call(this, 'GET', endpoint, body);
-
-						for (const webhook of responseData as IDataObject[]) {
-							if ((webhook.config! as IDataObject).url! === webhookUrl) {
-								// Webhook got found
-								if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
-									// Webhook with same events exists already so no need to
-									// create it again simply save the webhook-id
-									webhookData.webhookId = webhook.id as string;
-									webhookData.webhookEvents = webhook.events as string[];
-									// Legacy webhook without secret on GitHub's side - not setting webhookData.webhookSecret
-									// so signature verification is skipped. To enable it, deactivate and reactivate the workflow.
-									return true;
-								}
-							}
-						}
-
-						throw new NodeOperationError(
-							this.getNode(),
-							'A webhook with the identical URL probably exists already. Please delete it manually on Github!',
-							{ level: 'warning' },
-						);
-					}
-
 					if (error.httpCode === '404') {
 						throw new NodeOperationError(
 							this.getNode(),

@@ -240,17 +240,35 @@ export class GitlabTrigger implements INodeType {
 
 				const endpoint = `/projects/${path}/hooks`;
 
-				const body = {
-					url: webhookUrl,
-					...events,
-					enable_ssl_verification: false,
-				};
-
-				let responseData;
+				// Check if a webhook with the same URL already exists to avoid duplicates
+				// See: https://github.com/n8n-io/n8n/issues/25381
+				let existingWebhooks;
 				try {
-					responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
+					existingWebhooks = await gitlabApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
+				}
+
+				const existingWebhook = existingWebhooks?.find(
+					(hook: { url: string }) => hook.url === webhookUrl,
+				);
+
+				let responseData;
+				if (existingWebhook?.id) {
+					// Webhook already exists, use the existing one
+					responseData = existingWebhook;
+				} else {
+					const body = {
+						url: webhookUrl,
+						...events,
+						enable_ssl_verification: false,
+					};
+
+					try {
+						responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error as JsonObject);
+					}
 				}
 
 				if (responseData.id === undefined) {
