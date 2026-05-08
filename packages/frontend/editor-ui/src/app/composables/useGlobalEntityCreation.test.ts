@@ -273,14 +273,13 @@ describe('useGlobalEntityCreation', () => {
 
 			const { menu } = useGlobalEntityCreation();
 
-			expect(menu.value).toHaveLength(4);
-			expect(menu.value[2]).toStrictEqual(
+			const ids = menu.value.map((item) => item.id);
+			expect(ids).toEqual(['workflow', 'credential', 'agent', 'create-project']);
+			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
 				expect.objectContaining({
-					id: 'agent',
 					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
 				}),
 			);
-			expect(menu.value[3].id).toBe('create-project');
 		});
 
 		it('inserts a flat agent entry when team feature is enabled but no team projects exist', () => {
@@ -298,10 +297,8 @@ describe('useGlobalEntityCreation', () => {
 
 			const { menu } = useGlobalEntityCreation();
 
-			expect(menu.value).toHaveLength(4);
-			expect(menu.value[2]).toStrictEqual(
+			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
 				expect.objectContaining({
-					id: 'agent',
 					disabled: false,
 					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
 				}),
@@ -322,7 +319,9 @@ describe('useGlobalEntityCreation', () => {
 
 			const { menu } = useGlobalEntityCreation();
 
-			expect(menu.value[2]).toStrictEqual(expect.objectContaining({ id: 'agent', disabled: true }));
+			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
+				expect.objectContaining({ disabled: true }),
+			);
 		});
 
 		it('shows agent submenu with personal + team projects in the global shape', () => {
@@ -344,13 +343,11 @@ describe('useGlobalEntityCreation', () => {
 
 			const { menu } = useGlobalEntityCreation();
 
-			expect(menu.value).toHaveLength(4);
+			const agentEntry = menu.value.find((item) => item.id === 'agent');
+			expect(agentEntry).toBeDefined();
+			expect(agentEntry?.submenu).toHaveLength(4);
 
-			const agentEntry = menu.value[2];
-			expect(agentEntry.id).toBe('agent');
-			expect(agentEntry.submenu).toHaveLength(4);
-
-			const personal = agentEntry.submenu?.find((s) => s.id === 'agent-personal');
+			const personal = agentEntry?.submenu?.find((s) => s.id === 'agent-personal');
 			expect(personal).toStrictEqual(
 				expect.objectContaining({
 					disabled: false,
@@ -358,14 +355,14 @@ describe('useGlobalEntityCreation', () => {
 				}),
 			);
 
-			const teamWithScope = agentEntry.submenu?.find((s) => s.id === 'agent-1');
+			const teamWithScope = agentEntry?.submenu?.find((s) => s.id === 'agent-1');
 			expect(teamWithScope?.disabled).toBe(false);
 			expect(teamWithScope?.route).toEqual({
 				name: NEW_AGENT_VIEW,
 				query: { projectId: '1' },
 			});
 
-			const teamWithoutScope = agentEntry.submenu?.find((s) => s.id === 'agent-3');
+			const teamWithoutScope = agentEntry?.submenu?.find((s) => s.id === 'agent-3');
 			expect(teamWithoutScope?.disabled).toBe(true);
 		});
 

@@ -20,22 +20,21 @@ export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
  * Resolves dynamic routes with project IDs and other parameters
  */
 export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): ProcessedDynamicTab {
-	const { dynamicRoute, ...rest } = tab;
-
-	if (!dynamicRoute) {
-		return rest;
+	if (!tab.dynamicRoute) {
+		return tab;
 	}
 
 	const tabRoute: RouteLocationRaw = {
-		name: dynamicRoute.name,
+		name: tab.dynamicRoute.name,
 	};
 
-	if (dynamicRoute.includeProjectId && projectId) {
+	if (tab.dynamicRoute.includeProjectId && projectId) {
 		tabRoute.params = { projectId };
 	}
 
+	const { dynamicRoute, ...tabWithoutDynamic } = tab;
 	return {
-		...rest,
+		...tabWithoutDynamic,
 		to: tabRoute,
 	};
 }
