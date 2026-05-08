@@ -302,7 +302,7 @@ export class PlaywrightAdapter {
 	async navigate(
 		pageId: string,
 		url: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.goto(url, { waitUntil });
@@ -327,7 +327,7 @@ export class PlaywrightAdapter {
 
 	async reload(
 		pageId: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.reload({ waitUntil });
