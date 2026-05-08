@@ -3,9 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const tableName = 'evaluation_config';
 
 export class CreateEvaluationConfig1778100000000 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, dropTable, column } }: MigrationContext) {
-		await dropTable(tableName);
-
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
 				column('id').varchar(36).primary.notNull,

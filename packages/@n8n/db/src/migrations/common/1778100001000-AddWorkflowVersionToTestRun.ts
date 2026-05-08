@@ -5,6 +5,8 @@ export class AddWorkflowVersionToTestRun1778100001000 implements ReversibleMigra
 		const tableName = escape.tableName('test_run');
 		const columnName = escape.columnName('workflowVersionId');
 
+		// No FK to workflow_history: workflow history rows can be pruned by retention,
+		// but test runs should retain their versionId reference for auditability.
 		await runQuery(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} VARCHAR(36);`);
 	}
 
