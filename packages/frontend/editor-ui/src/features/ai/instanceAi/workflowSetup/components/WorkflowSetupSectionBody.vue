@@ -135,6 +135,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:project-id="ctx.projectId.value"
 			standalone
 			hide-issues
+			hide-ask-assistant
 			@credential-selected="onCredentialSelected"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>
