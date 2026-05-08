@@ -130,6 +130,14 @@ watch(preview.isPreviewVisible, (visible) => {
 	}
 });
 
+// Late-initialize if the panel became visible before the ResizeObserver
+// reported the container size (otherwise the panel would render at 0px).
+watch(threadAreaWidth, (width) => {
+	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
+		previewPanelWidth.value = Math.round(width / 2);
+	}
+});
+
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
 // The actual scroll container is the reka-ui viewport inside N8nScrollArea,
