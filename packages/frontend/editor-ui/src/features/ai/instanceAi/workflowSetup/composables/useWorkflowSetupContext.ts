@@ -119,6 +119,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		steps,
 		activeStep,
 		currentStepIndex,
+		isReady: bootstrap.isReady,
 		goToStep,
 		inputs: {
 			credentialSelections: inputsState.credentialSelections,

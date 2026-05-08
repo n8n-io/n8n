@@ -21,6 +21,7 @@ interface Harness {
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	steps: ComputedRef<WorkflowSetupStep[]>;
 	currentStepIndex: Ref<number>;
+	isReady: Ref<boolean>;
 	activeStep: ComputedRef<WorkflowSetupStep | undefined>;
 	completedSet: Set<string>;
 	skippedSet: Set<string>;
@@ -52,6 +53,7 @@ function setupHarness(): Harness {
 		{ kind: 'section', section: sectionB },
 	]);
 	const currentStepIndex = ref(0);
+	const isReady = ref(true);
 	const activeStep = computed<WorkflowSetupStep | undefined>(
 		() => steps.value[currentStepIndex.value],
 	);
@@ -96,6 +98,7 @@ function setupHarness(): Harness {
 		steps,
 		activeStep,
 		currentStepIndex,
+		isReady,
 		goToStep,
 		inputs: {
 			credentialSelections,
@@ -115,6 +118,7 @@ function setupHarness(): Harness {
 		sections,
 		steps,
 		currentStepIndex,
+		isReady,
 		activeStep,
 		completedSet,
 		skippedSet,
@@ -130,9 +134,47 @@ function setupHarness(): Harness {
 	};
 }
 
+function getTelemetryCalls(eventName: string) {
+	return telemetryTrack.mock.calls.filter(([event]) => event === eventName);
+}
+
 describe('useWorkflowSetupActions', () => {
 	beforeEach(() => {
 		telemetryTrack.mockReset();
+	});
+
+	it('tracks the active setup step when it is shown', () => {
+		setupHarness();
+		const shownPayload = getTelemetryCalls('Instance AI workflow setup step shown')[0]?.[1];
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI workflow setup step shown',
+			expect.objectContaining({
+				thread_id: 'thread-1',
+				input_thread_id: 'input-thread-1',
+				instance_id: 'instance-1',
+				type: 'setup',
+				request_id: 'req-1',
+				step_index: 1,
+				step_count: 2,
+				step_kind: 'section',
+				setup_inputs: [
+					expect.objectContaining({
+						input_type: 'credential',
+						node_type: 'n8n-nodes-base.httpRequest',
+						credential_type: 'typeA',
+					}),
+				],
+			}),
+		);
+		expect(shownPayload).toEqual(expect.not.objectContaining({ sections: expect.anything() }));
+		expect(shownPayload.setup_inputs[0]).toEqual(
+			expect.not.objectContaining({
+				node_name: expect.anything(),
+				credential_target_nodes: expect.anything(),
+				label: expect.anything(),
+			}),
+		);
 	});
 
 	it('marks the active section skipped and advances to the next unhandled step without calling the API', async () => {
@@ -144,7 +186,13 @@ describe('useWorkflowSetupActions', () => {
 		expect(h.goToStep).toHaveBeenCalledWith(1);
 		expect(h.apply).not.toHaveBeenCalled();
 		expect(h.defer).not.toHaveBeenCalled();
-		expect(telemetryTrack).not.toHaveBeenCalled();
+		expect(getTelemetryCalls('User finished providing input')).toHaveLength(0);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI workflow setup step handled',
+			expect.objectContaining({
+				outcome: 'skipped',
+			}),
+		);
 	});
 
 	it('routes through partial apply when terminal skip happens with at least one completion', async () => {
@@ -161,13 +209,18 @@ describe('useWorkflowSetupActions', () => {
 		expect(h.markSectionSkipped).toHaveBeenCalledWith(h.sectionB);
 		expect(h.apply).toHaveBeenCalledWith({ nodeCredentials: { A: { typeA: 'cred-id' } } });
 		expect(h.defer).not.toHaveBeenCalled();
-		expect(telemetryTrack).toHaveBeenCalledTimes(1);
+		expect(getTelemetryCalls('User finished providing input')).toHaveLength(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			'User finished providing input',
 			expect.objectContaining({
 				type: 'setup',
-				explicitly_skipped_inputs: [{ label: 'B - typeB', options: [] }],
-				provided_inputs: [expect.objectContaining({ label: 'A - typeA', option_chosen: 'true' })],
+				explicitly_skipped_inputs: [{ label: 'n8n-nodes-base.httpRequest - typeB', options: [] }],
+				provided_inputs: [
+					expect.objectContaining({
+						label: 'n8n-nodes-base.httpRequest - typeA',
+						option_chosen: 'true',
+					}),
+				],
 			}),
 		);
 	});
@@ -263,7 +316,13 @@ describe('useWorkflowSetupActions', () => {
 		await h.actions.apply();
 
 		expect(h.apply).toHaveBeenCalledWith({ nodeCredentials: { A: { typeA: 'cred-id' } } });
-		expect(telemetryTrack).toHaveBeenCalledTimes(1);
+		expect(getTelemetryCalls('User finished providing input')).toHaveLength(1);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI workflow setup step handled',
+			expect.objectContaining({
+				outcome: 'completed',
+			}),
+		);
 	});
 
 	it('tracks both credential and parameter inputs for a completed mixed section', async () => {
@@ -278,11 +337,23 @@ describe('useWorkflowSetupActions', () => {
 			'User finished providing input',
 			expect.objectContaining({
 				provided_inputs: [
-					{ label: 'A - typeA', options: [], option_chosen: 'true' },
-					{ label: 'A - url', options: [], option_chosen: 'true' },
-					{ label: 'A - method', options: [], option_chosen: 'true' },
+					{
+						label: 'n8n-nodes-base.httpRequest - typeA',
+						options: [],
+						option_chosen: 'true',
+					},
+					{
+						label: 'n8n-nodes-base.httpRequest - url',
+						options: [],
+						option_chosen: 'true',
+					},
+					{
+						label: 'n8n-nodes-base.httpRequest - method',
+						options: [],
+						option_chosen: 'true',
+					},
 				],
-				num_tasks: 4,
+				num_tasks: 2,
 			}),
 		);
 	});
@@ -318,6 +389,7 @@ describe('useWorkflowSetupActions', () => {
 				Sub1: { credA: 'cred-a' },
 			});
 			const skippedSectionIds = ref<Set<string>>(skippedSet);
+			const isReady = ref(true);
 			const goToStep = vi.fn();
 			const apply = vi.fn().mockResolvedValue(undefined);
 			const defer = vi.fn().mockResolvedValue(undefined);
@@ -342,6 +414,7 @@ describe('useWorkflowSetupActions', () => {
 				steps,
 				activeStep,
 				currentStepIndex,
+				isReady,
 				goToStep,
 				inputs: {
 					credentialSelections,
@@ -362,6 +435,25 @@ describe('useWorkflowSetupActions', () => {
 			expect(markSectionSkipped).toHaveBeenCalledWith(sectionB);
 			// Terminal — only one step. apply runs since at least one section is complete.
 			expect(apply).toHaveBeenCalledWith({ nodeCredentials: { Sub1: { credA: 'cred-a' } } });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'Instance AI workflow setup step handled',
+				expect.objectContaining({
+					step_kind: 'group',
+					outcome: 'mixed',
+					setup_inputs: [
+						expect.objectContaining({
+							input_type: 'credential',
+							node_type: 'n8n-nodes-base.httpRequest',
+							credential_type: 'credA',
+						}),
+						expect.objectContaining({
+							input_type: 'credential',
+							node_type: 'n8n-nodes-base.httpRequest',
+							credential_type: 'credB',
+						}),
+					],
+				}),
+			);
 		});
 
 		it('reports group step as handled when every member is complete or skipped', () => {
@@ -386,6 +478,7 @@ describe('useWorkflowSetupActions', () => {
 				},
 			]);
 			const currentStepIndex = ref(0);
+			const isReady = ref(true);
 			const activeStep = computed<WorkflowSetupStep | undefined>(() => steps.value[0]);
 
 			const completedSet = new Set<string>([sectionA.id]);
@@ -397,6 +490,7 @@ describe('useWorkflowSetupActions', () => {
 				steps,
 				activeStep,
 				currentStepIndex,
+				isReady,
 				goToStep: vi.fn(),
 				inputs: {
 					credentialSelections: ref({}),
