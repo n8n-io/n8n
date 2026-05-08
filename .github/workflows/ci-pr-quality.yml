@@ -129,10 +129,10 @@ jobs:
               .code-health-baseline.json
               packages/testing/code-health/**
 
-  check-code-health:
-    name: Code Health
+  check-static-analysis:
+    name: Static Analysis
     needs: changes
-    if: needs.changes.outputs.code-health == 'true'
+    if: needs.changes.outputs.code-health == 'true' || needs.changes.outputs.janitor == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -143,33 +143,19 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm turbo run build --filter=@n8n/code-health
+          build-command: pnpm turbo run build --filter=@n8n/code-health --filter=@n8n/playwright-janitor
 
       - name: Run code-health
+        if: needs.changes.outputs.code-health == 'true'
         run: pnpm --filter=@n8n/code-health exec tsx src/cli.ts
 
-  check-janitor:
-    name: Janitor
-    needs: changes
-    if: needs.changes.outputs.janitor == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
-
       - name: Run janitor
+        if: needs.changes.outputs.janitor == 'true' && !cancelled()
         run: pnpm --filter=n8n-playwright janitor
 
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [check-ownership-checkbox, check-pr-size, check-code-health, check-janitor]
+    needs: [check-ownership-checkbox, check-pr-size, check-static-analysis]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
