@@ -1,9 +1,5 @@
 import { test } from '../../../../fixtures/base';
-import {
-	BENCHMARK_MAIN_RESOURCES,
-	BENCHMARK_WORKER_RESOURCES,
-	benchConfig,
-} from '../../../../playwright-projects';
+import { benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
@@ -61,8 +57,6 @@ test.describe(
 				connections: CONNECTIONS,
 				durationSeconds: DURATION_SECONDS,
 				timeoutMs: (DURATION_SECONDS + 60) * 1000,
-				plan: BENCHMARK_MAIN_RESOURCES,
-				workerPlan: BENCHMARK_WORKER_RESOURCES,
 			});
 
 			console.log(

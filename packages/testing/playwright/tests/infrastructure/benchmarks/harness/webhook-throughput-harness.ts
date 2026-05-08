@@ -37,8 +37,6 @@ export interface WebhookThroughputOptions {
 	timeoutMs: number;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
-	plan?: { memory: number; cpu: number };
-	workerPlan?: { memory: number; cpu: number };
 }
 
 /**
