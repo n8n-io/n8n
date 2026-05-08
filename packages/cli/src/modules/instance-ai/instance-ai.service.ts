@@ -415,6 +415,8 @@ export class InstanceAiService {
 
 	private readonly timedOutRunIds = new Set<string>();
 
+	private readonly timedOutActiveRunThreads = new Set<string>();
+
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
 
@@ -548,6 +550,7 @@ export class InstanceAiService {
 		if (!active) return;
 
 		this.timedOutRunIds.add(active.runId);
+		this.timedOutActiveRunThreads.add(threadId);
 		this.publishRunTimeoutNotice(threadId, active.runId);
 		active.abortController.abort();
 	}
@@ -557,7 +560,6 @@ export class InstanceAiService {
 		if (!suspended) return;
 
 		this.timedOutRunIds.add(suspended.runId);
-		this.publishRunTimeoutNotice(threadId, suspended.runId);
 		suspended.abortController.abort();
 		void this.finalizeCancelledSuspendedRun(suspended, RUN_TIMEOUT_REASON);
 	}
@@ -1171,6 +1173,7 @@ export class InstanceAiService {
 		timeZone?: string,
 		pushRef?: string,
 	): string {
+		this.timedOutActiveRunThreads.delete(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
@@ -1609,6 +1612,7 @@ export class InstanceAiService {
 
 		this.creditedThreads.delete(threadId);
 		this.schedulerLocks.delete(threadId);
+		this.timedOutActiveRunThreads.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
@@ -1643,6 +1647,7 @@ export class InstanceAiService {
 			task.abortController.abort();
 			await this.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
+		this.timedOutActiveRunThreads.clear();
 		const threadsWithTraces = new Set(
 			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
 		);
@@ -3997,6 +4002,13 @@ export class InstanceAiService {
 				const hasActiveRun = !!this.runState.getActiveRunId(opts.threadId);
 				const hasSuspendedRun = this.runState.hasSuspendedRun(opts.threadId);
 				if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
+					if (this.timedOutActiveRunThreads.has(opts.threadId)) {
+						this.logger.debug('Skipping background auto-follow-up after active run timeout', {
+							threadId: opts.threadId,
+							taskId: task.taskId,
+						});
+						return;
+					}
 					const user = this.runState.getThreadUser(opts.threadId);
 					if (user) {
 						const payload = JSON.stringify(
