@@ -125,7 +125,7 @@ describe('WorkflowsView', () => {
 		it('for non setup user', async () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
-			expect(getByText('👋 Welcome!')).toBeVisible();
+			expect(getByText('What do you want to build?')).toBeVisible();
 		});
 
 		it('for currentUser user', async () => {
@@ -135,7 +135,7 @@ describe('WorkflowsView', () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('👋 Welcome, John!')).toBeVisible();
+			expect(getByText('What do you want to build, John')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
@@ -160,9 +160,10 @@ describe('WorkflowsView', () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-				const { getByText } = renderComponent({ pinia });
+				const { getByText, queryByText } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByText('Create your first workflow')).toBeInTheDocument();
+				expect(getByText('What do you want to build?')).toBeInTheDocument();
+				expect(queryByText('Create your first workflow')).not.toBeInTheDocument();
 			});
 		});
 	});
