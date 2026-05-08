@@ -33,11 +33,14 @@ const { mockGetNodeByName } = vi.hoisted(() => ({
 	mockGetNodeByName: vi.fn(),
 }));
 
+const mockDocumentStore = vi.hoisted(() => ({
+	getNodeByName: mockGetNodeByName,
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn(() => ({
-		getNodeByName: mockGetNodeByName,
-	})),
+	useWorkflowDocumentStore: vi.fn(() => mockDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
 }));
 
 describe('schemaPreview.store', () => {
