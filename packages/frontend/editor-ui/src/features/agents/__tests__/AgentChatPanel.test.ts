@@ -5,6 +5,7 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	type InteractiveToolName,
 } from '@n8n/api-types';
 import type { ChatMessage } from '../composables/agentChatMessages';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -97,7 +98,9 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
-	function openInteractiveMessage(toolName = ASK_QUESTION_TOOL_NAME): ChatMessage {
+	function openInteractiveMessage(
+		toolName: InteractiveToolName = ASK_QUESTION_TOOL_NAME,
+	): ChatMessage {
 		return {
 			id: 'assistant-1',
 			role: 'assistant',
