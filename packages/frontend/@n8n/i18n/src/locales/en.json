@@ -5733,6 +5733,8 @@
 	"agents.builder.chat.sessionPicker.empty": "No previous chats",
 	"agents.builder.chat.newChat.ariaLabel": "Start a new chat",
 	"agents.builder.chat.newChat.label": "New chat",
+	"agents.builder.chat.fullWidth.expand.ariaLabel": "Expand",
+	"agents.builder.chat.fullWidth.collapse.ariaLabel": "Collapse",
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.clearHistory": "Clear chat history",
