@@ -140,30 +140,6 @@ const browserCredentialSetupToolInputSchema = z.object({
 		.describe('Credential fields the user needs to obtain from the service'),
 });
 
-/**
- * Reset the browser session at the end of every orchestration run so the next
- * run starts with fresh tab/debugger state. Stale state from a previous run
- * (closed tabs still attached, debugger sessions in a wedged state) can cause
- * CDP commands to hang on the next run. Best-effort — failures are logged
- * and swallowed so they never mask the orchestration result.
- */
-async function resetBrowserSession(
-	context: OrchestrationContext,
-	toolSource: BrowserToolSource,
-): Promise<void> {
-	if (toolSource !== 'gateway' || !context.localMcpServer) return;
-	try {
-		await context.localMcpServer.callTool({
-			name: 'browser_disconnect',
-			arguments: { _confirmation: 'allowOnce' },
-		});
-	} catch (error) {
-		context.logger.debug('Browser session cleanup failed', {
-			error: error instanceof Error ? error.message : String(error),
-		});
-	}
-}
-
 export function createBrowserCredentialSetupTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'browser-credential-setup',
@@ -472,8 +448,6 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				});
 
 				return { result: `Browser agent error: ${errorMessage}` };
-			} finally {
-				await resetBrowserSession(context, toolSource);
 			}
 		},
 	});
