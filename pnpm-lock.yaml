@@ -1393,9 +1393,18 @@ importers:
 
   packages/@n8n/engine:
     dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
       express:
         specifier: 5.1.0
         version: 5.1.0
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*

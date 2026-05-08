@@ -1,15 +1,22 @@
+import 'reflect-metadata';
+
+import { Container } from '@n8n/di';
+
+import { EngineConfig } from './config/engine.config';
 import { createEngineServer } from './server';
 
-const port = Number.parseInt(process.env.PORT ?? '3000', 10);
-const host = process.env.HOST ?? '0.0.0.0';
+const config = Container.get(EngineConfig);
 
 const { app } = createEngineServer();
 
-const server = app.listen(port, host, () => {
-	console.log(`engine: listening on http://${host}:${port}`);
+const server = app.listen(config.port, config.host, () => {
+	console.log(`engine: listening on http://${config.host}:${config.port}`);
 });
 
+let shuttingDown = false;
 const shutdown = (signal: string): void => {
+	if (shuttingDown) return;
+	shuttingDown = true;
 	console.log(`engine: received ${signal}, shutting down`);
 	server.close((error) => {
 		if (error) {

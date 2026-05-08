@@ -8,7 +8,8 @@ is currently a scaffold and is not yet wired into n8n.
 
 ## Dependencies
 
-Be careful adding dependencies here. This package should not have runtime
-dependencies on other n8n components, only interfaces. If there is some
-functionality that should be shared, it should be factored into a common
-library.
+Be careful adding dependencies here. This package is intended to be deployable
+independently from the rest of n8n, so prefer external runtime deps over
+workspace ones. Established n8n mechanisms — currently `@n8n/config` for
+env-var handling — are an accepted exception when the alternative is
+re-implementing the same thing locally.
