@@ -234,7 +234,7 @@ export class ImportExportService {
 			? await this.bindingResolver.resolve(requirements, {
 					userBindings: request.bindings,
 					mode: request.mode,
-					skipCredentialAssertions: request.createCredentialStubs,
+					skipCredentialAssertions: request.includeCredentialStubs,
 					targetProjectId: resolvedTargetProjectId,
 				})
 			: {
@@ -251,19 +251,19 @@ export class ImportExportService {
 			await this.assertVariableRequirementsMet(
 				requirements.variables,
 				isProjectScoped ? undefined : resolvedTargetProjectId,
-				request.withVariableValues,
+				request.includeVariableValues,
 				manifest,
 			);
 		}
 
 		// Step 6: Build pipeline options
 		const pipelineOptions: ImportPipelineOptions = {
-			createCredentialStubs: request.createCredentialStubs,
+			createCredentialStubs: request.includeCredentialStubs,
 			unresolvedCredentialRequirements,
 		};
 
 		const variableOptions = {
-			withValues: request.withVariableValues,
+			withValues: request.includeVariableValues,
 			overwriteValues: request.overwriteVariableValues,
 		};
 

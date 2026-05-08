@@ -25,8 +25,10 @@ export interface ImportRequest {
 	targetProjectId?: string;
 	bindings?: ImportBindings;
 	mode: ImportMode;
-	createCredentialStubs: boolean;
-	withVariableValues: boolean;
+	/** When true, create empty credential stubs for unresolved credentials. */
+	includeCredentialStubs: boolean;
+	/** When true, import variable values from the package; when false, the package is treated as schema-only. */
+	includeVariableValues: boolean;
 	overwriteVariableValues: boolean;
 }
 

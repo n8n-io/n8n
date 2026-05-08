@@ -3,6 +3,7 @@ import {
 	ExportProjectsRequestDto,
 	ExportWorkflowsRequestDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -45,7 +46,35 @@ type AuthenticatedRequestWithFile = AuthenticatedRequest & {
 
 @RestController('/import-export')
 export class ImportExportController {
-	constructor(private readonly importExportService: ImportExportService) {}
+	constructor(
+		private readonly importExportService: ImportExportService,
+		private readonly logger: Logger,
+	) {}
+
+	/**
+	 * Read a boolean form field, preferring the canonical name and falling
+	 * back to legacy aliases. Logs a deprecation warning when a legacy alias
+	 * is used so consumers know to migrate.
+	 */
+	private readBoolField(
+		body: Record<string, unknown>,
+		canonical: string,
+		legacy: readonly string[],
+		defaultValue: boolean,
+	): boolean {
+		if (typeof body[canonical] === 'string') {
+			return body[canonical] === 'true';
+		}
+		for (const name of legacy) {
+			if (typeof body[name] === 'string') {
+				this.logger.warn(
+					`[import-export] form field "${name}" is deprecated; use "${canonical}" instead.`,
+				);
+				return body[name] === 'true';
+			}
+		}
+		return defaultValue;
+	}
 
 	@Post('/export')
 	@GlobalScope('project:read')
@@ -143,30 +172,34 @@ export class ImportExportController {
 				? (req.body.mode as ImportMode)
 				: 'auto';
 
-		const createCredentialStubs =
-			typeof req.body?.createCredentialStubs === 'string'
-				? req.body.createCredentialStubs === 'true'
-				: typeof req.body?.withCredentialStubs === 'string'
-					? req.body.withCredentialStubs === 'true'
-					: false;
+		const includeCredentialStubs = this.readBoolField(
+			req.body,
+			'includeCredentialStubs',
+			['createCredentialStubs', 'withCredentialStubs'],
+			false,
+		);
 
-		const withVariableValues =
-			typeof req.body?.withVariableValues === 'string'
-				? req.body.withVariableValues !== 'false'
-				: true;
+		const includeVariableValues = this.readBoolField(
+			req.body,
+			'includeVariableValues',
+			['withVariableValues'],
+			true,
+		);
 
-		const overwriteVariableValues =
-			typeof req.body?.overwriteVariableValues === 'string'
-				? req.body.overwriteVariableValues === 'true'
-				: false;
+		const overwriteVariableValues = this.readBoolField(
+			req.body,
+			'overwriteVariableValues',
+			[],
+			false,
+		);
 
 		const importRequest: ImportRequest = {
 			user: req.user,
 			targetProjectId,
 			bindings,
 			mode,
-			createCredentialStubs,
-			withVariableValues,
+			includeCredentialStubs,
+			includeVariableValues,
 			overwriteVariableValues,
 		};
 

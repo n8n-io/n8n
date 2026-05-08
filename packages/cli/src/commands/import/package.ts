@@ -22,18 +22,28 @@ const flagsSchema = z.object({
 		)
 		.default('auto'),
 	force: z.coerce.boolean().describe('Shorthand for --mode=force').default(false),
-	withCredentialStubs: z.coerce
+	includeCredentialStubs: z.coerce
 		.boolean()
 		.describe('Create empty credential stubs for credentials in the package')
-		.default(false),
-	withVariableValues: z.coerce
+		.optional(),
+	includeVariableValues: z.coerce
 		.boolean()
 		.describe('Import variable values from the package (default: true)')
-		.default(true),
+		.optional(),
 	overwriteVariableValues: z.coerce
 		.boolean()
 		.describe('Overwrite existing variable values with those from the package (default: false)')
 		.default(false),
+
+	// --- Deprecated aliases — accepted for backwards compatibility ---
+	withCredentialStubs: z.coerce
+		.boolean()
+		.describe('[deprecated] use --includeCredentialStubs')
+		.optional(),
+	withVariableValues: z.coerce
+		.boolean()
+		.describe('[deprecated] use --includeVariableValues')
+		.optional(),
 });
 
 @Command({
@@ -45,8 +55,8 @@ const flagsSchema = z.object({
 		'--input=export.n8np --mode=force',
 		'--input=export.n8np --force',
 		'--input=export.n8np --dryRun',
-		'--input=export.n8np --withCredentialStubs',
-		'--input=export.n8np --withVariableValues=false',
+		'--input=export.n8np --includeCredentialStubs',
+		'--input=export.n8np --includeVariableValues=false',
 		'--input=export.n8np --overwriteVariableValues',
 	],
 	flagsSchema,
@@ -64,11 +74,25 @@ export class ImportPackageCommand extends BaseCommand<z.infer<typeof flagsSchema
 			mode: modeFlag,
 			force,
 			dryRun,
+			includeCredentialStubs: includeStubsFlag,
+			includeVariableValues: includeValuesFlag,
 			withCredentialStubs,
 			withVariableValues,
 			overwriteVariableValues,
 		} = this.flags;
 		const mode = force ? 'force' : modeFlag;
+
+		if (withCredentialStubs !== undefined) {
+			this.logger.warn(
+				'--withCredentialStubs is deprecated; use --includeCredentialStubs instead.',
+			);
+		}
+		if (withVariableValues !== undefined) {
+			this.logger.warn('--withVariableValues is deprecated; use --includeVariableValues instead.');
+		}
+
+		const includeCredentialStubs = includeStubsFlag ?? withCredentialStubs ?? false;
+		const includeVariableValues = includeValuesFlag ?? withVariableValues ?? true;
 
 		const buffer = await readFile(input);
 		const service = Container.get(ImportExportService);
@@ -110,7 +134,7 @@ export class ImportPackageCommand extends BaseCommand<z.infer<typeof flagsSchema
 			}
 			this.logger.info(`  In auto mode, credentials are matched by name + type.`);
 			this.logger.info(
-				`  Use --createCredentialStubs to create empty placeholders for missing ones.`,
+				`  Use --includeCredentialStubs to create empty placeholders for missing ones.`,
 			);
 		}
 
@@ -175,8 +199,8 @@ export class ImportPackageCommand extends BaseCommand<z.infer<typeof flagsSchema
 			user,
 			targetProjectId: projectId,
 			mode,
-			createCredentialStubs: withCredentialStubs,
-			withVariableValues,
+			includeCredentialStubs,
+			includeVariableValues,
 			overwriteVariableValues,
 		});
 

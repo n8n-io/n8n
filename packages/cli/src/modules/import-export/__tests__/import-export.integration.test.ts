@@ -182,8 +182,8 @@ describe('import-export integration', () => {
 				user: owner,
 				targetProjectId: projectB.id,
 				mode: 'force',
-				createCredentialStubs: true,
-				withVariableValues: true,
+				includeCredentialStubs: true,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			});
 
@@ -365,8 +365,8 @@ describe('import-export integration', () => {
 			const result = await service.importPackage(buffer, {
 				user: newOwner,
 				mode: 'force',
-				createCredentialStubs: true,
-				withVariableValues: true,
+				includeCredentialStubs: true,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			});
 
@@ -503,8 +503,8 @@ describe('import-export integration', () => {
 				service.importPackage(buffer, {
 					user: newOwner,
 					mode: 'auto',
-					createCredentialStubs: true,
-					withVariableValues: false,
+					includeCredentialStubs: true,
+					includeVariableValues: false,
 					overwriteVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);
@@ -513,8 +513,8 @@ describe('import-export integration', () => {
 				service.importPackage(buffer, {
 					user: newOwner,
 					mode: 'auto',
-					createCredentialStubs: true,
-					withVariableValues: false,
+					includeCredentialStubs: true,
+					includeVariableValues: false,
 					overwriteVariableValues: false,
 				}),
 			).rejects.toThrow(/Missing required variables.*MISSING_VAR/);
@@ -564,13 +564,13 @@ describe('import-export integration', () => {
 			]);
 			const newOwner = await createOwner();
 
-			// Auto mode WITHOUT createCredentialStubs should reject
+			// Auto mode WITHOUT includeCredentialStubs should reject
 			await expect(
 				service.importPackage(buffer, {
 					user: newOwner,
 					mode: 'auto',
-					createCredentialStubs: false,
-					withVariableValues: true,
+					includeCredentialStubs: false,
+					includeVariableValues: true,
 					overwriteVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);
@@ -579,8 +579,8 @@ describe('import-export integration', () => {
 				service.importPackage(buffer, {
 					user: newOwner,
 					mode: 'auto',
-					createCredentialStubs: false,
-					withVariableValues: true,
+					includeCredentialStubs: false,
+					includeVariableValues: true,
 					overwriteVariableValues: false,
 				}),
 			).rejects.toThrow(/Could not auto-resolve requirements.*My API Key/);
@@ -628,8 +628,8 @@ describe('import-export integration', () => {
 				service.importPackage(buffer, {
 					user: newOwner,
 					mode: 'auto',
-					createCredentialStubs: true,
-					withVariableValues: true,
+					includeCredentialStubs: true,
+					includeVariableValues: true,
 					overwriteVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);
@@ -638,8 +638,8 @@ describe('import-export integration', () => {
 				service.importPackage(buffer, {
 					user: newOwner,
 					mode: 'auto',
-					createCredentialStubs: true,
-					withVariableValues: true,
+					includeCredentialStubs: true,
+					includeVariableValues: true,
 					overwriteVariableValues: false,
 				}),
 			).rejects.toThrow(/Could not auto-resolve requirements.*sub-workflow/);
@@ -701,8 +701,8 @@ describe('import-export integration', () => {
 			const result = await service.importPackage(buffer, {
 				user: newOwner,
 				mode: 'force',
-				createCredentialStubs: false,
-				withVariableValues: false,
+				includeCredentialStubs: false,
+				includeVariableValues: false,
 				overwriteVariableValues: false,
 			});
 
@@ -756,8 +756,8 @@ describe('import-export integration', () => {
 				user: owner,
 				targetProjectId: project.id,
 				mode: 'force',
-				createCredentialStubs: false,
-				withVariableValues: true,
+				includeCredentialStubs: false,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			});
 
@@ -822,8 +822,8 @@ describe('import-export integration', () => {
 			const result = await service.importPackage(buffer, {
 				user: newOwner,
 				mode: 'force',
-				createCredentialStubs: false,
-				withVariableValues: true,
+				includeCredentialStubs: false,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			});
 
@@ -877,8 +877,8 @@ describe('import-export integration', () => {
 			await service.importPackage(buffer, {
 				user: newOwner,
 				mode: 'force',
-				createCredentialStubs: false,
-				withVariableValues: true,
+				includeCredentialStubs: false,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			});
 

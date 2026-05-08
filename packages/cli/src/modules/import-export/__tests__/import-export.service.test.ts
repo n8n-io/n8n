@@ -507,8 +507,8 @@ describe('ImportExportService', () => {
 			const request: ImportRequest = {
 				user: mockUser,
 				mode: 'auto',
-				createCredentialStubs: false,
-				withVariableValues: true,
+				includeCredentialStubs: false,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			};
 
@@ -557,8 +557,8 @@ describe('ImportExportService', () => {
 			const request: ImportRequest = {
 				user: mockUser,
 				mode: 'auto',
-				createCredentialStubs: false,
-				withVariableValues: true,
+				includeCredentialStubs: false,
+				includeVariableValues: true,
 				overwriteVariableValues: false,
 			};
 
