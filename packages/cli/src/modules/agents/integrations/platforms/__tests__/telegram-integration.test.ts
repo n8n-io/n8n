@@ -80,8 +80,10 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 			makeAgent('agent-other', 'Agent Other', [{ type: 'telegram', credentialId: 'cred-1' }]),
 		]);
 
-		await expect(integration.onBeforeConnect(makeContext())).rejects.toThrow(
-			new ConflictError('Telegram credential is already connected to agent "Agent Other"'),
+		const promise = integration.onBeforeConnect(makeContext());
+		await expect(promise).rejects.toThrow(ConflictError);
+		await expect(promise).rejects.toThrow(
+			'Telegram credential is already connected to agent "Agent Other"',
 		);
 		// Telegram API must not be called once the DB already indicates a conflict.
 		expect(fetchSpy).not.toHaveBeenCalled();
@@ -119,8 +121,10 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 			makeAgent('agent-b', 'Beta', [{ type: 'telegram', credentialId: 'cred-1' }]),
 		]);
 
-		await expect(integration.onBeforeConnect(makeContext())).rejects.toThrow(
-			new ConflictError('Telegram credential is already connected to agent "Alpha"'),
+		const promise = integration.onBeforeConnect(makeContext());
+		await expect(promise).rejects.toThrow(ConflictError);
+		await expect(promise).rejects.toThrow(
+			'Telegram credential is already connected to agent "Alpha"',
 		);
 	});
 

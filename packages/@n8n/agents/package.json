@@ -38,6 +38,7 @@
     "@ai-sdk/xai": "^3.0.67",
     "@libsql/client": "^0.17.0",
     "@modelcontextprotocol/sdk": "1.26.0",
+    "@n8n/ai-utilities": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",
     "ajv": "^8.18.0",
