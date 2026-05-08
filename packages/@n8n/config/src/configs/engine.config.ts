@@ -1,4 +1,4 @@
-import { Config, Env } from '@n8n/config';
+import { Config, Env } from '../decorators';
 
 @Config
 export class EngineConfig {

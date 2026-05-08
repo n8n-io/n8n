@@ -1,8 +1,6 @@
-import 'reflect-metadata';
-
+import { EngineConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { EngineConfig } from './config/engine.config';
 import { createEngineServer } from './server';
 
 const config = Container.get(EngineConfig);
