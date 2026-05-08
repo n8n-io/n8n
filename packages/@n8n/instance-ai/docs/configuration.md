@@ -82,6 +82,10 @@ Sandbox workspaces persist per thread — the same container is reused across me
 | `N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between snapshot pruning runs. 0 = disabled. |
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `600000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
+| `N8N_INSTANCE_AI_BACKGROUND_TASK_IDLE_TIMEOUT` | number | `600000` | Idle timeout in ms for detached background tasks. 0 = no timeout. |
+| `N8N_INSTANCE_AI_BACKGROUND_TASK_MAX_LIFETIME` | number | `1800000` | Maximum lifetime in ms for detached background tasks. 0 = no timeout. |
+| `N8N_INSTANCE_AI_ACTIVE_RUN_IDLE_TIMEOUT` | number | `600000` | Idle timeout in ms for active orchestrator runs. 0 = no timeout. |
+| `N8N_INSTANCE_AI_ACTIVE_RUN_MAX_LIFETIME` | number | `1800000` | Maximum lifetime in ms for active orchestrator runs. 0 = no timeout. |
 
 ## Enabling / Disabling
 

@@ -42,6 +42,7 @@ import {
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	InstanceAiTerminalResponseGuard,
+	InstanceAiLivenessPolicy,
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
@@ -115,6 +116,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
+const RUN_TIMEOUT_REASON = 'timeout';
+const RUN_TIMEOUT_MESSAGE =
+	'The run stopped making progress, so I cancelled it. You can retry or adjust the request.';
 
 function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
@@ -187,6 +191,12 @@ function appendTerminalOutcomeToAgentTree(
 
 function createInertAbortSignal(): AbortSignal {
 	return new AbortController().signal;
+}
+
+function getAbortReason(signal: AbortSignal): string {
+	const reason = (signal as AbortSignal & { reason?: unknown }).reason;
+	if (reason instanceof Error) return reason.message;
+	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
@@ -390,8 +400,10 @@ export class InstanceAiService {
 
 	private terminalOutcomeStorage?: TerminalOutcomeStorage;
 
-	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
-	private confirmationTimeoutInterval?: NodeJS.Timeout;
+	/** Periodic sweep that applies the Instance AI liveness policy. */
+	private livenessTimeoutInterval?: NodeJS.Timeout;
+
+	private readonly livenessPolicy: InstanceAiLivenessPolicy;
 
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
@@ -429,6 +441,13 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.livenessPolicy = new InstanceAiLivenessPolicy({
+			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
+			backgroundTaskIdleTimeoutMs: this.instanceAiConfig.backgroundTaskIdleTimeout,
+			backgroundTaskMaxLifetimeMs: this.instanceAiConfig.backgroundTaskMaxLifetime,
+			activeRunIdleTimeoutMs: this.instanceAiConfig.activeRunIdleTimeout,
+			activeRunMaxLifetimeMs: this.instanceAiConfig.activeRunMaxLifetime,
+		});
 		this.builderSandboxSessions = new BuilderSandboxSessionRegistry(
 			this.instanceAiConfig.builderSandboxTtlMs,
 		);
@@ -457,28 +476,53 @@ export class InstanceAiService {
 			});
 		});
 
-		this.startConfirmationTimeoutSweep();
+		this.startLivenessTimeoutSweep();
 	}
 
-	private startConfirmationTimeoutSweep(): void {
-		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
-		if (timeoutMs <= 0) return;
+	private startLivenessTimeoutSweep(): void {
+		if (!this.livenessPolicy.hasEnabledTimeouts()) return;
 
-		this.confirmationTimeoutInterval = setInterval(() => {
-			const { suspendedThreadIds, confirmationRequestIds } = this.runState.sweepTimedOut(timeoutMs);
-
-			for (const threadId of suspendedThreadIds) {
-				this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-				this.cancelRun(threadId);
-			}
-
-			for (const reqId of confirmationRequestIds) {
-				this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
-					requestId: reqId,
-				});
-				this.runState.rejectPendingConfirmation(reqId);
-			}
+		this.livenessTimeoutInterval = setInterval(() => {
+			void this.sweepTimedOutWork();
 		}, Time.minutes.toMilliseconds);
+	}
+
+	private async sweepTimedOutWork(): Promise<void> {
+		const { activeThreadIds, suspendedThreadIds, confirmationRequestIds } =
+			this.runState.sweepTimedOut(this.livenessPolicy);
+
+		for (const threadId of activeThreadIds) {
+			this.logger.debug('Cancelling timed-out active run', { threadId });
+			this.cancelRun(threadId, RUN_TIMEOUT_REASON);
+		}
+
+		for (const threadId of suspendedThreadIds) {
+			this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
+			this.cancelRun(threadId, RUN_TIMEOUT_REASON);
+		}
+
+		for (const reqId of confirmationRequestIds) {
+			this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
+				requestId: reqId,
+			});
+			this.runState.rejectPendingConfirmation(reqId);
+		}
+
+		try {
+			const timedOutTasks = await this.backgroundTasks.timeoutTimedOutTasks(this.livenessPolicy);
+			for (const task of timedOutTasks) {
+				this.logger.debug('Timed out background task', {
+					threadId: task.threadId,
+					taskId: task.taskId,
+					role: task.role,
+					timeoutReason: task.timeoutReason,
+				});
+			}
+		} catch (error) {
+			this.logger.warn('Failed to sweep timed-out background tasks', {
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -1151,7 +1195,7 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
-	cancelRun(threadId: string): void {
+	cancelRun(threadId: string, reason = 'user_cancelled'): void {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
@@ -1160,7 +1204,11 @@ export class InstanceAiService {
 				type: 'agent-completed',
 				runId: task.runId,
 				agentId: task.agentId,
-				payload: { role: task.role, result: '', error: 'Cancelled by user' },
+				payload: {
+					role: task.role,
+					result: '',
+					error: reason === RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
+				},
 			});
 			void this.recordBackgroundTerminalOutcome(task).finally(() => {
 				void this.saveAgentTreeSnapshot(
@@ -1188,13 +1236,13 @@ export class InstanceAiService {
 
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
-			active.abortController.abort();
+			active.abortController.abort(new Error(reason));
 			return;
 		}
 
 		if (suspended) {
-			suspended.abortController.abort();
-			void this.finalizeCancelledSuspendedRun(suspended);
+			suspended.abortController.abort(new Error(reason));
+			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
 	}
 
@@ -1421,9 +1469,9 @@ export class InstanceAiService {
 	}
 
 	async shutdown(): Promise<void> {
-		if (this.confirmationTimeoutInterval) {
-			clearInterval(this.confirmationTimeoutInterval);
-			this.confirmationTimeoutInterval = undefined;
+		if (this.livenessTimeoutInterval) {
+			clearInterval(this.livenessTimeoutInterval);
+			this.livenessTimeoutInterval = undefined;
 		}
 
 		const { activeRuns, suspendedRuns } = this.runState.shutdown();
@@ -1869,6 +1917,22 @@ export class InstanceAiService {
 		return true;
 	}
 
+	private publishRunTimeoutNotice(threadId: string, runId: string): void {
+		const responseId = `run-timeout:${runId}`;
+		const alreadyPublished = this.eventBus
+			.getEventsForRun(threadId, runId)
+			.some((event) => event.responseId === responseId);
+		if (alreadyPublished) return;
+
+		this.eventBus.publish(threadId, {
+			type: 'text-delta',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			responseId,
+			payload: { text: RUN_TIMEOUT_MESSAGE },
+		});
+	}
+
 	private async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
 		const outcome = this.buildBackgroundTerminalOutcome(task);
 		let persisted = false;
@@ -2124,6 +2188,7 @@ export class InstanceAiService {
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
+				this.runState.touchActiveRun(threadId);
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
 						resolve,
@@ -2144,6 +2209,8 @@ export class InstanceAiService {
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			spawnBackgroundTask: (opts) =>
 				this.spawnBackgroundTask(runId, opts, snapshotStorage, messageGroupId),
+			touchRun: () => this.runState.touchActiveRun(threadId),
+			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			plannedTaskService,
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
 			iterationLog,
@@ -2865,6 +2932,7 @@ export class InstanceAiService {
 								signal,
 								eventBus: this.eventBus,
 								logger: this.logger,
+								onActivity: () => this.runState.touchActiveRun(threadId),
 							},
 						);
 					})
@@ -2889,6 +2957,7 @@ export class InstanceAiService {
 							signal,
 							eventBus: this.eventBus,
 							logger: this.logger,
+							onActivity: () => this.runState.touchActiveRun(threadId),
 						},
 					);
 			mastraRunId = result.mastraRunId;
@@ -2996,17 +3065,21 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (signal.aborted) {
+				const cancellationReason = getAbortReason(signal);
+				if (cancellationReason === RUN_TIMEOUT_REASON) {
+					this.publishRunTimeoutNotice(threadId, runId);
+				}
 				this.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
 				});
 				await this.finalizeRunTracing(runId, tracing, {
 					status: 'cancelled',
-					reason: 'user_cancelled',
+					reason: cancellationReason,
 				});
 				messageTraceFinalization = {
 					status: 'cancelled',
-					reason: 'user_cancelled',
+					reason: cancellationReason,
 					metadata: { completion_source: 'orchestrator' },
 				};
 				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
@@ -3014,7 +3087,13 @@ export class InstanceAiService {
 					user,
 					aiCreatedWorkflowIds,
 				);
-				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled', archivedWorkflowIds);
+				this.publishRunFinish(
+					threadId,
+					runId,
+					'cancelled',
+					cancellationReason,
+					archivedWorkflowIds,
+				);
 				if (activeSnapshotStorage) {
 					await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
 				}
@@ -3438,6 +3517,7 @@ export class InstanceAiService {
 								eventBus: this.eventBus,
 								logger: this.logger,
 								mastraRunId: opts.mastraRunId,
+								onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							},
 						);
 					})
@@ -3457,6 +3537,7 @@ export class InstanceAiService {
 							eventBus: this.eventBus,
 							logger: this.logger,
 							mastraRunId: opts.mastraRunId,
+							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						},
 					);
 
@@ -3959,10 +4040,16 @@ export class InstanceAiService {
 		return archived;
 	}
 
-	private async finalizeCancelledSuspendedRun(suspended: SuspendedRunState<User>): Promise<void> {
+	private async finalizeCancelledSuspendedRun(
+		suspended: SuspendedRunState<User>,
+		reason = 'user_cancelled',
+	): Promise<void> {
+		if (reason === RUN_TIMEOUT_REASON) {
+			this.publishRunTimeoutNotice(suspended.threadId, suspended.runId);
+		}
 		await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
 			status: 'cancelled',
-			reason: 'user_cancelled',
+			reason,
 		});
 
 		const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
@@ -3974,7 +4061,7 @@ export class InstanceAiService {
 			suspended.threadId,
 			suspended.runId,
 			'cancelled',
-			'user_cancelled',
+			reason,
 			archivedWorkflowIds,
 		);
 
@@ -3991,7 +4078,7 @@ export class InstanceAiService {
 		}
 		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
-			reason: 'user_cancelled',
+			reason,
 			metadata: { completion_source: 'orchestrator' },
 		});
 	}

@@ -110,6 +110,14 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
+export {
+	InstanceAiLivenessPolicy,
+	type InstanceAiLivenessDecision,
+	type InstanceAiLivenessInput,
+	type InstanceAiLivenessPolicyConfig,
+	type InstanceAiLivenessSurface,
+	type InstanceAiLivenessTimeoutReason,
+} from './runtime/liveness-policy';
 export type {
 	StreamableAgent,
 	StreamRunOptions,

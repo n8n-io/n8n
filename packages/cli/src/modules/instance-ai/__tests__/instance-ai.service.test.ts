@@ -148,6 +148,57 @@ type RunningTask = { taskId: string };
 type MarkedWorkflow = { workflowId: string };
 type ArchiveIfAiTemporary = jest.MockedFunction<(workflowId: string) => Promise<boolean>>;
 
+type LivenessSweepServiceInternals = {
+	sweepTimedOutWork: () => Promise<void>;
+	cancelRun: jest.Mock<void, [string, string?]>;
+	runState: {
+		sweepTimedOut: jest.MockedFunction<
+			(policy: unknown) => {
+				activeThreadIds: string[];
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+			}
+		>;
+		rejectPendingConfirmation: jest.MockedFunction<(requestId: string) => boolean>;
+	};
+	backgroundTasks: {
+		timeoutTimedOutTasks: jest.MockedFunction<
+			(policy: unknown) => Promise<Array<{ threadId: string; taskId: string; role: string }>>
+		>;
+	};
+	livenessPolicy: unknown;
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createLivenessSweepService(): LivenessSweepServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as LivenessSweepServiceInternals;
+
+	service.livenessPolicy = {};
+	service.cancelRun = jest.fn();
+	service.runState = {
+		sweepTimedOut: jest.fn((_policy: unknown) => ({
+			activeThreadIds: [] as string[],
+			suspendedThreadIds: [] as string[],
+			confirmationRequestIds: [] as string[],
+		})),
+		rejectPendingConfirmation: jest.fn((_requestId: string) => true),
+	};
+	service.backgroundTasks = {
+		timeoutTimedOutTasks: jest.fn(
+			async (_policy: unknown) => [] as Array<{ threadId: string; taskId: string; role: string }>,
+		),
+	};
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+	};
+
+	return service;
+}
+
 type TemporaryCleanupService = {
 	reapAiTemporaryFromRun: (
 		threadId: string,
@@ -456,6 +507,48 @@ function makeAgentTree(): InstanceAiAgentNode {
 		timeline: [{ type: 'text', content: 'Initial response' }],
 	};
 }
+
+describe('InstanceAiService — liveness sweep', () => {
+	it('applies global timeout results to every live-work surface', async () => {
+		const service = createLivenessSweepService();
+		const timedOutTasks = [
+			{
+				threadId: 'thread-bg',
+				taskId: 'task-1',
+				role: 'workflow-builder',
+				timeoutReason: 'idle_timeout',
+			},
+		];
+
+		service.runState.sweepTimedOut.mockReturnValue({
+			activeThreadIds: ['thread-active'],
+			suspendedThreadIds: ['thread-suspended'],
+			confirmationRequestIds: ['request-1'],
+		});
+		service.backgroundTasks.timeoutTimedOutTasks.mockResolvedValue(timedOutTasks);
+
+		await service.sweepTimedOutWork();
+
+		expect(service.runState.sweepTimedOut).toHaveBeenCalledWith(service.livenessPolicy);
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-active', 'timeout');
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-suspended', 'timeout');
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
+		expect(service.backgroundTasks.timeoutTimedOutTasks).toHaveBeenCalledWith(
+			service.livenessPolicy,
+		);
+	});
+
+	it('keeps sweeping run state when background task timeout handling fails', async () => {
+		const service = createLivenessSweepService();
+		service.backgroundTasks.timeoutTimedOutTasks.mockRejectedValue(new Error('failed'));
+
+		await service.sweepTimedOutWork();
+
+		expect(service.logger.warn).toHaveBeenCalledWith('Failed to sweep timed-out background tasks', {
+			error: 'failed',
+		});
+	});
+});
 
 describe('InstanceAiService — pending checkpoint re-entry', () => {
 	describe('queuePendingCheckpointReentry', () => {

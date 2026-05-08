@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext } from '../../types';
+import { InstanceAiLivenessPolicy } from '../liveness-policy';
 import type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
@@ -55,6 +56,13 @@ function createBackgroundTask(
 describe('RunStateRegistry', () => {
 	let registry: RunStateRegistry<TestUser>;
 	let nanoidCounter: number;
+	const policy = new InstanceAiLivenessPolicy({
+		confirmationTimeoutMs: 30_000,
+		backgroundTaskIdleTimeoutMs: 30_000,
+		backgroundTaskMaxLifetimeMs: 90_000,
+		activeRunIdleTimeoutMs: 30_000,
+		activeRunMaxLifetimeMs: 90_000,
+	});
 
 	beforeEach(() => {
 		registry = new RunStateRegistry<TestUser>();
@@ -1005,6 +1013,18 @@ describe('RunStateRegistry', () => {
 	// ── sweepTimedOut ─────────────────────────────────────────────────────────
 
 	describe('sweepTimedOut', () => {
+		it('identifies active runs that stop reporting activity', () => {
+			registry.startRun({ threadId: 'thread-old', user: { id: 'u1', name: 'A' } });
+			registry.touchActiveRun('thread-old', 0);
+
+			registry.startRun({ threadId: 'thread-new', user: { id: 'u2', name: 'B' } });
+			registry.touchActiveRun('thread-new', 20_000);
+
+			const result = registry.sweepTimedOut(policy, 30_000);
+
+			expect(result.activeThreadIds).toEqual(['thread-old']);
+		});
+
 		it('identifies suspended runs older than maxAgeMs', () => {
 			const now = Date.now();
 			registry.startRun({ threadId: 'thread-old', user: { id: 'u1', name: 'A' } });
@@ -1019,7 +1039,7 @@ describe('RunStateRegistry', () => {
 				createSuspendedRunState({ threadId: 'thread-new', createdAt: now - 10_000 }),
 			);
 
-			const result = registry.sweepTimedOut(30_000);
+			const result = registry.sweepTimedOut(policy, now);
 
 			expect(result.suspendedThreadIds).toEqual(['thread-old']);
 		});
@@ -1041,7 +1061,7 @@ describe('RunStateRegistry', () => {
 				createdAt: now - 10_000,
 			});
 
-			const result = registry.sweepTimedOut(30_000);
+			const result = registry.sweepTimedOut(policy, now);
 
 			expect(result.confirmationRequestIds).toEqual(['req-old']);
 		});
@@ -1061,7 +1081,7 @@ describe('RunStateRegistry', () => {
 				createdAt: now - 60_000,
 			});
 
-			registry.sweepTimedOut(30_000);
+			registry.sweepTimedOut(policy, now);
 
 			// State should still be intact
 			expect(registry.hasSuspendedRun('thread-1')).toBe(true);
@@ -1077,8 +1097,9 @@ describe('RunStateRegistry', () => {
 				createSuspendedRunState({ threadId: 'thread-1', createdAt: now }),
 			);
 
-			const result = registry.sweepTimedOut(30_000);
+			const result = registry.sweepTimedOut(policy, now);
 
+			expect(result.activeThreadIds).toEqual([]);
 			expect(result.suspendedThreadIds).toEqual([]);
 			expect(result.confirmationRequestIds).toEqual([]);
 		});
@@ -1091,7 +1112,7 @@ describe('RunStateRegistry', () => {
 				createSuspendedRunState({ threadId: 'thread-1', createdAt: now - 30_000 }),
 			);
 
-			const result = registry.sweepTimedOut(30_000);
+			const result = registry.sweepTimedOut(policy, now);
 
 			// now - createdAt === maxAgeMs, so >= matches
 			expect(result.suspendedThreadIds).toEqual(['thread-1']);
