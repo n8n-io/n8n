@@ -70,7 +70,7 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0);
 		});
 
-		test('should close preview panel via close button', async ({ n8n }) => {
+		test('should close preview panel via header toggle', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
@@ -83,8 +83,8 @@ test.describe(
 				timeout: 120_000,
 			});
 
-			// Close the preview
-			await n8n.instanceAi.getPreviewCloseButton().click();
+			// Hide the preview
+			await n8n.instanceAi.getPreviewToggleButton().click();
 
 			// Preview iframe should no longer be visible
 			await expect(n8n.instanceAi.getPreviewIframeLocator()).toBeHidden();

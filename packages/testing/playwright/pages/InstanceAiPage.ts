@@ -143,8 +143,8 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewIframe().locator('[data-test-id="canvas-node-status-success"]');
 	}
 
-	getPreviewCloseButton(): Locator {
-		return this.page.getByTestId('instance-ai-preview-close');
+	getPreviewToggleButton(): Locator {
+		return this.page.getByTestId('instance-ai-artifacts-preview-toggle');
 	}
 
 	getPreviewIframeLocator(): Locator {
@@ -159,6 +159,12 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewIframe().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
 		);
+	}
+
+	async openPreviewNodeByName(nodeName: string): Promise<void> {
+		const node = this.getPreviewNodeByName(nodeName);
+		await node.waitFor({ state: 'visible', timeout: 10_000 });
+		await node.dispatchEvent('dblclick');
 	}
 
 	getPreviewExecuteNodeButton(nodeName: string): Locator {
