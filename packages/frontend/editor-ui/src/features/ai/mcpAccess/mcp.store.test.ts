@@ -25,7 +25,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 	createWorkflowDocumentId: (id: string) => id,
-	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
 describe('mcp.store', () => {

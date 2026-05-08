@@ -856,14 +856,6 @@ export function useWorkflowHelpers() {
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };
 	}
 
-	/**
-	 * Check if workflow contains any node from specified package
-	 * by performing a quick check based on the node type name.
-	 */
-	const containsNodeFromPackage = (workflow: IWorkflowDb, packageName: string) => {
-		return workflow.nodes.some((node) => node.type.startsWith(packageName));
-	};
-
 	function getMethods(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
 			if (trigger.parameters.multipleMethods === true) {
@@ -940,7 +932,6 @@ export function useWorkflowHelpers() {
 		getWorkflowProjectRole,
 		initState,
 		getNodeParametersWithResolvedExpressions,
-		containsNodeFromPackage,
 		checkConflictingWebhooks,
 	};
 }
