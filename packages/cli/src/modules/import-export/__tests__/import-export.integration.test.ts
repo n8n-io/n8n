@@ -965,70 +965,131 @@ describe('import-export integration', () => {
 	});
 
 	describe('bundle ↔ folder layout duality', () => {
-		it('should round-trip losslessly through the unpacked folder layout', async () => {
+		it('should round-trip a project with folders, credentials, tags, and a workflow', async () => {
+			// ---- Seed source project: folder + credential + tag + workflow ----
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Layout Source', owner);
+
+			const billing = await createFolder('Billing', sourceProject.id);
+			const slackCred = await createCredentials(
+				{ name: 'My Slack', type: 'slackApi', data: '' },
+				sourceProject,
+			);
+			const productionTag = await createTag({ name: 'production' });
+
 			const wf = await createWorkflow(
 				{
 					name: 'Daily Sync',
+					parentFolder: { id: billing.id },
 					nodes: [
 						{
-							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							id: 'slack-node',
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
 							typeVersion: 1,
 							position: [0, 0],
 							parameters: {},
+							credentials: { slackApi: { id: slackCred.id, name: 'My Slack' } },
 						},
 					],
 					connections: {},
 				},
 				sourceProject,
 			);
+			await assignTagToWorkflow(productionTag, wf);
 
-			// Export → bundle (gzipped tar)
+			// ---- Export source project → bundle (gzipped tar) ----
 			const stream = await service.exportPackage({
-				type: 'workflows',
+				type: 'projects',
 				user: owner,
-				workflowIds: [wf.id],
+				projectIds: [sourceProject.id],
 			});
 			const bundle = await streamToBuffer(stream);
 
-			// Unpack the bundle into a folder layout, then repack from disk into a
-			// fresh bundle. Both forms must produce equivalent imports.
+			// ---- Unpack bundle to disk, then repack to a fresh bundle ----
 			const tempDir = await mkdtemp(join(tmpdir(), 'n8n-pkg-roundtrip-'));
 			try {
 				await unpackTarToDir(bundle, tempDir);
 
-				// Sanity-check: the unpacked layout has the expected files on disk.
+				// Sanity-check the on-disk layout.
 				expect(existsSync(join(tempDir, 'manifest.json'))).toBe(true);
-				const workflowFiles = (await readdir(join(tempDir, 'workflows'))).filter(
-					(entry) => !entry.endsWith('.json'),
+				const projectsRoot = join(tempDir, 'projects');
+				expect(existsSync(projectsRoot)).toBe(true);
+				const projectDirs = await readdir(projectsRoot);
+				expect(projectDirs).toHaveLength(1);
+				const projectDir = join(projectsRoot, projectDirs[0]);
+				const projectSubdirs = await readdir(projectDir);
+				// Per-entity subdirs for what was actually exported. The workflow lives
+				// under `folders/<billing>/workflows/...` because it has a parent folder.
+				expect(projectSubdirs).toEqual(
+					expect.arrayContaining(['project.json', 'folders', 'credentials', 'tags']),
 				);
-				expect(workflowFiles.length).toBeGreaterThanOrEqual(1);
 
-				// Repack the layout into a fresh bundle and import it into a target project.
 				const repacked = await packDirToTar(tempDir);
 
-				const targetProject = await createTeamProject('Layout Target', owner);
+				// ---- Truncate DB (simulate cross-instance) and re-import ----
+				await testDb.truncate([
+					'WorkflowEntity',
+					'SharedWorkflow',
+					'CredentialsEntity',
+					'SharedCredentials',
+					'Folder',
+					'Variables',
+					'Project',
+					'TagEntity',
+					'WorkflowTagMapping',
+				]);
+				const newOwner = await createOwner();
+
 				const result = await service.importPackage(repacked, {
-					user: owner,
-					targetProjectId: targetProject.id,
-					mode: 'auto',
-					includeCredentialStubs: false,
+					user: newOwner,
+					mode: 'force',
+					includeCredentialStubs: true,
 					includeVariableValues: true,
 					overwriteVariableValues: false,
 				});
 
+				// ---- Assert every entity type came through ----
+				expect(result.projects).toHaveLength(1);
+				expect(result.folders).toBe(1);
 				expect(result.workflows).toBe(1);
+				expect(result.tags).toBe(1);
 
-				// The repacked bundle imported the workflow with the same content.
-				const importedId = Container.get(IdDeriver).derive(targetProject.id, wf.id);
-				const imported = await Container.get(WorkflowRepository).findOne({
-					where: { id: importedId },
+				const newProjectId = result.projects[0].id;
+
+				const folders = await Container.get(FolderRepository).find({
+					where: { homeProject: { id: newProjectId } },
 				});
-				expect(imported?.name).toBe('Daily Sync');
-				expect(imported?.nodes).toHaveLength(1);
-				expect(imported?.nodes[0].type).toBe('n8n-nodes-base.start');
+				expect(folders).toHaveLength(1);
+				expect(folders[0].name).toBe('Billing');
+
+				const tags = await Container.get(TagRepository).find();
+				expect(tags).toHaveLength(1);
+				expect(tags[0].name).toBe('production');
+
+				const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
+					where: { projectId: newProjectId },
+					relations: ['workflow', 'workflow.tags'],
+				});
+				expect(sharedWorkflows).toHaveLength(1);
+				const importedShallow = sharedWorkflows[0].workflow;
+				expect(importedShallow.name).toBe('Daily Sync');
+				expect(importedShallow.tags?.[0]?.name).toBe('production');
+
+				const imported = await Container.get(WorkflowRepository).findOne({
+					where: { id: importedShallow.id },
+					relations: ['parentFolder'],
+				});
+				expect(imported?.parentFolder?.id).toBe(folders[0].id);
+
+				// Workflow's credential reference points at a credential that exists
+				// (a stub was created since the original credential isn't on the target).
+				const slackNode = importedShallow.nodes.find((n) => n.type === 'n8n-nodes-base.slack');
+				const credId = slackNode?.credentials?.slackApi?.id;
+				expect(credId).toBeDefined();
+				const cred = await Container.get(CredentialsRepository).findOneBy({ id: credId! });
+				expect(cred?.name).toBe('My Slack');
+				expect(cred?.type).toBe('slackApi');
 			} finally {
 				await rm(tempDir, { recursive: true, force: true });
 			}

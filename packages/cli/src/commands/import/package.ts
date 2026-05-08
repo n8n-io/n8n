@@ -25,25 +25,15 @@ const flagsSchema = z.object({
 	includeCredentialStubs: z.coerce
 		.boolean()
 		.describe('Create empty credential stubs for credentials in the package')
-		.optional(),
+		.default(false),
 	includeVariableValues: z.coerce
 		.boolean()
 		.describe('Import variable values from the package (default: true)')
-		.optional(),
+		.default(true),
 	overwriteVariableValues: z.coerce
 		.boolean()
 		.describe('Overwrite existing variable values with those from the package (default: false)')
 		.default(false),
-
-	// --- Deprecated aliases — accepted for backwards compatibility ---
-	withCredentialStubs: z.coerce
-		.boolean()
-		.describe('[deprecated] use --includeCredentialStubs')
-		.optional(),
-	withVariableValues: z.coerce
-		.boolean()
-		.describe('[deprecated] use --includeVariableValues')
-		.optional(),
 });
 
 @Command({
@@ -74,25 +64,11 @@ export class ImportPackageCommand extends BaseCommand<z.infer<typeof flagsSchema
 			mode: modeFlag,
 			force,
 			dryRun,
-			includeCredentialStubs: includeStubsFlag,
-			includeVariableValues: includeValuesFlag,
-			withCredentialStubs,
-			withVariableValues,
+			includeCredentialStubs,
+			includeVariableValues,
 			overwriteVariableValues,
 		} = this.flags;
 		const mode = force ? 'force' : modeFlag;
-
-		if (withCredentialStubs !== undefined) {
-			this.logger.warn(
-				'--withCredentialStubs is deprecated; use --includeCredentialStubs instead.',
-			);
-		}
-		if (withVariableValues !== undefined) {
-			this.logger.warn('--withVariableValues is deprecated; use --includeVariableValues instead.');
-		}
-
-		const includeCredentialStubs = includeStubsFlag ?? withCredentialStubs ?? false;
-		const includeVariableValues = includeValuesFlag ?? withVariableValues ?? true;
 
 		const buffer = await readFile(input);
 		const service = Container.get(ImportExportService);
