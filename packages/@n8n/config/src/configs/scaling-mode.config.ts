@@ -3,18 +3,16 @@ import { Config, Env, Nested } from '../decorators';
 @Config
 class HealthConfig {
 	/**
-	 * Whether to enable the worker health check endpoints:
-	 * - `/healthz` (worker alive)
-	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 * Whether to enable worker health endpoints: `/healthz` (liveness) and `/healthz/readiness` (DB and Redis ready).
 	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
 
-	/** Port for worker server to listen on. */
+	/** Port the worker HTTP server listens on for health checks. */
 	@Env('QUEUE_HEALTH_CHECK_PORT')
 	port: number = 5678;
 
-	/** IP address for worker server to listen on. */
+	/** IP address the worker server binds to. Use `::` for all interfaces. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
 	address: string = '::';
 }
@@ -76,6 +74,22 @@ class RedisConfig {
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to enable TCP keep-alive on Redis connections. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE')
+	keepAlive: boolean = false;
+
+	/** TCP keep-alive initial delay in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_DELAY')
+	keepAliveDelay: number = 5000;
+
+	/** TCP keep-alive interval in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
+	keepAliveInterval: number = 5000;
+
+	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
+	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
+	reconnectOnFailover: boolean = true;
 }
 
 @Config

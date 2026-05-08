@@ -90,7 +90,7 @@ If you see "No coverage files found":
 2. Run tests with coverage enabled: `BUILD_WITH_COVERAGE=true pnpm test:container:sqlite`
 3. Check that coverage files exist in `.nyc_output/{projectName}/` directories
    - For local mode: `.nyc_output/e2e/`
-   - For container mode: `.nyc_output/sqlite:e2e/`, `.nyc_output/sqlite:e2e:isolated/`, etc.
+   - For container mode: `.nyc_output/sqlite:e2e/`, `.nyc_output/postgres:e2e/`, etc.
 
 ### Low Coverage Percentage
 
@@ -162,7 +162,7 @@ packages/testing/playwright/
 ├── .nyc_output/             # Raw coverage data (per project)
 │   ├── e2e/                  # Local mode coverage
 │   ├── sqlite:e2e/           # Container mode coverage
-│   ├── sqlite:e2e:isolated/
+│   ├── postgres:e2e/         # Other container modes
 │   └── out.json            # Merged coverage data
 ├── nyc.config.ts           # NYC configuration
 └── scripts/

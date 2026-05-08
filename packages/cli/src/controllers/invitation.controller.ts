@@ -2,7 +2,7 @@ import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-type
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
+import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -18,6 +18,7 @@ import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { Time } from '@n8n/constants';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -38,7 +39,7 @@ export class InvitationController {
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/', { rateLimit: { limit: 10 } })
+	@Post('/', { ipRateLimit: { limit: 10 } })
 	@GlobalScope('user:create')
 	async inviteUser(
 		req: AuthenticatedRequest,
@@ -154,7 +155,12 @@ export class InvitationController {
 	/**
 	 * Fill out user shell with first name, last name, and password using JWT token.
 	 */
-	@Post('/accept', { skipAuth: true })
+	@Post('/accept', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can accept an invitation from
+		// the same IP address but aggressive per inviteeId limit.
+		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
+	})
 	async acceptInvitationWithToken(
 		req: AuthlessRequest,
 		res: Response,
@@ -177,50 +183,9 @@ export class InvitationController {
 		const { firstName, lastName, password } = payload;
 
 		// Extract inviterId and inviteeId from JWT token
-		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
-			token: payload.token,
-		});
-
-		return await this.processInvitationAcceptance(
-			inviterId,
-			inviteeId,
-			firstName,
-			lastName,
-			password,
-			req,
-			res,
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
+			payload.token,
 		);
-	}
-
-	/**
-	 * Fill out user shell with first name, last name, and password (legacy format with inviterId/inviteeId).
-	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(
-		req: AuthlessRequest,
-		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
-	) {
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-			throw new BadRequestError(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-		}
-
-		if (!payload.inviterId || !inviteeId) {
-			this.logger.debug(
-				'Request to accept invitation failed because inviterId or inviteeId is missing',
-			);
-			throw new BadRequestError('InviterId and inviteeId are required');
-		}
-
-		const { firstName, lastName, password } = payload;
-
-		const inviterId = payload.inviterId;
 
 		return await this.processInvitationAcceptance(
 			inviterId,

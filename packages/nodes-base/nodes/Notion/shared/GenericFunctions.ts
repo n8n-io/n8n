@@ -71,7 +71,9 @@ export async function notionApiRequest(
 			delete options.body;
 		}
 		if (!uri) {
-			return await this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
+			const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
+			const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		}
 		return await this.helpers.request(options);
 	} catch (error) {
@@ -122,7 +124,7 @@ export async function notionApiRequestGetBlockChildrens(
 	for (const block of blocks) {
 		responseData.push(block);
 
-		if (block.type === 'child_page') continue;
+		if (block.type === 'child_page' || block.type === 'unsupported') continue;
 
 		if (block.has_children) {
 			let childrens = await notionApiRequestAllItems.call(
@@ -922,10 +924,10 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 		if (page.mode === 'id') {
 			pageId = page.value;
 		} else if (page.value.includes('p=')) {
-			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s
+			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s or https://www.notion.com/xxxxx?v=xxxxx&p=xxxxx&pm=s
 			pageId = new URLSearchParams(page.value).get('p') || '';
 		} else {
-			// e.g https://www.notion.so/page_name-xxxxx
+			// e.g https://www.notion.so/page_name-xxxxx or https://www.notion.com/page_name-xxxxx
 			pageId = page.value.match(databasePageUrlValidationRegexp)?.[1] || '';
 		}
 	}

@@ -10,13 +10,13 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 
 export class RetrieverContextualCompression implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Contextual Compression Retriever',
 		name: 'retrieverContextualCompression',
-		icon: 'fa:box-open',
+		icon: 'node:contextual-compression-retriever',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
@@ -59,6 +59,12 @@ export class RetrieverContextualCompression implements INodeType {
 				type: NodeConnectionTypes.AiRetriever,
 			},
 		],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_retriever: { required: true },
+			},
+		},
 		properties: [],
 	};
 

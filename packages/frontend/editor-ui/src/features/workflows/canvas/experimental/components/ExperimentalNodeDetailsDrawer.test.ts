@@ -4,21 +4,21 @@ import { SET_NODE_TYPE } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import ExperimentalNodeDetailsDrawer from './ExperimentalNodeDetailsDrawer.vue';
-import { nextTick } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import { fireEvent } from '@testing-library/vue';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return {
 		...actual,
-		injectWorkflowState: vi.fn(),
+		injectWorkflowDocumentStore: vi.fn(),
 	};
 });
 
@@ -29,7 +29,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let ndvStore: ReturnType<typeof useNDVStore>;
-	let workflowState: WorkflowState;
 
 	const mockNodes = [
 		createTestNode({
@@ -48,7 +47,14 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		});
 
 		workflowsStore = useWorkflowsStore(pinia);
-		workflowsStore.setNodes(mockNodes);
+		workflowsStore.workflow.id = 'test-workflow';
+		workflowsStore.workflow.nodes = mockNodes;
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setNodes(mockNodes);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 		nodeTypesStore = useNodeTypesStore(pinia);
 		nodeTypesStore.setNodeTypes([
 			{
@@ -64,9 +70,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 			},
 		]);
 		ndvStore = useNDVStore();
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 
 	it('should show updated parameter after closing NDV', async () => {
@@ -83,7 +86,10 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		// Simulate parameter update in NDV
 		ndvStore.setActiveNodeName('Node 1', 'other');
 		await nextTick();
-		workflowState.setNodeParameters({ name: 'Node 1', value: { p0: 'after update' } });
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setNodeParameters({ name: 'Node 1', value: { p0: 'after update' } });
 		ndvStore.unsetActiveNodeName();
 		await nextTick();
 

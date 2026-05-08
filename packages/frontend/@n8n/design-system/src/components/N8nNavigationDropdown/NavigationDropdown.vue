@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { ref } from 'vue';
+import { defineComponent, ref, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import type { IconSize } from '@n8n/design-system/types';
@@ -41,10 +41,19 @@ defineProps<{
 const menuRef = ref<typeof ElMenu | null>(null);
 const ROOT_MENU_INDEX = '-1';
 
+// Passing both expand-close-icon and expand-open-icon to ElSubMenu disables
+// Element Plus's default 180° chevron rotation. The displayed chevron for
+// nested submenus is fixed to ArrowRight by Element Plus, so this no-op
+// component is never actually rendered.
+const NoopIcon = defineComponent({ name: 'NoopIcon', render: () => null });
+
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
 }>();
+
+const slots = useSlots();
+const hasAppendSlot = (id: string) => Boolean(slots[`item.append.${id}`]);
 
 defineSlots<{
 	default?: () => unknown;
@@ -109,6 +118,8 @@ defineExpose({
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
 						:popper-offset="-10"
+						:expand-close-icon="NoopIcon"
+						:expand-open-icon="NoopIcon"
 						data-test-id="navigation-submenu"
 					>
 						<template #title>
@@ -169,7 +180,9 @@ defineExpose({
 									>
 										<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
 									</N8nTooltip>
-									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+										<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									</span>
 								</ElMenuItem>
 							</ConditionalRouterLink>
 						</template>
@@ -182,7 +195,9 @@ defineExpose({
 						data-test-id="navigation-menu-item"
 					>
 						{{ item.title }}
-						<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+							<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						</span>
 					</ElMenuItem>
 				</ConditionalRouterLink>
 			</template>
@@ -278,6 +293,13 @@ defineExpose({
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+}
+
+.menuItemAppend {
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+	padding-left: var(--spacing--2xs);
 }
 
 .infoTooltip {

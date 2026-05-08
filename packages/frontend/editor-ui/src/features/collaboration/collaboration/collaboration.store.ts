@@ -1,14 +1,17 @@
 /* eslint-disable import-x/extensions */
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 import type { IWorkflowDb } from '@/Interface';
 
 import { TIME } from '@/app/constants';
+import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
+import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -29,10 +32,13 @@ const INACTIVITY_TIMEOUT_THRESHOLD = 20 * TIME.SECOND;
 export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const pushStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const builderStore = useBuilderStore();
+	const toast = useToast();
+	const i18n = useI18n();
 
 	const route = useRoute();
 	const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings, addBeforeUnloadHandler } =
@@ -42,7 +48,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const collaborators = ref<Collaborator[]>([]);
 
 	// Write-lock state for single-write mode
-	const currentWriterId = ref<string | null>(null);
+	const currentWriterLock = ref<{ userId: string; clientId: string } | null>(null);
 	const lastActivityTime = ref<number>(Date.now());
 	const activityCheckInterval = ref<number | null>(null);
 
@@ -52,28 +58,36 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
 
+	// Track the workflowId we're currently collaborating on
+	// This is needed because workflowsStore.workflowId may change before terminate() is called
+	const collaboratingWorkflowId = ref<string | null>(null);
+
 	// Callback for refreshing the canvas after workflow updates
 	let refreshCanvasCallback: ((workflow: IWorkflowDb) => void) | null = null;
+	let pendingRemoteUpdateNotification: { close: () => void } | null = null;
 
 	// Computed properties for write-lock state
+	const isCurrentTabWriter = computed(() => {
+		return currentWriterLock.value?.clientId === rootStore.pushRef;
+	});
+
 	const isCurrentUserWriter = computed(() => {
-		return currentWriterId.value === usersStore.currentUserId;
+		return currentWriterLock.value?.userId === usersStore.currentUserId;
 	});
 
 	const currentWriter = computed(() => {
-		if (!currentWriterId.value) return null;
-		return collaborators.value.find((c) => c.user.id === currentWriterId.value);
+		return collaborators.value.find((c) => c.user.id === currentWriterLock.value?.userId) ?? null;
 	});
 
 	const isAnyoneWriting = computed(() => {
-		return currentWriterId.value !== null;
+		return currentWriterLock.value !== null;
 	});
 
 	const shouldBeReadOnly = computed(() => {
-		return isAnyoneWriting.value && !isCurrentUserWriter.value;
+		return isAnyoneWriting.value && !isCurrentTabWriter.value;
 	});
 
-	async function fetchWriteLockState(): Promise<string | null> {
+	async function fetchWriteLockState(): Promise<{ clientId: string; userId: string } | null> {
 		try {
 			const { workflowId } = workflowsStore;
 			if (!workflowsStore.isWorkflowSaved[workflowId]) {
@@ -84,20 +98,20 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				rootStore.restApiContext,
 				workflowId,
 			);
-			return response.userId;
+			return response;
 		} catch {
 			return null;
 		}
 	}
 
 	function notifyWorkflowOpened() {
-		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
-		pushStore.send({ type: 'workflowOpened', workflowId: workflowsStore.workflowId });
+		if (!collaboratingWorkflowId.value) return;
+		pushStore.send({ type: 'workflowOpened', workflowId: collaboratingWorkflowId.value });
 	}
 
 	function notifyWorkflowClosed() {
-		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
-		pushStore.send({ type: 'workflowClosed', workflowId: workflowsStore.workflowId });
+		if (!collaboratingWorkflowId.value) return;
+		pushStore.send({ type: 'workflowClosed', workflowId: collaboratingWorkflowId.value });
 
 		collaborators.value = collaborators.value.filter(
 			({ user }) => user.id !== usersStore.currentUserId,
@@ -124,14 +138,14 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	};
 
 	const sendWriteLockHeartbeat = () => {
-		if (!isCurrentUserWriter.value) {
+		if (!isCurrentTabWriter.value || !collaboratingWorkflowId.value) {
 			stopWriteLockHeartbeat();
 			return;
 		}
 
 		pushStore.send({
 			type: 'writeAccessHeartbeat',
-			workflowId: workflowsStore.workflowId,
+			workflowId: collaboratingWorkflowId.value,
 		});
 	};
 
@@ -160,11 +174,11 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return;
 		}
 
-		const writeLockUserId = await fetchWriteLockState();
+		const writeLock = await fetchWriteLockState();
 
 		// If lock is gone on backend but still exists in frontend, clear it
-		if (!writeLockUserId && currentWriterId.value) {
-			currentWriterId.value = null;
+		if (!writeLock && currentWriterLock.value) {
+			currentWriterLock.value = null;
 			stopLockStatePolling();
 		}
 	};
@@ -188,14 +202,36 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function requestWriteAccess() {
-		if (isCurrentUserWriter.value) {
+		if (isCurrentTabWriter.value) {
 			return true;
+		}
+
+		if (!collaboratingWorkflowId.value) {
+			return false;
 		}
 
 		try {
 			pushStore.send({
 				type: 'writeAccessRequested',
-				workflowId: workflowsStore.workflowId,
+				workflowId: collaboratingWorkflowId.value,
+			});
+		} catch {
+			return false;
+		}
+
+		return true;
+	}
+
+	function requestWriteAccessForce() {
+		if (!collaboratingWorkflowId.value) {
+			return false;
+		}
+
+		try {
+			pushStore.send({
+				type: 'writeAccessRequested',
+				workflowId: collaboratingWorkflowId.value,
+				force: true,
 			});
 		} catch {
 			return false;
@@ -205,13 +241,17 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function releaseWriteAccess() {
-		currentWriterId.value = null;
+		currentWriterLock.value = null;
 		stopWriteLockHeartbeat();
+
+		if (!collaboratingWorkflowId.value) {
+			return true;
+		}
 
 		try {
 			pushStore.send({
 				type: 'writeAccessReleaseRequested',
-				workflowId: workflowsStore.workflowId,
+				workflowId: collaboratingWorkflowId.value,
 			});
 			return true;
 		} catch {
@@ -220,7 +260,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function checkInactivity() {
-		if (!isCurrentUserWriter.value) return;
+		if (!isCurrentTabWriter.value) return;
 
 		// Don't release write lock while AI Builder is streaming
 		if (builderStore.streaming) {
@@ -250,32 +290,73 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		refreshCanvasCallback = fn;
 	}
 
-	async function handleWorkflowUpdate() {
-		if (isCurrentUserWriter.value) {
+	function closePendingRemoteUpdateNotification() {
+		pendingRemoteUpdateNotification?.close();
+		pendingRemoteUpdateNotification = null;
+	}
+
+	function showPendingRemoteUpdateNotification() {
+		if (pendingRemoteUpdateNotification) {
 			return;
+		}
+
+		pendingRemoteUpdateNotification = toast.showMessage({
+			title: i18n.baseText('workflows.remoteUpdateBlocked.title'),
+			message: i18n.baseText('workflows.remoteUpdateBlocked.message'),
+			type: 'warning',
+			duration: 0,
+			onClose: () => {
+				pendingRemoteUpdateNotification = null;
+			},
+		});
+	}
+
+	async function handleWorkflowUpdate() {
+		if (isCurrentTabWriter.value || !collaboratingWorkflowId.value) {
+			return;
+		}
+
+		// Preserve local unsaved edits until the user explicitly resolves them
+		// (This state is possible when autosave is disabled)
+		if (uiStore.stateIsDirty) {
+			showPendingRemoteUpdateNotification();
+			return true;
 		}
 
 		try {
 			// Fetch the latest workflow data
-			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflowsStore.workflowId);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(collaboratingWorkflowId.value);
 
 			// Refresh the canvas with the new workflow data
 			if (refreshCanvasCallback) {
 				refreshCanvasCallback(updatedWorkflow);
 			}
 			return true;
-		} catch {
+		} catch (error) {
+			console.error('[Collaboration] Error in handleWorkflowUpdate:', error);
 			return false;
 		}
 	}
 
-	function handleWriteLockHolderLeft() {
-		if (!currentWriterId.value) return;
+	watch(
+		() => uiStore.stateIsDirty,
+		(isDirty) => {
+			if (!isDirty) {
+				closePendingRemoteUpdateNotification();
+			}
+		},
+		{ flush: 'sync' },
+	);
 
-		const writerStillPresent = collaborators.value.some((c) => c.user.id === currentWriterId.value);
+	function handleWriteLockHolderLeft() {
+		if (!currentWriterLock.value) return;
+
+		const writerStillPresent = collaborators.value.some(
+			(c) => c.user.id === currentWriterLock.value?.userId,
+		);
 
 		if (!writerStillPresent) {
-			currentWriterId.value = null;
+			currentWriterLock.value = null;
 		}
 	}
 
@@ -284,13 +365,16 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return;
 		}
 
-		// Fetch current write-lock state from backend to restore state after page refresh
-		const writeLockUserId = await fetchWriteLockState();
-		if (writeLockUserId) {
-			currentWriterId.value = writeLockUserId;
+		// Store the workflowId we're collaborating on
+		collaboratingWorkflowId.value = workflowsStore.workflowId;
 
-			// If current user holds the lock, restart the heartbeat
-			if (isCurrentUserWriter.value) {
+		// Fetch current write-lock state from backend to restore state after page refresh
+		const writeLock = await fetchWriteLockState();
+		if (writeLock) {
+			currentWriterLock.value = writeLock;
+
+			// If current tab holds the lock, restart the heartbeat
+			if (isCurrentTabWriter.value) {
 				startWriteLockHeartbeat();
 			} else {
 				// If someone else has the lock, start polling
@@ -301,7 +385,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		pushStoreEventListenerRemovalFn.value = pushStore.addEventListener((event) => {
 			if (
 				event.type === 'collaboratorsChanged' &&
-				event.data.workflowId === workflowsStore.workflowId
+				event.data.workflowId === collaboratingWorkflowId.value
 			) {
 				collaborators.value = event.data.collaborators;
 				handleWriteLockHolderLeft();
@@ -310,12 +394,15 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 			if (
 				event.type === 'writeAccessAcquired' &&
-				event.data.workflowId === workflowsStore.workflowId
+				event.data.workflowId === collaboratingWorkflowId.value
 			) {
-				currentWriterId.value = event.data.userId;
+				currentWriterLock.value = {
+					clientId: event.data.clientId,
+					userId: event.data.userId,
+				};
 
-				// Start heartbeat and record activity if current user acquired the lock
-				if (isCurrentUserWriter.value) {
+				// Start heartbeat and record activity if current tab acquired the lock
+				if (isCurrentTabWriter.value) {
 					recordActivity();
 					startWriteLockHeartbeat();
 					stopLockStatePolling();
@@ -328,15 +415,18 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 			if (
 				event.type === 'writeAccessReleased' &&
-				event.data.workflowId === workflowsStore.workflowId
+				event.data.workflowId === collaboratingWorkflowId.value
 			) {
-				currentWriterId.value = null;
+				currentWriterLock.value = null;
 				stopWriteLockHeartbeat();
 				stopLockStatePolling();
 				return;
 			}
 
-			if (event.type === 'workflowUpdated' && event.data.workflowId === workflowsStore.workflowId) {
+			if (
+				event.type === 'workflowUpdated' &&
+				event.data.workflowId === collaboratingWorkflowId.value
+			) {
 				void handleWorkflowUpdate();
 				return;
 			}
@@ -358,7 +448,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		stopWriteLockHeartbeat();
 		stopLockStatePolling();
 		stopInactivityCheck();
-		if (isCurrentUserWriter.value) {
+		if (isCurrentTabWriter.value) {
 			releaseWriteAccess();
 		}
 		pushStore.clearQueue();
@@ -366,15 +456,21 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		if (unloadTimeout.value) {
 			clearTimeout(unloadTimeout.value);
 		}
+		closePendingRemoteUpdateNotification();
+		collaboratingWorkflowId.value = null;
+		currentWriterLock.value = null;
+		collaborators.value = [];
 	}
 
 	return {
 		collaborators,
 		currentWriter,
+		isCurrentTabWriter,
 		isCurrentUserWriter,
 		isAnyoneWriting,
 		shouldBeReadOnly,
 		requestWriteAccess,
+		requestWriteAccessForce,
 		releaseWriteAccess,
 		recordActivity,
 		initialize,

@@ -60,6 +60,8 @@ export async function processEventStream(
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
 						// Collect tool calls for request building
+						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
+						// so the signature can be applied to each when rebuilding
 						for (const toolCall of output.tool_calls) {
 							toolCalls.push({
 								tool: toolCall.name,
@@ -70,6 +72,8 @@ export async function processEventStream(
 									output.content ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
+								// Pass additional_kwargs to ALL tool calls so signature is available
+								additionalKwargs: output.additional_kwargs as Record<string, unknown> | undefined,
 							});
 						}
 					}

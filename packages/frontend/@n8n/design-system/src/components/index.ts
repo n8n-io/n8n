@@ -1,11 +1,26 @@
 export { default as N8nActionBox } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
-export { default as N8nAskAssistantChat } from './AskAssistantChat';
+export {
+	default as N8nAskAssistantChat,
+	MessageWrapper,
+	ThinkingMessage,
+} from './AskAssistantChat';
 export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
+export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
+export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
+export type {
+	DropdownMenuProps,
+	DropdownMenuItemProps,
+	DropdownMenuSlots,
+	DropdownMenuItemSlots,
+	DropdownMenuEmits,
+	DropdownMenuTrigger,
+	DropdownMenuPlacement,
+} from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
@@ -15,16 +30,24 @@ export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
-export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
+export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nExternalLink } from './N8nExternalLink';
+export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
-export { default as N8nIcon } from './N8nIcon';
+export { default as N8nHeaderAction } from './N8nHeaderAction';
+export {
+	default as N8nIcon,
+	type IconName,
+	type NodeIconName,
+	isNodeIcon,
+	updatedIconSet,
+} from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
@@ -36,13 +59,17 @@ export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
+export { default as N8nMessageRating } from './AskAssistantChat/messages/MessageRating.vue';
 export { default as N8nMenuItem } from './N8nMenuItem';
 export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
 export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
+export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
+export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
+export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export { default as N8nPromptInput } from './N8nPromptInput';
@@ -57,6 +84,7 @@ export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
+export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
@@ -79,3 +107,5 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
+export * from './N8nDialog';
+export * from './N8nAlertDialog';

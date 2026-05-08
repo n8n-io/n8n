@@ -13,7 +13,9 @@ import {
 	IMMEDIATE_COMMANDS,
 	SELF_SEND_COMMANDS,
 	WORKER_RESPONSE_PUBSUB_CHANNEL,
+	MCP_RELAY_PUBSUB_CHANNEL,
 } from '../constants';
+import type { McpRelayMessage } from './subscriber.service';
 
 /**
  * Responsible for publishing messages into the pubsub channels used by scaling mode.
@@ -25,6 +27,8 @@ export class Publisher {
 	private readonly commandChannel: string;
 
 	private readonly workerResponseChannel: string;
+
+	private readonly mcpRelayChannel: string;
 
 	// #region Lifecycle
 
@@ -44,6 +48,7 @@ export class Publisher {
 		const prefix = this.globalConfig.redis.prefix;
 		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
 		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
+		this.mcpRelayChannel = `${prefix}:${MCP_RELAY_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}
@@ -97,15 +102,31 @@ export class Publisher {
 		this.logger.debug(`Published ${msg.response} to worker response channel`);
 	}
 
+	/** Publish an MCP relay message to route responses between main instances. */
+	async publishMcpRelay(msg: McpRelayMessage) {
+		// @TODO: Once this class is only ever used in scaling mode, remove next line.
+		if (this.executionsConfig.mode !== 'queue') return;
+
+		await this.client.publish(this.mcpRelayChannel, JSON.stringify(msg));
+
+		this.logger.debug('Published MCP relay message', {
+			sessionId: msg.sessionId,
+			messageId: msg.messageId,
+			channel: this.mcpRelayChannel,
+		});
+	}
+
 	// #endregion
 
-	// #region Utils for multi-main setup
-
-	// @TODO: The following methods are not pubsub-specific. Consider a dedicated client for multi-main setup.
+	// #region Key-value utils (used by MCP session store and legacy leader election)
 
 	async setIfNotExists(key: string, value: string, ttl: number) {
 		const result = await this.client.set(key, value, 'EX', ttl, 'NX');
 		return result === 'OK';
+	}
+
+	async set(key: string, value: string, ttl: number) {
+		await this.client.set(key, value, 'EX', ttl);
 	}
 
 	async setExpiration(key: string, ttl: number) {

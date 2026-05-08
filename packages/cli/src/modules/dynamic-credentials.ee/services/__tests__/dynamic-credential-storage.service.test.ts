@@ -41,7 +41,7 @@ describe('DynamicCredentialStorageService', () => {
 		({
 			id: 'resolver-456',
 			name: 'test-resolver',
-			type: 'stub-resolver-1.0',
+			type: 'test-resolver-1.0',
 			config: 'encrypted-config',
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -50,7 +50,7 @@ describe('DynamicCredentialStorageService', () => {
 
 	const createMockResolver = (): jest.Mocked<ICredentialResolver> => ({
 		metadata: {
-			name: 'stub-resolver-1.0',
+			name: 'test-resolver-1.0',
 			description: 'Test resolver',
 		},
 		getSecret: jest.fn(),
@@ -97,7 +97,7 @@ describe('DynamicCredentialStorageService', () => {
 		});
 
 		mockCipher = {
-			decrypt: jest.fn(),
+			decryptV2: jest.fn(),
 		} as unknown as jest.Mocked<Cipher>;
 
 		service = new DynamicCredentialStorageService(
@@ -173,7 +173,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 				mockResolver.setSecret.mockRejectedValue(new Error('Storage failed'));
 
 				await expect(
@@ -193,7 +193,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 
 				await service.storeIfNeeded(metadata, dynamicData, credentialContext, staticData);
 
@@ -271,7 +271,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({}));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
 
 				await service.storeIfNeeded(metadata, dataWithSharedFields, credentialContext);
 
@@ -293,7 +293,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({}));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
 
 				await service.storeIfNeeded(
 					metadata,
@@ -324,7 +324,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({}));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
 
 				await service.storeIfNeeded(
 					metadata,

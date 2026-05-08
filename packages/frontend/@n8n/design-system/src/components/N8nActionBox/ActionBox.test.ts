@@ -11,10 +11,10 @@ describe('N8NActionBox', () => {
 				description:
 					'Long description that you should know something is the way it is because of how it is. ',
 				buttonText: 'Do something',
-				buttonType: 'primary',
+				buttonVariant: 'solid',
 			},
 			global: {
-				stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout'],
+				stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout', 'N8nTooltip'],
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
@@ -27,10 +27,10 @@ describe('N8NActionBox', () => {
 				heading: 'Add something new',
 				description: 'Click the button to add a new item.',
 				buttonText: 'Add Item',
-				buttonType: 'primary',
+				buttonVariant: 'solid',
 			},
 			global: {
-				stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout', 'N8nIcon'],
+				stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout', 'N8nIcon', 'N8nTooltip'],
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();

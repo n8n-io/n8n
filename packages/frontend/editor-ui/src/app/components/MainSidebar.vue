@@ -3,14 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
-import {
-	ABOUT_MODAL_KEY,
-	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
-	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	VIEWS,
-	WHATS_NEW_MODAL_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-} from '@/app/constants';
+import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -26,16 +19,16 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
-import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
-import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
-import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
-import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
+import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
+import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
+import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
+import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -44,19 +37,38 @@ const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
-const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
-const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
+const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
 const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
-const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
-	useSidebarLayout();
+
+const { applyExperiment: applySidebarExpandedExperiment } = useSidebarExpandedExperiment();
+applySidebarExpandedExperiment();
+
+// RC-1: auto-expand sidebar once if not already expanded
+if (resourceCenterStore.shouldAutoExpandSidebar) {
+	if (uiStore.sidebarMenuCollapsed) {
+		uiStore.sidebarMenuCollapsed = false;
+		localStorage.setItem(LOCAL_STORAGE_SIDEBAR_WIDTH, '200');
+	}
+	resourceCenterStore.markSidebarAutoExpanded();
+}
+
+const {
+	isCollapsed,
+	isResizing,
+	sidebarWidth,
+	onResizeStart,
+	onResize,
+	onResizeEnd,
+	toggleCollapse,
+} = useSidebarLayout();
 
 const { settingsItems } = useSettingsItems();
+const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
 const basePath = ref('');
@@ -73,13 +85,7 @@ const showWhatsNewNotification = computed(
 		),
 );
 
-const isTemplatesExperimentEnabled = computed(() => {
-	return (
-		personalizedTemplatesV2Store.isFeatureEnabled() ||
-		personalizedTemplatesV3Store.isFeatureEnabled() ||
-		templatesDataQualityStore.isFeatureEnabled()
-	);
-});
+const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
@@ -90,15 +96,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
+		// Resource Center - replaces Templates when experiment is enabled
+		id: 'resource-center',
+		icon: { type: 'icon', value: 'lightbulb', color: 'primary' },
+		label: i18n.baseText('experiments.resourceCenter.sidebar'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
+		available: isResourceCenterEnabled.value,
+		route: { to: { name: VIEWS.RESOURCE_CENTER } },
 	},
 	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
@@ -106,11 +113,11 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
-		// Link to website templates, available if custom templates are not enabled
+		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
@@ -118,7 +125,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isResourceCenterEnabled.value,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -227,6 +234,7 @@ watch(isCollapsed, () => {
 
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
+	if (isAiGatewayEnabled.value) void fetchWallet();
 
 	void nextTick(() => {
 		checkOverflow();
@@ -277,27 +285,10 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
-		case 'templates':
-			if (templatesDataQualityStore.isFeatureEnabled()) {
-				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			} else if (personalizedTemplatesV3Store.isFeatureEnabled()) {
-				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();
-				uiStore.openModalWithData({
-					name: EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-					data: {},
-				});
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			} else if (personalizedTemplatesV2Store.isFeatureEnabled()) {
-				uiStore.openModalWithData({
-					name: EXPERIMENT_TEMPLATE_RECO_V2_KEY,
-					data: {},
-				});
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			} else if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			}
+		case 'resource-center': {
+			resourceCenterStore.markResourceCenterTooltipDismissed();
 			break;
+		}
 		case 'about': {
 			trackHelpItemClick('about');
 			uiStore.openModal(ABOUT_MODAL_KEY);
@@ -314,6 +305,9 @@ const handleSelect = (key: string) => {
 			trackHelpItemClick(key);
 			break;
 		}
+		case 'templates':
+			trackTemplatesClick(TemplateClickSource.sidebarButton);
+			break;
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 			break;
@@ -352,9 +346,10 @@ useKeybindings({
 		:class="{
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
+			[$style.sideMenuResizing]: isResizing,
 		}"
 		:width="sidebarWidth"
-		:style="{ width: `${sidebarWidth}px` }"
+		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
 		:min-width="200"
 		:max-width="500"
@@ -389,8 +384,7 @@ useKeybindings({
 			@select="handleSelect"
 		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<MainSidebarTrialUpgrade />
-		<TemplateTooltip />
+		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 
@@ -402,10 +396,16 @@ useKeybindings({
 	flex-direction: column;
 	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
+	transition: width var(--duration--snappy) var(--easing--ease-out);
+	will-change: width;
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
 		min-width: auto;
+	}
+
+	&.sideMenuResizing {
+		transition: none;
 	}
 }
 

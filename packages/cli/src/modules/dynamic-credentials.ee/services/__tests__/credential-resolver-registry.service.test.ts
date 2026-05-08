@@ -84,7 +84,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 			it('should register multiple resolvers', async () => {
 				const resolver1 = createMockResolver('oauth.resolver');
-				const resolver2 = createMockResolver('stub.resolver');
+				const resolver2 = createMockResolver('test.resolver');
 				const resolver3 = createMockResolver('api.resolver');
 
 				const MockClass1 = jest.fn(() => resolver1) as unknown as CredentialResolverClass;
@@ -92,7 +92,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 				const MockClass3 = jest.fn(() => resolver3) as unknown as CredentialResolverClass;
 
 				Object.defineProperty(MockClass1, 'name', { value: 'OAuthResolver' });
-				Object.defineProperty(MockClass2, 'name', { value: 'StubResolver' });
+				Object.defineProperty(MockClass2, 'name', { value: 'TestResolver' });
 				Object.defineProperty(MockClass3, 'name', { value: 'ApiResolver' });
 
 				mockMetadata.getClasses.mockReturnValue([MockClass1, MockClass2, MockClass3]);
@@ -107,7 +107,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 				expect(mockLogger.debug).toHaveBeenCalledWith('Registering 3 credential resolvers.');
 				expect(registry.getAllResolvers()).toHaveLength(3);
 				expect(registry.getResolverByTypename('oauth.resolver')).toBe(resolver1);
-				expect(registry.getResolverByTypename('stub.resolver')).toBe(resolver2);
+				expect(registry.getResolverByTypename('test.resolver')).toBe(resolver2);
 				expect(registry.getResolverByTypename('api.resolver')).toBe(resolver3);
 			});
 

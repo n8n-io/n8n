@@ -164,7 +164,9 @@ describe('Expression Parser', () => {
 );`);
 		});
 
-		expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		test('Optional chaining with undefined argument', () => {
+			expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		});
 	});
 
 	describe('Non dot extensions', () => {
@@ -196,6 +198,31 @@ describe('Expression Parser', () => {
 				test2: 2,
 				test3: 3,
 			});
+		});
+
+		test('zip should reject non-array keys', () => {
+			expect(() =>
+				evaluate(
+					'={{ (function(){ obj = { length: 1, reduce: (fn) => fn({}, "a", "constructor") }; return zip(obj, Object); })() }}',
+				),
+			).toThrow('keys and values must be arrays');
+		});
+
+		test('zip should reject non-array values', () => {
+			expect(() =>
+				evaluate(
+					'={{ (function(){ arr = ["a"]; arr.reduce = (fn) => fn({}, "a", "constructor"); return zip(arr, Object); })() }}',
+				),
+			).toThrow('keys and values must be arrays');
+		});
+
+		test('zip should ignore overridden reduce on array instances', () => {
+			// Even if an attacker overrides .reduce on an array, we use Array.prototype.reduce
+			expect(
+				evaluate(
+					'={{ (function(){ keys = ["a"]; keys.reduce = () => "not a"; return zip(keys, [1]); })() }}',
+				),
+			).toEqual({ a: 1 });
 		});
 
 		test('$if', () => {

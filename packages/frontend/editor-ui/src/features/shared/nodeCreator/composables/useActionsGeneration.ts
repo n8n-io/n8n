@@ -308,12 +308,15 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 export function useActionsGenerator() {
 	function generateNodeActions(node: INodeTypeDescription | undefined) {
-		if (!node) return [];
+		if (!node) {
+			return [];
+		}
 		if (
 			node.codex?.subcategories?.AI?.includes(AI_CATEGORY_TOOLS) &&
 			!node.codex?.subcategories?.AI?.includes(AI_CATEGORY_ROOT_NODES)
-		)
+		) {
 			return [];
+		}
 		return [
 			...triggersCategory(node),
 			...operationsCategory(node),

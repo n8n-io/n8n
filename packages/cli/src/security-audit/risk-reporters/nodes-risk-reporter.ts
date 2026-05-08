@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import glob from 'fast-glob';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
 
@@ -111,7 +112,7 @@ export class NodesRiskReporter implements RiskReporter {
 				const [fileName] = path.parse(nodeFile).name.split('.');
 				customNodeTypes.push({
 					kind: 'custom',
-					nodeType: ['CUSTOM', fileName].join('.'),
+					nodeType: [CUSTOM_NODES_PACKAGE_NAME, fileName].join('.'),
 					filePath: nodeFile,
 				});
 			}

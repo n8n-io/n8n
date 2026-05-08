@@ -32,10 +32,9 @@ const emit = defineEmits<{
 const style = useCssModule();
 
 const classes = computed(() => [
-	'canvas-handle-plus-wrapper',
-	style.wrapper,
+	'canvas-handle-plus',
+	style.container,
 	style[props.position],
-	style[props.type],
 	props.handleClasses,
 ]);
 
@@ -55,7 +54,7 @@ const viewBox = computed(() => {
 	}
 });
 
-const styles = computed(() => ({
+const svgStyles = computed(() => ({
 	width: `${viewBox.value.width}px`,
 	height: `${viewBox.value.height}px`,
 	'--canvas-handle-plus-line--color--lightness--light': lineLightness.value.light,
@@ -106,50 +105,70 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-	<svg
-		data-test-id="canvas-handle-plus-wrapper"
-		:class="classes"
-		:viewBox="`0 0 ${viewBox.width} ${viewBox.height}`"
-		:style="styles"
-	>
-		<line
-			:class="[handleClasses, $style.line]"
-			:x1="linePosition[0][0]"
-			:y1="linePosition[0][1]"
-			:x2="linePosition[1][0]"
-			:y2="linePosition[1][1]"
-			stroke-width="2"
-		/>
-		<g
-			data-test-id="canvas-handle-plus"
-			:class="[$style.plus, handleClasses, 'clickable']"
-			:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
-			@click.stop="onClick"
+	<div :class="classes" data-test-id="canvas-handle-plus-wrapper">
+		<svg
+			:class="[$style.wrapper, $style[position], $style[type]]"
+			:style="svgStyles"
+			:viewBox="`0 0 ${viewBox.width} ${viewBox.height}`"
 		>
-			<rect
-				:class="[handleClasses, 'clickable']"
-				x="2"
-				y="2"
-				width="20"
-				height="20"
-				stroke="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
+			<line
+				:class="[handleClasses, $style.line]"
+				:x1="linePosition[0][0]"
+				:y1="linePosition[0][1]"
+				:x2="linePosition[1][0]"
+				:y2="linePosition[1][1]"
 				stroke-width="2"
-				rx="4"
-				fill="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
 			/>
-			<path
-				stroke="currentColor"
-				stroke-width="1.5"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				d="M8 12h8m-4-4v8"
-				class="source clickable"
-			/>
-		</g>
-	</svg>
+			<g
+				data-test-id="canvas-handle-plus"
+				:class="[$style.plus, handleClasses, 'clickable']"
+				:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
+				@click.stop="onClick"
+			>
+				<rect
+					:class="[handleClasses, 'clickable']"
+					x="2"
+					y="2"
+					width="20"
+					height="20"
+					stroke="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
+					stroke-width="2"
+					rx="4"
+					fill="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
+				/>
+				<path
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M8 12h8m-4-4v8"
+					class="source clickable"
+				/>
+			</g>
+		</svg>
+	</div>
 </template>
 
 <style lang="scss" module>
+.container {
+	position: relative;
+
+	// Creates an invisible barrier around the handle from to prevent edge hover states (like the delete icon from nearby edges)
+	// from coming to the forefront when the user moves their mouse over the plus button.
+	// Only needed for bottom position (e.g. Ai Agent Node Output).
+	&.bottom::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 200%;
+		height: 120%;
+		pointer-events: auto;
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		transform: translate(-50%, -50%) scale(var(--canvas-zoom-compensation-factor, 1));
+	}
+}
+
 .wrapper {
 	position: relative;
 	/* stylelint-disable-next-line @n8n/css-var-naming */

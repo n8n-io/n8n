@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-comlink/client" />
+/// <reference types="wa-sqlite/src/types" />
 
 import 'vue-router';
 import type { VNode, ComponentPublicInstance } from 'vue';
@@ -112,7 +113,7 @@ declare module 'vue-router' {
 		scrollOffset?: number;
 		setScrollPosition?: (position: number) => void;
 		readOnlyCanvas?: boolean;
-		layout?: 'default' | 'auth' | 'workflow' | 'settings' | 'demo' | 'chat';
+		layout?: 'default' | 'auth' | 'workflow' | 'settings' | 'demo' | 'chat' | 'instanceAi';
 		layoutProps?: Record<string, unknown>;
 	}
 }

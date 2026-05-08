@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
@@ -60,7 +60,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: createParamValue(props.value),
 });
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
@@ -118,12 +118,13 @@ function addAssignment(): void {
 	});
 }
 
-function dropAssignment(expression: string): void {
+async function dropAssignment(expression: string): Promise<void> {
+	const type = props.defaultType ?? (await typeFromExpression(expression));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: props.defaultType ?? typeFromExpression(expression),
+		type,
 	});
 }
 

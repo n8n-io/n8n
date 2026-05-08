@@ -6,19 +6,25 @@
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .skeletonItem {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--3xs);
-	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	gap: var(--spacing--2xs);
 	border-radius: var(--spacing--4xs);
 	height: 30px;
 }
 
 .skeletonAvatar,
 .skeletonText {
+	--animation--skeleton-pulse--duration: 1s;
+	--animation--skeleton-pulse--opacity-start: 0.6;
+	--animation--skeleton-pulse--opacity-end: 0.3;
+
 	background: var(--color--foreground);
-	animation: skeleton-pulse 1s ease-in-out infinite;
+	@include motion.skeleton-pulse;
 }
 
 .skeletonAvatar {
@@ -32,15 +38,5 @@
 	height: 14px;
 	width: 80%;
 	border-radius: var(--radius--sm);
-}
-
-@keyframes skeleton-pulse {
-	0%,
-	100% {
-		opacity: 0.6;
-	}
-	50% {
-		opacity: 0.3;
-	}
 }
 </style>

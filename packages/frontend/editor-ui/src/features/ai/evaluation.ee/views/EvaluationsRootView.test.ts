@@ -27,12 +27,6 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useCanvasOperations', () => ({
-	useCanvasOperations: () => ({
-		initializeWorkspace: vi.fn(),
-	}),
-}));
-
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
@@ -53,6 +47,11 @@ const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
@@ -108,42 +107,29 @@ describe('EvaluationsRootView', () => {
 		});
 	});
 
-	it('should initialize workflow on mount if not already initialized', async () => {
+	it('should not fetch workflow since WorkflowLayout handles initialization', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const usageStore = mockedStore(useUsageStore);
 		const evaluationStore = mockedStore(useEvaluationStore);
 
-		// Set workflow id to empty to simulate uninitialized state
-		workflowsStore.workflow = { ...mockWorkflow, id: '' };
-		const newWorkflowId = 'workflow123';
-
-		// Mock the async operations that run before fetchWorkflow
+		workflowsStore.workflow = mockWorkflow;
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
-		workflowsStore.isWorkflowSaved = { workflow123: true };
 
-		renderComponent({ props: { name: newWorkflowId } });
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
 
-		// Wait for async operation to complete
 		await flushPromises();
-		await waitFor(() => expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId));
-	});
 
-	it('should not initialize workflow if already loaded', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflow = mockWorkflow;
-
-		renderComponent({ props: { name: mockWorkflow.id } });
-
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		// Verify that evaluation-specific data is loaded
+		expect(usageStore.getLicenseInfo).toHaveBeenCalled();
+		expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id);
 	});
 
 	it('should load test data', async () => {
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.fetchTestRuns.mockResolvedValue(mockTestRuns);
 
-		renderComponent({ props: { name: mockWorkflow.id } });
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await waitFor(() =>
 			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id),
@@ -151,12 +137,10 @@ describe('EvaluationsRootView', () => {
 	});
 
 	it('should not render setup wizard when there are test runs', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.testRunsById = { foo: mock<TestRunRecord>({ workflowId: mockWorkflow.id }) };
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		// Check that setupContent is not present
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeFalsy());
@@ -168,12 +152,11 @@ describe('EvaluationsRootView', () => {
 		const evaluationStore = mockedStore(useEvaluationStore);
 
 		workflowsStore.workflow = mockWorkflow;
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await flushPromises();
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeTruthy());
@@ -186,13 +169,12 @@ describe('EvaluationsRootView', () => {
 		const sourceControlStore = mockedStore(useSourceControlStore);
 
 		workflowsStore.workflow = mockWorkflow;
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};
 		sourceControlStore.preferences = mock<SourceControlPreferences>({ branchReadOnly: true });
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await flushPromises();
 		await waitFor(() => {
@@ -216,7 +198,7 @@ describe('EvaluationsRootView', () => {
 			// Mock no evaluation nodes in workflow
 			getNodeType.mockReturnValue(null);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -244,7 +226,7 @@ describe('EvaluationsRootView', () => {
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 1;
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -277,6 +259,9 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithTrigger;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			// and the document store's setNodes is a no-op
+			evaluationStore.evaluationTriggerExists = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -287,7 +272,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -329,6 +314,8 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithOutputNode;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			evaluationStore.evaluationSetOutputsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -339,7 +326,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -381,6 +368,8 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithMetricsNode;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			evaluationStore.evaluationSetMetricsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -391,7 +380,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -419,7 +408,7 @@ describe('EvaluationsRootView', () => {
 			// Mock no evaluation nodes in workflow
 			getNodeType.mockReturnValue(null);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {

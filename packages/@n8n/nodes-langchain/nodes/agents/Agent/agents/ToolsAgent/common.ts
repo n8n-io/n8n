@@ -7,11 +7,12 @@ import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calli
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance, getConnectedTools } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 /* -----------------------------------------------------------
@@ -339,7 +340,7 @@ export const getAgentStepsParser =
  * @returns The validated chat model
  */
 export async function getChatModel(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 	index: number = 0,
 ): Promise<BaseChatModel | undefined> {
 	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
@@ -373,7 +374,7 @@ export async function getChatModel(
  * @returns The connected memory (if any)
  */
 export async function getOptionalMemory(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 ): Promise<BaseChatMemory | undefined> {
 	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
@@ -389,7 +390,7 @@ export async function getOptionalMemory(
  * @returns The array of connected tools
  */
 export async function getTools(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 	outputParser?: N8nOutputParser,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
 	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;

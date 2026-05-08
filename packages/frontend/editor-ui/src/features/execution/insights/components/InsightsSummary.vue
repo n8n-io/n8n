@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
@@ -9,15 +8,13 @@ import {
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
 import type { InsightsSummary } from '@n8n/api-types';
-import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, onMounted, ref, useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
-
-const INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY = 'n8n-insights-queue-mode-warning-dismissed';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -30,26 +27,8 @@ const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
 const telemetry = useTelemetry();
-const settingsStore = useSettingsStore();
 
 const timeRangeLabels = getTimeRangeLabels();
-
-// Queue mode warning dismissal state
-const isQueueModeWarningDismissed = ref(false);
-
-onMounted(() => {
-	isQueueModeWarningDismissed.value =
-		localStorage.getItem(INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY) === 'true';
-});
-
-const dismissQueueModeWarning = () => {
-	localStorage.setItem(INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY, 'true');
-	isQueueModeWarningDismissed.value = true;
-};
-
-const shouldShowQueueModeWarning = computed(() => {
-	return settingsStore.isQueueModeEnabled && !isQueueModeWarningDismissed.value;
-});
 
 const displayDateRangeLabel = computed(() => {
 	const timeRangeKey = getMatchingPreset({
@@ -107,38 +86,6 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 
 <template>
 	<div :class="$style.insightsWrapper">
-		<N8nCallout
-			v-if="shouldShowQueueModeWarning"
-			:class="$style.queueModeWarning"
-			theme="warning"
-			data-test-id="insights-queue-mode-warning"
-			round-corners
-		>
-			<N8nText color="text-base" size="small">
-				{{ i18n.baseText('insights.banner.queueMode.warning') }}
-				<N8nLink
-					size="small"
-					:href="i18n.baseText('insights.banner.queueMode.warning.link.url')"
-					new-window
-					theme="text"
-					:underline="false"
-				>
-					<span :class="$style.underlined">
-						{{ i18n.baseText('insights.banner.queueMode.warning.link.text') }}
-					</span>
-					↗
-				</N8nLink>
-			</N8nText>
-			<template #trailingContent>
-				<N8nIcon
-					icon="x"
-					:title="i18n.baseText('generic.dismiss')"
-					class="clickable"
-					data-test-id="insights-queue-mode-warning-close"
-					@click="dismissQueueModeWarning"
-				/>
-			</template>
-		</N8nCallout>
 		<div :class="$style.insights">
 			<ul data-test-id="insights-summary-tabs">
 				<li
@@ -239,7 +186,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
-		border: var(--border-width) var(--border-style) var(--color--foreground);
+		border: var(--border);
 		border-radius: 6px;
 		list-style: none;
 		overflow-x: auto;
@@ -249,10 +196,16 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			justify-content: stretch;
 			align-items: stretch;
 			flex: 1 0;
-			border-left: var(--border-width) var(--border-style) var(--color--foreground);
+			border-left: var(--border);
 
 			&:first-child {
 				border-left: 0;
+			}
+
+			> span {
+				display: flex;
+				width: 100%;
+				height: 100%;
 			}
 		}
 
@@ -263,11 +216,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			width: 100%;
 			height: 100%;
 			padding: var(--spacing--3xs) var(--spacing--lg) 0;
+			background-color: var(--background--surface);
 			border-bottom: 3px solid transparent;
 
 			&:hover {
-				background-color: var(--color--background--light-3);
-				transition: background-color 0.3s;
+				background-color: var(--background-hover);
 			}
 
 			&.activeTab {

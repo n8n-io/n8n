@@ -1,9 +1,10 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
@@ -15,11 +16,16 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import type { ExecutionStatus, INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
@@ -63,6 +69,7 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 
 describe('RunData', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowDocumentStore: MockedStore<() => ReturnType<typeof useWorkflowDocumentStore>>;
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
 	let ndvStore: MockedStore<typeof useNDVStore>;
@@ -1006,6 +1013,83 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('hasRunError behavior', () => {
+		it('should not show error view in input panel even when workflow run has error', async () => {
+			// This test verifies that hasRunError is false for input panels.
+			// Without the !isPaneTypeInput check, the input panel would incorrectly
+			// show the NodeErrorView instead of normal data/schema.
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: { test: 'data' } }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error message',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+			});
+
+			// The error view should NOT be shown in input panel
+			// If hasRunError incorrectly returns true for input panels,
+			// NodeErrorView would be rendered instead of the schema
+			expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+
+			// Schema view should be shown instead
+			await waitFor(() => {
+				expect(getByTestId('run-data-schema-node')).toBeInTheDocument();
+			});
+		});
+
+		it('should show error view in output panel when workflow run has error', async () => {
+			// This test verifies that hasRunError is true for output panels with errors.
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: { test: 'data' } }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error message',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+			});
+
+			// The error view SHOULD be shown in output panel
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('schema view with mixed execution states', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1104,6 +1188,176 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('redacted execution state', () => {
+		it('should render data-redacted slot when execution is redacted and node has run', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			expect(queryByTestId('data-redacted-slot')).toBeInTheDocument();
+		});
+
+		it('should NOT render data-redacted slot when execution is not redacted', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: { name: 'Test' } }],
+				displayMode: 'table',
+			});
+
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+		});
+
+		it('should show pinned data instead of redacted state when data is pinned', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				pinnedData: [{ json: { name: 'Pinned' } }],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Pinned data takes priority — redacted slot should NOT render
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+		});
+
+		it('should render data-redacted slot with dynamic_credentials reason', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'dynamic_credentials', canReveal: false },
+			});
+
+			expect(queryByTestId('data-redacted-slot')).toBeInTheDocument();
+		});
+
+		it('should hide edit button when execution is redacted', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			expect(queryByTestId('ndv-edit-pinned-data')).not.toBeInTheDocument();
+		});
+
+		it('should show error view instead of redacted state when node has run error', () => {
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Error takes priority over redacted state
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+			expect(getByTestId('node-error-view')).toBeInTheDocument();
+		});
+
+		it('should show redacted error state when redactedError is present but error is absent', () => {
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+						source: [null],
+						redactedError: { type: 'NodeApiError', httpCode: '500' },
+					},
+				],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Redacted error shows error state, not generic redacted state
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+			expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-redacted-error')).toBeInTheDocument();
+		});
+	});
+
+	describe('trimmed execution data placeholder', () => {
+		const trimmedRun = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
+			data: {
+				main: [
+					[
+						{
+							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+							pairedItem: { item: 0 },
+						},
+					],
+				],
+			},
+			source: [null],
+		} as unknown as ITaskData;
+
+		it('shows the loading spinner for trimmed data while the workflow execution is still running', () => {
+			const { getByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'running',
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state with an unpin button for trimmed pinned data after the workflow execution finished', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				pinnedData: [
+					{
+						json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+						pairedItem: { item: 0 },
+					},
+				],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted-unpin')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state without an unpin button when the trimmed marker is on a different node', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1127,6 +1381,8 @@ describe('RunData', () => {
 		runs,
 		overrideOutputs,
 		lastSuccessfulExecution,
+		redactionInfo,
+		executionStatus,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1137,6 +1393,8 @@ describe('RunData', () => {
 		metadata?: ITaskMetadata;
 		runs?: ITaskData[];
 		overrideOutputs?: number[];
+		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
+		executionStatus?: ExecutionStatus;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1164,7 +1422,7 @@ describe('RunData', () => {
 			stubActions: false,
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
-				[STORES.NDV]: {
+				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -1176,6 +1434,7 @@ describe('RunData', () => {
 						finished: true,
 						mode: 'trigger',
 						startedAt: new Date(),
+						...(executionStatus ? { status: executionStatus } : {}),
 						workflowData: {
 							id: '1',
 							name: 'Test Workflow',
@@ -1192,6 +1451,7 @@ describe('RunData', () => {
 									'Test Node': runs ?? [defaultRun],
 								},
 							},
+							...(redactionInfo ? { redactionInfo } : {}),
 						},
 					},
 					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
@@ -1207,14 +1467,18 @@ describe('RunData', () => {
 		ndvStore = mockedStore(useNDVStore);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);
+		const testWorkflowId = workflowId ?? 'test-workflow';
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
+		workflowsStore.workflow.id = testWorkflowId;
+
 		if (pinnedData) {
-			workflowsStore.pinDataByNodeName.mockReturnValue(pinnedData);
+			workflowDocumentStore.pinNodeData('Test Node', pinnedData);
 		}
 
 		schemaPreviewStore.getSchemaPreview = vi.fn().mockResolvedValue({});
@@ -1231,8 +1495,12 @@ describe('RunData', () => {
 				displayMode,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => workflowId ?? 'test-workflow'),
+				},
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },
 					VirtualSchema: {
 						template: `
 							<div data-test-id="run-data-schema-node" :preview-execution="previewExecution">
@@ -1279,6 +1547,10 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
+			},
+			slots: {
+				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',
+				'redacted-error': '<div data-test-id="redacted-error-slot">Error data is redacted</div>',
 			},
 			pinia,
 		});

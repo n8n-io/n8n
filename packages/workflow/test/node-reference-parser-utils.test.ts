@@ -126,10 +126,50 @@ describe('NodeReferenceParserUtils', () => {
 				expected: 'someRandomExpression("oldName")',
 			},
 			{
-				expression: '$("old\\"Name")',
-				previousName: 'old\\"Name',
+				expression: '$("someone\'s node")',
+				previousName: "someone's node",
+				newName: 'other node',
+				expected: '$("other node")',
+			},
+			{
+				expression: '$(\'some "node"\')',
+				previousName: 'some "node"',
+				newName: 'other node',
+				expected: "$('other node')",
+			},
+			{
+				expression: '$("test\\\\some")',
+				previousName: 'test\\some',
+				newName: 'other node',
+				expected: '$("other node")',
+			},
+			{
+				expression: '$("old name")',
+				previousName: 'old name',
+				newName: 'new "name"',
+				expected: '$("new \\"name\\"")',
+			},
+			{
+				expression: '$("old name")',
+				previousName: 'old name',
+				newName: "new 'name'",
+				expected: '$("new \\\'name\\\'")',
+			},
+			{
+				expression: '$("test some")',
+				previousName: 'test some',
+				newName: 'other\\node',
+				expected: '$("other\\\\node")',
+			},
+			{
+				// $("old\"Na\\me\'") -> old"Na\me'
+				expression: '$("old\\"Na\\\\me\\\'")',
+				// old"Na\me'
+				previousName: 'old"Na\\me\'',
+				// n\'ew\"Name
 				newName: 'n\\\'ew\\"Name',
-				expected: '$("n\\\'ew\\"Name")',
+				// $("n\\\'ew\\\"Name") -> n\'ew\"Name
+				expected: '$("n\\\\\\\'ew\\\\\\"Name")',
 			},
 		])(
 			'should correctly transform expression "$expression" with previousName "$previousName" and newName "$newName"',

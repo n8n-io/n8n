@@ -5,8 +5,16 @@ import { usePinnedData } from '@/app/composables/usePinnedData';
 import type { INodeUi } from '@/Interface';
 import { HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, MAX_PINNED_DATA_SIZE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	STICKY_NODE_TYPE,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
@@ -26,6 +34,7 @@ const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		getAllNodeTypes: vi.fn().mockReturnValue([]),
 	})),
 }));
 
@@ -81,18 +90,49 @@ describe('usePinnedData', () => {
 
 		it('should set data correctly for valid inputs', () => {
 			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toEqual(testData);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
+		});
+
+		it('should throw and not pin data when input contains the trimmed-execution-data marker', () => {
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
+			const telemetry = useTelemetry();
+			const trackSpy = vi.spyOn(telemetry, 'track');
+			const node = ref({ name: 'testNode' } as INodeUi);
+			const { setData } = usePinnedData(node);
+			const trimmedData = [
+				{
+					json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+					pairedItem: { item: 0 },
+				},
+			];
+
+			expect(() => setData(trimmedData, 'pin-icon-click')).toThrow();
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
+			expect(trackSpy).toHaveBeenCalledWith(
+				'Ndv data pinning failure',
+				expect.objectContaining({ error_type: 'trimmed-data' }),
+			);
 		});
 	});
 
 	describe('unsetData()', () => {
 		it('should unset data correctly', () => {
 			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData, unsetData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
@@ -100,7 +140,10 @@ describe('usePinnedData', () => {
 			setData(testData, 'pin-icon-click');
 			unsetData('context-menu');
 
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toBeUndefined();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
 		});
 	});
 
@@ -166,6 +209,11 @@ describe('usePinnedData', () => {
 	});
 
 	describe('canPinData()', () => {
+		beforeEach(() => {
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
+		});
+
 		afterEach(() => {
 			vi.clearAllMocks();
 		});

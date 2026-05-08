@@ -4,6 +4,7 @@ import type { IDataObject, INodeExecutionData, SSHCredentials } from 'n8n-workfl
 export type Mysql2Connection = mysql2.Connection;
 export type Mysql2Pool = mysql2.Pool;
 export type Mysql2OkPacket = mysql2.OkPacket;
+export type Mysql2PoolConnection = mysql2.PoolConnection;
 
 export type QueryValues = Array<string | number | IDataObject>;
 export type QueryWithValues = { query: string; values: QueryValues };

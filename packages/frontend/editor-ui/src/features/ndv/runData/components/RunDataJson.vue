@@ -7,7 +7,7 @@ import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { isString } from '@/app/utils/typeGuards';
 import { shorten } from '@/app/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
@@ -16,6 +16,7 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/features/ndv/runData/components/RunDataJsonActions.vue'),
@@ -42,7 +43,8 @@ const props = withDefaults(
 	},
 );
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -73,6 +75,7 @@ const getJsonParameterPath = (path: string) => {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: subPath,
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 };
 

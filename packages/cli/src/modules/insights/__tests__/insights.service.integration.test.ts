@@ -8,25 +8,18 @@ import {
 } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
-import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError, type IRun } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import {
-	createCompactedInsightsEvent,
-	createMetadata,
-	createRawInsightsEvents,
-} from '../database/entities/__tests__/db-utils';
-import type { InsightsRaw } from '../database/entities/insights-raw';
+import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
-import { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
-import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
@@ -92,22 +85,15 @@ describe('InsightsService (Integration)', () => {
 			shutdownSpy.mockRestore();
 		});
 
-		const setupMocks = (
-			instanceType: InstanceType,
-			isLeader: boolean = false,
-			isPruningEnabled: boolean = false,
-		) => {
+		const setupMocks = (instanceType: InstanceType, isLeader: boolean = false) => {
 			(instanceSettings as any).instanceType = instanceType;
 			Object.defineProperty(instanceSettings, 'isLeader', {
 				get: jest.fn(() => isLeader),
 			});
-			Object.defineProperty(pruningService, 'isPruningEnabled', {
-				get: jest.fn(() => isPruningEnabled),
-			});
 		};
 
 		test('starts flushing timer for main instance', async () => {
-			setupMocks('main', false, false);
+			setupMocks('main', false);
 
 			await insightsService.init();
 
@@ -116,18 +102,8 @@ describe('InsightsService (Integration)', () => {
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction and flushing timers for main leader instances', async () => {
-			setupMocks('main', true, false);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-		});
-
-		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', async () => {
-			setupMocks('main', true, true);
+		test('starts compaction, flushing and pruning timers for main leader instances', async () => {
+			setupMocks('main', true);
 
 			await insightsService.init();
 
@@ -137,7 +113,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('starts only collection flushing timer for webhook instance', async () => {
-			setupMocks('webhook', false, false);
+			setupMocks('webhook', false);
 
 			await insightsService.init();
 
@@ -147,7 +123,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('do no start any timers for non-main instances', async () => {
-			setupMocks('worker', false, false);
+			setupMocks('worker', false);
 
 			await insightsService.init();
 
@@ -426,7 +402,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 			const endDate = now.minus({ days: 1 }).toJSDate();
 
 			// ACT
@@ -493,7 +469,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
@@ -520,7 +496,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
@@ -592,7 +568,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
@@ -690,7 +666,7 @@ describe('InsightsService (Integration)', () => {
 				periodStart: now.minus({ days: 30 }),
 			});
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
@@ -753,7 +729,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
@@ -831,7 +807,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
@@ -911,7 +887,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
@@ -1107,76 +1083,6 @@ describe('InsightsService (Integration)', () => {
 			expect(shutdownSpy).toHaveBeenCalled();
 			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		});
-	});
-
-	describe('legacy sqlite (without pooling) handles concurrent insights db process without throwing', () => {
-		let initialFlushBatchSize: number;
-		let insightsConfig: InsightsConfig;
-		beforeAll(() => {
-			insightsConfig = Container.get(InsightsConfig);
-			initialFlushBatchSize = insightsConfig.flushBatchSize;
-
-			insightsConfig.flushBatchSize = 50;
-		});
-
-		afterAll(() => {
-			insightsConfig.flushBatchSize = initialFlushBatchSize;
-		});
-
-		test('should handle concurrent flush and compaction without error', async () => {
-			const insightsCollectionService = Container.get(InsightsCollectionService);
-			const insightsCompactionService = Container.get(InsightsCompactionService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			await createMetadata(workflow);
-
-			const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
-			const startedAt = DateTime.utc();
-			const stoppedAt = startedAt.plus({ seconds: 5 });
-			ctx.runData = mock<IRun>({
-				mode: 'webhook',
-				status: 'success',
-				startedAt: startedAt.toJSDate(),
-				stoppedAt: stoppedAt.toJSDate(),
-			});
-
-			// Create test data
-			const rawInsights = [];
-			for (let i = 0; i < 100; i++) {
-				rawInsights.push({
-					type: 'success' as InsightsRaw['type'],
-					value: 1,
-					periodUnit: 'hour',
-					periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
-				});
-			}
-			// Create raw insights events to be compacted
-			await createRawInsightsEvents(workflow, rawInsights);
-
-			//
-			for (let i = 0; i < 100; i++) {
-				await createCompactedInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					periodUnit: 'hour',
-					periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
-				});
-			}
-
-			for (let i = 0; i < 100; i++) {
-				await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-			}
-
-			// ACT
-			const promises = [
-				insightsCollectionService.flushEvents(),
-				insightsCollectionService.flushEvents(),
-				insightsCompactionService.compactRawToHour(),
-				insightsCompactionService.compactHourToDay(),
-			];
-			await expect(Promise.all(promises)).resolves.toBeDefined();
 		});
 	});
 });

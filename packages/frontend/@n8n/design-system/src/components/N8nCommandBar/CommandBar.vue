@@ -7,6 +7,7 @@ import type { CommandBarItem } from './types';
 import N8nBadge from '../N8nBadge';
 import N8nLoading from '../N8nLoading/Loading.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import N8nSpinner from '../N8nSpinner';
 
 interface CommandBarProps {
 	placeholder?: string;
@@ -29,7 +30,8 @@ const emit = defineEmits<{
 	navigateTo: [parentId: string | null];
 }>();
 
-const NUM_LOADING_ITEMS = 8;
+const NUM_LOADING_ITEMS_FULL = 8;
+const NUM_LOADING_ITEMS_PARTIAL = 3;
 
 const isOpen = ref(false);
 const inputRef = ref<HTMLInputElement>();
@@ -50,7 +52,6 @@ const currentPlaceholder = computed(() => {
 });
 
 const commandBarRef = ref<HTMLElement>();
-const itemsListRef = ref<HTMLElement>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
 const filteredItems = computed(() => {
@@ -116,6 +117,10 @@ const flattenedItems = computed(() => {
 	});
 
 	return result;
+});
+
+const numLoadingItems = computed(() => {
+	return flattenedItems.value.length > 0 ? NUM_LOADING_ITEMS_PARTIAL : NUM_LOADING_ITEMS_FULL;
 });
 
 const getGlobalIndex = (item: CommandBarItem): number => {
@@ -282,26 +287,31 @@ onUnmounted(() => {
 					<div v-if="context" :class="$style.contextContainer">
 						<N8nBadge size="small">{{ context }}</N8nBadge>
 					</div>
-					<input
-						ref="inputRef"
-						v-model="inputValue"
-						:placeholder="currentPlaceholder"
-						:class="$style.input"
-						type="text"
-					/>
-					<div v-if="isLoading" :class="$style.loadingContainer">
-						<div v-for="i in NUM_LOADING_ITEMS" :key="i" :class="$style.loadingItem">
-							<N8nLoading variant="custom" :class="$style.loading" />
+					<div :class="$style.inputWrapper">
+						<input
+							ref="inputRef"
+							v-model="inputValue"
+							:placeholder="currentPlaceholder"
+							:class="$style.input"
+							type="text"
+						/>
+						<div
+							v-if="isLoading"
+							:class="$style.inputSpinner"
+							data-test-id="command-bar-input-spinner"
+							aria-hidden="true"
+						>
+							<N8nSpinner size="medium" />
 						</div>
 					</div>
 					<N8nScrollArea
-						v-else-if="flattenedItems.length > 0"
+						v-if="flattenedItems.length > 0 || isLoading"
 						ref="scrollAreaRef"
 						max-height="350px"
 						:class="$style.scrollArea"
 						data-test-id="command-bar-items-list"
 					>
-						<div ref="itemsListRef" :class="$style.itemsList">
+						<div :class="$style.itemsList">
 							<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
 								<div v-for="item in groupedItems.ungrouped" :key="item.id">
 									<N8nCommandBarItem
@@ -322,6 +332,15 @@ onUnmounted(() => {
 									/>
 								</div>
 							</template>
+
+							<div
+								v-if="isLoading"
+								:class="[$style.loadingSection, { [$style.hasItems]: flattenedItems.length > 0 }]"
+							>
+								<div v-for="i in numLoadingItems" :key="i" :class="$style.loadingItem">
+									<N8nLoading variant="custom" :class="$style.loading" />
+								</div>
+							</div>
 						</div>
 					</N8nScrollArea>
 					<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
@@ -348,6 +367,10 @@ onUnmounted(() => {
 	max-width: 700px;
 }
 
+.inputWrapper {
+	position: relative;
+}
+
 .input {
 	width: 100%;
 	border: none;
@@ -359,11 +382,21 @@ onUnmounted(() => {
 	height: var(--spacing--2xl);
 	padding: 0 var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--xl);
 	border-bottom: var(--border);
 
 	&::placeholder {
 		color: var(--color--text--tint-1);
 	}
+}
+
+.inputSpinner {
+	position: absolute;
+	top: 0;
+	right: var(--spacing--sm);
+	height: 100%;
+	display: flex;
+	align-items: center;
 }
 
 .scrollArea {
@@ -401,14 +434,21 @@ onUnmounted(() => {
 	padding: var(--spacing--xs) var(--spacing--xs) 0;
 }
 
-.loadingContainer {
-	max-height: 300px;
-	overflow-y: auto;
+.loadingSection {
+	padding-top: var(--spacing--2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+
+	&.hasItems {
+		padding-top: 0;
+	}
 }
 
 .loadingItem {
-	height: var(--spacing--2xl);
-	padding: var(--spacing--xs) var(--spacing--sm);
+	height: var(--command-bar-item--height);
+	display: flex;
+	align-items: center;
 }
 </style>
 

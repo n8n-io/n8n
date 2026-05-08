@@ -5,7 +5,8 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { logAiEvent, unwrapNestedOutput } from '../helpers';
+import { logAiEvent } from '@n8n/ai-utilities';
+import { unwrapNestedOutput } from '../helpers';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -78,27 +79,31 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 
 			return result;
 		} catch (e) {
-			const nodeError = new NodeOperationError(
-				this.context.getNode(),
-				"Model output doesn't fit required format",
-				{
-					description:
-						"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
-				},
-			);
-
-			// Add additional context to the error
-			if (e instanceof SyntaxError) {
-				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
-			} else if (
+			const isEmptyOutput =
 				(typeof text === 'string' && text.trim() === '{}') ||
 				(e instanceof z.ZodError &&
 					e.issues?.[0] &&
 					e.issues?.[0].code === 'invalid_type' &&
 					e.issues?.[0].path?.[0] === 'output' &&
 					e.issues?.[0].expected === 'object' &&
-					e.issues?.[0].received === 'undefined')
-			) {
+					e.issues?.[0].received === 'undefined');
+
+			const nodeError = new NodeOperationError(
+				this.context.getNode(),
+				isEmptyOutput
+					? 'The AI model returned an empty response to the Structured Output Parser'
+					: "Model output doesn't fit required format",
+				{
+					description: isEmptyOutput
+						? "This usually happens when the model runs out of tokens before it can generate the structured output. Try reducing the prompt length, increasing the model's max output tokens, or simplifying the output schema. To continue the execution when this happens, change the 'On Error' parameter in the root node's settings."
+						: "To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
+				},
+			);
+
+			// Add additional context to the error
+			if (e instanceof SyntaxError) {
+				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
+			} else if (isEmptyOutput) {
 				nodeError.context.outputParserFailReason = 'Model output wrapper is an empty object';
 			} else if (e instanceof z.ZodError) {
 				nodeError.context.outputParserFailReason =

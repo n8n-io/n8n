@@ -1,6 +1,7 @@
-import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	ChatHubManualSendMessageRequest,
 	ChatHubSendMessageRequest,
 	ChatModelsRequest,
 	ChatModelsResponse,
@@ -8,19 +9,25 @@ import type {
 	ChatHubConversationResponse,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
+	ChatHubManualEditMessageRequest,
+	ChatHubManualRegenerateMessageRequest,
 	ChatSessionId,
 	ChatMessageId,
 	ChatHubAgentDto,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
-	EnrichedStructuredChunk,
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
+	ChatSendMessageResponse,
+	ChatReconnectResponse,
+	WorkflowExecutionStatus,
+	ChatHubUpdateToolRequest,
+	ChatHubToolDto,
+	ChatHubSemanticSearchSettings,
+	ChatHubSessionType,
 } from '@n8n/api-types';
-
-// Workflows stream data as newline separated JSON objects (jsonl)
-const STREAM_SEPARATOR = '\n';
+import type { INode } from 'n8n-workflow';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -30,61 +37,137 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export function sendMessageApi(
+/**
+ * Send a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function sendMessageApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<EnrichedStructuredChunk>(
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
+		'POST',
 		'/chat/conversations/send',
 		payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
 	);
 }
 
-export function editMessageApi(
+/**
+ * Send a message using the draft workflow version (manual execution from canvas).
+ * The push-ref header is sent automatically via context.pushRef, enabling canvas
+ * execution events (nodeExecuteBefore/After).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function sendMessageManualApi(
 	ctx: IRestApiContext,
-	request: { sessionId: ChatSessionId; editId: ChatMessageId; payload: ChatHubEditMessageRequest },
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<EnrichedStructuredChunk>(
+	workflowId: string,
+	payload: ChatHubManualSendMessageRequest,
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
+		'POST',
+		`/chat/conversations/manual/${workflowId}/send`,
+		payload,
+	);
+}
+
+/**
+ * Edit a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function editMessageApi(
+	ctx: IRestApiContext,
+	request: {
+		sessionId: ChatSessionId;
+		editId: ChatMessageId;
+		payload: ChatHubEditMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
 		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
 		request.payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
 	);
 }
 
-export function regenerateMessageApi(
+/**
+ * Edit a message using the draft workflow version (manual execution from canvas).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function editMessageManualApi(
+	ctx: IRestApiContext,
+	request: {
+		workflowId: string;
+		sessionId: ChatSessionId;
+		editId: ChatMessageId;
+		payload: ChatHubManualEditMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/manual/${request.workflowId}/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
+	);
+}
+
+/**
+ * Regenerate a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function regenerateMessageApi(
 	ctx: IRestApiContext,
 	request: {
 		sessionId: ChatSessionId;
 		retryId: ChatMessageId;
 		payload: ChatHubRegenerateMessageRequest;
 	},
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<EnrichedStructuredChunk>(
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
+		'POST',
 		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
 		request.payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
+	);
+}
+
+/**
+ * Regenerate a message using the draft workflow version (manual execution from canvas).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function regenerateMessageManualApi(
+	ctx: IRestApiContext,
+	request: {
+		workflowId: string;
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubManualRegenerateMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/manual/${request.workflowId}/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
+	);
+}
+
+/**
+ * Reconnect to an active chat stream after reconnection
+ */
+export async function reconnectToSessionApi(
+	ctx: IRestApiContext,
+	sessionId: ChatSessionId,
+	lastSequence?: number,
+): Promise<ChatReconnectResponse> {
+	const queryParams = lastSequence !== undefined ? `?lastSequence=${lastSequence}` : '';
+	return await makeRestApiRequest<ChatReconnectResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/${sessionId}/reconnect${queryParams}`,
+		{},
 	);
 }
 
@@ -101,11 +184,15 @@ export const fetchConversationsApi = async (
 	context: IRestApiContext,
 	limit: number,
 	cursor?: string,
+	type?: ChatHubSessionType,
 ): Promise<ChatHubConversationsResponse> => {
 	const queryParams = new URLSearchParams();
 	queryParams.append('limit', limit.toString());
 	if (cursor) {
 		queryParams.append('cursor', cursor);
+	}
+	if (type) {
+		queryParams.append('type', type);
 	}
 
 	const apiEndpoint = `/chat/conversations?${queryParams.toString()}`;
@@ -150,11 +237,6 @@ export const fetchSingleConversationApi = async (
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
 };
 
-export const fetchAgentsApi = async (context: IRestApiContext): Promise<ChatHubAgentDto[]> => {
-	const apiEndpoint = '/chat/agents';
-	return await makeRestApiRequest<ChatHubAgentDto[]>(context, 'GET', apiEndpoint);
-};
-
 export const fetchAgentApi = async (
 	context: IRestApiContext,
 	agentId: string,
@@ -183,6 +265,35 @@ export const updateAgentApi = async (
 export const deleteAgentApi = async (context: IRestApiContext, agentId: string): Promise<void> => {
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
+};
+
+export const uploadAgentFilesApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	files: File[],
+): Promise<ChatHubAgentDto> => {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append('files', file);
+	}
+	return await makeRestApiRequest<ChatHubAgentDto>(
+		context,
+		'POST',
+		`/chat/agents/${agentId}/files`,
+		formData,
+	);
+};
+
+export const deleteAgentFileApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	fileKnowledgeId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/chat/agents/${agentId}/files/${encodeURIComponent(fileKnowledgeId)}`,
+	);
 };
 
 export const fetchChatSettingsApi = async (
@@ -219,6 +330,13 @@ export const updateChatSettingsApi = async (
 	});
 };
 
+export const updateSemanticSearchSettingsApi = async (
+	context: IRestApiContext,
+	data: ChatHubSemanticSearchSettings,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PUT', '/chat/semantic-search', data);
+};
+
 export function buildChatAttachmentUrl(
 	context: IRestApiContext,
 	sessionId: string,
@@ -227,3 +345,77 @@ export function buildChatAttachmentUrl(
 ): string {
 	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
 }
+
+/**
+ * Fetch the execution status for a workflow using dynamic credentials.
+ * Returns credential statuses and whether the workflow is ready to execute.
+ */
+export async function fetchWorkflowExecutionStatus(
+	ctx: IRestApiContext,
+	workflowId: string,
+): Promise<WorkflowExecutionStatus> {
+	return await makeRestApiRequest<WorkflowExecutionStatus>(
+		ctx,
+		'GET',
+		`/workflows/${workflowId}/execution-status?authSource=cookie`,
+	);
+}
+
+/**
+ * Start the OAuth authorization flow for a dynamic credential.
+ * Returns the OAuth provider URL to open in a popup.
+ */
+export async function authorizeDynamicCredential(
+	ctx: IRestApiContext,
+	credentialId: string,
+	resolverId: string,
+): Promise<string> {
+	return await makeRestApiRequest<string>(
+		ctx,
+		'POST',
+		`/credentials/${credentialId}/authorize?resolverId=${encodeURIComponent(resolverId)}&authSource=cookie`,
+	);
+}
+
+/**
+ * Revoke (disconnect) a dynamic credential.
+ */
+export async function revokeDynamicCredential(
+	ctx: IRestApiContext,
+	credentialId: string,
+	resolverId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		ctx,
+		'DELETE',
+		`/credentials/${credentialId}/revoke?resolverId=${encodeURIComponent(resolverId)}&authSource=cookie`,
+	);
+}
+
+export const fetchToolsApi = async (context: IRestApiContext): Promise<ChatHubToolDto[]> => {
+	return await makeRestApiRequest<ChatHubToolDto[]>(context, 'GET', '/chat/tools');
+};
+
+export const createToolApi = async (
+	context: IRestApiContext,
+	definition: INode,
+): Promise<ChatHubToolDto> => {
+	return await makeRestApiRequest<ChatHubToolDto>(context, 'POST', '/chat/tools', { definition });
+};
+
+export const updateToolApi = async (
+	context: IRestApiContext,
+	toolId: string,
+	updates: ChatHubUpdateToolRequest,
+): Promise<ChatHubToolDto> => {
+	return await makeRestApiRequest<ChatHubToolDto>(
+		context,
+		'PATCH',
+		`/chat/tools/${toolId}`,
+		updates,
+	);
+};
+
+export const deleteToolApi = async (context: IRestApiContext, toolId: string): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', `/chat/tools/${toolId}`);
+};

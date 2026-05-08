@@ -182,7 +182,7 @@ describe('DataTableColumnRepository', () => {
 			it('should call DDL service with correct database type', async () => {
 				// Arrange
 				const newName = 'new_valid_name';
-				const dbTypes = ['postgres', 'mysql', 'sqlite'] as const;
+				const dbTypes = ['postgres', 'sqlite'] as const;
 
 				for (const dbType of dbTypes) {
 					mockEntityManager.existsBy.mockResolvedValue(false);

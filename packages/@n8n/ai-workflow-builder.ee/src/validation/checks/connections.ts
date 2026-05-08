@@ -1,7 +1,17 @@
-import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
-import { mapConnectionsByDestination } from 'n8n-workflow';
+import type {
+	IConnections,
+	INodeConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import {
+	DATA_TABLE_NODE_TYPE,
+	isDataTableRowColumnOperation,
+	SET_NODE_TYPE,
+} from '@/utils/data-table-helpers';
 import { isSubNode } from '@/utils/node-helpers';
 import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
@@ -50,6 +60,11 @@ function checkMissingRequiredInputs(
 				type: 'critical',
 				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) is missing required input of type ${input.type}`,
 				pointsDeducted: 50,
+				metadata: {
+					nodeName: nodeInfo.node.name,
+					nodeType: nodeInfo.node.type,
+					missingType: input.type,
+				},
 			});
 		}
 	}
@@ -133,6 +148,48 @@ function checkMergeNodeConnections(
 	return issues;
 }
 
+function checkDataTableHasSetNodePredecessor(
+	connectionsByDestination: IConnections,
+	node: SimpleWorkflow['nodes'][number],
+	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
+): ProgrammaticViolation[] {
+	if (node.type !== DATA_TABLE_NODE_TYPE) {
+		return [];
+	}
+
+	// Only check for Set node on row column operations (insert, update, upsert)
+	// Read operations (get, getAll) and delete don't need a Set node
+	const operationParam = node.parameters?.operation;
+	const operation = typeof operationParam === 'string' ? operationParam : 'insert';
+	if (!isDataTableRowColumnOperation(operation)) {
+		return [];
+	}
+
+	// Check if any direct predecessor is a Set node
+	const predecessors = getParentNodes(
+		connectionsByDestination,
+		node.name,
+		NodeConnectionTypes.Main,
+		1,
+	);
+	const hasSetNodePredecessor = predecessors.some(
+		(name) => nodesByName.get(name)?.type === SET_NODE_TYPE,
+	);
+
+	if (hasSetNodePredecessor) {
+		return [];
+	}
+
+	return [
+		{
+			name: 'data-table-missing-set-node',
+			type: 'major',
+			description: `Data Table node "${node.name}" uses "${operation}" operation and should have a Set node (Edit Fields) immediately before it to define the columns. Add a Set node and connect it to the Data Table.`,
+			pointsDeducted: 20,
+		},
+	];
+}
+
 function checkSubNodeRootConnections(
 	workflow: SimpleWorkflow,
 	nodeInfo: NodeResolvedConnectionTypesInfo,
@@ -171,6 +228,11 @@ function checkSubNodeRootConnections(
 				type: 'critical',
 				description: `Sub-node ${node.name} (${node.type}) provides ${outputType} but is not connected to a root node.`,
 				pointsDeducted: 50,
+				metadata: {
+					nodeName: node.name,
+					nodeType: node.type,
+					outputType,
+				},
 			});
 		}
 	}
@@ -232,6 +294,10 @@ export function validateConnections(
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
 
 		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
+
+		violations.push(
+			...checkDataTableHasSetNodePredecessor(connectionsByDestination, node, nodesByName),
+		);
 	}
 
 	return violations;

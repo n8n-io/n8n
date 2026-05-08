@@ -3,48 +3,43 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
+const positiveIntSchema = z.number({ coerce: true }).int().positive();
 
 export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
-	enabled: boolean = true;
-
 	/**
-	 * Whether the task runner should run as a child process spawned by n8n (internal mode)
-	 * or as a separate process launched outside n8n (external mode).
+	 * How the task runner runs: `internal` (child process of n8n) or `external` (separate process).
 	 */
 	@Env('N8N_RUNNERS_MODE', runnerModeSchema)
 	mode: TaskRunnerMode = 'internal';
 
-	/** Endpoint which task runners connect to */
+	/** URL path segment where the task runner service is exposed (for example, `/runners`). */
 	@Env('N8N_RUNNERS_PATH')
 	path: string = '/runners';
 
+	/** Shared secret used to authenticate runner processes with the broker. */
 	@Env('N8N_RUNNERS_AUTH_TOKEN')
 	authToken: string = '';
 
-	/** Port task runners broker should listen on */
+	/** Port the task runner broker listens on for runner connections. */
 	@Env('N8N_RUNNERS_BROKER_PORT')
 	port: number = 5679;
 
-	/** IP address task runners broker should listen on */
+	/** IP address the task runner broker binds to. */
 	@Env('N8N_RUNNERS_BROKER_LISTEN_ADDRESS')
 	listenAddress: string = '127.0.0.1';
 
-	/** Maximum size of a payload sent to the runner in bytes, Default 1G */
+	/** Maximum size in bytes of a payload sent to a runner. Default: 1 GiB. */
 	@Env('N8N_RUNNERS_MAX_PAYLOAD')
 	maxPayload: number = 1024 * 1024 * 1024;
 
-	/** The --max-old-space-size option to use for the runner (in MB). Default means node.js will determine it based on the available memory. */
+	/** Node.js `--max-old-space-size` value in MB for the runner process. Empty lets Node choose based on memory. */
 	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE')
 	maxOldSpaceSize: string = '';
 
-	/**
-	 * How many concurrent tasks can a runner execute at a time
-	 *
-	 * Kept high for backwards compatibility - n8n v2 will reduce this to `5`
-	 */
+	/** Maximum number of tasks a single runner can execute concurrently. */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 10;
 
@@ -53,7 +48,7 @@ export class TaskRunnersConfig {
 	 * task will be aborted. (In internal mode, the runner will also be
 	 * restarted.) Must be greater than 0.
 	 *
-	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
+	 * Kept high for backwards compatibility - n8n v3 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 300; // 5 minutes
@@ -66,9 +61,16 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_TASK_REQUEST_TIMEOUT')
 	taskRequestTimeout: number = 60;
 
-	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
+	/** Interval in seconds between heartbeats from runner to broker; missing heartbeats abort the task (and restart the runner in internal mode). Must be > 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
+
+	/**
+	 * How long (in seconds) a grant token is valid for runner authentication.
+	 * Increase on slow hardware where the runner needs more time to start.
+	 */
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', positiveIntSchema)
+	grantTokenTtl: number = 30;
 
 	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
