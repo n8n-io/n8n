@@ -136,7 +136,8 @@ async function handleRemove(type: ConnectionType) {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--2xs);
+	padding-top: var(--spacing--sm);
 
 	&::before {
 		content: '';
@@ -154,6 +155,7 @@ async function handleRemove(type: ConnectionType) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
 }
 
 .sectionTitle {

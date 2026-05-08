@@ -214,7 +214,11 @@ const pinButtonLabel = computed(() =>
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--2xs);
+
+	& + & {
+		padding-top: var(--spacing--sm);
+	}
 
 	& + &::before {
 		content: '';
@@ -228,6 +232,7 @@ const pinButtonLabel = computed(() =>
 
 .sectionHeader {
 	margin-bottom: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -298,6 +303,7 @@ const pinButtonLabel = computed(() =>
 
 .artifactName {
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 	color: var(--color--text--shade-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -345,6 +351,7 @@ const pinButtonLabel = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) 0;
+	padding-left: var(--spacing--2xs);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 }
