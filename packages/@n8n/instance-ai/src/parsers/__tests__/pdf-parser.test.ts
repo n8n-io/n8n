@@ -1,11 +1,19 @@
 import { extractPdfText } from '../pdf-parser';
 import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
-const mockPdfParse = jest.fn<Promise<{ text: string; numpages: number }>, [Buffer]>();
+const mockGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
+const mockDestroy = jest.fn<Promise<void>, []>();
+const mockConstructor = jest.fn<void, [{ data: Buffer }]>();
 
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
-	default: async (buffer: Buffer) => await mockPdfParse(buffer),
+	PDFParse: jest.fn().mockImplementation((options: { data: Buffer }) => {
+		mockConstructor(options);
+		return {
+			getText: mockGetText,
+			destroy: mockDestroy,
+		};
+	}),
 }));
 
 function toBase64(content: string | Buffer): string {
@@ -15,13 +23,15 @@ function toBase64(content: string | Buffer): string {
 
 describe('extractPdfText', () => {
 	beforeEach(() => {
-		mockPdfParse.mockReset();
+		mockGetText.mockReset();
+		mockDestroy.mockReset().mockResolvedValue(undefined);
+		mockConstructor.mockReset();
 	});
 
 	it('returns extracted text and page count for a small PDF', async () => {
-		mockPdfParse.mockResolvedValue({
+		mockGetText.mockResolvedValue({
 			text: 'Hello world',
-			numpages: 1,
+			total: 1,
 		});
 
 		const result = await extractPdfText({
@@ -33,6 +43,7 @@ describe('extractPdfText', () => {
 		expect(result.text).toBe('Hello world');
 		expect(result.pages).toBe(1);
 		expect(result.truncated).toBe(false);
+		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 
 	it('throws when the decoded buffer exceeds the size cap', async () => {
@@ -44,14 +55,14 @@ describe('extractPdfText', () => {
 				fileName: 'big.pdf',
 			}),
 		).rejects.toThrow(/exceeds maximum size/);
-		expect(mockPdfParse).not.toHaveBeenCalled();
+		expect(mockGetText).not.toHaveBeenCalled();
 	});
 
 	it('truncates extracted text beyond MAX_RESULT_CHARS and flags truncated', async () => {
 		const longText = 'a'.repeat(50_000);
-		mockPdfParse.mockResolvedValue({
+		mockGetText.mockResolvedValue({
 			text: longText,
-			numpages: 99,
+			total: 99,
 		});
 
 		const result = await extractPdfText({
@@ -66,7 +77,7 @@ describe('extractPdfText', () => {
 	});
 
 	it('wraps pdf-parse errors with a friendly message', async () => {
-		mockPdfParse.mockRejectedValue(new Error('Invalid PDF structure'));
+		mockGetText.mockRejectedValue(new Error('Invalid PDF structure'));
 
 		await expect(
 			extractPdfText({
@@ -75,10 +86,11 @@ describe('extractPdfText', () => {
 				fileName: 'broken.pdf',
 			}),
 		).rejects.toThrow(/Failed to parse PDF/);
+		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 
 	it('throws on empty extracted text', async () => {
-		mockPdfParse.mockResolvedValue({ text: '', numpages: 0 });
+		mockGetText.mockResolvedValue({ text: '', total: 0 });
 
 		await expect(
 			extractPdfText({

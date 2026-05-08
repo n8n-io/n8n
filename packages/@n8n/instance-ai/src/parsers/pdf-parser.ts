@@ -22,17 +22,23 @@ export async function extractPdfText(attachment: AttachmentInfo): Promise<PdfExt
 		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
-	const { default: pdfParse } = await import('pdf-parse');
+	const { PDFParse } = await import('pdf-parse');
 
-	let parsed: { text: string; numpages: number };
+	const parser = new PDFParse({ data: decoded });
+	let extractedText: string;
+	let totalPages: number;
 	try {
-		parsed = await pdfParse(decoded);
+		const result = await parser.getText();
+		extractedText = result.text;
+		totalPages = result.total;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown error';
 		throw new Error(`Failed to parse PDF "${attachment.fileName}": ${message}`);
+	} finally {
+		await parser.destroy();
 	}
 
-	const text = parsed.text?.trim() ?? '';
+	const text = extractedText?.trim() ?? '';
 	if (!text) {
 		throw new Error(
 			`PDF "${attachment.fileName}" contains no extractable text (it may be a scanned image).`,
@@ -42,10 +48,10 @@ export async function extractPdfText(attachment: AttachmentInfo): Promise<PdfExt
 	if (text.length > MAX_RESULT_CHARS) {
 		return {
 			text: text.slice(0, MAX_RESULT_CHARS),
-			pages: parsed.numpages,
+			pages: totalPages,
 			truncated: true,
 		};
 	}
 
-	return { text, pages: parsed.numpages, truncated: false };
+	return { text, pages: totalPages, truncated: false };
 }

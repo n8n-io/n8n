@@ -3,10 +3,13 @@ import * as XLSX from 'xlsx';
 import type { InstanceAiContext } from '../../../types';
 import { createParseFileTool } from '../parse-file.tool';
 
-const mockPdfParse = jest.fn<Promise<{ text: string; numpages: number }>, [Buffer]>();
+const mockPdfGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
-	default: async (buffer: Buffer) => await mockPdfParse(buffer),
+	PDFParse: jest.fn().mockImplementation(() => ({
+		getText: mockPdfGetText,
+		destroy: jest.fn().mockResolvedValue(undefined),
+	})),
 }));
 
 const mockExtractRawText = jest.fn<Promise<{ value: string; messages: unknown[] }>, [unknown]>();
@@ -241,10 +244,10 @@ describe('createParseFileTool', () => {
 	});
 
 	describe('with a PDF attachment', () => {
-		beforeEach(() => mockPdfParse.mockReset());
+		beforeEach(() => mockPdfGetText.mockReset());
 
 		it('returns extracted text under the text kind', async () => {
-			mockPdfParse.mockResolvedValue({ text: 'PDF text body', numpages: 3 });
+			mockPdfGetText.mockResolvedValue({ text: 'PDF text body', total: 3 });
 			const context = createMockContext({
 				currentUserAttachments: [
 					{ data: toBase64('pdf-bytes'), mimeType: 'application/pdf', fileName: 'doc.pdf' },
@@ -265,7 +268,7 @@ describe('createParseFileTool', () => {
 		});
 
 		it('surfaces extraction errors as the tools error field', async () => {
-			mockPdfParse.mockRejectedValue(new Error('corrupt'));
+			mockPdfGetText.mockRejectedValue(new Error('corrupt'));
 			const context = createMockContext({
 				currentUserAttachments: [
 					{ data: toBase64('pdf-bytes'), mimeType: 'application/pdf', fileName: 'doc.pdf' },

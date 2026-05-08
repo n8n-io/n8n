@@ -113,7 +113,7 @@ export async function execute(
 			if (fileFormat === 'csv') {
 				const maxRowCount = options.maxRowCount as number;
 				const skipRecordsWithErrors = options.skipRecordsWithErrors?.value?.enabled;
-				const csvOptions: CSVOptions = {
+				const sharedCsvOptions = {
 					delimiter: options.delimiter,
 					fromLine: options.fromLine,
 					encoding: options.encoding,
@@ -121,18 +121,33 @@ export async function execute(
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					skip_records_with_error: skipRecordsWithErrors,
 					skip_empty_lines: true,
-					columns: options.headerRow !== false,
 					relax_quotes: options.relaxQuotes,
-					onRecord: (record) => {
-						if (!options.includeEmptyCells) {
-							record = Object.fromEntries(
-								Object.entries(record).filter(([_key, value]) => value !== ''),
-							);
-						}
-						rows.push(record);
-					},
-				};
-				const parser = createCSVParser(csvOptions);
+				} satisfies Omit<CSVOptions, 'columns' | 'onRecord'>;
+
+				const parser =
+					options.headerRow !== false
+						? createCSVParser<Record<string, string>>({
+								...sharedCsvOptions,
+								columns: true,
+								onRecord: (record) => {
+									if (!options.includeEmptyCells) {
+										const filtered = Object.fromEntries(
+											Object.entries(record).filter(([_key, value]) => value !== ''),
+										);
+										rows.push(filtered);
+										return filtered;
+									}
+									rows.push(record);
+									return record;
+								},
+							})
+						: createCSVParser({
+								...sharedCsvOptions,
+								onRecord: (record: string[]): string[] => {
+									rows.push(record);
+									return record;
+								},
+							});
 
 				let skippedRecords = 0;
 				parser.on('skip', (_err) => {
