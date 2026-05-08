@@ -9,6 +9,8 @@ import { cleanup, screen, waitFor, within } from '@testing-library/vue';
 import merge from 'lodash/merge';
 import Assignment from './Assignment.vue';
 import { flushPromises } from '@vue/test-utils';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router');
 
@@ -25,6 +27,11 @@ const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 			value: '',
 		},
 		issues: [],
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 };
 
@@ -119,6 +126,9 @@ describe('Assignment.vue', () => {
 						template: '<div></div>',
 					},
 				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 
@@ -146,6 +156,9 @@ describe('Assignment.vue', () => {
 						},
 						template: '<div></div>',
 					},
+				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});

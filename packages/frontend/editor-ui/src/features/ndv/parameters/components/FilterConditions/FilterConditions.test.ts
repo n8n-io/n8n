@@ -12,6 +12,8 @@ import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-wor
 import FilterConditions from './FilterConditions.vue';
 import { getFilterOperator } from './utils';
 import { flushPromises } from '@vue/test-utils';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router');
 
@@ -43,6 +45,11 @@ const DEFAULT_SETUP = {
 			name: 'conditions',
 			displayName: 'Conditions',
 		}),
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 } satisfies RenderOptions<typeof FilterConditions>;
 
@@ -540,6 +547,9 @@ describe('FilterConditions.vue', () => {
 						},
 						template: '<div></div>',
 					},
+				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -9,6 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import BuilderSetupWizard from './BuilderSetupWizard.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useBuilderStore } from '../../builder.store';
 
 const mockCards = ref<Array<{ state: Record<string, unknown> }>>([]);
@@ -73,7 +74,13 @@ const triggerNode = createTestNode({
 	type: 'n8n-nodes-base.manualTrigger',
 }) as INodeUi;
 
-const renderComponent = createComponentRenderer(BuilderSetupWizard);
+const renderComponent = createComponentRenderer(BuilderSetupWizard, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('BuilderSetupWizard', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;

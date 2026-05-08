@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { flushPromises } from '@vue/test-utils';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 describe('FixedCollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
@@ -59,7 +61,14 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 		},
 		isReadOnly: false,
 	};
-	const renderComponent = createComponentRenderer(FixedCollectionParameterLegacy, { props });
+	const renderComponent = createComponentRenderer(FixedCollectionParameterLegacy, {
+		props,
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
+	});
 
 	it('renders the component', async () => {
 		const { getByTestId } = renderComponent();
@@ -250,6 +259,11 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 
 		const renderRequiredOnly = createComponentRenderer(FixedCollectionParameterLegacy, {
 			props: hideOptionalFieldsProps,
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
+			},
 		});
 
 		it('renders the optional values picker when hideOptionalFields is true', async () => {
@@ -415,6 +429,11 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 
 			const renderWithArrayField = createComponentRenderer(FixedCollectionParameterLegacy, {
 				props: propsWithArrayField,
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					},
+				},
 			});
 
 			const { container } = renderWithArrayField();
@@ -489,6 +508,11 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 
 			const renderWithArrayFieldDefault = createComponentRenderer(FixedCollectionParameterLegacy, {
 				props: propsWithArrayFieldDefault,
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					},
+				},
 			});
 
 			const { container } = renderWithArrayFieldDefault();

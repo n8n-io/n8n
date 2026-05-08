@@ -13,6 +13,8 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const { onDocumentVisible } = vi.hoisted(() => ({
 	onDocumentVisible: vi.fn(),
@@ -46,7 +48,13 @@ vi.mock('vue-router', () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(WorkflowSelectorParameterInput);
+const renderComponent = createComponentRenderer(WorkflowSelectorParameterInput, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;

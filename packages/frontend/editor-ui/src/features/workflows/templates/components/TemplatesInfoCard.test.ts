@@ -2,9 +2,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import TemplatesInfoCard from './TemplatesInfoCard.vue';
 import type { ITemplatesCollection } from '@n8n/rest-api-client';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
-const renderComponent = createComponentRenderer(TemplatesInfoCard);
+const renderComponent = createComponentRenderer(TemplatesInfoCard, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 const TEST_COLLECTION: ITemplatesCollection = {
 	id: 8,

@@ -5,13 +5,14 @@ import { createTestingPinia } from '@pinia/testing';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { nextTick, shallowRef } from 'vue';
+import { computed, nextTick, shallowRef } from 'vue';
 import { type Mock } from 'vitest';
 import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const nodeType: INodeTypeDescription = {
 	displayName: 'OpenAI',
@@ -89,6 +90,9 @@ describe('NDVSubConnections', () => {
 				stubs: {
 					N8nButton: true,
 				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1000); // Event debounce time
@@ -103,6 +107,11 @@ describe('NDVSubConnections', () => {
 		const component = render(NDVSubConnections, {
 			props: {
 				rootNode: node,
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1000); // Event debounce time
@@ -175,6 +184,11 @@ describe('NDVSubConnections', () => {
 		const { getByTestId } = render(NDVSubConnections, {
 			props: {
 				rootNode: multiConnectionNode,
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1);

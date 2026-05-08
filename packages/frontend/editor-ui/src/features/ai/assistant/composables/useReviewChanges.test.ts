@@ -136,7 +136,7 @@ function withSetup() {
 	let result!: ReturnType<typeof useReviewChanges>;
 	const comp = defineComponent({
 		setup() {
-			result = useReviewChanges(ref('test-workflow-id'));
+			result = useReviewChanges(ref('wf-1'));
 			return () => null;
 		},
 	});

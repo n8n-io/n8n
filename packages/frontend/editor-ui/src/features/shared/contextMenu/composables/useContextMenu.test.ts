@@ -22,6 +22,18 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual: Record<string, unknown> = await importOriginal();
+	return {
+		...actual,
+		useRoute: vi.fn(() => ({
+			name: 'test-route',
+			params: { workflowId: 'test-workflow-id' },
+			query: {},
+		})),
+	};
+});
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,

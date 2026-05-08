@@ -3,10 +3,11 @@ import ImportCurlModal from './ImportCurlModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import userEvent from '@testing-library/user-event';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const mockTelemetryTrack = vi.fn();
 vi.mock('@/app/composables/useTelemetry', () => ({
@@ -36,6 +37,11 @@ vi.mock('@/app/composables/useImportCurlCommand', () => ({
 
 const renderModal = createComponentRenderer(ImportCurlModal, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const testNode = {

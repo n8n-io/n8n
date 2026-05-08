@@ -14,6 +14,8 @@ import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.types';
 import CanvasNodeDefault from './CanvasNodeDefault.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
@@ -36,6 +38,7 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 		stubs,
 		provide: {
 			...createCanvasProvide(),
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 		},
 	},
 });

@@ -4,6 +4,8 @@ import { setActivePinia } from 'pinia';
 import CommunityNodeDetails from './CommunityNodeDetails.vue';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const fetchCredentialTypes = vi.fn();
 const getCommunityNodeAttributes = vi.fn(() => ({ npmVersion: '1.0.0' }));
@@ -128,7 +130,13 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 }));
 
 describe('CommunityNodeDetails', () => {
-	const renderComponent = createComponentRenderer(CommunityNodeDetails);
+	const renderComponent = createComponentRenderer(CommunityNodeDetails, {
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
+	});
 	let pinia: TestingPinia;
 
 	beforeEach(() => {

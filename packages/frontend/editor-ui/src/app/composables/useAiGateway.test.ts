@@ -20,6 +20,7 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: vi.fn(() => ({})),
+	useRoute: vi.fn(() => ({ name: '', params: { workflowId: 'test-workflow-id' } })),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({

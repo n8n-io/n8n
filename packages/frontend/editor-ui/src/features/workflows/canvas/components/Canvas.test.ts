@@ -13,6 +13,8 @@ import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -37,6 +39,11 @@ beforeEach(() => {
 			id: canvasId,
 			nodes: [],
 			connections: [],
+		},
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
 		},
 	});
 });

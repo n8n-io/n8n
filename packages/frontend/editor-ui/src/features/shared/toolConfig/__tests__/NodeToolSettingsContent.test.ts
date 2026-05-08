@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -7,6 +8,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 
@@ -127,6 +129,9 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 				template: '<div data-test-id="node-credentials" />',
 				props: ['node', 'readonly', 'showAll', 'hideIssues'],
 			},
+		},
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 		},
 	},
 });

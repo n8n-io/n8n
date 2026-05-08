@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -6,6 +7,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import BuilderSetupCard from './BuilderSetupCard.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -121,7 +123,13 @@ function createState(overrides: Partial<NodeSetupState> = {}): NodeSetupState {
 	};
 }
 
-const renderComponent = createComponentRenderer(BuilderSetupCard);
+const renderComponent = createComponentRenderer(BuilderSetupCard, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('BuilderSetupCard', () => {
 	beforeEach(() => {

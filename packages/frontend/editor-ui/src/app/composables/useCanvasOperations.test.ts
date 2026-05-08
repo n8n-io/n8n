@@ -4008,7 +4008,7 @@ describe('useCanvasOperations', () => {
 				},
 			];
 
-			const { resetWorkspace } = useCanvasOperations(ref(workflowId));
+			const { resetWorkspace } = useCanvasOperations(ref('workflow-id'));
 
 			resetWorkspace();
 
@@ -5729,6 +5729,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [nodeA, nodeB, nodeC],
 							connections: {
 								[nodeA.name]: {
@@ -5800,6 +5801,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode, stickyNote],
 							connections: {
 								[sourceNode.name]: {
@@ -5869,6 +5871,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode, stickyNote],
 							connections: {
 								[sourceNode.name]: {
@@ -5942,6 +5945,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode, stickyNote],
 							connections: {
 								[sourceNode.name]: {
@@ -6011,6 +6015,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode, stickyNote],
 							connections: {
 								[sourceNode.name]: {
@@ -6096,6 +6101,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode, stickyAnchor, stickyWithTarget, stickyMove],
 							connections: {
 								[sourceNode.name]: {
@@ -6171,6 +6177,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode, stickyNote],
 							connections: {
 								[sourceNode.name]: {
@@ -6254,6 +6261,7 @@ describe('useCanvasOperations', () => {
 				initialState: {
 					[STORES.WORKFLOWS]: {
 						workflow: createTestWorkflow({
+							id: workflowId,
 							nodes: [sourceNode, targetNode1, targetNode2, stickyNote],
 							connections: {
 								[sourceNode.name]: {

@@ -1,11 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 
 import NodeTitle from '@/app/components/NodeTitle.vue';
 import { createTestingPinia } from '@pinia/testing';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-const renderComponent = createComponentRenderer(NodeTitle);
+const renderComponent = createComponentRenderer(NodeTitle, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('NodeTitle', () => {
 	beforeEach(() => {

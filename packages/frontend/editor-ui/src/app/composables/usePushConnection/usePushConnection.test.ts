@@ -51,6 +51,10 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+vi.mock('@/app/composables/useInjectWorkflowId', () => ({
+	useInjectWorkflowId: vi.fn(() => ({ value: 'test-workflow-id' })),
+}));
+
 describe('usePushConnection composable', () => {
 	let pushConnection: ReturnType<typeof usePushConnection>;
 

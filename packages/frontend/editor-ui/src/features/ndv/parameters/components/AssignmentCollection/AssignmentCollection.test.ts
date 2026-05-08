@@ -9,6 +9,8 @@ import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router');
 
@@ -33,6 +35,11 @@ const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 		},
 		parameter: createTestNodeProperties({ name: 'fields', displayName: 'Fields To Set' }),
 		value: {} as AssignmentCollectionValue,
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 };
 

@@ -12,12 +12,19 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { createPinia, setActivePinia } from 'pinia';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 describe('CanvasRunWorkflowButton', () => {
 	const renderComponent = createComponentRenderer(CanvasRunWorkflowButton, {
 		props: {
 			triggerNodes: [createTestNode({ type: MANUAL_CHAT_TRIGGER_NODE_TYPE })],
 			getNodeType: () => null,
+		},
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
 		},
 	});
 

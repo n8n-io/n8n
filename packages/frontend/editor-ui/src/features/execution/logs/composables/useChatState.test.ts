@@ -330,7 +330,7 @@ describe('useChatState', () => {
 			const chatState = useChatState(ref('test-workflow-id'), false);
 
 			expect(chatState.webhookUrl.value).toBe(
-				'https://test.n8n.io/webhook-test/workflow-123/session-456',
+				'https://test.n8n.io/webhook-test/test-workflow-id/session-456',
 			);
 		});
 
@@ -338,7 +338,7 @@ describe('useChatState', () => {
 			const chatState = useChatState(ref('test-workflow-id'), false, () => 'custom-session');
 
 			expect(chatState.webhookUrl.value).toBe(
-				'https://test.n8n.io/webhook-test/workflow-123/custom-session',
+				'https://test.n8n.io/webhook-test/test-workflow-id/custom-session',
 			);
 		});
 
@@ -353,11 +353,7 @@ describe('useChatState', () => {
 		});
 
 		it('should return empty webhook URL when no workflow ID', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.id = '';
-			});
-
-			const chatState = useChatState(ref('test-workflow-id'), false);
+			const chatState = useChatState(ref(''), false);
 
 			expect(chatState.webhookUrl.value).toBe('');
 		});
@@ -474,7 +470,9 @@ describe('useChatState', () => {
 
 			const options = chatState.chatOptions.value;
 
-			expect(options.webhookUrl).toBe('https://test.n8n.io/webhook-test/workflow-123/session-456');
+			expect(options.webhookUrl).toBe(
+				'https://test.n8n.io/webhook-test/test-workflow-id/session-456',
+			);
 			expect(options.enableStreaming).toBe(true);
 			expect(options.allowFileUploads).toBe(true);
 			expect(options.allowedFilesMimeTypes).toBe('image/*,application/pdf');

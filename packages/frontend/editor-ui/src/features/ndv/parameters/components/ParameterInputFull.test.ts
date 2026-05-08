@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -8,6 +8,7 @@ import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
@@ -80,6 +81,11 @@ const renderComponent = createComponentRenderer(ParameterInputFull, {
 			name: 'myParam',
 			type: 'string',
 		}),
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 });
 

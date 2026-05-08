@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { shallowRef } from 'vue';
+import { computed, shallowRef } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 
@@ -107,6 +108,9 @@ const renderNodeSettings = (runData?: IRunData) => {
 				QuickConnectBanner: true,
 				CommunityNodeFooter: true,
 				CommunityNodeUpdateInfo: true,
+			},
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 			},
 		},
 	})({

@@ -7,6 +7,8 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/composables/useWorkflowHelpers', () => {
 	return { useWorkflowHelpers: vi.fn(() => ({ resolveExpression: vi.fn(() => 'topSecret') })) };
@@ -38,6 +40,9 @@ describe('ParameterInputWrapper.vue', () => {
 					$ndvStore: {
 						activeNode: vi.fn(() => ({ test: 'test' })),
 					},
+				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});

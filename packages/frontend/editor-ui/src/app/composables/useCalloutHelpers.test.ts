@@ -3,6 +3,7 @@ import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { createTestingPinia } from '@pinia/testing';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import { VIEWS } from '@/app/constants';
+import { ref } from 'vue';
 
 const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
@@ -196,7 +197,7 @@ describe('useCalloutHelpers()', () => {
 				meta: { templateId: SampleTemplates.RagStarterTemplate },
 			});
 
-			const { isRagStarterCalloutVisible } = useCalloutHelpers();
+			const { isRagStarterCalloutVisible } = useCalloutHelpers(ref('test-workflow-id'));
 			expect(isRagStarterCalloutVisible.value).toBe(false);
 		});
 	});

@@ -1,5 +1,5 @@
 import { mockNode } from '@/__tests__/mocks';
-import { renderComponent } from '@/__tests__/render';
+import { renderComponent as baseRenderComponent, type RenderOptions } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
@@ -13,8 +13,22 @@ import type { TestingPinia } from '@pinia/testing';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { vi, type MockedFunction } from 'vitest';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+
+function renderComponent<T>(component: T, options: RenderOptions<T> = {}) {
+	return baseRenderComponent(component, {
+		...options,
+		global: {
+			...options.global,
+			provide: {
+				...options.global?.provide,
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
+	});
+}
 
 vi.mock('@/features/settings/communityNodes/composables/useInstallNode');
 vi.mock('@/app/composables/useTelemetry', () => ({

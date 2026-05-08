@@ -5,7 +5,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const mockSetInitialCredentialSelection = vi.fn();
 const mockSetCredential = vi.fn();
@@ -79,7 +80,13 @@ let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 const MODAL_NAME = 'setupCredentialsModal';
 
-const renderComponent = createComponentRenderer(SetupWorkflowCredentialsModal);
+const renderComponent = createComponentRenderer(SetupWorkflowCredentialsModal, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('SetupWorkflowCredentialsModal', () => {
 	beforeEach(() => {

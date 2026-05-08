@@ -340,7 +340,7 @@ describe('useBuilderTodos', () => {
 		beforeEach(() => {
 			setActivePinia(createPinia());
 			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow';
+			workflowsStore.workflow.id = 'test-workflow-id';
 		});
 
 		it('excludes placeholder issues from pinned nodes', () => {

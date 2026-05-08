@@ -13,6 +13,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
@@ -31,6 +33,11 @@ const renderComponent = createComponentRenderer(WorkflowCanvas, {
 	props: {
 		id: 'canvas',
 		eventBus: createEventBus(),
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 });
 

@@ -38,6 +38,7 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -140,6 +141,11 @@ describe('NodeExecuteButton', () => {
 			props: {
 				nodeName: 'test-node',
 				telemetrySource: 'test-source',
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'abc123'),
+				},
 			},
 		});
 

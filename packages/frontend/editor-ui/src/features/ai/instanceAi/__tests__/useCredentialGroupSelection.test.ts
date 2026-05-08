@@ -58,7 +58,7 @@ describe('useCredentialGroupSelection', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 		credentialsStore = useCredentialsStore();
 		nodeTypesStore = useNodeTypesStore();
 		uiStore = useUIStore();

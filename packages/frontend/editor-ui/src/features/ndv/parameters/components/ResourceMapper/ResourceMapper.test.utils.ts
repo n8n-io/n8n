@@ -5,6 +5,8 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import type { ResourceMapperFields, ResourceMapperValue } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 export const NODE_PARAMETER_VALUES = {
 	authentication: 'oAuth2',
@@ -147,6 +149,11 @@ export const DEFAULT_SETUP: RenderOptions<typeof ResourceMapper> = {
 					sheetName: [''],
 				},
 			},
+		},
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 		},
 	},
 };

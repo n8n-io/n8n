@@ -20,6 +20,8 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE_TEST,
 } from './ResourceMapper.test.constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -461,6 +463,9 @@ describe('ResourceMapper::Workflow Inputs', () => {
 		global: {
 			stubs: {
 				ParameterInputFull: { template: '<div data-test-id="field-input"></div>' },
+			},
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 			},
 		},
 	});

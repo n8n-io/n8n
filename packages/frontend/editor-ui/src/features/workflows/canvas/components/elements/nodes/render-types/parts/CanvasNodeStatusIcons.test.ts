@@ -11,6 +11,8 @@ import { createTestingPinia } from '@pinia/testing';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
@@ -22,6 +24,11 @@ vi.mock('vue-router', async (importOriginal) => {
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const mockedUseRoute = vi.mocked(useRoute);

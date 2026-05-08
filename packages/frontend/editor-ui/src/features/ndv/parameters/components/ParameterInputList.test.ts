@@ -6,11 +6,12 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { shallowRef } from 'vue';
+import { computed, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -132,6 +133,9 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 		stubs: {
 			ParameterInputFull: { template: '<div data-test-id="parameter-input"></div>' },
 			Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+		},
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 		},
 	},
 });
@@ -408,6 +412,9 @@ describe('ParameterInputList', () => {
 			global: {
 				stubs: {
 					Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});

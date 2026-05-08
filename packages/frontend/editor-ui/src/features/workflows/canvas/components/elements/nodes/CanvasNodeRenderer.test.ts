@@ -7,6 +7,8 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '../../../canvas.types';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
 
@@ -22,6 +24,7 @@ describe('CanvasNodeRenderer', () => {
 				provide: {
 					...createCanvasProvide(),
 					...createCanvasNodeProvide(),
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});
@@ -42,6 +45,7 @@ describe('CanvasNodeRenderer', () => {
 							},
 						},
 					}),
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});
@@ -62,6 +66,7 @@ describe('CanvasNodeRenderer', () => {
 							},
 						},
 					}),
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});

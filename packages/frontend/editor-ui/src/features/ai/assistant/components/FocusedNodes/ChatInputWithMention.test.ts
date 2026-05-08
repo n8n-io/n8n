@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { defineComponent, h } from 'vue';
+import { computed, defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ChatInputWithMention from './ChatInputWithMention.vue';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import type { FocusedNode } from '../../focusedNodes.types';
@@ -119,7 +120,13 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const renderComponent = createComponentRenderer(ChatInputWithMention);
+const renderComponent = createComponentRenderer(ChatInputWithMention, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 const createFocusedNode = (id: string, name: string, state: FocusedNode['state']): FocusedNode => ({
 	nodeId: id,

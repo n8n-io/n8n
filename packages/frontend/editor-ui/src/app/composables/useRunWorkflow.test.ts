@@ -117,6 +117,7 @@ vi.mock('@/app/stores/workflows.store', () => {
 		workflowId: '123',
 		isWorkflowSaved: {
 			'123': true,
+			'test-workflow-id': true,
 		},
 		getExecution: vi.fn(),
 		setWorkflowExecutionData: vi.fn((execution) => {

@@ -15,6 +15,8 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -72,6 +74,9 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 				`,
 				props: ['versionName', 'description', 'disabled'],
 			},
+		},
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'workflow-1'),
 		},
 	},
 });

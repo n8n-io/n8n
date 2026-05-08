@@ -150,6 +150,7 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 import WorkflowDiffView from './WorkflowDiffView.vue';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import { telemetry } from '@/app/plugins/telemetry';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const defaultWorkflowDiffMock = () =>
 	({
@@ -263,6 +264,9 @@ describe('WorkflowDiffView', () => {
 					SyncedWorkflowCanvas: { template: '<div />' },
 					WorkflowDiffAside: { template: '<div />' },
 					HighlightedEdge: { template: '<div />' },
+				},
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 			},
 		});

@@ -542,7 +542,7 @@ describe('useCredentialOAuth', () => {
 			expect(mockTrack).toHaveBeenCalledWith('User created credentials', {
 				credential_type: 'slackOAuth2Api',
 				credential_id: 'new-cred-123',
-				workflow_id: '',
+				workflow_id: 'test-workflow-id',
 			});
 		});
 
@@ -554,7 +554,7 @@ describe('useCredentialOAuth', () => {
 
 			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
 				credential_type: 'slackOAuth2Api',
-				workflow_id: '',
+				workflow_id: 'test-workflow-id',
 				credential_id: 'new-cred-123',
 				is_complete: true,
 				is_new: true,
@@ -571,7 +571,7 @@ describe('useCredentialOAuth', () => {
 
 			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
 				credential_type: 'slackOAuth2Api',
-				workflow_id: '',
+				workflow_id: 'test-workflow-id',
 				credential_id: 'new-cred-123',
 				is_complete: true,
 				is_new: true,

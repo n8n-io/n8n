@@ -5,8 +5,9 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 describe('CollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
@@ -53,6 +54,11 @@ describe('CollectionParameterLegacy.vue', () => {
 
 	const renderComponent = createComponentRenderer(CollectionParameterLegacy, {
 		props: baseProps,
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
 	});
 
 	describe('Rendering', () => {

@@ -6,6 +6,8 @@ import type { BinaryMetadata } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('file-saver', () => ({
 	saveAs: vi.fn(),
@@ -14,6 +16,9 @@ vi.mock('file-saver', () => ({
 const renderComponent = createComponentRenderer(BinaryEntryDataTable, {
 	global: {
 		plugins: [createTestingPinia()],
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 });
 

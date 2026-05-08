@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { computed } from 'vue';
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
@@ -7,6 +8,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const extractNodesIntoSubworkflow = vi.fn();
 vi.mock('@/app/composables/useWorkflowExtraction', () => {
@@ -31,6 +33,9 @@ const ModalStub = {
 const global = {
 	stubs: {
 		Modal: ModalStub,
+	},
+	provide: {
+		[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 	},
 };
 

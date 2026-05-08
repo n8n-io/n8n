@@ -1,4 +1,4 @@
-import { defineComponent, nextTick, watch } from 'vue';
+import { computed, defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
 import { screen, fireEvent } from '@testing-library/vue';
@@ -7,6 +7,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { NodeFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -34,6 +35,9 @@ function getWrapperComponent(setup: () => void) {
 	return createComponentRenderer(wrapperComponent, {
 		global: {
 			plugins: [createPinia()],
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
 		},
 	})();
 }
@@ -131,7 +135,13 @@ describe('NodesListPanel', () => {
 				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 			});
 
-			const renderComponent = createComponentRenderer(wrapperComponent);
+			const renderComponent = createComponentRenderer(wrapperComponent, {
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					},
+				},
+			});
 
 			renderComponent({
 				pinia: createPinia(),
@@ -191,6 +201,11 @@ describe('NodesListPanel', () => {
 			pinia: createPinia(),
 			props: {
 				nodeTypes: mockedNodes,
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 
@@ -392,7 +407,13 @@ describe('NodesListPanel', () => {
 				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 			});
 
-			const renderComponent = createComponentRenderer(wrapperComponent);
+			const renderComponent = createComponentRenderer(wrapperComponent, {
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					},
+				},
+			});
 
 			renderComponent({
 				pinia: createPinia(),

@@ -9,6 +9,8 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -34,6 +36,7 @@ beforeEach(() => {
 		global: {
 			provide: {
 				...createCanvasProvide(),
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 			},
 		},
 	});

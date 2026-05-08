@@ -3,9 +3,11 @@ import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
+import { computed } from 'vue';
 import SetupCardBody from './SetupCardBody.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 import { jsonParse } from 'n8n-workflow';
 
@@ -42,7 +44,13 @@ vi.mock('@/app/composables/useWorkflowState', () => ({
 	})),
 }));
 
-const renderComponent = createComponentRenderer(SetupCardBody);
+const renderComponent = createComponentRenderer(SetupCardBody, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 const NODE_PROPERTIES = [
 	{

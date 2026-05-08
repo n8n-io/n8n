@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from './CredentialEdit.vue';
+import { computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
@@ -9,6 +10,7 @@ import { useExternalSecretsStore } from '@/features/integrations/externalSecrets
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
@@ -222,6 +224,11 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 			},
 		},
 	}),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 describe('CredentialEdit', () => {
 	beforeEach(() => {

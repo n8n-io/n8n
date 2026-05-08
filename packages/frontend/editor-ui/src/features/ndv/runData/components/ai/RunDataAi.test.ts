@@ -13,8 +13,16 @@ import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
 import RunDataAi from './RunDataAi.vue';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-const renderComponent = createComponentRenderer(RunDataAi);
+const renderComponent = createComponentRenderer(RunDataAi, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('RunDataAi', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;

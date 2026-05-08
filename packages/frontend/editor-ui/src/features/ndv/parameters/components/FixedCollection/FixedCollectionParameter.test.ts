@@ -8,6 +8,8 @@ import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/app/constants';
 import { usePostHog, type PosthogStore } from '@/app/stores/posthog.store';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const mockedGetVariant = vi.fn(() => 'control');
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -64,7 +66,14 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 		isReadOnly: false,
 	};
 
-	const renderComponent = createComponentRenderer(FixedCollectionParameter, { props });
+	const renderComponent = createComponentRenderer(FixedCollectionParameter, {
+		props,
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();

@@ -27,7 +27,7 @@ import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, ref, shallowRef } from 'vue';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,
 	NodeConnectionTypes,
@@ -305,6 +305,7 @@ describe('VirtualSchema.vue', () => {
 				},
 				provide: {
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 				},
 				mocks: {
 					$locale: {

@@ -1,4 +1,5 @@
 import CredentialConfig from './CredentialConfig.vue';
+import { computed } from 'vue';
 import { screen } from '@testing-library/vue';
 import type {
 	ICredentialDataDecryptedObject,
@@ -16,6 +17,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 
 vi.mock('@n8n/i18n', async () => {
@@ -45,6 +47,11 @@ const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 			},
 		},
 	}),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 	props: {
 		isManaged: true,
 		mode: 'edit',

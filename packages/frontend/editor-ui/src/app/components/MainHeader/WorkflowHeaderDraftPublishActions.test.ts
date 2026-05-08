@@ -20,6 +20,8 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -100,6 +102,9 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 			N8nTooltip: {
 				template: '<div><slot name="content" /><slot /></div>',
 			},
+		},
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 		},
 	},
 });

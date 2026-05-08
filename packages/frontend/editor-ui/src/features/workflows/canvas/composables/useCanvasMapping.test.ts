@@ -111,7 +111,7 @@ beforeEach(() => {
 
 	// Set workflow ID so document store can be created
 	const workflowsStore = useWorkflowsStore();
-	workflowsStore.workflow.id = 'test-workflow';
+	workflowsStore.workflow.id = 'test-workflow-id';
 });
 
 afterEach(() => {

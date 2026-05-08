@@ -231,7 +231,7 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
 
-			const workflowSaving = useWorkflowSaving(ref('test-workflow-id'), { router });
+			const workflowSaving = useWorkflowSaving(ref(MOCK_ID), { router });
 			const saveCurrentWorkflowSpy = vi.spyOn(workflowSaving, 'saveCurrentWorkflow');
 			await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
 

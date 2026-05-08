@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import {
@@ -11,8 +11,15 @@ import {
 } from '../../__tests__/utils';
 import ItemsRenderer from './ItemsRenderer.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-const renderComponent = createComponentRenderer(ItemsRenderer);
+const renderComponent = createComponentRenderer(ItemsRenderer, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('ItemsRenderer', () => {
 	it('should render items', async () => {

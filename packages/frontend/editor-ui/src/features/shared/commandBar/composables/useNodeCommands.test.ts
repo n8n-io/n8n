@@ -107,12 +107,12 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
-			value: '123',
+			value: 'test-workflow-id',
 			writable: true,
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
-			value: { '123': true },
+			value: { 'test-workflow-id': true },
 			writable: true,
 		});
 
@@ -159,7 +159,9 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not include add node command when workflow is archived', () => {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow-id'),
+			);
 			workflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useNodeCommands(ref('test-workflow-id'), {
@@ -227,7 +229,7 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should populate open node children with workflow nodes', () => {
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 			store.setNodes([
 				createTestNode({
 					id: 'node-1',
@@ -308,7 +310,7 @@ describe('useNodeCommands', () => {
 
 	describe('root open node items', () => {
 		beforeEach(() => {
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 			store.setNodes([
 				createTestNode({
 					id: 'node-1',

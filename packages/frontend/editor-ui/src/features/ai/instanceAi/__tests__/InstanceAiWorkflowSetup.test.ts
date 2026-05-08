@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import InstanceAiWorkflowSetup from '../components/InstanceAiWorkflowSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -78,7 +80,13 @@ vi.mock('@/features/workflows/canvas/experimental/composables/useExpressionResol
 	useExpressionResolveCtx: () => ({}),
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiWorkflowSetup);
+const renderComponent = createComponentRenderer(InstanceAiWorkflowSetup, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 /** Render the component and wait for the async onMounted to complete (isStoreReady = true). */
 async function renderAndWait(
@@ -783,7 +791,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 	describe('NDV parameter fallback', () => {
 		it('includes store node parameters in apply payload when not in local paramValues', async () => {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 			const nodeName = 'My Slack Node';
 			const storeNode = {
 				id: 'node-1',
@@ -929,7 +937,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue({
 				id: 'node-1',
 				name: 'DataTable',

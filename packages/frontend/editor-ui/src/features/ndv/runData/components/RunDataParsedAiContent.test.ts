@@ -1,8 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataParsedAiContent from '@/features/ndv/runData/components/RunDataParsedAiContent.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { h } from 'vue';
+import { computed, h } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 type Props = InstanceType<typeof RunDataParsedAiContent>['$props'];
 
@@ -16,6 +17,9 @@ function renderComponent(props: Props) {
 					routes: [{ path: '/', component: () => h('div') }],
 				}),
 			],
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
 		},
 		props,
 	})();

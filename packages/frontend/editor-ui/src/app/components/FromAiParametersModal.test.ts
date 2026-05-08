@@ -9,9 +9,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useRouter } from 'vue-router';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -105,7 +106,13 @@ const mockTools = [
 	},
 ];
 
-const renderModal = createComponentRenderer(FromAiParametersModal);
+const renderModal = createComponentRenderer(FromAiParametersModal, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow'),
+		},
+	},
+});
 let pinia: ReturnType<typeof createTestingPinia>;
 let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;

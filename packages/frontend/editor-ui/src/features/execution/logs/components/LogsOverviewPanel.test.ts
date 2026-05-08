@@ -5,7 +5,8 @@ import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
-import { h } from 'vue';
+import { computed, h } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import {
 	aiChatExecutionResponse,
@@ -98,6 +99,9 @@ describe('LogsOverviewPanel', () => {
 					}),
 					pinia,
 				],
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 	}

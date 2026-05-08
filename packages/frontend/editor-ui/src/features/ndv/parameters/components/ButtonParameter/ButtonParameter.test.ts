@@ -9,6 +9,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/features/ndv/shared/ndv.store');
 vi.mock('@/app/stores/workflows.store');
@@ -100,6 +102,9 @@ describe('ButtonParameter', () => {
 			props: { ...defaultProps, ...props },
 			global: {
 				plugins: [createTestingPinia()],
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 			},
 		});
 	};

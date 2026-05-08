@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import { beforeEach } from 'vitest';
 import type { INodePropertyCollection } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 // vi.hoisted runs before vi.mock, making these variables available to mock factories
 const { mockState } = vi.hoisted(() => ({
@@ -113,6 +115,9 @@ describe('FixedCollectionItem.vue', () => {
 		global: {
 			stubs: {
 				ParameterInputList: { template: '<div data-test-id="parameter-input-list"></div>' },
+			},
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
 			},
 		},
 	});

@@ -699,7 +699,7 @@ describe('useNodeExecution', () => {
 			const result = await execute();
 
 			expect(result).toBe('stopped-webhook');
-			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('test-workflow-id');
 		});
 
 		it('should stop execution when listening for workflow events', async () => {
@@ -851,7 +851,7 @@ describe('useNodeExecution', () => {
 			const { stopExecution } = useNodeExecution(ref('test-workflow-id'), node);
 			await stopExecution();
 
-			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('test-workflow-id');
 		});
 
 		it('should stop current execution when listening for workflow events', async () => {

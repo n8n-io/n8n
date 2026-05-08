@@ -8,7 +8,8 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
-import { nextTick } from 'vue';
+import { nextTick, computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const showError = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
@@ -40,7 +41,13 @@ const executionDataFactory = (
 	annotation: { tags, vote: 'up' },
 });
 
-const renderComponent = createComponentRenderer(WorkflowExecutionAnnotationTags);
+const renderComponent = createComponentRenderer(WorkflowExecutionAnnotationTags, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('WorkflowExecutionAnnotationTags.ee.vue', () => {
 	const executionData: ExecutionSummary = executionDataFactory();

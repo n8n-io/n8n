@@ -17,6 +17,18 @@ vi.mock('../logs.utils', () => {
 	};
 });
 
+vi.mock('vue-router', async (importOriginal) => {
+	const actual: Record<string, unknown> = await importOriginal();
+	return {
+		...actual,
+		useRoute: vi.fn(() => ({
+			name: 'test-route',
+			params: { workflowId: 'test-workflow-id' },
+			query: {},
+		})),
+	};
+});
+
 describe('useChatMessaging', () => {
 	let chatMessaging: ReturnType<typeof useChatMessaging>;
 	let chatTrigger: Ref<INodeUi | null>;

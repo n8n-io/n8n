@@ -3,6 +3,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { computed } from 'vue';
 import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -12,6 +13,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
@@ -113,7 +115,13 @@ vi.mock('@/features/setupPanel/composables/useWebhookUrls', () => ({
 	})),
 }));
 
-const renderComponent = createComponentRenderer(NodeSetupCard);
+const renderComponent = createComponentRenderer(NodeSetupCard, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow'),
+		},
+	},
+});
 
 const createCredentialState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState => ({
 	node: createTestNode({
