@@ -729,6 +729,7 @@ describe('research tool', () => {
 				});
 				context.webResearchService!.fetchUrl = jest.fn(
 					async (_url: string, options?: { authorizeUrl?: AuthorizeUrl }) => {
+						await Promise.resolve();
 						captured = options?.authorizeUrl;
 						return {
 							url: inputUrl,
@@ -781,9 +782,9 @@ describe('research tool', () => {
 				// caused the LLM to retry the same blocked host forever. Lock in
 				// the new clearer phrasing so the message can't regress.
 				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
-				const err = await authorize('https://evil.example/x').catch((e: unknown) => e);
-				expect(err).toBeInstanceOf(Error);
-				const message = (err as Error).message;
+				const caught = await authorize('https://evil.example/x').catch((e: unknown) => e);
+				expect(caught).toBeInstanceOf(Error);
+				const message = (caught as Error).message;
 				expect(message).toMatch(/skip this URL/i);
 				expect(message).not.toMatch(/retry with the direct URL/i);
 			});
