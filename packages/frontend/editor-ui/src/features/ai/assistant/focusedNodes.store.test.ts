@@ -75,8 +75,7 @@ describe('useFocusedNodesStore', () => {
 		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'wf-1';
-		workflowsStore.workflow.connections = {};
+		workflowsStore.setWorkflowId('wf-1');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
@@ -768,14 +767,17 @@ describe('useFocusedNodesStore', () => {
 		});
 
 		it('should include connections (deduplicated)', () => {
-			workflowsStore.workflow.connections = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setConnections({
 				Trigger: {
 					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
 				},
 				'HTTP Request': {
 					main: [[{ node: 'Code', type: 'main', index: 0 }]],
 				},
-			};
+			});
 
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
@@ -840,7 +842,7 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap).toEqual({});
@@ -853,7 +855,7 @@ describe('useFocusedNodesStore', () => {
 
 		it('should not track telemetry on workflowId change if no confirmed and oldId undefined', async () => {
 			// The initial wf-1 is set in beforeEach but no confirmed nodes
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(track).not.toHaveBeenCalled();

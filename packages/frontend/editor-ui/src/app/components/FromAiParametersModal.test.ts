@@ -12,7 +12,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
 import {
 	createTestTaskData,
-	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -91,10 +90,6 @@ const mockExecutionResponse = createTestWorkflowExecutionResponse({
 	}),
 });
 
-const mockWorkflow = createTestWorkflow({
-	id: 'test-workflow',
-});
-
 const mockTools = [
 	{
 		name: 'Test Tool',
@@ -133,7 +128,7 @@ describe('FromAiParametersModal', () => {
 					modalStack: [FROM_AI_PARAMETERS_MODAL_KEY],
 				},
 				[STORES.WORKFLOWS]: {
-					workflow: mockWorkflow,
+					workflowId: 'test-workflow',
 				},
 			},
 		});

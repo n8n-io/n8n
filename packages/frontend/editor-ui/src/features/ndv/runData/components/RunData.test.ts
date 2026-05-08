@@ -1451,13 +1451,13 @@ describe('RunData', () => {
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
-		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(workflowNodes[0]);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		workflowsStore.workflow.id = testWorkflowId;
+		workflowsStore.setWorkflowId(testWorkflowId);
 
 		workflowsStore.setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({

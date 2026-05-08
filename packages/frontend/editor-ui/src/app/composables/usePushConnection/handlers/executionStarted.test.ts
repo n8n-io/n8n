@@ -31,7 +31,7 @@ describe('executionStarted', () => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.id = 'wf-123';
+		workflowsStore.setWorkflowId('wf-123');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');

@@ -19,7 +19,7 @@ describe('nodeExecuteAfterData', () => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.id = 'test-wf';
+		workflowsStore.setWorkflowId('test-wf');
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 

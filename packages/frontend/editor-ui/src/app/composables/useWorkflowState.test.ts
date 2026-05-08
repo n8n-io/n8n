@@ -20,7 +20,7 @@ describe('useWorkflowState', () => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.id = 'test-wf';
+		workflowsStore.setWorkflowId('test-wf');
 		workflowState = useWorkflowState();
 
 		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
@@ -253,7 +253,7 @@ describe('useWorkflowState', () => {
 		});
 
 		it('is a no-op (other than executingNode/builder reset) when no workflow is loaded', () => {
-			workflowsStore.workflow.id = '';
+			workflowsStore.setWorkflowId('');
 
 			expect(() => workflowState.resetState()).not.toThrow();
 		});
@@ -274,7 +274,7 @@ describe('useWorkflowState', () => {
 			expect(workflowsStore.workflowId).toBe('');
 
 			// Reopen the same workflow id.
-			workflowsStore.workflow.id = 'test-wf';
+			workflowsStore.setWorkflowId('test-wf');
 
 			// Fresh state — no leakage.
 			const fresh = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
