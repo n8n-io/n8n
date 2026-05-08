@@ -25,6 +25,7 @@ import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { isExecuteFunctions } from '../../utils';
 import {
 	fixEmptyContentMessage,
 	getAgentStepsParser,
@@ -80,12 +81,6 @@ export function createAgentExecutor(
 		returnIntermediateSteps: options.returnIntermediateSteps === true,
 		maxIterations: options.maxIterations ?? 10,
 	});
-}
-
-function isExecuteFunctions(
-	context: IExecuteFunctions | ISupplyDataFunctions,
-): context is IExecuteFunctions {
-	return 'getExecuteData' in context;
 }
 
 /**

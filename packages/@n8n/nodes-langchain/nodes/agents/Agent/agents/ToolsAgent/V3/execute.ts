@@ -9,17 +9,11 @@ import type {
 import { getHighlightedResponseKey, sleep } from 'n8n-workflow';
 
 import { buildExecutionContext, executeBatch } from './helpers';
-
-function isExecuteFunctions(
-	context: IExecuteFunctions | ISupplyDataFunctions,
-): context is IExecuteFunctions {
-	return 'getExecuteData' in context;
-}
+import { isExecuteFunctions } from '../../utils';
 
 function countFailedItems(returnData: INodeExecutionData[]): number {
 	let failed = 0;
-	for (const item of returnData) {
-		const json = item.json as { error?: unknown };
+	for (const { json } of returnData) {
 		if (typeof json.error === 'string' && json.error.length > 0) {
 			failed++;
 		}

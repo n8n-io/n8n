@@ -17,17 +17,13 @@ import type {
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
+import type { ItemContext } from './prepareItemContext';
+import { isExecuteFunctions } from '../../../utils';
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
-import type { ItemContext } from './prepareItemContext';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 
-function isExecuteFunctions(
-	context: IExecuteFunctions | ISupplyDataFunctions,
-): context is IExecuteFunctions {
-	return 'getExecuteData' in context;
-}
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
  * Handles both regular execution and execution after tool calls.
