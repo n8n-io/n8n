@@ -35,7 +35,7 @@ test.describe(
 				for (const name of EDIT_FIELDS_NAMES) {
 					await n8n.canvas.rightClickNode(name);
 
-					await n8n.canvas.clickContextMenuAction('Convert node to sub-workflow');
+					await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
 					await n8n.canvas.convertToSubworkflowModal.waitForModal();
 					await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
 					await n8n.canvas.convertToSubworkflowModal.waitForClose();
@@ -60,7 +60,7 @@ test.describe(
 				await n8n.canvas.extendSelectionWithArrows('right');
 
 				await n8n.canvas.openCanvasContextMenu();
-				await n8n.canvas.clickContextMenuAction('Convert 6 nodes to sub-workflow');
+				await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
 				await n8n.canvas.convertToSubworkflowModal.waitForModal();
 				await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
 				await n8n.canvas.convertToSubworkflowModal.waitForClose();
@@ -89,7 +89,7 @@ test.describe(
 				// Extract the disconnected node "Edit Fields Disconnected"
 				await n8n.canvas.rightClickNode('Edit Fields Disconnected');
 
-				await n8n.canvas.clickContextMenuAction('Convert node to sub-workflow');
+				await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
 				await n8n.canvas.convertToSubworkflowModal.waitForModal();
 				await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
 				await n8n.canvas.convertToSubworkflowModal.waitForClose();

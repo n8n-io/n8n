@@ -9,15 +9,40 @@ jest.mock('@mastra/core/tools', () => ({
 	createTool: jest.fn((config: Record<string, unknown>) => config),
 }));
 
-import type { OrchestrationContext } from '../../../types';
-import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool';
+import {
+	applyBranchReadOnlyOverrides,
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiPermissions,
+} from '@n8n/api-types';
 
-const { resultFromPostStreamError, createBuildWorkflowAgentTool, recordSuccessfulWorkflowBuilds } =
+import type { OrchestrationContext, InstanceAiContext } from '../../../types';
+import { createRemediation } from '../../../workflow-loop';
+import type { WorkflowBuildOutcome, WorkflowLoopState } from '../../../workflow-loop';
+import type {
+	SubmitWorkflowAttempt,
+	SubmitWorkflowOutput,
+} from '../../workflows/submit-workflow.tool';
+
+const {
+	recordSuccessfulWorkflowBuilds,
+	resultFromPostStreamError,
+	resultFromLaterFailedMainSubmit,
+	attemptFromAutoResubmit,
+	withTerminalLoopState,
+	finalizeBuildResult,
+	shouldRecoverSavedWorkflowAfterFailedSubmit,
+	createBuildWorkflowAgentTool,
+	buildWarmBuilderFollowUp,
+	mergeLatestVerificationIntoOutcome,
+} =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
 
 type BuildExecutable = {
-	execute: (input: Record<string, unknown>) => Promise<{ result: string; taskId: string }>;
+	execute: (
+		input: Record<string, unknown>,
+		ctx?: { agent?: { resumeData?: unknown; suspend?: jest.Mock<Promise<void>, [unknown]> } },
+	) => Promise<{ result: string; taskId: string }>;
 };
 
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
@@ -44,7 +69,111 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 	} as OrchestrationContext;
 }
 
+function createMockDomainContext(
+	permissionOverrides: Partial<InstanceAiPermissions> = {},
+	workflowName = 'Existing Workflow',
+): InstanceAiContext {
+	return {
+		userId: 'test-user',
+		permissions: { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...permissionOverrides },
+		workflowService: {
+			get: jest.fn().mockResolvedValue({ name: workflowName }),
+		} as unknown as InstanceAiContext['workflowService'],
+		executionService: {} as InstanceAiContext['executionService'],
+		credentialService: {} as InstanceAiContext['credentialService'],
+		nodeService: {} as InstanceAiContext['nodeService'],
+		dataTableService: {} as InstanceAiContext['dataTableService'],
+	};
+}
+
+function createSpawnableContext(
+	permissionOverrides: Partial<InstanceAiPermissions> = {},
+	overrides: Partial<OrchestrationContext> = {},
+): OrchestrationContext {
+	return createMockContext({
+		domainContext: createMockDomainContext(permissionOverrides),
+		domainTools: { 'build-workflow': {} },
+		spawnBackgroundTask: jest.fn().mockReturnValue({
+			status: 'started',
+			taskId: 'build-task',
+			agentId: 'agent-builder',
+		}),
+		...overrides,
+	});
+}
+
 const MAIN_PATH = '/home/daytona/workspace/src/workflow.ts';
+
+describe('buildWarmBuilderFollowUp', () => {
+	it('keeps the detached builder verification contract in warm follow-ups', () => {
+		const briefing = buildWarmBuilderFollowUp({
+			task: 'Change the Gmail recipient',
+			workflowId: 'workflow-1',
+			workItemId: 'work-item-1',
+		});
+
+		expect(briefing).toContain('<builder-follow-up type="fix">');
+		expect(briefing).toContain('Workflow ID: workflow-1');
+		expect(briefing).toContain('Do NOT stop after a successful submit without verifying');
+		expect(briefing).toContain('verify-built-workflow');
+		expect(briefing).toContain('nodes(action="explore-resources")');
+		expect(briefing).toContain('<requested-change>');
+		expect(briefing).toContain('Change the Gmail recipient');
+	});
+});
+
+describe('mergeLatestVerificationIntoOutcome', () => {
+	const baseOutcome: WorkflowBuildOutcome = {
+		workItemId: 'work-item-1',
+		taskId: 'task-1',
+		workflowId: 'workflow-1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		summary: 'Submitted',
+	};
+
+	it('copies matching structured verification evidence into the returned outcome', () => {
+		const result = mergeLatestVerificationIntoOutcome(baseOutcome, {
+			...baseOutcome,
+			verification: {
+				attempted: true,
+				success: true,
+				executionId: 'exec-1',
+				status: 'success',
+				evidence: {
+					nodesExecuted: ['Form Trigger', 'Send Email'],
+					producedOutputRows: 2,
+				},
+				verifiedAt: '2026-04-30T12:00:00.000Z',
+			},
+		});
+
+		expect(result.verification).toMatchObject({
+			attempted: true,
+			success: true,
+			executionId: 'exec-1',
+			evidence: {
+				nodesExecuted: ['Form Trigger', 'Send Email'],
+			},
+		});
+	});
+
+	it('does not copy stale verification evidence from a different builder task', () => {
+		const result = mergeLatestVerificationIntoOutcome(baseOutcome, {
+			...baseOutcome,
+			taskId: 'previous-task',
+			verification: {
+				attempted: true,
+				success: true,
+				executionId: 'exec-old',
+				status: 'success',
+			},
+		});
+
+		expect(result.verification).toBeUndefined();
+	});
+});
 
 describe('resultFromPostStreamError', () => {
 	it('preserves the submitted workflow when the stream errors after a successful submit', () => {
@@ -62,6 +191,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -81,6 +211,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts: [],
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -102,6 +233,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -123,13 +255,14 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
 		expect(result).toBeUndefined();
 	});
 
-	it('preserves an earlier successful main-path submit when a later submit failed', () => {
+	it('does not preserve an earlier main-path submit when a later submit failed with code-fixable remediation', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
 			{
 				filePath: MAIN_PATH,
@@ -142,6 +275,11 @@ describe('resultFromPostStreamError', () => {
 				sourceHash: 'b',
 				success: false,
 				errors: ['validation failed'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
 			},
 		];
 
@@ -150,6 +288,40 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeUndefined();
+	});
+
+	it('preserves an earlier main-path submit when a later submit failed with terminal remediation', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['setup required'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Unauthorized'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -158,6 +330,309 @@ describe('resultFromPostStreamError', () => {
 			workflowId: 'WF_123',
 			submitted: true,
 		});
+	});
+
+	it('preserves an earlier saved workflow when the final submit attempt failed with terminal remediation', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['setup required after later edit'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[1],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeDefined();
+		expect(result!.text).toContain('A later submit failed');
+		expect(result!.outcome).toMatchObject({
+			workItemId: 'wi_test',
+			taskId: 'task_test',
+			workflowId: 'WF_123',
+			submitted: true,
+		});
+	});
+
+	it('does not preserve an earlier saved workflow when the final submit failure is code-fixable', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['validation failed after later edit'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[1],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeUndefined();
+	});
+
+	it('marks unresolved placeholder submits as saved workflows needing setup', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'abc',
+				success: true,
+				workflowId: 'WF_123',
+				hasUnresolvedPlaceholders: true,
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Stopped after submit'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result!.outcome).toMatchObject({
+			workflowId: 'WF_123',
+			submitted: true,
+			needsUserInput: true,
+			blockingReason:
+				'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
+			remediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+			},
+		});
+	});
+});
+
+describe('withTerminalLoopState', () => {
+	it('marks a saved workflow as needing user input when verification is blocked by setup', () => {
+		const outcome: WorkflowBuildOutcome = {
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: 'wf_123',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			summary: 'Submitted workflow.',
+		};
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_test',
+			workflowId: 'wf_123',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+
+		expect(withTerminalLoopState(outcome, state)).toMatchObject({
+			submitted: true,
+			workflowId: 'wf_123',
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			remediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+			},
+		});
+	});
+});
+
+describe('finalizeBuildResult', () => {
+	it('applies terminal loop state to recovered saved-workflow results', async () => {
+		const remediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance: 'Route to setup.',
+		});
+		const context = createMockContext({
+			workflowTaskService: {
+				getWorkflowLoopState: jest.fn().mockResolvedValue({
+					workItemId: 'wi_test',
+					threadId: 'thread_1',
+					runId: 'run_test',
+					workflowId: 'wf_123',
+					phase: 'blocked',
+					status: 'blocked',
+					source: 'create',
+					rebuildAttempts: 0,
+					successfulSubmitSeen: true,
+					postSubmitRemediationSubmitsUsed: 0,
+					lastRemediation: remediation,
+				}),
+			} as unknown as OrchestrationContext['workflowTaskService'],
+		});
+		const result = await finalizeBuildResult(context, 'wi_test', {
+			text: 'Recovered workflow.',
+			outcome: {
+				workItemId: 'wi_test',
+				runId: 'run_test',
+				taskId: 'task_test',
+				workflowId: 'wf_123',
+				submitted: true,
+				triggerType: 'manual_or_testable',
+				needsUserInput: false,
+				summary: 'Recovered workflow.',
+			},
+		});
+
+		expect(context.workflowTaskService?.getWorkflowLoopState).toHaveBeenCalledWith('wi_test');
+		expect(result).toMatchObject({
+			text: 'Recovered workflow.',
+			outcome: {
+				submitted: true,
+				workflowId: 'wf_123',
+				needsUserInput: true,
+				blockingReason: 'Route to setup.',
+				remediation: {
+					category: 'needs_setup',
+					shouldEdit: false,
+					reason: 'mocked_credentials_or_placeholders',
+				},
+			},
+		});
+	});
+});
+
+describe('shouldRecoverSavedWorkflowAfterFailedSubmit', () => {
+	it('recovers only when the failed submit carries terminal remediation', () => {
+		const terminalAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Stop editing.'],
+			remediation: createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				guidance: 'Stop editing.',
+			}),
+		};
+		const codeFixableAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Fix the workflow code.'],
+			remediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'validation_failed',
+				guidance: 'Fix the workflow code and submit again.',
+			}),
+		};
+		const unclassifiedAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Unknown submit failure.'],
+		};
+
+		expect(shouldRecoverSavedWorkflowAfterFailedSubmit(terminalAttempt)).toBe(true);
+		expect(shouldRecoverSavedWorkflowAfterFailedSubmit(codeFixableAttempt)).toBe(false);
+		expect(shouldRecoverSavedWorkflowAfterFailedSubmit(unclassifiedAttempt)).toBe(false);
+	});
+});
+
+describe('attemptFromAutoResubmit', () => {
+	it('ignores a stale successful attempt when terminal guard blocked the resubmit', () => {
+		const staleAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'old-hash',
+			success: true,
+			workflowId: 'WF_123',
+		};
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+			guidance: 'Stop editing.',
+		});
+		const resubmit: SubmitWorkflowOutput = {
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		};
+
+		const attempt = attemptFromAutoResubmit({
+			latestAttempt: staleAttempt,
+			resubmit,
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+		});
+
+		expect(attempt).toEqual({
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+	});
+
+	it('returns the fresh submit attempt when it matches the edited source hash', () => {
+		const freshAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: true,
+			workflowId: 'WF_456',
+		};
+
+		const attempt = attemptFromAutoResubmit({
+			latestAttempt: freshAttempt,
+			resubmit: { success: true, workflowId: 'WF_456' },
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+		});
+
+		expect(attempt).toBe(freshAttempt);
 	});
 });
 
@@ -219,7 +694,9 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 	});
 
 	it('allows the call when bypassPlan=true with a reason is provided', async () => {
-		const context = createMockContext();
+		const context = createMockContext({
+			domainContext: createMockDomainContext({ updateWorkflow: 'always_allow' }),
+		});
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
 		const out = await tool.execute({
@@ -267,6 +744,192 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const out = await tool.execute({ task: 'build directly' });
 
 		expect(out.result).not.toContain('direct builder calls require');
+	});
+});
+
+describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
+	const ORIGINAL_ENV = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+
+	afterEach(() => {
+		if (ORIGINAL_ENV === undefined) {
+			delete process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+		} else {
+			process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = ORIGINAL_ENV;
+		}
+	});
+
+	const editInput = {
+		task: 'patch one expression',
+		workflowId: 'WF_EXISTING',
+		bypassPlan: true,
+		reason: 'Swap Slack channel on this notifier.',
+	};
+
+	it('suspends before spawning when updateWorkflow requires approval', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: '', taskId: '' });
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message:
+					'Edit existing workflow "Existing Workflow" (ID: WF_EXISTING)? Reason: Swap Slack channel on this notifier.',
+				severity: 'warning',
+			}),
+		);
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('spawns when approval resume data is approved', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, {
+			agent: { resumeData: { approved: true } },
+		});
+
+		expect(out.taskId).toMatch(/^build-/);
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not spawn when approval resume data is denied', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, {
+			agent: { resumeData: { approved: false } },
+		});
+
+		expect(out).toEqual({ result: 'User declined the workflow edit.', taskId: '' });
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('skips suspend when updateWorkflow is always_allow', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'always_allow' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not apply the edit approval gate without a workflowId', async () => {
+		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute({ task: 'build a new workflow' }, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not apply the edit approval gate without domain context', async () => {
+		const context = createMockContext({
+			domainTools: { 'build-workflow': {} },
+			spawnBackgroundTask: jest.fn().mockReturnValue({
+				status: 'started',
+				taskId: 'build-task',
+				agentId: 'agent-builder',
+			}),
+		});
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('skips suspend in a replan follow-up', async () => {
+		const context = createSpawnableContext(
+			{ updateWorkflow: 'require_approval' },
+			{ isReplanFollowUp: true },
+		);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('skips suspend in a checkpoint follow-up', async () => {
+		const context = createSpawnableContext(
+			{ updateWorkflow: 'require_approval' },
+			{ isCheckpointFollowUp: true },
+		);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('denies without suspend or spawn when updateWorkflow is blocked', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'blocked' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('denies branch read-only edits without suspend or spawn', async () => {
+		const readOnlyPermissions = applyBranchReadOnlyOverrides({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+		});
+		const context = createSpawnableContext(readOnlyPermissions);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('skips suspend when the workflow was created earlier in the plan cycle', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		(context.domainContext as InstanceAiContext).aiCreatedWorkflowIds = new Set([
+			editInput.workflowId,
+		]);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('still denies blocked edits even when the workflow is in the active plan cycle', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'blocked' });
+		(context.domainContext as InstanceAiContext).aiCreatedWorkflowIds = new Set([
+			editInput.workflowId,
+		]);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 	});
 });
 

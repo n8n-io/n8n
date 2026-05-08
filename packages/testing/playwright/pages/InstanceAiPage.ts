@@ -19,6 +19,26 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-container');
 	}
 
+	getSidebarToggle(): Locator {
+		return this.getContainer().getByTestId('instance-ai-sidebar-toggle');
+	}
+
+	/**
+	 * Expand the chat-history sidebar if it isn't already open. The sidebar
+	 * starts collapsed by default, so any test that needs to query thread
+	 * items must open it first. Idempotent — does nothing if already open.
+	 *
+	 * Waits for the thread-list to become visible so callers can immediately
+	 * query thread items without racing the 200ms slide-in transition.
+	 */
+	async openSidebar(): Promise<void> {
+		const toggle = this.getSidebarToggle();
+		if (await toggle.isVisible()) {
+			await toggle.click();
+		}
+		await this.getContainer().getByTestId('instance-ai-thread-list').waitFor({ state: 'visible' });
+	}
+
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
@@ -41,6 +61,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-assistant-message');
 	}
 
+	getAssistantMessageText(text: string): Locator {
+		return this.getAssistantMessages().getByText(text);
+	}
+
+	getToolCallsButton(label: string): Locator {
+		return this.page.getByRole('button', { name: label });
+	}
+
 	getStatusBar(): Locator {
 		return this.page.getByTestId('instance-ai-status-bar');
 	}
@@ -52,6 +80,16 @@ export class InstanceAiPage extends BasePage {
 
 	getEmptyState(): Locator {
 		return this.page.getByTestId('instance-ai-empty-state');
+	}
+
+	// ── Attachments ────────────────────────────────────────────────────
+
+	getFileInput(): Locator {
+		return this.getContainer().locator('input[type="file"]');
+	}
+
+	getAttachmentsAt(messageIndex: number): Locator {
+		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────
@@ -70,6 +108,10 @@ export class InstanceAiPage extends BasePage {
 
 	getCredentialContinue(): Locator {
 		return this.page.getByTestId('instance-ai-credential-continue-button');
+	}
+
+	getConfirmationText(text: string): Locator {
+		return this.page.getByText(text, { exact: false });
 	}
 
 	// ── Plan Review ───────────────────────────────────────────────────

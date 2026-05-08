@@ -7,7 +7,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/app/composables/useWorkflowsCache';
 import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { IWorkflowDb } from '@/Interface';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -29,10 +28,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
-const props = defineProps<{
-	workflow: IWorkflowDb;
-}>();
-
 const i18n = useI18n();
 const router = useRouter();
 const evaluationStore = useEvaluationStore();
@@ -49,9 +44,9 @@ const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
 
+const nodes = computed(() => workflowDocumentStore?.value?.allNodes ?? []);
 const hasAINode = computed(() => {
-	const nodes = props.workflow.nodes;
-	return nodes.some((node) => {
+	return nodes.value.some((node) => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		return nodeType?.codex?.categories?.includes('AI');
 	});
@@ -62,28 +57,22 @@ const hasEvaluationSetOutputsNode = computed((): boolean => {
 });
 
 const hasErrorWorkflow = computed(() => {
-	const errorWorkflow =
-		workflowDocumentStore?.value?.settings?.errorWorkflow ?? props.workflow.settings?.errorWorkflow;
+	const errorWorkflow = workflowDocumentStore?.value?.settings?.errorWorkflow;
 	return !!errorWorkflow;
 });
 
 const isErrorWorkflow = computed(() => {
-	return props.workflow.nodes.some(
+	return nodes.value.some(
 		(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
 	);
 });
 
 const hasSavedTimeNodes = computed(() => {
-	if (!props.workflow?.nodes) return false;
-	return props.workflow.nodes.some(
-		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
-	);
+	return nodes.value.some((node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true);
 });
 
 const hasTimeSaved = computed(() => {
-	const timeSavedPerExecution =
-		workflowDocumentStore?.value?.settings?.timeSavedPerExecution ??
-		props.workflow.settings?.timeSavedPerExecution;
+	const timeSavedPerExecution = workflowDocumentStore?.value?.settings?.timeSavedPerExecution;
 	return timeSavedPerExecution !== undefined || hasSavedTimeNodes.value;
 });
 
@@ -214,18 +203,17 @@ const availableActions = computed(() => {
 			...baseAction,
 			id: 'workflow-mcp-access',
 			description: i18n.baseText('mcp.productionChecklist.workflow.description'),
-			completed:
-				workflowDocumentStore?.value?.settings?.availableInMCP ??
-				props.workflow.settings?.availableInMCP ??
-				false,
+			completed: workflowDocumentStore?.value?.settings?.availableInMCP ?? false,
 		};
 	}
 });
 
 async function loadWorkflowSettings() {
-	if (props.workflow.id) {
+	if (workflowDocumentStore?.value?.workflowId) {
 		// todo add global config
-		cachedSettings.value = await workflowsCache.getMergedWorkflowSettings(props.workflow.id);
+		cachedSettings.value = await workflowsCache.getMergedWorkflowSettings(
+			workflowDocumentStore?.value.workflowId,
+		);
 	}
 }
 
@@ -235,7 +223,7 @@ async function handleActionClick(actionId: string) {
 			// Navigate to evaluations
 			await router.push({
 				name: VIEWS.EVALUATION_EDIT,
-				params: { workflowId: props.workflow.id },
+				params: { workflowId: workflowDocumentStore?.value?.workflowId },
 			});
 			break;
 		case 'errorWorkflow':
@@ -269,7 +257,10 @@ async function handleIgnoreClick(actionId: string) {
 		return;
 	}
 
-	await workflowsCache.ignoreSuggestedAction(props.workflow.id, actionId);
+	await workflowsCache.ignoreSuggestedAction(
+		workflowDocumentStore?.value?.workflowId ?? '',
+		actionId,
+	);
 	await loadWorkflowSettings();
 
 	telemetry.track('user clicked ignore suggested action', {
@@ -326,7 +317,7 @@ watch(
 			}
 
 			// Update firstActivatedAt after opening popover
-			await workflowsCache.updateFirstActivatedAt(props.workflow.id);
+			await workflowsCache.updateFirstActivatedAt(workflowDocumentStore?.value?.workflowId ?? '');
 		}
 	},
 );

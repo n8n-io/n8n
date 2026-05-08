@@ -640,7 +640,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	// reasoning models such as gpt5 include reasoning items that must be included in the request
-	const isToolRelatedCall: (item: { type: string }) => boolean = (item) =>
+	const isToolRelatedCall = <T extends { type: string }>(
+		item: T,
+	): item is Extract<T, { type: 'function_call' | 'reasoning' }> =>
 		item.type === 'function_call' || item.type === 'reasoning';
 
 	let toolCalls = response.output.filter(isToolRelatedCall);
