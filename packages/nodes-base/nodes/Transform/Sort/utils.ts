@@ -1,6 +1,7 @@
 import { NodeVM } from 'vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { generateSortingScript } from '../../Code/utils';
 
 const returnRegExp = /\breturn\b/;
 export function sortByCode(
@@ -21,5 +22,5 @@ export function sortByCode(
 		sandbox: { items },
 	});
 
-	return vm.run(`module.exports = items.sort((a, b) => { ${code} })`);
+	return vm.run(generateSortingScript(code));
 }

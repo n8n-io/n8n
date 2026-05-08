@@ -1,4 +1,5 @@
 import type { INodeExecutionData, IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { VMScript } from 'vm2';
 
 export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
 	return (
@@ -53,3 +54,28 @@ export const addPostExecutionWarning = (
 		});
 	}
 };
+
+const PREPARE_STACKTRACE = `
+Error.prepareStackTrace = (err, structuredStackTrace) => {
+	return "Error: " + err + "\\n" + structuredStackTrace
+		.filter(callSite => callSite.getLineNumber())
+		.map(callSite => {
+			return "	at Code:" + callSite.getLineNumber() + ":" + callSite.getColumnNumber()
+		})
+		.join("\\n");
+};
+`;
+
+export function generateScript(jsCode: string) {
+	return new VMScript(
+		`module.exports = async function() {${jsCode}\n}() ${PREPARE_STACKTRACE}`,
+		'Code',
+	);
+}
+
+export function generateSortingScript(jsCode: string) {
+	return new VMScript(
+		`module.exports = items.sort((a, b) => { ${jsCode} }) ${PREPARE_STACKTRACE}`,
+		'Code',
+	);
+}
