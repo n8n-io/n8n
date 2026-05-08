@@ -2,6 +2,13 @@ import { Container, Service } from '@n8n/di';
 
 import { ContextEstablishmentHookClass } from './context-establishment-hook';
 
+type ContextEstablishmentHookOptions = {
+	/**
+	 * If this is true, the hook is executed globally for all workflow executions
+	 */
+	isGlobal: boolean;
+};
+
 /**
  * Registry entry for a context establishment hook.
  *
@@ -14,6 +21,7 @@ import { ContextEstablishmentHookClass } from './context-establishment-hook';
 type ContextEstablishmentHookEntry = {
 	/** The hook class constructor for DI container instantiation */
 	class: ContextEstablishmentHookClass;
+	options?: ContextEstablishmentHookOptions;
 };
 
 /**
@@ -92,6 +100,12 @@ export class ContextEstablishmentHookMetadata {
 	getClasses() {
 		return [...this.contextEstablishmentHooks.values()].map((entry) => entry.class);
 	}
+
+	getGlobalClasses() {
+		return [...this.contextEstablishmentHooks.values()]
+			.filter((entry) => entry.options?.isGlobal ?? false)
+			.map((entry) => entry.class);
+	}
 }
 
 /**
@@ -165,11 +179,12 @@ export class ContextEstablishmentHookMetadata {
  * @returns A class decorator function that registers and enables DI for the hook
  */
 export const ContextEstablishmentHook =
-	<T extends ContextEstablishmentHookClass>() =>
+	<T extends ContextEstablishmentHookClass>(options?: ContextEstablishmentHookOptions) =>
 	(target: T) => {
 		// Register hook class in metadata for discovery by Hook Registry
 		Container.get(ContextEstablishmentHookMetadata).register({
 			class: target,
+			options,
 		});
 
 		// Enable dependency injection for the hook class

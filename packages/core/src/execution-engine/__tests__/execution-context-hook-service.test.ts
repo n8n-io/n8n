@@ -418,4 +418,49 @@ describe('ExecutionContextHookRegistry', () => {
 			expect(hooks).toEqual([]);
 		});
 	});
+
+	describe('global hooks', () => {
+		it('exposes hooks decorated with isGlobal: true via getGlobalHooks()', async () => {
+			@ContextEstablishmentHook({ isGlobal: true })
+			class GlobalHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.global' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			const globals = registry.getGlobalHooks();
+			expect(globals).toHaveLength(1);
+			expect(globals[0]).toBeInstanceOf(GlobalHook);
+		});
+
+		it('does not expose non-global hooks via getGlobalHooks(), but they remain retrievable by name', async () => {
+			@ContextEstablishmentHook()
+			class PerNodeHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.per-node' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return true;
+				}
+			}
+
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toEqual([]);
+			expect(registry.getHookByName('test.per-node')).toBeInstanceOf(PerNodeHook);
+		});
+
+		it('returns an empty array when no hooks are registered at all', async () => {
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toEqual([]);
+		});
+	});
 });
