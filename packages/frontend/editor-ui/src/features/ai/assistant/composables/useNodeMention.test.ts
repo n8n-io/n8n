@@ -24,6 +24,10 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [] as INodeUi[],
+		workflowTriggerNodes: [] as INodeUi[],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
 	},
 }));
 

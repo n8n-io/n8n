@@ -55,10 +55,8 @@ graph TB
     end
 
     subgraph Filesystem ["Filesystem Access"]
-        Service -->|auto-detect| FSProvider{Provider}
-        FSProvider -->|bare metal| LocalFS[LocalFilesystemProvider]
-        FSProvider -->|container/cloud| Gateway[LocalGateway]
-        Gateway -->|SSE + HTTP POST| Daemon["@n8n/fs-proxy daemon"]
+        Service --> Gateway[LocalGateway]
+        Gateway -->|SSE + HTTP POST| Daemon["@n8n/computer-use daemon"]
     end
 
     subgraph n8n ["n8n Services"]
@@ -195,7 +193,7 @@ The agent package — framework-agnostic business logic.
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
-- **Memory** (`memory/`) — working memory template, title generation, memory configuration
+- **Memory** (`memory/`) — title generation, memory configuration
 - **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
@@ -221,9 +219,8 @@ The n8n integration layer.
 - **Settings service** — admin settings (model, MCP, sandbox), user preferences
 - **Event bus** — in-process EventEmitter (single instance) or Redis Pub/Sub
   (queue mode), with thread storage for event persistence and replay (max 500 events or 2 MB per thread)
-- **Filesystem** — `LocalFilesystemProvider` (bare metal) and `LocalGateway`
-  (remote daemon via SSE protocol). Auto-detected based on runtime environment
-  (see `docs/filesystem-access.md`)
+- **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
+  See `docs/filesystem-access.md`
 - **Entities** — TypeORM entities for thread, message, memory, snapshots, iteration logs
 - **Repositories** — data access layer (7 TypeORM repositories)
 
@@ -385,14 +382,21 @@ The processor is configurable via `disableDeferredTools` flag.
 
 ## MCP Integration
 
-External MCP servers are connected via `McpClientManager`. Their tools are:
+External MCP servers are owned by `McpClientManager` (`mcp/mcp-client-manager.ts`).
+The cli's `InstanceAiService` holds one manager instance and passes it to
+`createInstanceAgent` via options; the agent factory calls
+`mcpManager.getRegularTools(mcpServers)` and
+`mcpManager.getBrowserTools(orchestrationContext?.browserMcpConfig)`. Tool
+descriptions are:
 
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
    shadowing of tools like `run-workflow`)
 3. **Separated** from domain tools in the orchestrator's tool set
-4. **Cached** by config hash across agent instances
+4. **Cached** by config hash inside the manager — the underlying `MCPClient`
+   instances are tracked so `mcpManager.disconnect()` (called during service
+   shutdown) closes SSE / stdio connections cleanly.
 
 Browser MCP tools (Chrome DevTools) are excluded from the orchestrator to avoid
 context bloat from screenshots. They're available to `browser-credential-setup`
@@ -406,9 +410,8 @@ LangSmith integration provides step-level observability:
 - **LLM steps** — per-step traces with messages, reasoning, tool calls, usage,
   finish reason
 - **Sub-agent traces** — child spans under parent agent runs
-- **Working memory traces** — spans for memory preparation phase
-- **Synthetic tool traces** — internal tools (e.g., `updateWorkingMemory`)
-  tracked separately from LLM-invoked tools
+- **Synthetic tool traces** — internal tools tracked separately from
+  LLM-invoked tools
 
 ## Message Compaction
 
@@ -430,8 +433,8 @@ allowing the user to approve or deny access to specific hosts.
 - **Credential safety** — tool outputs never include decrypted secrets; credential setup uses the n8n frontend UI where secrets are handled securely
 - **HITL confirmation** — destructive operations (delete, publish, restore) require user approval via the suspension protocol
 - **Domain access gating** — external URL fetches require per-domain user approval
-- **Memory isolation** — working memory is user-scoped; messages, observations,
-  plans, and event history are thread-scoped. Cross-user isolation is enforced.
+- **Memory isolation** — messages, observations, plans, and event history are
+  thread-scoped. Cross-user isolation is enforced.
 - **Sub-agent containment** — sub-agents cannot spawn their own sub-agents,
   can only use native domain tools from the registered pool (no MCP tools), and
   have low `maxSteps`. A mandatory protocol prevents cascading delegation.

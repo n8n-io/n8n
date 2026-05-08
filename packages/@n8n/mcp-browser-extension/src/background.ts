@@ -6,7 +6,8 @@
  */
 
 import { createLogger } from './logger';
-import { RelayConnection, isEligibleTab, type TabManagementSettings } from './relayConnection';
+import { RelayConnection, isEligibleTab } from './relayConnection';
+import type { ExtensionMessage, TabManagementSettings } from './types';
 
 const log = createLogger('bg');
 
@@ -36,57 +37,12 @@ async function loadSettings(): Promise<TabManagementSettings> {
 // Relay URL storage (for deduplicating connect.html tabs)
 // ---------------------------------------------------------------------------
 
-const CONNECT_PAGE = '/dist/connect.html';
+const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
 
 // ---------------------------------------------------------------------------
 // Message handling from connect.html UI
 // ---------------------------------------------------------------------------
-
-interface GetTabsMessage {
-	type: 'getTabs';
-}
-
-interface ConnectMessage {
-	type: 'connect';
-	relayUrl: string;
-	selectedTabIds: number[];
-}
-
-interface DisconnectMessage {
-	type: 'disconnect';
-}
-
-interface GetStatusMessage {
-	type: 'getStatus';
-}
-
-interface UpdateSettingsMessage {
-	type: 'updateSettings';
-	settings: TabManagementSettings;
-}
-
-interface GetSettingsMessage {
-	type: 'getSettings';
-}
-
-interface GetRelayUrlMessage {
-	type: 'getRelayUrl';
-}
-
-interface ClearRelayUrlMessage {
-	type: 'clearRelayUrl';
-}
-
-type ExtensionMessage =
-	| GetTabsMessage
-	| ConnectMessage
-	| DisconnectMessage
-	| GetStatusMessage
-	| UpdateSettingsMessage
-	| GetSettingsMessage
-	| GetRelayUrlMessage
-	| ClearRelayUrlMessage;
 
 chrome.runtime.onMessage.addListener(
 	(
@@ -166,7 +122,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	if (!changeInfo.url) return;
 
 	const extOrigin = chrome.runtime.getURL('');
-	if (!changeInfo.url.startsWith(extOrigin) || !changeInfo.url.includes(CONNECT_PAGE)) return;
+	if (!changeInfo.url.startsWith(extOrigin)) return;
 
 	const parsed = new URL(changeInfo.url);
 	const relayUrl = parsed.searchParams.get('mcpRelayUrl');
@@ -185,7 +141,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		await chrome.storage.session.set({ [RELAY_URL_KEY]: relayUrl });
 
 		// Check for an existing connect.html tab to reuse
-		const connectUrl = chrome.runtime.getURL('dist/connect.html');
+		const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 		const allConnectTabs = await chrome.tabs.query({ url: `${connectUrl}*` });
 		const existing = allConnectTabs.find((t) => t.id !== tabId && t.id !== undefined);
 
@@ -229,7 +185,12 @@ chrome.tabs.onCreated.addListener((tab) => {
 	const isExcluded = url.startsWith('chrome://') || url.startsWith('chrome-extension://');
 	if (!isExcluded) {
 		log.debug('[onCreated] adding agent-created tab:', tab.id, url);
-		void relay.addTab(tab.id, tab.title ?? '', url);
+		void relay.addTab(tab.id, tab.title ?? '', url).then(() => {
+			if (relay === activeConnection?.relay) {
+				broadcastStatusChange();
+				updateBadge(relay.getControlledIds().length);
+			}
+		});
 	}
 });
 
@@ -264,7 +225,12 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 	const url = details.url;
 	if (url && !url.startsWith('chrome://') && !url.startsWith('chrome-extension://')) {
 		log.debug('[onCreatedNavigationTarget] adding spawned tab:', details.tabId, url);
-		void relay.addTab(details.tabId, '', url);
+		void relay.addTab(details.tabId, '', url).then(() => {
+			if (relay === activeConnection?.relay) {
+				broadcastStatusChange();
+				updateBadge(relay.getControlledIds().length);
+			}
+		});
 	} else {
 		log.debug(
 			'[onCreatedNavigationTarget] URL not eligible yet, waiting for onUpdated:',
@@ -343,7 +309,7 @@ async function connectToRelay(
 			const settings = await loadSettings();
 			relay.setSettings(settings);
 		} catch (error) {
-			relay.close('Setup failed');
+			relay.close('network_error');
 			throw error;
 		}
 
@@ -354,6 +320,11 @@ async function connectToRelay(
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
+		};
+
+		relay.ontabcreated = () => {
+			broadcastStatusChange();
+			updateBadge(relay.getControlledIds().length);
 		};
 
 		const tabCount = relay.getControlledIds().length;
@@ -373,7 +344,7 @@ async function connectToRelay(
 function disconnect(): void {
 	if (activeConnection) {
 		log.debug('disconnecting');
-		activeConnection.relay.close('User disconnected');
+		activeConnection.relay.close('extension_disconnected');
 		activeConnection = null;
 		updateBadge(0);
 	}
@@ -407,7 +378,7 @@ chrome.action.onClicked.addListener(() => {
 });
 
 async function openOrFocusConnectTab(): Promise<void> {
-	const connectUrl = chrome.runtime.getURL('dist/connect.html');
+	const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
 	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
 
 	if (existing.length > 0 && existing[0].id !== undefined) {

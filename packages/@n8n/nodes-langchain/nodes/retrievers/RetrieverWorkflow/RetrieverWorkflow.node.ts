@@ -39,7 +39,7 @@ export class RetrieverWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Retriever',
 		name: 'retrieverWorkflow',
-		icon: 'fa:box-open',
+		icon: 'node:workflow-retriever',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],

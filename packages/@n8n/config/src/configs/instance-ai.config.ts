@@ -82,6 +82,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 300_000;
 
+	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
+	builderSandboxTtlMs: number = 10 * 60 * 1000;
+
 	/** Brave Search API key for web search. No key = search + research agent disabled. */
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')
 	braveSearchApiKey: string = '';
@@ -89,10 +93,6 @@ export class InstanceAiConfig {
 	/** SearXNG instance URL for web search (e.g. "http://searxng:8080"). Empty = disabled. No API key needed. */
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
-
-	/** Base directory for server-side filesystem access. Empty = filesystem access disabled. */
-	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')
-	filesystemPath: string = '';
 
 	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
 	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')

@@ -1,5 +1,9 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
 
 export function useUniqueNodeName() {
 	/**
@@ -23,7 +27,9 @@ export function useUniqueNodeName() {
 	 * all nodes on canvas and any extra names that cannot be used.
 	 */
 	function uniqueNodeName(originalName: string, extraNames: string[] = []) {
-		const { canvasNames } = useWorkflowsStore();
+		const { canvasNames } = useWorkflowDocumentStore(
+			createWorkflowDocumentId(useWorkflowsStore().workflowId),
+		);
 
 		const isUnique = !canvasNames.has(originalName) && !extraNames.includes(originalName);
 
@@ -91,14 +97,21 @@ export function useUniqueNodeName() {
 			throw new Error('Failed to find match for unique name');
 		}
 
-		if (match?.groups?.suffix !== '') {
-			index = parseInt(match.groups.suffix, 10);
+		let { base, suffix } = match.groups;
+
+		if (suffix !== '' && /\d\.$/.test(base)) {
+			base += suffix;
+			suffix = '';
 		}
 
-		unique = match.groups.base;
+		if (suffix !== '') {
+			index = parseInt(suffix, 10);
+		}
+
+		unique = base;
 
 		while (canvasNames.has(unique) || extraNames.includes(unique)) {
-			unique = match.groups.base + index++;
+			unique = base + index++;
 		}
 
 		return unique;

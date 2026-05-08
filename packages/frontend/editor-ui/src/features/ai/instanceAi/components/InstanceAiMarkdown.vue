@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, inject, ref, onMounted, onUpdated, useCssModule } from 'vue';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -9,13 +10,17 @@ const props = defineProps<{
 
 const store = useInstanceAiStore();
 const styles = useCssModule();
-const wrapperRef = ref<HTMLElement | null>(null);
+const wrapperRef = ref<ComponentPublicInstance | null>(null);
 
-const openWorkflowPreview = inject<((id: string) => void) | undefined>(
+/**
+ * Preview openers — return true when they switched the preview tab, false
+ * when the tab was already active (so we fall back to opening a new tab).
+ */
+const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
 	'openWorkflowPreview',
 	undefined,
 );
-const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+const openDataTablePreview = inject<((id: string, projectId: string) => boolean) | undefined>(
 	'openDataTablePreview',
 	undefined,
 );
@@ -30,11 +35,11 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 };
 
-/** URL builders for each resource type. */
+/** URL builders for each resource type — fallbacks when the registry has no projectId. */
 const URL_BUILDERS: Record<string, (id: string) => string> = {
 	workflow: (id) => `/workflow/${id}`,
-	credential: () => '/credentials',
-	'data-table': () => '/data-tables',
+	credential: (id) => `/home/credentials/${id}`,
+	'data-table': () => '/home/datatables',
 };
 
 /**
@@ -45,11 +50,17 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
  * Only replaces names that appear as standalone words (not inside code spans
  * or existing links) and are at least 3 characters long to avoid false positives.
  */
-const processedContent = computed(() => {
-	const registry = store.resourceRegistry;
-	if (registry.size === 0) return props.content;
+/** Internal XML blocks that should never render in the chat (LLM may echo them). */
+const INTERNAL_BLOCK_PATTERN =
+	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
 
-	let result = props.content;
+const processedContent = computed(() => {
+	const registry = store.resourceNameIndex;
+
+	// Strip internal protocol blocks the LLM may have echoed
+	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
+
+	if (registry.size === 0) return result;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
@@ -60,15 +71,21 @@ const processedContent = computed(() => {
 		// Escape special regex characters in the resource name
 		const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-		// Match the resource name as a standalone word, but NOT if it is:
+		// Match the resource name as a standalone token, but NOT if it is:
 		// - Inside backticks (inline code)
 		// - Already inside a markdown link [...](...) or the link URL part
 		// - Preceded by [ or followed by ]( (link text boundaries)
+		//
+		// Use \b when the name edge is a word character; use a whitespace/
+		// punctuation boundary otherwise (handles names like "Test (v2.0)").
+		const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
+		const endBoundary = /\w/.test(entry.name[entry.name.length - 1]) ? '\\b' : '(?=$|[\\s,;:!?.])';
+
 		const pattern = new RegExp(
 			// Negative lookbehind: not preceded by [ or ` or /
 			'(?<![\\[`\\/])' +
-				// The name itself, as a word boundary
-				`\\b(${escaped})\\b` +
+				// The name with appropriate boundaries
+				`${startBoundary}(${escaped})${endBoundary}` +
 				// Negative lookahead: not followed by ]( or ` or ://
 				'(?![\\]`]|\\(|://)',
 			'g',
@@ -112,15 +129,39 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 }
 
 /**
+ * Build the real app URL for a resource. Project-scoped routes are preferred
+ * when the registry knows the resource's projectId; otherwise we fall back to
+ * the home view, which works for any resource the user has access to.
+ */
+function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
+	if (projectId) {
+		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
+		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
+	}
+	return URL_BUILDERS[type]?.(id) ?? '#';
+}
+
+/** Track click handlers attached to links so they can be cleaned up. */
+const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
+
+/**
  * Post-process the rendered DOM to transform resource links into
  * styled resource chips with icons. Handles both:
  * - `n8n-resource://` custom scheme links (from pre-processing)
  * - Standard links pointing to internal n8n routes (generated by the AI)
+ *
+ * Click behavior:
+ * - Cmd/Ctrl+click → browser handles new-tab via target="_blank"
+ * - Left-click on workflow/data-table → opens (or switches to) the inline
+ *   preview tab. If the preview is already showing this resource, falls
+ *   through to default `target="_blank"` and opens a new tab instead.
+ * - Left-click on credential (or any chip without an available preview)
+ *   → opens in a new tab.
  */
 function enhanceResourceLinks(): void {
 	if (!wrapperRef.value) return;
 
-	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
@@ -133,38 +174,38 @@ function enhanceResourceLinks(): void {
 		if (resourceMatch) {
 			const [, type, id] = resourceMatch;
 
-			// Look up registry entry (needed for projectId on data-table links)
-			const registryEntry =
-				type === 'data-table'
-					? [...store.resourceRegistry.values()].find((r) => r.type === 'data-table' && r.id === id)
-					: undefined;
+			// Look up registry entry to find projectId for project-scoped routes.
+			// Search the name index because it contains both produced and listed
+			// resources — a user may click through to a resource the agent
+			// only referenced via a list call.
+			const registryEntry = [...store.resourceNameIndex.values()].find(
+				(r) => r.type === type && r.id === id,
+			);
 
-			// Swap href to the real app URL (used for Cmd+click / new tab)
-			link.href =
-				type === 'data-table' && registryEntry?.projectId
-					? `/projects/${registryEntry.projectId}/datatables/${id}`
-					: (URL_BUILDERS[type]?.(id) ?? '#');
+			link.href = buildResourceUrl(type, id, registryEntry?.projectId);
 			link.target = '_blank';
+			link.rel = 'noopener noreferrer';
 			link.dataset.resourceId = id;
 			applyResourceChip(link, type);
 
-			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
-			link.addEventListener('click', (e: MouseEvent) => {
+			const handler = (e: MouseEvent) => {
 				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
 
-				const canPreview =
-					(type === 'workflow' && openWorkflowPreview) ||
-					(type === 'data-table' && registryEntry?.projectId && openDataTablePreview);
-
-				if (!canPreview) return; // Let browser navigate normally
-
-				e.preventDefault();
+				let switched: boolean | undefined;
 				if (type === 'workflow') {
-					openWorkflowPreview?.(id);
+					switched = openWorkflowPreview?.(id);
 				} else if (type === 'data-table' && registryEntry?.projectId) {
-					openDataTablePreview?.(id, registryEntry.projectId);
+					switched = openDataTablePreview?.(id, registryEntry.projectId);
 				}
-			});
+
+				// Suppress default navigation only when the preview actually switched.
+				// If preview was already showing this resource (switched === false) or
+				// no preview is available (switched === undefined), let target="_blank"
+				// open a new tab.
+				if (switched === true) e.preventDefault();
+			};
+			link.addEventListener('click', handler);
+			linkHandlers.set(link, handler);
 
 			continue;
 		}
@@ -173,6 +214,7 @@ function enhanceResourceLinks(): void {
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
 			if (pattern.test(href)) {
 				link.target = '_blank';
+				link.rel = 'noopener noreferrer';
 				applyResourceChip(link, type);
 				break;
 			}
@@ -180,14 +222,29 @@ function enhanceResourceLinks(): void {
 	}
 }
 
+/** Remove click handlers from all enhanced links. */
+function cleanupLinkHandlers(): void {
+	if (!wrapperRef.value) return;
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	for (const link of allLinks) {
+		const handler = linkHandlers.get(link);
+		if (handler) {
+			link.removeEventListener('click', handler);
+			linkHandlers.delete(link);
+		}
+	}
+}
+
 onMounted(enhanceResourceLinks);
-onUpdated(enhanceResourceLinks);
+onUpdated(() => {
+	cleanupLinkHandlers();
+	enhanceResourceLinks();
+});
+onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>
-	<div ref="wrapperRef">
-		<ChatMarkdownChunk :source="source" />
-	</div>
+	<ChatMarkdownChunk ref="wrapperRef" :source="source" />
 </template>
 
 <style lang="scss" module>

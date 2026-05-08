@@ -28,7 +28,6 @@ export const LOG_SCOPES = [
 	'cron',
 	'community-nodes',
 	'chat-hub',
-	'instance-ai',
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
@@ -38,6 +37,14 @@ export const LOG_SCOPES = [
 	'ssrf-protection',
 	'token-exchange',
 	'instance-ai',
+	'agents',
+	'sub-agent-eval',
+	'instance-version-history',
+	'instance-settings-loader',
+	'instance-registry',
+	'expression-engine',
+	'encryption-key-manager',
+	'oauth-jwe',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -143,6 +143,29 @@ describe('validate-workflow-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 		});
 
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const tool = createTool();
+			const result = await tool.handler({ code: 'bad code' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(false);
+			expect(response.hint).toContain('sdk_ref');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Some other error'));
+
+			const tool = createTool();
+			const result = await tool.handler({ code: 'bad code' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
+		});
+
 		test('tracks telemetry on success with nodeCount and warningCount', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }, { id: '2' }] },

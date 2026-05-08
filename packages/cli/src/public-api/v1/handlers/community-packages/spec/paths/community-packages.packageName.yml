@@ -23,6 +23,12 @@ patch:
             version:
               type: string
               description: Specific semver version to update to
+            verify:
+              type: boolean
+              description: >
+                Whether to verify the package against the n8n-vetted package list.
+                Setting to false will allow installing or updating to an unverified version.
+                Default is true.
   responses:
     '200':
       description: Package updated successfully.

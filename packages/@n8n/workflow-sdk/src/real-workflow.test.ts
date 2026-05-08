@@ -10,7 +10,7 @@ import {
 } from './__tests__/fixtures-download';
 import { generateWorkflowCode } from './codegen';
 import type { WorkflowJSON } from './types/base';
-import { normalizeConnections } from './types/base';
+import { foldLegacyErrorConnections, normalizeConnections } from './types/base';
 import { workflow } from './workflow-builder';
 
 /**
@@ -165,9 +165,13 @@ describe('Real Workflow Round-Trip', () => {
 					}
 
 					// Normalize original connections (clone first to avoid mutating input)
-					// since the original JSON may have flat tuple connections
+					// since the original JSON may have flat tuple connections. Also fold
+					// legacy top-level `error` keys into the modern main[last] shape that
+					// the SDK now always emits — older templates are kept untouched, so
+					// the comparison itself handles the old/new equivalence.
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns);
 					const filteredExported = filterEmptyConnections(exported.connections);
 
