@@ -46,6 +46,13 @@ describe('TestRunsController', () => {
 
 		mockTestRunnerService = {
 			runTest: jest.fn(),
+			// `startTestRun` returns the new run row and a `finished` promise;
+			// resolve `finished` immediately so tests that don't care about
+			// the detached execution don't dangle on an unresolved promise.
+			startTestRun: jest.fn().mockResolvedValue({
+				testRun: { id: 'testrun123' },
+				finished: Promise.resolve(),
+			}),
 			canBeCancelled: jest.fn(),
 			cancelTestRun: jest.fn(),
 		} as unknown as jest.Mocked<TestRunnerService>;
@@ -203,6 +210,31 @@ describe('TestRunsController', () => {
 			expect(result).toEqual({ success: true });
 		});
 
+		it('requires workflow:execute (not just workflow:read) so a read-only user cannot cancel', async () => {
+			// Cancelling mutates execution state, so the access check must run
+			// against the stronger `workflow:execute` scope. A user with only
+			// `workflow:read` would have `findWorkflowForUser` resolve to null
+			// for that scope set, surfacing as a 404 (same response shape as
+			// missing runs — existence isn't leaked).
+			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(true);
+
+			await testRunsController.cancelCase(buildReq());
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+		});
+
+		it('returns NotFoundError without mutating state when read-only user lacks execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestCaseExecutionRepository.cancelIfNew).not.toHaveBeenCalled();
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
+
 		it('throws ConflictError when the case is no longer pending', async () => {
 			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(false);
 
@@ -256,7 +288,12 @@ describe('TestRunsController', () => {
 			);
 
 			expect(mockPostHogClient.getFeatureFlags).toHaveBeenCalledWith(mockUser);
-			expect(mockTestRunnerService.runTest).toHaveBeenCalledWith(mockUser, mockWorkflowId, 5, true);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
+				mockUser,
+				mockWorkflowId,
+				5,
+				true,
+			);
 		});
 
 		it('flag-off user with concurrency=5 → service called with concurrency=1 and flagEnabledForUser=false (cohort wall)', async () => {
@@ -268,7 +305,7 @@ describe('TestRunsController', () => {
 				{ concurrency: 5 } as any,
 			);
 
-			expect(mockTestRunnerService.runTest).toHaveBeenCalledWith(
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
 				mockUser,
 				mockWorkflowId,
 				1,
@@ -281,7 +318,12 @@ describe('TestRunsController', () => {
 
 			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
-			expect(mockTestRunnerService.runTest).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1, true);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
+				mockUser,
+				mockWorkflowId,
+				1,
+				true,
+			);
 		});
 
 		it('flag-off user with no concurrency body → service called with concurrency=1', async () => {
@@ -289,7 +331,7 @@ describe('TestRunsController', () => {
 
 			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
-			expect(mockTestRunnerService.runTest).toHaveBeenCalledWith(
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
 				mockUser,
 				mockWorkflowId,
 				1,
@@ -297,14 +339,18 @@ describe('TestRunsController', () => {
 			);
 		});
 
-		it('always returns 202 success regardless of flag state (no flag-id leak)', async () => {
+		it('always returns 202 success with the new testRunId regardless of flag state (no flag-id leak)', async () => {
 			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
 
 			const res = mockResponse();
 			await testRunsController.create(buildCreateRequest(), res as any, { concurrency: 7 } as any);
 
 			expect(res.status).toHaveBeenCalledWith(202);
-			expect(res.json).toHaveBeenCalledWith({ success: true });
+			// Surfacing the new run id lets the FE route to the detail view
+			// without polling — guards against the race where the previous
+			// fire-and-forget create returned before `createTestRun` had
+			// committed and the FE refetch picked up no new row.
+			expect(res.json).toHaveBeenCalledWith({ success: true, testRunId: 'testrun123' });
 		});
 
 		it('resolves the feature flag exactly once per request', async () => {
@@ -325,7 +371,7 @@ describe('TestRunsController', () => {
 			const res = mockResponse();
 			await testRunsController.create(buildCreateRequest(), res as any, { concurrency: 5 } as any);
 
-			expect(mockTestRunnerService.runTest).toHaveBeenCalledWith(
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
 				mockUser,
 				mockWorkflowId,
 				1,

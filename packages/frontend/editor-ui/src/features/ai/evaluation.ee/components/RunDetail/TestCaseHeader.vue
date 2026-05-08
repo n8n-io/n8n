@@ -39,7 +39,7 @@ const hasMetadata = computed(
 	() => isFinished.value && (props.tokens !== undefined || props.durationMs !== undefined),
 );
 
-const cyclingVerb = useCyclingVerb(isRunning);
+const cyclingVerbKey = useCyclingVerb(isRunning);
 </script>
 
 <template>
@@ -79,7 +79,9 @@ const cyclingVerb = useCyclingVerb(isRunning);
 				/>
 			</template>
 			<template v-else-if="isRunning">
-				<N8nText size="small" :class="$style.runningVerb">{{ cyclingVerb }}…</N8nText>
+				<N8nText size="small" :class="$style.runningVerb">
+					{{ locale.baseText(cyclingVerbKey) }}…
+				</N8nText>
 			</template>
 			<template v-else-if="isCancelled">
 				<N8nText size="small" :class="$style.meta">

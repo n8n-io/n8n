@@ -90,7 +90,7 @@ export const startTestRun = async (
 		data: options?.concurrency !== undefined ? { concurrency: options.concurrency } : undefined,
 	});
 	// CLI is returning the response without wrapping it in `data` key
-	return response as { success: boolean };
+	return response as { success: boolean; testRunId: string };
 };
 
 export const cancelTestRun = async (
