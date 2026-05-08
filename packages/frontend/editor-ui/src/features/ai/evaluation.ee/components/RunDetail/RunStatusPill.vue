@@ -63,9 +63,9 @@ const labelKey = computed(() => {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--xs);
-	border-radius: 9999px;
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
+	border: var(--border);
+	background-color: var(--background--subtle);
 	line-height: 1;
 }
 

@@ -117,7 +117,7 @@ const rows = computed(() => {
 	flex-direction: column;
 	align-items: stretch;
 	gap: var(--spacing--xs);
-	transition: opacity 0.15s ease-out;
+	transition: opacity var(--animation--duration--snappy) var(--animation--easing);
 }
 
 .opaque {
@@ -129,40 +129,40 @@ const rows = computed(() => {
 	flex-direction: column;
 	gap: 0;
 }
-</style>
 
-<style scoped lang="scss">
-// Pull duration + easing from design-system tokens (see `_primitives.scss` /
-// `_tokens.scss`) instead of hard-coding ms values, and disable the
-// animation entirely under `prefers-reduced-motion: reduce`. Keeps the
-// custom `-4px` translate (rows fade in from above) — the design-system
-// `fade-in` mixin uses a +8px translate intended for full-component
-// entrances, which feels too eager at the per-row scale here.
-.tc-rows-fade-in-enter-active,
-.tc-rows-fade-in-appear-active {
-	animation: tc-rows-fade-in var(--duration--snappy) var(--easing--ease-out);
-}
-
-.tc-rows-fade-in-leave-active {
-	animation: tc-rows-fade-in var(--duration--snappy) var(--easing--ease-in) reverse;
-}
-
-@media (prefers-reduced-motion: reduce) {
+// Vue's `<Transition name="tc-rows-fade-in">` auto-applies these class
+// names to the slot's root element. They must stay un-hashed (CSS Modules
+// would rename them) — `:global` does that without needing a second
+// `<style>` block. Keeps the local `-4px` translate (rows fade in from
+// above): the DS `fade-in` mixin's `+8px` is tuned for full-component
+// entrances and feels too eager at the per-row scale.
+:global {
 	.tc-rows-fade-in-enter-active,
-	.tc-rows-fade-in-appear-active,
-	.tc-rows-fade-in-leave-active {
-		animation: none;
+	.tc-rows-fade-in-appear-active {
+		animation: tc-rows-fade-in var(--animation--duration--snappy) var(--animation--easing);
 	}
-}
 
-@keyframes tc-rows-fade-in {
-	from {
-		opacity: 0;
-		transform: translateY(-4px);
+	.tc-rows-fade-in-leave-active {
+		animation: tc-rows-fade-in var(--animation--duration--snappy) var(--easing--ease-in) reverse;
 	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
+
+	@media (prefers-reduced-motion: reduce) {
+		.tc-rows-fade-in-enter-active,
+		.tc-rows-fade-in-appear-active,
+		.tc-rows-fade-in-leave-active {
+			animation: none;
+		}
+	}
+
+	@keyframes tc-rows-fade-in {
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 }
 </style>
