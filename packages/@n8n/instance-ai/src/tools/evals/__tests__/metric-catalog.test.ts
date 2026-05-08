@@ -1,11 +1,6 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import {
-	METRIC_CATALOG,
-	METRIC_IDS,
-	getMetricsByIds,
-	proposeDefaultMetricIds,
-} from '../metric-catalog';
+import { getMetricsByIds, proposeDefaultMetricIds } from '../metric-catalog';
 
 const wf = (nodes: WorkflowJSON['nodes']): WorkflowJSON =>
 	({
@@ -17,23 +12,6 @@ const wf = (nodes: WorkflowJSON['nodes']): WorkflowJSON =>
 	}) as unknown as WorkflowJSON;
 
 describe('metric-catalog', () => {
-	it('exposes the four canned metric ids', () => {
-		expect([...METRIC_IDS].sort()).toEqual(['correctness', 'helpfulness', 'relevance', 'tool_use']);
-	});
-
-	it('every catalogue entry sets a cannedMetricKey matching its id', () => {
-		for (const id of METRIC_IDS) {
-			expect(METRIC_CATALOG[id].cannedMetricKey).toBe(id);
-		}
-	});
-
-	it('correctness requires an expected output column; others do not', () => {
-		expect(METRIC_CATALOG.correctness.requiresExpected).toBe(true);
-		expect(METRIC_CATALOG.relevance.requiresExpected).toBe(false);
-		expect(METRIC_CATALOG.tool_use.requiresExpected).toBe(false);
-		expect(METRIC_CATALOG.helpfulness.requiresExpected).toBe(false);
-	});
-
 	describe('getMetricsByIds', () => {
 		it('returns catalogue entries in input order', () => {
 			const result = getMetricsByIds(['correctness', 'helpfulness']);

@@ -5,8 +5,10 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
+import { applyPinData } from './apply-pin-data.service';
 import { detectAgentNamedRefs, type NamedRef } from './detect-agent-named-refs.service';
 import { detectAiNodes } from './detect-ai-nodes';
+import { detectToolRefs } from './detect-tool-refs.service';
 import {
 	describeMetricForWorkflow,
 	recommendedMetricId,
@@ -14,6 +16,7 @@ import {
 import { createEmptyEvalDataTable } from './ensure-eval-data-table.service';
 import { analyzeEvalDataRequirements } from './eval-data-requirements.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
+import { generateToolRefPinData } from './generate-tool-ref-pin-data.service';
 import {
 	METRIC_CATALOG,
 	METRIC_IDS,
@@ -328,7 +331,31 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	const agentName = detection.aiNodeNames[0];
 	const { inputColumns: directColumns } = analyzeAgentInputColumns(wf, agentName);
 	const namedRefs = detectAgentNamedRefs(wf, agentName);
-	const namedRefColumns = namedRefs.map((r) => r.column);
+
+	// Resolve sub-component refs (tool/memory/...) via pinData on their source
+	// nodes. The LLM generates one fixture per source node; we write it to the
+	// workflow JSON. This shadows the production-adapter rewrite for those
+	// refs, so they're subtracted from `namedRefs` before formatting the task.
+	const toolRefs = detectToolRefs(wf, agentName);
+	let pinDataCoveredSources = new Set<string>();
+	if (toolRefs.length > 0) {
+		const generated = await generateToolRefPinData({
+			workflow: wf,
+			agentNodeName: agentName,
+			refs: toolRefs,
+		});
+		const patched = applyPinData(wf, generated);
+		if (patched !== wf) {
+			await context.workflowService.updateFromWorkflowJSON(input.workflowId, patched, {
+				...(input.projectId ? { projectId: input.projectId } : {}),
+			});
+			pinDataCoveredSources = new Set(Object.keys(generated));
+		}
+	}
+	const filteredNamedRefs = namedRefs.filter(
+		(r) => !(r.targetNodeName !== agentName && pinDataCoveredSources.has(r.nodeName)),
+	);
+	const namedRefColumns = filteredNamedRefs.map((r) => r.column);
 
 	// Combined column list: direct $json refs + named-ref-derived columns.
 	const inputColumns = [...new Set([...directColumns, ...namedRefColumns])];
@@ -370,7 +397,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		suggestedInputColumns: inputColumns,
 		suggestedOutputColumns: [],
 		enabledMetrics: resolvedMetrics,
-		namedRefs,
+		namedRefs: filteredNamedRefs,
 	});
 
 	return {

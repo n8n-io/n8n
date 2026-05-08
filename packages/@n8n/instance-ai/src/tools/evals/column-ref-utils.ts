@@ -39,3 +39,63 @@ export function extractJsonColumnRefs(text: string): string[] {
 	}
 	return unique(refs);
 }
+
+/**
+ * Match named cross-node references in expressions.
+ * Captures (sourceNodeName, field) pairs for:
+ *   - $('Name').item.json.field
+ *   - $("Name").item.json.field
+ *   - $node["Name"].json.field   (legacy)
+ */
+const NAMED_REF_PATTERNS = [
+	/\$\('([^']+)'\)\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+	/\$\("([^"]+)"\)\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+	/\$node\["([^"]+)"\]\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
+];
+
+export interface NamedRefMatch {
+	nodeName: string;
+	field: string;
+	originalExpression: string;
+}
+
+export function extractNamedRefMatches(text: string): NamedRefMatch[] {
+	const matches: NamedRefMatch[] = [];
+	for (const pattern of NAMED_REF_PATTERNS) {
+		// Reset lastIndex since patterns have /g flag
+		pattern.lastIndex = 0;
+		for (const match of text.matchAll(pattern)) {
+			const nodeName = match[1];
+			const field = match[2];
+			if (nodeName !== undefined && field !== undefined) {
+				matches.push({ nodeName, field, originalExpression: match[0] });
+			}
+		}
+	}
+	return matches;
+}
+
+/**
+ * Returns names of nodes connected into `agentNodeName` via any `ai_*`
+ * connection type — i.e. tools, memory, output parsers, etc.
+ */
+export function findAgentSubComponents(workflow: WorkflowJSON, agentNodeName: string): string[] {
+	const subs = new Set<string>();
+	for (const [sourceName, byType] of Object.entries(workflow.connections ?? {})) {
+		if (!isRecord(byType)) continue;
+		for (const [connType, slot] of Object.entries(byType)) {
+			if (!connType.startsWith('ai_')) continue;
+			if (!Array.isArray(slot)) continue;
+			for (const inner of slot) {
+				if (!Array.isArray(inner)) continue;
+				for (const conn of inner) {
+					if (isRecord(conn) && conn.node === agentNodeName) {
+						subs.add(sourceName);
+						break;
+					}
+				}
+			}
+		}
+	}
+	return [...subs];
+}

@@ -1,7 +1,16 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+jest.mock('../generate-tool-ref-pin-data.service', () => ({
+	generateToolRefPinData: jest.fn().mockResolvedValue({}),
+}));
+
+import { generateToolRefPinData } from '../generate-tool-ref-pin-data.service';
 import type { InstanceAiContext } from '../../../types';
 import { createEvalsTool } from '../evals.tool';
+
+const mockGenerateToolRefPinData = generateToolRefPinData as jest.MockedFunction<
+	typeof generateToolRefPinData
+>;
 
 /** Minimal AI workflow: trigger + agent node. Agent references $json.user_query. */
 function aiWf(): WorkflowJSON {
@@ -184,6 +193,7 @@ function makeCtx(
 		userId: 'u1',
 		workflowService: {
 			getAsWorkflowJSON: jest.fn().mockResolvedValue(wf),
+			updateFromWorkflowJSON: jest.fn().mockResolvedValue(undefined),
 		},
 		dataTableService: {
 			create: jest.fn().mockResolvedValue({
@@ -789,6 +799,111 @@ describe('evals tool — offer with named refs', () => {
 });
 
 // ── action: propose with named refs ───────────────────────────────────────
+
+/** AI workflow whose memory tool reads a chat_id from a Telegram trigger. */
+function aiWfWithToolRef(): WorkflowJSON {
+	return {
+		name: 'AI Flow',
+		nodes: [
+			{
+				id: 't',
+				name: 'Telegram Trigger',
+				type: 'n8n-nodes-base.telegramTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { updates: ['message'] },
+			},
+			{
+				id: 'a',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { text: '={{ $json.user_query }}' },
+			},
+			{
+				id: 'm',
+				name: 'Postgres Memory',
+				type: '@n8n/n8n-nodes-langchain.memoryPostgres',
+				typeVersion: 1,
+				position: [200, 200],
+				parameters: { sessionIdExpression: "={{ $('Telegram Trigger').item.json.chat_id }}" },
+			},
+		],
+		connections: {
+			'Postgres Memory': { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+		},
+	} as unknown as WorkflowJSON;
+}
+
+describe('evals tool — propose with tool-ref pinData', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockGenerateToolRefPinData.mockResolvedValue({});
+	});
+
+	it('writes generated pinData onto the workflow when sub-component refs are detected', async () => {
+		mockGenerateToolRefPinData.mockResolvedValue({
+			'Telegram Trigger': [{ json: { chat_id: '42' } }],
+		});
+		const ctx = makeCtx(aiWfWithToolRef());
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
+		} as never);
+
+		const update = ctx.workflowService.updateFromWorkflowJSON as jest.Mock;
+		expect(update).toHaveBeenCalledTimes(1);
+		const [, patchedWorkflow] = update.mock.calls[0];
+		expect(patchedWorkflow.pinData).toEqual({
+			'Telegram Trigger': [{ json: { chat_id: '42' } }],
+		});
+	});
+
+	it('omits pinData-covered sub-component refs from the dataset columns', async () => {
+		mockGenerateToolRefPinData.mockResolvedValue({
+			'Telegram Trigger': [{ json: { chat_id: '42' } }],
+		});
+		const create = jest.fn().mockResolvedValue({ id: 'dt-1', name: 'x', columns: [] });
+		const ctx = makeCtx(aiWfWithToolRef(), { create });
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
+		} as never);
+
+		const columnsArg = create.mock.calls[0][1] as Array<{ name: string; type: string }>;
+		const names = columnsArg.map((c) => c.name);
+		// chat_id was covered by pinData → must NOT appear; user_query (direct $json) stays.
+		expect(names).not.toContain('chat_id');
+		expect(names).toContain('user_query');
+	});
+
+	it('does not call updateFromWorkflowJSON when no sub-component refs exist', async () => {
+		const ctx = makeCtx(aiWfWithNamedRef());
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
+		} as never);
+
+		expect(ctx.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(mockGenerateToolRefPinData).not.toHaveBeenCalled();
+	});
+
+	it('skips the workflow update when generation produced nothing', async () => {
+		mockGenerateToolRefPinData.mockResolvedValue({});
+		const ctx = makeCtx(aiWfWithToolRef());
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1', metrics: ['correctness'] }, {
+			agent: {},
+		} as never);
+
+		expect(ctx.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+});
 
 describe('evals tool — propose with named refs', () => {
 	beforeEach(() => jest.clearAllMocks());

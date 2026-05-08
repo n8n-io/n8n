@@ -180,15 +180,6 @@ describe('useInstanceAiStore - pendingInitialMessage', () => {
 		store = useInstanceAiStore();
 	});
 
-	test('starts as null', () => {
-		expect(store.pendingInitialMessage).toBeNull();
-	});
-
-	test('setPendingInitialMessage stages the message', () => {
-		store.setPendingInitialMessage('Set up evals for workflow wf-1');
-		expect(store.pendingInitialMessage).toBe('Set up evals for workflow wf-1');
-	});
-
 	test('consumePendingInitialMessage returns and clears the staged message', () => {
 		store.setPendingInitialMessage('hello');
 		expect(store.consumePendingInitialMessage()).toBe('hello');

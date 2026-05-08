@@ -1,6 +1,12 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { collectStrings, isRecord, nodeHasName } from './column-ref-utils';
+import {
+	collectStrings,
+	extractNamedRefMatches,
+	findAgentSubComponents,
+	nodeHasName,
+	type NamedRefMatch,
+} from './column-ref-utils';
 
 export interface NamedRef {
 	/** Source node name extracted from $('NodeName') reference. */
@@ -15,12 +21,6 @@ export interface NamedRef {
 	targetNodeName: string;
 }
 
-const PATTERNS = [
-	/\$\('([^']+)'\)\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-	/\$\("([^"]+)"\)\.item\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-	/\$node\["([^"]+)"\]\.json\.([A-Za-z_][A-Za-z0-9_]*)/g,
-];
-
 function slug(name: string): string {
 	const result = name
 		.toLowerCase()
@@ -29,52 +29,7 @@ function slug(name: string): string {
 	return result.length > 0 ? result : 'node';
 }
 
-interface RawMatch {
-	nodeName: string;
-	field: string;
-	originalExpression: string;
-}
-
-function extractNamedRefs(text: string): RawMatch[] {
-	const matches: RawMatch[] = [];
-	for (const pattern of PATTERNS) {
-		// Reset lastIndex since patterns have /g flag
-		pattern.lastIndex = 0;
-		for (const match of text.matchAll(pattern)) {
-			const nodeName = match[1];
-			const field = match[2];
-			if (nodeName !== undefined && field !== undefined) {
-				matches.push({
-					nodeName,
-					field,
-					originalExpression: match[0],
-				});
-			}
-		}
-	}
-	return matches;
-}
-
-function findAgentSubComponents(workflow: WorkflowJSON, agentNodeName: string): string[] {
-	const subs = new Set<string>();
-	for (const [sourceName, byType] of Object.entries(workflow.connections ?? {})) {
-		if (!isRecord(byType)) continue;
-		for (const [connType, slot] of Object.entries(byType)) {
-			if (!connType.startsWith('ai_')) continue;
-			if (!Array.isArray(slot)) continue;
-			for (const inner of slot) {
-				if (!Array.isArray(inner)) continue;
-				for (const conn of inner) {
-					if (isRecord(conn) && conn.node === agentNodeName) {
-						subs.add(sourceName);
-						break;
-					}
-				}
-			}
-		}
-	}
-	return [...subs];
-}
+type RawMatch = NamedRefMatch;
 
 export function detectAgentNamedRefs(workflow: WorkflowJSON, agentNodeName: string): NamedRef[] {
 	const node = (workflow.nodes ?? []).find((n) => nodeHasName(n) && n.name === agentNodeName);
@@ -92,7 +47,9 @@ export function detectAgentNamedRefs(workflow: WorkflowJSON, agentNodeName: stri
 	for (const target of targets) {
 		const tNode = nodesByName.get(target);
 		if (!tNode) continue;
-		const matches = collectStrings(tNode.parameters).flatMap((text) => extractNamedRefs(text));
+		const matches = collectStrings(tNode.parameters).flatMap((text) =>
+			extractNamedRefMatches(text),
+		);
 		const dedup = new Map<string, RawMatch>();
 		for (const m of matches) {
 			const key = `${m.nodeName}\x00${m.field}`;

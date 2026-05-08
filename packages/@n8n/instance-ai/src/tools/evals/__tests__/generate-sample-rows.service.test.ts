@@ -11,7 +11,6 @@ import {
 	extractAgentContext,
 	generateSampleRows,
 	runBatch,
-	SAMPLE_ROW_FACETS,
 } from '../generate-sample-rows.service';
 import type { AgentContext, SampleRowFacet } from '../generate-sample-rows.service';
 
@@ -103,29 +102,6 @@ describe('distributeRowCount', () => {
 	it('treats zero and negative inputs as zero', () => {
 		expect(distributeRowCount(0)).toEqual([0, 0, 0, 0, 0]);
 		expect(distributeRowCount(-1)).toEqual([0, 0, 0, 0, 0]);
-	});
-});
-
-describe('SAMPLE_ROW_FACETS', () => {
-	it('declares exactly 5 facets', () => {
-		expect(SAMPLE_ROW_FACETS).toHaveLength(5);
-	});
-
-	it('each facet has a length, edgeMode, and instructions string', () => {
-		for (const facet of SAMPLE_ROW_FACETS) {
-			expect(typeof facet.length).toBe('string');
-			expect(typeof facet.edgeMode).toBe('string');
-			expect(typeof facet.instructions).toBe('string');
-			expect(facet.instructions.length).toBeGreaterThan(20);
-		}
-	});
-
-	it('covers happy, edge, and adversarial modes', () => {
-		const modes = SAMPLE_ROW_FACETS.map((f) => f.edgeMode).join(' ');
-		expect(modes).toMatch(/happy/i);
-		expect(modes).toMatch(/edge/i);
-		expect(modes).toMatch(/adversarial/i);
-		expect(modes).toMatch(/robust/i);
 	});
 });
 

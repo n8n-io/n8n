@@ -72,6 +72,7 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+
 	describe('secret handling guidance', () => {
 		it('instructs the agent not to ask for plaintext secrets in chat', () => {
 			const prompt = getSystemPrompt({});
