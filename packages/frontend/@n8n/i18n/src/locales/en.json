@@ -5344,6 +5344,7 @@
 	"instanceAi.confirmation.pendingInline": "Waiting for approval",
 	"instanceAi.confirmation.agentContext": "{agent} needs approval",
 	"instanceAi.confirmation.approveAll": "Approve all",
+	"instanceAi.confirmation.continue": "Continue",
 	"instanceAi.gatewayConfirmation.allowForSession": "Allow for session",
 	"instanceAi.gatewayConfirmation.allowOnce": "Allow once",
 	"instanceAi.gatewayConfirmation.denyOnce": "Deny once",
