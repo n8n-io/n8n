@@ -70,12 +70,7 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const notifications = body?.value;
 
 	if (!Array.isArray(notifications) || notifications.length === 0) {
-		return verifySignatureGeneric({
-			getExpectedSignature: () =>
-				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
-			skipIfNoExpectedSignature: true,
-			getActualSignature: () => null,
-		});
+		return false;
 	}
 
 	return (notifications as unknown[]).every((notification) => {
