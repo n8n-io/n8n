@@ -990,7 +990,6 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
-	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -1010,7 +1009,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
