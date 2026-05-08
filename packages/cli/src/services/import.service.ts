@@ -780,20 +780,14 @@ export class ImportService {
 		const escapedDataTableId = this.dataSource.driver.escape('dataTableId');
 		const escapedIndex = this.dataSource.driver.escape('index');
 
-		const columnRows: Array<{
-			id: string;
-			dataTableId: string;
-			name: string;
-			type: 'string' | 'number' | 'boolean' | 'date';
-			index: number;
-		}> = await transactionManager.query(
+		const columnRows: DataTableColumn[] = await transactionManager.query(
 			`SELECT id, ${escapedDataTableId}, name, type, ${escapedIndex} FROM ${escapedColumnTable}`,
 		);
 
 		const columnsByDataTableId = new Map<string, DataTableColumn[]>();
 		for (const row of columnRows) {
 			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
-			list.push(row as unknown as DataTableColumn);
+			list.push(row);
 			columnsByDataTableId.set(row.dataTableId, list);
 		}
 
