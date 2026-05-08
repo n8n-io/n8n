@@ -174,6 +174,44 @@ describe('CDPRelayServer', () => {
 		ext.close();
 	});
 
+	it('should keep extension connected when JSON pong replies arrive', async () => {
+		jest.useFakeTimers();
+
+		relay.stop();
+		relay = new CDPRelayServer({ connectionTimeoutMs: 2_000 });
+		port = await relay.listen();
+
+		// autoPong: false disables the protocol-level pong path so we can verify
+		// the JSON application-level pong on its own.
+		const ws = new WebSocket(relay.extensionEndpoint(port), { autoPong: false });
+		ws.on('message', (data) => {
+			try {
+				const msg = JSON.parse(parseWsData(data)) as { method?: string };
+				if (msg.method === 'ping') {
+					ws.send(JSON.stringify({ method: 'pong' }));
+				}
+			} catch {
+				// ignore
+			}
+		});
+
+		await jest.advanceTimersByTimeAsync(100);
+		await relay.waitForExtension();
+
+		let disconnected = false;
+		relay.onExtensionDisconnect = () => {
+			disconnected = true;
+		};
+
+		// Advance well past heartbeat interval (5s) + timeout (15s)
+		await jest.advanceTimersByTimeAsync(20_000);
+
+		expect(disconnected).toBe(false);
+
+		jest.useRealTimers();
+		ws.close();
+	});
+
 	it('should disconnect extension after heartbeat timeout', async () => {
 		// Enable fake timers before creating relay so setInterval is captured
 		jest.useFakeTimers();

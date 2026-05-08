@@ -970,10 +970,12 @@ class ExtensionConnection {
 				return;
 			}
 
-			// Application-level ping: receiving this JSON message in the extension's
-			// MV3 service worker resets its 30s idle-termination timer. Protocol-level
-			// ws.ping is handled by the browser without invoking any JS handler, so
-			// it doesn't keep the SW alive on its own.
+			// Application-level ping. The browser extension runs its background as a
+			// service worker (Chrome Manifest V3), which Chrome terminates after ~30s
+			// of idle. Receiving this JSON message in the service worker invokes a JS
+			// handler, which resets that idle timer. Protocol-level ws.ping is handled
+			// by the browser's network stack without invoking any JS, so it doesn't
+			// keep the service worker alive on its own.
 			try {
 				this.ws.send(JSON.stringify({ method: 'ping' }));
 			} catch {

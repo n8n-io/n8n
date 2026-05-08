@@ -59,7 +59,9 @@ describe('createNavigationTools', () => {
 			});
 
 			it('defaults waitUntil to domcontentloaded when omitted', () => {
-				const parsed = getTool().inputSchema.parse({ url: 'http://example.com' });
+				const parsed = getTool().inputSchema.parse({ url: 'http://example.com' }) as {
+					waitUntil: string;
+				};
 				expect(parsed.waitUntil).toBe('domcontentloaded');
 			});
 
@@ -190,7 +192,7 @@ describe('createNavigationTools', () => {
 			});
 
 			it('defaults waitUntil to domcontentloaded when omitted', () => {
-				const parsed = getTool().inputSchema.parse({});
+				const parsed = getTool().inputSchema.parse({}) as { waitUntil: string };
 				expect(parsed.waitUntil).toBe('domcontentloaded');
 			});
 		});

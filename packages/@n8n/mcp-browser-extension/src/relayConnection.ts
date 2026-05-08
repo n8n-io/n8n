@@ -418,10 +418,12 @@ export class RelayConnection {
 			return;
 		}
 
-		// Application-level ping from the relay. Receiving (and replying to)
-		// these JSON messages resets the MV3 service worker's idle-termination
-		// timer; protocol-level ws.ping is handled by the browser without
-		// invoking any JS handler, so it doesn't keep the SW alive.
+		// Application-level ping from the relay. The extension runs its background as
+		// a service worker (Chrome Manifest V3), which Chrome terminates after ~30s of
+		// idle. Receiving (and replying to) these JSON messages invokes a JS handler,
+		// which resets that idle timer. Protocol-level ws.ping is handled by the
+		// browser's network stack without invoking any JS, so it doesn't keep the
+		// service worker alive on its own.
 		if (message.method === 'ping' && message.id === undefined) {
 			this.sendMessage({ method: 'pong' });
 			return;
