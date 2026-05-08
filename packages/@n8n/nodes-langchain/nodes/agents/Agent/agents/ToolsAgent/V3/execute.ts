@@ -11,6 +11,21 @@ import { getHighlightedResponseKey, sleep } from 'n8n-workflow';
 import { buildExecutionContext, executeBatch } from './helpers';
 import { isExecuteFunctions } from '../../utils';
 
+/** Keys written in `finally` for Tools Agent V3 execution tracing (`setMetadata`). */
+type ToolsAgentV3TracingMetadata = {
+	'ai.agent.version': 'v3';
+	'ai.agent.streaming.enabled': boolean;
+	'ai.agent.items.total': number;
+	'ai.agent.items.failed': number;
+	'ai.agent.tool_calls.requested': number;
+	'ai.agent.tool_calls.completed': number;
+	'ai.agent.iteration.count': number;
+	'ai.agent.memory.loads': number;
+	'ai.agent.memory.saves': number;
+	'ai.agent.execution.succeeded': boolean;
+	'ai.agent.failure.type'?: string;
+};
+
 function countFailedItems(returnData: INodeExecutionData[]): number {
 	let failed = 0;
 	for (const { json } of returnData) {
@@ -124,7 +139,7 @@ export async function toolsAgentExecute(
 		throw error;
 	} finally {
 		if (isExecuteFunctions(this)) {
-			const tracing: Record<string, string | number | boolean> = {
+			const tracing: ToolsAgentV3TracingMetadata = {
 				'ai.agent.version': 'v3',
 				'ai.agent.streaming.enabled': enableStreaming,
 				'ai.agent.items.total': itemsTotal,
