@@ -60,6 +60,12 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(emitted('togglePinned')).toHaveLength(1);
 	});
 
+	it('hides the pin button when pinning is unavailable', () => {
+		const { queryByTestId } = renderComponent({ props: { isPinningAvailable: false } });
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-pin')).not.toBeInTheDocument();
+	});
+
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {
 		const openWorkflowPreview = vi.fn();
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([

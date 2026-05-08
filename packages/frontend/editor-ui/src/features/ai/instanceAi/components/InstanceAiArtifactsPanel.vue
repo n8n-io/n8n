@@ -14,8 +14,9 @@ import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
 
-const props = withDefaults(defineProps<{ isPinned?: boolean }>(), {
+const props = withDefaults(defineProps<{ isPinned?: boolean; isPinningAvailable?: boolean }>(), {
 	isPinned: true,
+	isPinningAvailable: true,
 });
 
 const emit = defineEmits<{ togglePinned: [] }>();
@@ -104,7 +105,12 @@ const pinButtonLabel = computed(() =>
 					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
 					</N8nHeading>
-					<N8nTooltip :content="pinButtonLabel" placement="left" :show-after="TOOLTIP_DELAY_MS">
+					<N8nTooltip
+						v-if="props.isPinningAvailable"
+						:content="pinButtonLabel"
+						placement="left"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
 						<N8nIconButton
 							icon="pin"
 							variant="ghost"

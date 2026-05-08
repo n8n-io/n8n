@@ -26,6 +26,7 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
@@ -65,6 +66,7 @@ const route = useRoute();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { goToUpgrade } = usePageRedirectionHelper();
+const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
@@ -171,12 +173,37 @@ watch(
 	},
 );
 
+// --- Sidebar collapse & resize ---
+// Session-scoped: survives page refresh, resets when the user navigates away
+// from the AI chat view (see onBeforeRouteLeave below).
+const sidebarCollapsed = useSessionStorage('instanceAi.sidebarCollapsed', true);
+const sidebarWidth = ref(260);
+const { width: windowWidth } = useWindowSize();
+
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
+const COLLAPSED_MAIN_SIDEBAR_WIDTH = 42;
+const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
+const mainSidebarOccupiedWidth = computed(() =>
+	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : mainSidebarWidth.value,
+);
+const availableWidthForPinnedArtifactsPanel = computed(
+	() =>
+		windowWidth.value -
+		mainSidebarOccupiedWidth.value -
+		(sidebarCollapsed.value ? 0 : sidebarWidth.value),
+);
+const isArtifactsPanelPinningAvailable = computed(
+	() =>
+		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
+);
+const isArtifactsPanelEffectivelyPinned = computed(
+	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
+);
 const canShowArtifactsPanel = computed(
 	() => store.hasMessages || (Boolean(props.threadId) && store.isHydratingThread),
 );
@@ -196,13 +223,15 @@ const artifactsPanelTransitionName = computed(() =>
 );
 const showArtifactsPanelEdge = computed(
 	() =>
-		canShowArtifactsPanel.value && !preview.isPreviewVisible.value && !isArtifactsPanelPinned.value,
+		canShowArtifactsPanel.value &&
+		!preview.isPreviewVisible.value &&
+		!isArtifactsPanelEffectivelyPinned.value,
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelPinned.value || isArtifactsPanelRevealed.value),
+		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
 );
 
 function toggleArtifactsPreview() {
@@ -220,7 +249,7 @@ function toggleArtifactsPreview() {
 function revealArtifactsPanel() {
 	if (
 		!canShowArtifactsPanel.value ||
-		isArtifactsPanelPinned.value ||
+		isArtifactsPanelEffectivelyPinned.value ||
 		preview.isPreviewVisible.value
 	) {
 		return;
@@ -229,7 +258,7 @@ function revealArtifactsPanel() {
 }
 
 function hideArtifactsPanel(event?: FocusEvent) {
-	if (isArtifactsPanelPinned.value) return;
+	if (isArtifactsPanelEffectivelyPinned.value) return;
 	if (
 		event?.currentTarget instanceof HTMLElement &&
 		event.relatedTarget instanceof Node &&
@@ -241,6 +270,8 @@ function hideArtifactsPanel(event?: FocusEvent) {
 }
 
 function toggleArtifactsPanelPinned() {
+	if (!isArtifactsPanelPinningAvailable.value) return;
+
 	const nextPinned = !isArtifactsPanelPinned.value;
 	isArtifactsPanelPinned.value = nextPinned;
 	isArtifactsPanelRevealed.value = !nextPinned;
@@ -292,6 +323,12 @@ watch(preview.isPreviewVisible, (visible) => {
 	}
 });
 
+watch(isArtifactsPanelPinningAvailable, (isAvailable) => {
+	if (!isAvailable) {
+		isArtifactsPanelRevealed.value = false;
+	}
+});
+
 watch(canShowArtifactsPanel, (canShow) => {
 	if (!canShow) {
 		isArtifactsPanelRevealed.value = false;
@@ -331,12 +368,6 @@ watch(
 	},
 );
 
-// --- Sidebar collapse & resize ---
-// Session-scoped: survives page refresh, resets when the user navigates away
-// from the AI chat view (see onBeforeRouteLeave below).
-const sidebarCollapsed = useSessionStorage('instanceAi.sidebarCollapsed', true);
-const sidebarWidth = ref(260);
-
 function toggleSidebarCollapse() {
 	sidebarCollapsed.value = !sidebarCollapsed.value;
 }
@@ -362,7 +393,6 @@ function handleSidebarResize({ width }: { width: number }) {
 }
 
 // --- Preview panel resize (when canvas is visible) ---
-const { width: windowWidth } = useWindowSize();
 const previewPanelWidth = ref(Math.round((windowWidth.value - sidebarWidth.value) / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
@@ -677,8 +707,14 @@ function handleStop() {
 			<div
 				:class="[
 					$style.contentArea,
-					{ [$style.contentAreaWithPinnedArtifacts]: showArtifactsPanel && isArtifactsPanelPinned },
+					{
+						[$style.contentAreaWithPinnedArtifacts]:
+							showArtifactsPanel && isArtifactsPanelEffectivelyPinned,
+					},
+					{ [$style.contentAreaWithoutLayoutTransitions]: !isPreviewPanelTransitionEnabled },
 				]"
+				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
+				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
 					<!-- Empty state: centered layout -->
@@ -792,7 +828,7 @@ function handleStop() {
 						v-if="showArtifactsPanel"
 						:class="[
 							$style.artifactsPanelSlot,
-							{ [$style.artifactsPanelFloating]: !isArtifactsPanelPinned },
+							{ [$style.artifactsPanelFloating]: !isArtifactsPanelEffectivelyPinned },
 						]"
 						data-test-id="instance-ai-artifacts-sidebar-slot"
 						@mouseenter="revealArtifactsPanel"
@@ -801,7 +837,8 @@ function handleStop() {
 						@focusout="hideArtifactsPanel"
 					>
 						<InstanceAiArtifactsPanel
-							:is-pinned="isArtifactsPanelPinned"
+							:is-pinned="isArtifactsPanelEffectivelyPinned"
+							:is-pinning-available="isArtifactsPanelPinningAvailable"
 							@toggle-pinned="toggleArtifactsPanelPinned"
 						/>
 					</div>
@@ -1098,6 +1135,15 @@ function handleStop() {
 	.inputConstraint {
 		max-width: min(750px, calc(100% - var(--instance-ai-artifacts-panel-width)));
 		transform: translateX(calc(var(--instance-ai-artifacts-panel-width) / -2));
+	}
+}
+
+.contentAreaWithoutLayoutTransitions {
+	.messageList,
+	.scrollButtonContainer,
+	.inputConstraint {
+		transition: none;
+		will-change: auto;
 	}
 }
 

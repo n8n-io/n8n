@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -16,6 +16,26 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
+}));
+
+const vueUseMockState = vi.hoisted(
+	() =>
+		({
+			windowWidth: undefined as { value: number } | undefined,
+			mainSidebarCollapsed: undefined as { value: boolean } | undefined,
+			mainSidebarWidth: undefined as { value: number } | undefined,
+		}) satisfies {
+			windowWidth: { value: number } | undefined;
+			mainSidebarCollapsed: { value: boolean } | undefined;
+			mainSidebarWidth: { value: number } | undefined;
+		},
+);
+
+vi.mock('@/app/composables/useSidebarLayout', () => ({
+	useSidebarLayout: () => ({
+		isCollapsed: vueUseMockState.mainSidebarCollapsed!,
+		sidebarWidth: vueUseMockState.mainSidebarWidth!,
+	}),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -35,10 +55,17 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal()),
 	useScroll: () => ({ arrivedState: { bottom: true } }),
-	useWindowSize: () => ({ width: ref(1200) }),
+	useWindowSize: () => ({ width: vueUseMockState.windowWidth! }),
 	useLocalStorage: (_key: string, defaultValue: unknown) => ref(defaultValue),
 	useSessionStorage: (_key: string, defaultValue: unknown) => ref(defaultValue),
 }));
+
+beforeAll(async () => {
+	const { ref: vueRef } = await import('vue');
+	vueUseMockState.windowWidth = vueRef(1200);
+	vueUseMockState.mainSidebarCollapsed = vueRef(true);
+	vueUseMockState.mainSidebarWidth = vueRef(200);
+});
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -61,6 +88,7 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 	name: 'InstanceAiArtifactsPanelStub',
 	props: {
 		isPinned: { type: Boolean, required: false, default: true },
+		isPinningAvailable: { type: Boolean, required: false, default: true },
 	},
 	emits: ['togglePinned'],
 	setup(props, { attrs, emit }) {
@@ -71,16 +99,19 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 					...attrs,
 					'data-test-id': 'instance-ai-artifacts-sidebar-stub',
 					'data-pinned': String(props.isPinned),
+					'data-pinning-available': String(props.isPinningAvailable),
 				},
 				[
-					h(
-						'button',
-						{
-							'data-test-id': 'instance-ai-artifacts-sidebar-pin-stub',
-							onClick: () => emit('togglePinned'),
-						},
-						'pin',
-					),
+					props.isPinningAvailable
+						? h(
+								'button',
+								{
+									'data-test-id': 'instance-ai-artifacts-sidebar-pin-stub',
+									onClick: () => emit('togglePinned'),
+								},
+								'pin',
+							)
+						: undefined,
 				],
 			);
 	},
@@ -131,6 +162,10 @@ describe('InstanceAiView', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useInstanceAiSettingsStore>>;
 
 	beforeEach(() => {
+		vueUseMockState.windowWidth!.value = 1200;
+		vueUseMockState.mainSidebarCollapsed!.value = true;
+		vueUseMockState.mainSidebarWidth!.value = 200;
+
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
@@ -230,9 +265,17 @@ describe('InstanceAiView', () => {
 		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toBeVisible();
 		expect(previewTabBar).not.toBeVisible();
 		expect(getPreviewPanelTransition()).toHaveAttribute('css', 'false');
+		expect(getByTestId('instance-ai-content-area')).toHaveAttribute(
+			'data-layout-transitions-enabled',
+			'false',
+		);
 
 		await vi.waitFor(() => {
 			expect(getPreviewPanelTransition()).toHaveAttribute('css', 'true');
+			expect(getByTestId('instance-ai-content-area')).toHaveAttribute(
+				'data-layout-transitions-enabled',
+				'true',
+			);
 		});
 
 		await fireEvent.click(toggle);
@@ -246,8 +289,16 @@ describe('InstanceAiView', () => {
 		await rerender({ threadId: 'thread-2' });
 
 		expect(getPreviewPanelTransition()).toHaveAttribute('css', 'false');
+		expect(getByTestId('instance-ai-content-area')).toHaveAttribute(
+			'data-layout-transitions-enabled',
+			'false',
+		);
 		await vi.waitFor(() => {
 			expect(getPreviewPanelTransition()).toHaveAttribute('css', 'true');
+			expect(getByTestId('instance-ai-content-area')).toHaveAttribute(
+				'data-layout-transitions-enabled',
+				'true',
+			);
 		});
 
 		await fireEvent.click(getByTestId('instance-ai-preview-expand-toggle-stub'));
@@ -314,6 +365,120 @@ describe('InstanceAiView', () => {
 			'true',
 		);
 		expect(queryByTestId('instance-ai-artifacts-sidebar-edge')).not.toBeInTheDocument();
+	});
+
+	it('overrides pinned compact artifacts sidebar when available chat width is narrow', async () => {
+		vueUseMockState.windowWidth!.value = 1200;
+		store.hasMessages = true;
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'user',
+				content: 'hello',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.messages;
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinned',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinning-available',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-pin-stub')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('instance-ai-sidebar-toggle'));
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-stub')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+
+		await fireEvent.mouseEnter(getByTestId('instance-ai-artifacts-sidebar-edge'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinned',
+			'false',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinning-available',
+			'false',
+		);
+		expect(queryByTestId('instance-ai-artifacts-sidebar-pin-stub')).not.toBeInTheDocument();
+
+		vueUseMockState.windowWidth!.value = 1300;
+		await nextTick();
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinned',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinning-available',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-pin-stub')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-edge')).not.toBeInTheDocument();
+	});
+
+	it('accounts for the main app sidebar when deciding if pinning is available', async () => {
+		vueUseMockState.windowWidth!.value = 950;
+		vueUseMockState.mainSidebarCollapsed!.value = true;
+		store.hasMessages = true;
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'user',
+				content: 'hello',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.messages;
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinned',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinning-available',
+			'true',
+		);
+
+		vueUseMockState.mainSidebarCollapsed!.value = false;
+		await nextTick();
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-stub')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+
+		await fireEvent.mouseEnter(getByTestId('instance-ai-artifacts-sidebar-edge'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinned',
+			'false',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinning-available',
+			'false',
+		);
+		expect(queryByTestId('instance-ai-artifacts-sidebar-pin-stub')).not.toBeInTheDocument();
+
+		vueUseMockState.mainSidebarCollapsed!.value = true;
+		await nextTick();
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinned',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toHaveAttribute(
+			'data-pinning-available',
+			'true',
+		);
+		expect(getByTestId('instance-ai-artifacts-sidebar-pin-stub')).toBeInTheDocument();
 	});
 
 	it('renders the compact artifacts sidebar without animation on thread initialization', async () => {
