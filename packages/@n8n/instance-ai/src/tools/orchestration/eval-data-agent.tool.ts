@@ -8,7 +8,6 @@ import { generateSampleRows } from '../evals/generate-sample-rows.service';
 
 const HISTORY_THRESHOLD = 10;
 const GENERATE_ROW_COUNT = 10;
-const FALLBACK_COLUMN = 'input';
 
 async function ensureColumnsExist(
 	dataTableService: InstanceAiDataTableService,
@@ -59,45 +58,29 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 				return { status: 'skipped' as const, reason: 'Domain context unavailable.' };
 			}
 
-			const log = (
-				level: 'info' | 'warn' | 'error',
-				msg: string,
-				meta?: Record<string, unknown>,
-			) => {
-				domain.logger?.[level]?.(`[eval-data] ${msg}`, meta);
+			const log = (level: 'info' | 'warn' | 'error', msg: string) => {
+				domain.logger?.[level]?.(`[eval-data] ${msg}`);
 			};
+			const j = (v: unknown) => JSON.stringify(v);
 
-			log('info', 'start', { workflowId: input.workflowId, projectId: input.projectId });
+			log('info', `start workflowId=${input.workflowId} projectId=${j(input.projectId)}`);
 
 			const workflow = await domain.workflowService.getAsWorkflowJSON(input.workflowId);
 			const reqs = analyzeEvalDataRequirements(workflow);
 			const target = reqs.targets[0];
 			if (!target) {
-				log('warn', 'skip:no-target', { reason: reqs.reason });
+				log('warn', `skip:no-target reason=${j(reqs.reason)}`);
 				return { status: 'skipped' as const, reason: reqs.reason ?? 'No eval target.' };
 			}
-			log('info', 'target', {
-				dataTableId: target.dataTableId,
-				agent: target.targetAgentNodeName,
-				inputColumns: target.inputColumns,
-				expectedOutputColumns: target.expectedOutputColumns,
-				pairs: target.expectedToActualPairs,
-			});
+			log(
+				'info',
+				`target dataTableId=${target.dataTableId} agent=${j(target.targetAgentNodeName)} inputColumns=${j(target.inputColumns)} expectedOutputColumns=${j(target.expectedOutputColumns)} pairs=${j(target.expectedToActualPairs)}`,
+			);
 			if (!target.targetAgentNodeName) {
 				log('warn', 'skip:no-agent');
 				return {
 					status: 'skipped' as const,
 					reason: 'No agent node reachable from EvaluationTrigger.',
-				};
-			}
-			if (
-				target.inputColumns.length === 0 ||
-				(target.inputColumns.length === 1 && target.inputColumns[0] === FALLBACK_COLUMN)
-			) {
-				log('warn', 'skip:fallback-only', { inputColumns: target.inputColumns });
-				return {
-					status: 'skipped' as const,
-					reason: 'no-detectable-input-columns-in-agent-parameters',
 				};
 			}
 
@@ -108,7 +91,7 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 				inputColumns: target.inputColumns,
 				expectedToActualPairs: target.expectedToActualPairs,
 			});
-			log('info', 'history-extracted', { count: historyRows.length });
+			log('info', `history-extracted count=${historyRows.length}`);
 
 			let rowsToInsert: Array<Record<string, unknown>>;
 			let source: 'history' | 'synthetic';
@@ -124,11 +107,10 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 				});
 				source = 'synthetic';
 			}
-			log('info', 'rows-prepared', {
-				source,
-				count: rowsToInsert.length,
-				firstRowKeys: rowsToInsert[0] ? Object.keys(rowsToInsert[0]) : [],
-			});
+			log(
+				'info',
+				`rows-prepared source=${source} count=${rowsToInsert.length} firstRowKeys=${j(rowsToInsert[0] ? Object.keys(rowsToInsert[0]) : [])}`,
+			);
 
 			const dataTableOptions = input.projectId ? { projectId: input.projectId } : undefined;
 
@@ -141,7 +123,7 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 				);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				log('error', 'ensureColumnsExist-failed', { error: message });
+				log('error', `ensureColumnsExist-failed error=${j(message)}`);
 				throw err;
 			}
 
@@ -151,14 +133,14 @@ export function createEvalDataAgentTool(context: OrchestrationContext) {
 					rowsToInsert,
 					dataTableOptions,
 				);
-				log('info', 'insertRows-ok', { result });
+				log('info', `insertRows-ok result=${j(result)}`);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				log('error', 'insertRows-failed', { error: message });
+				log('error', `insertRows-failed error=${j(message)}`);
 				throw err;
 			}
 
-			log('info', 'done', { source, rowCount: rowsToInsert.length });
+			log('info', `done source=${source} rowCount=${rowsToInsert.length}`);
 			return {
 				status: source === 'history' ? ('imported' as const) : ('generated' as const),
 				rowCount: rowsToInsert.length,

@@ -176,7 +176,7 @@ describe('eval-data tool', () => {
 		expect(result.status).toBe('skipped');
 	});
 
-	it('skips with no-detectable-input-columns reason when agent has no $json refs', async () => {
+	it('populates with the fallback "input" column when agent has no $json refs', async () => {
 		const wf = {
 			name: 't',
 			nodes: [
@@ -204,16 +204,29 @@ describe('eval-data tool', () => {
 			pinData: {},
 			settings: {},
 		} as unknown as WorkflowJSON;
+		const insertRows = jest.fn().mockResolvedValue(undefined);
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
 				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(wf) },
+				dataTableService: {
+					insertRows,
+					getSchema: jest.fn().mockResolvedValue([{ name: 'input' }]),
+					addColumn: jest.fn(),
+				},
+				executionService: {
+					list: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+					getNodeOutput: jest.fn(),
+				},
 				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 			},
 		});
+		jest
+			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
+			.mockResolvedValue([{ input: 'sample' }]);
 		const tool = createEvalDataAgentTool(ctx as never);
 		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
-		expect(result.status).toBe('skipped');
-		expect(result.reason).toMatch(/no-detectable-input-columns/);
+		expect(result.status).toBe('generated');
+		expect(insertRows).toHaveBeenCalledWith('dt-1', [{ input: 'sample' }], undefined);
 	});
 
 	it('populates expected_* columns from agent output in the history path', async () => {
