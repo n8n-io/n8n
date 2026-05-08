@@ -239,6 +239,56 @@ describe('Microsoft Teams Helpers Functions', () => {
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(false);
 		});
+
+		it('should return true when all notifications in a batch have matching clientState', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [
+						{ clientState: 'expected-secret' },
+						{ clientState: 'expected-secret' },
+						{ clientState: 'expected-secret' },
+					],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(true);
+		});
+
+		it('should return false when any notification in a batch has mismatched clientState', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [
+						{ clientState: 'expected-secret' },
+						{ clientState: 'wrong-secret' },
+						{ clientState: 'expected-secret' },
+					],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
+		});
+
+		it('should return false when any notification in a batch is missing clientState', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				body: {
+					value: [{ clientState: 'expected-secret' }, {}, { clientState: 'expected-secret' }],
+				},
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
+		});
 	});
 
 	describe('getResourcePath', () => {

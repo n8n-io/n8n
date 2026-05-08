@@ -67,14 +67,25 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const expectedSecret = webhookData.webhookSecret;
 
 	const body = req.body as { value?: Array<{ clientState?: unknown }> } | undefined;
-	const firstNotification = body?.value?.[0];
-	const actualClientState = firstNotification?.clientState;
+	const notifications = body?.value;
 
-	return verifySignatureGeneric({
-		getExpectedSignature: () =>
-			typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
-		skipIfNoExpectedSignature: true,
-		getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
+	if (!notifications || notifications.length === 0) {
+		return verifySignatureGeneric({
+			getExpectedSignature: () =>
+				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
+			skipIfNoExpectedSignature: true,
+			getActualSignature: () => null,
+		});
+	}
+
+	return notifications.every((notification) => {
+		const actualClientState = notification.clientState;
+		return verifySignatureGeneric({
+			getExpectedSignature: () =>
+				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
+			skipIfNoExpectedSignature: true,
+			getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
+		});
 	});
 }
 
