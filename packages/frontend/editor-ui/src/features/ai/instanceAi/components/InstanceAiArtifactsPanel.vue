@@ -44,6 +44,8 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 
 // --- Tasks ---
 const tasks = computed(() => store.currentTasks);
+const visibleTasks = computed(() => tasks.value?.tasks ?? []);
+const hasTasks = computed(() => visibleTasks.value.length > 0);
 
 const statusIconMap: Record<
 	TaskItem['status'],
@@ -99,7 +101,7 @@ const pinButtonLabel = computed(() =>
 			<!-- Artifacts section -->
 			<div :class="$style.section">
 				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" bold>
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
 					</N8nHeading>
 					<N8nTooltip :content="pinButtonLabel" placement="left" :show-after="TOOLTIP_DELAY_MS">
@@ -142,25 +144,21 @@ const pinButtonLabel = computed(() =>
 				</div>
 
 				<div v-else :class="$style.emptyState">
-					<div :class="$style.emptyIcons">
-						<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
-						<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
-					</div>
 					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
 				</div>
 			</div>
 
 			<!-- Tasks section -->
-			<div :class="$style.section">
+			<div v-if="hasTasks" :class="$style.section">
 				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" bold>
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 						{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
 					</N8nHeading>
 				</div>
 
-				<div v-if="tasks" :class="$style.taskList">
+				<div :class="$style.taskList">
 					<div
-						v-for="task in tasks.tasks"
+						v-for="task in visibleTasks"
 						:key="task.id"
 						:class="[
 							$style.task,
@@ -179,10 +177,6 @@ const pinButtonLabel = computed(() =>
 							task.description
 						}}</span>
 					</div>
-				</div>
-				<div v-else :class="$style.emptyState">
-					<N8nIcon icon="list-checks" :size="30" :class="$style.emptyIcon" />
-					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noTasks') }}</span>
 				</div>
 			</div>
 
@@ -204,18 +198,24 @@ const pinButtonLabel = computed(() =>
 
 .group {
 	border: var(--border);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--xl);
 	background: var(--color--background--light-3);
 	box-shadow: var(--shadow--xs);
 	overflow: hidden;
 }
 
 .section {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--sm);
 
-	& + & {
+	& + &::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--spacing--sm);
+		right: var(--spacing--sm);
 		border-top: var(--border);
 	}
 }
@@ -226,6 +226,10 @@ const pinButtonLabel = computed(() =>
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--3xs);
+}
+
+.sectionTitle {
+	color: var(--text-color--subtle);
 }
 
 .pinButton {
@@ -239,6 +243,11 @@ const pinButtonLabel = computed(() =>
 
 .pinButtonPinned {
 	color: var(--color--text--shade-1);
+
+	:deep(svg),
+	:deep(path) {
+		fill: currentColor;
+	}
 }
 
 /* Artifact list */
@@ -250,29 +259,19 @@ const pinButtonLabel = computed(() =>
 .artifactRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
 	cursor: pointer;
 	border-radius: var(--radius);
 	color: var(--color--text);
 	text-decoration: none;
-	transition:
-		background-color var(--animation--duration--snappy) var(--animation--easing),
-		color var(--animation--duration--snappy) var(--animation--easing);
+	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
 
 	&:hover,
 	&:focus-visible {
-		background: var(--color--foreground--tint-2);
+		background: var(--background--hover);
 		outline: none;
 		text-decoration: none;
-
-		.artifactName {
-			color: var(--color--primary);
-		}
-
-		.artifactIcon {
-			color: var(--color--primary);
-		}
 	}
 
 	&:visited {
@@ -284,9 +283,6 @@ const pinButtonLabel = computed(() =>
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius);
 	flex-shrink: 0;
 }
 
@@ -332,18 +328,6 @@ const pinButtonLabel = computed(() =>
 	color: var(--color--text--tint-1);
 }
 
-.emptyIcons {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-.emptyIcon {
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
-}
-
 /* Task list */
 .taskList {
 	display: flex;
@@ -354,7 +338,7 @@ const pinButtonLabel = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--3xs) 0;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 }

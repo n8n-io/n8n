@@ -113,14 +113,16 @@ const InstanceAiPreviewTabBarStub = defineComponent({
 	},
 });
 
+const instanceAiViewStubs = {
+	InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
+	InstanceAiInput: InstanceAiInputStub,
+	InstanceAiPreviewTabBar: InstanceAiPreviewTabBarStub,
+	InstanceAiWorkflowPreview: { template: '<div data-test-id="workflow-preview-stub" />' },
+};
+
 const renderView = createComponentRenderer(InstanceAiView, {
 	global: {
-		stubs: {
-			InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
-			InstanceAiInput: InstanceAiInputStub,
-			InstanceAiPreviewTabBar: InstanceAiPreviewTabBarStub,
-			InstanceAiWorkflowPreview: { template: '<div data-test-id="workflow-preview-stub" />' },
-		},
+		stubs: instanceAiViewStubs,
 	},
 });
 
@@ -212,7 +214,14 @@ describe('InstanceAiView', () => {
 			},
 		] as typeof store.messages;
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { container, getByTestId, queryByTestId, rerender } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		const getPreviewPanelTransition = () => {
+			const transition = container.querySelector('transition-stub[name="preview-panel-slide"]');
+			expect(transition).not.toBeNull();
+			return transition as HTMLElement;
+		};
 		const toggle = getByTestId('instance-ai-artifacts-preview-toggle');
 		const previewTabBar = getByTestId('instance-ai-preview-tabbar');
 
@@ -220,6 +229,11 @@ describe('InstanceAiView', () => {
 		expect(toggle).toHaveAttribute('aria-pressed', 'false');
 		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toBeVisible();
 		expect(previewTabBar).not.toBeVisible();
+		expect(getPreviewPanelTransition()).toHaveAttribute('css', 'false');
+
+		await vi.waitFor(() => {
+			expect(getPreviewPanelTransition()).toHaveAttribute('css', 'true');
+		});
 
 		await fireEvent.click(toggle);
 
@@ -228,6 +242,13 @@ describe('InstanceAiView', () => {
 		expect(queryByTestId('instance-ai-artifacts-sidebar-stub')).not.toBeInTheDocument();
 		expect(previewTabBar).toBeVisible();
 		expect(getByTestId('instance-ai-preview-panel')).toHaveAttribute('data-expanded', 'false');
+
+		await rerender({ threadId: 'thread-2' });
+
+		expect(getPreviewPanelTransition()).toHaveAttribute('css', 'false');
+		await vi.waitFor(() => {
+			expect(getPreviewPanelTransition()).toHaveAttribute('css', 'true');
+		});
 
 		await fireEvent.click(getByTestId('instance-ai-preview-expand-toggle-stub'));
 
@@ -293,6 +314,42 @@ describe('InstanceAiView', () => {
 			'true',
 		);
 		expect(queryByTestId('instance-ai-artifacts-sidebar-edge')).not.toBeInTheDocument();
+	});
+
+	it('renders the compact artifacts sidebar without animation on thread initialization', async () => {
+		store.hasMessages = true;
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'user',
+				content: 'hello',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.messages;
+
+		const { container, getByTestId, rerender } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		const getArtifactsPanelTransition = () => {
+			const transition = container.querySelector('transition-stub[name="artifacts-panel-fade"]');
+			expect(transition).not.toBeNull();
+			return transition as HTMLElement;
+		};
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-stub')).toBeVisible();
+		expect(getArtifactsPanelTransition()).toHaveAttribute('css', 'false');
+
+		await vi.waitFor(() => {
+			expect(getArtifactsPanelTransition()).toHaveAttribute('css', 'true');
+		});
+
+		await rerender({ threadId: 'thread-2' });
+
+		expect(getArtifactsPanelTransition()).toHaveAttribute('css', 'false');
+		await vi.waitFor(() => {
+			expect(getArtifactsPanelTransition()).toHaveAttribute('css', 'true');
+		});
 	});
 
 	it('clears the current thread when mounted on the base route (AI-2408)', async () => {

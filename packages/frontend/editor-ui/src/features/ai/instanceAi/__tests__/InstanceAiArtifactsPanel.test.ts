@@ -29,8 +29,8 @@ describe('InstanceAiArtifactsPanel', () => {
 		storeState.producedArtifacts = new Map<string, ResourceEntry>();
 	});
 
-	it('keeps empty artifacts, tasks, and connections sections visible', () => {
-		const { getByText, getByTestId } = renderComponent();
+	it('keeps empty artifacts and connections sections visible without an empty tasks section', () => {
+		const { getByText, getByTestId, queryByText } = renderComponent();
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-artifacts-sidebar-group')).toBeInTheDocument();
@@ -43,7 +43,8 @@ describe('InstanceAiArtifactsPanel', () => {
 			'true',
 		);
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
-		expect(getByText('No tasks yet')).toBeInTheDocument();
+		expect(queryByText('To-do list')).not.toBeInTheDocument();
+		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
 		expect(getByTestId('connections-card')).toBeInTheDocument();
 	});
 
@@ -88,6 +89,7 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		const artifactLink = getByRole('link', { name: 'Open Sales follow-up workflow' });
 		expect(artifactLink).toHaveAttribute('href', '/workflow/wf-1');
+		expect(getByText('To-do list')).toBeInTheDocument();
 		expect(getByText('Build the workflow')).toBeInTheDocument();
 		expect(queryByText('1/2')).not.toBeInTheDocument();
 

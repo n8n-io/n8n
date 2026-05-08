@@ -86,7 +86,7 @@ async function handleRemove(type: ConnectionType) {
 <template>
 	<div :class="$style.section">
 		<div :class="$style.header">
-			<N8nHeading tag="h3" size="small" bold>
+			<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
 			<div v-if="hasAddableConnection" :class="$style.headerActions">
@@ -133,10 +133,19 @@ async function handleRemove(type: ConnectionType) {
 
 <style lang="scss" module>
 .section {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--sm);
-	border-top: var(--border);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--spacing--sm);
+		right: var(--spacing--sm);
+		border-top: var(--border);
+	}
 }
 
 .header {
@@ -145,6 +154,10 @@ async function handleRemove(type: ConnectionType) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.sectionTitle {
+	color: var(--text-color--subtle);
 }
 
 .headerActions {

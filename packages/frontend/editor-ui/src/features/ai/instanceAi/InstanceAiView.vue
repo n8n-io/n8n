@@ -180,7 +180,10 @@ const isArtifactsPanelRevealed = ref(false);
 const canShowArtifactsPanel = computed(
 	() => store.hasMessages || (Boolean(props.threadId) && store.isHydratingThread),
 );
-const isArtifactsPanelTransitionEnabled = ref(true);
+const isArtifactsPanelTransitionEnabled = ref(false);
+let artifactsPanelTransitionRenderToken = 0;
+const isPreviewPanelTransitionEnabled = ref(false);
+let previewPanelTransitionRenderToken = 0;
 const artifactsPreviewToggleLabel = computed(() =>
 	i18n.baseText(
 		preview.isPreviewVisible.value
@@ -240,14 +243,45 @@ function toggleArtifactsPanelPinned() {
 	isArtifactsPanelRevealed.value = !nextPinned;
 }
 
-function suppressArtifactsPanelTransitionUntilStableRender() {
-	isArtifactsPanelTransitionEnabled.value = false;
+function enableArtifactsPanelTransitionAfterStableRender() {
+	const renderToken = ++artifactsPanelTransitionRenderToken;
 	void nextTick(() => {
-		if (!store.isHydratingThread) {
-			isArtifactsPanelTransitionEnabled.value = true;
-		}
+		void nextTick(() => {
+			if (renderToken === artifactsPanelTransitionRenderToken && !store.isHydratingThread) {
+				isArtifactsPanelTransitionEnabled.value = true;
+			}
+		});
 	});
 }
+
+function suppressArtifactsPanelTransitionUntilStableRender() {
+	isArtifactsPanelTransitionEnabled.value = false;
+	enableArtifactsPanelTransitionAfterStableRender();
+}
+
+onMounted(() => {
+	enableArtifactsPanelTransitionAfterStableRender();
+});
+
+function enablePreviewPanelTransitionAfterStableRender() {
+	const renderToken = ++previewPanelTransitionRenderToken;
+	void nextTick(() => {
+		void nextTick(() => {
+			if (renderToken === previewPanelTransitionRenderToken && !store.isHydratingThread) {
+				isPreviewPanelTransitionEnabled.value = true;
+			}
+		});
+	});
+}
+
+function suppressPreviewPanelTransitionUntilStableRender() {
+	isPreviewPanelTransitionEnabled.value = false;
+	enablePreviewPanelTransitionAfterStableRender();
+}
+
+onMounted(() => {
+	enablePreviewPanelTransitionAfterStableRender();
+});
 
 watch(preview.isPreviewVisible, (visible) => {
 	if (visible) {
@@ -264,8 +298,9 @@ watch(canShowArtifactsPanel, (canShow) => {
 watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
-		if (threadId && threadId !== previousThreadId) {
+		if (threadId !== previousThreadId) {
 			suppressArtifactsPanelTransitionUntilStableRender();
+			suppressPreviewPanelTransitionUntilStableRender();
 		}
 	},
 );
@@ -274,6 +309,7 @@ watch(
 	() => store.currentThreadId,
 	() => {
 		suppressArtifactsPanelTransitionUntilStableRender();
+		suppressPreviewPanelTransitionUntilStableRender();
 	},
 );
 
@@ -281,10 +317,14 @@ watch(
 	() => store.isHydratingThread,
 	(isHydrating) => {
 		if (isHydrating) {
+			artifactsPanelTransitionRenderToken += 1;
+			previewPanelTransitionRenderToken += 1;
 			isArtifactsPanelTransitionEnabled.value = false;
+			isPreviewPanelTransitionEnabled.value = false;
 			return;
 		}
 		suppressArtifactsPanelTransitionUntilStableRender();
+		suppressPreviewPanelTransitionUntilStableRender();
 	},
 );
 
@@ -631,7 +671,12 @@ function handleStop() {
 			</N8nCallout>
 
 			<!-- Content area: chat + artifacts side by side below header -->
-			<div :class="$style.contentArea">
+			<div
+				:class="[
+					$style.contentArea,
+					{ [$style.contentAreaWithPinnedArtifacts]: showArtifactsPanel && isArtifactsPanelPinned },
+				]"
+			>
 				<div :class="$style.chatContent">
 					<!-- Empty state: centered layout -->
 					<div v-if="showEmptyStateLayout" :class="$style.emptyLayout">
@@ -771,7 +816,11 @@ function handleStop() {
 		</div>
 
 		<!-- Resizable preview panel (workflow OR datatable) -->
-		<Transition name="preview-panel-slide" @after-leave="isPreviewExpanded = false">
+		<Transition
+			name="preview-panel-slide"
+			:css="isPreviewPanelTransitionEnabled"
+			@after-leave="isPreviewExpanded = false"
+		>
 			<div
 				v-show="preview.isPreviewVisible.value"
 				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
@@ -971,7 +1020,11 @@ function handleStop() {
 }
 
 .artifactsPanelSlot {
-	flex: 0 0 var(--instance-ai-artifacts-panel-width);
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 4;
 	width: var(--instance-ai-artifacts-panel-width);
 	min-width: var(--instance-ai-artifacts-panel-width);
 	display: flex;
@@ -979,10 +1032,6 @@ function handleStop() {
 }
 
 .artifactsPanelFloating {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
 	z-index: 4;
 }
 
@@ -1022,6 +1071,22 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.contentAreaWithPinnedArtifacts {
+	.messageList {
+		max-width: min(800px, calc(100% - var(--instance-ai-artifacts-panel-width)));
+	}
+
+	.messageList,
+	.scrollButtonContainer {
+		transform: translateX(calc(var(--instance-ai-artifacts-panel-width) / -2));
+	}
+
+	.inputConstraint {
+		max-width: min(750px, calc(100% - var(--instance-ai-artifacts-panel-width)));
+		transform: translateX(calc(var(--instance-ai-artifacts-panel-width) / -2));
+	}
 }
 
 .builderAgents {
@@ -1158,10 +1223,11 @@ function handleStop() {
 
 .artifacts-panel-fade-enter-active,
 .artifacts-panel-fade-leave-active {
-	--artifacts-panel-fade-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
-	--animation--fade-in-right--easing: var(--artifacts-panel-fade-easing);
+	--artifacts-panel-fade-enter-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--artifacts-panel-fade-exit-easing: var(--easing--ease-in);
+	--animation--fade-in-right--easing: var(--artifacts-panel-fade-enter-easing);
 	--animation--fade-in-right--translate: 100%;
-	--animation--fade-out-right--easing: var(--artifacts-panel-fade-easing);
+	--animation--fade-out-right--easing: var(--artifacts-panel-fade-exit-easing);
 	--animation--fade-out-right--translate: 100%;
 
 	will-change: opacity, transform;
@@ -1176,6 +1242,8 @@ function handleStop() {
 }
 
 .artifacts-panel-fade-leave-active {
+	--animation--fade-out-right--duration: calc(var(--duration--snappy) - 40ms);
+
 	@include motion.fade-out-right;
 	pointer-events: none;
 }
