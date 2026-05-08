@@ -66,10 +66,10 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const webhookData = this.getWorkflowStaticData('node');
 	const expectedSecret = webhookData.webhookSecret;
 
-	const body = req.body as { value?: Array<{ clientState?: unknown }> } | undefined;
+	const body = req.body as { value?: unknown } | undefined;
 	const notifications = body?.value;
 
-	if (!notifications || notifications.length === 0) {
+	if (!Array.isArray(notifications) || notifications.length === 0) {
 		return verifySignatureGeneric({
 			getExpectedSignature: () =>
 				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
@@ -78,8 +78,11 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 		});
 	}
 
-	return notifications.every((notification) => {
-		const actualClientState = notification.clientState;
+	return (notifications as unknown[]).every((notification) => {
+		const actualClientState =
+			typeof notification === 'object' && notification !== null
+				? (notification as { clientState?: unknown }).clientState
+				: undefined;
 		return verifySignatureGeneric({
 			getExpectedSignature: () =>
 				typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
