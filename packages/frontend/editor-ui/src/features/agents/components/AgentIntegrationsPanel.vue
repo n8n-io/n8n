@@ -305,6 +305,7 @@ function onCreateCredential(type: string) {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 			{
 				hideAskAssistant: true,
 			},
