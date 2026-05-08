@@ -243,7 +243,7 @@ export class TarPackageReader implements PackageReader {
 	}
 
 	readFile(path: string): string {
-		const content = this.files.get(path);
+		const content = this.files.get(normaliseLookup(path));
 		if (content === undefined) {
 			throw new Error(`File not found in package: ${path}`);
 		}
@@ -251,8 +251,18 @@ export class TarPackageReader implements PackageReader {
 	}
 
 	hasFile(path: string): boolean {
-		return this.files.has(path);
+		return this.files.has(normaliseLookup(path));
 	}
+}
+
+/**
+ * Strip a redundant leading "./" so callers reading from a manifest whose
+ * targets were authored with that prefix still resolve correctly. Mirrors
+ * the writer's path normalisation; on-the-wire validation
+ * (`isSafePath`) remains strict.
+ */
+function normaliseLookup(path: string): string {
+	return path.startsWith('./') ? path.slice(2) : path;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

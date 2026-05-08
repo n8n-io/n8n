@@ -114,4 +114,15 @@ describe('TarPackageWriter', () => {
 		expect(entries[0].name).toBe('manifest.json');
 		expect(entries[0].content).toBe('{"packageFormatVersion":"1"}');
 	});
+
+	it('should strip leading "./" from entry paths so they pass strict reader validation', async () => {
+		const writer = new TarPackageWriter();
+		writer.writeDirectory('./workflows');
+		writer.writeFile('./workflows/sync.json', '{"id":"wf-1"}');
+
+		const stream = writer.finalize();
+		const entries = await extractEntries(stream);
+
+		expect(entries.map((e) => e.name)).toEqual(['workflows/', 'workflows/sync.json']);
+	});
 });

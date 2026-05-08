@@ -23,6 +23,7 @@ import { createTag, assignTagToWorkflow } from '@test-integration/db/tags';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { IdDeriver } from '../engine/id-deriver';
 import { ImportExportService } from '../import-export.service';
 
 // Mock license to allow team project creation
@@ -761,8 +762,8 @@ describe('import-export integration', () => {
 				overwriteVariableValues: false,
 			});
 
-			// Find the new (deterministic-id) workflow that the import wrote
-			const importedWorkflowId = `${project.id}-${wf.id}`;
+			// Find the new (HMAC-derived deterministic-id) workflow that the import wrote
+			const importedWorkflowId = Container.get(IdDeriver).derive(project.id, wf.id);
 			const afterCount = await historyRepo.count({
 				where: { workflowId: importedWorkflowId },
 			});

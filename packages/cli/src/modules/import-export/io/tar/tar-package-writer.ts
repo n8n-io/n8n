@@ -10,6 +10,16 @@ const MANIFEST_PATH = 'manifest.json';
 type Entry = { kind: 'file'; path: string; content: Buffer } | { kind: 'directory'; path: string };
 
 /**
+ * Strip a redundant leading "./" so entries pass the reader's strict
+ * path-safety policy (which rejects "." segments to defeat obfuscation).
+ * "./foo" and "foo" mean the same thing on the wire; we normalise to
+ * the latter.
+ */
+function normaliseEntryPath(path: string): string {
+	return path.startsWith('./') ? path.slice(2) : path;
+}
+
+/**
  * Writes a gzipped tar package. Entries are buffered in memory so we can
  * emit the manifest as the *first* tar entry on finalize — consumers can
  * stream-read just the header to fail fast (e.g. on version mismatch)
@@ -24,18 +34,19 @@ export class TarPackageWriter implements PackageWriter {
 
 	writeFile(path: string, content: string | Buffer): void {
 		const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
+		const normalised = normaliseEntryPath(path);
 
-		if (path === MANIFEST_PATH) {
+		if (normalised === MANIFEST_PATH) {
 			// Hold the manifest aside so it can be emitted first on finalize.
 			this.manifest = buffer;
 			return;
 		}
 
-		this.entries.push({ kind: 'file', path, content: buffer });
+		this.entries.push({ kind: 'file', path: normalised, content: buffer });
 	}
 
 	writeDirectory(path: string): void {
-		this.entries.push({ kind: 'directory', path });
+		this.entries.push({ kind: 'directory', path: normaliseEntryPath(path) });
 	}
 
 	finalize(): Readable {
