@@ -365,10 +365,14 @@ export class ImportExportService {
 		variableOptions: { withValues: boolean; overwriteValues: boolean },
 	): Promise<ImportResult> {
 		const result: ImportResult['projects'] = [];
-		const totals: Record<string, number> = {};
-		for (const key of ENTITY_KEYS) {
-			totals[key] = 0;
-		}
+		const totals: Record<EntityKey, number> = {
+			folders: 0,
+			workflows: 0,
+			credentials: 0,
+			variables: 0,
+			dataTables: 0,
+			tags: 0,
+		};
 
 		for (const entry of projects) {
 			const importResult = await this.projectImporter.import(
@@ -385,7 +389,7 @@ export class ImportExportService {
 			}
 		}
 
-		return { projects: result, ...totals } as unknown as ImportResult;
+		return { projects: result, ...totals };
 	}
 
 	private async importStandalone(
@@ -420,12 +424,16 @@ export class ImportExportService {
 
 		await this.importPipeline.importEntities(scope, entries, pipelineOptions, seed);
 
-		const totals: Record<string, number> = {};
-		for (const key of ENTITY_KEYS) {
-			totals[key] = entries[key]?.length ?? 0;
-		}
+		const totals: Record<EntityKey, number> = {
+			folders: entries.folders?.length ?? 0,
+			workflows: entries.workflows?.length ?? 0,
+			credentials: entries.credentials?.length ?? 0,
+			variables: entries.variables?.length ?? 0,
+			dataTables: entries.dataTables?.length ?? 0,
+			tags: entries.tags?.length ?? 0,
+		};
 
-		return { projects: [], ...totals } as unknown as ImportResult;
+		return { projects: [], ...totals };
 	}
 
 	private buildImportRequirements(
