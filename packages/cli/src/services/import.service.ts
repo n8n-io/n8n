@@ -843,10 +843,7 @@ export class ImportService {
 			// pg_get_serial_sequence's first arg goes through regclass and folds
 			// unquoted identifiers to lowercase, so pass the already-quoted form.
 			if (rowsForTable > 0 && dbType === 'postgres') {
-				await transactionManager.query(
-					`SELECT setval(pg_get_serial_sequence($1, 'id'), COALESCE((SELECT MAX("id") FROM ${escapedTable}), 1), (SELECT MAX("id") FROM ${escapedTable}) IS NOT NULL)`,
-					[escapedTable],
-				);
+				await this.advanceIdentitySequences(transactionManager, [escapedTable]);
 			}
 
 			if (rowsForTable > 0) {

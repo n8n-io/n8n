@@ -131,6 +131,7 @@ export class ExportService {
 
 		await this.clearExistingEntityFiles(outputDir, fileBaseName);
 
+		const idCol = quoteIdentifier('id', dbType);
 		const escapedUserTable = quoteIdentifier(userTableName, dbType);
 		const pageSize = 500;
 		const entitiesPerFile = 500;
@@ -145,7 +146,7 @@ export class ExportService {
 			let pageRows: Array<Record<string, unknown>>;
 			try {
 				pageRows = await this.dataSource.query(
-					`SELECT * FROM ${escapedUserTable} WHERE "id" > ${lastId} ORDER BY "id" LIMIT ${pageSize}`,
+					`SELECT * FROM ${escapedUserTable} WHERE ${idCol} > ${lastId} ORDER BY "id" LIMIT ${pageSize}`,
 				);
 			} catch (error) {
 				this.logger.warn(
