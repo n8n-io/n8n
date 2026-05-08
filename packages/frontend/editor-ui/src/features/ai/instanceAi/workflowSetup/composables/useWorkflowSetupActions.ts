@@ -1,6 +1,4 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../../instanceAi.store';
 import type {
 	WorkflowSetupApplyPayload,
@@ -9,6 +7,7 @@ import type {
 } from '../workflowSetup.types';
 import { getStepSections } from '../workflowSetup.helpers';
 import type { CredentialSelectionsMap } from './useWorkflowSetupInputs';
+import { useWorkflowSetupTelemetry } from './useWorkflowSetupTelemetry';
 
 interface WorkflowSetupInputAccessors {
 	credentialSelections: Ref<CredentialSelectionsMap>;
@@ -22,9 +21,6 @@ interface ApplyMachine {
 	apply: (payload: WorkflowSetupApplyPayload) => Promise<void>;
 	defer: () => Promise<void>;
 }
-
-type ProvidedSetupInput = { label: string; options: string[]; option_chosen: string };
-type SkippedSetupInput = { label: string; options: string[] };
 
 export interface WorkflowSetupActions {
 	nextUnhandledIndex: ComputedRef<number>;
@@ -43,15 +39,26 @@ export function useWorkflowSetupActions(deps: {
 	steps: ComputedRef<WorkflowSetupStep[]>;
 	activeStep: ComputedRef<WorkflowSetupStep | undefined>;
 	currentStepIndex: Ref<number>;
+	isReady: Ref<boolean>;
 	goToStep: (index: number) => void;
 	inputs: WorkflowSetupInputAccessors;
 	applyMachine: ApplyMachine;
 	store: ReturnType<typeof useInstanceAiStore>;
 }): WorkflowSetupActions {
-	const telemetry = useTelemetry();
-	const rootStore = useRootStore();
-
 	const isActionPending = ref(false);
+	const workflowSetupTelemetry = useWorkflowSetupTelemetry({
+		requestId: deps.requestId,
+		sections: deps.sections,
+		steps: deps.steps,
+		activeStep: deps.activeStep,
+		currentStepIndex: deps.currentStepIndex,
+		isReady: deps.isReady,
+		inputs: {
+			isSectionComplete: deps.inputs.isSectionComplete,
+			isSectionSkipped: deps.inputs.isSectionSkipped,
+		},
+		store: deps.store,
+	});
 
 	function isStepHandled(step: WorkflowSetupStep): boolean {
 		const sections = getStepSections(step);
@@ -86,69 +93,16 @@ export function useWorkflowSetupActions(deps: {
 
 	function goToNextIncomplete(): void {
 		if (canAdvanceToNextIncomplete.value) {
+			const step = deps.activeStep.value;
+			if (step) workflowSetupTelemetry.trackStepHandled(step);
 			deps.goToStep(nextUnhandledIndex.value);
 		}
 	}
 
-	function trackSetupInput(): void {
-		const tc = deps.store.findToolCallByRequestId(deps.requestId.value);
-		const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
-		const provided: ProvidedSetupInput[] = [];
-		const skipped: SkippedSetupInput[] = [];
-		const explicitlySkipped: SkippedSetupInput[] = [];
-		for (const section of deps.sections.value) {
-			const sectionInputs = getSectionTelemetryInputs(section);
-			if (deps.inputs.isSectionComplete(section)) {
-				provided.push(...sectionInputs);
-			} else {
-				const skippedInputs = sectionInputs.map(toSkippedInput);
-				skipped.push(...skippedInputs);
-				if (deps.inputs.isSectionSkipped(section)) {
-					explicitlySkipped.push(...skippedInputs);
-				}
-			}
-		}
-		telemetry.track('User finished providing input', {
-			thread_id: deps.store.currentThreadId,
-			input_thread_id: inputThreadId,
-			instance_id: rootStore.instanceId,
-			type: 'setup',
-			provided_inputs: provided,
-			skipped_inputs: skipped,
-			explicitly_skipped_inputs: explicitlySkipped,
-			num_tasks: provided.length + skipped.length,
-		});
-	}
-
-	function getSectionTelemetryInputs(section: WorkflowSetupSection): ProvidedSetupInput[] {
-		const inputs: ProvidedSetupInput[] = [];
-		if (section.credentialType) {
-			inputs.push({
-				label: getSetupInputLabel(section.targetNodeName, section.credentialType),
-				options: [],
-				option_chosen: 'true',
-			});
-		}
-		for (const parameterName of section.parameterNames) {
-			inputs.push({
-				label: getSetupInputLabel(section.targetNodeName, parameterName),
-				options: [],
-				option_chosen: 'true',
-			});
-		}
-		return inputs;
-	}
-
-	function getSetupInputLabel(nodeName: string, inputName: string): string {
-		return `${nodeName} - ${inputName}`;
-	}
-
-	function toSkippedInput(input: ProvidedSetupInput): SkippedSetupInput {
-		return { label: input.label, options: input.options };
-	}
-
 	async function apply(): Promise<void> {
-		trackSetupInput();
+		const step = deps.activeStep.value;
+		if (step) workflowSetupTelemetry.trackStepHandled(step);
+		workflowSetupTelemetry.trackSetupInput();
 		await deps.applyMachine.apply(deps.inputs.buildCompletedSetupPayload());
 	}
 
@@ -167,6 +121,7 @@ export function useWorkflowSetupActions(deps: {
 					deps.inputs.markSectionSkipped(section);
 				}
 			}
+			workflowSetupTelemetry.trackStepHandled(step);
 
 			const next = nextUnhandledIndex.value;
 			if (next >= 0) {
@@ -174,7 +129,7 @@ export function useWorkflowSetupActions(deps: {
 				return;
 			}
 
-			trackSetupInput();
+			workflowSetupTelemetry.trackSetupInput();
 			const completedPayload = deps.inputs.buildCompletedSetupPayload();
 			const hasAnyCompleted =
 				Object.keys(completedPayload.nodeCredentials ?? {}).length > 0 ||
