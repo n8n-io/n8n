@@ -18,6 +18,7 @@
     "test:container:queue": "playwright test --project='queue:*'",
     "test:container:multi-main": "playwright test --project='multi-main:*'",
     "test:container:multi-main:e2e": "playwright test --project='multi-main:e2e'",
+    "test:container:coverage": "playwright test --project=coverage",
     "test:workflows:setup": "tsx ./tests/cli-workflows/setup-workflow-tests.ts",
     "test:workflows": "playwright test --project=cli-workflows",
     "test:workflows:schema": "SCHEMA=true playwright test --project=cli-workflows",

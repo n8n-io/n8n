@@ -230,7 +230,6 @@ jobs:
       test-command: ${{ github.event.pull_request.head.repo.fork == true && 'pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert=@licensed' || 'pnpm --filter=n8n-playwright test:container:multi-main:e2e' }}
       workers: '1'
       pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
-      upload-failure-artifacts: ${{ github.event.pull_request.head.repo.fork == true }}
     secrets: inherit
 
   # Boots the editor-ui against the Vite dev server and fails on any console
