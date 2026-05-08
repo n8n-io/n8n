@@ -1,0 +1,94 @@
+{
+	"name": "ADO-5167 Binary Hang Reproducer",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8c1b3a3a-1e0a-4a8f-b6a1-7aa5dceb0001",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 300]
+		},
+		{
+			"parameters": {
+				"url": "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file",
+							"outputPropertyName": "data"
+						}
+					}
+				}
+			},
+			"id": "8c1b3a3a-1e0a-4a8f-b6a1-7aa5dceb0002",
+			"name": "Fetch PDF",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [420, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Fan the same binary out across multiple items so it appears in many places\n// in the execution data. Combined with N8N_DEFAULT_BINARY_DATA_MODE=default this\n// inflates the inline base64 footprint and can also create shared references\n// after flatted serialization round-trip.\nconst out = [];\nfor (let i = 0; i < 5; i++) {\n  out.push({\n    json: { copy: i },\n    binary: $input.first().binary,\n  });\n}\nreturn out;"
+			},
+			"id": "8c1b3a3a-1e0a-4a8f-b6a1-7aa5dceb0003",
+			"name": "Fan Out Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [640, 300]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "8c1b3a3a-1e0a-4a8f-b6a1-7aa5dceb0004",
+			"name": "Pass Through",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [860, 300]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Fetch PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch PDF": {
+			"main": [
+				[
+					{
+						"node": "Fan Out Binary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fan Out Binary": {
+			"main": [
+				[
+					{
+						"node": "Pass Through",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"saveExecutionProgress": true,
+		"saveManualExecutions": true,
+		"executionOrder": "v1"
+	},
+	"tags": []
+}
