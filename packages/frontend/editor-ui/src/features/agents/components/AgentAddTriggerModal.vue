@@ -125,17 +125,15 @@ function integrationConnectedText(type: string): string {
 	return key ? i18n.baseText(key) : '';
 }
 
-// Use the browser origin (rather than the configured `urlBaseEditor`) so the
-// generated URLs match whichever host the user is currently viewing the UI
-// from — e.g. an ngrok tunnel or a reverse-proxy port. The instance's
-// configured editor URL might be `http://localhost:5678` while the user is
-// actually serving Slack the URL via `https://<id>.ngrok.app`.
-function browserOrigin(): string {
-	return typeof window !== 'undefined' ? window.location.origin : rootStore.urlBaseEditor;
-}
-
+// URLs in the integration manifests must use the instance's configured
+// `WEBHOOK_URL` (`urlBaseWebhook`), not the browser origin: in production the
+// editor and webhook receiver may be on different hosts, and the chat platform
+// (Slack, Linear) needs a publicly reachable host. The same base is reused for
+// the OAuth callback URL — Slack redirects to it after the user installs the
+// app, so it must be reachable from outside the local machine too.
 function webhookUrlFor(platform: string): string {
-	return `${browserOrigin()}/rest/projects/${props.data.projectId}/agents/v2/${props.data.agentId}/webhooks/${platform}`;
+	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
+	return `${base}/rest/projects/${props.data.projectId}/agents/v2/${props.data.agentId}/webhooks/${platform}`;
 }
 
 async function copyLinearWebhookUrl() {
@@ -151,9 +149,12 @@ const oauthCallbackUrl = computed(() => {
 	if (!configured) return '';
 	try {
 		// Preserve the configured path (which may include a custom rest endpoint
-		// or base path) but rebase onto the current browser origin.
+		// or base path) but rebase onto `urlBaseWebhook` so the callback uses
+		// the publicly reachable host from `WEBHOOK_URL` instead of the local
+		// browser origin (which is `http://localhost:5678` in dev).
 		const parsed = new URL(configured);
-		return `${browserOrigin()}${parsed.pathname}${parsed.search}`;
+		const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
+		return `${base}${parsed.pathname}${parsed.search}`;
 	} catch {
 		return configured;
 	}
