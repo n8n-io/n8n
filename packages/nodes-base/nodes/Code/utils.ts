@@ -72,3 +72,10 @@ export function generateScript(jsCode: string) {
 		'Code',
 	);
 }
+
+export function generateSortingScript(jsCode: string) {
+	return new VMScript(
+		`module.exports = items.sort((a, b) => { ${jsCode} }) ${PREPARE_STACKTRACE}`,
+		'Code',
+	);
+}
