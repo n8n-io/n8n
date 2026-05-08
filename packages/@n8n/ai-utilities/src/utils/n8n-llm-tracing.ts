@@ -40,7 +40,16 @@ type RunDetail = {
 const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
 
 type TracingWriter = {
-	setMetadata: (metadata: { tracing: Record<string, string | number | boolean> }) => void;
+	setMetadata: (metadata: { tracing: LlmTokenTracingMetadata }) => void;
+};
+
+/** Keys written by `applyTracingTokenMetadata` into execution tracing metadata. */
+type LlmTokenTracingMetadata = {
+	'llm.tokens.in': number;
+	'llm.tokens.out': number;
+	'llm.tokens.total': number;
+	'llm.tokens.estimated': boolean;
+	'llm.cost.total'?: number;
 };
 
 function canWriteTracingMetadata(context: unknown): context is TracingWriter {
@@ -117,28 +126,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	async estimateTokensFromStringList(list: string[]) {
 		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
 		return await estimateTokensFromStringList(list, embeddingModel);
-	}
-
-	private applyTracingTokenMetadata(params: {
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
-		isEstimated: boolean;
-		cost?: number;
-	}) {
-		if (!canWriteTracingMetadata(this.executionFunctions)) return;
-
-		const tracing: Record<string, string | number | boolean> = {
-			'llm.tokens.in': params.promptTokens,
-			'llm.tokens.out': params.completionTokens,
-			'llm.tokens.total': params.totalTokens,
-			'llm.tokens.estimated': params.isEstimated,
-		};
-		if (typeof params.cost === 'number' && Number.isFinite(params.cost)) {
-			tracing['llm.cost.total'] = params.cost;
-		}
-
-		this.executionFunctions.setMetadata({ tracing });
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
@@ -298,5 +285,27 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	// Used to associate subsequent runs with the correct parent run in subnodes of subnodes
 	setParentRunIndex(runIndex: number) {
 		this.#parentRunIndex = runIndex;
+	}
+
+	private applyTracingTokenMetadata(params: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		isEstimated: boolean;
+		cost?: number;
+	}) {
+		if (!canWriteTracingMetadata(this.executionFunctions)) return;
+
+		const tracing: LlmTokenTracingMetadata = {
+			'llm.tokens.in': params.promptTokens,
+			'llm.tokens.out': params.completionTokens,
+			'llm.tokens.total': params.totalTokens,
+			'llm.tokens.estimated': params.isEstimated,
+		};
+		if (typeof params.cost === 'number' && Number.isFinite(params.cost)) {
+			tracing['llm.cost.total'] = params.cost;
+		}
+
+		this.executionFunctions.setMetadata({ tracing });
 	}
 }
