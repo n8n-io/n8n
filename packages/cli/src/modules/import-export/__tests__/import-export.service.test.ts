@@ -14,6 +14,7 @@ import type { ProjectExporter, ProjectExportResult } from '../scopes/project.exp
 import type { ProjectImporter } from '../scopes/project.importer';
 import { ImportExportService } from '../import-export.service';
 import type { ImportRequest } from '../import-export.types';
+import type { PackageManifest } from '../spec/manifest.types';
 import type { PackageRequirements } from '../spec/requirements.types';
 import type { ManifestProjectEntry } from '../spec/serialized/project.serialized';
 
@@ -435,6 +436,48 @@ describe('ImportExportService', () => {
 			await expect(service.analyzePackage(Buffer.from('fake'))).rejects.toThrow(
 				'Unsupported package format version',
 			);
+		});
+
+		it('should tolerate reserved v2 manifest fields without rejecting', async () => {
+			// Typed as PackageManifest so the reserved fields must be on the type —
+			// catches any future tightening that would break v2 producers.
+			const manifest: PackageManifest = {
+				packageFormatVersion: '1',
+				exportedAt: '2024-01-01T00:00:00.000Z',
+				sourceN8nVersion: '2.10.0',
+				sourceId: 'source-instance',
+				mediaType: 'application/vnd.n8n.package+gzip',
+				kind: 'WorkflowPackage',
+				packageDigest: 'sha256:deadbeef',
+				signatures: [{ alg: 'ed25519', sig: 'fake' }],
+				attestations: [{ predicateType: 'slsa-provenance' }],
+				requires: { n8nVersion: '>=1.0.0' },
+				workflows: [
+					{
+						id: 'wf-1',
+						name: 'sync',
+						target: 'workflows/sync',
+						digest: 'sha256:cafe',
+						size: 1024,
+					},
+				],
+			};
+
+			const mockReader = {
+				readFile: jest.fn().mockReturnValue(JSON.stringify(manifest)),
+				hasFile: jest.fn(),
+			};
+
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+			const { TarPackageReader } = jest.requireMock('../io/tar/tar-package-reader') as {
+				TarPackageReader: { fromBuffer: jest.Mock };
+			};
+			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
+
+			const result = await service.analyzePackage(Buffer.from('fake'));
+
+			expect(result.packageFormatVersion).toBe('1');
+			expect(result.summary.workflows).toBe(1);
 		});
 	});
 
