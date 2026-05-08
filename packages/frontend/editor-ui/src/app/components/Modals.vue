@@ -11,7 +11,9 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
-	MFA_SETUP_MODAL_KEY,
+	TWO_FACTOR_METHOD_PICKER_MODAL_KEY,
+	TOTP_SETUP_WIZARD_MODAL_KEY,
+	WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
@@ -36,7 +38,6 @@ import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-	SECURITY_KEYS_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
@@ -98,7 +99,9 @@ import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModa
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
-import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
+import TwoFactorMethodPickerModal from '@/features/core/auth/components/TwoFactorMethodPickerModal.vue';
+import TotpSetupWizardModal from '@/features/core/auth/components/TotpSetupWizardModal.vue';
+import WebAuthnSetupWizardModal from '@/features/core/auth/components/WebAuthnSetupWizardModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
@@ -134,7 +137,6 @@ import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
-import SecurityKeysModal from '@/features/core/auth/components/SecurityKeysModal.vue';
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
 import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
 import InstanceAiCredentialSetupModal, {
@@ -236,8 +238,22 @@ import InstanceAiCredentialSetupModal, {
 			<ActivationModal />
 		</ModalRoot>
 
-		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
-			<MfaSetupModal />
+		<ModalRoot :name="TWO_FACTOR_METHOD_PICKER_MODAL_KEY">
+			<template
+				#default="{ data }: { data: { current?: 'totp' | 'passkey' | 'security_key' | null } }"
+			>
+				<TwoFactorMethodPickerModal :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="TOTP_SETUP_WIZARD_MODAL_KEY">
+			<TotpSetupWizardModal />
+		</ModalRoot>
+
+		<ModalRoot :name="WEBAUTHN_SETUP_WIZARD_MODAL_KEY">
+			<template #default="{ data }: { data: { method: 'passkey' | 'security_key' } }">
+				<WebAuthnSetupWizardModal :data="data" />
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">
@@ -505,10 +521,6 @@ import InstanceAiCredentialSetupModal, {
 			<template #default="{ modalName, data }">
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="SECURITY_KEYS_MODAL_KEY">
-			<SecurityKeysModal />
 		</ModalRoot>
 
 		<ModalRoot :name="INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY">

@@ -138,12 +138,18 @@ export class MeController {
 		}
 
 		if (mfaEnabled) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
+			const { mfaCode, webauthnResponse } = payload;
+			const hasMfaCode = typeof mfaCode === 'string' && mfaCode.length > 0;
+			const hasWebauthn = webauthnResponse !== undefined && webauthnResponse !== null;
+
+			if (!hasMfaCode && !hasWebauthn) {
+				throw new BadRequestError('Two-factor verification is required to change email');
 			}
 
-			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaCodeValid) {
+			const isValid = hasMfaCode
+				? await this.mfaService.validateMfa(userId, mfaCode, undefined)
+				: await this.mfaService.validateWebAuthn(userId, webauthnResponse);
+			if (!isValid) {
 				throw new InvalidMfaCodeError();
 			}
 		} else {
@@ -196,7 +202,7 @@ export class MeController {
 		@Body payload: PasswordUpdateRequestDto,
 	) {
 		const { user } = req;
-		const { currentPassword, newPassword, mfaCode } = payload;
+		const { currentPassword, newPassword, mfaCode, webauthnResponse } = payload;
 
 		if (this.isUserManagedByEnv(user)) {
 			throw new ForbiddenError(
@@ -233,12 +239,17 @@ export class MeController {
 		}
 
 		if (user.mfaEnabled) {
-			if (typeof mfaCode !== 'string') {
-				throw new BadRequestError('Two-factor code is required to change password.');
+			const hasMfaCode = typeof mfaCode === 'string' && mfaCode.length > 0;
+			const hasWebauthn = webauthnResponse !== undefined && webauthnResponse !== null;
+
+			if (!hasMfaCode && !hasWebauthn) {
+				throw new BadRequestError('Two-factor verification is required to change password.');
 			}
 
-			const isMfaCodeValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
-			if (!isMfaCodeValid) {
+			const isValid = hasMfaCode
+				? await this.mfaService.validateMfa(user.id, mfaCode, undefined)
+				: await this.mfaService.validateWebAuthn(user.id, webauthnResponse);
+			if (!isValid) {
 				throw new InvalidMfaCodeError();
 			}
 		}

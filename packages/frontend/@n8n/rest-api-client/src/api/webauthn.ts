@@ -3,18 +3,26 @@ import type { WebAuthnCredentialResponse } from '@n8n/api-types';
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
-export async function getRegistrationOptions(context: IRestApiContext) {
-	return await makeRestApiRequest(context, 'GET', '/mfa/webauthn/registration-options');
+export type WebAuthnAttachment = 'platform' | 'cross-platform';
+
+export async function getRegistrationOptions(
+	context: IRestApiContext,
+	attachment: WebAuthnAttachment,
+) {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/mfa/webauthn/registration-options?attachment=${attachment}`,
+	);
 }
 
 export async function verifyRegistration(
 	context: IRestApiContext,
-	data: { label: string; response: unknown },
+	data: { label: string; response: unknown; attachment: WebAuthnAttachment },
 ): Promise<{
 	id: string;
 	credentialId: string;
 	label: string;
-	recoveryCodes?: string[];
 }> {
 	return await makeRestApiRequest(context, 'POST', '/mfa/webauthn/registration-verify', data);
 }

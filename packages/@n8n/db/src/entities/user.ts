@@ -102,6 +102,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: 'simple-array', default: '' })
 	mfaRecoveryCodes: string[];
 
+	@Column({ type: 'varchar', length: 20, nullable: true })
+	mfaMethod?: 'totp' | 'passkey' | 'security_key' | null;
+
 	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
 

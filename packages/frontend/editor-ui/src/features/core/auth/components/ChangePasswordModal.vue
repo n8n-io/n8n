@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
@@ -9,6 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useMfaReverify } from '../composables/useMfaReverify';
 
 import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
 const config = ref<IFormInputs | null>(null);
@@ -22,6 +23,12 @@ const { showMessage, showError } = useToast();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
+const { reverify } = useMfaReverify();
+
+const activeMfaMethod = computed(() => usersStore.currentUser?.mfaMethod ?? null);
+const isWebauthnMfa = computed(
+	() => activeMfaMethod.value === 'passkey' || activeMfaMethod.value === 'security_key',
+);
 
 const passwordsMatch = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
@@ -47,10 +54,23 @@ const onSubmit = async (data: FormValues) => {
 	const values = data as { currentPassword: string; password: string; mfaCode?: string };
 	try {
 		loading.value = true;
+		let proof: { mfaCode?: string; mfaRecoveryCode?: string; webauthnResponse?: unknown } = {};
+		if (usersStore.currentUser?.mfaEnabled) {
+			if (isWebauthnMfa.value) {
+				const result = await reverify();
+				if (!result) {
+					loading.value = false;
+					return;
+				}
+				proof = result;
+			} else {
+				proof = { mfaCode: values.mfaCode };
+			}
+		}
 		await usersStore.updateCurrentUserPassword({
 			currentPassword: values.currentPassword,
 			newPassword: values.password,
-			mfaCode: values.mfaCode,
+			...proof,
 		});
 
 		showMessage({
@@ -127,9 +147,12 @@ onMounted(() => {
 
 	const { currentUser } = usersStore;
 
-	const form: IFormInputs = currentUser?.mfaEnabled
-		? [inputs.currentPassword, inputs.mfaCode, inputs.newPassword, inputs.newPasswordAgain]
-		: [inputs.currentPassword, inputs.newPassword, inputs.newPasswordAgain];
+	// Only TOTP users see the inline MFA code field; passkey/security-key users
+	// will be prompted via a webauthn ceremony at submit time.
+	const form: IFormInputs =
+		currentUser?.mfaEnabled && !isWebauthnMfa.value
+			? [inputs.currentPassword, inputs.mfaCode, inputs.newPassword, inputs.newPasswordAgain]
+			: [inputs.currentPassword, inputs.newPassword, inputs.newPasswordAgain];
 
 	config.value = form;
 });

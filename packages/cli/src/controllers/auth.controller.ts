@@ -172,7 +172,7 @@ export class AuthController {
 		}
 
 		if (!mfaCode && !mfaRecoveryCode && !webauthnResponse) {
-			throw new AuthError('MFA Error', 998);
+			throw new AuthError('MFA Error', 998, { mfaMethod: user.mfaMethod ?? 'totp' });
 		}
 
 		if (webauthnResponse) {

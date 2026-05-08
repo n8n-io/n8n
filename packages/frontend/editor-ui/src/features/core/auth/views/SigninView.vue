@@ -15,7 +15,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
-import type { LoginRequestDto } from '@n8n/api-types';
+import type { LoginRequestDto, MfaMethod } from '@n8n/api-types';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -37,6 +37,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
+const mfaMethod = ref<MfaMethod>('totp');
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
@@ -170,6 +171,8 @@ const login = async (form: LoginRequestDto) => {
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
+			const methodFromError = (error.meta as { mfaMethod?: MfaMethod } | undefined)?.mfaMethod;
+			mfaMethod.value = methodFromError ?? 'totp';
 			showMfaView.value = true;
 			cacheCredentials(form);
 			return;
@@ -221,6 +224,7 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 			v-if="showMfaView"
 			:report-error="reportError"
 			:email="emailOrLdapLoginId"
+			:mfa-method="mfaMethod"
 			@submit="onMFASubmitted"
 			@webauthn-submit="onWebAuthnSubmitted"
 			@on-back-click="onBackClick"

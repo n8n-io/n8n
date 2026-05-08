@@ -8,6 +8,7 @@ import type {
 	Role,
 	UsersList,
 	User,
+	MfaMethod,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type {
@@ -75,6 +76,8 @@ export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
 }
 
+export type { MfaMethod };
+
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
@@ -82,6 +85,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	mfaMethod?: MfaMethod | null;
 	mfaAuthenticated?: boolean;
 }
 

@@ -1,7 +1,9 @@
-import { UserRepository } from '@n8n/db';
+import { UserRepository, WebauthnCredentialRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
+
+import { MfaService } from '@/mfa/mfa.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -24,27 +26,29 @@ export class DisableMFACommand extends BaseCommand<z.infer<typeof flagsSchema>> 
 			return;
 		}
 
-		const repository = Container.get(UserRepository);
-		const user = await repository.findOneBy({ email: flags.email });
+		const userRepository = Container.get(UserRepository);
+		const webauthnRepository = Container.get(WebauthnCredentialRepository);
+		const mfaService = Container.get(MfaService);
+
+		const user = await userRepository.findOneBy({ email: flags.email });
 
 		if (!user) {
 			this.reportUserDoesNotExistError(flags.email);
 			return;
 		}
 
-		if (
-			user.mfaSecret === null &&
-			Array.isArray(user.mfaRecoveryCodes) &&
-			user.mfaRecoveryCodes.length === 0 &&
-			!user.mfaEnabled
-		) {
-			this.reportUserDoesNotExistError(flags.email);
+		const hasTotpState =
+			user.mfaSecret !== null ||
+			(Array.isArray(user.mfaRecoveryCodes) && user.mfaRecoveryCodes.length > 0);
+		const hasWebauthnCredentials =
+			(await webauthnRepository.count({ where: { userId: user.id } })) > 0;
+
+		if (!user.mfaEnabled && !hasTotpState && !hasWebauthnCredentials) {
+			this.reportNoMfaConfiguredError(flags.email);
 			return;
 		}
 
-		Object.assign(user, { mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false });
-
-		await repository.save(user);
+		await mfaService.disableMfaForUser(user.id);
 
 		this.reportSuccess(flags.email);
 	}
@@ -60,5 +64,9 @@ export class DisableMFACommand extends BaseCommand<z.infer<typeof flagsSchema>> 
 
 	private reportUserDoesNotExistError(email: string) {
 		this.logger.info(`User with email: ${email} does not exist`);
+	}
+
+	private reportNoMfaConfiguredError(email: string) {
+		this.logger.info(`User with email: ${email} has no two-factor authentication configured`);
 	}
 }

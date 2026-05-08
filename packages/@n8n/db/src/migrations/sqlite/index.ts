@@ -167,6 +167,7 @@ import { AddWorkflowVersionToTestRun1778100001000 } from '../common/177810000100
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
+import { AddMfaMethodToUser1783100000000 } from '../common/1783100000000-AddMfaMethodToUser';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -339,6 +340,7 @@ const sqliteMigrations: Migration[] = [
 	AddExecutionDeduplicationKey1778000000000,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
+	AddMfaMethodToUser1783100000000,
 ];
 
 export { sqliteMigrations };

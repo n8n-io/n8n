@@ -29,3 +29,21 @@ export interface MfaModalEvents {
  * Event bus for transmitting the MFA code from a modal back to the view
  */
 export const promptMfaCodeBus = createEventBus<MfaModalEvents>();
+
+export type TwoFactorMethod = 'totp' | 'passkey' | 'security_key';
+
+export interface TwoFactorPickerEvents {
+	/** User picked a method and clicked Continue */
+	selected: { method: TwoFactorMethod };
+	/** User cancelled the picker */
+	cancelled: undefined;
+}
+
+export const twoFactorPickerBus = createEventBus<TwoFactorPickerEvents>();
+
+export interface TwoFactorWizardEvents {
+	completed: { method: TwoFactorMethod };
+	cancelled: undefined;
+}
+
+export const twoFactorWizardBus = createEventBus<TwoFactorWizardEvents>();

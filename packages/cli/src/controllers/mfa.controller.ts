@@ -74,11 +74,11 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async getQRCode(req: AuthenticatedRequest) {
-		const { email, id, mfaEnabled } = req.user;
+		const { email, id, mfaMethod } = req.user;
 
-		if (mfaEnabled)
+		if (mfaMethod === 'totp')
 			throw new BadRequestError(
-				'MFA already enabled. Disable it to generate new secret and recovery codes',
+				'MFA already enabled with the authenticator app. Disable it to generate a new secret and recovery codes',
 			);
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
@@ -118,7 +118,7 @@ export class MFAController {
 	})
 	async activateMFA(req: MFA.Activate, res: Response) {
 		const { mfaCode = null } = req.body;
-		const { id, mfaEnabled } = req.user;
+		const { id, mfaMethod } = req.user;
 
 		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
 
@@ -127,7 +127,7 @@ export class MFAController {
 
 		if (!mfaCode) throw new BadRequestError('Token is required to enable MFA feature');
 
-		if (mfaEnabled) throw new BadRequestError('MFA already enabled');
+		if (mfaMethod === 'totp') throw new BadRequestError('MFA already enabled');
 
 		if (!secret || !recoveryCodes.length) {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
@@ -138,7 +138,10 @@ export class MFAController {
 		if (!verified)
 			throw new BadRequestError('MFA code expired. Close the modal and enable MFA again', 997);
 
-		const updatedUser = await this.mfaService.enableMfa(id);
+		// Switching from webauthn to TOTP — clear any existing webauthn credentials
+		await this.mfaService.webauthn.deleteAllUserCredentials(id);
+
+		const updatedUser = await this.mfaService.setMfaMethod(id, 'totp');
 
 		this.eventService.emit('user-mfa-enabled', {
 			user: {
@@ -160,22 +163,29 @@ export class MFAController {
 	async disableMFA(req: MFA.Disable, res: Response) {
 		const { id: userId } = req.user;
 
-		const { mfaCode, mfaRecoveryCode } = req.body;
+		const { mfaCode, mfaRecoveryCode, webauthnResponse } = req.body;
 
-		const mfaCodeDefined = mfaCode && typeof mfaCode === 'string';
+		const mfaCodeDefined = !!(mfaCode && typeof mfaCode === 'string');
+		const mfaRecoveryCodeDefined = !!(mfaRecoveryCode && typeof mfaRecoveryCode === 'string');
+		const webauthnDefined = webauthnResponse !== undefined && webauthnResponse !== null;
 
-		const mfaRecoveryCodeDefined = mfaRecoveryCode && typeof mfaRecoveryCode === 'string';
-
-		if (!mfaCodeDefined === !mfaRecoveryCodeDefined) {
+		const proofs = [mfaCodeDefined, mfaRecoveryCodeDefined, webauthnDefined].filter(Boolean);
+		if (proofs.length !== 1) {
 			throw new BadRequestError(
-				'Either MFA code or recovery code is required to disable MFA feature',
+				'Exactly one of mfaCode, mfaRecoveryCode, or webauthnResponse is required to disable MFA',
 			);
 		}
 
+		let disableMethod: 'mfaCode' | 'recoveryCode' | 'webauthn';
 		if (mfaCodeDefined) {
-			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
+			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode!);
+			disableMethod = 'mfaCode';
 		} else if (mfaRecoveryCodeDefined) {
-			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
+			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode!);
+			disableMethod = 'recoveryCode';
+		} else {
+			await this.mfaService.disableMfaWithWebAuthn(userId, webauthnResponse);
+			disableMethod = 'webauthn';
 		}
 
 		this.eventService.emit('user-mfa-disabled', {
@@ -186,7 +196,7 @@ export class MFAController {
 				lastName: req.user.lastName,
 				role: req.user.role,
 			},
-			disableMethod: mfaCodeDefined ? 'mfaCode' : 'recoveryCode',
+			disableMethod,
 		});
 
 		const updatedUser = await this.userRepository.findOneOrFail({
@@ -223,13 +233,27 @@ export class MFAController {
 	@Get('/webauthn/registration-options', {
 		allowSkipMFA: true,
 	})
-	async getWebAuthnRegistrationOptions(req: AuthenticatedRequest) {
+	async getWebAuthnRegistrationOptions(
+		req: AuthenticatedRequest<{}, {}, {}, { attachment?: string }>,
+	) {
 		const { id, email } = req.user;
+		const { attachment } = req.query;
+
+		if (attachment !== 'platform' && attachment !== 'cross-platform') {
+			throw new BadRequestError(
+				'attachment query parameter must be "platform" or "cross-platform"',
+			);
+		}
 
 		const existingCredentials = await this.mfaService.webauthn.getUserCredentials(id);
 		const existingIds = existingCredentials.map((c) => c.credentialId);
 
-		return await this.mfaService.webauthn.generateRegistrationOptions(id, email, existingIds);
+		return await this.mfaService.webauthn.generateRegistrationOptions(
+			id,
+			email,
+			existingIds,
+			attachment,
+		);
 	}
 
 	@Post('/webauthn/registration-verify', {
@@ -237,14 +261,22 @@ export class MFAController {
 		keyedRateLimit: createUserKeyedRateLimiter({}),
 	})
 	async verifyWebAuthnRegistration(
-		req: AuthenticatedRequest<{}, {}, { label: string; response: unknown }>,
+		req: AuthenticatedRequest<
+			{},
+			{},
+			{ label: string; response: unknown; attachment: 'platform' | 'cross-platform' }
+		>,
 		res: Response,
 	) {
 		const { id: userId } = req.user;
-		const { label, response } = req.body;
+		const { label, response, attachment } = req.body;
 
 		if (!label || typeof label !== 'string') {
-			throw new BadRequestError('A label is required for the security key');
+			throw new BadRequestError('A label is required');
+		}
+
+		if (attachment !== 'platform' && attachment !== 'cross-platform') {
+			throw new BadRequestError('attachment must be "platform" or "cross-platform"');
 		}
 
 		const verification = await this.mfaService.webauthn.verifyRegistrationResponse(
@@ -256,6 +288,10 @@ export class MFAController {
 			throw new BadRequestError('WebAuthn registration verification failed');
 		}
 
+		// Replace any existing 2FA state — only one method active at a time
+		await this.mfaService.webauthn.deleteAllUserCredentials(userId);
+		await this.mfaService.clearTotpState(userId);
+
 		const savedCredential = await this.mfaService.webauthn.saveCredential(
 			userId,
 			label.trim(),
@@ -263,21 +299,14 @@ export class MFAController {
 			(response as { response?: { transports?: string[] } })?.response?.transports,
 		);
 
-		// If MFA is not yet enabled, enable it and generate recovery codes
-		let recoveryCodes: string[] | undefined;
-		if (!req.user.mfaEnabled) {
-			recoveryCodes = this.mfaService.generateRecoveryCodes();
-			const secret = this.mfaService.totp.generateSecret();
-			await this.mfaService.saveSecretAndRecoveryCodes(userId, secret, recoveryCodes);
-			const updatedUser = await this.mfaService.enableMfa(userId);
-			this.authService.issueCookie(res, updatedUser, true, req.browserId);
-		}
+		const method = attachment === 'platform' ? 'passkey' : 'security_key';
+		const updatedUser = await this.mfaService.setMfaMethod(userId, method);
+		this.authService.issueCookie(res, updatedUser, true, req.browserId);
 
 		return {
 			id: savedCredential.id,
 			credentialId: savedCredential.credentialId,
 			label: savedCredential.label,
-			recoveryCodes,
 		};
 	}
 
@@ -333,6 +362,7 @@ export class MFAController {
 				mfaEnabled: false,
 				mfaSecret: null,
 				mfaRecoveryCodes: [],
+				mfaMethod: null,
 			});
 
 			const updatedUser = await this.userRepository.findOneOrFail({

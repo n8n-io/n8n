@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { IFormInputs, InputAutocompletePropType } from '@/Interface';
+import type { MfaMethod } from '@n8n/api-types';
 import { N8nLogo } from '@n8n/design-system';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
@@ -13,21 +14,21 @@ import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
-import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
-// ---------------------------------------------------------------------------
-// #region Props
-// ---------------------------------------------------------------------------
+import {
+	N8nButton,
+	N8nCard,
+	N8nFormInputs,
+	N8nHeading,
+	N8nIcon,
+	N8nInfoTip,
+	N8nText,
+} from '@n8n/design-system';
 
 const props = defineProps<{
 	reportError: boolean;
 	email: string;
+	mfaMethod: MfaMethod;
 }>();
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Reactive properties
-// ---------------------------------------------------------------------------
 
 const hasAnyChanges = ref(false);
 const formBus = ref(mfaEventBus);
@@ -38,17 +39,7 @@ const formError = ref('');
 const { reportError } = toRefs(props);
 const mfaFormRef = ref<{ $el?: HTMLElement } | null>(null);
 
-// ---------------------------------------------------------------------------
-// #region Composable
-// ---------------------------------------------------------------------------
-
 const i18 = useI18n();
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Emit
-// ---------------------------------------------------------------------------
 
 const emit = defineEmits<{
 	onFormChanged: [formField: string];
@@ -56,12 +47,6 @@ const emit = defineEmits<{
 	submit: [{ mfaCode: string; mfaRecoveryCode: string }];
 	webauthnSubmit: [webauthnResponse: unknown];
 }>();
-
-// #endregion
-
-// ---------------------------------------------------------------------------
-// #region Methods
-// ---------------------------------------------------------------------------
 
 const formField = (
 	name: string,
@@ -179,38 +164,38 @@ const onSaveClick = () => {
 	formBus.value.emit('submit');
 };
 
-const webauthnLoading = ref(false);
+const webauthnWaiting = ref(false);
+const webauthnError = ref('');
 
 const onWebAuthnClick = async () => {
-	webauthnLoading.value = true;
+	webauthnError.value = '';
+	webauthnWaiting.value = true;
 	try {
 		const usersStore = useUsersStore();
 		const response = await usersStore.verifyWebAuthnAuthentication(props.email);
 		emit('webauthnSubmit', response);
 	} catch {
-		formError.value = i18.baseText('mfa.webauthn.error');
+		webauthnError.value = i18.baseText('mfa.webauthn.error');
 	} finally {
-		webauthnLoading.value = false;
+		webauthnWaiting.value = false;
 	}
 };
 
-// #endregion
+const onWebAuthnCancel = () => {
+	webauthnWaiting.value = false;
+	emit('onBackClick', MFA_FORM.MFA_TOKEN);
+};
 
 const {
 	settings: { releaseChannel },
 } = useSettingsStore();
 
-// ---------------------------------------------------------------------------
-// #region Lifecycle hooks
-// ---------------------------------------------------------------------------
-
 onMounted(() => {
-	formInputs.value = [mfaCodeFieldWithDefaults()];
-
-	focusMfaCodeAfterPasswordManager();
+	if (props.mfaMethod === 'totp') {
+		formInputs.value = [mfaCodeFieldWithDefaults()];
+		focusMfaCodeAfterPasswordManager();
+	}
 });
-
-// #endregion
 </script>
 
 <template>
@@ -218,78 +203,132 @@ onMounted(() => {
 		<N8nLogo size="large" :release-channel="releaseChannel" />
 		<N8nCard>
 			<div :class="$style.headerContainer">
-				<N8nHeading size="xlarge" color="text-dark">{{
-					showRecoveryCodeForm
-						? i18.baseText('mfa.recovery.modal.title')
-						: i18.baseText('mfa.code.modal.title')
-				}}</N8nHeading>
+				<N8nHeading size="xlarge" color="text-dark">
+					<template v-if="mfaMethod === 'totp'">{{
+						showRecoveryCodeForm
+							? i18.baseText('mfa.recovery.modal.title')
+							: i18.baseText('mfa.code.modal.title')
+					}}</template>
+					<template v-else>{{ i18.baseText('mfa.code.modal.title') }}</template>
+				</N8nHeading>
 			</div>
-			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
-				<N8nFormInputs
-					v-if="formInputs"
-					ref="mfaFormRef"
-					data-test-id="mfa-login-form"
-					:inputs="formInputs"
-					:event-bus="formBus"
-					@input="onInput"
-					@submit="onSubmit"
-				/>
-				<div :class="$style.infoBox">
-					<N8nText
-						v-if="!showRecoveryCodeForm && !reportError"
-						size="small"
-						color="text-base"
-						:bold="false"
-						>{{ i18.baseText('mfa.code.input.info') }}
-						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
-							i18.baseText('mfa.code.input.info.action')
-						}}</a></N8nText
+
+			<!-- TOTP flow -->
+			<template v-if="mfaMethod === 'totp'">
+				<div :class="[$style.formContainer, reportError ? $style.formError : '']">
+					<N8nFormInputs
+						v-if="formInputs"
+						ref="mfaFormRef"
+						data-test-id="mfa-login-form"
+						:inputs="formInputs"
+						:event-bus="formBus"
+						@input="onInput"
+						@submit="onSubmit"
+					/>
+					<div :class="$style.infoBox">
+						<N8nText
+							v-if="!showRecoveryCodeForm && !reportError"
+							size="small"
+							color="text-base"
+							:bold="false"
+							>{{ i18.baseText('mfa.code.input.info') }}
+							<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
+								i18.baseText('mfa.code.input.info.action')
+							}}</a></N8nText
+						>
+						<N8nText v-if="reportError" color="danger" size="small"
+							>{{ formError }}
+							<a
+								v-if="!showRecoveryCodeForm"
+								:class="$style.recoveryCodeLink"
+								@click="onRecoveryCodeClick"
+							>
+								{{ i18.baseText('mfa.recovery.input.info.action') }}</a
+							>
+						</N8nText>
+					</div>
+				</div>
+				<div :class="$style.footer">
+					<N8nButton
+						variant="subtle"
+						float="left"
+						:label="i18.baseText('mfa.button.back')"
+						size="large"
+						@click="onBackClick"
+					/>
+					<N8nButton
+						float="right"
+						:loading="verifyingMfaCode"
+						:label="
+							showRecoveryCodeForm
+								? i18.baseText('mfa.recovery.button.verify')
+								: i18.baseText('mfa.code.button.continue')
+						"
+						size="large"
+						:disabled="!hasAnyChanges"
+						@click="onSaveClick"
+					/>
+				</div>
+			</template>
+
+			<!-- WebAuthn flow (passkey or security key) -->
+			<template v-else>
+				<div :class="$style.webauthnPrompt" data-test-id="mfa-webauthn-prompt">
+					<div
+						:class="[
+							$style.bigIcon,
+							$style[`tone_${mfaMethod}`],
+							{ [$style.pulse]: webauthnWaiting },
+						]"
 					>
-					<N8nText v-if="reportError" color="danger" size="small"
-						>{{ formError }}
-						<a
-							v-if="!showRecoveryCodeForm"
-							:class="$style.recoveryCodeLink"
-							@click="onRecoveryCodeClick"
-						>
-							{{ i18.baseText('mfa.recovery.input.info.action') }}</a
-						>
+						<N8nIcon :icon="mfaMethod === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
+					</div>
+					<N8nHeading tag="h3" size="medium" color="text-dark" :class="$style.promptTitle">
+						<template v-if="!webauthnWaiting">{{
+							i18.baseText(`mfa.login.${mfaMethod}.title` as never)
+						}}</template>
+						<template v-else>{{
+							i18.baseText(`mfa.login.${mfaMethod}.waiting.title` as never)
+						}}</template>
+					</N8nHeading>
+					<N8nText size="small" color="text-base" :class="$style.promptDescription">
+						<template v-if="!webauthnWaiting">{{
+							i18.baseText(`mfa.login.${mfaMethod}.description` as never)
+						}}</template>
+						<template v-else>{{
+							i18.baseText(`mfa.login.${mfaMethod}.waiting.description` as never)
+						}}</template>
 					</N8nText>
 				</div>
-			</div>
-			<div :class="$style.footer">
+				<N8nInfoTip
+					v-if="mfaMethod === 'security_key' && !webauthnWaiting"
+					theme="info"
+					:class="$style.infoTip"
+				>
+					{{ i18.baseText('mfa.login.security_key.info') }}
+				</N8nInfoTip>
+				<N8nText v-if="webauthnError" color="danger" size="small" :class="$style.errorText">
+					{{ webauthnError }}
+				</N8nText>
 				<N8nButton
-					variant="subtle"
-					float="left"
-					:label="i18.baseText('mfa.button.back')"
+					v-if="!webauthnWaiting"
+					:label="i18.baseText(`mfa.login.${mfaMethod}.button` as never)"
 					size="large"
-					@click="onBackClick"
-				/>
-				<N8nButton
-					float="right"
-					:loading="verifyingMfaCode"
-					:label="
-						showRecoveryCodeForm
-							? i18.baseText('mfa.recovery.button.verify')
-							: i18.baseText('mfa.code.button.continue')
-					"
-					size="large"
-					:disabled="!hasAnyChanges"
-					@click="onSaveClick"
-				/>
-			</div>
-			<div v-if="!showRecoveryCodeForm" :class="$style.webauthnSection">
-				<N8nButton
-					:label="i18.baseText('mfa.useSecurityKey')"
-					variant="outline"
-					size="large"
-					:loading="webauthnLoading"
-					icon="key-round"
+					:class="$style.fullWidthButton"
 					data-test-id="mfa-webauthn-button"
-					:class="$style.webauthnButton"
 					@click="onWebAuthnClick"
 				/>
-			</div>
+				<div :class="$style.webauthnFooter">
+					<N8nButton
+						variant="subtle"
+						:label="
+							webauthnWaiting ? i18.baseText('mfa.login.cancel') : i18.baseText('mfa.button.back')
+						"
+						size="large"
+						@click="onWebAuthnCancel"
+					/>
+				</div>
+			</template>
 		</N8nCard>
 	</div>
 </template>
@@ -337,14 +376,82 @@ body {
 	padding-top: var(--spacing--4xs);
 }
 
-.webauthnSection {
-	margin-top: var(--spacing--sm);
+.webauthnPrompt {
 	text-align: center;
-	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
-	padding-top: var(--spacing--sm);
+	padding: var(--spacing--3xs) 0 var(--spacing--md);
 }
 
-.webauthnButton {
+.bigIcon {
+	width: calc(var(--spacing--3xl) + var(--spacing--2xs));
+	height: calc(var(--spacing--3xl) + var(--spacing--2xs));
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0 auto var(--spacing--sm);
+	font-size: var(--font-size--2xl);
+	position: relative;
+}
+
+.tone_passkey {
+	background: var(--color--blue-alpha-100);
+	color: var(--color--blue-500);
+}
+
+.tone_security_key {
+	background: var(--color--orange-alpha-100);
+	color: var(--color--orange-500);
+}
+
+.pulse::before {
+	content: '';
+	position: absolute;
+	inset: calc(-1 * var(--spacing--3xs));
+	border-radius: 50%;
+	border: var(--spacing--5xs) solid currentColor;
+	opacity: 0.4;
+	animation: mfaPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mfaPulse {
+	0%,
+	100% {
+		transform: scale(1);
+		opacity: 0.4;
+	}
+	50% {
+		transform: scale(1.15);
+		opacity: 0.1;
+	}
+}
+
+.promptTitle {
+	display: block;
+	margin-bottom: var(--spacing--3xs);
+}
+
+.promptDescription {
+	display: block;
+	line-height: 1.55;
+}
+
+.infoTip {
+	margin-bottom: var(--spacing--xs);
+}
+
+.errorText {
+	display: block;
+	margin-bottom: var(--spacing--xs);
+}
+
+.fullWidthButton {
 	width: 100%;
+	margin-bottom: var(--spacing--3xs);
+}
+
+.webauthnFooter {
+	display: flex;
+	justify-content: flex-start;
+	margin-top: var(--spacing--3xs);
 }
 </style>

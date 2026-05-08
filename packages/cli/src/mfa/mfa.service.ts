@@ -144,6 +144,23 @@ export class MfaService {
 		return await this.userRepository.save(user);
 	}
 
+	async setMfaMethod(userId: string, method: 'totp' | 'passkey' | 'security_key') {
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
+		user.mfaEnabled = true;
+		user.mfaMethod = method;
+		return await this.userRepository.save(user);
+	}
+
+	async clearTotpState(userId: string) {
+		await this.userRepository.update(userId, {
+			mfaSecret: null,
+			mfaRecoveryCodes: [],
+		});
+	}
+
 	async disableMfaWithMfaCode(userId: string, mfaCode: string) {
 		const isValidToken = await this.validateMfa(userId, mfaCode, undefined);
 
@@ -164,13 +181,22 @@ export class MfaService {
 		await this.disableMfaForUser(userId);
 	}
 
-	private async disableMfaForUser(userId: string) {
+	async disableMfaForUser(userId: string) {
 		await this.userRepository.update(userId, {
 			mfaEnabled: false,
 			mfaSecret: null,
 			mfaRecoveryCodes: [],
+			mfaMethod: null,
 		});
 		await this.webauthn.deleteAllUserCredentials(userId);
+	}
+
+	async disableMfaWithWebAuthn(userId: string, webauthnResponse: unknown) {
+		const valid = await this.validateWebAuthn(userId, webauthnResponse);
+		if (!valid) {
+			throw new InvalidMfaCodeError();
+		}
+		await this.disableMfaForUser(userId);
 	}
 
 	async validateWebAuthn(userId: string, response: unknown): Promise<boolean> {

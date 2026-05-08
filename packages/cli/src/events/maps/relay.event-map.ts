@@ -240,7 +240,7 @@ export type RelayEventMap = {
 
 	'user-mfa-disabled': {
 		user: UserLike;
-		disableMethod: 'mfaCode' | 'recoveryCode';
+		disableMethod: 'mfaCode' | 'recoveryCode' | 'webauthn';
 	};
 
 	'user-signed-up': {

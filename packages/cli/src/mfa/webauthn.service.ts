@@ -38,8 +38,22 @@ export class WebAuthnService {
 		userId: string,
 		email: string,
 		existingCredentialIds: string[],
+		attachment: 'platform' | 'cross-platform',
 	) {
 		const { generateRegistrationOptions } = await import('@simplewebauthn/server');
+
+		const authenticatorSelection =
+			attachment === 'platform'
+				? ({
+						authenticatorAttachment: 'platform',
+						residentKey: 'required',
+						userVerification: 'required',
+					} as const)
+				: ({
+						authenticatorAttachment: 'cross-platform',
+						residentKey: 'discouraged',
+						userVerification: 'preferred',
+					} as const);
 
 		const options = await generateRegistrationOptions({
 			rpName: this.getRpName(),
@@ -47,10 +61,7 @@ export class WebAuthnService {
 			userName: email,
 			attestationType: 'none',
 			excludeCredentials: existingCredentialIds.map((id) => ({ id })),
-			authenticatorSelection: {
-				residentKey: 'preferred',
-				userVerification: 'preferred',
-			},
+			authenticatorSelection,
 		});
 
 		await this.cacheService.set(

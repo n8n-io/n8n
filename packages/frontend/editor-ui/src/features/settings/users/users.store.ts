@@ -413,18 +413,23 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	// WebAuthn / Security Keys
 
-	const registerWebAuthnCredential = async (label: string) => {
+	const registerWebAuthnCredential = async (
+		label: string,
+		attachment: 'platform' | 'cross-platform',
+	) => {
 		const { startRegistration } = await import('@simplewebauthn/browser');
-		const options = await webauthnApi.getRegistrationOptions(rootStore.restApiContext);
+		const options = await webauthnApi.getRegistrationOptions(rootStore.restApiContext, attachment);
 		const attestationResponse = await startRegistration({
 			optionsJSON: options as Parameters<typeof startRegistration>[0]['optionsJSON'],
 		});
 		const result = await webauthnApi.verifyRegistration(rootStore.restApiContext, {
 			label,
 			response: attestationResponse,
+			attachment,
 		});
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
+			currentUser.value.mfaMethod = attachment === 'platform' ? 'passkey' : 'security_key';
 		}
 		return result;
 	};
