@@ -2,7 +2,7 @@ import { createAllTools, createOrchestratorDomainTools } from '..';
 import type { InstanceAiContext } from '../../types';
 
 jest.mock('../../parsers/structured-file-parser', () => ({
-	isStructuredAttachment: jest.fn(() => false),
+	isParseableAttachment: jest.fn(() => false),
 }));
 
 jest.mock('../attachments/parse-file.tool', () => ({

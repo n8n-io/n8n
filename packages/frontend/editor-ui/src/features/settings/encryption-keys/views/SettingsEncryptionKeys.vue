@@ -4,7 +4,6 @@ import { parseDate, type CalendarDate } from '@internationalized/date';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nAlertDialog,
-	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nDateRangePicker,
@@ -22,7 +21,6 @@ import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
-import { useClipboard } from '@/app/composables/useClipboard';
 
 import { useEncryptionKeysStore } from '../encryption-keys.store';
 import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.types';
@@ -30,7 +28,6 @@ import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.t
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const { showMessage, showError } = useToast();
-const clipboard = useClipboard();
 const store = useEncryptionKeysStore();
 
 const DOCS_URL = 'https://docs.n8n.io/hosting/configuration/encryption-keys/';
@@ -47,7 +44,7 @@ const isConfirmRotateOpen = ref(false);
 const sortOptions = computed<Array<{ value: EncryptionKeySortField; label: string }>>(() => [
 	{ value: 'createdAt', label: i18n.baseText('settings.encryptionKeys.sortBy.activated') },
 	{ value: 'updatedAt', label: i18n.baseText('settings.encryptionKeys.sortBy.archived') },
-	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.type') },
+	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.status') },
 ]);
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -255,14 +252,6 @@ const onConfirmRotate = async () => {
 	}
 };
 
-const copyKeyId = async (id: string) => {
-	await clipboard.copy(id);
-	showMessage({
-		type: 'success',
-		title: i18n.baseText('settings.encryptionKeys.copyId.success'),
-	});
-};
-
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.encryptionKeys.title'));
 	await refetch();
@@ -277,15 +266,18 @@ onMounted(async () => {
 			</N8nHeading>
 			<N8nText color="text-base">
 				{{ i18n.baseText('settings.encryptionKeys.description') }}
-				<N8nLink :href="DOCS_URL" new-window>
-					{{ i18n.baseText('settings.encryptionKeys.description.docsLink') }}
+				<N8nLink theme="text" :href="DOCS_URL" new-window underline>
+					<span :class="$style.docsLinkLabel">
+						{{ i18n.baseText('settings.encryptionKeys.description.docsLink') }}
+						<N8nIcon icon="arrow-up-right" size="small" />
+					</span>
 				</N8nLink>
 			</N8nText>
 		</header>
 
 		<div :class="$style.controls">
 			<div :class="$style.sortControl">
-				<N8nText tag="label" color="text-light" size="small" :class="$style.sortLabel">
+				<N8nText tag="label" color="text-light" :class="$style.sortLabel">
 					{{ i18n.baseText('settings.encryptionKeys.sortBy.label') }}
 				</N8nText>
 				<N8nSelect
@@ -307,8 +299,8 @@ onMounted(async () => {
 				<template #trigger>
 					<N8nIconButton
 						icon="funnel"
-						type="tertiary"
-						size="medium"
+						variant="outline"
+						size="xlarge"
 						data-testid="encryption-keys-filter-button"
 						:title="i18n.baseText('settings.encryptionKeys.filter.title')"
 					/>
@@ -335,8 +327,8 @@ onMounted(async () => {
 			</N8nDateRangePicker>
 
 			<N8nButton
-				type="primary"
-				size="medium"
+				variant="solid"
+				size="xlarge"
 				:loading="store.isRotating"
 				data-testid="encryption-keys-rotate-button"
 				@click="openRotateConfirm"
@@ -363,22 +355,18 @@ onMounted(async () => {
 				@update:options="onUpdateOptions"
 			>
 				<template #[`item.id`]="{ item }">
-					<div :class="$style.keyCell">
-						<code :class="$style.keyValue">{{ maskId(item.id) }}</code>
-						<N8nIconButton
-							icon="copy"
-							type="tertiary"
-							size="mini"
-							data-testid="encryption-keys-copy-id-button"
-							:title="i18n.baseText('settings.encryptionKeys.copyId.success')"
-							@click="copyKeyId(item.id)"
-						/>
-					</div>
+					<code :class="$style.keyValue">{{ maskId(item.id) }}</code>
 				</template>
 
 				<template #[`item.status`]="{ item }">
-					<N8nBadge :theme="item.status === 'active' ? 'success' : 'default'" size="small">
-						<N8nIcon :icon="item.status === 'active' ? 'circle-check' : 'circle'" size="xsmall" />
+					<span :class="$style.statusCell">
+						<N8nIcon
+							v-if="item.status === 'active'"
+							icon="status-completed"
+							color="success"
+							size="large"
+						/>
+						<span v-else :class="$style.statusDot" aria-hidden="true" />
 						{{
 							i18n.baseText(
 								item.status === 'active'
@@ -386,7 +374,7 @@ onMounted(async () => {
 									: 'settings.encryptionKeys.status.inactive',
 							)
 						}}
-					</N8nBadge>
+					</span>
 				</template>
 
 				<template #[`item.createdAt`]="{ item }">
@@ -464,16 +452,31 @@ onMounted(async () => {
 	position: relative;
 }
 
-.keyCell {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
 .keyValue {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: var(--font-size--sm);
 	letter-spacing: 0.02em;
+}
+
+.statusCell {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.statusDot {
+	display: inline-block;
+	width: var(--font-size--md);
+	height: var(--font-size--md);
+	border-radius: 50%;
+	background-color: var(--text-color--subtler);
+	flex-shrink: 0;
+}
+
+.docsLinkLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 
 .rotateIcon {

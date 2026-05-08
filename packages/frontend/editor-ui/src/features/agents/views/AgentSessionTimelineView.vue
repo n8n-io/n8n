@@ -600,12 +600,16 @@ function onSessionSelect(nextThreadId: string) {
 .tablePanel {
 	flex: 6;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
 }
 .detailPanel {
 	flex: 0 0 40%;
 	min-width: 0;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	border-left: var(--border);
 	background-color: var(--background--surface);
 }

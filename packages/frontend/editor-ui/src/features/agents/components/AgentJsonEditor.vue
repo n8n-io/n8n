@@ -158,5 +158,7 @@ watch(
 
 .editorArea :global(.cm-scroller) {
 	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 </style>
