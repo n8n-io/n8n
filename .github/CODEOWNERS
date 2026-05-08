@@ -17,7 +17,7 @@ packages/@n8n/errors/                                   @n8n-io/catalysts
 packages/@n8n/constants/                                @n8n-io/catalysts
 packages/@n8n/utils/                                    @n8n-io/catalysts
 packages/@n8n/api-types/                                @n8n-io/catalysts
-packages/@n8n/workflow-sdk/                             @n8n-io/catalysts
+packages/@n8n/workflow-sdk/                             @n8n-io/instance-ai
 packages/@n8n/task-runner/                              @n8n-io/catalysts
 packages/@n8n/task-runner-python/                       @n8n-io/catalysts
 packages/@n8n/expression-runtime/                       @n8n-io/catalysts
@@ -179,6 +179,7 @@ packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 
 # AI
 
+packages/@n8n/instance-ai/                              @n8n-io/instance-ai
 packages/@n8n/nodes-langchain/                          @n8n-io/ai
 packages/@n8n/ai-utilities/                             @n8n-io/ai
 packages/@n8n/ai-node-sdk/                              @n8n-io/ai

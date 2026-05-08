@@ -705,7 +705,7 @@ importers:
         version: 1.0.27(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(cheerio@1.0.0)(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(fc62cbc93d74cace03ba310d8e53131b)
+        version: 1.1.27(eda736f6c818f128b670206c8d2822df)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -807,8 +807,8 @@ importers:
         specifier: 'catalog:'
         version: 1.21.0
       csv-parse:
-        specifier: 5.5.0
-        version: 5.5.0
+        specifier: 6.2.1
+        version: 6.2.1
       jsdom:
         specifier: 23.0.1
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -1713,8 +1713,8 @@ importers:
         specifier: workspace:*
         version: link:../workflow-sdk
       csv-parse:
-        specifier: 5.5.0
-        version: 5.5.0
+        specifier: 6.2.1
+        version: 6.2.1
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -1727,6 +1727,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      mammoth:
+        specifier: 1.12.0
+        version: 1.12.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1737,11 +1740,14 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       pdf-parse:
-        specifier: ^1.1.1
-        version: 1.1.1
+        specifier: 2.4.5
+        version: 2.4.5
       turndown:
         specifier: ^7.2.0
         version: 7.2.2
+      xlsx:
+        specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
+        version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -2043,7 +2049,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(f2f54e7010350c3b50a1b81272c39ebc)
+        version: 1.1.27(9a33d502a76e23e4d14d11cb4afe5d89)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -2192,8 +2198,8 @@ importers:
         specifier: 4.18.1
         version: 4.18.1
       mammoth:
-        specifier: 1.11.0
-        version: 1.11.0
+        specifier: 1.12.0
+        version: 1.12.0
       mime-types:
         specifier: 'catalog:'
         version: 3.0.2
@@ -8447,8 +8453,20 @@ packages:
     cpu: [arm64]
     os: [android]
 
+  '@napi-rs/canvas-android-arm64@0.1.80':
+    resolution: {integrity: sha512-sk7xhN/MoXeuExlggf91pNziBxLPVUqF2CAVnB57KLG/pz7+U5TKG8eXdc3pm0d7Od0WreB6ZKLj37sX9muGOQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [android]
+
   '@napi-rs/canvas-darwin-arm64@0.1.70':
     resolution: {integrity: sha512-4pPGyXetHIHkw2TOJHujt3mkCP8LdDu8+CT15ld9Id39c752RcI0amDHSuMLMQfAjvusA9B5kKxazwjMGjEJpQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@napi-rs/canvas-darwin-arm64@0.1.80':
+    resolution: {integrity: sha512-O64APRTXRUiAz0P8gErkfEr3lipLJgM6pjATwavZ22ebhjYl/SUbpgM0xcWPQBNMP1n29afAC/Us5PX1vg+JNQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -8459,14 +8477,33 @@ packages:
     cpu: [x64]
     os: [darwin]
 
+  '@napi-rs/canvas-darwin-x64@0.1.80':
+    resolution: {integrity: sha512-FqqSU7qFce0Cp3pwnTjVkKjjOtxMqRe6lmINxpIZYaZNnVI0H5FtsaraZJ36SiTHNjZlUB69/HhxNDT1Aaa9vA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
   '@napi-rs/canvas-linux-arm-gnueabihf@0.1.70':
     resolution: {integrity: sha512-QjscX9OaKq/990sVhSMj581xuqLgiaPVMjjYvWaCmAJRkNQ004QfoSMEm3FoTqM4DRoquP8jvuEXScVJsc1rqQ==}
     engines: {node: '>= 10'}
     cpu: [arm]
     os: [linux]
 
+  '@napi-rs/canvas-linux-arm-gnueabihf@0.1.80':
+    resolution: {integrity: sha512-eyWz0ddBDQc7/JbAtY4OtZ5SpK8tR4JsCYEZjCE3dI8pqoWUC8oMwYSBGCYfsx2w47cQgQCgMVRVTFiiO38hHQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [linux]
+
   '@napi-rs/canvas-linux-arm64-gnu@0.1.70':
     resolution: {integrity: sha512-LNakMOwwqwiHIwMpnMAbFRczQMQ7TkkMyATqFCOtUJNlE6LPP/QiUj/mlFrNbUn/hctqShJ60gWEb52ZTALbVw==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@napi-rs/canvas-linux-arm64-gnu@0.1.80':
+    resolution: {integrity: sha512-qwA63t8A86bnxhuA/GwOkK3jvb+XTQaTiVML0vAWoHyoZYTjNs7BzoOONDgTnNtr8/yHrq64XXzUoLqDzU+Uuw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -8479,8 +8516,22 @@ packages:
     os: [linux]
     libc: [musl]
 
+  '@napi-rs/canvas-linux-arm64-musl@0.1.80':
+    resolution: {integrity: sha512-1XbCOz/ymhj24lFaIXtWnwv/6eFHXDrjP0jYkc6iHQ9q8oXKzUX1Lc6bu+wuGiLhGh2GS/2JlfORC5ZcXimRcg==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
   '@napi-rs/canvas-linux-riscv64-gnu@0.1.70':
     resolution: {integrity: sha512-GVUUPC8TuuFqHip0rxHkUqArQnlzmlXmTEBuXAWdgCv85zTCFH8nOHk/YCF5yo0Z2eOm8nOi90aWs0leJ4OE5Q==}
+    engines: {node: '>= 10'}
+    cpu: [riscv64]
+    os: [linux]
+    libc: [glibc]
+
+  '@napi-rs/canvas-linux-riscv64-gnu@0.1.80':
+    resolution: {integrity: sha512-XTzR125w5ZMs0lJcxRlS1K3P5RaZ9RmUsPtd1uGt+EfDyYMu4c6SEROYsxyatbbu/2+lPe7MPHOO/0a0x7L/gw==}
     engines: {node: '>= 10'}
     cpu: [riscv64]
     os: [linux]
@@ -8493,8 +8544,22 @@ packages:
     os: [linux]
     libc: [glibc]
 
+  '@napi-rs/canvas-linux-x64-gnu@0.1.80':
+    resolution: {integrity: sha512-BeXAmhKg1kX3UCrJsYbdQd3hIMDH/K6HnP/pG2LuITaXhXBiNdh//TVVVVCBbJzVQaV5gK/4ZOCMrQW9mvuTqA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
   '@napi-rs/canvas-linux-x64-musl@0.1.70':
     resolution: {integrity: sha512-aqlv8MLpycoMKRmds7JWCfVwNf1fiZxaU7JwJs9/ExjTD8lX2KjsO7CTeAj5Cl4aEuzxUWbJPUUE2Qu9cZ1vfg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@napi-rs/canvas-linux-x64-musl@0.1.80':
+    resolution: {integrity: sha512-x0XvZWdHbkgdgucJsRxprX/4o4sEed7qo9rCQA9ugiS9qE2QvP0RIiEugtZhfLH3cyI+jIRFJHV4Fuz+1BHHMg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -8506,8 +8571,18 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@napi-rs/canvas-win32-x64-msvc@0.1.80':
+    resolution: {integrity: sha512-Z8jPsM6df5V8B1HrCHB05+bDiCxjE9QA//3YrkKIdVDEwn5RKaqOxCJDRJkl48cJbylcrJbW4HxZbTte8juuPg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
   '@napi-rs/canvas@0.1.70':
     resolution: {integrity: sha512-nD6NGa4JbNYSZYsTnLGrqe9Kn/lCkA4ybXt8sx5ojDqZjr2i0TWAHxx/vhgfjX+i3hCdKWufxYwi7CfXqtITSA==}
+    engines: {node: '>= 10'}
+
+  '@napi-rs/canvas@0.1.80':
+    resolution: {integrity: sha512-DxuT1ClnIPts1kQx8FBmkk4BQDTfI5kIzywAaMjQSXfNnra5UFU9PwurXrl+Je3bJ6BGsp/zmshVVFbCmyI+ww==}
     engines: {node: '>= 10'}
 
   '@napi-rs/image-android-arm64@1.12.0':
@@ -14001,6 +14076,9 @@ packages:
   csv-parse@5.5.0:
     resolution: {integrity: sha512-RxruSK3M4XgzcD7Trm2wEN+SJ26ChIb903+IWxNOcB5q4jT2Cs+hFr6QP39J05EohshRFEvyzEBoZ/466S2sbw==}
 
+  csv-parse@6.2.1:
+    resolution: {integrity: sha512-LRLMV+UCyfMokp8Wb411duBf1gaBKJfOfBWU9eHMJ+b+cJYZsNu3AFmjJf3+yPGd59Exz1TsMjaSFyxnYB9+IQ==}
+
   curlconverter@4.12.0:
     resolution: {integrity: sha512-NcwPKJgu9DkCH4gQsnjnXuUtPrhLhoNwvIYTTS5rRrsCC/X2flUswtgmeCyV9ePGszXzFReXk5y/CdBxrsAQ8Q==}
     hasBin: true
@@ -17546,8 +17624,8 @@ packages:
   makeerror@1.0.12:
     resolution: {integrity: sha512-JmqCvUhmt43madlpFzG4BQzG2Z3m6tvQDNKdClZnO3VbIudJYmxsT0FNJMeiB2+JTSlTQTSbU8QdesVmwJcmLg==}
 
-  mammoth@1.11.0:
-    resolution: {integrity: sha512-BcEqqY/BOwIcI1iR5tqyVlqc3KIaMRa4egSoK83YAVrBf6+yqdAAbtUcFDCWX8Zef8/fgNZ6rl4VUv+vVX8ddQ==}
+  mammoth@1.12.0:
+    resolution: {integrity: sha512-cwnK1RIcRdDMi2HRx2EXGYlxqIEh0Oo3bLhorgnsVJi2UkbX1+jKxuBNR9PC5+JaX7EkmJxFPmo6mjLpqShI2w==}
     engines: {node: '>=12.0.0'}
     hasBin: true
 
@@ -19058,8 +19136,17 @@ packages:
     resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
     engines: {node: '>=6.8.1'}
 
+  pdf-parse@2.4.5:
+    resolution: {integrity: sha512-mHU89HGh7v+4u2ubfnevJ03lmPgQ5WU4CxAVmTSh/sxVTEDYd1er/dKS/A6vg77NX47KTEoihq8jZBLr8Cxuwg==}
+    engines: {node: '>=20.16.0 <21 || >=22.3.0'}
+    hasBin: true
+
   pdfjs-dist@5.3.31:
     resolution: {integrity: sha512-EhPdIjNX0fcdwYQO+e3BAAJPXt+XI29TZWC7COhIXs/K0JHcUt1Gdz1ITpebTwVMFiLsukdUZ3u0oTO7jij+VA==}
+    engines: {node: '>=20.16.0 || >=22.3.0'}
+
+  pdfjs-dist@5.4.296:
+    resolution: {integrity: sha512-DlOzet0HO7OEnmUmB6wWGJrrdvbyJKftI1bhMitK7O2N8W2gc757yyYBbINy9IDafXAV9wmKr9t7xsTaNKRG5Q==}
     engines: {node: '>=20.16.0 || >=22.3.0'}
 
   pe-library@0.4.1:
@@ -27449,7 +27536,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(f2f54e7010350c3b50a1b81272c39ebc)':
+  '@langchain/community@1.1.27(9a33d502a76e23e4d14d11cb4afe5d89)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.58.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.3.1)(encoding@0.1.13)(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -27497,7 +27584,7 @@ snapshots:
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
       lodash: 4.18.1
-      mammoth: 1.11.0
+      mammoth: 1.12.0
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
       pdf-parse: 1.1.1
       pg: 8.17.0
@@ -27511,7 +27598,7 @@ snapshots:
       - '@opentelemetry/sdk-trace-base'
       - peggy
 
-  '@langchain/community@1.1.27(fc62cbc93d74cace03ba310d8e53131b)':
+  '@langchain/community@1.1.27(eda736f6c818f128b670206c8d2822df)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.58.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.3.1)(encoding@0.1.13)(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -27550,7 +27637,8 @@ snapshots:
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
       lodash: 4.18.1
-      mammoth: 1.11.0
+      mammoth: 1.12.0
+      pdf-parse: 2.4.5
       pg: 8.17.0
       puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -28349,31 +28437,61 @@ snapshots:
   '@napi-rs/canvas-android-arm64@0.1.70':
     optional: true
 
+  '@napi-rs/canvas-android-arm64@0.1.80':
+    optional: true
+
   '@napi-rs/canvas-darwin-arm64@0.1.70':
+    optional: true
+
+  '@napi-rs/canvas-darwin-arm64@0.1.80':
     optional: true
 
   '@napi-rs/canvas-darwin-x64@0.1.70':
     optional: true
 
+  '@napi-rs/canvas-darwin-x64@0.1.80':
+    optional: true
+
   '@napi-rs/canvas-linux-arm-gnueabihf@0.1.70':
+    optional: true
+
+  '@napi-rs/canvas-linux-arm-gnueabihf@0.1.80':
     optional: true
 
   '@napi-rs/canvas-linux-arm64-gnu@0.1.70':
     optional: true
 
+  '@napi-rs/canvas-linux-arm64-gnu@0.1.80':
+    optional: true
+
   '@napi-rs/canvas-linux-arm64-musl@0.1.70':
+    optional: true
+
+  '@napi-rs/canvas-linux-arm64-musl@0.1.80':
     optional: true
 
   '@napi-rs/canvas-linux-riscv64-gnu@0.1.70':
     optional: true
 
+  '@napi-rs/canvas-linux-riscv64-gnu@0.1.80':
+    optional: true
+
   '@napi-rs/canvas-linux-x64-gnu@0.1.70':
+    optional: true
+
+  '@napi-rs/canvas-linux-x64-gnu@0.1.80':
     optional: true
 
   '@napi-rs/canvas-linux-x64-musl@0.1.70':
     optional: true
 
+  '@napi-rs/canvas-linux-x64-musl@0.1.80':
+    optional: true
+
   '@napi-rs/canvas-win32-x64-msvc@0.1.70':
+    optional: true
+
+  '@napi-rs/canvas-win32-x64-msvc@0.1.80':
     optional: true
 
   '@napi-rs/canvas@0.1.70':
@@ -28389,6 +28507,19 @@ snapshots:
       '@napi-rs/canvas-linux-x64-musl': 0.1.70
       '@napi-rs/canvas-win32-x64-msvc': 0.1.70
     optional: true
+
+  '@napi-rs/canvas@0.1.80':
+    optionalDependencies:
+      '@napi-rs/canvas-android-arm64': 0.1.80
+      '@napi-rs/canvas-darwin-arm64': 0.1.80
+      '@napi-rs/canvas-darwin-x64': 0.1.80
+      '@napi-rs/canvas-linux-arm-gnueabihf': 0.1.80
+      '@napi-rs/canvas-linux-arm64-gnu': 0.1.80
+      '@napi-rs/canvas-linux-arm64-musl': 0.1.80
+      '@napi-rs/canvas-linux-riscv64-gnu': 0.1.80
+      '@napi-rs/canvas-linux-x64-gnu': 0.1.80
+      '@napi-rs/canvas-linux-x64-musl': 0.1.80
+      '@napi-rs/canvas-win32-x64-msvc': 0.1.80
 
   '@napi-rs/image-android-arm64@1.12.0':
     optional: true
@@ -34927,6 +35058,8 @@ snapshots:
 
   csv-parse@5.5.0: {}
 
+  csv-parse@6.2.1: {}
+
   curlconverter@4.12.0:
     dependencies:
       jsesc: 3.0.2
@@ -39532,7 +39665,7 @@ snapshots:
     dependencies:
       tmpl: 1.0.5
 
-  mammoth@1.11.0:
+  mammoth@1.12.0:
     dependencies:
       '@xmldom/xmldom': 0.8.13
       argparse: 1.0.10
@@ -41490,9 +41623,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  pdf-parse@2.4.5:
+    dependencies:
+      '@napi-rs/canvas': 0.1.80
+      pdfjs-dist: 5.4.296
+
   pdfjs-dist@5.3.31(patch_hash=421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd):
     optionalDependencies:
       '@napi-rs/canvas': 0.1.70
+
+  pdfjs-dist@5.4.296:
+    optionalDependencies:
+      '@napi-rs/canvas': 0.1.80
 
   pe-library@0.4.1: {}
 
