@@ -91,7 +91,6 @@
       "ast-types": "0.16.1",
       "@azure/identity": "4.13.0",
       "@lezer/common": "^1.2.0",
-      "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
@@ -153,9 +152,12 @@
       "hono@<=4.12.16": "4.12.16",
       "brace-expansion@<=2.1.0": "2.1.0",
       "axios": "1.16.0",
-      "zod": "3.25.67",
       "fast-xml-parser": "5.7.2",
-      "openai": "6.21.0"
+      "openai": "6.21.0",
+      "@mistralai/mistralai": "1.13.0",
+      "zod": "4.4.0",
+      "langsmith@<=0.5.19": "0.5.19",
+      "uuid@<=11.1.1": "11.1.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
