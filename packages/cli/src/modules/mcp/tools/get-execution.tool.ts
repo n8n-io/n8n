@@ -1,6 +1,6 @@
 import type { ExecutionRepository, User } from '@n8n/db';
 import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError, jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -152,9 +152,18 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// Replace circular refs *once* and ship the cleaned graph in both
+			// `content[0].text` and `structuredContent`. The MCP SDK's transport
+			// `JSON.stringify`s the JSON-RPC envelope (including `structuredContent`)
+			// and would otherwise throw on the cycles that `IRunExecutionData`
+			// preserves through `flatted.parse` (e.g. the HTTP socket loop in
+			// `executionData.contextData`). Mirrors the public API path
+			// (`packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts`).
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		} catch (er) {
 			const error = ensureError(er);
@@ -185,9 +194,13 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// Same cycle-safe handling as the success path; the error envelope is
+			// scalar-only today but stay consistent so future error shapes can't hang.
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		}
 	},
