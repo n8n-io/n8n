@@ -3,10 +3,10 @@ import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeo
 import { mock } from 'jest-mock-extended';
 
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
-import type { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
-import type { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
-import type { AgentObservationEntity } from '../../entities/agent-observation.entity';
-import type { AgentThreadEntity } from '../../entities/agent-thread.entity';
+import { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
+import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
+import { AgentObservationEntity } from '../../entities/agent-observation.entity';
+import { AgentThreadEntity } from '../../entities/agent-thread.entity';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
@@ -23,6 +23,8 @@ describe('N8nMemory', () => {
 	let observationRepository: jest.Mocked<AgentObservationRepository>;
 	let observationCursorRepository: jest.Mocked<AgentObservationCursorRepository>;
 	let observationLockRepository: jest.Mocked<AgentObservationLockRepository>;
+	let runInTransaction: jest.Mock;
+	let transactionDelete: jest.Mock;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -33,6 +35,15 @@ describe('N8nMemory', () => {
 		observationRepository = mock<AgentObservationRepository>();
 		observationCursorRepository = mock<AgentObservationCursorRepository>();
 		observationLockRepository = mock<AgentObservationLockRepository>();
+		transactionDelete = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
+		runInTransaction = jest.fn(
+			async (callback: (trx: { delete: typeof transactionDelete }) => Promise<void>) => {
+				await callback({ delete: transactionDelete });
+			},
+		);
+		Object.defineProperty(threadRepository, 'manager', {
+			value: { transaction: runInTransaction },
+		});
 
 		memory = new N8nMemory(
 			threadRepository,
@@ -280,24 +291,36 @@ describe('N8nMemory', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('deletes thread-scoped observation state before deleting the thread row', async () => {
+		it('deletes thread-scoped observation state and the thread row in one transaction', async () => {
 			await memory.deleteThread('thread-1');
 
 			const scope = { scopeKind: 'thread' as const, scopeId: 'thread-1' };
-			expect(observationRepository.delete).toHaveBeenCalledWith(scope);
-			expect(observationCursorRepository.delete).toHaveBeenCalledWith(scope);
-			expect(observationLockRepository.delete).toHaveBeenCalledWith(scope);
-			expect(threadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
+			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, scope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(2, AgentObservationCursorEntity, scope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, scope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, { id: 'thread-1' });
+			expect(observationRepository.delete).not.toHaveBeenCalled();
+			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
+			expect(observationLockRepository.delete).not.toHaveBeenCalled();
+			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 
-		it('deletes thread-scoped observation state by thread id prefix', async () => {
+		it('deletes thread-scoped observation state by thread id prefix in one transaction', async () => {
 			await memory.deleteThreadsByPrefix('test-agent-1');
 
 			const scope = { scopeKind: 'thread' as const, scopeId: Like('test-agent-1%') };
-			expect(observationRepository.delete).toHaveBeenCalledWith(scope);
-			expect(observationCursorRepository.delete).toHaveBeenCalledWith(scope);
-			expect(observationLockRepository.delete).toHaveBeenCalledWith(scope);
-			expect(threadRepository.delete).toHaveBeenCalledWith({ id: Like('test-agent-1%') });
+			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentObservationEntity, scope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(2, AgentObservationCursorEntity, scope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(3, AgentObservationLockEntity, scope);
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, {
+				id: Like('test-agent-1%'),
+			});
+			expect(observationRepository.delete).not.toHaveBeenCalled();
+			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
+			expect(observationLockRepository.delete).not.toHaveBeenCalled();
+			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 

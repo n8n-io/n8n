@@ -18,6 +18,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
+import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
@@ -88,18 +89,24 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
-		await this.observationRepository.delete({ scopeKind: 'thread', scopeId: threadId });
-		await this.observationCursorRepository.delete({ scopeKind: 'thread', scopeId: threadId });
-		await this.observationLockRepository.delete({ scopeKind: 'thread', scopeId: threadId });
-		await this.threadRepository.delete({ id: threadId });
+		await this.threadRepository.manager.transaction(async (trx) => {
+			const scope = { scopeKind: 'thread' as const, scopeId: threadId };
+			await trx.delete(AgentObservationEntity, scope);
+			await trx.delete(AgentObservationCursorEntity, scope);
+			await trx.delete(AgentObservationLockEntity, scope);
+			await trx.delete(AgentThreadEntity, { id: threadId });
+		});
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
 		const scopeId = Like(`${threadIdPrefix}%`);
-		await this.observationRepository.delete({ scopeKind: 'thread', scopeId });
-		await this.observationCursorRepository.delete({ scopeKind: 'thread', scopeId });
-		await this.observationLockRepository.delete({ scopeKind: 'thread', scopeId });
-		await this.threadRepository.delete({ id: Like(`${threadIdPrefix}%`) });
+		await this.threadRepository.manager.transaction(async (trx) => {
+			const scope = { scopeKind: 'thread' as const, scopeId };
+			await trx.delete(AgentObservationEntity, scope);
+			await trx.delete(AgentObservationCursorEntity, scope);
+			await trx.delete(AgentObservationLockEntity, scope);
+			await trx.delete(AgentThreadEntity, { id: scopeId });
+		});
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────
