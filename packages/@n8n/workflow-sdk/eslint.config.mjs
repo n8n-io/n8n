@@ -1,7 +1,11 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
+import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
 export default defineConfig(globalIgnores(['test-fixtures/**', 'scripts/**']), nodeConfig, {
+	plugins: {
+		'@n8n/community-nodes': n8nCommunityNodesPlugin,
+	},
 	rules: {
 		// Allow PascalCase for object literal property names (n8n node names and AST types)
 		'@typescript-eslint/naming-convention': [
@@ -61,5 +65,21 @@ export default defineConfig(globalIgnores(['test-fixtures/**', 'scripts/**']), n
 		'n8n-local-rules/no-interpolation-in-regular-string': 'off',
 		// These identifiers are used as object keys for type mappings
 		'id-denylist': 'off',
+		// Default scope (`builderHint`) won't fire here because workflow-sdk source has no
+		// builderHint properties; the prompts override below switches on `scope: 'all'`.
+		'@n8n/community-nodes/no-builder-hint-leakage': 'error',
+	},
+}, {
+	files: ['src/prompts/**/*.ts'],
+	rules: {
+		'@n8n/community-nodes/no-builder-hint-leakage': ['error', { scope: 'all' }],
+	},
+}, {
+	// Multi-agent parameter guides intentionally document wire-format parameters
+	// (consumed by the legacy parameter-updater chain in ai-workflow-builder.ee,
+	// not by the code-builder or instance-ai SDK paths).
+	files: ['src/prompts/node-guidance/parameter-guides/**/*.ts'],
+	rules: {
+		'@n8n/community-nodes/no-builder-hint-leakage': 'off',
 	},
 });

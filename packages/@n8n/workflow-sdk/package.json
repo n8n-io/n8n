@@ -93,6 +93,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
     "@types/estree": "^1.0.8",
