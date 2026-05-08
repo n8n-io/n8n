@@ -1207,6 +1207,8 @@ describe('ImportService', () => {
 					.mockResolvedValueOnce([
 						{ id: 'col-1', dataTableId: mixedCaseId, name: 'foo', type: 'string', index: 0 },
 					])
+					.mockResolvedValueOnce(undefined) // INSERT row
+					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
 					.mockResolvedValue(undefined);
 
 				jest.mocked(readFile).mockResolvedValue(
@@ -1227,7 +1229,7 @@ describe('ImportService', () => {
 				);
 				expect(setvalCalls).toHaveLength(1);
 				const [, params] = setvalCalls[0];
-				expect(params).toEqual([`"data_table_user_${mixedCaseId}"`]);
+				expect(params).toEqual([`"data_table_user_${mixedCaseId}"`, 'id']);
 			});
 
 			it('should NOT call setval on Postgres when no rows were inserted', async () => {

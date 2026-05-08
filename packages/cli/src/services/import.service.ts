@@ -840,10 +840,8 @@ export class ImportService {
 
 			// Postgres IDENTITY columns don't auto-advance when explicit ids are
 			// inserted, so the next implicit insert would collide. Reset to MAX(id).
-			// pg_get_serial_sequence's first arg goes through regclass and folds
-			// unquoted identifiers to lowercase, so pass the already-quoted form.
 			if (rowsForTable > 0 && dbType === 'postgres') {
-				await this.advanceIdentitySequences(transactionManager, [escapedTable]);
+				await this.advanceIdentitySequences(transactionManager, [userTable]);
 			}
 
 			if (rowsForTable > 0) {
