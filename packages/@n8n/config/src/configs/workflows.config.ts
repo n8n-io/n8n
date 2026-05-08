@@ -34,4 +34,8 @@ export class WorkflowsConfig {
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;
+
+	/** Minimum allowed schedule interval in seconds for schedule triggers */
+	@Env('N8N_MIN_SCHEDULE_INTERVAL_SECONDS')
+	minScheduleIntervalSeconds: number = 300;
 }

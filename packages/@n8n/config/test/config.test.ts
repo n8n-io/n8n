@@ -208,6 +208,7 @@ describe('GlobalConfig', () => {
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			autosaveDisabled: false,
+			minScheduleIntervalSeconds: 300,
 		},
 		endpoints: {
 			metrics: {

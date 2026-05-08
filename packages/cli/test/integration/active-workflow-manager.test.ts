@@ -23,6 +23,7 @@ import type {
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -42,6 +43,9 @@ mockInstance(ExecutionService);
 mockInstance(WorkflowService);
 mockInstance(OwnershipService, {
 	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+});
+mockInstance(WorkflowValidationService, {
+	validateScheduleIntervalsForNodes: jest.fn().mockReturnValue({ isValid: true }),
 });
 
 const webhookService = mockInstance(WebhookService);
