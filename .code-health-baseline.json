@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-08T11:29:48.337Z",
-	"totalViolations": 115,
+	"generated": "2026-05-08T12:51:46.599Z",
+	"totalViolations": 118,
 	"violations": {
 		"packages/core/package.json": [
 			{
@@ -69,6 +69,12 @@
 				"line": 61,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "d2120f012c93"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 70,
+				"message": "csv-parse appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "94f80b083b76"
 			},
 			{
 				"rule": "catalog-violations",
@@ -293,6 +299,32 @@
 				"hash": "50fb70481f8f"
 			}
 		],
+		"packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 43,
+				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "c3815ab2677d"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 46,
+				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "11608ee90ba9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 44,
+				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "70fc7a306272"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 49,
+				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "4514689aef5c"
+			}
+		],
 		"packages/@n8n/node-cli/src/template/templates/declarative/custom/template/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -345,30 +377,30 @@
 				"hash": "fd2577d9c87b"
 			}
 		],
-		"packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/package.json": [
+		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/package.json": [
 			{
 				"rule": "catalog-violations",
 				"line": 43,
 				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "c3815ab2677d"
+				"hash": "91ea1dbe7d4e"
 			},
 			{
 				"rule": "catalog-violations",
 				"line": 46,
 				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "11608ee90ba9"
+				"hash": "72d08eab5625"
 			},
 			{
 				"rule": "catalog-violations",
 				"line": 44,
 				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "70fc7a306272"
+				"hash": "030ae6daa9ec"
 			},
 			{
 				"rule": "catalog-violations",
 				"line": 49,
 				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "4514689aef5c"
+				"hash": "91b58c718e73"
 			}
 		],
 		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/memory-custom/template/package.json": [
@@ -449,32 +481,6 @@
 				"hash": "6b5e714159dc"
 			}
 		],
-		"packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 43,
-				"message": "eslint@9.32.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "91ea1dbe7d4e"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "typescript@5.9.2 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "72d08eab5625"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 44,
-				"message": "prettier appears in 10 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "030ae6daa9ec"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 49,
-				"message": "n8n-workflow appears in 9 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "91b58c718e73"
-			}
-		],
 		"packages/cli/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -522,37 +528,43 @@
 		"packages/@n8n/instance-ai/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 63,
+				"line": 75,
 				"message": "@ai-sdk/anthropic appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "5b2153508e47"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 43,
+				"line": 53,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8fa6b9a8fc91"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 54,
+				"line": 60,
+				"message": "csv-parse appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "8f082fc2e8b6"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 66,
 				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9a9d97065952"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 69,
+				"line": 81,
 				"message": "@types/turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "12e346c47b39"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 37,
+				"line": 47,
 				"message": "@joplin/turndown-plugin-gfm appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "a3cf1504b5c2"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 53,
+				"line": 64,
 				"message": "pdf-parse appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "283fa9114c03"
 			}
@@ -607,6 +619,12 @@
 				"line": 911,
 				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "1a1b5bbc50c9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 914,
+				"message": "csv-parse appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "781db4a1e068"
 			},
 			{
 				"rule": "catalog-violations",
