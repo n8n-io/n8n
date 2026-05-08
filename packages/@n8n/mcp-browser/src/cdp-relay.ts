@@ -52,7 +52,7 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 // ---------------------------------------------------------------------------
 
 export interface CDPRelayServerOptions {
-	/** Timeout in ms waiting for extension to connect. Default 15_000 */
+	/** Timeout in ms waiting for extension to connect. Default 30_000 */
 	connectionTimeoutMs?: number;
 }
 
@@ -99,7 +99,7 @@ export class CDPRelayServer {
 	private readonly cdpEvents = new EventEmitter();
 
 	constructor(options?: CDPRelayServerOptions) {
-		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 15_000;
+		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 30_000;
 
 		const uuid = randomUUID();
 		this.cdpPath = `/cdp/${uuid}`;
