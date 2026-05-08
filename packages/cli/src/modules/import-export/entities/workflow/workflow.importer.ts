@@ -2,14 +2,14 @@ import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 
+import { asImportServicePayload, type WorkflowReadyForImport } from './workflow.types';
+import { remapSubWorkflowIds } from './workflow.utils';
 import { IdDeriver } from '../../engine/id-deriver';
 import type { ImportScope } from '../../import-export.types';
 import type { EntityKey, ManifestEntry } from '../../spec/manifest.types';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.serialized';
-import { remapSubWorkflowIds } from './workflow.utils';
 
 export interface WorkflowImportDeps {
 	/** Source folder ID → target folder ID. Produced by FolderImporter. */
@@ -38,10 +38,10 @@ export class WorkflowImporter {
 
 		const importedAt = new Date().toISOString();
 
-		const workflows = entries.map((entry) => {
+		const workflows: WorkflowReadyForImport[] = entries.map((entry) => {
 			const content = scope.reader.readFile(`${entry.target}/workflow.json`);
-			const workflow: SerializedWorkflow = jsonParse(content);
-			const sourceWorkflowId = workflow.id;
+			const serialized: SerializedWorkflow = jsonParse(content);
+			const sourceWorkflowId = serialized.id;
 
 			// When importing into a specific project, derive a deterministic ID
 			// keyed by the instance secret. This means:
@@ -50,50 +50,47 @@ export class WorkflowImporter {
 			// - Same workflow into a *different instance* → unpredictable ID,
 			//   closing the cross-instance squatting risk noted in the RFC.
 			if (scope.assignNewIds) {
-				workflow.id = this.idDeriver.derive(scope.targetProjectId, sourceWorkflowId);
-				subWorkflowBindings.set(sourceWorkflowId, workflow.id);
+				serialized.id = this.idDeriver.derive(scope.targetProjectId, sourceWorkflowId);
+				subWorkflowBindings.set(sourceWorkflowId, serialized.id);
 			}
 
 			// Remap parentFolderId through the folder ID map
-			const remappedFolderId = workflow.parentFolderId
-				? (folderIdMap.get(workflow.parentFolderId) ?? null)
-				: null;
-			workflow.parentFolderId = remappedFolderId;
-
-			// Also set the relation object — TypeORM's upsert maps by entity
-			// property names, and WorkflowEntity uses `parentFolder` (relation)
-			// not `parentFolderId` (column).
-			(workflow as unknown as Record<string, unknown>).parentFolder = remappedFolderId
-				? { id: remappedFolderId }
+			const remappedFolderId = serialized.parentFolderId
+				? (folderIdMap.get(serialized.parentFolderId) ?? null)
 				: null;
 
 			// Apply credential bindings if present
 			if (credentialBindings.size > 0) {
-				this.remapCredentials(workflow.nodes, credentialBindings);
+				this.remapCredentials(serialized.nodes, credentialBindings);
 			}
 
-			// Remap tags via tagsBySourceId and translate to the shape expected
-			// by ImportService.importWorkflows (`tags: { id, name }[]`).
-			// `setTags` matches by name when id+createdAt aren't present, so
-			// passing `{ id, name }` is sufficient and idempotent.
-			if (workflow.tagIds && workflow.tagIds.length > 0) {
-				const remappedTags = workflow.tagIds
-					.map((sourceId) => tagsBySourceId.get(sourceId))
-					.filter((t): t is { id: string; name: string } => !!t);
+			// Remap tags via tagsBySourceId. ImportService.importWorkflows reads
+			// `tag.id` and delegates to `TagRepository.setTags`, which matches by
+			// name; the minimal `{id, name}` shape is sufficient and idempotent.
+			const remappedTags = serialized.tagIds?.length
+				? serialized.tagIds
+						.map((sourceId) => tagsBySourceId.get(sourceId))
+						.filter((t): t is { id: string; name: string } => !!t)
+				: undefined;
 
-				(workflow as unknown as Record<string, unknown>).tags = remappedTags;
-				delete (workflow as { tagIds?: string[] }).tagIds;
-			}
+			// Strip the wire-only `tagIds` field; remaining fields carry through.
+			const { tagIds: _tagIds, ...rest } = serialized;
 
-			// Tag the new WorkflowHistory entry so users can find this version
-			// in the UI history view and revert from it. ImportService creates
-			// a new versionId and inserts a history row using these fields.
-			(workflow as unknown as Record<string, unknown>).versionMetadata = {
-				name: `Imported from package`,
-				description: `Imported at ${importedAt} (source workflow id: ${sourceWorkflowId})`,
+			return {
+				...rest,
+				parentFolderId: remappedFolderId,
+				// Set the relation object — TypeORM's upsert maps by entity property
+				// names, and WorkflowEntity uses `parentFolder` (relation) alongside
+				// `parentFolderId` (column).
+				parentFolder: remappedFolderId ? { id: remappedFolderId } : null,
+				tags: remappedTags,
+				// Tag the new WorkflowHistory entry so users can find this version
+				// in the UI history view and revert from it.
+				versionMetadata: {
+					name: 'Imported from package',
+					description: `Imported at ${importedAt} (source workflow id: ${sourceWorkflowId})`,
+				},
 			};
-
-			return workflow as unknown as IWorkflowWithVersionMetadata;
 		});
 
 		// Remap sub-workflow references now that all new IDs are assigned
@@ -103,7 +100,11 @@ export class WorkflowImporter {
 			}
 		}
 
-		await this.importService.importWorkflows(workflows, scope.targetProjectId, scope.entityManager);
+		await this.importService.importWorkflows(
+			asImportServicePayload(workflows),
+			scope.targetProjectId,
+			scope.entityManager,
+		);
 	}
 
 	private remapCredentials(nodes: INode[], credentialBindings: Map<string, string>): void {
