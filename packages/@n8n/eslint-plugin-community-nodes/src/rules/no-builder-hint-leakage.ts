@@ -54,8 +54,15 @@ export const NoBuilderHintLeakageRule = createRule<Options, MessageIds>({
 		schema: [
 			{
 				type: 'object',
+				description:
+					'Configures where the rule scans for forbidden patterns. Default `builderHint` only checks string values inside builderHint property values; `all` checks every string in the file (used for AI-builder prompts).',
 				properties: {
-					scope: { type: 'string', enum: ['builderHint', 'all'] },
+					scope: {
+						type: 'string',
+						enum: ['builderHint', 'all'],
+						description:
+							'`builderHint` (default): only flag strings inside builderHint property values. `all`: flag every string literal/template in the file.',
+					},
 				},
 				additionalProperties: false,
 			},
