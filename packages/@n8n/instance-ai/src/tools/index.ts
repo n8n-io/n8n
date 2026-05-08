@@ -1,3 +1,5 @@
+import type { ToolsInput } from '@mastra/core/agent';
+
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
@@ -30,7 +32,7 @@ function hasParseableAttachment(context: InstanceAiContext): boolean {
  * Creates all native n8n domain tools with the full action surface.
  * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
  */
-export function createAllTools(context: InstanceAiContext) {
+export function createAllTools(context: InstanceAiContext): ToolsInput {
 	return {
 		workflows: createWorkflowsTool(context),
 		executions: createExecutionsTool(context),
@@ -50,7 +52,7 @@ export function createAllTools(context: InstanceAiContext) {
  * Creates orchestrator-scoped domain tools — restricted action surfaces
  * for tools where the orchestrator should not have write/builder access.
  */
-export function createOrchestratorDomainTools(context: InstanceAiContext) {
+export function createOrchestratorDomainTools(context: InstanceAiContext): ToolsInput {
 	return {
 		workflows: createWorkflowsTool(context, 'orchestrator'),
 		executions: createExecutionsTool(context),

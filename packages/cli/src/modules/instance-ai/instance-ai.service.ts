@@ -21,6 +21,7 @@ import type { InstanceAiConfig } from '@n8n/config';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { UrlService } from '@/services/url.service';
 import {
 	MAX_STEPS,
@@ -432,9 +433,8 @@ export class InstanceAiService {
 			this.instanceAiConfig.builderSandboxTtlMs,
 		);
 		this.defaultTimeZone = globalConfig.generic.timezone;
-		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
-		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
+		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
@@ -1239,6 +1239,31 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Re-fetch the user from DB and verify they're still authorized to use
+	 * AI Assistant. Used at async-boundary entry points (planned-task scheduling,
+	 * suspended-run resume) where the spawn-time user snapshot may have gone
+	 * stale. Returns null if the user no longer exists, has been disabled, or
+	 * lost the `instanceAi:message` global scope.
+	 */
+	private async revalidateActiveUser(userId: string): Promise<User | null> {
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				relations: ['role'],
+			});
+			if (!user || user.disabled) return null;
+			if (!hasGlobalScope(user, 'instanceAi:message')) return null;
+			return user;
+		} catch (error) {
+			this.logger.warn('Failed to revalidate user', {
+				userId,
+				error: getErrorMessage(error),
+			});
+			return null;
+		}
+	}
+
 	/** Cancel all background tasks across all threads. Test-only. */
 	cancelAllBackgroundTasks(): number {
 		const cancelled = this.backgroundTasks.cancelAll();
@@ -1274,6 +1299,10 @@ export class InstanceAiService {
 
 	generatePairingToken(userId: string): string {
 		return this.gatewayRegistry.generatePairingToken(userId);
+	}
+
+	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
 	}
 
 	getPairingToken(userId: string): string | null {
@@ -2352,6 +2381,21 @@ export class InstanceAiService {
 	}
 
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const revalidated = await this.revalidateActiveUser(user.id);
+		if (!revalidated) {
+			this.logger.warn('Cancelling run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+			});
+			this.cancelRun(threadId);
+			return;
+		}
+
+		// Use the revalidated user from here on so downstream permission checks
+		// see current scopes, not the (possibly stale) snapshot captured when the
+		// run was started.
+		const activeUser = revalidated;
+
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -2369,7 +2413,7 @@ export class InstanceAiService {
 		if (action.type === 'replan') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
 					failedTask: action.failedTask,
@@ -2392,7 +2436,7 @@ export class InstanceAiService {
 		if (action.type === 'synthesize') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
 				this.runState.getThreadResearchMode(threadId),
@@ -2430,7 +2474,7 @@ export class InstanceAiService {
 				graphAfterMark.tasks.find((t) => t.id === checkpoint.id) ?? checkpoint;
 
 			const startedRunId = await this.startInternalFollowUpRun(
-				user,
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
 					checkpoint: checkpointRecord,
@@ -2458,7 +2502,7 @@ export class InstanceAiService {
 		}
 
 		const environment = await this.createExecutionEnvironment(
-			user,
+			activeUser,
 			threadId,
 			action.graph.planRunId,
 			createInertAbortSignal(),
@@ -2475,7 +2519,7 @@ export class InstanceAiService {
 			await this.dispatchPlannedTask(task, environment.orchestrationContext, action.graph);
 		}
 
-		await this.doSchedulePlannedTasks(user, threadId);
+		await this.doSchedulePlannedTasks(activeUser, threadId);
 	}
 
 	private async executeRun(
@@ -3250,6 +3294,25 @@ export class InstanceAiService {
 	): Promise<boolean> {
 		const data = toConfirmationData(request);
 
+		// Revalidate the requesting user before resolving any confirmation. The
+		// captured user snapshot may have gone stale since the run was started or
+		// suspended; if the user has been disabled or lost the
+		// `instanceAi:message` scope, both inline/sub-agent approvals and
+		// suspended-run resumes must be denied.
+		const revalidated = await this.revalidateActiveUser(requestingUserId);
+		if (!revalidated) {
+			this.logger.warn('Rejecting confirmation: user no longer authorized for AI Assistant', {
+				userId: requestingUserId,
+				requestId,
+			});
+			this.runState.rejectPendingConfirmation(requestId);
+			const suspended = this.runState.findSuspendedByRequestId(requestId);
+			if (suspended && suspended.user.id === requestingUserId) {
+				this.cancelRun(suspended.threadId);
+			}
+			return false;
+		}
+
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
@@ -3293,6 +3356,17 @@ export class InstanceAiService {
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
+		const revalidated = await this.revalidateActiveUser(user.id);
+		if (!revalidated) {
+			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+				requestId,
+			});
+			this.cancelRun(threadId);
+			return false;
+		}
+
 		this.runState.activateSuspendedRun(threadId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
@@ -3310,11 +3384,13 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
+		// Pass the freshly revalidated user forward so downstream permission
+		// checks see current scopes, not the snapshot captured at suspend time.
 		void this.processResumedStream(agent, resumeData, {
 			runId,
 			mastraRunId,
 			threadId,
-			user,
+			user: revalidated,
 			toolCallId,
 			signal: abortController.signal,
 			abortController,

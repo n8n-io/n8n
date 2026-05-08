@@ -6,6 +6,7 @@ import {
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
+	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
@@ -798,7 +799,10 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		}
 	}
 
-	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
+	async function confirmResourceDecision(
+		requestId: string,
+		decision: InstanceAiResourceDecision,
+	): Promise<void> {
 		resolveConfirmation(requestId, 'approved');
 		await confirmAction(requestId, { kind: 'resourceDecision', resourceDecision: decision });
 	}

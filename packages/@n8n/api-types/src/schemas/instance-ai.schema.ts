@@ -89,6 +89,11 @@ export const domainAccessMetaSchema = z.object({
 });
 export type DomainAccessMeta = z.infer<typeof domainAccessMetaSchema>;
 
+export const webSearchMetaSchema = z.object({
+	query: z.string(),
+});
+export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
+
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function isSafeObjectKey(key: string): boolean {
@@ -283,13 +288,29 @@ export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
 export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
 
-export const gatewayConfirmationRequiredPayloadSchema = z.object({
+export const instanceGatewayResourceDecisionSchema = z.enum([
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+]);
+export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
+
+export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
 	options: z.array(z.string()),
 });
+
+export type GatewayConfirmationRequiredWirePayload = z.infer<
+	typeof gatewayConfirmationRequiredWirePayloadSchema
+>;
+
+export const gatewayConfirmationRequiredPayloadSchema =
+	gatewayConfirmationRequiredWirePayloadSchema.extend({
+		options: z.array(instanceGatewayResourceDecisionSchema),
+	});
 
 export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema
@@ -303,6 +324,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'plan-review',
 	'resource-decision',
+	'continue',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -329,7 +351,8 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
-				'resource-decision shows 5-option gateway permission dialog',
+				'resource-decision shows 5-option gateway permission dialog, ' +
+				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
 		.array(
@@ -353,6 +376,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
+	webSearch: webSearchMetaSchema
+		.optional()
+		.describe('When present, renders web-search approval UI instead of generic confirm'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -403,6 +429,7 @@ export function isDisplayableConfirmationRequest(
 	switch (inputType) {
 		case 'approval':
 		case 'text':
+		case 'continue':
 			return isNonEmptyString(payload.message);
 		case 'questions':
 			return hasItems(payload.questions);
@@ -668,8 +695,9 @@ export interface InstanceAiConfirmation {
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
+	webSearch?: WebSearchMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
 	setupRequests?: InstanceAiWorkflowSetupNode[];
 	workflowId?: string;
@@ -878,6 +906,7 @@ const instanceAiPermissionsSchema = z.object({
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
 	readFilesystem: instanceAiPermissionModeSchema,
 	fetchUrl: instanceAiPermissionModeSchema,
+	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 });
 
@@ -901,15 +930,27 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	cleanupTestExecutions: 'require_approval',
 	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
+	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 };
 
-/** Permission keys that remain active when branchReadOnly is enabled.
- *  When changing this set, also update the read-only section in
- *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+/**
+ * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * This set mirrors n8n's own backend permission model for protected branches:
+ * publish/unpublish, credential delete/update, and workflow update have no
+ * hard backend lockout — only project-scope gates. branchReadOnly is a
+ * UX-level nudge toward the source-control sync workflow, not a global write
+ * block (only data-table mutations have a hard middleware lockout). Trimming
+ * this set would make the AI stricter than human users on the same instance.
+ *
+ * When changing this set, also update the read-only section in
+ * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
+ */
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'readFilesystem',
 	'fetchUrl',
+	'webSearch',
 	'publishWorkflow',
 	'deleteCredential',
 	'restoreWorkflowVersion',
