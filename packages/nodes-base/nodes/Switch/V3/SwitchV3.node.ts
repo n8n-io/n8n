@@ -130,7 +130,7 @@ export class SwitchV3 implements INodeType {
 					type: 'fixedCollection',
 					builderHint: {
 						message:
-							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF.",
+							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF. Each `outputKey` you define must be wired via `.onCase('<outputKey>')` to the intended downstream node — unwired cases silently drop their items.",
 						extraTypeDefContent: [
 							{
 								content: `<patterns>

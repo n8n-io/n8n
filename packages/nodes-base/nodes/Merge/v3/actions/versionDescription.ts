@@ -13,6 +13,10 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Merge',
 	},
+	builderHint: {
+		message:
+			'Mode selection is the single most consequential decision on this node — the wrong mode silently drops or duplicates items rather than erroring. Pick by data shape: `append` to concatenate items from parallel branches; `combineByPosition` only when both branches emit the same number of items in the same order; `combineByFields` to join by a matching key (default; usually correct for "merge by ID"); `combineBySql` for >2 inputs or aggregation; `chooseBranch` to discard all but one input. Read each mode\'s @builderHint before picking.',
+	},
 	inputs: `={{(${configuredInputs})($parameter)}}`,
 	outputs: [NodeConnectionTypes.Main],
 	// If mode is chooseBranch data from both branches is required

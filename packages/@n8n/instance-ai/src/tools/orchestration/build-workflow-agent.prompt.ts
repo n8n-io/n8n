@@ -60,14 +60,7 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 // blocks in the generated `.d.ts` — fetch them on-demand via `nodes(action="type-definition")`.
 const BUILDER_SPECIFIC_PATTERNS = `## Critical Patterns (Common Mistakes)
 
-**Pay attention to @builderHint annotations in search results and type definitions** — they contain node-specific configuration rules and code examples. Read them carefully when configuring any node — they prevent common mistakes.
-
-### Self-check: conditional nodes and routing
-
-After writing any workflow with IF, Switch, or Filter nodes, verify:
-1. **Each branch reaches the correct destination** — trace the data flow from the condition through \`.onTrue()\`/\`.onFalse()\`/\`.onCase()\` to the target node. Verify the routing matches the user's requirements.
-2. **Condition expressions reference the right fields** — check that \`leftValue\` expressions use fields that actually exist in the upstream node's output.
-3. **Merge nodes use the correct mode** — \`append\` to concatenate items from branches, \`combineBySql\` or \`combineByPosition\` only when matching items across inputs. Wrong mode silently drops or duplicates data.`;
+**Pay attention to @builderHint annotations in search results and type definitions** — they contain node-specific configuration rules and code examples. Read them carefully when configuring any node — they prevent common mistakes.`;
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
@@ -146,11 +139,12 @@ ${PLACEHOLDERS_RULE}
 ## Mandatory Process
 1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
-3. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
-4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
-5. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
+3. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+4. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
+5. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
+6. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
 
-Do NOT produce visible output until step 5. All reasoning happens internally.
+Do NOT produce visible output until step 6. All reasoning happens internally.
 
 ## Credential Rules (tool mode)
 - Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
@@ -414,18 +408,20 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.
 
-6. **Validate with tsc**: Run the TypeScript compiler for real type checking:
+6. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+
+7. **Validate with tsc**: Run the TypeScript compiler for real type checking:
    \`\`\`
    execute_command: cd ~/workspace && npx tsc --noEmit 2>&1
    \`\`\`
    Fix any errors using \`edit_file\` (with absolute path) to update the code, then re-run tsc. Iterate until clean.
    **Important**: If tsc reports errors you cannot resolve after 2 attempts, skip tsc and proceed to submit-workflow. The submit tool has its own validation.
 
-7. **Submit**: When tsc passes cleanly, call \`submit-workflow\` to validate the workflow graph and save it to n8n.
+8. **Submit**: When tsc passes cleanly, call \`submit-workflow\` to validate the workflow graph and save it to n8n.
 
-8. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. **Never end your turn on a file edit — always re-submit first.** The system compares file hashes: if the file changed since the last submit, all your work is discarded. End only on a successful re-submit or after you explicitly report the blocking error.
+9. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. **Never end your turn on a file edit — always re-submit first.** The system compares file hashes: if the file changed since the last submit, all your work is discarded. End only on a successful re-submit or after you explicitly report the blocking error.
 
-9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 ### For complex workflows (5+ nodes, multiple integrations):
 
@@ -441,8 +437,9 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\` (no publish needed for manual runs).
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
-7. **Submit** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish — the user will decide when to publish after testing.
+7. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch \`outputKey\` has a matching \`.onCase('<outputKey>')\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
+8. **Submit** the main workflow.
+9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish — the user will decide when to publish after testing.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 
