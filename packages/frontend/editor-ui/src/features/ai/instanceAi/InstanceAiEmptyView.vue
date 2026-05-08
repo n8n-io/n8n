@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from './instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
@@ -19,13 +20,14 @@ const store = useInstanceAiStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
+const toast = useToast();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
 
 // Reset to a blank "no active thread" state so the sidebar doesn't keep
 // highlighting the previous thread alongside the empty main view, and SSE
 // from any prior thread is torn down. A fresh placeholder UUID is generated;
-// the next sendMessage promotes it to a real thread via syncThread.
+// `handleSubmit` promotes it to a real thread via `syncThread` before navigation.
 store.clearCurrentThread();
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -34,15 +36,19 @@ onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
 
-function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	const threadId = store.currentThreadId;
-	// Kick off the send and the route change in parallel.
-	// `sendMessage` runs its synchronous prelude before its first await:
-	// pushes the optimistic user message into the runtime and opens the
-	// SSE connection. By the time the router resolves the navigation,
-	// ThreadView mounts with that state already in place. Backend
-	// persistence (`syncThread` → `postMessage`) completes in the
-	// background while the user is already on the thread page.
+
+	// Persist the thread on the BE first. Otherwise we'd navigate to
+	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
+	// follow-up `postMessage` would 404.
+	try {
+		await store.syncThread(threadId);
+	} catch {
+		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
+		return;
+	}
+
 	void store.sendMessage(message, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
