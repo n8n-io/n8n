@@ -1,6 +1,6 @@
 import type { ToolsInput } from '@mastra/core/agent';
 
-import { isStructuredAttachment } from '../parsers/structured-file-parser';
+import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
@@ -24,6 +24,10 @@ import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool } from './workflows.tool';
 import { createWorkspaceTool } from './workspace.tool';
 
+function hasParseableAttachment(context: InstanceAiContext): boolean {
+	return context.currentUserAttachments?.some(isParseableAttachment) ?? false;
+}
+
 /**
  * Creates all native n8n domain tools with the full action surface.
  * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
@@ -39,9 +43,8 @@ export function createAllTools(context: InstanceAiContext): ToolsInput {
 		nodes: createNodesTool(context),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
-		...(context.currentUserAttachments?.some(isStructuredAttachment)
-			? { 'parse-file': createParseFileTool(context) }
-			: {}),
+		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
+		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
 	};
 }
 
@@ -60,6 +63,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Tools
 		nodes: createNodesTool(context, 'orchestrator'),
 		'ask-user': createAskUserTool(),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
+		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
 	};
 }
 

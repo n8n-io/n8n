@@ -156,10 +156,21 @@ watch(
 	(c) => {
 		if (c) {
 			localConfig.value = deepCopy(c);
+			syncAgentIdentityFromConfig(c);
 		}
 	},
 	{ immediate: true },
 );
+
+function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
+	agentName.value = c.name;
+	if (!agent.value) return;
+	agent.value = {
+		...agent.value,
+		name: c.name,
+		description: c.description ?? null,
+	};
+}
 
 const projectName = computed<string | null>(() => {
 	if (projectsStore.personalProject?.id === projectId.value) {
@@ -415,6 +426,9 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (updates.name !== undefined) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
+	}
+	if (updates.description !== undefined && agent.value) {
+		agent.value = { ...agent.value, description: updates.description ?? null };
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
