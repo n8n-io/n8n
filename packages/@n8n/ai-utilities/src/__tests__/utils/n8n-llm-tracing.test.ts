@@ -60,7 +60,6 @@ describe('N8nLlmTracing', () => {
 				completionTokens: 50,
 				promptTokens: 30,
 				totalTokens: 80,
-				cost: undefined,
 			});
 
 			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
