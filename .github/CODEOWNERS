@@ -101,6 +101,7 @@ packages/cli/src/modules/workflow-builder/              @n8n-io/ai
 packages/cli/src/modules/mcp/                           @n8n-io/ai
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai
+packages/cli/src/modules/instance-ai/                   @n8n-io/instance-ai
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
