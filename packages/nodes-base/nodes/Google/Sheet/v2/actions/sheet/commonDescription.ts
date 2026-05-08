@@ -4,37 +4,13 @@ import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
  * Builder hint shared by every Google Sheets `columns` resourceMapper parameter
  * (append, appendOrUpdate, update). The full resourceMapper object shape is
  * non-obvious, and a bare string like `'autoMapInputData'` silently fails
- * validation — the example block makes the right shape discoverable.
+ * validation. The matching `<patterns>` example lives on the node-level
+ * `builderHint.extraTypeDefContent` in `Google/Sheet/GoogleSheets.node.ts`,
+ * gated by `displayOptions: { show: { resource: ['sheet'], operation: [...] } }`.
  */
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
 	message:
 		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation.",
-	extraTypeDefContent: [
-		{
-			content: `<patterns>
-<pattern title="autoMapInputData — maps $json fields to sheet columns automatically">
-columns: {
-  mappingMode: 'autoMapInputData',
-  value: {},
-  schema: [
-    { id: 'Name', displayName: 'Name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
-    { id: 'Email', displayName: 'Email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: false }
-  ]
-}
-</pattern>
-<pattern title="defineBelow — explicit expression mapping">
-columns: {
-  mappingMode: 'defineBelow',
-  value: { name: expr('{{ $json.name }}'), email: expr('{{ $json.email }}') },
-  schema: [
-    { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
-    { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
-  ]
-}
-</pattern>
-</patterns>`,
-		},
-	],
 };
 
 export const dataLocationOnSheet: INodeProperties = {

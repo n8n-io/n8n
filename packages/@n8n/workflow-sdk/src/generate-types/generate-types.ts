@@ -260,14 +260,6 @@ export interface BuilderHintVariation {
 export interface ParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
-	/**
-	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
-	 * emitted into the generated `.d.ts` JSDoc but NOT surfaced in
-	 * `nodes(action="search")` results. Each variation may carry `displayOptions`
-	 * so per-mode / per-resource / per-operation examples land only in their
-	 * corresponding narrowed type without cross-bleed.
-	 */
-	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 export interface NodeProperty {
@@ -426,7 +418,7 @@ function variationApplies(
 function emitBuilderHint(
 	lines: string[],
 	indent: string,
-	hint: ParameterBuilderHint | { message?: string; extraTypeDefContent?: BuilderHintVariation[] },
+	hint: { message?: string; extraTypeDefContent?: BuilderHintVariation[] },
 	combo?: DiscriminatorCombination,
 ): void {
 	if (hint.message) {
@@ -2129,13 +2121,16 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 		lines.push(` * @subnodeType ${subnodeType}`);
 	}
 
-	// Node-level builder hint — message and unconditional extraTypeDefContent.
+	// Node-level builder hint — searchHint and unconditional extraTypeDefContent.
 	// `relatedNodes` and `inputs` are consumed elsewhere (search engine, subnode
 	// extraction). Variations with `displayOptions` are skipped here — they're
 	// emitted per-combo in narrowed config types via `emitNodeHintForCombo`.
 	const nodeHint = getNodeBuilderHint(node);
-	if (nodeHint && (nodeHint.message || nodeHint.extraTypeDefContent?.length)) {
-		emitBuilderHint(lines, '', nodeHint);
+	if (nodeHint && (nodeHint.searchHint || nodeHint.extraTypeDefContent?.length)) {
+		emitBuilderHint(lines, '', {
+			message: nodeHint.searchHint,
+			extraTypeDefContent: nodeHint.extraTypeDefContent,
+		});
 	}
 
 	lines.push(' */');
@@ -3669,7 +3664,7 @@ interface BuilderHintInput {
 }
 
 interface NodeBuilderHint {
-	message?: string;
+	searchHint?: string;
 	relatedNodes?: Array<{ nodeType: string; relationHint: string }>;
 	inputs?: Record<string, BuilderHintInput>;
 	/**

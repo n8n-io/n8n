@@ -63,7 +63,7 @@ function formatBuilderHint(
 	version: number,
 ): string {
 	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
-	const hint = nodeType?.builderHint?.message;
+	const hint = nodeType?.builderHint?.searchHint;
 	if (!hint) return '';
 	return `  @builderHint ${hint}`;
 }

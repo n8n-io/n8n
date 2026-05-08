@@ -1909,21 +1909,12 @@ export interface INodePropertyCollection {
  */
 export interface IBuilderHintVariation {
 	content: string;
-	displayOptions?: {
-		show?: Record<string, unknown[]>;
-		hide?: Record<string, unknown[]>;
-	};
+	displayOptions?: IDisplayOptions;
 }
 
 export interface IParameterBuilderHint {
 	message: string;
 	placeholderSupported?: boolean;
-	/**
-	 * Multi-line content (typically code examples wrapped in `<patterns>...</patterns>`)
-	 * emitted into the generated workflow-sdk `.d.ts` JSDoc but NOT surfaced in
-	 * `nodes(action="search")` results.
-	 */
-	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
 export interface INodePropertyValueExtractorBase {
@@ -1969,6 +1960,13 @@ export interface ExecuteWorkflowData {
 export interface ExecuteAgentInfo {
 	/** The agent ID to execute. */
 	agentId: string;
+	/**
+	 * Optional caller-supplied session id. When set, this becomes the agent
+	 * thread id, letting workflows continue the same conversation (and reuse
+	 * memory) across executions. When omitted, a per-call thread is derived
+	 * from the workflow execution id and item index.
+	 */
+	sessionId?: string;
 }
 
 export interface ExecuteAgentOptions {
@@ -1997,6 +1995,17 @@ export interface ExecuteAgentData {
 	}>;
 	/** Why the agent stopped. */
 	finishReason: string;
+	/**
+	 * Identifiers of the agent session this call wrote to. Surfaced so the
+	 * caller (e.g. the MessageAnAgent node) can link from a workflow execution
+	 * back to the agent session detail view.
+	 */
+	session: {
+		agentId: string;
+		projectId: string;
+		/** The threadId persisted to the agent session. May be a caller-provided override. */
+		sessionId: string;
+	};
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2547,7 +2556,7 @@ export interface IBuilderHint {
 	/** Declarative output availability — which outputs the node exposes per parameter values */
 	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
-	message?: string;
+	searchHint?: string;
 	/** Related nodes that work together with this node */
 	relatedNodes?: IRelatedNode[];
 	/**

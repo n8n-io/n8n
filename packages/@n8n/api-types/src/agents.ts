@@ -48,6 +48,13 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 
 export const AGENT_SCHEDULE_TRIGGER_TYPE = 'schedule';
 
+/**
+ * Source string recorded on agent executions invoked from a workflow via the
+ * MessageAnAgent node. Mirrors the pattern set by chat/slack/schedule sources
+ * so the session detail view can attribute thread origin uniformly.
+ */
+export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
+
 export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
 	'Automated message: you were triggered on schedule.';
 

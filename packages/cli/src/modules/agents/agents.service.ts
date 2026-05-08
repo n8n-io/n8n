@@ -2,12 +2,12 @@ import type {
 	BuiltAgent,
 	BuiltTool,
 	CredentialProvider,
-	GenerateResult,
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
+	AGENT_WORKFLOW_TRIGGER_TYPE,
 	isAgentCredentialIntegration,
 	isAgentScheduleIntegration,
 	type AgentSkill,
@@ -334,6 +334,28 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	/**
+	 * Same scoping as {@link findByUser}, but only returns agents that have a
+	 * `publishedVersion`. Used by the MessageAnAgent node's listSearch so the
+	 * dropdown can't surface unpublished agents — `executeForWorkflow` rejects
+	 * those at runtime, and showing them would just lead to a confusing
+	 * "Agent is not published" error after the user picks one.
+	 */
+	async findPublishedByUser(userId: string): Promise<Agent[]> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+
+		if (projectIds.length === 0) return [];
+
+		const agents = await this.agentRepository.find({
+			where: { projectId: In(projectIds) },
+			relations: { publishedVersion: true },
+			order: { updatedAt: 'DESC' },
+		});
+
+		return agents.filter((agent) => agent.publishedVersion);
 	}
 
 	async publishAgent(agentId: string, projectId: string, userId: string): Promise<Agent> {
@@ -1039,8 +1061,15 @@ export class AgentsService {
 
 	/**
 	 * Execute an SDK agent within a workflow execution context.
-	 * Compiles a fresh isolated agent per call for credential isolation
-	 * (does not use or affect the shared runtime cache).
+	 *
+	 * Streams the run rather than calling `.generate()` so the same
+	 * `ExecutionRecorder` used by chat/Slack/schedule paths can collect a full
+	 * `MessageRecord` (timeline, tool calls, usage). Without this, sessions
+	 * triggered from a workflow node never appear in the agent's session list
+	 * because nothing creates the agent execution thread row.
+	 *
+	 * Compiles a fresh isolated agent per call for credential isolation (does
+	 * not use or affect the shared runtime cache).
 	 */
 	async executeForWorkflow(
 		agentId: string,
@@ -1071,75 +1100,102 @@ export class AgentsService {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
 
-		const result = await compiled.agent.generate(message, {
-			persistence: {
-				resourceId: executionId,
-				threadId,
-			},
+		const agentInstance = compiled.agent;
+		const recorder = new ExecutionRecorder();
+
+		// `structuredOutput` and `toolCalls` aren't surfaced by the recorder —
+		// pull them off the `finish` chunk and the discrete `tool-result` chunks
+		// directly so the workflow node receives the same shape as before.
+		let structuredOutput: unknown | null = null;
+		const toolCalls: ExecuteAgentData['toolCalls'] = [];
+		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
+
+		const resultStream = await agentInstance.stream(message, {
+			persistence: { resourceId: executionId, threadId },
 		});
 
-		// Check for errors
-		if (result.error) {
-			const errorMessage =
-				result.error instanceof Error
-					? result.error.message
-					: typeof result.error === 'string'
-						? result.error
-						: JSON.stringify(result.error);
-			throw new OperationalError(`Agent execution failed: ${errorMessage}`);
+		const reader = resultStream.stream.getReader();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				recorder.record(value);
+
+				if (value.type === 'tool-call') {
+					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+				} else if (value.type === 'tool-result') {
+					const pending = toolInputs.get(value.toolCallId);
+					toolCalls.push({
+						toolName: value.toolName,
+						input: pending?.input ?? null,
+						result: value.output,
+					});
+					toolInputs.delete(value.toolCallId);
+				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
+			}
+		} finally {
+			reader.releaseLock();
 		}
 
-		if (result.finishReason === 'error') {
-			throw new OperationalError('Agent execution finished with an error.');
-		}
+		const messageRecord = recorder.getMessageRecord();
 
-		if (result.pendingSuspend && result.pendingSuspend.length > 0) {
-			const toolNames = result.pendingSuspend
-				.map((s: { toolName: string }) => s.toolName)
-				.join(', ');
+		// Persist the thread + execution row + metadata so the session is
+		// listed under the agent (mirrors chat/slack/schedule recording).
+		// Fire-and-forget with .catch so a recording failure doesn't fail the
+		// workflow node — the response is already in hand.
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: message,
+				record: messageRecord,
+				source: AGENT_WORKFLOW_TRIGGER_TYPE,
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record agent execution from workflow', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+
+		if (recorder.suspended) {
 			throw new OperationalError(
-				`Agent execution suspended waiting for tool approval: ${toolNames}. ` +
+				'Agent execution suspended waiting for tool approval. ' +
 					'Suspend/resume is not supported in workflow execution context.',
 			);
 		}
 
+		if (messageRecord.error) {
+			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
+		}
+
+		if (messageRecord.finishReason === 'error') {
+			throw new OperationalError('Agent execution finished with an error.');
+		}
+
 		return {
-			response: this.extractTextResponse(result),
-			structuredOutput: result.structuredOutput ?? null,
-			usage: result.usage
+			response: messageRecord.assistantResponse,
+			structuredOutput: structuredOutput ?? null,
+			usage: messageRecord.usage
 				? {
-						promptTokens: result.usage.promptTokens,
-						completionTokens: result.usage.completionTokens,
-						totalTokens: result.usage.totalTokens,
+						promptTokens: messageRecord.usage.promptTokens,
+						completionTokens: messageRecord.usage.completionTokens,
+						totalTokens: messageRecord.usage.totalTokens,
 					}
 				: null,
-			toolCalls: (result.toolCalls ?? []).map(
-				(tc: { tool: string; input: unknown; output: unknown }) => ({
-					toolName: tc.tool,
-					input: tc.input,
-					result: tc.output,
-				}),
-			),
-			finishReason: result.finishReason ?? 'stop',
+			toolCalls,
+			finishReason: messageRecord.finishReason,
+			session: {
+				agentId,
+				projectId,
+				sessionId: threadId,
+			},
 		};
-	}
-
-	/**
-	 * Extract the text response from the last assistant message in a GenerateResult.
-	 */
-	private extractTextResponse(result: GenerateResult): string {
-		for (let i = result.messages.length - 1; i >= 0; i--) {
-			const msg = result.messages[i];
-			if (msg.type !== 'custom' && msg.role === 'assistant' && Array.isArray(msg.content)) {
-				const textParts = (msg.content as Array<{ type: string; text?: string }>)
-					.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-					.map((c) => c.text);
-				if (textParts.length > 0) {
-					return textParts.join('');
-				}
-			}
-		}
-		return '';
 	}
 
 	/**

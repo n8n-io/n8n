@@ -59,37 +59,6 @@ export const description: INodeProperties[] = [
 				builderHint: {
 					message:
 						'Row IDs are auto-generated. Do NOT define a custom `id` column or seed `id` on insert. The built-in row `id` is valid for filtering update/delete but is not part of the user-defined table schema.',
-					extraTypeDefContent: [
-						{
-							content: `<patterns>
-<pattern title="Insert with explicit schema">
-const storeData = node({
-  type: 'n8n-nodes-base.dataTable',
-  version: 1.1,
-  config: {
-    name: 'Store Data',
-    parameters: {
-      resource: 'row',
-      operation: 'insert',
-      dataTableId: { __rl: true, mode: 'name', value: 'my-table' },
-      columns: {
-        mappingMode: 'defineBelow',
-        value: {
-          name: expr('{{ $json.name }}'),
-          email: expr('{{ $json.email }}')
-        },
-        schema: [
-          { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
-          { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
-        ]
-      }
-    }
-  }
-});
-</pattern>
-</patterns>`,
-						},
-					],
 				},
 			},
 			{

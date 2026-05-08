@@ -77,7 +77,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				},
 			},
 			builderHint: {
-				message:
+				searchHint:
 					"Pick mode by where data flows: `insert` upserts documents into the store on the main flow; `load` runs a one-shot similarity search on the main flow; `retrieve-as-tool` is the canonical RAG mode — plug into an AI Agent's `subnodes.tools`; `retrieve` exposes the store as a subnode for another node's `subnodes.vectorStore`; `update` updates a single document by ID.",
 				...args.meta.builderHint,
 				extraTypeDefContent: [

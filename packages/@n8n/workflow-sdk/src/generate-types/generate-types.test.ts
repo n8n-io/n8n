@@ -1992,11 +1992,11 @@ describe('generate-types', () => {
 			expect(result).toContain('Node Types');
 		});
 
-		it('should emit node-level @builderHint message at the file header', () => {
+		it('should emit node-level @builderHint searchHint at the file header', () => {
 			const node = {
 				...mockGmailNode,
 				builderHint: {
-					message: 'AI Agent — wire subnodes via the config object',
+					searchHint: 'AI Agent — wire subnodes via the config object',
 				},
 			};
 			const result = generateTypes.generateNodeJSDoc(node);

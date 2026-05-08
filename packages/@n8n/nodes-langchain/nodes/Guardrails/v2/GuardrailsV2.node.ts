@@ -50,8 +50,6 @@ export class GuardrailsV2 implements INodeType {
 						},
 					},
 				},
-				message:
-					'Classify operation has two outputs: output 0 (Pass) for items that passed all guardrail checks, output 1 (Fail) for items that failed. Use .output(index).to() to connect from a specific output. @example guardrails.output(0).to(passNode) and guardrails.output(1).to(failNode). Sanitize operation has only one output.',
 			},
 		};
 	}

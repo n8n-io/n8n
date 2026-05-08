@@ -30,7 +30,7 @@ export class Agent extends VersionedNodeType {
 			},
 			defaultVersion: 3.1,
 			builderHint: {
-				message:
+				searchHint:
 					"Wire model/memory/tools/outputParser via the SDK `subnodes` config object using factory functions (`languageModel()`, `memory()`, `tool()`, `outputParser()`). Inside subnodes, reference upstream data with `nodeJson(triggerNode, 'path')`, not `$json` — subnodes do not share the main predecessor's item context.",
 				relatedNodes: [
 					{
