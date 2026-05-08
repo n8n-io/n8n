@@ -290,12 +290,14 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				const filter = {
+					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(options?.query ? { query: options.query } : {}),
+				};
+
 				const { workflows } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
-					filter: {
-						isArchived: false,
-						...(options?.query ? { query: options.query } : {}),
-					},
+					filter,
 				});
 
 				return workflows
@@ -306,6 +308,7 @@ export class InstanceAiAdapterService {
 							name: wf.name,
 							versionId: wf.versionId,
 							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -326,12 +329,18 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
-			async delete(workflowId: string) {
+			async unarchive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.delete(user, workflowId);
+				const result = await workflowService.unarchive(user, workflowId);
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
 			async clearAiTemporary(workflowId: string) {
@@ -381,6 +390,7 @@ export class InstanceAiAdapterService {
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
 						thread_id: threadId,
+						workflow_id: workflowId,
 						executed_by: 'ai',
 					});
 				}
@@ -807,6 +817,19 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+						status,
+					});
+				};
+
 				const executionId = await workflowRunner.run(runData);
 
 				// Wait for completion with timeout protection
@@ -838,30 +861,25 @@ export class InstanceAiAdapterService {
 							} catch {
 								// Execution may have completed between timeout and cancel
 							}
-							return {
+							const result = {
 								executionId,
 								status: 'error',
 								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 							} satisfies ExecutionResult;
+							trackBuilderExecutedWorkflow(result.status);
+							return result;
 						}
 						throw error;
 					}
 				}
 
-				if (threadId) {
-					telemetry.track('Builder executed workflow', {
-						thread_id: threadId,
-						executed_by: 'ai',
-						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
-						exec_type: runData.executionMode,
-					});
-				}
-
-				return await extractExecutionResult(
+				const result = await extractExecutionResult(
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
 				);
+				trackBuilderExecutedWorkflow(result.status);
+				return result;
 			},
 
 			async getStatus(executionId: string) {
@@ -1687,8 +1705,8 @@ export class InstanceAiAdapterService {
 					}
 					if (n.builderHint) {
 						result.builderHint = {};
-						if (n.builderHint.message) {
-							result.builderHint.message = n.builderHint.message;
+						if (n.builderHint.searchHint) {
+							result.builderHint.message = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -1797,7 +1815,7 @@ export class InstanceAiAdapterService {
 					nodeType,
 					normalizeNodeVersion(result.version ?? options?.version),
 				);
-				const builderHint = nodeDesc?.builderHint?.message;
+				const builderHint = nodeDesc?.builderHint?.searchHint;
 
 				return {
 					content: result.content,
@@ -2363,7 +2381,7 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.message` of the property that references a given
+ * Find the `builderHint.propertyHint` of the property that references a given
  * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
  * Returns undefined if no matching property is found.
  *
@@ -2406,8 +2424,8 @@ function findBuilderHintForMethod(
 				continue;
 			}
 			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.message) {
-				return item.builderHint.message;
+			if (referencesMethod(item) && item.builderHint?.propertyHint) {
+				return item.builderHint.propertyHint;
 			}
 			const nested = searchProps(item.options);
 			if (nested) return nested;
@@ -2972,6 +2990,7 @@ function toWorkflowDetail(
 		name: workflow.name,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId ?? null,
+		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(

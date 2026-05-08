@@ -168,6 +168,11 @@ import { AddTracingContextToExecution1777045000000 } from '../common/17770450000
 import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
+import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
+import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
+import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
+import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -336,9 +341,14 @@ export const postgresMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
 	AddJweKeyIndexesToDeploymentKey1777023444000,
-	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
-	AddExecutionDeduplicationKey1778000000000,
 	AddTracingContextToExecution1777045000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	CreateEvaluationConfig1778100000000,
+	AddWorkflowVersionToTestRun1778100001000,
+	AddEvaluationConfigColumnsToTestRun1778100002000,
 	ExpandVariablesValueColumnToText1777420800000,
+	AddExecutionDeduplicationKey1778000000000,
+	CreateAgentTables1783000000000,
+	CreateAgentExecutionTables1783000000001,
 ];

@@ -5,6 +5,8 @@ jest.mock('@n8n/instance-ai', () => {
 	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
 	return {
 		McpClientManager: class {
+			getRegularTools = jest.fn().mockResolvedValue({});
+			getBrowserTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
@@ -560,6 +562,186 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 	});
 });
 
+type RevalidationServiceInternals = {
+	revalidateActiveUser: (userId: string) => Promise<User | null>;
+	userRepository: { findOne: jest.Mock };
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createRevalidationService(): RevalidationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as RevalidationServiceInternals;
+	service.userRepository = { findOne: jest.fn() };
+	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	return service;
+}
+
+function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
+	return {
+		id: 'user-1',
+		disabled: false,
+		role: { scopes: scopes.map((slug) => ({ slug })) },
+		...overrides,
+	} as unknown as User;
+}
+
+describe('InstanceAiService — revalidateActiveUser', () => {
+	it('returns the user when active and scoped for AI Assistant', async () => {
+		const service = createRevalidationService();
+		const fresh = userWithScopes(['instanceAi:message']);
+		service.userRepository.findOne.mockResolvedValue(fresh);
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBe(fresh);
+		expect(service.userRepository.findOne).toHaveBeenCalledWith({
+			where: { id: 'user-1' },
+			relations: ['role'],
+		});
+	});
+
+	it('returns null when the user no longer exists', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(null);
+
+		const result = await service.revalidateActiveUser('user-gone');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when the user has been disabled', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(
+			userWithScopes(['instanceAi:message'], { disabled: true }),
+		);
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when the user lost the instanceAi:message scope', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(userWithScopes(['workflow:read']));
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null and logs when the lookup throws', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockRejectedValue(new Error('db down'));
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to revalidate user',
+			expect.objectContaining({ userId: 'user-1' }),
+		);
+	});
+});
+
+type ResolveConfirmationServiceInternals = {
+	resolveConfirmation: (
+		requestingUserId: string,
+		requestId: string,
+		request: { kind: 'approval'; approved: boolean; userInput?: string },
+	) => Promise<boolean>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock<void, [string]>;
+	runState: {
+		resolvePendingConfirmation: jest.Mock;
+		findSuspendedByRequestId: jest.Mock;
+		rejectPendingConfirmation: jest.Mock;
+	};
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ResolveConfirmationServiceInternals;
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.runState = {
+		resolvePendingConfirmation: jest.fn(),
+		findSuspendedByRequestId: jest.fn(),
+		rejectPendingConfirmation: jest.fn(),
+	};
+	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — resolveConfirmation', () => {
+	const approval = { kind: 'approval' as const, approved: true };
+
+	it('rejects sub-agent confirmations when the user is no longer authorized', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue(undefined);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Rejecting confirmation: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', requestId: 'req-1' }),
+		);
+	});
+
+	it('cancels the suspended run owned by the requesting user when revalidation fails', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			threadId: 'thread-1',
+			user: { id: 'user-1' },
+		});
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('does not cancel a suspended run owned by a different user when revalidation fails', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			threadId: 'thread-1',
+			user: { id: 'someone-else' },
+		});
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+
+	it('resolves the pending sub-agent confirmation when the user is still authorized', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(true);
+		expect(service.runState.resolvePendingConfirmation).toHaveBeenCalledWith(
+			'user-1',
+			'req-1',
+			expect.objectContaining({ approved: true }),
+		);
+		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+});
+
 describe('InstanceAiService — terminal outcome replay', () => {
 	it('replays undelivered background outcomes into the persisted agent tree', async () => {
 		const outcome = makeTerminalOutcome();
@@ -887,5 +1069,26 @@ describe('InstanceAiService — AI temporary workflow cleanup', () => {
 		expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
 		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
 		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
+	});
+});
+
+describe('InstanceAiService — OAuth callback URL', () => {
+	// Regression: the OAuth callback URL handed to the browser-credential-setup
+	// sub-agent must come from urlService.getInstanceBaseUrl() (which honors
+	// WEBHOOK_URL on cloud), not from globalConfig.editorBaseUrl with a
+	// localhost fallback. With the old fallback the agent pasted
+	// http://localhost:5678/... into the user's Slack app on a cloud instance.
+	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).toMatch(
+			/this\.oauth2CallbackUrl\s*=[^;]*this\.urlService\.getInstanceBaseUrl\(\)[^;]*oauth2-credential\/callback/,
+		);
+	});
+
+	it('does not fall back to localhost when editorBaseUrl is empty', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
 	});
 });

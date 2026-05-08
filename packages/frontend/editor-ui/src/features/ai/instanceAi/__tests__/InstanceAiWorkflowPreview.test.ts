@@ -83,7 +83,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should allow error notifications for executable preview', async () => {
+	it('should suppress all notifications including errors for executable preview', async () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
 		const { getByTestId } = renderComponent({
@@ -94,7 +94,7 @@ describe('InstanceAiWorkflowPreview', () => {
 			const preview = getByTestId('workflow-preview');
 			expect(preview).toHaveAttribute('data-can-execute', 'true');
 			expect(preview).toHaveAttribute('data-suppress-notifications', 'true');
-			expect(preview).toHaveAttribute('data-allow-error-notifications', 'true');
+			expect(preview).toHaveAttribute('data-allow-error-notifications', 'false');
 		});
 	});
 

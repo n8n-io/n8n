@@ -101,18 +101,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 		previousExecutionId: undefined,
 		executionWaitingForWebhook: false,
 		chatPartialExecutionDestinationNode: null,
-		workflow: {
-			nodes: [],
-			id: '',
-			name: '',
-			active: false,
-			isArchived: false,
-			createdAt: '',
-			updatedAt: '',
-			connections: {},
-			versionId: '',
-			activeVersionId: null,
-		},
 		workflowId: '123',
 		isWorkflowSaved: {
 			'123': true,

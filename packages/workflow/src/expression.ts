@@ -547,9 +547,20 @@ export class Expression {
 
 		Expression.initializeGlobalContext(data);
 
-		// expression extensions
-		data.extend = extend;
-		data.extendOptional = extendOptional;
+		// Expression extensions — only attached for the legacy engine.
+		//
+		// In the VM engine, every host function reachable from `data` becomes
+		// a callable target the isolate can reach via `callFunctionAtPath`.
+		// To minimise that attack surface we keep the VM-path data object as
+		// small as possible and let the in-isolate runtime resolve helpers
+		// itself (see packages/@n8n/expression-runtime/src/runtime/context.ts,
+		// where Tournament's polyfill rewrites bare `extend(...)` calls to the
+		// in-isolate copy on `target.extend`). Setting them here in VM mode
+		// would be dead code AND an unnecessary host-callable.
+		if (!Expression.shouldUseVm()) {
+			data.extend = extend;
+			data.extendOptional = extendOptional;
+		}
 
 		Object.defineProperty(data, sanitizerName, {
 			value: sanitizer,
