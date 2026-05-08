@@ -2,6 +2,10 @@ import type { INode } from 'n8n-workflow';
 
 const EXECUTE_WORKFLOW_TYPE = 'n8n-nodes-base.executeWorkflow';
 
+function hasWritableValue(x: unknown): x is { value: unknown } {
+	return typeof x === 'object' && x !== null && 'value' in x;
+}
+
 /**
  * Extract the called workflow ID from an Execute Workflow node.
  * Returns undefined if the node is not an Execute Workflow node,
@@ -46,13 +50,11 @@ export function remapSubWorkflowIds(nodes: INode[], bindings: Map<string, string
 
 		if (typeof node.parameters?.['workflowId'] === 'string') {
 			node.parameters['workflowId'] = mapped;
-		} else if (
-			node.parameters &&
-			typeof node.parameters['workflowId'] === 'object' &&
-			node.parameters['workflowId'] !== null &&
-			'value' in node.parameters['workflowId']
-		) {
-			(node.parameters['workflowId'] as Record<string, unknown>)['value'] = mapped;
+		} else {
+			const wfParam = node.parameters?.['workflowId'];
+			if (hasWritableValue(wfParam)) {
+				wfParam.value = mapped;
+			}
 		}
 	}
 }
