@@ -80,7 +80,9 @@ export class ExecutionLevelTracer {
 			if (isError(params.status) && params.error) {
 				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
 				const recordableException = toRecordableException(params.error);
-				if (recordableException) span.recordException(recordableException);
+				if (recordableException) {
+					span.recordException(recordableException);
+				}
 			}
 
 			//	We don't expect any to be open but we should close any children still running
@@ -155,7 +157,9 @@ export class ExecutionLevelTracer {
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
 				const recordableException = toRecordableException(params.error);
-				if (recordableException) activeNodeSpan.recordException(recordableException);
+				if (recordableException) {
+					activeNodeSpan.recordException(recordableException);
+				}
 			}
 
 			activeNodeSpan.end();
@@ -270,8 +274,9 @@ function getErrorType(error: unknown): string {
 	const name = record.name;
 	if (typeof name === 'string' && name.trim() !== '') return name;
 
-	const ctor = record.constructor;
-	if (typeof ctor === 'function' && ctor.name && ctor.name !== 'Object') return ctor.name;
+	if (isEndNodeError(error)) {
+		return error.constructor.name;
+	}
 
 	return 'UnknownError';
 }

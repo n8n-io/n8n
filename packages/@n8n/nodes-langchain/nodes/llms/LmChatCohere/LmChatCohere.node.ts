@@ -1,5 +1,10 @@
 import { ChatCohere } from '@langchain/cohere';
 import type { LLMResult } from '@langchain/core/outputs';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -7,17 +12,10 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import {
-	makeN8nLlmFailedAttemptHandler,
-	N8nLlmTracing,
-	getConnectionHintNoticeField,
-} from '@n8n/ai-utilities';
-
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
-	cost: number | undefined;
 } {
 	let totalInputTokens = 0;
 	let totalOutputTokens = 0;
@@ -36,7 +34,6 @@ export function tokensUsageParser(result: LLMResult): {
 		completionTokens: totalOutputTokens,
 		promptTokens: totalInputTokens,
 		totalTokens: totalInputTokens + totalOutputTokens,
-		cost: undefined,
 	};
 }
 

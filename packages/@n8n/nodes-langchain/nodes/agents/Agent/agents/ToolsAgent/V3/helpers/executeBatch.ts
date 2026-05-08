@@ -1,6 +1,9 @@
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { processHitlResponses } from '@utils/agent-execution';
+import type { RequestResponseMetadata } from '@utils/agent-execution/types';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { NodeOperationError, assertParamIsNumber } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -10,16 +13,12 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
-import { processHitlResponses } from '@utils/agent-execution';
-import type { RequestResponseMetadata } from '@utils/agent-execution/types';
-import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
-
 import type { AgentResult } from '../types';
+import { checkMaxIterations } from './checkMaxIterations';
 import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
 import { prepareItemContext } from './prepareItemContext';
 import { runAgent } from './runAgent';
-import { checkMaxIterations } from './checkMaxIterations';
 
 type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 

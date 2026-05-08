@@ -265,6 +265,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
 			expect(nodeSpan.events).toHaveLength(1);
 			expect(nodeSpan.events[0].name).toBe('exception');
+			// `recordException` receives the `Error` from `toRecordableException` (not `getErrorType`).
 			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('connection refused');
 			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('TypeError');
 		});

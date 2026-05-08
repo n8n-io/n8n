@@ -529,7 +529,6 @@ export class LmChatAnthropic implements INodeType {
 				completionTokens: usage.output_tokens,
 				promptTokens: usage.input_tokens,
 				totalTokens: usage.input_tokens + usage.output_tokens,
-				cost: undefined,
 			};
 		};
 
