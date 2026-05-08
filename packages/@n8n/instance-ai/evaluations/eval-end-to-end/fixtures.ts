@@ -7,7 +7,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { toWorkflowConnections } from '../eval-setup-topology/types';
 import { detectAiNodes } from '../../src/tools/evals/detect-ai-nodes';
-import type { EvalEndToEndCase, EvalEndToEndMode } from './types';
+import type { EvalDataTableSpec, EvalEndToEndCase, EvalEndToEndMode } from './types';
 
 /**
  * Reuse the workflow JSON fixtures from the eval-setup-topology suite.
@@ -22,6 +22,17 @@ interface LoadOptions {
 	rootDir?: string;
 	filter?: string;
 }
+
+const evalDataTableSchema = z.object({
+	name: z.string().min(1),
+	columns: z.array(
+		z.object({
+			name: z.string().min(1),
+			type: z.enum(['string', 'number', 'boolean', 'date']),
+		}),
+	),
+	rows: z.array(z.record(z.string(), z.unknown())),
+});
 
 const workflowFixtureSchema = z
 	.object({
@@ -42,6 +53,7 @@ const workflowFixtureSchema = z
 		),
 		connections: z.record(z.string(), z.unknown()),
 		pinData: z.record(z.string(), z.unknown()).optional(),
+		evalDataTable: evalDataTableSchema.optional(),
 	})
 	.passthrough();
 
@@ -56,7 +68,7 @@ export function loadEvalEndToEndCases(options: LoadOptions = {}): EvalEndToEndCa
 		.filter((slug) => options.filter === undefined || slug.includes(options.filter))
 		.map((slug) => {
 			const workflowPath = join(workflowsDir, `${slug}.json`);
-			const workflow = loadWorkflow(workflowPath, slug);
+			const { workflow, evalDataTable } = loadWorkflow(workflowPath, slug);
 			const mode = detectMode(workflow);
 
 			return {
@@ -64,6 +76,7 @@ export function loadEvalEndToEndCases(options: LoadOptions = {}): EvalEndToEndCa
 				workflowPath,
 				workflow,
 				mode,
+				...(evalDataTable === undefined ? {} : { evalDataTable }),
 			};
 		});
 }
@@ -75,15 +88,20 @@ function detectMode(workflow: WorkflowResponse): EvalEndToEndMode {
 	return 'eligible';
 }
 
-function loadWorkflow(workflowPath: string, slug: string): WorkflowResponse {
+function loadWorkflow(
+	workflowPath: string,
+	slug: string,
+): { workflow: WorkflowResponse; evalDataTable?: EvalDataTableSpec } {
 	const parsed = workflowFixtureSchema.safeParse(readJson(workflowPath));
 
 	if (!parsed.success) {
 		throw new Error(`Invalid workflow fixture ${workflowPath}: ${parsed.error.message}`);
 	}
 
-	return {
-		...parsed.data,
+	const { evalDataTable, ...workflowFields } = parsed.data;
+
+	const workflow: WorkflowResponse = {
+		...workflowFields,
 		id: parsed.data.id ?? '',
 		name: parsed.data.name ?? slug,
 		active: parsed.data.active ?? false,
@@ -91,6 +109,8 @@ function loadWorkflow(workflowPath: string, slug: string): WorkflowResponse {
 		connections: parseConnections(workflowPath, parsed.data.connections),
 		pinData: parsed.data.pinData ?? {},
 	};
+
+	return evalDataTable === undefined ? { workflow } : { workflow, evalDataTable };
 }
 
 function parseConnections(workflowPath: string, connections: WorkflowResponse['connections']) {

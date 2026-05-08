@@ -2,6 +2,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
+	getLatestWorkflowMutationResult,
 	getLatestExecutionId,
 	getLatestWorkflowSetupResult,
 	getLatestDataTableResult,
@@ -173,15 +174,16 @@ export function useCanvasPreview({
 		{ flush: 'sync' },
 	);
 
-	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
-	// These tools modify the workflow (credentials, parameters) but aren't detected
-	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
+	// --- Refresh preview when any workflow-mutation tool completes ---
+	// Includes apply-workflow-credentials, workflows(action="setup"), and
+	// workflows(action="update") (used by the eval-setup sub-agent to patch the
+	// workflow with eval nodes). These aren't detected by getLatestBuildResult.
 
-	const latestSetupResult = computed(() => {
+	const latestMutationResult = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestWorkflowSetupResult(msg.agentTree);
+				const result = getLatestWorkflowMutationResult(msg.agentTree);
 				if (result) return result;
 			}
 		}
@@ -189,13 +191,13 @@ export function useCanvasPreview({
 	});
 
 	watch(
-		() => latestSetupResult.value?.toolCallId,
+		() => latestMutationResult.value?.toolCallId,
 		(toolCallId) => {
-			if (!toolCallId || !latestSetupResult.value) return;
+			if (!toolCallId || !latestMutationResult.value) return;
 
-			const targetId = latestSetupResult.value.workflowId;
+			const targetId = latestMutationResult.value.workflowId;
 
-			// Only refresh if the setup targeted the currently active workflow tab
+			// Only refresh if the mutation targeted the currently active workflow tab
 			if (activeTabId.value === targetId) {
 				workflowRefreshKey.value++;
 			}

@@ -198,6 +198,25 @@
 			"id": "fbe5a697-e304-4e79-b706-3c26b8518504"
 		}
 	],
+	"evalDataTable": {
+		"name": "gold-price-evals",
+		"columns": [
+			{ "name": "input", "type": "string" },
+			{ "name": "expected_output", "type": "string" }
+		],
+		"rows": [
+			{ "input": "Get the current gold price", "expected_output": "0.1438" },
+			{ "input": "What is the OSRS gold price right now?", "expected_output": "0.1502" },
+			{ "input": "Fetch the gold price", "expected_output": "0.1389" },
+			{ "input": "Tell me the latest gold price", "expected_output": "0.1612" },
+			{ "input": "How much is gold per million?", "expected_output": "0.1450" },
+			{ "input": "Current gold rate", "expected_output": "0.1475" },
+			{ "input": "Look up the gold price", "expected_output": "0.1410" },
+			{ "input": "Get gold price", "expected_output": "0.1525" },
+			{ "input": "What's the OSRS gold price?", "expected_output": "0.1490" },
+			{ "input": "Read gold price now", "expected_output": "0.1438" }
+		]
+	},
 	"connections": {
 		"Workflow Configuration": {
 			"main": [[{ "node": "Get gold price", "type": "main", "index": 0 }]]

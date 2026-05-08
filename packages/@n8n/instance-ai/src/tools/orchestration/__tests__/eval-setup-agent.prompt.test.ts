@@ -32,3 +32,19 @@ describe('EVAL_SETUP_AGENT_PROMPT — no DataTable creation tool', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/use it as-is/i);
 	});
 });
+
+describe('EVAL_SETUP_AGENT_PROMPT — multi-target sub-component rewrites', () => {
+	it('mentions sub-components in the PRODUCTION ADAPTER instructions', () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/sub-components|memory|tools/i);
+	});
+
+	it('instructs to rewrite each line under section 3 of the PRODUCTION ADAPTER', () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/each rewrite line under section 3/i);
+		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/Do not skip any target node/i);
+	});
+
+	it("warns sub-component rewrites use $('<AgentName>').item.json form, not $json", () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/Do not assume the replacement is always/);
+		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/sub-components do not see `\$json`/i);
+	});
+});

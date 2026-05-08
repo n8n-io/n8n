@@ -45,6 +45,18 @@ jest.mock('../orchestration/delegate.tool', () => ({
 	createDelegateTool: jest.fn(() => ({ id: 'delegate' })),
 }));
 
+jest.mock('../orchestration/eval-setup-agent.tool', () => ({
+	createEvalSetupAgentTool: jest.fn(() => ({ id: 'eval-setup-with-agent' })),
+}));
+
+jest.mock('../orchestration/eval-data-agent.tool', () => ({
+	createEvalDataAgentTool: jest.fn(() => ({ id: 'eval-data' })),
+}));
+
+jest.mock('../evals/evals.tool', () => ({
+	createEvalsTool: jest.fn(() => ({ id: 'evals' })),
+}));
+
 jest.mock('../orchestration/plan-with-agent.tool', () => ({
 	createPlanWithAgentTool: jest.fn(() => ({ id: 'plan' })),
 }));

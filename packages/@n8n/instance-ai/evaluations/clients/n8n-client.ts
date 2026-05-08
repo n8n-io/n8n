@@ -307,18 +307,6 @@ export class N8nClient {
 		return workflows.map((w) => w.id);
 	}
 
-	/**
-	 * Create a workflow from a JSON definition.
-	 * POST /rest/workflows
-	 */
-	async createWorkflow(definition: Record<string, unknown>): Promise<{ id: string }> {
-		const result = (await this.fetch('/rest/workflows', {
-			method: 'POST',
-			body: definition,
-		})) as { data: { id: string } };
-		return { id: result.data.id };
-	}
-
 	/** List all credential IDs visible to the authenticated user. */
 	async listCredentialIds(): Promise<string[]> {
 		const result = (await this.fetch('/rest/credentials')) as {

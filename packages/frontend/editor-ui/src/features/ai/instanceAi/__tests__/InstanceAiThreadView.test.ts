@@ -119,6 +119,7 @@ describe('InstanceAiThreadView', () => {
 		// so return a no-op function to keep cleanup well-typed.
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
+		store.consumePendingInitialMessage.mockReturnValue(null);
 	});
 
 	afterEach(() => {
@@ -128,6 +129,32 @@ describe('InstanceAiThreadView', () => {
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	it('auto-submits a pending initial message when mounted on the base route', async () => {
+		// Simulates clicking "Set up evals" on the canvas: an external trigger
+		// stages a message in the store and navigates to /instance-ai. The view
+		// should consume the message and submit it through the same code path
+		// as a manually-typed message.
+		store.consumePendingInitialMessage.mockReturnValue('Set up evals for workflow wf-1');
+
+		renderView();
+
+		await vi.waitFor(() => {
+			expect(store.consumePendingInitialMessage).toHaveBeenCalled();
+		});
+	});
+
+	it('does not auto-submit a pending message when mounted on a thread route', async () => {
+		// Defensive: a stale pending message must not be sent into an existing
+		// thread the user navigated into.
+		store.consumePendingInitialMessage.mockReturnValue('stale message');
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(store.loadThreads).toHaveBeenCalled();
+		});
 	});
 
 	it('reconnects on same-thread re-entry when SSE is disconnected', async () => {

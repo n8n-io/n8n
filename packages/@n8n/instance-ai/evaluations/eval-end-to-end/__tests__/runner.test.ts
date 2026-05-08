@@ -1,6 +1,7 @@
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import type { CapturedEvent } from '../../types';
 import {
+	applyEvalDataTableId,
 	buildEvalPrompt,
 	buildWorkflowCreatePayload,
 	evaluateTopology,
@@ -8,6 +9,7 @@ import {
 	filterToolSelectionForMode,
 	findEvaluationTriggerDataTableId,
 	isApprovableConfirmation,
+	provisionEvalDataTable,
 } from '../runner';
 import type { EvalEndToEndCase, EvalEndToEndToolSelectionResult } from '../types';
 
@@ -203,6 +205,111 @@ describe('eval-end-to-end runner — pure helpers', () => {
 
 		it('returns undefined when there is no EvaluationTrigger', () => {
 			expect(findEvaluationTriggerDataTableId(makeWorkflow([]))).toBeUndefined();
+		});
+	});
+
+	describe('applyEvalDataTableId', () => {
+		it('rewrites the dataTableId on every EvaluationTrigger and Evaluation node', () => {
+			const wf = makeWorkflow([
+				{
+					name: 'EvalTrigger',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { __rl: true, mode: 'id', value: 'placeholder' } },
+				},
+				{
+					name: 'EvalNode',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					parameters: { dataTableId: { mode: 'id', value: 'placeholder' } },
+				},
+				{
+					name: 'NotEval',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: { dataTableId: 'unrelated' },
+				},
+			]);
+
+			const patched = applyEvalDataTableId(wf, 'real-id-123');
+
+			const params = (n: number) =>
+				(patched.nodes[n] as { parameters: Record<string, unknown> }).parameters;
+			expect((params(0).dataTableId as { value: string }).value).toBe('real-id-123');
+			expect((params(1).dataTableId as { value: string }).value).toBe('real-id-123');
+			// Untouched non-eval node
+			expect(params(2).dataTableId).toBe('unrelated');
+		});
+
+		it('handles the plain-string variant of dataTableId', () => {
+			const wf = makeWorkflow([
+				{
+					name: 'EvalTrigger',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: 'placeholder' },
+				},
+			]);
+
+			const patched = applyEvalDataTableId(wf, 'real-id-123');
+			expect(
+				(patched.nodes[0] as { parameters: Record<string, unknown> }).parameters.dataTableId,
+			).toBe('real-id-123');
+		});
+
+		it('does not mutate the input workflow', () => {
+			const original = makeWorkflow([
+				{
+					name: 'EvalTrigger',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 1,
+					parameters: { dataTableId: { value: 'placeholder' } },
+				},
+			]);
+
+			applyEvalDataTableId(original, 'real-id-123');
+			const params = (original.nodes[0] as { parameters: Record<string, unknown> }).parameters;
+			expect((params.dataTableId as { value: string }).value).toBe('placeholder');
+		});
+	});
+
+	describe('provisionEvalDataTable', () => {
+		it('creates the DataTable then inserts seed rows and returns the new id', async () => {
+			const createDataTable = jest.fn().mockResolvedValue({ id: 'dt-new', name: 'tbl' });
+			const insertDataTableRows = jest.fn().mockResolvedValue(undefined);
+
+			const id = await provisionEvalDataTable({
+				client: { createDataTable, insertDataTableRows },
+				projectId: 'proj-1',
+				spec: {
+					name: 'tbl',
+					columns: [{ name: 'input', type: 'string' }],
+					rows: [{ input: 'a' }, { input: 'b' }],
+				},
+			});
+
+			expect(id).toBe('dt-new');
+			expect(createDataTable).toHaveBeenCalledWith('proj-1', {
+				name: 'tbl',
+				columns: [{ name: 'input', type: 'string' }],
+			});
+			expect(insertDataTableRows).toHaveBeenCalledWith('proj-1', 'dt-new', [
+				{ input: 'a' },
+				{ input: 'b' },
+			]);
+		});
+
+		it('skips insertion when the spec has zero rows', async () => {
+			const createDataTable = jest.fn().mockResolvedValue({ id: 'dt-new', name: 'tbl' });
+			const insertDataTableRows = jest.fn();
+
+			await provisionEvalDataTable({
+				client: { createDataTable, insertDataTableRows },
+				projectId: 'proj-1',
+				spec: { name: 'tbl', columns: [{ name: 'c', type: 'string' }], rows: [] },
+			});
+
+			expect(insertDataTableRows).not.toHaveBeenCalled();
 		});
 	});
 

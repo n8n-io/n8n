@@ -75,6 +75,81 @@ describe('loadEvalEndToEndCases — mode detection', () => {
 		}
 	});
 
+	it('extracts an evalDataTable sidecar declared in the fixture JSON', () => {
+		const root = makeFixtureRoot({
+			has_evals_with_table: {
+				name: 'with-spec',
+				nodes: [
+					{
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						parameters: {},
+					},
+					{
+						name: 'EvalTrigger',
+						type: 'n8n-nodes-base.evaluationTrigger',
+						typeVersion: 1,
+						parameters: { dataTableId: { __rl: true, mode: 'id', value: 'placeholder' } },
+					},
+				],
+				connections: {},
+				evalDataTable: {
+					name: 'tbl',
+					columns: [
+						{ name: 'input', type: 'string' },
+						{ name: 'expected_output', type: 'string' },
+					],
+					rows: [{ input: 'q1', expected_output: 'a1' }],
+				},
+			},
+		});
+
+		try {
+			const cases = loadEvalEndToEndCases({ rootDir: root });
+			expect(cases[0].mode).toBe('already-configured');
+			expect(cases[0].evalDataTable).toEqual({
+				name: 'tbl',
+				columns: [
+					{ name: 'input', type: 'string' },
+					{ name: 'expected_output', type: 'string' },
+				],
+				rows: [{ input: 'q1', expected_output: 'a1' }],
+			});
+			// The eval-data-table sidecar must NOT leak into the workflow object — it
+			// would otherwise be sent to n8n's create-workflow API.
+			expect(
+				(cases[0].workflow as unknown as { evalDataTable?: unknown }).evalDataTable,
+			).toBeUndefined();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('omits evalDataTable when the fixture does not declare one', () => {
+		const root = makeFixtureRoot({
+			plain: {
+				name: 'p',
+				nodes: [
+					{
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+		});
+
+		try {
+			const cases = loadEvalEndToEndCases({ rootDir: root });
+			expect(cases[0].evalDataTable).toBeUndefined();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it('marks a workflow with no langchain nodes as no-ai-nodes', () => {
 		const root = makeFixtureRoot({
 			no_ai: {

@@ -260,6 +260,7 @@ describe('createInstanceAgent', () => {
 				browserMcpConfig: undefined,
 			},
 			memoryConfig,
+			mcpManager: createMcpManagerStub(),
 		} as never);
 
 		const agentCalls = Agent.mock.calls as Array<[Record<string, unknown>]>;

@@ -6,6 +6,7 @@ import {
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getExecutionResultsByWorkflow,
+	getLatestWorkflowMutationResult,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -769,5 +770,218 @@ describe('getExecutionResultsByWorkflow', () => {
 			],
 		});
 		expect(getExecutionResultsByWorkflow(node).size).toBe(0);
+	});
+});
+
+describe('getLatestWorkflowMutationResult', () => {
+	test('returns undefined for node with no tool calls', () => {
+		expect(getLatestWorkflowMutationResult(makeAgentNode())).toBeUndefined();
+	});
+
+	test('returns undefined for loading tool call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apply-workflow-credentials',
+					args: { workflowId: 'wf-1' },
+					isLoading: true,
+					result: undefined,
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toBeUndefined();
+	});
+
+	test('detects apply-workflow-credentials with success: true', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-creds',
+					toolName: 'apply-workflow-credentials',
+					args: { workflowId: 'wf-1' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toEqual({
+			workflowId: 'wf-1',
+			toolCallId: 'tc-creds',
+		});
+	});
+
+	test('returns undefined for apply-workflow-credentials with success: false', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apply-workflow-credentials',
+					args: { workflowId: 'wf-1' },
+					result: { success: false },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toBeUndefined();
+	});
+
+	test('detects workflows(action="setup") tool calls', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-setup',
+					toolName: 'workflows',
+					args: { action: 'setup', workflowId: 'wf-2' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toEqual({
+			workflowId: 'wf-2',
+			toolCallId: 'tc-setup',
+		});
+	});
+
+	test('detects workflows(action="update") tool calls and returns the workflowId from args', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1' },
+					result: { success: true, workflowId: 'wf-1' },
+				}) as any,
+			],
+		});
+		const result = getLatestWorkflowMutationResult(node);
+		expect(result).toEqual({ workflowId: 'wf-1', toolCallId: 'tc-1' });
+	});
+
+	test('detects nested workflows(action="update") in a sub-agent child', () => {
+		const node = makeAgentNode({
+			agentId: 'orchestrator',
+			toolCalls: [],
+			children: [
+				makeAgentNode({
+					agentId: 'eval-setup',
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-nested',
+							toolName: 'workflows',
+							args: { action: 'update', workflowId: 'wf-2' },
+							result: { success: true, workflowId: 'wf-2' },
+						}) as any,
+					],
+				}),
+			],
+		});
+		const result = getLatestWorkflowMutationResult(node);
+		expect(result).toEqual({ workflowId: 'wf-2', toolCallId: 'tc-nested' });
+	});
+
+	test('does NOT detect workflows(action="get") read calls', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'get', workflowId: 'wf-1' },
+					result: { workflow: { id: 'wf-1', name: 'X' } },
+				}) as any,
+			],
+		});
+		const result = getLatestWorkflowMutationResult(node);
+		expect(result).toBeUndefined();
+	});
+
+	test('returns undefined when workflowId is missing from args', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					args: { action: 'update' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toBeUndefined();
+	});
+
+	test('returns the latest result when multiple mutation tool calls exist', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'apply-workflow-credentials',
+					args: { workflowId: 'wf-old' },
+					result: { success: true },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-new' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toEqual({
+			workflowId: 'wf-new',
+			toolCallId: 'tc-2',
+		});
+	});
+
+	test('prefers child result over parent result (depth-first)', () => {
+		const child = makeAgentNode({
+			agentId: 'sub-agent',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-child',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-child' },
+					result: { success: true },
+				}),
+			],
+		});
+		const parent = makeAgentNode({
+			children: [child],
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-parent',
+					toolName: 'apply-workflow-credentials',
+					args: { workflowId: 'wf-parent' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(parent)?.workflowId).toBe('wf-child');
+	});
+
+	test('detects eval-setup-with-agent completion (workflowId from args)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-eval',
+					toolName: 'eval-setup-with-agent',
+					args: { workflowId: 'wf-eval', task: 'Set up evals…' },
+					result: { result: 'Eval setup started…', taskId: 't-1' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toEqual({
+			workflowId: 'wf-eval',
+			toolCallId: 'tc-eval',
+		});
+	});
+
+	test('does NOT detect eval-setup-with-agent while still loading', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-eval',
+					toolName: 'eval-setup-with-agent',
+					args: { workflowId: 'wf-eval' },
+					result: { result: 'Eval setup started…', taskId: 't-1' },
+					isLoading: true,
+				}),
+			],
+		});
+		expect(getLatestWorkflowMutationResult(node)).toBeUndefined();
 	});
 });

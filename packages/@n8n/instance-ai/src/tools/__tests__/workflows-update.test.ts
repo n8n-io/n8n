@@ -50,24 +50,6 @@ describe('workflows(action="update")', () => {
 		});
 	});
 
-	it('works in orchestrator surface too', async () => {
-		const ctx = mock<InstanceAiContext>();
-		ctx.permissions = { updateWorkflow: 'always_allow' } as InstanceAiContext['permissions'];
-		ctx.workflowService.updateFromWorkflowJSON = jest.fn().mockResolvedValue(undefined);
-		const tool = createWorkflowsTool(ctx, 'orchestrator');
-
-		const result = await tool.execute!(
-			{
-				action: 'update',
-				workflowId: 'w1',
-				workflow: { name: 'Test', nodes: [], connections: {} },
-			},
-			{ agent: {} } as never,
-		);
-
-		expect(result).toMatchObject({ success: true });
-	});
-
 	it('returns denied without saving when updateWorkflow is blocked', async () => {
 		const ctx = mock<InstanceAiContext>();
 		ctx.permissions = { updateWorkflow: 'blocked' } as InstanceAiContext['permissions'];

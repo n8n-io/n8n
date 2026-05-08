@@ -175,6 +175,7 @@ export type WorkflowAction =
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
+	| 'update'
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
@@ -197,6 +198,7 @@ const WORKFLOW_ACTION_ORDER = [
 	'delete',
 	'unarchive',
 	'setup',
+	'update',
 	'publish',
 	'unpublish',
 	'list-versions',
@@ -212,6 +214,7 @@ const WORKFLOW_ACTION_LABELS = {
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
+	update: 'save a modified WorkflowJSON',
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
@@ -233,6 +236,7 @@ function getSupportedWorkflowActionSchemas(
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
+		update: updateAction,
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions

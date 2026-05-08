@@ -16,7 +16,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 import { createTestNode } from '@/__tests__/mocks';
-import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
@@ -112,9 +112,7 @@ describe('EvalsHintCallout', () => {
 		});
 
 		instanceAiStore = {
-			newThread: vi.fn().mockReturnValue('new-thread-id'),
-			sendMessage: vi.fn().mockResolvedValue(undefined),
-			threads: [{ id: 'new-thread-id' }],
+			setPendingInitialMessage: vi.fn(),
 		} as unknown as ReturnType<typeof useInstanceAiStore>;
 		(useInstanceAiStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(instanceAiStore);
 
@@ -184,37 +182,22 @@ describe('EvalsHintCallout', () => {
 		expect(queryByTestId('evals-hint-callout')).not.toBeInTheDocument();
 	});
 
-	it('starts a new instance-ai thread, sends the message and navigates on CTA click', async () => {
+	it('stages the eval setup message and navigates to the InstanceAi view on CTA click', async () => {
 		const { findByTestId } = renderComponent();
 		const cta = await findByTestId('evals-hint-cta');
 		cta.click();
 		await vi.waitFor(() => {
-			expect(instanceAiStore.newThread).toHaveBeenCalled();
+			expect(instanceAiStore.setPendingInitialMessage).toHaveBeenCalledWith(
+				`Set up evals for workflow ${WORKFLOW_ID}`,
+			);
 		});
-		expect(instanceAiStore.sendMessage).toHaveBeenCalledWith(
-			`Set up evals for workflow ${WORKFLOW_ID}`,
-		);
 		await vi.waitFor(() => {
-			expect(router.push).toHaveBeenCalledWith({
-				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: 'new-thread-id' },
-			});
+			expect(router.push).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 		});
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'evals_hint_cta_clicked',
 			expect.objectContaining({ workflowId: WORKFLOW_ID }),
 		);
-	});
-
-	it('does not navigate when thread persistence failed', async () => {
-		(instanceAiStore as unknown as { threads: Array<{ id: string }> }).threads = [];
-		const { findByTestId } = renderComponent();
-		const cta = await findByTestId('evals-hint-cta');
-		cta.click();
-		await vi.waitFor(() => {
-			expect(instanceAiStore.sendMessage).toHaveBeenCalled();
-		});
-		expect(router.push).not.toHaveBeenCalled();
 	});
 
 	it('persists dismissal on X click and hides the callout', async () => {

@@ -6,6 +6,7 @@ import type { EvalLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 import { extractToolSelection } from './tool-selection';
 import type {
+	EvalDataTableSpec,
 	EvalEndToEndCase,
 	EvalEndToEndCaseResult,
 	EvalEndToEndExecutionResult,
@@ -231,6 +232,53 @@ export async function waitForThreadToSettle(input: {
 	);
 }
 
+/**
+ * Returns a clone of `workflow` with every `dataTableId` reference inside an
+ * EvaluationTrigger / Evaluation node rewritten to `dataTableId`.
+ *
+ * Supports both `dataTableId: 'plain-string'` and the resource-locator object
+ * form `{ __rl?, mode, value }` used by node-rendered fixtures.
+ */
+export function applyEvalDataTableId(
+	workflow: WorkflowResponse,
+	dataTableId: string,
+): WorkflowResponse {
+	const cloned: WorkflowResponse = structuredClone(workflow);
+	for (const node of cloned.nodes) {
+		if (node.type !== EVALUATION_TRIGGER_TYPE && node.type !== EVALUATION_NODE_TYPE) continue;
+		const params = (node as { parameters?: Record<string, unknown> }).parameters;
+		if (!isRecord(params)) continue;
+		if (!('dataTableId' in params)) continue;
+		const current = params.dataTableId;
+		if (typeof current === 'string') {
+			params.dataTableId = dataTableId;
+		} else if (isRecord(current)) {
+			params.dataTableId = { ...current, value: dataTableId };
+		}
+	}
+	return cloned;
+}
+
+/**
+ * Create a DataTable in the test project and seed it with the spec rows.
+ * Returns the new DataTable id, which the runner then patches into the
+ * workflow before importing.
+ */
+export async function provisionEvalDataTable(input: {
+	client: Pick<N8nClient, 'createDataTable' | 'insertDataTableRows'>;
+	projectId: string;
+	spec: EvalDataTableSpec;
+}): Promise<string> {
+	const created = await input.client.createDataTable(input.projectId, {
+		name: input.spec.name,
+		columns: input.spec.columns,
+	});
+	if (input.spec.rows.length > 0) {
+		await input.client.insertDataTableRows(input.projectId, created.id, input.spec.rows);
+	}
+	return created.id;
+}
+
 export function findEvaluationTriggerDataTableId(workflow: WorkflowResponse): string | undefined {
 	for (const node of workflow.nodes) {
 		if (node.type !== EVALUATION_TRIGGER_TYPE) continue;
@@ -277,8 +325,22 @@ export async function runEvalEndToEndCase(
 
 	try {
 		projectId = config.projectId ?? (await client.getPersonalProjectId());
+
+		// `already-configured` fixtures reference a DataTable by id. The captured
+		// id is meaningless against a fresh n8n instance — provision a real one
+		// here and rewrite the workflow so the existing eval nodes point at it.
+		let workflowToImport = testCase.workflow;
+		if (testCase.evalDataTable) {
+			dataTableId = await provisionEvalDataTable({
+				client,
+				projectId,
+				spec: testCase.evalDataTable,
+			});
+			workflowToImport = applyEvalDataTableId(workflowToImport, dataTableId);
+		}
+
 		const importedWorkflow = await client.createWorkflow(
-			buildWorkflowCreatePayload(testCase, projectId),
+			buildWorkflowCreatePayload({ ...testCase, workflow: workflowToImport }, projectId),
 		);
 		workflowId = importedWorkflow.id;
 
@@ -322,7 +384,10 @@ export async function runEvalEndToEndCase(
 		const toolSelection = filterToolSelectionForMode(rawToolSelection, testCase.mode);
 
 		const topologyShape = evaluateTopology(updatedWorkflow);
-		dataTableId = topologyShape.dataTableId;
+		// Prefer the id discovered in the live workflow, but fall back to the
+		// pre-provisioned id so the cleanup path can still delete an orphan
+		// DataTable when the agent stripped the eval nodes.
+		dataTableId = topologyShape.dataTableId ?? dataTableId;
 
 		const topology: EvalEndToEndTopologyResult = {
 			evaluationTriggerFound: topologyShape.evaluationTriggerFound,

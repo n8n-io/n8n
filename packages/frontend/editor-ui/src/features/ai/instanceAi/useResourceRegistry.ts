@@ -95,6 +95,9 @@ const ARTIFACT_TOOLS = new Set([
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
+	// `evals(action="propose")` returns a `result.table` object when it creates
+	// the empty eval DataTable; the singular-table extraction picks it up.
+	'evals',
 ]);
 
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {

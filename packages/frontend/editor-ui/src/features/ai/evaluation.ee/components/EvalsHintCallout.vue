@@ -11,7 +11,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { isEligibleForEvalsHint } from '../evaluation.utils';
 
 const i18n = useI18n();
@@ -67,13 +67,14 @@ async function onDismiss() {
 function onSetupEvals() {
 	if (!workflowId.value) return;
 	telemetry.track('evals_hint_cta_clicked', { workflowId: workflowId.value });
-	const threadId = instanceAiStore.newThread();
 	const message = `Set up evals for workflow ${workflowId.value}`;
-	void instanceAiStore.sendMessage(message).then(() => {
-		if (instanceAiStore.threads.some((t) => t.id === threadId)) {
-			void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
-		}
-	});
+	// Stage the message and navigate to the empty InstanceAi view. The view's
+	// onMounted hook consumes the staged message and submits it through the
+	// same code path as a manually-typed message — including SSE setup, thread
+	// persistence, and URL update — so the assistant response streams in
+	// reliably.
+	instanceAiStore.setPendingInitialMessage(message);
+	void router.push({ name: INSTANCE_AI_VIEW });
 }
 
 watch(

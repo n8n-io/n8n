@@ -51,35 +51,56 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	return undefined;
 }
 
-const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply-workflow-credentials']);
+const WORKFLOW_MUTATION_TOOLS = new Set(['apply-workflow-credentials']);
+const WORKFLOW_MUTATION_ACTIONS = new Set(['update', 'setup']);
+// Background-task tools whose completion implies the workflow was modified.
+// The top-level result doesn't carry workflowId, but `args.workflowId` does.
+// Detecting them at the wrapper level is more reliable than chasing nested
+// `workflows(action="update")` calls in the sub-agent's children, which can
+// lag in the message tree.
+const WORKFLOW_BACKGROUND_TOOLS = new Set(['eval-setup-with-agent']);
 
 /**
- * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful setup-workflow /
- * apply-workflow-credentials tool result. These tools modify the workflow
- * (credentials, parameters) but don't return workflowId in the result.
+ * Walks an agent tree depth-first (most recent last) and returns the
+ * workflowId and toolCallId from the latest successful workflow-mutation tool
+ * result. Mutations include:
+ *   - `apply-workflow-credentials` — applies credentials/parameters in bulk.
+ *   - `workflows(action="setup")` — credential/parameter setup card.
+ *   - `workflows(action="update")` — direct workflow JSON update.
+ *   - `eval-setup-with-agent` — background sub-agent that patches the
+ *     workflow with eval nodes; detected at the wrapper level (its `args` carry
+ *     the target workflowId).
+ *
+ * `workflowId` is read from `args.workflowId` for these tools.
  */
-export function getLatestWorkflowSetupResult(
+export function getLatestWorkflowMutationResult(
 	node: InstanceAiAgentNode,
 ): WorkflowSetupResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestWorkflowSetupResult(node.children[i]);
+		const childResult = getLatestWorkflowMutationResult(node.children[i]);
 		if (childResult) return childResult;
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
-		if (
-			WORKFLOW_SETUP_TOOLS.has(tc.toolName) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown> | undefined;
-			if (result.success === true && typeof args?.workflowId === 'string') {
-				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
-			}
-		}
+		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
+
+		const args = tc.args as Record<string, unknown> | undefined;
+		const action = typeof args?.action === 'string' ? args.action : '';
+		const result = tc.result as Record<string, unknown>;
+
+		const isApplyCreds = WORKFLOW_MUTATION_TOOLS.has(tc.toolName) && result.success === true;
+		const isWorkflowsMutation =
+			tc.toolName === 'workflows' &&
+			WORKFLOW_MUTATION_ACTIONS.has(action) &&
+			(result.success === true || typeof result.workflowId === 'string');
+		// Background tools settle when the sub-agent finishes saving — at that
+		// point any non-error result implies the workflow was patched.
+		const isBackgroundMutation = WORKFLOW_BACKGROUND_TOOLS.has(tc.toolName);
+
+		if (!isApplyCreds && !isWorkflowsMutation && !isBackgroundMutation) continue;
+		if (typeof args?.workflowId !== 'string') continue;
+
+		return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
 	}
 	return undefined;
 }

@@ -25,6 +25,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
+	// A message staged by an external trigger (e.g. canvas eval setup CTA) that
+	// should be auto-submitted on the next InstanceAiView mount, going through
+	// the same code path as a user-typed message in the empty state.
+	const pendingInitialMessage = ref<string | null>(null);
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
@@ -140,6 +144,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	// --- Thread list & lifecycle ---
+
+	function setPendingInitialMessage(message: string): void {
+		pendingInitialMessage.value = message;
+	}
+
+	function consumePendingInitialMessage(): string | null {
+		const value = pendingInitialMessage.value;
+		pendingInitialMessage.value = null;
+		return value;
+	}
 
 	async function loadThreads(): Promise<boolean> {
 		try {
@@ -260,6 +274,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		isLowCredits,
 
 		// Thread-list actions
+		pendingConfirmations: runtime.pendingConfirmations,
+		isAwaitingConfirmation: runtime.isAwaitingConfirmation,
+		pendingInitialMessage,
+
+		// Thread-list actions (instance-level)
+		newThread,
+		setPendingInitialMessage,
+		consumePendingInitialMessage,
+		clearCurrentThread,
 		deleteThread,
 		renameThread,
 		getThreadMetadata,

@@ -186,9 +186,12 @@ function makeCtx(
 			getAsWorkflowJSON: jest.fn().mockResolvedValue(wf),
 		},
 		dataTableService: {
-			create: jest
-				.fn()
-				.mockResolvedValue({ id: 'dt-new', name: 'AI Flow — eval samples', columns: [] }),
+			create: jest.fn().mockResolvedValue({
+				id: 'dt-new',
+				name: 'AI Flow — eval samples',
+				projectId: 'p-from-service',
+				columns: [],
+			}),
 			insertRows: jest.fn().mockResolvedValue({
 				insertedCount: 0,
 				dataTableId: 'dt-new',
@@ -493,6 +496,64 @@ describe('evals tool — propose action (changed)', () => {
 			projectId: 'p1',
 			dataTableId: 'dt-new',
 		});
+	});
+
+	it('returns a structured `table` artifact when create-empty creates a new table', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{ action: 'propose', workflowId: 'w1', projectId: 'p1', metrics: ['correctness'] },
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(result.table).toEqual({
+			id: 'dt-new',
+			name: 'AI Flow — eval samples',
+			// projectId comes from the DataTable service's response (authoritative),
+			// not just from input.projectId — so the artifacts panel can fetch the
+			// table even when the orchestrator didn't pass projectId.
+			projectId: 'p-from-service',
+		});
+	});
+
+	it('uses input.projectId when the DataTable service does not return one', async () => {
+		const ctx = makeCtx(aiWf(), {
+			create: jest.fn().mockResolvedValue({
+				id: 'dt-new',
+				name: 'AI Flow — eval samples',
+				columns: [],
+				// no projectId on the service response
+			}),
+		});
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{ action: 'propose', workflowId: 'w1', projectId: 'p-input', metrics: ['correctness'] },
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(result.table).toMatchObject({ projectId: 'p-input' });
+	});
+
+	it('omits `table` when datasetChoice is link-existing (we did not produce it)', async () => {
+		const ctx = makeCtx(aiWf());
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!(
+			{
+				action: 'propose',
+				workflowId: 'w1',
+				projectId: 'p1',
+				metrics: ['correctness'],
+				datasetChoice: 'link-existing',
+				existingDataTableId: 'dt-old',
+			},
+			{ agent: {} } as never,
+		)) as Record<string, unknown>;
+
+		expect(result.table).toBeUndefined();
+		expect(result.dataTableId).toBe('dt-old');
 	});
 
 	it('drops unknown metric ids', async () => {

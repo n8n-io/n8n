@@ -215,6 +215,44 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.value.get('wf-1')?.name).toBe('Keep Me');
 		});
 
+		test('evals(action="propose") result.table registers the eval DataTable as a produced artifact', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'evals',
+								args: { action: 'propose', workflowId: 'wf-1' },
+								result: {
+									success: true,
+									shouldDelegateToEvalSetupAgent: true,
+									workflowId: 'wf-1',
+									dataTableId: 'dt-eval',
+									table: {
+										id: 'dt-eval',
+										name: 'My Workflow — eval samples',
+										projectId: 'proj-1',
+									},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('dt-eval')).toEqual(
+				expect.objectContaining({
+					type: 'data-table',
+					id: 'dt-eval',
+					name: 'My Workflow — eval samples',
+					projectId: 'proj-1',
+				}),
+			);
+		});
+
 		test('mutation result enriches an existing data-table entry with projectId', async () => {
 			const { messages, producedArtifacts } = setup();
 

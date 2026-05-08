@@ -166,6 +166,40 @@ describe('useInstanceAiStore - runtime registry', () => {
 	});
 });
 
+// ---------------------------------------------------------------------------
+// Pending initial message — staging entrypoint for external triggers (e.g.
+// the canvas eval-setup CTA) that need the conversation to start with a
+// preset message but go through the InstanceAiView's normal submit path.
+// ---------------------------------------------------------------------------
+
+describe('useInstanceAiStore - pendingInitialMessage', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		store = useInstanceAiStore();
+	});
+
+	test('starts as null', () => {
+		expect(store.pendingInitialMessage).toBeNull();
+	});
+
+	test('setPendingInitialMessage stages the message', () => {
+		store.setPendingInitialMessage('Set up evals for workflow wf-1');
+		expect(store.pendingInitialMessage).toBe('Set up evals for workflow wf-1');
+	});
+
+	test('consumePendingInitialMessage returns and clears the staged message', () => {
+		store.setPendingInitialMessage('hello');
+		expect(store.consumePendingInitialMessage()).toBe('hello');
+		expect(store.pendingInitialMessage).toBeNull();
+	});
+
+	test('consumePendingInitialMessage returns null when nothing is staged', () => {
+		expect(store.consumePendingInitialMessage()).toBeNull();
+	});
+});
+
 describe('useInstanceAiStore - credits', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());

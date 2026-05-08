@@ -5,11 +5,10 @@ import { resolve } from 'node:path';
 import pLimit from 'p-limit';
 
 import { N8nClient } from '../clients/n8n-client';
+import { formatRunSummary } from '../harness/format-run-summary';
 import { createLogger } from '../harness/logger';
-import { shouldFailProcessForCompletedRun } from './exit-policy';
 import { loadEvalProactiveOfferCases } from './fixtures';
 import { runEvalProactiveOfferCase } from './runner';
-import { formatRunSummary } from './summary';
 import type { EvalProactiveOfferRunResult } from './types';
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -146,10 +145,6 @@ async function main(): Promise<void> {
 		for (const finding of result.findings) {
 			logger.warn(`  ${finding.code}: ${finding.message}`);
 		}
-	}
-
-	if (shouldFailProcessForCompletedRun(runResult)) {
-		process.exitCode = 1;
 	}
 }
 

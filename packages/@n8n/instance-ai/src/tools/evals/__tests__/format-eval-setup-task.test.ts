@@ -183,13 +183,14 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 					field: 'text',
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'text',
+					targetNodeName: 'Agent',
 				},
 			],
 		});
 		expect(task).toMatch(/PRODUCTION ADAPTER/);
 		// Must mention the source node name AND the dataset column.
 		expect(task).toMatch(/Voice or Text/);
-		expect(task).toMatch(/`text`/);
+		expect(task).toMatch(/name: "text"/);
 		// Must include the original expression and the rewrite target.
 		expect(task).toMatch(/\$\('Voice or Text'\)\.item\.json\.text/);
 		expect(task).toMatch(/\$json\.text/);
@@ -211,12 +212,14 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 					field: 'text',
 					originalExpression: "$('Voice or Text').item.json.text",
 					column: 'voice_text',
+					targetNodeName: 'Agent',
 				},
 				{
 					nodeName: 'Memory',
 					field: 'context',
 					originalExpression: "$('Memory').item.json.context",
 					column: 'memory_context',
+					targetNodeName: 'Agent',
 				},
 			],
 		});
@@ -224,5 +227,95 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 		expect(task).toMatch(/Memory/);
 		expect(task).toMatch(/voice_text/);
 		expect(task).toMatch(/memory_context/);
+	});
+
+	it('groups rewrites by target node when refs span agent + sub-component', () => {
+		const task = formatEvalSetupTask({
+			workflowId: 'w1',
+			workflowName: 'Wf',
+			detectedAiNodes: ['Agent'],
+			datasetChoice: 'link-existing',
+			existingDataTableId: 'dt-1',
+			suggestedInputColumns: ['text', 'sender_id'],
+			suggestedOutputColumns: [],
+			enabledMetrics: [],
+			namedRefs: [
+				{
+					nodeName: 'Voice or Text',
+					field: 'text',
+					originalExpression: "$('Voice or Text').item.json.text",
+					column: 'text',
+					targetNodeName: 'Agent',
+				},
+				{
+					nodeName: 'Sender ID',
+					field: 'id',
+					originalExpression: "$('Sender ID').item.json.id",
+					column: 'sender_id',
+					targetNodeName: 'Postgres Memory',
+				},
+			],
+		});
+		expect(task).toMatch(/In `Agent`:[\s\S]*Replace `\$\('Voice or Text'\)/);
+		expect(task).toMatch(/In `Postgres Memory`:[\s\S]*Replace `\$\('Sender ID'\)/);
+		// Set adapter assignments for both columns are present
+		expect(task).toMatch(/name: "text"/);
+		expect(task).toMatch(/name: "sender_id"/);
+	});
+
+	it('agent rewrites use $json.<col> form', () => {
+		const task = formatEvalSetupTask({
+			workflowId: 'w1',
+			workflowName: 'Wf',
+			detectedAiNodes: ['Chef Agent'],
+			datasetChoice: 'link-existing',
+			existingDataTableId: 'dt-1',
+			suggestedInputColumns: ['text'],
+			suggestedOutputColumns: [],
+			enabledMetrics: [],
+			namedRefs: [
+				{
+					nodeName: 'Voice or Text',
+					field: 'text',
+					originalExpression: "$('Voice or Text').item.json.text",
+					column: 'text',
+					targetNodeName: 'Chef Agent',
+				},
+			],
+		});
+		// Agent target uses $json directly.
+		expect(task).toMatch(
+			/Replace `\$\('Voice or Text'\)\.item\.json\.text` with `\{\{ \$json\.text \}\}`/,
+		);
+		expect(task).not.toMatch(/Replace.*with `\{\{ \$\('Chef Agent'\)/);
+	});
+
+	it("sub-component rewrites use $('<AgentName>').item.json.<col> form, not $json", () => {
+		const task = formatEvalSetupTask({
+			workflowId: 'w1',
+			workflowName: 'Wf',
+			detectedAiNodes: ['Chef Agent'],
+			datasetChoice: 'link-existing',
+			existingDataTableId: 'dt-1',
+			suggestedInputColumns: ['sender_id'],
+			suggestedOutputColumns: [],
+			enabledMetrics: [],
+			namedRefs: [
+				{
+					nodeName: 'Sender ID',
+					field: 'id',
+					originalExpression: "$('Sender ID').item.json.id",
+					column: 'sender_id',
+					targetNodeName: 'Postgres Memory',
+				},
+			],
+		});
+		// Sub-component target uses agent reference (not $json) so it resolves
+		// in the sub-component's runtime context.
+		expect(task).toMatch(
+			/Replace `\$\('Sender ID'\)\.item\.json\.id` with `\{\{ \$\('Chef Agent'\)\.item\.json\.sender_id \}\}`/,
+		);
+		// Make sure we don't fall back to plain $json.<col> for sub-components.
+		expect(task).not.toMatch(/In `Postgres Memory`:[\s\S]*\{\{ \$json\.sender_id \}\}/);
 	});
 });

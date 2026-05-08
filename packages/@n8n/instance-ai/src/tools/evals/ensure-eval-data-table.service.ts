@@ -39,16 +39,24 @@ async function createWithUniqueName(
  * columns and zero rows. Population is the responsibility of `eval-data`,
  * invoked separately after the user confirms via
  * `evals(action="offer-data-population")`.
+ *
+ * Returns the DataTable's id, name, and projectId. The projectId is needed
+ * downstream so the artifacts panel can fetch the table via the project-scoped
+ * API — without it the preview silently fails.
  */
 export async function createEmptyEvalDataTable(
 	ctx: InstanceAiContext,
 	input: CreateEmptyEvalDataTableInput,
-): Promise<{ id: string; name: string }> {
+): Promise<{ id: string; name: string; projectId?: string }> {
 	const dt = await createWithUniqueName(
 		ctx,
 		`${input.workflowName} — eval samples`,
 		input.columns.map((n) => ({ name: n, type: 'string' as const })),
 		input.projectId ? { projectId: input.projectId } : undefined,
 	);
-	return { id: dt.id, name: dt.name };
+	return {
+		id: dt.id,
+		name: dt.name,
+		...(dt.projectId ? { projectId: dt.projectId } : {}),
+	};
 }

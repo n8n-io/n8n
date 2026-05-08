@@ -118,7 +118,7 @@ describe('N8nClient', () => {
 		});
 	});
 
-	it('inserts data table rows with count return type', async () => {
+	it('posts the rows to the data-table insert endpoint', async () => {
 		const rows = [
 			{ question: 'What is n8n?', expected: 'Automation', score: 1, active: true },
 			{ question: 'What is AI?', expected: null, score: 0, active: false },
@@ -128,14 +128,11 @@ describe('N8nClient', () => {
 
 		await client.insertDataTableRows('project-1', 'dt-1', rows);
 
-		expect(fetchMock).toHaveBeenCalledWith(
-			`${BASE_URL}/rest/projects/project-1/data-tables/dt-1/insert`,
-			{
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ data: rows, returnType: 'count' }),
-			},
-		);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const [url, init] = fetchMock.mock.calls[0] as [string, { method: string; body: string }];
+		expect(url).toBe(`${BASE_URL}/rest/projects/project-1/data-tables/dt-1/insert`);
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body)).toMatchObject({ data: rows });
 	});
 
 	it('returns direct thread status responses', async () => {

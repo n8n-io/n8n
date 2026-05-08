@@ -18,11 +18,28 @@ import type { WorkflowResponse } from '../clients/n8n-client';
  */
 export type EvalEndToEndMode = 'eligible' | 'already-configured' | 'no-ai-nodes';
 
+/**
+ * Optional sidecar declared in a fixture JSON. When present, the runner
+ * provisions a fresh DataTable in the test project, seeds it with `rows`,
+ * and rewrites every `dataTableId` reference inside `evaluationTrigger` /
+ * `evaluation` nodes to point at the new id before importing the workflow.
+ *
+ * This lets `already-configured` fixtures stay self-contained without
+ * depending on a DataTable that happened to exist when the fixture was
+ * captured.
+ */
+export interface EvalDataTableSpec {
+	name: string;
+	columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>;
+	rows: Array<Record<string, unknown>>;
+}
+
 export interface EvalEndToEndCase {
 	slug: string;
 	workflowPath: string;
 	workflow: WorkflowResponse;
 	mode: EvalEndToEndMode;
+	evalDataTable?: EvalDataTableSpec;
 }
 
 export interface EvalEndToEndFinding {

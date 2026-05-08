@@ -336,6 +336,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 	}
 
 	let dataTableId: string | undefined = input.existingDataTableId;
+	let createdTable: { id: string; name: string; projectId?: string } | undefined;
 	let datasetChoiceForTask: 'link-existing' | 'later' = 'later';
 
 	// datasetChoice may be undefined when sanitizeInputSchema flattens the
@@ -351,6 +352,7 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 			columns: inputColumns,
 		});
 		dataTableId = dt.id;
+		createdTable = dt;
 		datasetChoiceForTask = 'link-existing';
 	}
 
@@ -374,6 +376,23 @@ async function executePropose(context: InstanceAiContext, input: z.infer<typeof 
 		workflowId: input.workflowId,
 		...(input.projectId ? { projectId: input.projectId } : {}),
 		...(dataTableId ? { dataTableId } : {}),
+		// `table` lets the artifacts panel pick up the newly created DataTable
+		// (registry's "Singular data table" extraction path). Only set on the
+		// create-empty path — link-existing reuses a table the user already
+		// has, so we don't claim it as a produced artifact. projectId comes
+		// from the DataTable service (not just input.projectId) so the preview
+		// can fetch the table even when the caller didn't pass projectId.
+		...(createdTable
+			? {
+					table: {
+						id: createdTable.id,
+						name: createdTable.name,
+						...((createdTable.projectId ?? input.projectId)
+							? { projectId: createdTable.projectId ?? input.projectId }
+							: {}),
+					},
+				}
+			: {}),
 		datasetChoice,
 	};
 }
