@@ -258,7 +258,7 @@ export interface BuilderHintVariation {
 }
 
 export interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -418,15 +418,15 @@ function variationApplies(
 function emitBuilderHint(
 	lines: string[],
 	indent: string,
-	hint: { message?: string; extraTypeDefContent?: BuilderHintVariation[] },
+	hint: { propertyHint?: string; extraTypeDefContent?: BuilderHintVariation[] },
 	combo?: DiscriminatorCombination,
 ): void {
-	if (hint.message) {
-		const safeMessage = hint.message
+	if (hint.propertyHint) {
+		const safePropertyHint = hint.propertyHint
 			.replace(/\*\//g, '*\\/')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
-		lines.push(`${indent} * @builderHint ${safeMessage}`);
+		lines.push(`${indent} * @builderHint ${safePropertyHint}`);
 	}
 
 	if (!hint.extraTypeDefContent) return;
@@ -451,7 +451,7 @@ function getNodeBuilderHint(node: NodeTypeDescription): NodeBuilderHint | undefi
 /**
  * Emit a JSDoc block for the node-level builderHint scoped to a single
  * discriminator combination — only variations whose `displayOptions` match the
- * combo are rendered. The `message` is intentionally not re-emitted per combo
+ * combo are rendered. The `propertyHint` is intentionally not re-emitted per combo
  * (it already lands in the file-level node header).
  */
 function emitNodeHintForCombo(
@@ -2128,7 +2128,7 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	const nodeHint = getNodeBuilderHint(node);
 	if (nodeHint && (nodeHint.searchHint || nodeHint.extraTypeDefContent?.length)) {
 		emitBuilderHint(lines, '', {
-			message: nodeHint.searchHint,
+			propertyHint: nodeHint.searchHint,
 			extraTypeDefContent: nodeHint.extraTypeDefContent,
 		});
 	}

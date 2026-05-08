@@ -365,6 +365,8 @@ onBeforeUnmount(() => {
 .errorPaneBody {
 	flex: 1;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	padding: var(--spacing--xs);
 }
 .openButton {

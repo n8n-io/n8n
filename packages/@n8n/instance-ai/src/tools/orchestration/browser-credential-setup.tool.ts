@@ -33,6 +33,50 @@ import { createAskUserTool } from '../shared/ask-user.tool';
 
 export { buildBrowserAgentPrompt, type BrowserToolSource } from './browser-credential-setup.prompt';
 
+const PERMANENT_DENIAL_MARKER = 'User permanently denied access to';
+const BROWSER_DENIED_RESULT =
+	'Browser access was denied by the user. Provide manual setup guidance in chat — do not try the browser flow again in this turn.';
+
+const browserToolErrorResultSchema = z.object({
+	isError: z.literal(true),
+	structuredContent: z.object({ error: z.string().optional() }).optional(),
+	content: z.array(z.object({ text: z.string() }).passthrough()).optional(),
+});
+
+function isPermanentDenialResult(result: unknown): boolean {
+	const parsed = browserToolErrorResultSchema.safeParse(result);
+	if (!parsed.success) return false;
+	const messages = [
+		parsed.data.structuredContent?.error ?? '',
+		...(parsed.data.content?.map((c) => c.text) ?? []),
+	];
+	return messages.some((m) => m.includes(PERMANENT_DENIAL_MARKER));
+}
+
+type ToolExecuteFn = (input: unknown, ctx: unknown) => Promise<unknown>;
+
+function wrapToolForDenialDetection<T extends ToolsInput[string]>(
+	tool: T,
+	onDenied: () => void,
+): T {
+	const originalExecute = tool.execute as ToolExecuteFn | undefined;
+	if (!originalExecute) return tool;
+	const observingExecute: ToolExecuteFn = async (input, ctx) => {
+		const result = await originalExecute(input, ctx);
+		if (isPermanentDenialResult(result)) onDenied();
+		return result;
+	};
+	return { ...tool, execute: observingExecute as T['execute'] };
+}
+
+function wrapBrowserToolsForDenialDetection(tools: ToolsInput, onDenied: () => void): ToolsInput {
+	const wrapped: ToolsInput = {};
+	for (const [name, tool] of Object.entries(tools)) {
+		wrapped[name] = name.startsWith('browser_') ? wrapToolForDenialDetection(tool, onDenied) : tool;
+	}
+	return wrapped;
+}
+
 function createPauseForUserTool() {
 	return createTool({
 		id: 'pause-for-user',
@@ -47,6 +91,7 @@ function createPauseForUserTool() {
 			requestId: z.string(),
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
+			inputType: z.literal('continue'),
 		}),
 		resumeSchema: browserCredentialSetupResumeSchema,
 		execute: async (input: z.infer<typeof browserCredentialSetupInputSchema>, ctx) => {
@@ -60,6 +105,7 @@ function createPauseForUserTool() {
 					requestId: nanoid(),
 					message: input.message,
 					severity: 'info' as const,
+					inputType: 'continue' as const,
 				});
 				return { continued: false };
 			}
@@ -148,13 +194,21 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				};
 			}
 
+			let browserPermanentlyDenied = false;
+			const browserToolsWithDenialDetection = wrapBrowserToolsForDenialDetection(
+				browserTools,
+				() => {
+					browserPermanentlyDenied = true;
+				},
+			);
+
 			// Add interaction tools
-			browserTools['pause-for-user'] = createPauseForUserTool();
-			browserTools['ask-user'] = createAskUserTool();
+			browserToolsWithDenialDetection['pause-for-user'] = createPauseForUserTool();
+			browserToolsWithDenialDetection['ask-user'] = createAskUserTool();
 
 			// Add consolidated research tool (web-search + fetch-url) from the domain context
 			if (context.domainContext) {
-				browserTools.research = createResearchTool(context.domainContext);
+				browserToolsWithDenialDetection.research = createResearchTool(context.domainContext);
 			}
 
 			const subAgentId = `agent-browser-${nanoid(6)}`;
@@ -167,7 +221,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				payload: {
 					parentId: context.orchestratorAgentId,
 					role: 'credential-setup-browser-agent',
-					tools: Object.keys(browserTools),
+					tools: Object.keys(browserToolsWithDenialDetection),
 				},
 			});
 			let traceRun: Awaited<ReturnType<typeof startSubAgentTrace>>;
@@ -196,7 +250,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				});
 				const tracedBrowserTools = traceSubAgentTools(
 					context,
-					browserTools,
+					browserToolsWithDenialDetection,
 					'credential-setup-browser-agent',
 				);
 				const browserPrompt = buildBrowserAgentPrompt(toolSource);
@@ -319,6 +373,13 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 
 							if (result.status === 'cancelled') {
 								throw new Error('Run cancelled while waiting for confirmation');
+							}
+
+							// If the user has permanently denied browser access, stop here.
+							// Don't nudge into pause-for-user — return a structured result so
+							// the orchestrator can offer manual guidance via plain chat text.
+							if (browserPermanentlyDenied) {
+								return BROWSER_DENIED_RESULT;
 							}
 
 							if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {

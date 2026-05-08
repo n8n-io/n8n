@@ -224,7 +224,7 @@ function formatModeForDisplay(mode: ModeInfo, showSdkMapping: boolean): string {
 
 	// Add builder hint if available
 	if (mode.builderHint) {
-		lines.push(`        @builderHint ${mode.builderHint.message}`);
+		lines.push(`        @builderHint ${mode.builderHint.propertyHint}`);
 	}
 
 	return lines.join('\n');
@@ -306,7 +306,7 @@ function formatResourceOperationLines(
 			lines.push(`          ${resource.description}`);
 		}
 		if (resource.builderHint) {
-			lines.push(`          @builderHint ${resource.builderHint.message}`);
+			lines.push(`          @builderHint ${resource.builderHint.propertyHint}`);
 		}
 
 		lines.push('          operations:');
@@ -316,7 +316,7 @@ function formatResourceOperationLines(
 				lines.push(`              ${op.description}`);
 			}
 			if (op.builderHint) {
-				lines.push(`              @builderHint ${op.builderHint.message}`);
+				lines.push(`              @builderHint ${op.builderHint.propertyHint}`);
 			}
 		}
 	}
@@ -339,7 +339,7 @@ function formatOperationLines(operations: DiscriminatorOperationInfo[], nodeId: 
 			lines.push(`        ${op.description}`);
 		}
 		if (op.builderHint) {
-			lines.push(`        @builderHint ${op.builderHint.message}`);
+			lines.push(`        @builderHint ${op.builderHint.propertyHint}`);
 		}
 	}
 

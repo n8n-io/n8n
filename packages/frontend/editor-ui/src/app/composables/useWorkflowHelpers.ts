@@ -832,11 +832,6 @@ export function useWorkflowHelpers() {
 			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
 		});
 
-		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
-		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
-			workflowsStore.workflow.versionId = payload.versionId;
-		});
-
 		initializedWorkflowDocumentStore.setName(workflowData.name);
 		initializedWorkflowDocumentStore.setTags(tagIds);
 		initializedWorkflowDocumentStore.setActiveState({

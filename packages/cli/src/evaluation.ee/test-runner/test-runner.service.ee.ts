@@ -26,9 +26,9 @@ import type {
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
+	JsonObject,
 } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { JsonObject } from 'openid-client';
 import pLimit from 'p-limit';
 
 import { ActiveExecutions } from '@/active-executions';

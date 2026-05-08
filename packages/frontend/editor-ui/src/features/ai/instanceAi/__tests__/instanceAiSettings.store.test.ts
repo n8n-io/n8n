@@ -89,7 +89,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: false,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isInstanceAiDisabled).toBe(true);
@@ -100,7 +99,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isInstanceAiDisabled).toBe(false);
@@ -123,7 +121,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isLocalGatewayDisabledByAdmin).toBe(true);
@@ -134,7 +131,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: true } });
@@ -148,7 +144,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isLocalGatewayDisabled).toBe(true);
@@ -159,7 +154,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: true } });
@@ -171,7 +165,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: true } });
@@ -183,7 +176,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: false } });
@@ -197,7 +189,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: true,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isProxyEnabled).toBe(true);
@@ -208,7 +199,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isProxyEnabled).toBe(false);
@@ -221,7 +211,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: true,
 			});
 			expect(store.isCloudManaged).toBe(true);
@@ -232,7 +221,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isCloudManaged).toBe(false);
@@ -281,7 +269,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: false,
 				localGatewayDisabled: false,
 				proxyEnabled: true,
-				optinModalDismissed: false,
 				cloudManaged: true,
 			});
 
@@ -302,7 +289,6 @@ describe('useInstanceAiSettingsStore', () => {
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
 				localGatewayDisabled: false,
-				optinModalDismissed: true,
 			};
 
 			mockUpdateSettings.mockResolvedValue(adminResponse);
@@ -324,7 +310,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 
@@ -336,7 +321,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			setUserPreference(store, { localGatewayDisabled: false });
@@ -353,7 +337,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			mockGetGatewayStatus.mockResolvedValue({
@@ -382,7 +365,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			mockGetGatewayStatus.mockResolvedValue({
@@ -405,7 +387,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			setUserPreference(store, { localGatewayDisabled: false });

@@ -27,7 +27,7 @@ interface BuilderHintVariation {
 }
 
 interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 	extraTypeDefContent?: BuilderHintVariation[];
 }
@@ -808,7 +808,7 @@ describe('generate-types', () => {
 								type: 'options',
 								description: 'Select the interval type',
 								builderHint: {
-									message: 'You can add multiple intervals to trigger at different times.',
+									propertyHint: 'You can add multiple intervals to trigger at different times.',
 								},
 								options: [
 									{ name: 'Seconds', value: 'seconds' },
@@ -838,7 +838,7 @@ describe('generate-types', () => {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message: 'You can add multiple intervals to trigger at different times.',
+							propertyHint: 'You can add multiple intervals to trigger at different times.',
 						},
 						values: [
 							{
@@ -1880,7 +1880,7 @@ describe('generate-types', () => {
 				type: 'fixedCollection',
 				description: 'Configure when the workflow triggers',
 				builderHint: {
-					message:
+					propertyHint:
 						'You can add multiple intervals to trigger at different times. Use Custom (Cron) for more specific scheduling patterns.',
 				},
 				default: {},
@@ -1898,7 +1898,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Custom code to execute',
 				builderHint: {
-					message: 'See <a href="https://docs.example.com">documentation</a> for examples',
+					propertyHint: 'See <a href="https://docs.example.com">documentation</a> for examples',
 				},
 				default: '',
 			};
@@ -1915,7 +1915,7 @@ describe('generate-types', () => {
 				type: 'resourceMapper',
 				description: 'Column mapping',
 				builderHint: {
-					message: 'Pass the full resourceMapper object',
+					propertyHint: 'Pass the full resourceMapper object',
 					extraTypeDefContent: [
 						{
 							content:
@@ -1945,7 +1945,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Foo',
 				builderHint: {
-					message: 'msg',
+					propertyHint: 'msg',
 					extraTypeDefContent: [{ content: 'block end */ inside example' }],
 				},
 				default: '',
@@ -1966,7 +1966,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Foo',
 				builderHint: {
-					message: 'msg',
+					propertyHint: 'msg',
 					extraTypeDefContent: [
 						{ displayOptions: { show: { mode: ['insert'] } }, content: 'gated content' },
 						{ content: 'always shown' },

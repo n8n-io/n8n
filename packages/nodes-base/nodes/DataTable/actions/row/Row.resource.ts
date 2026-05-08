@@ -35,7 +35,7 @@ export const description: INodeProperties[] = [
 				description: 'Get row(s)',
 				action: 'Get row(s)',
 				builderHint: {
-					message:
+					propertyHint:
 						"There is no `getAll` operation. To fetch many rows, use `operation: 'get'` with `returnAll: true`.",
 				},
 			},
@@ -57,7 +57,7 @@ export const description: INodeProperties[] = [
 				description: 'Insert a new row',
 				action: 'Insert row',
 				builderHint: {
-					message:
+					propertyHint:
 						'Row IDs are auto-generated. Do NOT define a custom `id` column or seed `id` on insert. The built-in row `id` is valid for filtering update/delete but is not part of the user-defined table schema.',
 				},
 			},

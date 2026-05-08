@@ -9,7 +9,7 @@ import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
  * gated by `displayOptions: { show: { resource: ['sheet'], operation: [...] } }`.
  */
 export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
-	message:
+	propertyHint:
 		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation.",
 };
 

@@ -58,7 +58,7 @@ export class AgentToolV3 implements INodeType {
 					default: false,
 					noDataExpression: true,
 					builderHint: {
-						message:
+						propertyHint:
 							'Set to `true` when you need structured JSON output. The agent then requires an `outputParser` entry in its `subnodes` config (typically an `outputParserStructured` node defined via the `outputParser({...})` SDK factory). With `hasOutputParser: false` the agent returns a plain string in `$json.output`.',
 					},
 				},
