@@ -48,11 +48,8 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 		fetchSpy.mockRestore();
 	});
 
-	it('passes through when no other agent uses the credential and Telegram reports no webhook', async () => {
+	it('passes through when no other agent uses the credential', async () => {
 		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		fetchSpy.mockResolvedValue(
-			new Response(JSON.stringify({ result: { url: '' } }), { status: 200 }),
-		);
 
 		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
 
@@ -62,17 +59,10 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 			'proj-1',
 			'agent-1',
 		);
-	});
-
-	it('passes through when Telegram reports our own webhook URL (idempotent reconnect)', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		const ourUrl =
-			'https://n8n.example.com/rest/projects/proj-1/agents/v2/agent-1/webhooks/telegram';
-		fetchSpy.mockResolvedValue(
-			new Response(JSON.stringify({ result: { url: ourUrl } }), { status: 200 }),
-		);
-
-		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
+		// onBeforeConnect must not call Telegram — the connect flow overwrites
+		// any leftover webhook in onAfterConnect, so probing here would just
+		// burn an API call and risk false-positive conflicts.
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 
 	it('throws ConflictError naming the owning agent when DB has another claimant', async () => {
@@ -85,33 +75,6 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 		await expect(promise).rejects.toThrow(
 			'Telegram credential is already connected to agent "Agent Other"',
 		);
-		// Telegram API must not be called once the DB already indicates a conflict.
-		expect(fetchSpy).not.toHaveBeenCalled();
-	});
-
-	it('throws ConflictError when Telegram reports a foreign webhook URL and no DB owner', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		const foreignUrl = 'https://some-other-host.example/telegram';
-		fetchSpy.mockResolvedValue(
-			new Response(JSON.stringify({ result: { url: foreignUrl } }), { status: 200 }),
-		);
-
-		await expect(integration.onBeforeConnect(makeContext())).rejects.toBeInstanceOf(ConflictError);
-	});
-
-	it('fails open (no throw) when getWebhookInfo itself errors out', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		fetchSpy.mockRejectedValue(new Error('network down'));
-
-		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
-	});
-
-	it('skips the Telegram API probe when instance is in polling mode', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
-
-		await integration.onBeforeConnect(makeContext());
-
 		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 
@@ -127,26 +90,32 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 			'Telegram credential is already connected to agent "Alpha"',
 		);
 	});
+});
 
-	it('fails open when getWebhookInfo returns a non-2xx response', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		fetchSpy.mockResolvedValue(new Response('Internal Server Error', { status: 500 }));
+describe('TelegramIntegration.requiresLeader', () => {
+	it('requires the leader in polling mode (localhost / non-public webhook URL)', () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
 
-		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
+		const integration = new TelegramIntegration(
+			mock<Logger>(),
+			urlService,
+			mock<AgentRepository>(),
+		);
+
+		expect(integration.requiresLeader()).toBe(true);
 	});
 
-	it('fails open when getWebhookInfo returns malformed JSON', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-		fetchSpy.mockResolvedValue(new Response('not json', { status: 200 }));
+	it('does not require the leader in webhook mode (public HTTPS webhook URL)', () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 
-		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
-	});
+		const integration = new TelegramIntegration(
+			mock<Logger>(),
+			urlService,
+			mock<AgentRepository>(),
+		);
 
-	it('does not probe Telegram when the credential payload lacks an accessToken', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-
-		await integration.onBeforeConnect(makeContext({ credential: { other: 'data' } }));
-
-		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(integration.requiresLeader()).toBe(false);
 	});
 });

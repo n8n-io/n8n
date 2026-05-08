@@ -67,6 +67,19 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly disableStreaming: boolean = false;
 
+	/**
+	 * True if this integration must run on the leader main only.
+	 *
+	 * Polling-based platforms (e.g. Telegram in polling mode) require this so a
+	 * single instance owns the long-poll loop — otherwise updates race between
+	 * mains and either duplicate or get lost. Webhook-based platforms return
+	 * false so any main can answer inbound webhooks (which the load balancer
+	 * routes round-robin across all mains).
+	 */
+	requiresLeader(): boolean {
+		return false;
+	}
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 

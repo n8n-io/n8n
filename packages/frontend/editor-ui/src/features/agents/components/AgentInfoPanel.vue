@@ -187,6 +187,8 @@ function onInstructionsInput(value: string) {
 <style module>
 .panel {
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
