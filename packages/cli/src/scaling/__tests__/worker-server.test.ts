@@ -15,6 +15,7 @@ import type { RedisClientService } from '@/services/redis-client.service';
 import { WorkerServer } from '../worker-server';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { NextFunction, Request, Response } from 'express';
+import type { WorkerDrainService } from '../worker-drain.service';
 
 const app = mock<express.Application>();
 
@@ -37,6 +38,7 @@ describe('WorkerServer', () => {
 	const dbConnection = mock<DbConnection>();
 	const credentialsOverwriteService = mock<CredentialsOverwrites>();
 	const redisClientService = mock<RedisClientService>();
+	const workerDrainService = mock<WorkerDrainService>();
 
 	const newWorkerServer = () =>
 		new WorkerServer(
@@ -48,6 +50,7 @@ describe('WorkerServer', () => {
 			instanceSettings,
 			prometheusMetricsService,
 			redisClientService,
+			workerDrainService,
 		);
 
 	beforeEach(() => {
@@ -80,6 +83,7 @@ describe('WorkerServer', () => {
 						mock<InstanceSettings>({ instanceType: 'webhook' }),
 						prometheusMetricsService,
 						mock(),
+						mock(), // workerDrainService
 					),
 			).toThrowError(AssertionError);
 		});
@@ -247,6 +251,10 @@ describe('WorkerServer', () => {
 			if (markReady) workerServer.markAsReady();
 		}
 
+		beforeEach(() => {
+			workerDrainService.isDraining.mockReturnValue(false);
+		});
+
 		it('should return 200 after markAsReady() when DB and Redis are connected', async () => {
 			await initWithReadiness();
 			const res = mock<express.Response>();
@@ -293,6 +301,34 @@ describe('WorkerServer', () => {
 
 			expect(res.status).toHaveBeenCalledWith(503);
 			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
+		});
+
+		it('should return 503 with draining status when worker is draining', async () => {
+			workerDrainService.isDraining.mockReturnValue(true);
+			await initWithReadiness();
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.send).toHaveBeenCalledWith({ status: 'draining' });
+		});
+
+		it('should return draining status even when DB is disconnected', async () => {
+			workerDrainService.isDraining.mockReturnValue(true);
+			await initWithReadiness();
+			(
+				dbConnection as { connectionState: { connected: boolean; migrated: boolean } }
+			).connectionState = { connected: false, migrated: false };
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			// drain check is short-circuit before DB check
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.send).toHaveBeenCalledWith({ status: 'draining' });
 		});
 	});
 });

@@ -19,6 +19,7 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { WorkerDrainService } from './worker-drain.service';
 
 export type WorkerServerEndpointsConfig = {
 	/** Whether the health check endpoint is enabled. */
@@ -59,6 +60,7 @@ export class WorkerServer {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly prometheusMetricsService: PrometheusMetricsService,
 		private readonly redisClientService: RedisClientService,
+		private readonly workerDrainService: WorkerDrainService,
 	) {
 		assert(this.instanceSettings.instanceType === 'worker');
 
@@ -142,6 +144,10 @@ export class WorkerServer {
 	}
 
 	private async readiness(_req: express.Request, res: express.Response) {
+		if (this.workerDrainService.isDraining()) {
+			return res.status(503).send({ status: 'draining' });
+		}
+
 		const { connectionState } = this.dbConnection;
 		const isReady =
 			connectionState.connected &&

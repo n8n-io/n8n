@@ -120,6 +120,10 @@ class BullConfig {
 	@Env('QUEUE_WORKER_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
 
+	/** Whether SIGTERM on a worker should first enter drain mode (pause queue, mark readiness 503, wait for active jobs) before the regular shutdown sequence. Useful for Kubernetes rolling deploys. */
+	@Env('N8N_WORKER_DRAIN_ON_SIGTERM')
+	drainOnSigterm: boolean = false;
+
 	@Nested
 	settings: SettingsConfig;
 }
