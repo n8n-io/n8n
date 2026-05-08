@@ -31,7 +31,7 @@ export class Agent extends VersionedNodeType {
 			defaultVersion: 3.1,
 			builderHint: {
 				message:
-					"Wire model/memory/tools/outputParser via the SDK `subnodes` config object using factory functions (`languageModel()`, `memory()`, `tool()`, `outputParser()`). Do NOT use `.to(agent, { connectionType: 'ai_languageModel' })`. Inside subnodes, reference upstream data with `nodeJson(triggerNode, 'path')`, not `$json` — subnodes do not share the main predecessor's item context.",
+					"Wire model/memory/tools/outputParser via the SDK `subnodes` config object using factory functions (`languageModel()`, `memory()`, `tool()`, `outputParser()`). Inside subnodes, reference upstream data with `nodeJson(triggerNode, 'path')`, not `$json` — subnodes do not share the main predecessor's item context.",
 				relatedNodes: [
 					{
 						nodeType: 'n8n-nodes-base.aggregate',
