@@ -11,6 +11,7 @@ import type {
 import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
 
 import { vmResolver } from '../Code/JavaScriptSandbox';
+import { generateScript } from '../Code/utils';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -166,7 +167,7 @@ return items;`,
 
 		try {
 			// Execute the function code
-			items = await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname);
+			items = await vm.run(generateScript(functionCode), __dirname);
 			items = this.helpers.normalizeItems(items);
 
 			// Do very basic validation of the data
