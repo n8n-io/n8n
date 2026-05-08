@@ -42,6 +42,7 @@
     "langsmith": "catalog:",
     "@mozilla/readability": "^0.6.0",
     "@n8n/api-types": "workspace:*",
+    "@n8n/sandbox-client": "0.0.1",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "linkedom": "^0.18.9",
