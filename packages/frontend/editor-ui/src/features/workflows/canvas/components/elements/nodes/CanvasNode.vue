@@ -38,6 +38,7 @@ import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils'
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
+	canExecute?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
@@ -66,6 +67,7 @@ const emit = defineEmits<{
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
+	'replace:node': [id: string];
 	'add:ai': [id: string];
 }>();
 
@@ -285,6 +287,10 @@ function onFocus(id: string) {
 	emit('focus', id);
 }
 
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
+}
+
 function onAddToAi(id: string) {
 	emit('add:ai', id);
 }
@@ -407,6 +413,7 @@ onBeforeUnmount(() => {
 			v-else-if="hasToolbar"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
+			:can-execute="canExecute"
 			:class="$style.canvasNodeToolbar"
 			:show-status-icons="isExperimentalNdvActive"
 			:items-class="$style.canvasNodeToolbarItems"
@@ -426,6 +433,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
 			@delete="onDelete"
+			@replace:node="onReplaceNode"
 		/>
 
 		<CanvasNodeTrigger

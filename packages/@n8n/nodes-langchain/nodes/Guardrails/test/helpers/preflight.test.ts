@@ -1,7 +1,5 @@
-import { describe, it, expect } from '@jest/globals';
-
-import { applyPreflightModifications } from '../../helpers/preflight';
 import type { GuardrailResult } from '../../actions/types';
+import { applyPreflightModifications } from '../../helpers/preflight';
 
 describe('preflight helper', () => {
 	describe('applyPreflightModifications', () => {

@@ -33,6 +33,7 @@ const ALL_ROLES_SET = ALL_ROLES.global.concat(
 	ALL_ROLES.project,
 	ALL_ROLES.credential,
 	ALL_ROLES.workflow,
+	ALL_ROLES.secretsProviderConnection,
 );
 
 beforeAll(async () => {
@@ -1389,6 +1390,7 @@ describe('RoleService', () => {
 				id: 'workflow-1',
 				name: 'Test Workflow',
 				active: true,
+				versionId: 'version-1',
 				shared: [
 					{
 						projectId: 'project-1',
@@ -1449,6 +1451,7 @@ describe('RoleService', () => {
 				id: 'entity-1',
 				name: 'Test Entity',
 				active: true,
+				versionId: 'version-1',
 				shared: undefined,
 			} as any;
 			const userProjectRelations = [] as any[];
@@ -1472,7 +1475,7 @@ describe('RoleService', () => {
 			const mockEntity = {
 				id: 'entity-1',
 				name: 'Test Entity',
-				// Missing both 'active' and 'type' properties
+				// Missing all workflow fields (versionId, activeVersionId, triggerCount) and credential field (type)
 				shared: [],
 			} as any;
 			const userProjectRelations = [] as any[];
@@ -1654,6 +1657,7 @@ describe('RoleService', () => {
 				id: 'workflow-1',
 				name: 'Test Workflow',
 				active: true,
+				versionId: 'version-1',
 				isGlobal: true,
 				shared: [
 					{

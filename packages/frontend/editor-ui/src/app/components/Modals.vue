@@ -37,6 +37,10 @@ import {
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	SECURITY_KEYS_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
+	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	AGENT_CONFIRMATION_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -111,6 +115,8 @@ import WorkflowActivationConflictingWebhookModal from '@/app/components/Workflow
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
+import AgentConfirmationModal from '@/features/agents/components/AgentConfirmationModal.vue';
+import type { AgentConfirmationModalData } from '@/features/agents/components/AgentConfirmationModal.vue';
 import WorkflowVersionFormModal, {
 	type WorkflowVersionFormModalData,
 } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -129,6 +135,11 @@ import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishMod
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
 import SecurityKeysModal from '@/features/core/auth/components/SecurityKeysModal.vue';
+import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
+import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
+import InstanceAiCredentialSetupModal, {
+	type InstanceAiCredentialSetupModalData,
+} from '@/features/ai/instanceAi/components/InstanceAiCredentialSetupModal.vue';
 </script>
 
 <template>
@@ -300,6 +311,12 @@ import SecurityKeysModal from '@/features/core/auth/components/SecurityKeysModal
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="AI_BUILDER_DIFF_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AIBuilderDiffModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
@@ -344,6 +361,15 @@ import SecurityKeysModal from '@/features/core/auth/components/SecurityKeysModal
 					data-test-id="workflow-history-version-unpublish-modal"
 					:modal-name="modalName"
 					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="AGENT_CONFIRMATION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AgentConfirmationModal
+					:modal-name="modalName"
+					:data="data as AgentConfirmationModalData"
 				/>
 			</template>
 		</ModalRoot>
@@ -483,6 +509,20 @@ import SecurityKeysModal from '@/features/core/auth/components/SecurityKeysModal
 
 		<ModalRoot :name="SECURITY_KEYS_MODAL_KEY">
 			<SecurityKeysModal />
+		</ModalRoot>
+
+		<ModalRoot :name="INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<InstanceAiCredentialSetupModal
+					data-test-id="instance-ai-credential-setup-modal"
+					:modal-name="modalName"
+					:data="data as InstanceAiCredentialSetupModalData"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
+			<AiGatewayTopUpModal />
 		</ModalRoot>
 
 		<!-- Dynamic modals from modules -->

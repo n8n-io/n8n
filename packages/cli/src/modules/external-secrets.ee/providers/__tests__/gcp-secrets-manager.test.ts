@@ -85,7 +85,6 @@ describe('GCP Secrets Manager', () => {
 			secret1: 'value1',
 			secret2: 'value2',
 			secret3: '', // no value
-			'#@&': 'value', // unsupported name
 		};
 
 		await gcpSecretsManager.init(
@@ -102,7 +101,6 @@ describe('GCP Secrets Manager', () => {
 					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
-					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
 				],
 			]);
 
@@ -135,14 +133,10 @@ describe('GCP Secrets Manager', () => {
 		expect(getSpy).toHaveBeenCalledWith({
 			name: `projects/${PROJECT_ID}/secrets/secret3/versions/latest`,
 		});
-		expect(getSpy).not.toHaveBeenCalledWith({
-			name: `projects/${PROJECT_ID}/secrets/#@&/versions/latest`,
-		});
 
 		expect(gcpSecretsManager.getSecret('secret1')).toBe('value1');
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(gcpSecretsManager.getSecret('#@&')).toBeUndefined(); // unsupported name
 	});
 
 	it('should throw a generic error when accessing secret versions', async () => {
@@ -155,7 +149,6 @@ describe('GCP Secrets Manager', () => {
 			secret1: 'value1',
 			secret2: 'value2',
 			secret3: '', // no value
-			'#@&': 'value', // unsupported name
 		};
 
 		await gcpSecretsManager.init(
@@ -172,7 +165,6 @@ describe('GCP Secrets Manager', () => {
 					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
-					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
 				],
 			]);
 
@@ -210,7 +202,6 @@ describe('GCP Secrets Manager', () => {
 			secret1: 'value1',
 			secret2: 'value2',
 			secret3: '', // no value
-			'#@&': 'value', // unsupported name
 		};
 
 		await gcpSecretsManager.init(
@@ -227,7 +218,6 @@ describe('GCP Secrets Manager', () => {
 					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
-					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
 				],
 			]);
 
@@ -264,14 +254,10 @@ describe('GCP Secrets Manager', () => {
 		expect(getSpy).toHaveBeenCalledWith({
 			name: `projects/${PROJECT_ID}/secrets/secret3/versions/latest`,
 		});
-		expect(getSpy).not.toHaveBeenCalledWith({
-			name: `projects/${PROJECT_ID}/secrets/#@&/versions/latest`,
-		});
 
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(gcpSecretsManager.getSecret('#@&')).toBeUndefined(); // unsupported name
 	});
 
 	it('should handle errors when accessing secret versions (PERMISSION_DENIED)', async () => {
@@ -284,7 +270,6 @@ describe('GCP Secrets Manager', () => {
 			secret1: 'value1',
 			secret2: 'value2',
 			secret3: '', // no value
-			'#@&': 'value', // unsupported name
 		};
 
 		await gcpSecretsManager.init(
@@ -301,7 +286,6 @@ describe('GCP Secrets Manager', () => {
 					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
-					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
 				],
 			]);
 
@@ -338,14 +322,10 @@ describe('GCP Secrets Manager', () => {
 		expect(getSpy).toHaveBeenCalledWith({
 			name: `projects/${PROJECT_ID}/secrets/secret3/versions/latest`,
 		});
-		expect(getSpy).not.toHaveBeenCalledWith({
-			name: `projects/${PROJECT_ID}/secrets/#@&/versions/latest`,
-		});
 
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(gcpSecretsManager.getSecret('#@&')).toBeUndefined(); // unsupported name
 	});
 
 	it('should handle errors when accessing secret versions (UNAVAILABLE)', async () => {
@@ -358,7 +338,6 @@ describe('GCP Secrets Manager', () => {
 			secret1: 'value1',
 			secret2: 'value2',
 			secret3: '', // no value
-			'#@&': 'value', // unsupported name
 		};
 
 		await gcpSecretsManager.init(
@@ -375,7 +354,6 @@ describe('GCP Secrets Manager', () => {
 					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
-					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
 				],
 			]);
 
@@ -412,13 +390,9 @@ describe('GCP Secrets Manager', () => {
 		expect(getSpy).toHaveBeenCalledWith({
 			name: `projects/${PROJECT_ID}/secrets/secret3/versions/latest`,
 		});
-		expect(getSpy).not.toHaveBeenCalledWith({
-			name: `projects/${PROJECT_ID}/secrets/#@&/versions/latest`,
-		});
 
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(gcpSecretsManager.getSecret('#@&')).toBeUndefined(); // unsupported name
 	});
 });

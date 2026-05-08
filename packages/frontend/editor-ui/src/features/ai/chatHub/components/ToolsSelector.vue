@@ -2,7 +2,7 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nButton, N8nDropdownMenu, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
@@ -99,10 +99,12 @@ type ToolMenuItem = DropdownMenuItemProps<
 	{ nodeType: INodeTypeDescription | null; tool: INode }
 >;
 
+const CREATE_NEW_TOOL_ID = 'action::create-new';
+
 const menuItems = computed<ToolMenuItem[]>(() => {
 	const query = searchQuery.value.toLowerCase();
 
-	return chatStore.configuredTools
+	const toolItems: ToolMenuItem[] = chatStore.configuredTools
 		.filter((tool) => {
 			if (!query) return true;
 			const def = tool.definition;
@@ -120,9 +122,23 @@ const menuItems = computed<ToolMenuItem[]>(() => {
 				tool: tool.definition,
 			},
 		}));
+
+	toolItems.push({
+		id: CREATE_NEW_TOOL_ID,
+		label: i18n.baseText('chatHub.tools.selector.createNew'),
+		icon: { type: 'icon', value: 'plus' },
+		divided: true,
+	});
+
+	return toolItems;
 });
 
 function handleSelect(id: string) {
+	if (id === CREATE_NEW_TOOL_ID) {
+		openToolsManager();
+		return;
+	}
+
 	const [command, toolId] = id.split('::');
 
 	if (command === 'tool') {
@@ -142,92 +158,106 @@ onMounted(async () => {
 <template>
 	<div :class="$style.container">
 		<!-- When no tools configured, show just the button that opens the manager -->
-		<N8nButton
+		<N8nTooltip
 			v-if="chatStore.configuredTools.length === 0"
-			variant="subtle"
-			native-type="button"
-			:class="$style.toolsButton"
-			:disabled="disabled"
-			icon="plus"
-			data-test-id="chat-tools-button"
-			@click="openToolsManager"
+			:content="disabledTooltip"
+			:disabled="!disabledTooltip || !disabled"
+			placement="bottom"
 		>
-			{{ toolsLabel }}
-		</N8nButton>
+			<N8nButton
+				variant="subtle"
+				native-type="button"
+				:class="$style.toolsButton"
+				:disabled="disabled"
+				icon="plus"
+				data-test-id="chat-tools-button"
+				@click="openToolsManager"
+			>
+				{{ toolsLabel }}
+			</N8nButton>
+		</N8nTooltip>
 
-		<!-- When tools are selected, show the dropdown -->
-		<N8nDropdownMenu
+		<N8nTooltip
 			v-else
-			ref="dropdownMenu"
-			:items="menuItems"
-			placement="top-start"
-			extra-popper-class="tools-selector-dropdown"
-			searchable
-			:search-placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
-			:empty-text="i18n.baseText('chatHub.toolsManager.noResults')"
-			@select="handleSelect"
-			@search="handleSearch"
+			:content="disabledTooltip"
+			:disabled="!disabledTooltip || !disabled"
+			placement="bottom"
 		>
-			<template #trigger>
-				<N8nButton
-					variant="subtle"
-					native-type="button"
-					:disabled="disabled"
-					:icon="toolCount === 0 ? 'plus' : undefined"
-					data-test-id="chat-tools-button"
-				>
-					<span v-if="toolCount > 0" :class="$style.iconStack">
-						<NodeIcon
-							v-for="(nodeType, i) in displayToolNodeTypes"
-							:key="`${nodeType?.name}-${i}`"
-							:style="{ zIndex: i + 1 }"
-							:node-type="nodeType"
-							:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
-							:circle="true"
-							:size="12"
-						/>
-						<span
-							v-if="remainingToolCount > 0"
-							:class="[$style.icon, $style.iconOverlap, $style.countBadge]"
-						>
-							+{{ remainingToolCount }}
+			<N8nDropdownMenu
+				ref="dropdownMenu"
+				:items="menuItems"
+				placement="top-start"
+				extra-popper-class="tools-selector-dropdown"
+				searchable
+				:search-placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+				:empty-text="i18n.baseText('chatHub.toolsManager.noResults')"
+				@select="handleSelect"
+				@search="handleSearch"
+			>
+				<template #trigger>
+					<N8nButton
+						variant="subtle"
+						native-type="button"
+						:disabled="disabled"
+						:icon="toolCount === 0 ? 'plus' : undefined"
+						data-test-id="chat-tools-button"
+					>
+						<span v-if="toolCount > 0" :class="$style.iconStack">
+							<NodeIcon
+								v-for="(nodeType, i) in displayToolNodeTypes"
+								:key="`${nodeType?.name}-${i}`"
+								:style="{ zIndex: i + 1 }"
+								:node-type="nodeType"
+								:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
+								:circle="true"
+								:size="12"
+							/>
+							<span
+								v-if="remainingToolCount > 0"
+								:class="[$style.icon, $style.iconOverlap, $style.countBadge]"
+							>
+								+{{ remainingToolCount }}
+							</span>
 						</span>
-					</span>
-					{{ toolsLabel }}
-				</N8nButton>
-			</template>
+						{{ toolsLabel }}
+					</N8nButton>
+				</template>
 
-			<template #search-prefix>
-				<N8nIcon icon="search" />
-			</template>
+				<template #search-prefix>
+					<N8nIcon icon="search" />
+				</template>
 
-			<template #search-suffix>
-				<N8nIconButton
-					icon="settings"
-					variant="ghost"
-					size="medium"
-					text
-					:class="$style.settingsButton"
-					@click.stop="openToolsManager"
-				/>
-			</template>
+				<template #search-suffix>
+					<N8nIconButton
+						icon="settings"
+						variant="ghost"
+						size="medium"
+						text
+						:class="$style.settingsButton"
+						@click.stop="openToolsManager"
+					/>
+				</template>
 
-			<template #item-leading="{ item }">
-				<NodeIcon v-if="item.data?.nodeType" :node-type="item.data.nodeType" :size="16" />
-			</template>
+				<template #item-leading="{ item }">
+					<NodeIcon v-if="item.data?.nodeType" :node-type="item.data.nodeType" :size="16" />
+					<N8nIcon v-else-if="item.icon?.type === 'icon'" :icon="item.icon.value" size="large" />
+				</template>
 
-			<template #item-trailing="{ item }">
-				<N8nIconButton
-					icon="settings"
-					variant="ghost"
-					size="medium"
-					text
-					:class="$style.itemSettingsButton"
-					@click.stop="openToolSettings(item)"
-				/>
-				<span v-if="!item.checked" :class="$style.checkPlaceholder" />
-			</template>
-		</N8nDropdownMenu>
+				<template #item-trailing="{ item }">
+					<template v-if="item.id !== CREATE_NEW_TOOL_ID">
+						<N8nIconButton
+							icon="settings"
+							variant="ghost"
+							size="medium"
+							text
+							:class="$style.itemSettingsButton"
+							@click.stop="openToolSettings(item)"
+						/>
+						<span v-if="!item.checked" :class="$style.checkPlaceholder" />
+					</template>
+				</template>
+			</N8nDropdownMenu>
+		</N8nTooltip>
 	</div>
 </template>
 

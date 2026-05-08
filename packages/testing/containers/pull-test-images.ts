@@ -24,24 +24,42 @@ interface PullResult {
 	pulled: number;
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 10_000;
+
+async function sleep(ms: number): Promise<void> {
+	return await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function pullImage(image: string): Promise<PullResult> {
 	const imageStart = Date.now();
-	try {
-		const { stdout, stderr } = await execAsync(`docker pull ${image}`);
-		const output = stdout + stderr;
 
-		// Count cached vs pulled layers
-		const cached = (output.match(/Already exists/g) ?? []).length;
-		const pulled = (output.match(/Pull complete/g) ?? []).length;
+	for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+		try {
+			const { stdout, stderr } = await execAsync(`docker pull ${image}`);
+			const output = stdout + stderr;
 
-		const duration = ((Date.now() - imageStart) / 1000).toFixed(1);
-		return { image, duration, success: true, cached, pulled };
-	} catch (error) {
-		const duration = ((Date.now() - imageStart) / 1000).toFixed(1);
-		const message = error instanceof Error ? error.message : String(error);
-		console.error(`   ⚠️  Pull failed for ${image}: ${message}`);
-		return { image, duration, success: false, cached: 0, pulled: 0 };
+			const cached = (output.match(/Already exists/g) ?? []).length;
+			const pulled = (output.match(/Pull complete/g) ?? []).length;
+
+			const duration = ((Date.now() - imageStart) / 1000).toFixed(1);
+			return { image, duration, success: true, cached, pulled };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (attempt < MAX_RETRIES) {
+				console.warn(
+					`   ⚠️  Pull attempt ${attempt}/${MAX_RETRIES} failed for ${image}: ${message}`,
+				);
+				console.warn(`   ⏳ Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+				await sleep(RETRY_DELAY_MS);
+			} else {
+				console.error(`   ❌ Pull failed for ${image} after ${MAX_RETRIES} attempts: ${message}`);
+			}
+		}
 	}
+
+	const duration = ((Date.now() - imageStart) / 1000).toFixed(1);
+	return { image, duration, success: false, cached: 0, pulled: 0 };
 }
 
 function isValidImageKey(key: string): key is ImageKey {

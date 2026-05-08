@@ -24,6 +24,8 @@ const props = defineProps<{
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
 	createButtonVariant?: ButtonProps['variant'];
+	projectId?: string;
+	suggestedCredentialName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -109,7 +111,13 @@ const onCredentialSelected = (credentialId: string) => {
 	emit('credentialSelected', credentialId);
 };
 const createNewCredential = () => {
-	uiStore.openNewCredential(props.credentialType, true);
+	uiStore.openNewCredential(
+		props.credentialType,
+		true,
+		false,
+		props.projectId,
+		props.suggestedCredentialName,
+	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };
@@ -188,6 +196,9 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && wasModalOpenedFromHere.value) {
 			wasModalOpenedFromHere.value = false;
+			if (props.selectedCredentialId) {
+				emit('credentialSelected', props.selectedCredentialId);
+			}
 		}
 	},
 });
@@ -267,6 +278,7 @@ watch(
 <style lang="scss" module>
 .dropdown {
 	display: flex;
+	align-items: flex-end;
 	gap: var(--spacing--2xs);
 }
 

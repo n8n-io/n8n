@@ -4,7 +4,6 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { defineStore } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { i18n } from '@n8n/i18n';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
@@ -36,14 +35,9 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {
 		workflowId: string;
 		sharedWithProjects: ProjectSharingData[];
 	}) => {
-		const workflowsStore = useWorkflowsStore();
 		workflowsListStore.updateWorkflowInCache(payload.workflowId, {
 			sharedWithProjects: payload.sharedWithProjects,
 		});
-		workflowsStore.workflow = {
-			...workflowsStore.workflow,
-			sharedWithProjects: payload.sharedWithProjects,
-		};
 	};
 
 	const saveWorkflowSharedWith = async (payload: {

@@ -12,8 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
@@ -53,7 +52,7 @@ export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vector Store Question Answer Tool',
 		name: 'toolVectorStore',
-		icon: 'fa:database',
+		icon: 'node:vector-store-question-answer-tool',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],

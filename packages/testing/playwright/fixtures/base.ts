@@ -10,6 +10,11 @@ import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
+import {
+	quarantineFixtures,
+	type QuarantineTestFixtures,
+	type QuarantineWorkerFixtures,
+} from '../fixtures/quarantine';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
@@ -50,14 +55,15 @@ type CapabilityOption = Capability | N8NConfig;
 type ProjectUse = { containerConfig?: N8NConfig };
 
 export const test = base.extend<
-	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures,
-	WorkerFixtures & CurrentsWorkerFixtures
+	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures & QuarantineTestFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,
+	...quarantineFixtures,
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
@@ -78,11 +84,28 @@ export const test = base.extend<
 					? CAPABILITIES[capability]
 					: capability;
 
+			const globalEnv: Record<string, string> = (() => {
+				const raw = process.env.N8N_TEST_ENV;
+				if (!raw) return {};
+				try {
+					return JSON.parse(raw) as Record<string, string>;
+				} catch {
+					console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
+					return {};
+				}
+			})();
+
 			const config: N8NConfig = {
 				...base,
 				...override,
 				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
-				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
+				env: {
+					...globalEnv,
+					...base.env,
+					...override.env,
+					E2E_TESTS: 'true',
+					N8N_RESTRICT_FILE_ACCESS_TO: '',
+				},
 			};
 
 			const container = await createN8NStack(config);

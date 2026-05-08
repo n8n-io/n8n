@@ -154,6 +154,7 @@ watch(
 							<N8nButton
 								variant="subtle"
 								iconOnly
+								:aria-label="(value - 1).toString()"
 								:label="(value - 1).toString()"
 								@click="selectSurveyValue((value - 1).toString())"
 							/>

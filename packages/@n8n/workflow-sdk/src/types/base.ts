@@ -71,6 +71,7 @@ export interface CredentialReference {
 export interface NewCredentialValue {
 	readonly __newCredential: true;
 	readonly name: string;
+	readonly id?: string;
 }
 
 // =============================================================================
@@ -155,6 +156,150 @@ export interface IConnections {
 	[key: string]: INodeConnections;
 }
 
+/**
+ * Minimal node-info shape needed to resolve a node's error-output index.
+ * Accepts either a NodeJSON or a GraphNode instance config, so callers on
+ * both import and export paths can hand theirs off without conversion.
+ */
+interface ErrorIndexNodeInfo {
+	name?: string;
+	type: string;
+	parameters?: IDataObject;
+}
+
+/**
+ * Resolve the output index at which a node's error pin should live in the
+ * modern (main[n]) format. Kept in sync with the NODE_SEMANTICS table in
+ * codegen/semantic-registry.ts — the rule is always `natural output count`,
+ * with 1 as the fallback for community / unknown nodes.
+ */
+export function resolveErrorOutputIndex(type: string, parameters?: IDataObject): number {
+	if (type === 'n8n-nodes-base.if') return 2; // trueBranch + falseBranch
+	if (type === 'n8n-nodes-base.switch') {
+		const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
+		const rulesArray = rules?.rules ?? rules?.values;
+		const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+		return numCases + 1; // cases + fallback
+	}
+	if (type === 'n8n-nodes-base.splitInBatches') return 2; // done + loop
+	if (type === 'n8n-nodes-base.merge') return 1; // single output
+	return 1;
+}
+
+/**
+ * Fold legacy top-level `error` connection entries into the `main` output
+ * array in-place.
+ *
+ * Older n8n workflows serialized error-pin connections under a sibling
+ * `"error"` key next to `"main"` on a source node. The modern format — what
+ * the editor canvas renders and what `onError: 'continueErrorOutput'` exposes
+ * at runtime — puts the error pin as an extra slot at the end of the `main`
+ * array (index 1 for single-output nodes, index 2 for IF, etc.).
+ *
+ * Pass `nodes` when available so the error pin lands at the correct index
+ * for multi-output nodes (IF / Switch / SplitInBatches). Without node info
+ * the helper falls back to index 1, which is right for the common
+ * single-main-output case but wrong for sparse multi-output nodes.
+ *
+ * Applied on both import and export so the SDK only ever hands out the
+ * modern shape, while still accepting legacy workflows as input.
+ */
+export function foldLegacyErrorConnections(
+	connections: IConnections,
+	nodes?: readonly ErrorIndexNodeInfo[],
+): void {
+	const nodeLookup = new Map<string, ErrorIndexNodeInfo>();
+	if (nodes) {
+		for (const n of nodes) {
+			if (n.name) nodeLookup.set(n.name, n);
+		}
+	}
+
+	for (const [nodeName, nodeConns] of Object.entries(connections)) {
+		const errorOutputs = nodeConns.error;
+		if (!Array.isArray(errorOutputs) || errorOutputs.length === 0) continue;
+
+		const errorTargets = errorOutputs[0];
+		delete nodeConns.error;
+		if (!Array.isArray(errorTargets) || errorTargets.length === 0) continue;
+
+		const node = nodeLookup.get(nodeName);
+		const targetIndex = node ? resolveErrorOutputIndex(node.type, node.parameters) : 1;
+
+		const main = Array.isArray(nodeConns.main) ? nodeConns.main : [];
+		// Pad any missing earlier output slots with empty arrays so the error
+		// target lands at its type-correct index (e.g. main[2] for IF even when
+		// neither branch was wired up).
+		while (main.length < targetIndex) main.push([]);
+		const existing = main[targetIndex] ?? [];
+		main[targetIndex] = [...existing, ...errorTargets];
+		nodeConns.main = main;
+	}
+}
+
+/**
+ * Normalize workflow connections in-place.
+ * Some workflows store connections as flat tuples [nodeName, type, index]
+ * instead of the standard {node, type, index} objects. This converts them
+ * to canonical object format so all downstream code sees a consistent shape.
+ */
+export function normalizeConnections(connections: IConnections): void {
+	for (const nodeConns of Object.values(connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			for (let i = 0; i < outputs.length; i++) {
+				const slot = outputs[i] as unknown;
+				if (!Array.isArray(slot)) continue;
+				// Flat tuple: [string, string, number] instead of [{node, type, index}]
+				if (slot.length > 0 && slot.length <= 3 && typeof slot[0] === 'string') {
+					outputs[i] = [
+						{
+							node: slot[0],
+							type: (slot[1] as string) ?? 'main',
+							index: (slot[2] as number) ?? 0,
+						},
+					];
+				}
+			}
+			nodeConns[connType] = outputs;
+		}
+	}
+
+	// Ensure every connection object has an explicit `index` property.
+	// Some original JSON omits it (semantically equivalent to 0).
+	for (const nodeConns of Object.values(connections)) {
+		for (const outputs of Object.values(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			for (const slot of outputs) {
+				if (!Array.isArray(slot)) continue;
+				for (const conn of slot) {
+					if (typeof conn === 'object' && conn !== null && conn.index === undefined) {
+						conn.index = 0;
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Generate a unique name by appending an incrementing counter (starting at 2).
+ * The first instance keeps the original baseName; duplicates get "baseName 2", "baseName 3", etc.
+ *
+ * @param baseName - The original name to deduplicate
+ * @param exists - Callback that returns true if a name is already taken
+ * @returns A unique name derived from baseName
+ */
+export function generateUniqueName(baseName: string, exists: (name: string) => boolean): string {
+	let counter = 2;
+	let uniqueName = `${baseName} ${counter}`;
+	while (exists(uniqueName)) {
+		counter++;
+		uniqueName = `${baseName} ${counter}`;
+	}
+	return uniqueName;
+}
+
 // =============================================================================
 // Internal: Serialization types
 // =============================================================================
@@ -170,6 +315,7 @@ export interface NodeJSON {
 	position: [number, number];
 	parameters?: IDataObject;
 	credentials?: Record<string, { id?: string; name: string }>;
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
@@ -223,6 +369,7 @@ export interface DeclaredConnection {
 	target: NodeInstance<string, string, unknown> | InputTarget;
 	outputIndex: number;
 	targetInputIndex?: number;
+	connectionType?: string;
 }
 
 /**
@@ -259,35 +406,6 @@ export interface OutputSelector<TType extends string, TVersion extends string, T
 // =============================================================================
 
 /**
- * Binary data field properties
- */
-export interface BinaryField {
-	fileName?: string;
-	directory?: string;
-	mimeType?: string;
-	fileExtension?: string;
-	fileSize?: string;
-}
-
-/**
- * Binary data context
- */
-export type BinaryContext = {
-	[fieldName: string]: BinaryField | (() => string[]);
-} & {
-	keys(): string[];
-};
-
-/**
- * Input data context
- */
-export interface InputContext {
-	first(): IDataObject;
-	all(): IDataObject[];
-	item: IDataObject;
-}
-
-/**
  * Execution context
  */
 export interface ExecutionContext {
@@ -305,29 +423,6 @@ export interface WorkflowContext {
 	active: boolean;
 }
 
-/**
- * Expression context providing access to n8n runtime data
- */
-export interface ExpressionContext {
-	json: IDataObject;
-	binary: BinaryContext;
-	input: InputContext;
-	env: IDataObject;
-	vars: IDataObject;
-	secrets: IDataObject;
-	now: Date;
-	today: Date;
-	itemIndex: number;
-	runIndex: number;
-	execution: ExecutionContext;
-	workflow: WorkflowContext;
-}
-
-/**
- * Expression function type
- */
-export type Expression<T> = ($: ExpressionContext) => T;
-
 // =============================================================================
 // Node configuration (full version with all options)
 // =============================================================================
@@ -337,9 +432,10 @@ export type Expression<T> = ($: ExpressionContext) => T;
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	credentials?: Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>;
 	name?: string;
 	position?: [number, number];
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
@@ -376,7 +472,7 @@ export interface StickyNoteConfig {
  * Subnode configuration for AI nodes
  */
 export interface SubnodeConfig {
-	model?: LanguageModelInstance | LanguageModelInstance[];
+	model?: LanguageModelInstance | LanguageModelInstance[] | LanguageModelInstance[][];
 	memory?: MemoryInstance;
 	tools?: ToolInstance[];
 	outputParser?: OutputParserInstance;
@@ -387,7 +483,7 @@ export interface SubnodeConfig {
 	retriever?: RetrieverInstance;
 	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
 	textSplitter?: TextSplitterInstance;
-	reranker?: RerankerInstance;
+	reranker?: RerankerInstance | RerankerInstance[];
 }
 
 // =============================================================================
@@ -437,9 +533,12 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
 	 *
+	 * Index is **0-based**: `.input(0)` is the FIRST input, `.input(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect to input 1 of a merge node
-	 * nodeA.to(mergeNode.input(1))
+	 * // Wire two sources to a merge node — first source to input 0, second to input 1
+	 * sourceA.to(mergeNode.input(0)) // first input
+	 * sourceB.to(mergeNode.input(1)) // second input
 	 */
 	input(index: number): InputTarget;
 
@@ -447,9 +546,11 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create an output selector for connecting from a specific output index.
 	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
 	 *
+	 * Index is **0-based**: `.output(0)` is the FIRST output, `.output(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect from output 1 of a classifier
-	 * classifier.output(1).to(categoryB)
+	 * classifier.output(0).to(categoryA) // first output
+	 * classifier.output(1).to(categoryB) // second output
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
@@ -684,7 +785,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -695,10 +797,13 @@ export type IfElseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -709,7 +814,25 @@ export type SwitchCaseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
+
+/**
+ * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,
+ * chain, null, plain array (fan-out), or nested control-flow builder.
+ */
+export type SplitInBatchesTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| Array<
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  >
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
 
 /**
  * Fluent builder for IF nodes with onTrue/onFalse methods.
@@ -732,6 +855,8 @@ export interface IfElseBuilder<TOutput = unknown> {
 	readonly trueBranch: IfElseTarget;
 	/** The false branch target (set via .onFalse()) */
 	readonly falseBranch: IfElseTarget;
+	/** The error branch target (set via .onError()) */
+	readonly errorBranch?: IfElseTarget;
 
 	/**
 	 * Set the target for the true branch (output 0).
@@ -748,6 +873,18 @@ export interface IfElseBuilder<TOutput = unknown> {
 	 * @param target - The node, chain, or array (fan-out) to execute when condition is false
 	 */
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Set the target for the IF node's own error output (output 2).
+	 *
+	 * This wires the IF node's error branch — it is NOT a generic per-node
+	 * "on-error" output. Only applicable when the IF node's config sets
+	 * `onError: 'continueErrorOutput'`. For wiring a regular node's error
+	 * output, use `node.onError(handler)` on the source node instead.
+	 *
+	 * @param target - The node or chain to execute when the IF condition errors
+	 */
+	onError(target: IfElseTarget): IfElseBuilder<TOutput>;
 
 	/**
 	 * Chain a target node after the IF branches.
@@ -832,16 +969,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onEachBatch(processNode.to(sibNode))
 	 *   .onDone(finalizeNode)
 	 */
-	onEachBatch(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onEachBatch(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 
 	/**
 	 * Fluent API: Set the "done" branch target (output 0).
@@ -853,16 +981,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onDone(finalizeNode)
 	 *   .onEachBatch(processNode.to(sibNode))
 	 */
-	onDone(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onDone(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 }
 
 // =============================================================================
@@ -875,6 +994,11 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 export interface GeneratePinDataOptions {
 	/** Only generate for nodes not in this workflow (new nodes) */
 	beforeWorkflow?: WorkflowJSON;
+}
+
+export interface ToJSONOptions {
+	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
+	tidyUp?: boolean;
 }
 
 /**
@@ -944,7 +1068,7 @@ export interface WorkflowBuilder {
 	 */
 	validate(options?: ValidationOptions): ValidationResult;
 
-	toJSON(): WorkflowJSON;
+	toJSON(options?: ToJSONOptions): WorkflowJSON;
 
 	/**
 	 * Serialize the workflow to a specific format using registered serializers.
@@ -1047,7 +1171,7 @@ export type StickyFn = (
 
 export type PlaceholderFn = (hint: string) => PlaceholderValue;
 
-export type NewCredentialFn = (name: string) => NewCredentialValue;
+export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 
 export type IfElseFn = (
 	branches: [

@@ -6,12 +6,14 @@ import {
 	N8nSelect2,
 	N8nSelect2Item,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { ProjectMemberData } from '../projects.types';
@@ -38,6 +40,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const router = useRouter();
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
@@ -47,19 +50,21 @@ const contactAdminModalVisible = ref(false);
 const upgradeModalVisible = ref(false);
 const searchQuery = ref('');
 
-// Clear search when dropdown closes
+// Clear search and remove focus ring when dropdown closes
 watch(dropdownOpen, (open) => {
 	if (!open) {
 		searchQuery.value = '';
+		// Delay blur to run after Reka UI's internal focus management restores trigger focus
+		setTimeout(() => {
+			if (document.activeElement instanceof HTMLElement) {
+				document.activeElement.blur();
+			}
+		}, 0);
 	}
 });
 
 const closeDropdown = () => {
 	dropdownOpen.value = false;
-	// Blur active element to remove focus ring
-	if (document.activeElement instanceof HTMLElement) {
-		document.activeElement.blur();
-	}
 };
 
 const selectedRole = computed(() => props.roles.find((role) => role.slug === props.data.role));
@@ -143,6 +148,7 @@ const onRoleSelect = (value: SelectValue | undefined) => {
 };
 
 const onAddCustomRoleClick = () => {
+	telemetry.track('User clicked add custom role from role selector');
 	closeDropdown();
 	if (!hasCustomRolesLicense.value) {
 		// No license - show upgrade modal
@@ -165,15 +171,23 @@ const onAddCustomRoleClick = () => {
 			:model-value="data.role"
 			size="small"
 			variant="ghost"
+			position="popper"
+			:content-class="$style.roleSelectContent"
 			:class="$style.roleSelect"
 			data-test-id="project-member-role-dropdown"
 			@update:model-value="onRoleSelect"
 		>
 			<!-- Custom trigger to match original styling -->
 			<template #default>
-				<span :class="$style.triggerContent">
-					{{ selectedRole?.displayName }}
-				</span>
+				<N8nTooltip
+					:content="selectedRole?.displayName"
+					:disabled="!selectedRole || dropdownOpen"
+					placement="top"
+				>
+					<span :class="$style.triggerContent">
+						{{ selectedRole?.displayName }}
+					</span>
+				</N8nTooltip>
 			</template>
 
 			<!-- Search input header -->
@@ -200,6 +214,7 @@ const onAddCustomRoleClick = () => {
 									tag="span"
 									size="medium"
 									:color="item.disabled ? 'text-light' : 'text-dark'"
+									:class="$style.itemLabel"
 								>
 									{{ item.label }}
 								</N8nText>
@@ -286,6 +301,7 @@ const onAddCustomRoleClick = () => {
 	padding: 0;
 	background-color: transparent;
 	min-height: auto;
+	max-width: 200px;
 
 	&:not([data-disabled]):hover {
 		background-color: transparent;
@@ -293,10 +309,20 @@ const onAddCustomRoleClick = () => {
 }
 
 .triggerContent {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
+	display: inline-block;
 	font-size: var(--font-size--sm);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 180px;
+}
+
+.itemLabel {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 180px;
 }
 
 .selectItem {
@@ -339,5 +365,9 @@ const onAddCustomRoleClick = () => {
 	&:hover {
 		background-color: var(--color--background--light-1);
 	}
+}
+
+.roleSelectContent {
+	max-width: 280px;
 }
 </style>

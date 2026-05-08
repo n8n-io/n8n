@@ -10,7 +10,7 @@ import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.v
 import ParameterOverrideSelectableList from './ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getMappedResult } from '@/app/utils/mappingUtils';
 import {
 	hasExpressionMapping,
@@ -37,6 +37,8 @@ import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/ap
 
 import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
+
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -53,6 +55,7 @@ type Props = {
 	entryIndex?: number;
 	showDelete?: boolean;
 	onDelete?: () => void;
+	optionsOverrides?: ParameterOptionsOverrides;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -82,7 +85,7 @@ const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 const wrapperHovered = ref(false);
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const telemetry = useTelemetry();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
@@ -136,6 +139,8 @@ const parameterTooltipText = computed(() =>
 );
 
 const showExpressionSelector = computed(() => {
+	if (props.optionsOverrides?.hideExpressionSelector) return false;
+
 	if (isResourceLocator.value) {
 		// The resourceLocator handles overrides itself, so we use this hack to
 		// infer whether it's overridden and we should hide the toggle
@@ -415,9 +420,7 @@ function removeOverride(clearField = false) {
 		ref="inputLabel"
 		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-		:tooltip-text="
-			hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)
-		"
+		:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
 		:show-options="menuExpanded || focused || forceShowExpression"
 		:options-position="optionsPosition"
@@ -439,7 +442,7 @@ function removeOverride(clearField = false) {
 					{ [$style.overrideButtonIssueOffset]: parameterInputWrapper?.displaysIssues },
 				]"
 			>
-				<FromAiOverrideButton @click="applyOverride" />
+				<FromAiOverrideButton position="standalone" @click="applyOverride" />
 			</div>
 		</template>
 
@@ -450,6 +453,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"
@@ -488,6 +492,7 @@ function removeOverride(clearField = false) {
 						:label="label"
 						:event-bus="eventBus"
 						:can-be-overridden="canBeContentOverride"
+						:hide-label="hideLabel"
 						input-size="small"
 						@update="valueChanged"
 						@text-input="onTextInput"
@@ -515,6 +520,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"
@@ -535,6 +541,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"

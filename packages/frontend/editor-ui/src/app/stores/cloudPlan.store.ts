@@ -75,6 +75,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		icon: bannerConfig.value?.cta?.icon ?? 'zap',
 		size: bannerConfig.value?.cta?.size ?? 'small',
 		style: bannerConfig.value?.cta?.style ?? 'success',
+		variant: bannerConfig.value?.cta?.variant,
 		href: bannerConfig.value?.cta?.href,
 	}));
 

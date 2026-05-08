@@ -102,7 +102,7 @@ function isNonStandardBlock(
 	return block.type === 'non_standard';
 }
 
-function fromLcContent(
+export function fromLcContent(
 	content: string | LangchainMessages.ContentBlock | LangchainMessages.ContentBlock[],
 ): N8nMessages.MessageContent[] {
 	if (typeof content === 'string') {

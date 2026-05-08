@@ -153,6 +153,8 @@ describe('buildSwitchCaseComposite', () => {
 				['fallback', [{ target: 'FallbackHandler', targetInputSlot: 'input' }]],
 			]),
 		);
+		// 1 rule → fallback index = 1
+		switchNode.json.parameters = { rules: { rules: [{}] } };
 
 		const handler0 = createSemanticNode('Handler0', 'n8n-nodes-base.noOp');
 		const fallbackHandler = createSemanticNode('FallbackHandler', 'n8n-nodes-base.noOp');
@@ -172,8 +174,46 @@ describe('buildSwitchCaseComposite', () => {
 
 		expect(result.kind).toBe('switchCase');
 		expect(result.cases).toHaveLength(2);
-		// Fallback index should be calculated correctly
+		// Fallback index = 1 (from 1 rule in parameters)
 		expect(result.caseIndices).toEqual([0, 1]);
+	});
+
+	it('computes fallback index from rule count', () => {
+		const switchNode = createSemanticNode(
+			'Switch',
+			'n8n-nodes-base.switch',
+			new Map([
+				['case0', [{ target: 'Handler0', targetInputSlot: 'input' }]],
+				['case1', [{ target: 'Handler1', targetInputSlot: 'input' }]],
+				['case2', [{ target: 'Handler2', targetInputSlot: 'input' }]],
+				['fallback', [{ target: 'FallbackHandler', targetInputSlot: 'input' }]],
+			]),
+		);
+		// 3 rules → fallback index = 3
+		switchNode.json.parameters = { rules: { rules: [{}, {}, {}] } };
+
+		const handler0 = createSemanticNode('Handler0', 'n8n-nodes-base.noOp');
+		const handler1 = createSemanticNode('Handler1', 'n8n-nodes-base.noOp');
+		const handler2 = createSemanticNode('Handler2', 'n8n-nodes-base.noOp');
+		const fallbackHandler = createSemanticNode('FallbackHandler', 'n8n-nodes-base.noOp');
+
+		const graph: SemanticGraph = {
+			nodes: new Map([
+				['Switch', switchNode],
+				['Handler0', handler0],
+				['Handler1', handler1],
+				['Handler2', handler2],
+				['FallbackHandler', fallbackHandler],
+			]),
+			roots: ['Switch'],
+			cycleEdges: new Map(),
+		};
+
+		const ctx = createBuildContext(graph);
+		const result = buildSwitchCaseComposite(switchNode, ctx);
+
+		// fallback index = 3 (from 3 rules in parameters)
+		expect(result.caseIndices).toEqual([0, 1, 2, 3]);
 	});
 
 	it('handles Switch with no cases', () => {
@@ -222,6 +262,44 @@ describe('buildSwitchCaseComposite', () => {
 		// Case targets should be marked as visited
 		expect(ctx.visited.has('Handler0')).toBe(true);
 		expect(ctx.visited.has('Handler1')).toBe(true);
+	});
+
+	it('derives fallback index from rule count when some cases are disconnected', () => {
+		// Switch with 4 rules but only case0 and case3 connected
+		// Fallback should be at index 4, not 2 (the count of connected case outputs)
+		const switchNode = createSemanticNode(
+			'Switch',
+			'n8n-nodes-base.switch',
+			new Map([
+				['case0', [{ target: 'Handler0', targetInputSlot: 'input' }]],
+				['case3', [{ target: 'Handler3', targetInputSlot: 'input' }]],
+				['fallback', [{ target: 'FallbackHandler', targetInputSlot: 'input' }]],
+			]),
+		);
+		// Set 4 rules in node parameters
+		switchNode.json.parameters = { rules: { rules: [{}, {}, {}, {}] } };
+
+		const handler0 = createSemanticNode('Handler0', 'n8n-nodes-base.noOp');
+		const handler3 = createSemanticNode('Handler3', 'n8n-nodes-base.noOp');
+		const fallbackHandler = createSemanticNode('FallbackHandler', 'n8n-nodes-base.noOp');
+
+		const graph: SemanticGraph = {
+			nodes: new Map([
+				['Switch', switchNode],
+				['Handler0', handler0],
+				['Handler3', handler3],
+				['FallbackHandler', fallbackHandler],
+			]),
+			roots: ['Switch'],
+			cycleEdges: new Map(),
+		};
+
+		const ctx = createBuildContext(graph);
+		const result = buildSwitchCaseComposite(switchNode, ctx);
+
+		expect(result.kind).toBe('switchCase');
+		// Fallback index should be 4 (from 4 rules), not 2 (from 2 connected case outputs)
+		expect(result.caseIndices).toEqual([0, 3, 4]);
 	});
 
 	it('handles sparse case indices', () => {

@@ -80,7 +80,7 @@ describe('ProjectCustomRolesUpgradeModal', () => {
 
 			await user.click(getByText('View plans'));
 
-			expect(mockGoToUpgrade).toHaveBeenCalledWith('custom-roles', 'upgrade-custom-roles');
+			expect(mockGoToUpgrade).toHaveBeenCalledWith('custom-roles-selector', 'upgrade-custom-roles');
 		});
 
 		it('should close modal after View plans is clicked', async () => {

@@ -14,7 +14,11 @@ import * as path from 'path';
 import { setSchemaBaseDirs, getSchemaBaseDirs } from './schema-validator';
 import { generateNodeDefinitions } from '../generate-types/generate-node-defs-cli';
 
-const SCHEMA_TEST_DIR = path.join(os.tmpdir(), 'n8n-schema-tests');
+// Use a worker-specific directory to prevent race conditions when multiple Jest
+// workers run schema-using tests in parallel (they would otherwise concurrently
+// delete and regenerate schemas into the same shared temp directory).
+const WORKER_ID = process.env.JEST_WORKER_ID ?? '0';
+const SCHEMA_TEST_DIR = path.join(os.tmpdir(), `n8n-schema-tests-${WORKER_ID}`);
 const STAMP_FILE = path.join(SCHEMA_TEST_DIR, '.generator-hash');
 
 let originalBaseDirs: string[] | undefined;

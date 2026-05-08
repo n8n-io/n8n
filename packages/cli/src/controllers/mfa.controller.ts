@@ -1,4 +1,5 @@
 import type { WebAuthnCredentialResponse } from '@n8n/api-types';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import {
 	createUserKeyedRateLimiter,
@@ -13,6 +14,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
@@ -26,11 +28,18 @@ export class MFAController {
 		private authService: AuthService,
 		private userRepository: UserRepository,
 		private eventService: EventService,
+		private instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Post('/enforce-mfa')
 	@GlobalScope('user:enforceMfa')
 	async enforceMFA(req: MFA.Enforce) {
+		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
+			throw new ForbiddenError(
+				'MFA enforcement is managed via environment variables and cannot be modified through the API',
+			);
+		}
+
 		if (req.body.enforce && !(req.authInfo?.usedMfa ?? false)) {
 			throw new BadRequestError(
 				'You must enable two-factor authentication on your own account before enforcing it for all users',

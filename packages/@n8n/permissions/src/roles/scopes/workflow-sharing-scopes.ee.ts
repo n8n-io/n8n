@@ -8,6 +8,7 @@ export const WORKFLOW_SHARING_OWNER_SCOPES: Scope[] = [
 	'workflow:delete',
 	'workflow:execute',
 	'workflow:share',
+	'workflow:unshare',
 	'workflow:move',
 	'workflow:execute-chat',
 ];

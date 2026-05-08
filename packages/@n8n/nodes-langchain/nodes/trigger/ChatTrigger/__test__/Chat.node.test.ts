@@ -1,5 +1,3 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
@@ -7,6 +5,8 @@ import {
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { Chat } from '../Chat.node';
 
@@ -17,10 +17,16 @@ describe('Test Chat Node', () => {
 	beforeEach(() => {
 		chat = new Chat();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.customData = {
+			set: vi.fn(),
+			setAll: vi.fn(),
+			get: vi.fn(),
+			getAll: vi.fn(),
+		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('v1.0', () => {
@@ -36,6 +42,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'afterTimeInterval',
 				resumeAmount: 1,
@@ -60,6 +67,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ memoryConnection: true });
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'afterTimeInterval',
 				resumeAmount: 1,
@@ -74,7 +82,7 @@ describe('Test Chat Node', () => {
 				} as any,
 			]);
 
-			const memory = { chatHistory: { addAIMessage: jest.fn() } };
+			const memory = { chatHistory: { addAIMessage: vi.fn() } };
 			mockExecuteFunctions.getInputConnectionData.mockResolvedValueOnce(memory);
 
 			await chat.execute.call(mockExecuteFunctions);
@@ -87,6 +95,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'afterTimeInterval',
 				resumeAmount: 1,
@@ -111,6 +120,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'atSpecifiedTime',
 				maxDateAndTime: new Date().toISOString(),
@@ -246,7 +256,7 @@ describe('Test Chat Node', () => {
 
 		it('should add user message to memory', async () => {
 			const data = { json: { chatInput: 'user message' } };
-			const memory = { chatHistory: { addUserMessage: jest.fn() } };
+			const memory = { chatHistory: { addUserMessage: vi.fn() } };
 			mockExecuteFunctions.getInputData.mockReturnValue([data]);
 			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
 			mockExecuteFunctions.getInputConnectionData.mockResolvedValue(memory);
@@ -278,6 +288,33 @@ describe('Test Chat Node', () => {
 				],
 			]);
 			expect(memory.chatHistory.addUserMessage).toHaveBeenCalledWith('user message');
+		});
+
+		it('v1.3 should return [[data]] (original message) instead of input data when not waiting for reply', async () => {
+			const chatNode = mock<INode>({
+				name: 'Chat',
+				type: CHAT_NODE_TYPE,
+				parameters: {},
+				typeVersion: 1.3,
+			});
+			const message = { json: { chatInput: 'user message' } };
+			const differentInputData = [{ json: { chatInput: 'other input' } }];
+			mockExecuteFunctions.getInputData.mockReturnValue(differentInputData);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return 'send';
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, message);
+
+			expect(result).toEqual([[message]]);
 		});
 
 		it('v1.2 should return output data directly without nesting into `data` field (except `approved`)', async () => {

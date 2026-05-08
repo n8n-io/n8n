@@ -30,20 +30,37 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
-const WorkflowExecuteModeSchema = z.union([
-	z.literal('cli'),
-	z.literal('error'),
-	z.literal('integrated'),
-	z.literal('internal'),
-	z.literal('manual'),
-	z.literal('retry'),
-	z.literal('trigger'),
-	z.literal('webhook'),
-	z.literal('evaluation'),
-	z.literal('chat'),
+export const WorkflowExecuteModeList = [
+	'cli',
+	'error',
+	'integrated',
+	'internal',
+	'manual',
+	'retry',
+	'trigger',
+	'webhook',
+	'evaluation',
+	'chat',
+	'agent',
+] as const;
+
+const WorkflowExecuteModeSchema = z.enum(WorkflowExecuteModeList);
+
+export type WorkflowExecuteModeValues = (typeof WorkflowExecuteModeList)[number];
+
+const RedactionPolicySchema = z.union([
+	z.literal('none'),
+	z.literal('all'),
+	z.literal('non-manual'),
+	z.literal('manual-only'),
 ]);
 
-export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;
+const RedactionSettingSchemaV1 = z.object({
+	version: z.literal(1),
+	policy: RedactionPolicySchema,
+});
+
+export type IRedactionSettingV1 = z.output<typeof RedactionSettingSchemaV1>;
 
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
@@ -82,6 +99,13 @@ const ExecutionContextSchemaV1 = z.object({
 		description:
 			'Encrypted credential context for dynamic credential resolution Always encrypted when stored, decrypted on-demand by credential resolver @see ICredentialContext for decrypted structure',
 	}),
+
+	/**
+	 * Redaction setting captured at execution time.
+	 * Persisted so the correct redaction policy is applied when reading execution data,
+	 * regardless of any subsequent changes to the workflow setting.
+	 */
+	redaction: RedactionSettingSchemaV1.optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;

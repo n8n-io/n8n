@@ -6,6 +6,8 @@ import { DateTime } from 'luxon';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
+
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
@@ -35,6 +37,7 @@ globalConfig.endpoints.metrics = {
 	includeApiMethodLabel: true,
 	includeApiStatusCodeLabel: true,
 	includeQueueMetrics: true,
+	includeWorkflowExecutionDuration: true,
 	queueMetricsInterval: 20,
 	activeWorkflowCountInterval: 60,
 	includeWorkflowStatistics: false,
@@ -347,6 +350,48 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_active 2');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_completed 0');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_failed 0');
+	});
+
+	it('should return workflow execution duration histogram after event', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('workflowExecutionDuration');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		eventService.emit('workflow-post-execute', {
+			executionId: 'exec_123',
+			workflow: { id: 'wf_1', name: 'Test' } as IWorkflowBase,
+			runData: {
+				startedAt: new Date('2026-01-01T00:00:00Z'),
+				stoppedAt: new Date('2026-01-01T00:00:02Z'),
+				status: 'success',
+				mode: 'trigger',
+			} as IRun,
+		});
+
+		/**
+		 * Assert
+		 */
+		const response = await agent.get('/metrics');
+
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContainEqual(
+			expect.stringContaining('n8n_test_workflow_execution_duration_seconds_bucket'),
+		);
+		expect(lines).toContainEqual(
+			expect.stringContaining('n8n_test_workflow_execution_duration_seconds_sum'),
+		);
+		expect(lines).toContainEqual(
+			expect.stringContaining('n8n_test_workflow_execution_duration_seconds_count'),
+		);
 	});
 
 	it('should return active workflow count', async () => {

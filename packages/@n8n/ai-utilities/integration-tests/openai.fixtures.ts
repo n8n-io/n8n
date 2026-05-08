@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { tool } from 'langchain';
 import { Readable } from 'node:stream';
 import z from 'zod';
@@ -573,20 +574,23 @@ export function createMockHttpRequests() {
 			body?: object,
 			headers?: Record<string, string>,
 		) => {
-			const response = await fetch(url, {
+			const response = await axios({
 				method,
-				body: JSON.stringify(body),
+				url,
+				data: body,
 				headers: {
 					...headers,
+					'Content-Type': 'application/json',
 					Authorization: 'Bearer test-api-key',
 				},
+				validateStatus: () => true, // Don't throw on any status
 			});
-			const json = await response.json();
+
 			return {
-				ok: response.ok,
+				ok: response.status >= 200 && response.status < 300,
 				status: response.status,
 				statusText: response.statusText,
-				body: json,
+				body: response.data,
 			};
 		},
 		openStream: async (
@@ -595,19 +599,24 @@ export function createMockHttpRequests() {
 			body?: object,
 			headers?: Record<string, string>,
 		) => {
-			const response = await fetch(url, {
+			const response = await axios({
 				method,
-				body: JSON.stringify(body),
+				url,
+				data: body,
 				headers: {
 					...headers,
+					'Content-Type': 'application/json',
 					Authorization: 'Bearer test-api-key',
 				},
+				responseType: 'stream',
+				validateStatus: () => true, // Don't throw on any status
 			});
+
 			return {
-				ok: response.ok,
+				ok: response.status >= 200 && response.status < 300,
 				status: response.status,
 				statusText: response.statusText,
-				body: response.body as ReadableStream<Uint8Array<ArrayBufferLike>>,
+				body: response.data,
 			};
 		},
 	};

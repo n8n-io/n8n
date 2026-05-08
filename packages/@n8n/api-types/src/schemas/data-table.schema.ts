@@ -45,12 +45,14 @@ export type DataTableColumn = z.infer<typeof dataTableColumnSchema>;
 export type DataTableListFilter = {
 	id?: string | string[];
 	projectId?: string | string[];
-	name?: string;
+	name?: string | string[];
 };
 
 export type DataTableListOptions = Partial<ListDataTableQueryDto> & {
-	filter: { projectId: string };
+	filter: DataTableListFilter;
 };
+
+export type DataTableListSortBy = ListDataTableQueryDto['sortBy'];
 
 export const dateTimeSchema = z
 	.string()

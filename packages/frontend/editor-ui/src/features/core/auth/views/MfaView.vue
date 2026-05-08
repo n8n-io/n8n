@@ -257,7 +257,14 @@ onMounted(() => {
 					</N8nText>
 				</div>
 			</div>
-			<div>
+			<div :class="$style.footer">
+				<N8nButton
+					variant="subtle"
+					float="left"
+					:label="i18.baseText('mfa.button.back')"
+					size="large"
+					@click="onBackClick"
+				/>
 				<N8nButton
 					float="right"
 					:loading="verifyingMfaCode"
@@ -269,13 +276,6 @@ onMounted(() => {
 					size="large"
 					:disabled="!hasAnyChanges"
 					@click="onSaveClick"
-				/>
-				<N8nButton
-					variant="subtle"
-					float="left"
-					:label="i18.baseText('mfa.button.back')"
-					size="large"
-					@click="onBackClick"
 				/>
 			</div>
 			<div v-if="!showRecoveryCodeForm" :class="$style.webauthnSection">
@@ -312,6 +312,12 @@ body {
 
 .formContainer {
 	padding-bottom: var(--spacing--xl);
+}
+
+.footer {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
 }
 
 .headerContainer {

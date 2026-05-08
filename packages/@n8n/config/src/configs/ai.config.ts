@@ -2,20 +2,22 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class AiConfig {
-	/** Whether AI features are enabled. */
+	/** Whether AI features (such as AI nodes and AI assistant) are enabled globally. */
 	@Env('N8N_AI_ENABLED')
 	enabled: boolean = false;
 
 	/**
-	 * Default timeout for AI HTTP requests in milliseconds.
-	 * This timeout controls how long to wait for responses from AI services.
-	 * Aligned with EXECUTIONS_TIMEOUT_MAX (1 hour) to ensure AI requests don't exceed workflow execution limits.
-	 * Default: 3600000 (1 hour)
+	 * Maximum time in milliseconds to wait for an HTTP response from an AI service.
+	 * Matches the maximum workflow execution timeout, EXECUTIONS_TIMEOUT_MAX (1 hour) so AI calls do not outlive executions.
+	 * Default: 3600000 (1 hour).
 	 */
 	@Env('N8N_AI_TIMEOUT_MAX')
 	timeout: number = 3600000;
 
-	/** Whether to allow sending actual parameter data to AI services. */
+	/**
+	 * Whether workflow and node parameter values may be sent to AI providers.
+	 * When false, only structure or placeholders are sent.
+	 */
 	@Env('N8N_AI_ALLOW_SENDING_PARAMETER_VALUES')
 	allowSendingParameterValues: boolean = true;
 

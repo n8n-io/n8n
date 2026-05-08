@@ -74,6 +74,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const isAdmin = computed(() => _isAdmin(currentUser.value));
 
+	const isAdminOrOwner = computed(() => isInstanceOwner.value || isAdmin.value);
+
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
@@ -251,16 +253,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const validateSignupToken = async (
-		params: { token?: string } | { inviteeId?: string; inviterId?: string },
-	) => {
+	const validateSignupToken = async (params: { token: string }) => {
 		return await usersApi.validateSignupToken(rootStore.restApiContext, params);
 	};
 
 	const acceptInvitation = async (params: {
-		token?: string;
-		inviteeId?: string;
-		inviterId?: string;
+		token: string;
 		firstName: string;
 		lastName: string;
 		password: string;
@@ -499,6 +497,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isDefaultUser,
 		isInstanceOwner,
 		isAdmin,
+		isAdminOrOwner,
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,

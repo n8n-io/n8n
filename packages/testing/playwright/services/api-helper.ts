@@ -1,4 +1,5 @@
 // services/api-helper.ts
+import type { ClusterInfoResponse, InstanceAiPermissions } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -11,6 +12,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
@@ -50,6 +52,7 @@ export class ApiHelpers {
 	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
@@ -66,6 +69,7 @@ export class ApiHelpers {
 		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);
@@ -268,6 +272,44 @@ export class ApiHelpers {
 		const userApi = new ApiHelpers(userContext);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
+	}
+
+	/**
+	 * Fetch cluster info from the instance registry endpoint.
+	 */
+	async getClusterInfo(): Promise<ClusterInfoResponse> {
+		const response = await this.request.get('/rest/instance-registry');
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-registry failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const plain = await response.json();
+		console.log('Cluster info: ', JSON.stringify(plain));
+		return (plain as { data: ClusterInfoResponse }).data;
+	}
+
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
+	}
+
+	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', {
+			data: { permissions },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**

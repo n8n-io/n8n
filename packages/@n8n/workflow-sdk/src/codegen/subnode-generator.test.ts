@@ -10,7 +10,7 @@ import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 function createSemanticNode(
 	name: string,
 	type: string,
-	subnodes: Array<{ connectionType: AiConnectionType; subnodeName: string }> = [],
+	subnodes: Array<{ connectionType: AiConnectionType; subnodeName: string; index: number }> = [],
 	parameters?: IDataObject,
 	position?: [number, number],
 ): SemanticNode {
@@ -126,7 +126,7 @@ describe('generateSubnodeCall', () => {
 			'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 		);
 		const parentSubnode = createSemanticNode('Tool', '@n8n/n8n-nodes-langchain.toolWorkflow', [
-			{ connectionType: 'ai_languageModel', subnodeName: 'NestedModel' },
+			{ connectionType: 'ai_languageModel', subnodeName: 'NestedModel', index: 0 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -153,7 +153,7 @@ describe('generateSubnodesConfig', () => {
 	it('generates config for single subnode', () => {
 		const subnode = createSemanticNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi');
 		const parent = createSemanticNode('Agent', '@n8n/n8n-nodes-langchain.agent', [
-			{ connectionType: 'ai_languageModel', subnodeName: 'Model' },
+			{ connectionType: 'ai_languageModel', subnodeName: 'Model', index: 0 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -177,8 +177,8 @@ describe('generateSubnodesConfig', () => {
 		const tool1 = createSemanticNode('Tool1', '@n8n/n8n-nodes-langchain.toolWorkflow');
 		const tool2 = createSemanticNode('Tool2', '@n8n/n8n-nodes-langchain.toolWorkflow');
 		const parent = createSemanticNode('Agent', '@n8n/n8n-nodes-langchain.agent', [
-			{ connectionType: 'ai_tool', subnodeName: 'Tool1' },
-			{ connectionType: 'ai_tool', subnodeName: 'Tool2' },
+			{ connectionType: 'ai_tool', subnodeName: 'Tool1', index: 0 },
+			{ connectionType: 'ai_tool', subnodeName: 'Tool2', index: 1 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -216,7 +216,7 @@ describe('generateSubnodesConfig', () => {
 	it('uses variable names when useVarRefs=true', () => {
 		const subnode = createSemanticNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi');
 		const parent = createSemanticNode('Agent', '@n8n/n8n-nodes-langchain.agent', [
-			{ connectionType: 'ai_languageModel', subnodeName: 'Model' },
+			{ connectionType: 'ai_languageModel', subnodeName: 'Model', index: 0 },
 		]);
 
 		const graph: SemanticGraph = {

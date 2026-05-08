@@ -19,6 +19,7 @@ export type WriteAccessAcquired = {
 	data: {
 		workflowId: string;
 		userId: string;
+		clientId: string;
 	};
 };
 
