@@ -20,7 +20,7 @@ import {
 import { searchModels } from './methods/searchModels';
 
 const ANTHROPIC_MODEL_BUILDER_HINT = {
-	message:
+	propertyHint:
 		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. When extended thinking is needed on Opus 4.7+, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
 };
 

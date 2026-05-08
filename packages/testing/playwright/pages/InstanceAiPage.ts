@@ -94,6 +94,16 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-empty-state');
 	}
 
+	// ── Attachments ────────────────────────────────────────────────────
+
+	getFileInput(): Locator {
+		return this.getContainer().locator('input[type="file"]');
+	}
+
+	getAttachmentsAt(messageIndex: number): Locator {
+		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
+	}
+
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmApproveButton(): Locator {

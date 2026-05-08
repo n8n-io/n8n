@@ -1,5 +1,6 @@
 import {
 	createTestNode,
+	createTestWorkflow,
 	defaultNodeDescriptions,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
@@ -14,7 +15,6 @@ import {
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/app/constants';
-import type { IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -147,12 +147,10 @@ const mockI18nKeys: Record<string, string> = {
 };
 
 async function setupStore() {
-	const workflow = {
+	const workflow = createTestWorkflow({
 		id: '123',
 		name: 'Test Workflow',
-		connections: {},
 		active: true,
-		pinData: {} as Record<string, INodeExecutionData[]>,
 		nodes: [
 			mockNode1,
 			mockNode2,
@@ -165,7 +163,7 @@ async function setupStore() {
 			customerDatastoreNode,
 			mergeNode,
 		],
-	};
+	});
 
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -203,7 +201,9 @@ async function setupStore() {
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
-	workflowsStore.workflow = workflow as IWorkflowDb;
+	workflowsStore.setWorkflowId(workflow.id);
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
 
 	return pinia;
@@ -212,7 +212,7 @@ async function setupStore() {
 function pinData(node: { name: string }, data: INodeExecutionData[]) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflow.id),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	workflowDocumentStore.pinNodeData(node.name, data);
 }
@@ -287,10 +287,9 @@ describe('VirtualSchema.vue', () => {
 
 		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflow.id),
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
-		workflowDocumentStore.setName(workflowsStore.workflow.name);
 
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {

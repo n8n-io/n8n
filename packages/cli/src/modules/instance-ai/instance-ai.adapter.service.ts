@@ -1763,8 +1763,8 @@ export class InstanceAiAdapterService {
 					}
 					if (n.builderHint) {
 						result.builderHint = {};
-						if (n.builderHint.message) {
-							result.builderHint.message = n.builderHint.message;
+						if (n.builderHint.searchHint) {
+							result.builderHint.message = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -1873,7 +1873,7 @@ export class InstanceAiAdapterService {
 					nodeType,
 					normalizeNodeVersion(result.version ?? options?.version),
 				);
-				const builderHint = nodeDesc?.builderHint?.message;
+				const builderHint = nodeDesc?.builderHint?.searchHint;
 
 				return {
 					content: result.content,
@@ -2425,7 +2425,7 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.message` of the property that references a given
+ * Find the `builderHint.propertyHint` of the property that references a given
  * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
  * Returns undefined if no matching property is found.
  *
@@ -2468,8 +2468,8 @@ function findBuilderHintForMethod(
 				continue;
 			}
 			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.message) {
-				return item.builderHint.message;
+			if (referencesMethod(item) && item.builderHint?.propertyHint) {
+				return item.builderHint.propertyHint;
 			}
 			const nested = searchProps(item.options);
 			if (nested) return nested;
