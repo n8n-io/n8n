@@ -227,17 +227,23 @@ async function extractPdf(
 	const { PDFParse } = await import('pdf-parse');
 	const parser = new PDFParse({ data: body });
 	let textResult;
-	let infoResult;
+	let title = '';
 	try {
-		[textResult, infoResult] = await Promise.all([parser.getText(), parser.getInfo()]);
+		textResult = await parser.getText();
+		try {
+			const infoResult = await parser.getInfo();
+			const titleField: unknown = infoResult.info?.Title;
+			if (typeof titleField === 'string') title = titleField;
+		} catch {
+			// Metadata is decorative — fall through with empty title rather than
+			// dropping the successfully extracted text.
+		}
 	} finally {
 		await parser.destroy();
 	}
 
 	const truncated = textResult.text.length > maxContentLength;
 	const content = truncated ? textResult.text.slice(0, maxContentLength) : textResult.text;
-	const titleField: unknown = infoResult.info?.Title;
-	const title = typeof titleField === 'string' ? titleField : '';
 
 	return {
 		url,
