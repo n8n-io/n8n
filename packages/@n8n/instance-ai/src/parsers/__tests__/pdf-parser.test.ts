@@ -3,17 +3,13 @@ import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
 const mockGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
 const mockDestroy = jest.fn<Promise<void>, []>();
-const mockConstructor = jest.fn<void, [{ data: Buffer }]>();
 
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
-	PDFParse: jest.fn().mockImplementation((options: { data: Buffer }) => {
-		mockConstructor(options);
-		return {
-			getText: mockGetText,
-			destroy: mockDestroy,
-		};
-	}),
+	PDFParse: jest.fn().mockImplementation(() => ({
+		getText: mockGetText,
+		destroy: mockDestroy,
+	})),
 }));
 
 function toBase64(content: string | Buffer): string {
@@ -25,7 +21,6 @@ describe('extractPdfText', () => {
 	beforeEach(() => {
 		mockGetText.mockReset();
 		mockDestroy.mockReset().mockResolvedValue(undefined);
-		mockConstructor.mockReset();
 	});
 
 	it('returns extracted text and page count for a small PDF', async () => {

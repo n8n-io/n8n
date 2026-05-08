@@ -268,7 +268,7 @@ function parseCsvTsv(
 		skip_empty_lines: true,
 		relax_column_count: true,
 		trim: true,
-	}) as string[][];
+	});
 
 	if (records.length === 0) {
 		return { rawHeaders: [], allRows: [] };
