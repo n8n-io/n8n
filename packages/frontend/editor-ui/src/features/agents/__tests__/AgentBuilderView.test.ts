@@ -174,8 +174,8 @@ const baseTextFn = (key: string) => {
 		'agents.builder.chatMode.build': 'Build',
 		'agents.builder.chatMode.test': 'Test',
 		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
-		'agents.builder.chat.fullWidth.expand.ariaLabel': 'Expand chat',
-		'agents.builder.chat.fullWidth.collapse.ariaLabel': 'Show configuration editor',
+		'agents.builder.chat.fullWidth.expand.ariaLabel': 'Expand',
+		'agents.builder.chat.fullWidth.collapse.ariaLabel': 'Collapse',
 		'projects.menu.personal': 'Personal',
 	};
 	return map[key] ?? key;
