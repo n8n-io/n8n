@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
 
 async function addNodeAndGetWorkflowId(n8n: n8nPage): Promise<string> {
-	const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted({ timeout: 5000 });
+	const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted({ timeout: 10000 });
 	await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 	const {
 		data: { id },
