@@ -58,6 +58,11 @@ describe('createNavigationTools', () => {
 				).toThrow();
 			});
 
+			it('defaults waitUntil to domcontentloaded when omitted', () => {
+				const parsed = getTool().inputSchema.parse({ url: 'http://example.com' });
+				expect(parsed.waitUntil).toBe('domcontentloaded');
+			});
+
 			it('accepts optional pageId', () => {
 				expect(() =>
 					getTool().inputSchema.parse({ url: 'http://a.com', pageId: 'p1' }),
@@ -182,6 +187,11 @@ describe('createNavigationTools', () => {
 
 			it('rejects invalid waitUntil', () => {
 				expect(() => getTool().inputSchema.parse({ waitUntil: 'complete' })).toThrow();
+			});
+
+			it('defaults waitUntil to domcontentloaded when omitted', () => {
+				const parsed = getTool().inputSchema.parse({});
+				expect(parsed.waitUntil).toBe('domcontentloaded');
 			});
 		});
 
