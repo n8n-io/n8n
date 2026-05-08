@@ -32,6 +32,7 @@ const vueUseMockState = vi.hoisted(
 );
 
 vi.mock('@/app/composables/useSidebarLayout', () => ({
+	COLLAPSED_MAIN_SIDEBAR_WIDTH: 42,
 	useSidebarLayout: () => ({
 		isCollapsed: vueUseMockState.mainSidebarCollapsed!,
 		sidebarWidth: vueUseMockState.mainSidebarWidth!,
@@ -226,6 +227,7 @@ describe('InstanceAiView', () => {
 				id: 'msg-1',
 				role: 'assistant',
 				content: 'Created a workflow',
+				reasoning: '',
 				isStreaming: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 				agentTree: {
@@ -544,6 +546,7 @@ describe('InstanceAiView', () => {
 				id: 'msg-history',
 				role: 'assistant',
 				content: 'already loaded',
+				reasoning: '',
 				isStreaming: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 			},

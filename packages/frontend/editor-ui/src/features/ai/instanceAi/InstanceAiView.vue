@@ -26,12 +26,13 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
+import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
@@ -130,6 +131,7 @@ const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
+	enablePanelTransitionsAfterStableRender();
 	void store.loadThreads().then((loaded) => {
 		if (!loaded) return;
 		if (!props.threadId) return;
@@ -186,7 +188,6 @@ const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
-const COLLAPSED_MAIN_SIDEBAR_WIDTH = 42;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const mainSidebarOccupiedWidth = computed(() =>
 	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : mainSidebarWidth.value,
@@ -207,10 +208,14 @@ const isArtifactsPanelEffectivelyPinned = computed(
 const canShowArtifactsPanel = computed(
 	() => store.hasMessages || (Boolean(props.threadId) && store.isHydratingThread),
 );
-const isArtifactsPanelTransitionEnabled = ref(false);
-let artifactsPanelTransitionRenderToken = 0;
-const isPreviewPanelTransitionEnabled = ref(false);
-let previewPanelTransitionRenderToken = 0;
+const artifactsPanelTransitionGate = useTransitionGate({
+	isBlocked: () => store.isHydratingThread,
+});
+const previewPanelTransitionGate = useTransitionGate({
+	isBlocked: () => store.isHydratingThread,
+});
+const isArtifactsPanelTransitionEnabled = artifactsPanelTransitionGate.isEnabled;
+const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
 const artifactsPreviewToggleLabel = computed(() =>
 	i18n.baseText(
 		preview.isPreviewVisible.value
@@ -277,45 +282,15 @@ function toggleArtifactsPanelPinned() {
 	isArtifactsPanelRevealed.value = !nextPinned;
 }
 
-function enableArtifactsPanelTransitionAfterStableRender() {
-	const renderToken = ++artifactsPanelTransitionRenderToken;
-	void nextTick(() => {
-		void nextTick(() => {
-			if (renderToken === artifactsPanelTransitionRenderToken && !store.isHydratingThread) {
-				isArtifactsPanelTransitionEnabled.value = true;
-			}
-		});
-	});
+function enablePanelTransitionsAfterStableRender() {
+	artifactsPanelTransitionGate.enableAfterStableRender();
+	previewPanelTransitionGate.enableAfterStableRender();
 }
 
-function suppressArtifactsPanelTransitionUntilStableRender() {
-	isArtifactsPanelTransitionEnabled.value = false;
-	enableArtifactsPanelTransitionAfterStableRender();
+function suppressPanelTransitionsUntilStableRender() {
+	artifactsPanelTransitionGate.suppressUntilStableRender();
+	previewPanelTransitionGate.suppressUntilStableRender();
 }
-
-onMounted(() => {
-	enableArtifactsPanelTransitionAfterStableRender();
-});
-
-function enablePreviewPanelTransitionAfterStableRender() {
-	const renderToken = ++previewPanelTransitionRenderToken;
-	void nextTick(() => {
-		void nextTick(() => {
-			if (renderToken === previewPanelTransitionRenderToken && !store.isHydratingThread) {
-				isPreviewPanelTransitionEnabled.value = true;
-			}
-		});
-	});
-}
-
-function suppressPreviewPanelTransitionUntilStableRender() {
-	isPreviewPanelTransitionEnabled.value = false;
-	enablePreviewPanelTransitionAfterStableRender();
-}
-
-onMounted(() => {
-	enablePreviewPanelTransitionAfterStableRender();
-});
 
 watch(preview.isPreviewVisible, (visible) => {
 	if (visible) {
@@ -339,8 +314,7 @@ watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
-			suppressArtifactsPanelTransitionUntilStableRender();
-			suppressPreviewPanelTransitionUntilStableRender();
+			suppressPanelTransitionsUntilStableRender();
 		}
 	},
 );
@@ -348,8 +322,7 @@ watch(
 watch(
 	() => store.currentThreadId,
 	() => {
-		suppressArtifactsPanelTransitionUntilStableRender();
-		suppressPreviewPanelTransitionUntilStableRender();
+		suppressPanelTransitionsUntilStableRender();
 	},
 );
 
@@ -357,14 +330,11 @@ watch(
 	() => store.isHydratingThread,
 	(isHydrating) => {
 		if (isHydrating) {
-			artifactsPanelTransitionRenderToken += 1;
-			previewPanelTransitionRenderToken += 1;
-			isArtifactsPanelTransitionEnabled.value = false;
-			isPreviewPanelTransitionEnabled.value = false;
+			artifactsPanelTransitionGate.suppress();
+			previewPanelTransitionGate.suppress();
 			return;
 		}
-		suppressArtifactsPanelTransitionUntilStableRender();
-		suppressPreviewPanelTransitionUntilStableRender();
+		suppressPanelTransitionsUntilStableRender();
 	},
 );
 
@@ -624,36 +594,38 @@ function handleStop() {
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
-				<Transition name="sidebar-toggle-fade">
-					<span v-if="sidebarCollapsed" :class="$style.sidebarToggle">
-						<N8nTooltip
-							:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<N8nIconButton
-								icon="history"
-								variant="ghost"
-								size="small"
-								icon-size="large"
-								data-test-id="instance-ai-sidebar-toggle"
-								:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-								@click="toggleSidebarCollapse"
-							/>
-						</N8nTooltip>
-					</span>
-				</Transition>
-				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
-					{{ currentThreadTitle }}
-				</N8nHeading>
-				<N8nText
-					v-if="store.sseState === 'reconnecting'"
-					size="small"
-					color="text-light"
-					:class="$style.reconnecting"
-				>
-					{{ i18n.baseText('instanceAi.view.reconnecting') }}
-				</N8nText>
+				<div :class="$style.headerIdentity">
+					<Transition name="sidebar-toggle-fade">
+						<span v-if="sidebarCollapsed" :class="$style.sidebarToggle">
+							<N8nTooltip
+								:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="history"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-sidebar-toggle"
+									:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+									@click="toggleSidebarCollapse"
+								/>
+							</N8nTooltip>
+						</span>
+					</Transition>
+					<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+						{{ currentThreadTitle }}
+					</N8nHeading>
+					<N8nText
+						v-if="store.sseState === 'reconnecting'"
+						size="small"
+						color="text-light"
+						:class="$style.reconnecting"
+					>
+						{{ i18n.baseText('instanceAi.view.reconnecting') }}
+					</N8nText>
+				</div>
 				<div :class="$style.headerActions">
 					<CreditsSettingsDropdown
 						v-if="store.creditsRemaining !== undefined"
@@ -826,10 +798,7 @@ function handleStop() {
 				<Transition :name="artifactsPanelTransitionName" :css="isArtifactsPanelTransitionEnabled">
 					<div
 						v-if="showArtifactsPanel"
-						:class="[
-							$style.artifactsPanelSlot,
-							{ [$style.artifactsPanelFloating]: !isArtifactsPanelEffectivelyPinned },
-						]"
+						:class="$style.artifactsPanelSlot"
 						data-test-id="instance-ai-artifacts-sidebar-slot"
 						@mouseenter="revealArtifactsPanel"
 						@mouseleave="hideArtifactsPanel()"
@@ -926,8 +895,10 @@ function handleStop() {
 	--instance-ai-panel-transition-easing: var(--easing--ease-in-out);
 
 	display: flex;
+	flex: 1 1 0;
 	height: 100%;
 	width: 100%;
+	max-width: 100%;
 	min-width: 900px;
 	overflow: hidden;
 	position: relative;
@@ -1005,10 +976,20 @@ function handleStop() {
 .header {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	flex-shrink: 0;
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
+	overflow: hidden;
+}
+
+.headerIdentity {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	contain: layout paint;
 }
 
 .headerTitle {
@@ -1020,14 +1001,19 @@ function handleStop() {
 }
 
 .headerActions {
-	margin-left: auto;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 
 .sidebarToggle {
 	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	flex: 0 0 var(--spacing--xl);
 }
 
 .activeButton {
@@ -1074,10 +1060,6 @@ function handleStop() {
 	overflow: hidden;
 }
 
-.artifactsPanelFloating {
-	z-index: 4;
-}
-
 .chatContent {
 	flex: 1;
 	min-width: 0;
@@ -1119,7 +1101,6 @@ function handleStop() {
 			var(--instance-ai-panel-transition-easing),
 		transform var(--instance-ai-panel-transition-duration)
 			var(--instance-ai-panel-transition-easing);
-	will-change: transform;
 }
 
 .contentAreaWithPinnedArtifacts {
@@ -1143,7 +1124,6 @@ function handleStop() {
 	.scrollButtonContainer,
 	.inputConstraint {
 		transition: none;
-		will-change: auto;
 	}
 }
 
@@ -1164,7 +1144,6 @@ function handleStop() {
 	z-index: 3;
 	transition: transform var(--instance-ai-panel-transition-duration)
 		var(--instance-ai-panel-transition-easing);
-	will-change: transform;
 }
 
 .scrollToBottomButton {
@@ -1202,7 +1181,6 @@ function handleStop() {
 			var(--instance-ai-panel-transition-easing),
 		transform var(--instance-ai-panel-transition-duration)
 			var(--instance-ai-panel-transition-easing);
-	will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1210,7 +1188,6 @@ function handleStop() {
 	.scrollButtonContainer,
 	.inputConstraint {
 		transition: none;
-		will-change: auto;
 	}
 }
 

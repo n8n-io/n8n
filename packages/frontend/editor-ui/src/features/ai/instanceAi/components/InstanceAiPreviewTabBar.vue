@@ -11,7 +11,7 @@ import {
 	TabsList,
 	TabsTrigger,
 } from 'reka-ui';
-import { computed, nextTick, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
@@ -34,21 +34,56 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
+const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
 		props.isExpanded ? 'instanceAi.previewTabBar.collapse' : 'instanceAi.previewTabBar.expand',
 	),
 );
 
+function getTabListElement() {
+	const tabList = tabListRef.value;
+	if (tabList instanceof HTMLElement) return tabList;
+	return (tabList as { $el?: HTMLElement } | null)?.$el ?? null;
+}
+
+function scrollTabIntoView(tabId: string) {
+	const tabList = getTabListElement();
+	if (!tabList) return;
+
+	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-id]')).find(
+		(tab) => tab.dataset.tabId === tabId,
+	);
+	if (!activeTab) return;
+
+	const tabLeft = activeTab.offsetLeft;
+	const tabRight = tabLeft + activeTab.offsetWidth;
+	const visibleLeft = tabList.scrollLeft;
+	const visibleRight = visibleLeft + tabList.clientWidth;
+
+	const nextScrollLeft =
+		tabLeft < visibleLeft
+			? tabLeft
+			: tabRight > visibleRight
+				? tabRight - tabList.clientWidth
+				: undefined;
+
+	if (nextScrollLeft === undefined) return;
+	if (typeof tabList.scrollTo === 'function') {
+		tabList.scrollTo({ left: nextScrollLeft, behavior: 'smooth' });
+	} else {
+		tabList.scrollLeft = nextScrollLeft;
+	}
+}
+
 // Bring the active tab into view when the selection changes (e.g. auto-switch
-// on execution). scrollIntoView walks up to the nearest scroll container.
+// on execution), without scrolling any outer app containers.
 watch(
 	() => props.activeTabId,
 	(tabId) => {
 		if (!tabId) return;
 		void nextTick(() => {
-			const el = document.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
-			el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+			scrollTabIntoView(tabId);
 		});
 	},
 );
@@ -88,6 +123,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 			@click="emit('toggleExpanded')"
 		/>
 		<TabsList
+			ref="tabListRef"
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
 		>

@@ -19,7 +19,16 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
 
+const props = defineProps<{
+	dropdownPortalTarget?: HTMLElement;
+}>();
+
 const connections = computed(() => store.connections);
+const isVisible = computed(
+	() =>
+		!store.isLocalGatewayDisabledByAdmin &&
+		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
+);
 
 const ICON_MAP: Record<ConnectionType, IconName> = {
 	'computer-use': 'mouse-pointer',
@@ -84,7 +93,7 @@ async function handleRemove(type: ConnectionType) {
 </script>
 
 <template>
-	<div :class="$style.section">
+	<div v-if="isVisible" :class="$style.section">
 		<div :class="$style.header">
 			<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 				{{ i18n.baseText('instanceAi.connections.title') }}
@@ -94,6 +103,7 @@ async function handleRemove(type: ConnectionType) {
 					:items="addItems"
 					:activator-icon="{ type: 'icon', value: 'plus' }"
 					placement="bottom-end"
+					:portal-target="props.dropdownPortalTarget"
 					data-test-id="instance-ai-connections-add"
 					@select="openModal"
 				/>
@@ -109,6 +119,7 @@ async function handleRemove(type: ConnectionType) {
 				:icon="ICON_MAP[conn.type]"
 				:status="conn.status"
 				:actions="getRowActions(conn.type, conn.status)"
+				:dropdown-portal-target="props.dropdownPortalTarget"
 				@connect="openModal(conn.type)"
 				@disconnect="handleDisconnect(conn.type)"
 				@open-settings="openModal(conn.type)"

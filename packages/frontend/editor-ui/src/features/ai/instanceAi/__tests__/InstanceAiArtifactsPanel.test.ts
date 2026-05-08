@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
-import { reactive } from 'vue';
+import { defineComponent, h, nextTick, reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -18,7 +18,18 @@ vi.mock('../instanceAi.store', () => ({
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 	global: {
 		stubs: {
-			ConnectionsCard: { template: '<section data-test-id="connections-card" />' },
+			ConnectionsCard: defineComponent({
+				props: {
+					dropdownPortalTarget: { type: HTMLElement, required: false },
+				},
+				setup(props) {
+					return () =>
+						h('section', {
+							'data-test-id': 'connections-card',
+							'data-portal-target-tag': props.dropdownPortalTarget?.tagName ?? '',
+						});
+				},
+			}),
 		},
 	},
 });
@@ -46,6 +57,14 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
 		expect(getByTestId('connections-card')).toBeInTheDocument();
+	});
+
+	it('anchors connection menus inside the panel', async () => {
+		const { getByTestId } = renderComponent();
+
+		await nextTick();
+
+		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
 	});
 
 	it('emits when the pin button is clicked and reflects the unpinned label', async () => {

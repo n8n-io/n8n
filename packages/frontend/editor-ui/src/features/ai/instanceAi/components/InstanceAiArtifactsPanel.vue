@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, inject } from 'vue';
+import { computed, inject, ref } from 'vue';
 import {
 	N8nHeading,
 	N8nIcon,
@@ -23,6 +23,7 @@ const emit = defineEmits<{ togglePinned: [] }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
@@ -97,7 +98,7 @@ const pinButtonLabel = computed(() =>
 </script>
 
 <template>
-	<aside :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
 			<!-- Artifacts section -->
 			<div :class="$style.section">
@@ -187,7 +188,7 @@ const pinButtonLabel = computed(() =>
 			</div>
 
 			<!-- Connections section -->
-			<ConnectionsCard />
+			<ConnectionsCard :dropdown-portal-target="panelRef" />
 		</div>
 	</aside>
 </template>
