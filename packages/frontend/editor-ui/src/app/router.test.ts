@@ -268,7 +268,8 @@ describe('router', () => {
 			const next = ((arg?: unknown) => {
 				nextArg = arg;
 			}) as Parameters<typeof beforeEnter>[2];
-			beforeEnter(
+			beforeEnter.call(
+				undefined,
 				{} as Parameters<typeof beforeEnter>[0],
 				{} as Parameters<typeof beforeEnter>[1],
 				next,
