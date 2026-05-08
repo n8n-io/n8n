@@ -1,4 +1,4 @@
-import { NodeVM, VMScript, makeResolverFromLegacyOptions, type Resolver } from 'vm2';
+import { NodeVM, makeResolverFromLegacyOptions, type Resolver } from 'vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ExecutionError } from './ExecutionError';
@@ -10,20 +10,10 @@ import {
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
 import { ValidationError } from './ValidationError';
+import { generateScript } from './utils';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
-
-const PREPARE_STACKTRACE = `
-Error.prepareStackTrace = (err, structuredStackTrace) => {
-	return "Error: " + err + "\\n" + structuredStackTrace
-		.filter(callSite => callSite.getLineNumber())
-		.map(callSite => {
-			return "	at Code:" + callSite.getLineNumber() + ":" + callSite.getColumnNumber()
-		})
-		.join("\\n");
-};
-`;
 
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: external
@@ -64,9 +54,8 @@ export class JavaScriptSandbox extends Sandbox {
 	}
 
 	async runCode<T = unknown>(): Promise<T> {
-		const script = this.generateScript();
 		try {
-			const executionResult = (await this.vm.run(new VMScript(script, 'Code'), __dirname)) as T;
+			const executionResult = (await this.vm.run(generateScript(this.jsCode), __dirname)) as T;
 			return executionResult;
 		} catch (error) {
 			throw new ExecutionError(error);
@@ -76,12 +65,10 @@ export class JavaScriptSandbox extends Sandbox {
 	async runCodeAllItems(options?: {
 		multiOutput?: boolean;
 	}): Promise<INodeExecutionData[] | INodeExecutionData[][]> {
-		const script = this.generateScript();
-
 		let executionResult: INodeExecutionData | INodeExecutionData[] | INodeExecutionData[][];
 
 		try {
-			executionResult = await this.vm.run(new VMScript(script, 'Code'), __dirname);
+			executionResult = await this.vm.run(generateScript(this.jsCode), __dirname);
 		} catch (error) {
 			// anticipate user expecting `items` to pre-exist as in Function Item node
 			mapItemsNotDefinedErrorIfNeededForRunForAll(this.jsCode, error);
@@ -112,14 +99,12 @@ export class JavaScriptSandbox extends Sandbox {
 	}
 
 	async runCodeEachItem(itemIndex: number): Promise<INodeExecutionData | undefined> {
-		const script = this.generateScript();
-
 		validateNoDisallowedMethodsInRunForEach(this.jsCode, itemIndex);
 
 		let executionResult: INodeExecutionData;
 
 		try {
-			executionResult = await this.vm.run(new VMScript(script, 'Code'), __dirname);
+			executionResult = await this.vm.run(generateScript(this.jsCode), __dirname);
 		} catch (error) {
 			// anticipate user expecting `item` to pre-exist as in Function Item node
 			mapItemNotDefinedErrorIfNeededForRunForEach(this.jsCode, error);
@@ -130,9 +115,5 @@ export class JavaScriptSandbox extends Sandbox {
 		if (executionResult === null) return undefined;
 
 		return this.validateRunCodeEachItem(executionResult, itemIndex);
-	}
-
-	generateScript() {
-		return `module.exports = async function() {${this.jsCode}\n}() ${PREPARE_STACKTRACE}`;
 	}
 }
