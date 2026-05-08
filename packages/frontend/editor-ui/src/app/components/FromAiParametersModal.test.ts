@@ -10,10 +10,7 @@ import { useRouter } from 'vue-router';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
-import {
-	createTestTaskData,
-	createTestWorkflowExecutionResponse,
-} from '@/__tests__/mocks';
+import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 

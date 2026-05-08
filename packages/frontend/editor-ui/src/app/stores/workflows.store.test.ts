@@ -1207,7 +1207,6 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.setWorkflowId('test-workflow-id');
 
-
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
