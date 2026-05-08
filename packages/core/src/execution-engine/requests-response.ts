@@ -269,18 +269,19 @@ export function handleRequest({
 	// 2. create metadata for current node
 	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
 	if (!result) {
+		// Fallback for edge cases where the agent’s execution context has no source.
+		// The empty stack means no tool execution will happen.
 		return { nodesToBeExecuted: [] };
 	}
 
 	// Preserve the original pairedItem.item from the agent's input so the resumed
 	// execution can keep the same upstream item lineage after the tool call returns.
+	// Logic is tied into an `if-else` chain to enhance readability.
 	const originalPairedItemIndices = (executionData.data.main?.[0] ?? []).map((item) => {
 		const pairedItem = item.pairedItem;
-		return typeof pairedItem === 'number'
-			? pairedItem
-			: Array.isArray(pairedItem)
-				? (pairedItem[0]?.item ?? 0)
-				: (pairedItem?.item ?? 0);
+		if (typeof pairedItem === 'number') return pairedItem;
+		if (Array.isArray(pairedItem)) return pairedItem[0]?.item ?? 0;
+		return pairedItem?.item ?? 0;
 	});
 
 	// 3. add current node back to the bottom of the stack

@@ -418,8 +418,9 @@ export class WorkflowExecute {
 		let stillDataMissing = false;
 		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
 		let waitingNodeIndex: number | undefined;
-		// Tool executions and resumed agents store their synthetic input data at index 0,
-		// while outputIndex still tracks the upstream branch for source reconstruction.
+		// Tool executions and resumed agents (and any node resumed via EngineRequest) store
+		// their synthetic input data at index 0. outputIndex still holds the real branch index
+		// for source/pairedItem provenance. This is correct for Wait nodes as well.
 		const sourceDataIndex =
 			metadata?.nodeWasResumed || metadata?.preserveSourceOverwrite ? 0 : outputIndex;
 

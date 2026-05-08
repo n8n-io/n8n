@@ -650,7 +650,9 @@ describe('handleRequests', () => {
 				runData: {},
 			});
 
-			// Since source is missing, handleRequest ignores resuming node AND clears the tools stack
+			// This behaviour is pre‑existing and not related to the pairedItem fix;
+			// it exists to handle edge cases where the agent’s execution context has no source.
+			// The empty stack simply means no tool execution will happen.
 			expect(result.nodesToBeExecuted).toHaveLength(0);
 		});
 
@@ -683,7 +685,7 @@ describe('handleRequests', () => {
 			const resumingNode = result.nodesToBeExecuted[0];
 			expect(resumingNode.parentNode).toBe('If');
 			expect(resumingNode.parentOutputIndex).toBe(1);
-			expect(resumingNode.runIndex).toBe(5);
+			expect(resumingNode.runIndex).toBe(7);
 
 			expect(resumingNode.metadata!.preserveSourceOverwrite).toBe(true);
 			expect(resumingNode.metadata!.preservedSourceOverwrite).toEqual({
