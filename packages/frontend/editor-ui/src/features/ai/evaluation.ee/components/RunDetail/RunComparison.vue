@@ -31,7 +31,7 @@ const locale = useI18n();
 	justify-content: center;
 	padding: var(--spacing--lg);
 	border: var(--border-width) dashed var(--color--foreground);
-border-radius: var(--radius);
+	border-radius: var(--radius);
 }
 
 .text {
