@@ -220,6 +220,14 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.delete(threadId);
 	}
 
+	cancelActiveRun(threadId: string): ActiveRunState | undefined {
+		const active = this.activeRuns.get(threadId);
+		if (!active) return undefined;
+
+		this.activeRuns.delete(threadId);
+		return active;
+	}
+
 	suspendRun(threadId: string, state: SuspendedRunState<TUser>): void {
 		const activeRun = this.activeRuns.get(threadId);
 		this.activeRuns.delete(threadId);
@@ -233,6 +241,14 @@ export class RunStateRegistry<TUser = unknown> {
 			if (run.requestId === requestId) return run;
 		}
 		return undefined;
+	}
+
+	cancelSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+		const suspended = this.suspendedRuns.get(threadId);
+		if (!suspended) return undefined;
+
+		this.suspendedRuns.delete(threadId);
+		return suspended;
 	}
 
 	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
@@ -258,6 +274,18 @@ export class RunStateRegistry<TUser = unknown> {
 			startedAt: pending.startedAt ?? pending.createdAt,
 			lastActivityAt: pending.lastActivityAt ?? pending.createdAt,
 		});
+	}
+
+	getPendingConfirmation(requestId: string): PendingConfirmation | undefined {
+		return this.pendingConfirmations.get(requestId);
+	}
+
+	hasPendingConfirmationForThread(threadId: string): boolean {
+		for (const pending of this.pendingConfirmations.values()) {
+			if (pending.threadId === threadId) return true;
+		}
+
+		return false;
 	}
 
 	touchActiveRun(threadId: string, at = Date.now()): boolean {
@@ -347,6 +375,8 @@ export class RunStateRegistry<TUser = unknown> {
 	} {
 		const activeThreadIds: string[] = [];
 		for (const [threadId, run] of this.activeRuns) {
+			if (this.hasPendingConfirmationForThread(threadId)) continue;
+
 			const startedAt = run.startedAt ?? run.lastActivityAt ?? now;
 			const lastActivityAt = run.lastActivityAt ?? startedAt;
 			const decision = policy.evaluate({

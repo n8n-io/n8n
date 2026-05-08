@@ -195,6 +195,14 @@ function createInertAbortSignal(): AbortSignal {
 
 function getAbortReason(signal: AbortSignal): string {
 	const reason = (signal as AbortSignal & { reason?: unknown }).reason;
+	if (
+		typeof reason === 'object' &&
+		reason !== null &&
+		'name' in reason &&
+		reason.name === 'AbortError'
+	) {
+		return 'user_cancelled';
+	}
 	if (reason instanceof Error) return reason.message;
 	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
@@ -405,6 +413,8 @@ export class InstanceAiService {
 
 	private readonly livenessPolicy: InstanceAiLivenessPolicy;
 
+	private readonly timedOutRunIds = new Set<string>();
+
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
 
@@ -487,29 +497,37 @@ export class InstanceAiService {
 		}, Time.minutes.toMilliseconds);
 	}
 
-	private async sweepTimedOutWork(): Promise<void> {
+	private async sweepTimedOutWork(now = Date.now()): Promise<void> {
 		const { activeThreadIds, suspendedThreadIds, confirmationRequestIds } =
-			this.runState.sweepTimedOut(this.livenessPolicy);
+			this.runState.sweepTimedOut(this.livenessPolicy, now);
 
 		for (const threadId of activeThreadIds) {
 			this.logger.debug('Cancelling timed-out active run', { threadId });
-			this.cancelRun(threadId, RUN_TIMEOUT_REASON);
+			this.cancelTimedOutActiveRun(threadId);
 		}
 
 		for (const threadId of suspendedThreadIds) {
 			this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-			this.cancelRun(threadId, RUN_TIMEOUT_REASON);
+			this.cancelTimedOutSuspendedRun(threadId);
 		}
 
 		for (const reqId of confirmationRequestIds) {
 			this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
 				requestId: reqId,
 			});
+			const pending = this.runState.getPendingConfirmation(reqId);
+			if (pending) {
+				const runId = this.runState.getActiveRunId(pending.threadId);
+				if (runId) this.publishRunTimeoutNotice(pending.threadId, runId);
+			}
 			this.runState.rejectPendingConfirmation(reqId);
 		}
 
 		try {
-			const timedOutTasks = await this.backgroundTasks.timeoutTimedOutTasks(this.livenessPolicy);
+			const timedOutTasks = await this.backgroundTasks.timeoutTimedOutTasks(
+				this.livenessPolicy,
+				now,
+			);
 			for (const task of timedOutTasks) {
 				this.logger.debug('Timed out background task', {
 					threadId: task.threadId,
@@ -523,6 +541,25 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 		}
+	}
+
+	private cancelTimedOutActiveRun(threadId: string): void {
+		const active = this.runState.cancelActiveRun(threadId);
+		if (!active) return;
+
+		this.timedOutRunIds.add(active.runId);
+		this.publishRunTimeoutNotice(threadId, active.runId);
+		active.abortController.abort();
+	}
+
+	private cancelTimedOutSuspendedRun(threadId: string): void {
+		const suspended = this.runState.cancelSuspendedRun(threadId);
+		if (!suspended) return;
+
+		this.timedOutRunIds.add(suspended.runId);
+		this.publishRunTimeoutNotice(threadId, suspended.runId);
+		suspended.abortController.abort();
+		void this.finalizeCancelledSuspendedRun(suspended, RUN_TIMEOUT_REASON);
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -1236,12 +1273,14 @@ export class InstanceAiService {
 
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
-			active.abortController.abort(new Error(reason));
+			if (reason === RUN_TIMEOUT_REASON) this.timedOutRunIds.add(active.runId);
+			active.abortController.abort();
 			return;
 		}
 
 		if (suspended) {
-			suspended.abortController.abort(new Error(reason));
+			if (reason === RUN_TIMEOUT_REASON) this.timedOutRunIds.add(suspended.runId);
+			suspended.abortController.abort();
 			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
 	}
@@ -1319,6 +1358,117 @@ export class InstanceAiService {
 			void this.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
 		return cancelled.length;
+	}
+
+	async startStuckBackgroundTaskForTest(
+		user: User,
+		threadId: string,
+	): Promise<{
+		threadId: string;
+		runId: string;
+		messageGroupId: string;
+		taskId: string;
+		agentId: string;
+		timeoutAt: number;
+	}> {
+		const messageId = `msg_${nanoid()}`;
+		const { runId, messageGroupId } = this.runState.startRun({ threadId, user });
+		if (!messageGroupId) {
+			throw new UnexpectedError('Failed to create message group for timeout simulation');
+		}
+		const taskId = `task_${nanoid()}`;
+		const agentId = `agent_${nanoid()}`;
+
+		this.eventBus.publish(threadId, {
+			type: 'run-start',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			userId: user.id,
+			payload: { messageId, messageGroupId },
+		});
+		this.eventBus.publish(threadId, {
+			type: 'text-delta',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			responseId: `test-background-start:${runId}`,
+			payload: { text: 'I started a background workflow-builder task.' },
+		});
+		this.eventBus.publish(threadId, {
+			type: 'agent-spawned',
+			runId,
+			agentId,
+			payload: {
+				parentId: ORCHESTRATOR_AGENT_ID,
+				role: 'workflow-builder',
+				tools: [],
+				taskId,
+				kind: 'builder',
+				title: 'Building workflow',
+				subtitle: 'Timeout simulation',
+				goal: 'Simulate a stuck background task timeout',
+			},
+		});
+
+		const outcome = this.backgroundTasks.spawn({
+			taskId,
+			threadId,
+			runId,
+			role: 'workflow-builder',
+			agentId,
+			messageGroupId,
+			run: async (signal) =>
+				await new Promise<string>((resolve) => {
+					signal.addEventListener('abort', () => resolve('aborted'), { once: true });
+				}),
+			onFailed: (task) => {
+				this.eventBus.publish(threadId, {
+					type: 'agent-completed',
+					runId,
+					agentId,
+					payload: {
+						role: task.role,
+						result: '',
+						error: task.error ?? 'Unknown error',
+					},
+				});
+			},
+			onSettled: async (task) => {
+				await this.recordBackgroundTerminalOutcome(task);
+				await this.saveAgentTreeSnapshot(
+					threadId,
+					runId,
+					this.dbSnapshotStorage,
+					true,
+					messageGroupId,
+				);
+			},
+		});
+
+		if (outcome.status !== 'started') {
+			throw new UnexpectedError('Failed to start stuck background task simulation');
+		}
+
+		this.runState.clearActiveRun(threadId);
+		this.eventBus.publish(threadId, {
+			type: 'run-finish',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			userId: user.id,
+			payload: { status: 'completed' },
+		});
+
+		return {
+			threadId,
+			runId,
+			messageGroupId,
+			taskId,
+			agentId,
+			timeoutAt: outcome.task.lastActivityAt + this.instanceAiConfig.backgroundTaskIdleTimeout + 1,
+		};
+	}
+
+	async runLivenessSweepForTest(now?: number): Promise<void> {
+		await this.sweepTimedOutWork(now);
 	}
 
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
@@ -3065,7 +3215,9 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (signal.aborted) {
-				const cancellationReason = getAbortReason(signal);
+				const cancellationReason = this.timedOutRunIds.delete(runId)
+					? RUN_TIMEOUT_REASON
+					: getAbortReason(signal);
 				if (cancellationReason === RUN_TIMEOUT_REASON) {
 					this.publishRunTimeoutNotice(threadId, runId);
 				}
