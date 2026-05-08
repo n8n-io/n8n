@@ -152,13 +152,9 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			// Replace circular refs *once* and ship the cleaned graph in both
-			// `content[0].text` and `structuredContent`. The MCP SDK's transport
-			// `JSON.stringify`s the JSON-RPC envelope (including `structuredContent`)
-			// and would otherwise throw on the cycles that `IRunExecutionData`
-			// preserves through `flatted.parse` (e.g. the HTTP socket loop in
-			// `executionData.contextData`). Mirrors the public API path
-			// (`packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts`).
+			// `structuredContent` is JSON-serialized by the MCP SDK transport, so
+			// cycles in `output` (e.g. the HTTP socket loop in
+			// `executionData.contextData`) hang the call unless replaced here.
 			const safeOutput = replaceCircularReferences(output);
 
 			return {
@@ -194,8 +190,6 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			// Same cycle-safe handling as the success path; the error envelope is
-			// scalar-only today but stay consistent so future error shapes can't hang.
 			const safeOutput = replaceCircularReferences(output);
 
 			return {
