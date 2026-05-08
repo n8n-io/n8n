@@ -15,7 +15,7 @@
 				"@n8n/n8n-nodes-langchain.memoryBufferWindow",
 				"@n8n/n8n-nodes-langchain.lmChatGoogleGemini"
 			],
-			"tags": ["trigger:chatTrigger", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:langchain"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 95,
@@ -50,7 +50,7 @@
 				"@n8n/n8n-nodes-langchain.openAi",
 				"@n8n/n8n-nodes-langchain.agent"
 			],
-			"tags": ["trigger:telegram", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:telegram", "ai", "integration:langchain"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 90.95,
@@ -85,7 +85,7 @@
 				"@n8n/n8n-nodes-langchain.chatTrigger",
 				"@n8n/n8n-nodes-langchain.lmChatGoogleGemini"
 			],
-			"tags": ["trigger:other", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:other", "ai", "integration:langchain"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 90.35,
@@ -118,7 +118,7 @@
 				"n8n-nodes-base.googleDrive",
 				"@n8n/n8n-nodes-langchain.openAi"
 			],
-			"tags": ["trigger:manual", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:manual", "ai", "integration:httpRequest"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 90.19,
@@ -153,7 +153,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.wait"
 			],
-			"tags": ["trigger:schedule", "flow:parallel", "ai", "integration:httpRequest"],
+			"tags": ["trigger:schedule", "ai", "integration:httpRequest"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 89.9,
@@ -186,7 +186,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatOllama",
 				"@n8n/n8n-nodes-langchain.memoryBufferWindow"
 			],
-			"tags": ["trigger:formTrigger", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:formTrigger", "ai", "integration:langchain"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 89.7,
@@ -221,7 +221,7 @@
 				"n8n-nodes-base.googleDocs",
 				"@n8n/n8n-nodes-langchain.memoryBufferWindow"
 			],
-			"tags": ["trigger:other", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:other", "ai", "integration:langchain"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 89.7,
@@ -254,7 +254,7 @@
 				"n8n-nodes-base.telegram",
 				"n8n-nodes-base.readWriteFile"
 			],
-			"tags": ["trigger:chatTrigger", "flow:parallel", "ai", "integration:code"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:code"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 89.61,
@@ -289,7 +289,7 @@
 				"@blotato/n8n-nodes-blotato.blotato",
 				"n8n-nodes-base.merge"
 			],
-			"tags": ["trigger:schedule", "flow:parallel", "ai", "integration:blotato"],
+			"tags": ["trigger:schedule", "ai", "integration:blotato"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 89.35,
@@ -330,7 +330,7 @@
 				"n8n-nodes-base.httpRequest",
 				"n8n-nodes-base.switch"
 			],
-			"tags": ["trigger:manual", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:manual", "ai", "integration:langchain"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 89.26,
@@ -366,7 +366,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.googleSheets"
 			],
-			"tags": ["trigger:schedule", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:schedule", "ai", "integration:langchain"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 88.91,
@@ -400,7 +400,7 @@
 				"n8n-nodes-base.filter",
 				"n8n-nodes-base.googleSheets"
 			],
-			"tags": ["trigger:manual", "flow:loop", "integration:removeDuplicates"],
+			"tags": ["trigger:manual", "integration:removeDuplicates"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 88.89,
@@ -430,7 +430,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatGroq",
 				"n8n-nodes-base.code"
 			],
-			"tags": ["trigger:gmail", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:gmail", "ai", "integration:langchain"],
 			"triggerType": "gmail",
 			"hasAI": true,
 			"score": 88.39,
@@ -465,7 +465,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:formTrigger", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:formTrigger", "ai", "integration:langchain"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 88.38,
@@ -498,7 +498,7 @@
 				"@n8n/n8n-nodes-langchain.outputParserAutofixing",
 				"@n8n/n8n-nodes-langchain.outputParserStructured"
 			],
-			"tags": ["trigger:schedule", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:schedule", "ai", "integration:langchain"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 88.29,
@@ -533,7 +533,7 @@
 				"@blotato/n8n-nodes-blotato.blotato",
 				"n8n-nodes-base.merge"
 			],
-			"tags": ["trigger:telegram", "flow:parallel", "ai", "integration:blotato"],
+			"tags": ["trigger:telegram", "ai", "integration:blotato"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 87.92,
@@ -569,7 +569,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.switch"
 			],
-			"tags": ["trigger:other", "flow:branching", "ai", "integration:whatsApp"],
+			"tags": ["trigger:other", "ai", "integration:whatsApp"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 87.87,
@@ -604,7 +604,7 @@
 				"n8n-nodes-base.httpRequestTool",
 				"n8n-nodes-base.merge"
 			],
-			"tags": ["trigger:chatTrigger", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:langchain"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 87.62,
@@ -635,7 +635,7 @@
 				"n8n-nodes-base.respondToWebhook",
 				"@n8n/n8n-nodes-langchain.lmChatGoogleGemini"
 			],
-			"tags": ["trigger:webhook", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:webhook", "ai", "integration:langchain"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 87.53,
@@ -672,7 +672,7 @@
 				"n8n-nodes-base.webhook",
 				"@n8n/n8n-nodes-langchain.memoryBufferWindow"
 			],
-			"tags": ["trigger:manual", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:manual", "ai", "integration:langchain"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 87.44,
@@ -702,7 +702,7 @@
 				"n8n-nodes-postiz.postiz",
 				"n8n-nodes-base.formTrigger"
 			],
-			"tags": ["trigger:formTrigger", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:formTrigger", "ai", "integration:httpRequest"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 87.4,
@@ -731,7 +731,7 @@
 				"n8n-nodes-base.set",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:manual", "flow:linear", "integration:httpRequest"],
+			"tags": ["trigger:manual", "integration:httpRequest"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 87.22,
@@ -765,7 +765,7 @@
 				"n8n-nodes-base.linkedIn",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:schedule", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:schedule", "ai", "integration:langchain"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 87.21,
@@ -800,7 +800,7 @@
 				"@n8n/n8n-nodes-langchain.openAi",
 				"n8n-nodes-base.httpRequest"
 			],
-			"tags": ["trigger:telegram", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:telegram", "ai", "integration:langchain"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 87.19,
@@ -830,7 +830,7 @@
 				"@n8n/n8n-nodes-langchain.agent",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:telegram", "flow:linear", "ai", "integration:blotatoTool"],
+			"tags": ["trigger:telegram", "ai", "integration:blotatoTool"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 87.06,
@@ -865,7 +865,7 @@
 				"@n8n/n8n-nodes-langchain.openAi",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:telegram", "flow:loop", "ai", "integration:apify"],
+			"tags": ["trigger:telegram", "ai", "integration:apify"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 86.91,
@@ -893,7 +893,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:formTrigger", "flow:linear", "integration:httpRequest"],
+			"tags": ["trigger:formTrigger", "integration:httpRequest"],
 			"triggerType": "formTrigger",
 			"hasAI": false,
 			"score": 86.9,
@@ -924,7 +924,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
 				"@n8n/n8n-nodes-langchain.chainLlm"
 			],
-			"tags": ["trigger:formTrigger", "flow:parallel", "ai", "integration:googleSheets"],
+			"tags": ["trigger:formTrigger", "ai", "integration:googleSheets"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 86.88,
@@ -961,7 +961,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi",
 				"@n8n/n8n-nodes-langchain.lmChatAnthropic"
 			],
-			"tags": ["trigger:manual", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:manual", "ai", "integration:langchain"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 86.82,
@@ -989,7 +989,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.manualTrigger"
 			],
-			"tags": ["trigger:manual", "flow:linear", "integration:code"],
+			"tags": ["trigger:manual", "integration:code"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 86.71,
@@ -1020,7 +1020,7 @@
 				"n8n-nodes-base.telegram",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:telegram", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:telegram", "ai", "integration:langchain"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 86.62,
@@ -1055,7 +1055,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi",
 				"n8n-nodes-base.code"
 			],
-			"tags": ["trigger:schedule", "flow:loop", "ai", "integration:gmail"],
+			"tags": ["trigger:schedule", "ai", "integration:gmail"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 86.6,
@@ -1090,7 +1090,7 @@
 				"@n8n/n8n-nodes-langchain.chainLlm",
 				"n8n-nodes-base.if"
 			],
-			"tags": ["trigger:gmail", "flow:branching", "ai", "integration:googleDrive"],
+			"tags": ["trigger:gmail", "ai", "integration:googleDrive"],
 			"triggerType": "gmail",
 			"hasAI": true,
 			"score": 86.59,
@@ -1130,7 +1130,7 @@
 				"n8n-nodes-base.convertToFile",
 				"@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter"
 			],
-			"tags": ["trigger:chatTrigger", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:langchain"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 86.56,
@@ -1165,7 +1165,7 @@
 				"n8n-nodes-base.facebookGraphApi",
 				"n8n-nodes-base.httpRequest"
 			],
-			"tags": ["trigger:manual", "flow:parallel", "ai", "integration:googleSheets"],
+			"tags": ["trigger:manual", "ai", "integration:googleSheets"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 86.55,
@@ -1207,7 +1207,7 @@
 				"@n8n/n8n-nodes-langchain.chainSummarization",
 				"n8n-nodes-base.googleDrive"
 			],
-			"tags": ["trigger:manual", "flow:loop", "ai", "integration:langchain"],
+			"tags": ["trigger:manual", "ai", "integration:langchain"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 86.5,
@@ -1240,7 +1240,7 @@
 				"n8n-nodes-base.wait",
 				"n8n-nodes-base.manualTrigger"
 			],
-			"tags": ["trigger:manual", "flow:loop", "ai", "integration:httpRequest"],
+			"tags": ["trigger:manual", "ai", "integration:httpRequest"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 86.47,
@@ -1273,7 +1273,7 @@
 				"n8n-nodes-base.readBinaryFile",
 				"n8n-nodes-base.httpRequest"
 			],
-			"tags": ["trigger:other", "flow:branching", "ai", "integration:readBinaryFile"],
+			"tags": ["trigger:other", "ai", "integration:readBinaryFile"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 86.47,
@@ -1305,7 +1305,7 @@
 				"@n8n/n8n-nodes-langchain.agent",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:gmail", "flow:linear", "ai", "integration:googleSheets"],
+			"tags": ["trigger:gmail", "ai", "integration:googleSheets"],
 			"triggerType": "gmail",
 			"hasAI": true,
 			"score": 86.41,
@@ -1339,7 +1339,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:manual", "flow:branching", "ai", "integration:googleSheets"],
+			"tags": ["trigger:manual", "ai", "integration:googleSheets"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 86.33,
@@ -1370,7 +1370,7 @@
 				"n8n-nodes-base.code",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:schedule", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:schedule", "ai", "integration:httpRequest"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 86.33,
@@ -1399,7 +1399,7 @@
 				"@n8n/n8n-nodes-langchain.openAi",
 				"n8n-nodes-base.httpRequest"
 			],
-			"tags": ["trigger:manual", "flow:linear", "ai", "integration:googleSheets"],
+			"tags": ["trigger:manual", "ai", "integration:googleSheets"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 86.3,
@@ -1428,7 +1428,7 @@
 				"n8n-nodes-base.airtable",
 				"n8n-nodes-base.if"
 			],
-			"tags": ["trigger:manual", "flow:branching", "integration:set"],
+			"tags": ["trigger:manual", "integration:set"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 86.15,
@@ -1457,7 +1457,7 @@
 				"n8n-nodes-base.formTrigger",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:formTrigger", "flow:linear", "ai", "integration:googleSlides"],
+			"tags": ["trigger:formTrigger", "ai", "integration:googleSlides"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 86.1,
@@ -1487,7 +1487,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.slack"
 			],
-			"tags": ["trigger:formTrigger", "flow:linear", "integration:code"],
+			"tags": ["trigger:formTrigger", "integration:code"],
 			"triggerType": "formTrigger",
 			"hasAI": false,
 			"score": 86.1,
@@ -1516,7 +1516,7 @@
 				"n8n-nodes-base.splitOut",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:manual", "flow:linear", "integration:convertToFile"],
+			"tags": ["trigger:manual", "integration:convertToFile"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 86.08,
@@ -1552,7 +1552,7 @@
 				"@n8n/n8n-nodes-langchain.toolWorkflow",
 				"@n8n/n8n-nodes-langchain.memoryBufferWindow"
 			],
-			"tags": ["trigger:other", "flow:loop", "ai", "integration:langchain"],
+			"tags": ["trigger:other", "ai", "integration:langchain"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 86.07,
@@ -1587,7 +1587,7 @@
 				"n8n-nodes-base.gmail",
 				"@n8n/n8n-nodes-langchain.openAi"
 			],
-			"tags": ["trigger:other", "flow:branching", "ai", "integration:googleSheets"],
+			"tags": ["trigger:other", "ai", "integration:googleSheets"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 86,
@@ -1624,7 +1624,7 @@
 				"n8n-nodes-base.if",
 				"n8n-nodes-base.httpRequest"
 			],
-			"tags": ["trigger:manual", "flow:loop", "ai", "integration:youTube"],
+			"tags": ["trigger:manual", "ai", "integration:youTube"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 85.9,
@@ -1655,7 +1655,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.set"
 			],
-			"tags": ["trigger:formTrigger", "flow:branching", "integration:httpRequest"],
+			"tags": ["trigger:formTrigger", "integration:httpRequest"],
 			"triggerType": "formTrigger",
 			"hasAI": false,
 			"score": 85.88,
@@ -1687,7 +1687,7 @@
 				"@n8n/n8n-nodes-langchain.agent",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:gmail", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:gmail", "ai", "integration:langchain"],
 			"triggerType": "gmail",
 			"hasAI": true,
 			"score": 85.82,
@@ -1720,7 +1720,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi",
 				"n8n-nodes-base.formTrigger"
 			],
-			"tags": ["trigger:chatTrigger", "flow:linear", "ai", "integration:mcpClientTool"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:mcpClientTool"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 85.81,
@@ -1751,7 +1751,7 @@
 				"@n8n/n8n-nodes-langchain.textClassifier",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:webhook", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:webhook", "ai", "integration:httpRequest"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 85.79,
@@ -1781,7 +1781,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.telegram"
 			],
-			"tags": ["trigger:schedule", "flow:linear", "ai", "integration:googleSheetsTool"],
+			"tags": ["trigger:schedule", "ai", "integration:googleSheetsTool"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 85.73,
@@ -1821,7 +1821,7 @@
 				"@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
 				"@n8n/n8n-nodes-langchain.textSplitterTokenSplitter"
 			],
-			"tags": ["trigger:webhook", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:webhook", "ai", "integration:langchain"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 85.67,
@@ -1854,7 +1854,7 @@
 				"@blotato/n8n-nodes-blotato.blotato",
 				"n8n-nodes-base.merge"
 			],
-			"tags": ["trigger:other", "flow:parallel", "ai", "integration:blotato"],
+			"tags": ["trigger:other", "ai", "integration:blotato"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 85.6,
@@ -1886,7 +1886,7 @@
 				"n8n-nodes-base.code",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:schedule", "flow:loop", "integration:googleSheets"],
+			"tags": ["trigger:schedule", "integration:googleSheets"],
 			"triggerType": "schedule",
 			"hasAI": false,
 			"score": 85.48,
@@ -1928,7 +1928,7 @@
 				"n8n-nodes-base.sort",
 				"@n8n/n8n-nodes-langchain.agent"
 			],
-			"tags": ["trigger:manual", "flow:loop", "ai", "integration:merge"],
+			"tags": ["trigger:manual", "ai", "integration:merge"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 85.4,
@@ -1958,7 +1958,7 @@
 				"n8n-nodes-base.httpRequest",
 				"n8n-nodes-base.googleDrive"
 			],
-			"tags": ["trigger:manual", "flow:loop", "integration:googleSheets"],
+			"tags": ["trigger:manual", "integration:googleSheets"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 85.32,
@@ -1988,7 +1988,7 @@
 				"n8n-nodes-base.html",
 				"@n8n/n8n-nodes-langchain.openAi"
 			],
-			"tags": ["trigger:telegram", "flow:branching", "ai", "integration:if"],
+			"tags": ["trigger:telegram", "ai", "integration:if"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 85.31,
@@ -2018,7 +2018,7 @@
 				"n8n-nodes-base.switch",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:formTrigger", "flow:branching", "integration:form"],
+			"tags": ["trigger:formTrigger", "integration:form"],
 			"triggerType": "formTrigger",
 			"hasAI": false,
 			"score": 85.3,
@@ -2046,7 +2046,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:schedule", "flow:linear", "integration:httpRequest"],
+			"tags": ["trigger:schedule", "integration:httpRequest"],
 			"triggerType": "schedule",
 			"hasAI": false,
 			"score": 85.26,
@@ -2084,7 +2084,7 @@
 				"n8n-nodes-base.set",
 				"@n8n/n8n-nodes-langchain.outputParserStructured"
 			],
-			"tags": ["trigger:telegram", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:telegram", "ai", "integration:httpRequest"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 85.21,
@@ -2111,7 +2111,7 @@
 				"n8n-nodes-base.webhook",
 				"n8n-nodes-base.respondToWebhook"
 			],
-			"tags": ["trigger:webhook", "flow:linear", "integration:httpRequest"],
+			"tags": ["trigger:webhook", "integration:httpRequest"],
 			"triggerType": "webhook",
 			"hasAI": false,
 			"score": 85.15,
@@ -2139,7 +2139,7 @@
 				"n8n-nodes-base.airtable",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:other", "flow:linear", "ai", "integration:httpRequest"],
+			"tags": ["trigger:other", "ai", "integration:httpRequest"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 85.15,
@@ -2170,7 +2170,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:chatTrigger", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:httpRequest"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 85.1,
@@ -2197,7 +2197,7 @@
 				"n8n-nodes-base.set",
 				"n8n-nodes-base.splitOut"
 			],
-			"tags": ["trigger:manual", "flow:linear", "integration:set"],
+			"tags": ["trigger:manual", "integration:set"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 85.09,
@@ -2236,7 +2236,7 @@
 				"n8n-nodes-base.if",
 				"n8n-nodes-base.aggregate"
 			],
-			"tags": ["trigger:manual", "flow:branching", "ai", "integration:code"],
+			"tags": ["trigger:manual", "ai", "integration:code"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 85.08,
@@ -2273,7 +2273,7 @@
 				"n8n-nodes-base.httpRequest",
 				"n8n-nodes-base.googleSheets"
 			],
-			"tags": ["trigger:schedule", "flow:branching", "ai", "integration:aggregate"],
+			"tags": ["trigger:schedule", "ai", "integration:aggregate"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 85.07,
@@ -2305,7 +2305,7 @@
 				"@n8n/n8n-nodes-langchain.openAi",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:webhook", "flow:branching", "ai", "integration:blotato"],
+			"tags": ["trigger:webhook", "ai", "integration:blotato"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 85.04,
@@ -2337,7 +2337,7 @@
 				"n8n-nodes-base.set",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:schedule", "flow:branching", "integration:code"],
+			"tags": ["trigger:schedule", "integration:code"],
 			"triggerType": "schedule",
 			"hasAI": false,
 			"score": 85.03,
@@ -2364,7 +2364,7 @@
 				"n8n-nodes-base.executeWorkflowTrigger",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:other", "flow:linear", "integration:convertToFile"],
+			"tags": ["trigger:other", "integration:convertToFile"],
 			"triggerType": "other",
 			"hasAI": false,
 			"score": 84.99,
@@ -2392,7 +2392,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.httpRequest"
 			],
-			"tags": ["trigger:manual", "flow:linear", "integration:html"],
+			"tags": ["trigger:manual", "integration:html"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 84.98,
@@ -2432,7 +2432,7 @@
 				"n8n-nodes-base.airtable",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:telegram", "flow:loop", "ai", "integration:langchain"],
+			"tags": ["trigger:telegram", "ai", "integration:langchain"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 84.96,
@@ -2466,7 +2466,7 @@
 				"n8n-nodes-base.webhook",
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi"
 			],
-			"tags": ["trigger:webhook", "flow:branching", "ai", "integration:respondToWebhook"],
+			"tags": ["trigger:webhook", "ai", "integration:respondToWebhook"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 84.94,
@@ -2500,7 +2500,7 @@
 				"n8n-nodes-base.filter",
 				"n8n-nodes-base.splitOut"
 			],
-			"tags": ["trigger:manual", "flow:parallel", "integration:httpRequest"],
+			"tags": ["trigger:manual", "integration:httpRequest"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 84.92,
@@ -2531,7 +2531,7 @@
 				"n8n-nodes-base.httpRequestTool",
 				"n8n-nodes-infranodus.infranodusTool"
 			],
-			"tags": ["trigger:telegram", "flow:linear", "ai", "integration:httpRequestTool"],
+			"tags": ["trigger:telegram", "ai", "integration:httpRequestTool"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 84.92,
@@ -2565,7 +2565,7 @@
 				"n8n-nodes-base.function",
 				"n8n-nodes-base.splitOut"
 			],
-			"tags": ["trigger:manual", "flow:loop", "ai", "integration:code"],
+			"tags": ["trigger:manual", "ai", "integration:code"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 84.82,
@@ -2594,7 +2594,7 @@
 				"n8n-nodes-base.stickyNote",
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi"
 			],
-			"tags": ["trigger:chatTrigger", "flow:linear", "ai", "integration:code"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:code"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 84.69,
@@ -2631,7 +2631,7 @@
 				"n8n-nodes-base.scheduleTrigger",
 				"n8n-nodes-base.sms77"
 			],
-			"tags": ["trigger:webhook", "flow:branching", "ai", "integration:langchain"],
+			"tags": ["trigger:webhook", "ai", "integration:langchain"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 84.68,
@@ -2664,7 +2664,7 @@
 				"@n8n/n8n-nodes-langchain.lmChatOpenRouter",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:telegram", "flow:linear", "ai", "integration:httpRequest"],
+			"tags": ["trigger:telegram", "ai", "integration:httpRequest"],
 			"triggerType": "telegram",
 			"hasAI": true,
 			"score": 84.65,
@@ -2695,7 +2695,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.googleSheets"
 			],
-			"tags": ["trigger:other", "flow:branching", "ai", "integration:httpRequest"],
+			"tags": ["trigger:other", "ai", "integration:httpRequest"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 84.62,
@@ -2732,7 +2732,7 @@
 				"n8n-nodes-base.stickyNote",
 				"@n8n/n8n-nodes-langchain.lmChatAnthropic"
 			],
-			"tags": ["trigger:other", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:other", "ai", "integration:langchain"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 84.56,
@@ -2762,7 +2762,7 @@
 				"n8n-nodes-base.merge",
 				"n8n-nodes-base.splitOut"
 			],
-			"tags": ["trigger:gmail", "flow:parallel", "integration:googleDrive"],
+			"tags": ["trigger:gmail", "integration:googleDrive"],
 			"triggerType": "gmail",
 			"hasAI": false,
 			"score": 84.53,
@@ -2794,7 +2794,7 @@
 				"n8n-nodes-base.googleDrive",
 				"n8n-nodes-base.googleSheets"
 			],
-			"tags": ["trigger:telegram", "flow:branching", "integration:telegram"],
+			"tags": ["trigger:telegram", "integration:telegram"],
 			"triggerType": "telegram",
 			"hasAI": false,
 			"score": 84.5,
@@ -2825,7 +2825,7 @@
 				"n8n-nodes-base.if",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:gmail", "flow:branching", "ai", "integration:emailSend"],
+			"tags": ["trigger:gmail", "ai", "integration:emailSend"],
 			"triggerType": "gmail",
 			"hasAI": true,
 			"score": 84.44,
@@ -2858,7 +2858,7 @@
 				"n8n-nodes-base.filter",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:chatTrigger", "flow:branching", "ai", "integration:googleSheets"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:googleSheets"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 84.41,
@@ -2889,7 +2889,7 @@
 				"@n8n/n8n-nodes-langchain.agent",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:other", "flow:linear", "ai", "integration:googleCalendarTool"],
+			"tags": ["trigger:other", "ai", "integration:googleCalendarTool"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 84.41,
@@ -2918,7 +2918,7 @@
 				"n8n-nodes-base.httpRequest",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:manual", "flow:loop", "integration:httpRequest"],
+			"tags": ["trigger:manual", "integration:httpRequest"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 84.35,
@@ -2949,7 +2949,7 @@
 				"n8n-nodes-base.dataTable",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:formTrigger", "flow:branching", "ai", "integration:set"],
+			"tags": ["trigger:formTrigger", "ai", "integration:set"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 84.32,
@@ -2980,7 +2980,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.gmailTrigger"
 			],
-			"tags": ["trigger:gmail", "flow:branching", "integration:code"],
+			"tags": ["trigger:gmail", "integration:code"],
 			"triggerType": "gmail",
 			"hasAI": false,
 			"score": 84.22,
@@ -3012,7 +3012,7 @@
 				"n8n-nodes-base.emailSend",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:webhook", "flow:branching", "integration:code"],
+			"tags": ["trigger:webhook", "integration:code"],
 			"triggerType": "webhook",
 			"hasAI": false,
 			"score": 84.18,
@@ -3051,7 +3051,7 @@
 				"n8n-nodes-base.microsoftOutlook",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:schedule", "flow:loop", "ai", "integration:set"],
+			"tags": ["trigger:schedule", "ai", "integration:set"],
 			"triggerType": "schedule",
 			"hasAI": true,
 			"score": 84.15,
@@ -3085,7 +3085,7 @@
 				"n8n-nodes-base.markdown",
 				"n8n-nodes-base.gmail"
 			],
-			"tags": ["trigger:other", "flow:loop", "integration:set"],
+			"tags": ["trigger:other", "integration:set"],
 			"triggerType": "other",
 			"hasAI": false,
 			"score": 84.14,
@@ -3115,7 +3115,7 @@
 				"n8n-nodes-base.wait",
 				"n8n-nodes-base.awsS3"
 			],
-			"tags": ["trigger:webhook", "flow:linear", "ai", "integration:httpRequest"],
+			"tags": ["trigger:webhook", "ai", "integration:httpRequest"],
 			"triggerType": "webhook",
 			"hasAI": true,
 			"score": 84.01,
@@ -3145,7 +3145,7 @@
 				"@n8n/n8n-nodes-langchain.textClassifier",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:gmail", "flow:parallel", "ai", "integration:langchain"],
+			"tags": ["trigger:gmail", "ai", "integration:langchain"],
 			"triggerType": "gmail",
 			"hasAI": true,
 			"score": 83.97,
@@ -3175,7 +3175,7 @@
 				"n8n-nodes-base.set",
 				"n8n-nodes-base.filter"
 			],
-			"tags": ["trigger:manual", "flow:linear", "integration:googleSheets"],
+			"tags": ["trigger:manual", "integration:googleSheets"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 83.96,
@@ -3209,7 +3209,7 @@
 				"n8n-nodes-base.set",
 				"n8n-nodes-base.if"
 			],
-			"tags": ["trigger:other", "flow:branching", "ai", "integration:set"],
+			"tags": ["trigger:other", "ai", "integration:set"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 83.93,
@@ -3240,7 +3240,7 @@
 				"n8n-nodes-base.discord",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:other", "flow:parallel", "integration:code"],
+			"tags": ["trigger:other", "integration:code"],
 			"triggerType": "other",
 			"hasAI": false,
 			"score": 83.89,
@@ -3271,7 +3271,7 @@
 				"n8n-nodes-base.googleSheets",
 				"n8n-nodes-base.set"
 			],
-			"tags": ["trigger:manual", "flow:branching", "integration:httpRequest"],
+			"tags": ["trigger:manual", "integration:httpRequest"],
 			"triggerType": "manual",
 			"hasAI": false,
 			"score": 83.87,
@@ -3303,7 +3303,7 @@
 				"n8n-nodes-base.switch",
 				"n8n-nodes-base.emailSend"
 			],
-			"tags": ["trigger:schedule", "flow:branching", "integration:httpRequest"],
+			"tags": ["trigger:schedule", "integration:httpRequest"],
 			"triggerType": "schedule",
 			"hasAI": false,
 			"score": 83.1,
@@ -3331,7 +3331,7 @@
 				"n8n-nodes-base.stickyNote",
 				"n8n-nodes-base.supabaseTool"
 			],
-			"tags": ["trigger:other", "flow:linear", "ai", "integration:supabaseTool"],
+			"tags": ["trigger:other", "ai", "integration:supabaseTool"],
 			"triggerType": "other",
 			"hasAI": true,
 			"score": 82.03,
@@ -3371,7 +3371,7 @@
 				"@n8n/n8n-nodes-langchain.memoryBufferWindow",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:chatTrigger", "flow:loop", "ai", "integration:langchain"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:langchain"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 77.65,
@@ -3402,7 +3402,7 @@
 				"@n8n/n8n-nodes-langchain.chatTrigger",
 				"@n8n/n8n-nodes-langchain.lmChatOpenAi"
 			],
-			"tags": ["trigger:formTrigger", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:formTrigger", "ai", "integration:langchain"],
 			"triggerType": "formTrigger",
 			"hasAI": true,
 			"score": 72.06,
@@ -3436,7 +3436,7 @@
 				"n8n-nodes-base.extractFromFile",
 				"@n8n/n8n-nodes-langchain.embeddingsOpenAi"
 			],
-			"tags": ["trigger:manual", "flow:loop", "ai", "integration:langchain"],
+			"tags": ["trigger:manual", "ai", "integration:langchain"],
 			"triggerType": "manual",
 			"hasAI": true,
 			"score": 66.66,
@@ -3471,7 +3471,7 @@
 				"n8n-nodes-base.extractFromFile",
 				"n8n-nodes-base.stickyNote"
 			],
-			"tags": ["trigger:chatTrigger", "flow:linear", "ai", "integration:langchain"],
+			"tags": ["trigger:chatTrigger", "ai", "integration:langchain"],
 			"triggerType": "chatTrigger",
 			"hasAI": true,
 			"score": 65.61,

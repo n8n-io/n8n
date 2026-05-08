@@ -146,7 +146,7 @@ function detailToWorkflowJson(detail: DetailResponse) {
 }
 
 function buildTags(detail: DetailResponse, key: BucketKey): string[] {
-	const tags: string[] = [`trigger:${key.triggerType}`, `flow:${key.controlFlowKind}`];
+	const tags: string[] = [`trigger:${key.triggerType}`];
 	if (key.hasAI) tags.push('ai');
 	if (key.primaryIntegration && key.primaryIntegration !== 'none') {
 		tags.push(`integration:${key.primaryIntegration}`);
