@@ -1577,7 +1577,9 @@ export class WorkflowExecute {
 
 								return input.map((item, itemIndex) => {
 									const inputItemIndex =
-										executionData.metadata?.originalPairedItemIndex ?? itemIndex;
+										executionData.metadata?.originalPairedItemIndices?.[itemIndex] ??
+										executionData.metadata?.originalPairedItemIndex ??
+										itemIndex;
 
 									// Preserve any existing sourceOverwrite from the pairedItem
 									// for tool executions. Tool calls don't have a main

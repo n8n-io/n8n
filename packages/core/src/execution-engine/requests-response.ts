@@ -274,13 +274,14 @@ export function handleRequest({
 
 	// Preserve the original pairedItem.item from the agent's input so the resumed
 	// execution can keep the same upstream item lineage after the tool call returns.
-	const originalPairedItem = executionData.data.main?.[0]?.[0]?.pairedItem;
-	const originalItemIndex =
-		typeof originalPairedItem === 'number'
-			? originalPairedItem
-			: Array.isArray(originalPairedItem)
-				? (originalPairedItem[0]?.item ?? 0)
-				: (originalPairedItem?.item ?? 0);
+	const originalPairedItemIndices = (executionData.data.main?.[0] ?? []).map((item) => {
+		const pairedItem = item.pairedItem;
+		return typeof pairedItem === 'number'
+			? pairedItem
+			: Array.isArray(pairedItem)
+				? (pairedItem[0]?.item ?? 0)
+				: (pairedItem?.item ?? 0);
+	});
 
 	// 3. add current node back to the bottom of the stack
 	nodesToBeExecuted.unshift({
@@ -294,7 +295,7 @@ export function handleRequest({
 			nodeWasResumed: true,
 			subNodeExecutionData,
 			...result.metadata,
-			originalPairedItemIndex: originalItemIndex,
+			originalPairedItemIndices,
 		},
 	});
 

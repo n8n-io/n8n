@@ -2902,6 +2902,10 @@ export interface ITaskMetadata {
 	 * items keep pointing at the same upstream item after the tool-call round-trip.
 	 */
 	originalPairedItemIndex?: number;
+	/**
+	 * Preserves the original paired item indices for resumed agent executions (batch mode).
+	 */
+	originalPairedItemIndices?: number[];
 
 	/**
 	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
