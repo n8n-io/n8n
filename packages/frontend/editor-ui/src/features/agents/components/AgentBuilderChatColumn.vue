@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -54,6 +54,10 @@ const sessionMenuMaxHeight = 'calc((var(--spacing--xl) * 5) + var(--spacing--xs)
 
 // `sessionOptions` already match `DropdownMenuItemProps`; alias for template clarity.
 const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => props.sessionOptions);
+
+// Shared draft text across Build and Test inputs so switching modes preserves
+// what the user typed. The two AgentChatPanel instances bind to the same ref.
+const sharedInputDraft = ref('');
 </script>
 
 <template>
@@ -110,6 +114,7 @@ const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => pr
 				v-if="initialized && chatModeOpened.test && effectiveSessionId"
 				v-show="chatMode === 'test'"
 				:key="`test-${effectiveSessionId}`"
+				v-model:input-draft="sharedInputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
 				mode="inline"
@@ -137,6 +142,7 @@ const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => pr
 			<AgentChatPanel
 				v-if="initialized && chatModeOpened.build"
 				v-show="chatMode === 'build' && isBuilderConfigured"
+				v-model:input-draft="sharedInputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
 				mode="inline"
