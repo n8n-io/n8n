@@ -1187,15 +1187,10 @@ function handleStop() {
 .preview-panel-slide-leave-active {
 	--preview-panel-slide-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-	transition:
-		width var(--duration--snappy) var(--preview-panel-slide-easing),
-		min-width var(--duration--snappy) var(--preview-panel-slide-easing),
-		opacity var(--duration--snappy) var(--preview-panel-slide-easing);
 	overflow: hidden;
-	will-change: width, opacity, transform;
+	will-change: opacity, transform;
 
 	@media (prefers-reduced-motion: reduce) {
-		transition: none;
 		will-change: auto;
 	}
 }
@@ -1212,13 +1207,6 @@ function handleStop() {
 	--animation--fade-out-right--translate: var(--spacing--sm);
 
 	@include motion.fade-out-right;
-}
-
-.preview-panel-slide-enter-from,
-.preview-panel-slide-leave-to {
-	width: 0 !important;
-	min-width: 0 !important;
-	opacity: 0;
 }
 
 .artifacts-panel-fade-enter-active,
