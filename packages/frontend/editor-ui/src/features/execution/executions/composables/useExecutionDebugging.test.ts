@@ -64,7 +64,7 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.getParentNodes.mockReturnValue([]);
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.workflow.id = 'test-workflow';
+		workflowStore.setWorkflowId('test-workflow');
 
 		toast = useToast();
 

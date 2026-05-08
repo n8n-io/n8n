@@ -8,7 +8,6 @@ import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import BuilderSetupWizard from './BuilderSetupWizard.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useBuilderStore } from '../../builder.store';
 
@@ -83,7 +82,6 @@ const renderComponent = createComponentRenderer(BuilderSetupWizard, {
 });
 
 describe('BuilderSetupWizard', () => {
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
@@ -99,11 +97,7 @@ describe('BuilderSetupWizard', () => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
-		workflowsStore = mockedStore(useWorkflowsStore);
 		builderStore = mockedStore(useBuilderStore);
-
-		workflowsStore.workflow.nodes = [triggerNode];
-		workflowsStore.workflow.connections = {} as never;
 		Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => false });
 		Object.defineProperty(builderStore, 'wizardHasExecutedWorkflow', {
 			value: false,

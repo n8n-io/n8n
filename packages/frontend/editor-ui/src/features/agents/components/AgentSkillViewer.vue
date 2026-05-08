@@ -301,6 +301,8 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 .scrollable {
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .field {

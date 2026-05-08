@@ -75,7 +75,7 @@ describe('useRecentResources', () => {
 		recentNodesRef.value = {};
 
 		mockWorkflowsStore = useWorkflowsStore();
-		mockWorkflowsStore.workflow.id = 'workflow-1';
+		mockWorkflowsStore.workflowId = 'workflow-1';
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockNodeTypesStore = useNodeTypesStore();
 
