@@ -148,7 +148,7 @@
       "lodash": "4.18.1",
       "lodash-es": "4.18.1",
       "word-wrap@<=1.2.4": "1.2.4",
-      "minimatch@<=5.1.8": "5.1.8",
+      "minimatch@<=5.1.8": "9.0.7",
       "minimatch@10": "10.2.3",
       "@hono/node-server": "1.19.13",
       "protobufjs": "7.5.5",
