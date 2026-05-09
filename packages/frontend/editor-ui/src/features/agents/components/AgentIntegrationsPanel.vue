@@ -2,14 +2,13 @@
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
-import N8nSelect from '@n8n/design-system/components/N8nSelect';
-import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
+import AgentCredentialSelect from './AgentCredentialSelect.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -122,10 +121,6 @@ const showManifest = ref(false);
 
 function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
-}
-
-function hasCredentials(type: string): boolean {
-	return (credentialsByType.value[type] ?? []).length > 0;
 }
 
 function hasError(type: string): boolean {
@@ -393,49 +388,37 @@ onMounted(async () => {
 				</div>
 
 				<div v-if="!isConnected(config.type)" :class="$style.connectForm">
-					<template v-if="hasCredentials(config.type)">
-						<label :class="$style.label">
-							<N8nText size="small" bold>{{ config.label }} Credential</N8nText>
-						</label>
-						<div :class="$style.selectRow">
-							<N8nSelect
-								v-model="selectedCredentials[config.type]"
-								:class="$style.select"
-								placeholder="Select a credential..."
-								:loading="credentialsLoading"
-								:disabled="isLoading(config.type)"
-								size="medium"
-								:data-testid="`${config.type}-credential-select`"
-							>
-								<N8nOption
-									v-for="cred in credentialsByType[config.type] ?? []"
-									:key="cred.id"
-									:value="cred.id"
-									:label="cred.name"
-								/>
-							</N8nSelect>
-							<N8nButton
-								v-if="selectedCredentials[config.type]"
-								type="tertiary"
-								size="small"
-								icon="pen"
-								aria-label="Edit credential"
-								:data-testid="`${config.type}-edit-credential`"
-								@click="onEditCredential(config.type)"
-							/>
-						</div>
-					</template>
-
-					<div v-else-if="!credentialsLoading" :class="$style.emptyCredentials">
-						<N8nText size="small">{{ config.noCredentialsMessage }}</N8nText>
+					<label :class="$style.label">
+						<N8nText size="small" bold>{{ config.label }} Credential</N8nText>
+					</label>
+					<div :class="$style.selectRow">
+						<AgentCredentialSelect
+							v-model="selectedCredentials[config.type]"
+							:class="$style.select"
+							placeholder="Select a credential..."
+							:credentials="credentialsByType[config.type] ?? []"
+							create-label="New credential"
+							:loading="credentialsLoading"
+							:disabled="isLoading(config.type)"
+							:data-test-id="`${config.type}-credential-select`"
+							@create="onCreateCredential(config.type)"
+						/>
 						<N8nButton
+							v-if="selectedCredentials[config.type]"
+							type="tertiary"
 							size="small"
-							:data-testid="`${config.type}-create-credential`"
-							@click="onCreateCredential(config.type)"
-						>
-							<N8nIcon icon="plus" :size="14" />
-							Add {{ config.label }} credential
-						</N8nButton>
+							icon="pen"
+							aria-label="Edit credential"
+							:data-testid="`${config.type}-edit-credential`"
+							@click="onEditCredential(config.type)"
+						/>
+					</div>
+
+					<div
+						v-if="!credentialsLoading && (credentialsByType[config.type] ?? []).length === 0"
+						:class="$style.emptyCredentials"
+					>
+						<N8nText size="small">{{ config.noCredentialsMessage }}</N8nText>
 					</div>
 
 					<N8nText v-if="hasError(config.type)" :class="$style.errorText" size="small">
@@ -459,16 +442,6 @@ onMounted(async () => {
 						>
 							<N8nIcon icon="plug" :size="14" />
 							Connect
-						</N8nButton>
-						<N8nButton
-							v-if="hasCredentials(config.type)"
-							type="tertiary"
-							size="small"
-							:data-testid="`${config.type}-create-another-credential`"
-							@click="onCreateCredential(config.type)"
-						>
-							<N8nIcon icon="plus" :size="14" />
-							New credential
 						</N8nButton>
 					</div>
 				</div>

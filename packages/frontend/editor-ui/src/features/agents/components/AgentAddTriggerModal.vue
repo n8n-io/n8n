@@ -23,6 +23,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
+import AgentCredentialSelect from './AgentCredentialSelect.vue';
 
 interface CredentialOption {
 	id: string;
@@ -520,22 +521,17 @@ onMounted(async () => {
 							</N8nText>
 						</label>
 						<div :class="$style.selectRow">
-							<N8nSelect
+							<AgentCredentialSelect
 								v-model="selectedCredentials[currentIntegration.type]"
 								:class="$style.select"
 								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
+								:credentials="credentialsByType[currentIntegration.type] ?? []"
+								:create-label="i18n.baseText('agents.builder.addTrigger.newCredential')"
 								:loading="credentialsLoading"
 								:disabled="isLoading(currentIntegration.type)"
-								size="medium"
-								:data-testid="`${currentIntegration.type}-credential-select`"
-							>
-								<N8nOption
-									v-for="cred in credentialsByType[currentIntegration.type] ?? []"
-									:key="cred.id"
-									:value="cred.id"
-									:label="cred.name"
-								/>
-							</N8nSelect>
+								:data-test-id="`${currentIntegration.type}-credential-select`"
+								@create="onCreateCredential(currentIntegration)"
+							/>
 							<N8nButton
 								v-if="selectedCredentials[currentIntegration.type]"
 								variant="outline"
@@ -609,15 +605,6 @@ onMounted(async () => {
 			<div :class="$style.footer">
 				<div :class="$style.footerActions">
 					<template v-if="!isConnected(currentIntegration.type)">
-						<N8nButton
-							variant="outline"
-							size="small"
-							:data-testid="`${currentIntegration.type}-create-another-credential`"
-							@click="onCreateCredential(currentIntegration)"
-						>
-							<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-							{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
-						</N8nButton>
 						<N8nButton
 							variant="solid"
 							:disabled="
