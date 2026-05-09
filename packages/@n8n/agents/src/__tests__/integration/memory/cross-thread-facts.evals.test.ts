@@ -673,6 +673,7 @@ async function runScenario(scenario: Scenario): Promise<ScenarioResult> {
 		.storage(memory)
 		.lastMessages(1)
 		.crossThreadFacts({
+			sync: true,
 			topK: 5,
 			maxFactsPerTurn: 30,
 			embedder: createEmbeddingModel('openai/text-embedding-3-small', { apiKey: openAiKey }),
