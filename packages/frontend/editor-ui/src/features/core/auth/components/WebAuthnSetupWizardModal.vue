@@ -69,14 +69,17 @@ const submitLabel = computed(() =>
 
 const tone = computed(() => (method.value === 'passkey' ? 'passkey' : 'security_key'));
 
-const onCancel = () => {
-	twoFactorWizardBus.emit('cancelled');
+const onBack = () => {
+	twoFactorWizardBus.emit('back');
 	uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
 };
+
+const inlineError = ref('');
 
 const onRegister = async () => {
 	if (!label.value.trim()) return;
 	submitting.value = true;
+	inlineError.value = '';
 	try {
 		await usersStore.registerWebAuthnCredential(label.value.trim(), attachment.value);
 		const completed: TwoFactorMethod = method.value;
@@ -94,7 +97,16 @@ const onRegister = async () => {
 			await router.push({ name: VIEWS.SIGNIN });
 		}
 	} catch (e) {
-		toast.showError(e, i18n.baseText('settings.personal.twoFactor.toast.error.title'));
+		// NotAllowedError covers both user-cancellation and the focus loss that
+		// happens when a password manager (e.g. Bitwarden) intercepts the prompt
+		// and the user picks "use this device" instead. In both cases the
+		// ceremony is recoverable — keep the modal open so the user can retry.
+		const isCancelledOrFocusLoss = e instanceof DOMException && e.name === 'NotAllowedError';
+		if (isCancelledOrFocusLoss) {
+			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.cancelled');
+		} else {
+			inlineError.value = i18n.baseText('settings.personal.twoFactor.webauthn.error.generic');
+		}
 	} finally {
 		submitting.value = false;
 	}
@@ -112,7 +124,7 @@ const onRegister = async () => {
 					})
 				}}
 			</div>
-			<div :class="[$style.bigIcon, $style[`tone_${tone}`]]">
+			<div :class="[$style.bigIcon, $style[`tone_${tone}`], { [$style.pulse]: submitting }]">
 				<N8nIcon :icon="method === 'passkey' ? 'fingerprint' : 'key-round'" :size="36" />
 			</div>
 			<div :class="$style.heading">{{ heading }}</div>
@@ -132,10 +144,18 @@ const onRegister = async () => {
 			>
 				{{ i18n.baseText('settings.personal.twoFactor.securityKeyWizard.info') }}
 			</N8nInfoTip>
+			<N8nInfoTip
+				v-if="inlineError"
+				theme="danger"
+				:class="$style.errorTip"
+				data-test-id="mfa-webauthn-error"
+			>
+				{{ inlineError }}
+			</N8nInfoTip>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="onCancel">
+				<N8nButton variant="subtle" @click="onBack">
 					{{ i18n.baseText('settings.personal.twoFactor.back') }}
 				</N8nButton>
 				<N8nButton
@@ -170,10 +190,33 @@ const onRegister = async () => {
 	justify-content: center;
 	margin: var(--spacing--xs) auto var(--spacing--sm);
 	font-size: var(--font-size--2xl);
+	position: relative;
+}
+
+.pulse::before {
+	content: '';
+	position: absolute;
+	inset: calc(-1 * var(--spacing--3xs));
+	border-radius: 50%;
+	border: var(--spacing--5xs) solid currentColor;
+	opacity: 0.4;
+	animation: mfaPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mfaPulse {
+	0%,
+	100% {
+		transform: scale(1);
+		opacity: 0.4;
+	}
+	50% {
+		transform: scale(1.15);
+		opacity: 0.1;
+	}
 }
 
 .tone_passkey {
-	background: var(--color--blue-alpha-100);
+	background: var(--background--info);
 	color: var(--color--blue-500);
 }
 
@@ -185,9 +228,14 @@ const onRegister = async () => {
 .heading {
 	text-align: center;
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
+	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 	margin-bottom: var(--spacing--3xs);
+}
+
+.errorTip {
+	margin-top: var(--spacing--2xs);
+	margin-bottom: 0;
 }
 
 .description {

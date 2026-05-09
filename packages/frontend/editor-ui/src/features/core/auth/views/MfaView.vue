@@ -174,8 +174,11 @@ const onWebAuthnClick = async () => {
 		const usersStore = useUsersStore();
 		const response = await usersStore.verifyWebAuthnAuthentication(props.email);
 		emit('webauthnSubmit', response);
-	} catch {
-		webauthnError.value = i18.baseText('mfa.webauthn.error');
+	} catch (e) {
+		const isCancelledOrFocusLoss = e instanceof DOMException && e.name === 'NotAllowedError';
+		webauthnError.value = isCancelledOrFocusLoss
+			? i18.baseText('mfa.login.webauthn.error.cancelled')
+			: i18.baseText('mfa.webauthn.error');
 	} finally {
 		webauthnWaiting.value = false;
 	}
@@ -394,7 +397,7 @@ body {
 }
 
 .tone_passkey {
-	background: var(--color--blue-alpha-100);
+	background: var(--background--info);
 	color: var(--color--blue-500);
 }
 

@@ -152,7 +152,7 @@ const methods: MethodOption[] = [
 	transition:
 		border-color 0.15s,
 		background-color 0.15s;
-	align-items: flex-start;
+	align-items: center;
 
 	&:hover {
 		border-color: var(--color--primary);
@@ -187,7 +187,7 @@ const methods: MethodOption[] = [
 }
 
 .tone_passkey {
-	background: var(--color--blue-alpha-100);
+	background: var(--background--info);
 	color: var(--color--blue-500);
 }
 

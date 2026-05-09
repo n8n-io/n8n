@@ -8,4 +8,5 @@ export class ChangePasswordRequestDto extends Z.class({
 	token: passwordResetTokenSchema,
 	password: passwordSchema,
 	mfaCode: z.string().optional(),
+	webauthnResponse: z.unknown().optional(),
 }) {}

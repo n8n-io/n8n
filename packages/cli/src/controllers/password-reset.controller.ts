@@ -189,6 +189,33 @@ export class PasswordResetController {
 	}
 
 	/**
+	 * Generate WebAuthn authentication options for the user identified by the
+	 * password reset token. Used by the change-password view when the user's
+	 * active 2FA method is passkey or security key.
+	 */
+	@Post('/password-reset/webauthn-options', {
+		skipAuth: true,
+		ipRateLimit: true,
+	})
+	async getPasswordResetWebAuthnOptions(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Body payload: { token: string },
+	) {
+		const { token } = payload;
+		if (!token || typeof token !== 'string') {
+			throw new BadRequestError('Token is required');
+		}
+
+		const user = await this.authService.resolvePasswordResetToken(token);
+		if (!user || !user.mfaEnabled) {
+			throw new NotFoundError('');
+		}
+
+		return await this.mfaService.webauthn.generateAuthenticationOptions(user.id);
+	}
+
+	/**
 	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password', {
@@ -200,19 +227,30 @@ export class PasswordResetController {
 		res: Response,
 		@Body payload: ChangePasswordRequestDto,
 	) {
-		const { token, password, mfaCode } = payload;
+		const { token, password, mfaCode, webauthnResponse } = payload;
 
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
-			if (!mfaCode) throw new BadRequestError('If MFA enabled, mfaCode is required.');
+			const hasMfaCode = typeof mfaCode === 'string' && mfaCode.length > 0;
+			const hasWebauthn = webauthnResponse !== undefined && webauthnResponse !== null;
 
-			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+			if (!hasMfaCode && !hasWebauthn) {
+				throw new BadRequestError('Two-factor verification is required to change password.');
+			}
 
-			const validToken = this.mfaService.totp.verifySecret({ secret, mfaCode });
+			let valid: boolean;
+			if (hasWebauthn) {
+				valid = await this.mfaService.validateWebAuthn(user.id, webauthnResponse);
+			} else {
+				const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(
+					user.id,
+				);
+				valid = this.mfaService.totp.verifySecret({ secret, mfaCode: mfaCode! });
+			}
 
-			if (!validToken) throw new BadRequestError('Invalid MFA token.');
+			if (!valid) throw new BadRequestError('Invalid MFA token.');
 		}
 
 		const passwordHash = await this.passwordUtility.hash(password);

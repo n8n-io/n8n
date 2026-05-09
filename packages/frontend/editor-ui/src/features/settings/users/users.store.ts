@@ -277,8 +277,23 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.validatePasswordToken(rootStore.restApiContext, params);
 	};
 
-	const changePassword = async (params: { token: string; password: string; mfaCode?: string }) => {
+	const changePassword = async (params: {
+		token: string;
+		password: string;
+		mfaCode?: string;
+		webauthnResponse?: unknown;
+	}) => {
 		await usersApi.changePassword(rootStore.restApiContext, params);
+	};
+
+	const getPasswordResetWebAuthnAssertion = async (token: string) => {
+		const { startAuthentication } = await import('@simplewebauthn/browser');
+		const options = await usersApi.getPasswordResetWebAuthnOptions(rootStore.restApiContext, {
+			token,
+		});
+		return await startAuthentication({
+			optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+		});
 	};
 
 	const updateUser = async (params: UserUpdateRequestDto) => {
@@ -524,6 +539,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		sendForgotPasswordEmail,
 		validatePasswordToken,
 		changePassword,
+		getPasswordResetWebAuthnAssertion,
 		updateUser,
 		updateUserName,
 		updateUserSettings,

@@ -44,6 +44,7 @@ export const twoFactorPickerBus = createEventBus<TwoFactorPickerEvents>();
 export interface TwoFactorWizardEvents {
 	completed: { method: TwoFactorMethod };
 	cancelled: undefined;
+	back: undefined;
 }
 
 export const twoFactorWizardBus = createEventBus<TwoFactorWizardEvents>();

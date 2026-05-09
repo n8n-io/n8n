@@ -19,7 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import { twoFactorPickerBus } from '../auth.eventBus';
+import { twoFactorPickerBus, twoFactorWizardBus } from '../auth.eventBus';
 import type { TwoFactorMethod } from '../auth.eventBus';
 import { useMfaReverify } from '../composables/useMfaReverify';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -352,10 +352,16 @@ const onPickerSelected = ({ method }: { method: TwoFactorMethod }) => {
 	}
 };
 
+const onWizardBack = () => {
+	void openMethodPicker();
+};
+
 twoFactorPickerBus.on('selected', onPickerSelected);
+twoFactorWizardBus.on('back', onWizardBack);
 
 onBeforeUnmount(() => {
 	twoFactorPickerBus.off('selected', onPickerSelected);
+	twoFactorWizardBus.off('back', onWizardBack);
 });
 </script>
 
@@ -607,7 +613,7 @@ onBeforeUnmount(() => {
 .activeMethodHeader {
 	display: flex;
 	gap: var(--spacing--2xs);
-	align-items: flex-start;
+	align-items: center;
 }
 
 .activeMethodIcon {
@@ -646,7 +652,7 @@ onBeforeUnmount(() => {
 }
 
 .tone_passkey {
-	background: var(--color--blue-alpha-100);
+	background: var(--background--info);
 	color: var(--color--blue-500);
 }
 

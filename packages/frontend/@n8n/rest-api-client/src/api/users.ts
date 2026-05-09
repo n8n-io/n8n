@@ -141,9 +141,16 @@ export async function validatePasswordToken(
 
 export async function changePassword(
 	context: IRestApiContext,
-	params: { token: string; password: string; mfaCode?: string },
+	params: { token: string; password: string; mfaCode?: string; webauthnResponse?: unknown },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
+}
+
+export async function getPasswordResetWebAuthnOptions(
+	context: IRestApiContext,
+	params: { token: string },
+): Promise<unknown> {
+	return await makeRestApiRequest(context, 'POST', '/password-reset/webauthn-options', params);
 }
 
 export async function updateCurrentUser(

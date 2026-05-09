@@ -375,6 +375,9 @@ export class AuthService {
 
 		url.searchParams.append('token', this.generatePasswordResetToken(user));
 		url.searchParams.append('mfaEnabled', user.mfaEnabled.toString());
+		if (user.mfaEnabled && user.mfaMethod) {
+			url.searchParams.append('mfaMethod', user.mfaMethod);
+		}
 
 		return url.toString();
 	}

@@ -79,8 +79,12 @@ const onDownloadClick = () => {
 	recoveryCodesDownloaded.value = true;
 };
 
-const onCancel = () => {
-	twoFactorWizardBus.emit('cancelled');
+const onBack = () => {
+	if (showRecoveryCodes.value) {
+		showRecoveryCodes.value = false;
+		return;
+	}
+	twoFactorWizardBus.emit('back');
 	uiStore.closeModal(TOTP_SETUP_WIZARD_MODAL_KEY);
 };
 
@@ -240,8 +244,8 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="onCancel">
-					{{ i18n.baseText('settings.personal.twoFactor.cancel') }}
+				<N8nButton variant="subtle" @click="onBack">
+					{{ i18n.baseText('settings.personal.twoFactor.back') }}
 				</N8nButton>
 				<N8nButton
 					v-if="showRecoveryCodes"
