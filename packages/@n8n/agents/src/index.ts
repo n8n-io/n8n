@@ -114,18 +114,11 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
 export { WORKING_MEMORY_DEFAULT_INSTRUCTION } from './runtime/working-memory';
 export {
 	DEFAULT_COMPACTOR_PROMPT,
 	DEFAULT_OBSERVER_PROMPT,
 } from './runtime/observational-cycle';
-export type { SqliteMemoryConfig } from './storage/sqlite-memory';
-export { PostgresMemory } from './storage/postgres-memory';
-export type {
-	PostgresConnectionOptions,
-	PostgresConstructorOptions,
-} from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 

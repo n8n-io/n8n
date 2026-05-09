@@ -56,9 +56,8 @@ src/
     title-generation.ts
     strip-orphaned-tool-messages.ts
     logger.ts
-  storage/              # Optional persisted memory backends (exported)
-    sqlite-memory.ts
-    postgres-memory.ts
+  storage/              # Shared memory backend base class (exported)
+    base-memory.ts
   workspace/            # Workspace, sandbox, filesystem, built-in tools (exported)
   integrations/         # Optional integrations (exported where applicable)
     langsmith.ts        # LangSmith telemetry adapter (peer `langsmith`)

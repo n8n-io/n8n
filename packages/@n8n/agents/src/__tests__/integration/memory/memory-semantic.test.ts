@@ -1,7 +1,7 @@
 import { expect, it, afterEach, describe as _describe } from 'vitest';
 
 import { Agent, Memory } from '../../../index';
-import { findLastTextContent, getModel, createSqliteMemory } from '../helpers';
+import { findLastTextContent, getModel, createInMemoryAgentMemory } from '../helpers';
 
 // Only run when both API keys are present
 const describe =
@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe('semantic recall', () => {
 	it('recalls relevant info beyond the lastMessages window', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const mem = new Memory()
@@ -50,7 +50,7 @@ describe('semantic recall', () => {
 	});
 
 	it('works combined with freeform working memory', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const template = '# User Context\n- **Name**:\n- **Interest**:';
