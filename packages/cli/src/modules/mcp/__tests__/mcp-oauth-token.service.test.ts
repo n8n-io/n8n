@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
@@ -20,8 +21,12 @@ let logger: jest.Mocked<Logger>;
 let userRepository: jest.Mocked<UserRepository>;
 let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
 let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
+let urlService: jest.Mocked<UrlService>;
 let service: McpOAuthTokenService;
 let mockTransactionManager: any;
+
+const BASE_URL = 'https://n8n.example.com';
+const CANONICAL_RESOURCE_URL = `${BASE_URL}/mcp-server/http`;
 
 describe('McpOAuthTokenService', () => {
 	beforeAll(() => {
@@ -33,6 +38,8 @@ describe('McpOAuthTokenService', () => {
 		refreshTokenRepository = mockInstance(
 			RefreshTokenRepository,
 		) as jest.Mocked<RefreshTokenRepository>;
+		urlService = mockInstance(UrlService);
+		urlService.getInstanceBaseUrl.mockReturnValue(BASE_URL);
 
 		mockTransactionManager = {
 			insert: jest.fn().mockResolvedValue(mock()),
@@ -56,11 +63,13 @@ describe('McpOAuthTokenService', () => {
 			userRepository,
 			accessTokenRepository,
 			refreshTokenRepository,
+			urlService,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue(BASE_URL);
 	});
 
 	describe('generateTokenPair', () => {
@@ -74,7 +83,7 @@ describe('McpOAuthTokenService', () => {
 
 			const decoded = jwtService.decode(accessToken);
 			expect(decoded.sub).toBe(userId);
-			expect(decoded.aud).toBe('mcp-server-api');
+			expect(decoded.aud).toBe(CANONICAL_RESOURCE_URL);
 			expect(decoded.client_id).toBe(clientId);
 			expect(decoded.meta.isOAuth).toBe(true);
 			expect(decoded.jti).toBeDefined();
@@ -184,7 +193,7 @@ describe('McpOAuthTokenService', () => {
 	});
 
 	describe('verifyAccessToken', () => {
-		it('should verify valid access token and return auth info', async () => {
+		it('should verify valid access token with canonical resource URL audience', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
 			const { accessToken } = service.generateTokenPair(userId, clientId);
@@ -209,6 +218,38 @@ describe('McpOAuthTokenService', () => {
 			});
 		});
 
+		it('should verify legacy tokens with mcp-server-api audience for backward compatibility', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+
+			// Create a token with the legacy audience
+			const legacyToken = jwtService.sign({
+				sub: userId,
+				aud: 'mcp-server-api',
+				client_id: clientId,
+				meta: { isOAuth: true },
+			});
+
+			const accessTokenRecord = mock<AccessToken>({
+				token: legacyToken,
+				clientId,
+				userId,
+			});
+
+			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
+
+			const result = await service.verifyAccessToken(legacyToken);
+
+			expect(result).toEqual({
+				token: legacyToken,
+				clientId,
+				scopes: [],
+				extra: {
+					userId,
+				},
+			});
+		});
+
 		it('should throw error for invalid JWT signature', async () => {
 			const invalidToken = 'invalid.jwt.token';
 
@@ -220,7 +261,7 @@ describe('McpOAuthTokenService', () => {
 		it('should throw error for wrong audience', async () => {
 			const wrongAudienceToken = jwtService.sign({
 				sub: 'user-123',
-				aud: 'wrong-audience', // Not 'mcp-server-api'
+				aud: 'wrong-audience',
 				client_id: 'client-456',
 			});
 

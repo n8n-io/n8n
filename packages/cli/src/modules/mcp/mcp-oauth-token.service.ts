@@ -16,6 +16,7 @@ import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
 import { UserWithContext } from './mcp.types';
 
 import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server
@@ -23,7 +24,11 @@ import { JwtService } from '@/services/jwt.service';
  */
 @Service()
 export class McpOAuthTokenService {
-	private readonly MCP_AUDIENCE = 'mcp-server-api';
+	/**
+	 * Legacy audience value for backward compatibility.
+	 * New tokens use the canonical resource URL as audience.
+	 */
+	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
@@ -33,10 +38,20 @@ export class McpOAuthTokenService {
 		private readonly userRepository: UserRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly urlService: UrlService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
+	}
+
+	/**
+	 * Get the canonical MCP resource URL as per RFC 8707 and OAuth 2.1.
+	 * This is the resource identifier advertised in the well-known endpoint.
+	 */
+	private getCanonicalResourceUrl(): string {
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		return `${baseUrl}/mcp-server/http`;
 	}
 
 	generateTokenPair(
@@ -45,7 +60,7 @@ export class McpOAuthTokenService {
 	): { accessToken: string; refreshToken: string } {
 		const accessToken = this.jwtService.sign({
 			sub: userId,
-			aud: this.MCP_AUDIENCE,
+			aud: this.getCanonicalResourceUrl(),
 			client_id: clientId,
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
@@ -147,7 +162,11 @@ export class McpOAuthTokenService {
 		let decoded;
 
 		try {
-			decoded = this.jwtService.verify(token, { audience: this.MCP_AUDIENCE });
+			// Accept both the canonical resource URL (new format) and legacy audience for backward compatibility.
+			// This allows existing tokens issued with the legacy "mcp-server-api" audience to remain valid
+			// during a transition period while new tokens use the RFC 8707-compliant resource URL.
+			const acceptedAudiences = [this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+			decoded = this.jwtService.verify(token, { audience: acceptedAudiences });
 		} catch (error) {
 			throw new JWTVerificationError();
 		}
