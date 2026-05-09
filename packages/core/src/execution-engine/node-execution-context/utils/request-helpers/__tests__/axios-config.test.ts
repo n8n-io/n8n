@@ -25,7 +25,12 @@ describe('axios-config interceptor header handling', () => {
     // Content-Type should be removed to prevent axios from forcing urlencoded
     const keys = Object.keys(result.headers).map((k) => k.toLowerCase());
     expect(keys).not.toContain('content-type');
-    expect(result.headers.accept).toBe('application/json');
+    // Header keys may preserve case; check case-insensitively
+    const normalized: Record<string, any> = {};
+    for (const [k, v] of Object.entries(result.headers)) {
+      normalized[k.toLowerCase()] = v;
+    }
+    expect(normalized['accept']).toBe('application/json');
   });
 
   test('calls setContentType when headers exposes setContentType function', async () => {
