@@ -685,7 +685,8 @@ async function runScenario(scenario: Scenario): Promise<ScenarioResult> {
 		.instructions(
 			[
 				'You are evaluating cross-thread fact memory.',
-				'When the user asks about remembered, previously shared, or persistent facts, call recall_memory before answering.',
+				'Use the <memory> section when it contains enough relevant facts.',
+				'When injected memory is insufficient for remembered, previously shared, or persistent facts, call recall_memory before answering.',
 				'If recall_memory returns no relevant facts, say that you do not have that memory.',
 				'If the user asks an unrelated non-memory question, answer directly without recall_memory.',
 				'Be concise.',

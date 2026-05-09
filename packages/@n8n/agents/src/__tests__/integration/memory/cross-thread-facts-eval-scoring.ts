@@ -79,11 +79,13 @@ export function scoreCrossThreadFactScenario(
 	const recallToolUsage = observation.recallToolCalled === expectedRecallMemory;
 	const retrievalTop1 =
 		!expectsRetrieval ||
-		(observation.recallFacts[0] !== undefined &&
+		(observation.recallToolCalled &&
+			observation.recallFacts[0] !== undefined &&
 			containsAll(observation.recallFacts[0], config.expectedStoredKeywords));
 	const retrievalTop3 =
 		!expectsRetrieval ||
-		containsAll(observation.recallFacts.slice(0, 3).join('\n'), config.expectedStoredKeywords);
+		(observation.recallToolCalled &&
+			containsAll(observation.recallFacts.slice(0, 3).join('\n'), config.expectedStoredKeywords));
 	const recallPrecision = containsNone(recallText, forbiddenRecallKeywords);
 	const answerAccuracy =
 		config.expectedAnswerKeywords.length === 0
@@ -108,8 +110,6 @@ export function scoreCrossThreadFactScenario(
 		endToEnd:
 			storedFactRecall &&
 			storedFactPrecision &&
-			recallToolUsage &&
-			retrievalTop3 &&
 			recallPrecision &&
 			answerAccuracy &&
 			crossScopeSafety &&

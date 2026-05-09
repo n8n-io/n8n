@@ -98,4 +98,26 @@ describe('cross-thread facts eval scoring', () => {
 		expect(result.metrics.answerAccuracy).toBe(true);
 		expect(result.metrics.endToEnd).toBe(true);
 	});
+
+	it('does not fail end-to-end scoring when injected memory answers correctly without recall_memory', () => {
+		const result = scoreCrossThreadFactScenario(
+			{
+				recallPrompt: 'What durable target codename did I give you? Use memory.',
+				expectedStoredKeywords: ['Needle1'],
+				expectedAnswerKeywords: ['Needle1'],
+			},
+			{
+				storedFacts: ["User's durable target codename is Needle1."],
+				recallFacts: [],
+				answer: 'Your durable target codename is Needle1.',
+				recallToolCalled: false,
+				crossThreadErrors: [],
+			},
+		);
+
+		expect(result.metrics.recallToolUsage).toBe(false);
+		expect(result.metrics.retrievalTop3).toBe(false);
+		expect(result.metrics.answerAccuracy).toBe(true);
+		expect(result.metrics.endToEnd).toBe(true);
+	});
 });
