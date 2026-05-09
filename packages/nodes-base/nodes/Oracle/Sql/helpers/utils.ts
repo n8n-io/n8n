@@ -855,7 +855,7 @@ export function getBindParameters(
 	for (const item of parameterList) {
 		const itemWithOptionalDatatype = item as RuntimeExecuteOpBindParam;
 		const bindItem = (
-			itemWithOptionalDatatype.datatype === undefined
+			!itemWithOptionalDatatype.datatype
 				? {
 						...itemWithOptionalDatatype,
 						datatype: 'string',
