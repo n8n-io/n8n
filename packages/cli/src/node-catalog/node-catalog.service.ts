@@ -54,7 +54,10 @@ export class NodeCatalogService {
 
 	private initPromise: Promise<void> | undefined;
 
-	/** Search function + cache per unique `nodeFilter` reference (plus one unfiltered slot). */
+	/**
+	 * Search function + full result cache per unique `nodeFilter` reference (plus one unfiltered slot).
+	 * The cache stores the complete `CodeBuilderSearchResult`, so callers can consume only the fields they need.
+	 */
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
 	private getTool: InvokableTool<{ nodeIds: NodeRequest[] }> | undefined;
