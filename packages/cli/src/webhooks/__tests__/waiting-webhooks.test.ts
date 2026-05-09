@@ -30,6 +30,10 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 	): { valid: boolean; webhookPath?: string } {
 		return this.validateToken(req, execution);
 	}
+
+	async exposeGetExecutionByResumeToken(token: string) {
+		return await this.getExecutionByResumeToken(token);
+	}
 }
 
 describe('WaitingWebhooks', () => {
@@ -70,6 +74,65 @@ describe('WaitingWebhooks', () => {
 		 * Assert
 		 */
 		await expect(promise).rejects.toThrowError(NotFoundError);
+	});
+
+	it('should not query a token-shaped path as an execution ID', async () => {
+		/**
+		 * Arrange
+		 */
+		const resumeToken = 'a'.repeat(64);
+		executionRepository.findMultipleExecutions.mockResolvedValue([]);
+
+		/**
+		 * Act
+		 */
+		const promise = waitingWebhooks.executeWebhook(
+			mock<WaitingWebhookRequest>({
+				params: { path: resumeToken, suffix: 'approval' },
+			}),
+			mock<express.Response>(),
+		);
+
+		/**
+		 * Assert
+		 */
+		await expect(promise).rejects.toThrowError(NotFoundError);
+		expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+		expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
+			{
+				where: {
+					status: 'waiting',
+					executionData: { data: expect.any(Object) },
+				},
+			},
+			{ includeData: true, unflattenData: true },
+		);
+	});
+
+	it('should resolve waiting executions by resume token', async () => {
+		/**
+		 * Arrange
+		 */
+		const resumeToken = 'a'.repeat(64);
+		const matchingExecution = mock<IExecutionResponse>({
+			id: '123',
+			data: { resumeToken },
+		});
+		const otherExecution = mock<IExecutionResponse>({
+			id: '456',
+			data: { resumeToken: 'b'.repeat(64) },
+		});
+		executionRepository.findMultipleExecutions.mockResolvedValue([otherExecution, matchingExecution]);
+
+		/**
+		 * Act
+		 */
+		const execution = await waitingWebhooks.exposeGetExecutionByResumeToken(resumeToken);
+
+		/**
+		 * Assert
+		 */
+		expect(execution).toBe(matchingExecution);
 	});
 
 	it('should throw ConflictError if the execution to resume is already running', async () => {
@@ -302,6 +365,179 @@ describe('WaitingWebhooks', () => {
 			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
 			expect(mockJson).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should require a valid signature for token-shaped send-and-wait requests', async () => {
+			/* Arrange */
+			const nodeId = 'send-and-wait-node-id';
+			const resumeToken = 'a'.repeat(64);
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'SendAndWaitNode',
+						runData: {},
+						error: undefined,
+					},
+					resumeToken,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: nodeId,
+							name: 'SendAndWaitNode',
+							type: 'n8n-nodes-base.sendAndWait',
+							parameters: { operation: SEND_AND_WAIT_OPERATION },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+			executionRepository.findMultipleExecutions.mockResolvedValue([execution]);
+
+			const mockStatus = jest.fn().mockReturnThis();
+			const mockRender = jest.fn();
+			const mockJson = jest.fn();
+			const res = mock<express.Response>({
+				status: mockStatus,
+				render: mockRender,
+				json: mockJson,
+			});
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: resumeToken, suffix: nodeId },
+				method: 'GET',
+				url: `/webhook-waiting/${resumeToken}/${nodeId}?approved=true&${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				headers: { host: 'example.com' },
+			});
+
+			/* Act */
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			/* Assert */
+			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
+			expect(mockJson).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should use legacy suffix from query token for token-shaped wait requests', async () => {
+			/* Arrange */
+			const resumeToken = 'a'.repeat(64);
+			const execution = mock<IExecutionResponse>({
+				id: '123',
+				finished: false,
+				status: 'waiting',
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: 'WaitNode',
+									type: 'n8n-nodes-base.wait',
+									typeVersion: 1,
+									parameters: { operation: 'webhook' },
+									id: 'wait-node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						lastNodeExecuted: 'WaitNode',
+						runData: {
+							WaitNode: [
+								{
+									startTime: 123,
+									executionTime: 456,
+									executionIndex: 0,
+									source: [],
+								},
+							],
+						},
+						error: undefined,
+					},
+					resumeToken,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'wait-node-id',
+							name: 'WaitNode',
+							type: 'n8n-nodes-base.wait',
+							parameters: { operation: 'webhook' },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+			executionRepository.findMultipleExecutions.mockResolvedValue([execution]);
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			jest.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+				async (
+					_workflow,
+					_webhookData,
+					_workflowData,
+					_workflowStartNode,
+					_mode,
+					_pushRef,
+					_runExecutionData,
+					_executionId,
+					_req,
+					_res,
+					callback,
+				) => {
+					callback(null, { noWebhookResponse: true });
+					return undefined;
+				},
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: 'custom-suffix',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: 'custom-suffix',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: resumeToken, suffix: undefined },
+				method: 'POST',
+				url: `/webhook-waiting/${resumeToken}?${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}/custom-suffix`,
+				headers: { host: 'example.com' },
+			});
+
+			/* Act */
+			await waitingWebhooks.executeWebhook(req, mock<express.Response>());
+
+			/* Assert */
+			expect(mockWebhookService.getNodeWebhooks).toHaveBeenCalled();
+			expect(WebhookHelpers.executeWebhook).toHaveBeenCalled();
 		});
 
 		it('should return 401 with JSON for non-send-and-wait requests with invalid token', async () => {

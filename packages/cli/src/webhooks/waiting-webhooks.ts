@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, Like } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
@@ -31,6 +31,8 @@ import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
+
+const RESUME_TOKEN_REGEX = /^[a-f0-9]{64}$/;
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -97,6 +99,33 @@ export class WaitingWebhooks implements IWebhookManager {
 			includeData: true,
 			unflattenData: true,
 		});
+	}
+
+	private hasMatchingResumeToken(token: string, execution: IExecutionResponse) {
+		const storedToken = execution.data.resumeToken;
+
+		if (!storedToken || token.length !== storedToken.length) {
+			return false;
+		}
+
+		return timingSafeEqual(Buffer.from(token), Buffer.from(storedToken));
+	}
+
+	protected async getExecutionByResumeToken(token: string) {
+		const executions = await this.executionRepository.findMultipleExecutions(
+			{
+				where: {
+					status: 'waiting',
+					executionData: { data: Like(`%${token}%`) },
+				},
+			},
+			{
+				includeData: true,
+				unflattenData: true,
+			},
+		);
+
+		return executions.find((execution) => this.hasMatchingResumeToken(token, execution));
 	}
 
 	/**
@@ -175,8 +204,10 @@ export class WaitingWebhooks implements IWebhookManager {
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId } = req.params;
+		const { path } = req.params;
+		let executionId = path;
 		let { suffix } = req.params;
+		const pathIsResumeToken = RESUME_TOKEN_REGEX.test(path);
 
 		this.logReceivedWebhook(req.method, executionId);
 
@@ -185,7 +216,13 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
-		const execution = await this.getExecution(executionId);
+		const execution = pathIsResumeToken
+			? await this.getExecutionByResumeToken(path)
+			: await this.getExecution(executionId);
+
+		if (execution) {
+			executionId = execution.id;
+		}
 
 		// Only validate for executions that have a resumeToken.
 		// Old executions created before token validation are skipped (backwards compat).
@@ -198,6 +235,8 @@ export class WaitingWebhooks implements IWebhookManager {
 			// All other waiting URLs use a simple random token comparison.
 			const { valid, webhookPath } = isSendAndWait
 				? this.validateSignature(req)
+				: pathIsResumeToken
+					? { valid: true, webhookPath: this.parseSignatureParam(req).webhookPath }
 				: this.validateToken(req, execution);
 
 			if (!valid) {
