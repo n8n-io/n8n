@@ -11,10 +11,9 @@ import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
@@ -45,8 +44,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const rootStore = useRootStore();
 const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const { publish, publishing } = useAgentPublish();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -289,9 +288,10 @@ function closeModal() {
 async function fetchCredentials() {
 	credentialsLoading.value = true;
 	try {
-		const allCredentials = await makeRestApiRequest<
-			Array<{ id: string; name: string; type: string }>
-		>(rootStore.restApiContext, 'GET', '/credentials');
+		credentialsStore.setCredentials([]);
+		const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			projectId: props.data.projectId,
+		});
 
 		for (const integration of integrations.value) {
 			credentialsByType.value[integration.type] = allCredentials
@@ -354,9 +354,17 @@ function onCreateCredential(integration: ChatIntegrationDescriptor) {
 	const existing = credentialsByType.value[integration.type] ?? [];
 	credentialIdsBeforeNew.value[integration.type] = new Set(existing.map((c) => c.id));
 	pendingNewCredentialType.value = integration.type;
-	uiStore.openNewCredential(primaryCredentialType, false, false, undefined, undefined, undefined, {
-		hideAskAssistant: true,
-	});
+	uiStore.openNewCredential(
+		primaryCredentialType,
+		false,
+		false,
+		props.data.projectId,
+		undefined,
+		undefined,
+		{
+			hideAskAssistant: true,
+		},
+	);
 }
 
 function onEditCredential(type: string) {

@@ -652,6 +652,13 @@ export class AgentsController {
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);
 
+		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			req.user,
+			{ projectId: agent.projectId },
+		);
+		const credential = usableCredentials.find((c) => c.id === credentialId);
+		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
+
 		await this.chatIntegrationService.connect(
 			agentId,
 			credentialId,
@@ -666,7 +673,6 @@ export class AgentsController {
 			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
 		if (!alreadyExists) {
-			const credential = await this.credentialsService.getOne(req.user, credentialId, false);
 			agent.integrations = [...existing, { type, credentialId, credentialName: credential.name }];
 			await this.agentRepository.save(agent);
 		}
