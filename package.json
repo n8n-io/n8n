@@ -166,7 +166,7 @@
       "@xmldom/xmldom": "0.8.13",
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
-      "hono": "4.12.16",
+      "hono": "4.12.18",
       "axios": "1.16.0",
       "fast-xml-parser": "5.7.2"
     },
