@@ -677,6 +677,7 @@ export class OauthService {
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
+		const scope = credential.scope?.trim();
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
 			clientSecret: credential.clientSecret ?? '',
@@ -684,8 +685,12 @@ export class OauthService {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
-			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
+			scopes: scope
+				? split(scope, ',')
+				: credential.useDynamicClientRegistration
+					? undefined
+					: ['openid'],
+			scopesSeparator: scope?.includes(',') ? ',' : ' ',
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
 		};
 
