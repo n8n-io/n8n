@@ -19,7 +19,7 @@ import type {
 } from '../types';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentPersistenceOptions, ModelConfig } from '../types/sdk/agent';
-import type { AgentDbMessage, Message } from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
 
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
@@ -41,14 +41,21 @@ Return only JSON in this exact shape:
 
 export const DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION = [
 	'Cross-thread fact memory is enabled, and durable user facts are extracted automatically after successful turns.',
+	'Relevant facts may already be surfaced in the <memory> section for the current turn.',
 	'recall_memory only reads existing facts; it does not save new facts.',
-	'When the user asks about remembered, previously shared, persistent personal facts, what is already remembered, or what should be remembered, call recall_memory before answering.',
+	'When the injected facts are insufficient, or the user asks about remembered, previously shared, persistent personal facts, what is already remembered, or what should be remembered, call recall_memory before answering.',
 	'Do not answer from general memory ability limitations before calling recall_memory.',
 	'Do not claim that you lack memory-write capability.',
+	'Use recall_memory for additional or more specific prior facts than the injected memory section provides.',
 	'If recall_memory returns multiple relevant facts, use all facts needed to answer the user question.',
 	'Obey recalled user style preferences and communication instructions in the answer, including concise output and no emojis when recalled.',
-	'recall_memory is scoped to agentId + resourceId, where resourceId is the user id. It is not semanticRecall and does not inject memories automatically.',
+	'recall_memory is scoped to agentId + resourceId, where resourceId is the user id. It is not semanticRecall.',
 ].join(' ');
+
+export const DEFAULT_CROSS_THREAD_FACT_INJECTION_PROMPT = [
+	'Relevant facts from prior conversations, retrieved for this turn.',
+	'Most recent first. Use these if relevant, but the user may correct anything outdated.',
+].join('\n');
 
 const DEFAULT_TOP_K = 5;
 const DEFAULT_HALF_LIFE_DAYS = 180;
@@ -56,6 +63,7 @@ const DEFAULT_MAX_FACTS_PER_TURN = 5;
 const DEFAULT_MAX_FACT_LENGTH = 240;
 const DEFAULT_DEDUPE_SIMILARITY_THRESHOLD = 0.86;
 const DEFAULT_DEDUPE_SEARCH_TOP_K = 20;
+const DEFAULT_AUTO_INJECT_TOP_K = 5;
 const RRF_K = 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -90,7 +98,10 @@ interface NormalizedCrossThreadFactsConfig {
 	embeddingModel: string;
 	extractionPrompt: string;
 	recallToolInstruction: string;
+	injectionPrompt: string;
 	dedupeSimilarityThreshold: number | false;
+	autoInject: boolean;
+	autoInjectTopK: number;
 }
 
 interface ExtractCrossThreadFactsOpts {
@@ -152,8 +163,11 @@ export function withCrossThreadFactDefaults(
 		extractionPrompt: config.prompts?.extraction ?? DEFAULT_CROSS_THREAD_FACT_EXTRACTION_PROMPT,
 		recallToolInstruction:
 			config.prompts?.recallToolInstruction ?? DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION,
+		injectionPrompt: config.prompts?.injection ?? DEFAULT_CROSS_THREAD_FACT_INJECTION_PROMPT,
 		dedupeSimilarityThreshold:
 			config.dedupeSimilarityThreshold ?? DEFAULT_DEDUPE_SIMILARITY_THRESHOLD,
+		autoInject: config.autoInject ?? true,
+		autoInjectTopK: config.autoInjectTopK ?? DEFAULT_AUTO_INJECT_TOP_K,
 	};
 }
 
@@ -241,6 +255,43 @@ export function createRecallMemoryTool(opts: {
 		})
 		.toModelOutput((output) => output)
 		.build();
+}
+
+export async function loadCrossThreadFactsForInjection(opts: {
+	memory: BuiltMemory & BuiltCrossThreadFactStore;
+	config: CrossThreadFactsConfig;
+	persistence: AgentPersistenceOptions;
+	input: AgentMessage[];
+	now?: Date;
+}): Promise<string | undefined> {
+	const normalized = withCrossThreadFactDefaults(opts.config);
+	if (!normalized.autoInject) return undefined;
+
+	const query = extractUserText(opts.input);
+	if (!query) return undefined;
+
+	const scope = requireCrossThreadMemoryScope(opts.persistence);
+	const queryEmbedding = await embedQuery(normalized, query);
+	const facts = await opts.memory.searchCrossThreadFacts(scope, query, {
+		topK: normalized.autoInjectTopK,
+		halfLifeDays: normalized.halfLifeDays,
+		queryEmbedding,
+	});
+	if (facts.length === 0) return undefined;
+
+	return renderCrossThreadFactsForInjection(facts, normalized.injectionPrompt, opts.now);
+}
+
+export function renderCrossThreadFactsForInjection(
+	facts: Array<Pick<CrossThreadFact, 'content' | 'createdAt'>>,
+	instruction: string,
+	now = new Date(),
+): string {
+	const lines = [...facts]
+		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+		.map((fact) => `- ${fact.content} (${formatRelativeAge(fact.createdAt, now)})`);
+
+	return ['<memory>', instruction.trim(), '', ...lines, '</memory>'].join('\n');
 }
 
 export function rankCrossThreadFacts(
@@ -341,6 +392,16 @@ function textFromMessage(message: Message): string {
 		.map((part) => part.text)
 		.join('\n')
 		.trim();
+}
+
+function extractUserText(messages: AgentMessage[]): string {
+	const parts: string[] = [];
+	for (const message of messages) {
+		if (!isLlmMessage(message) || message.role !== 'user') continue;
+		const text = textFromMessage(message);
+		if (text.length > 0) parts.push(text);
+	}
+	return parts.join(' ').trim();
 }
 
 function parseExtractedFacts(text: string): string[] {
@@ -522,4 +583,23 @@ function computeRecencyFactor(createdAt: Date, halfLifeDays = DEFAULT_HALF_LIFE_
 	if (halfLifeDays <= 0) return 1;
 	const ageDays = Math.max(0, Date.now() - createdAt.getTime()) / MS_PER_DAY;
 	return Math.pow(0.5, ageDays / halfLifeDays);
+}
+
+function formatRelativeAge(createdAt: Date, now: Date): string {
+	const ageDays = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / MS_PER_DAY));
+	if (ageDays === 0) return 'today';
+	if (ageDays === 1) return '1 day ago';
+	if (ageDays < 14) return `${ageDays} days ago`;
+
+	const ageWeeks = Math.floor(ageDays / 7);
+	if (ageWeeks === 1) return '1 week ago';
+	if (ageDays < 60) return `${ageWeeks} weeks ago`;
+
+	const ageMonths = Math.floor(ageDays / 30);
+	if (ageMonths === 1) return '1 month ago';
+	if (ageDays < 730) return `${ageMonths} months ago`;
+
+	const ageYears = Math.floor(ageDays / 365);
+	if (ageYears === 1) return '1 year ago';
+	return `${ageYears} years ago`;
 }

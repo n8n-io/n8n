@@ -162,6 +162,8 @@ export interface CrossThreadFactPrompts {
 	extraction?: string;
 	/** Custom recall_memory usage instruction. Replaces the default template entirely. */
 	recallToolInstruction?: string;
+	/** Custom instruction text used inside the auto-injected <memory> section. */
+	injection?: string;
 }
 
 export interface CrossThreadFactsConfig {
@@ -183,6 +185,13 @@ export interface CrossThreadFactsConfig {
 	 * Defaults to false so extraction runs in the background.
 	 */
 	sync?: boolean;
+	/**
+	 * When true, retrieve and inject relevant facts into the system prompt before each turn.
+	 * Defaults to true. recall_memory remains available for deliberate lookup.
+	 */
+	autoInject?: boolean;
+	/** Number of facts to inject before each turn. @default 5 */
+	autoInjectTopK?: number;
 	/**
 	 * Skip storing a candidate fact when an existing scoped fact or earlier
 	 * candidate has vector similarity greater than or equal to this threshold.

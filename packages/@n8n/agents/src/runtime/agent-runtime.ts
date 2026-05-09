@@ -37,6 +37,7 @@ import {
 	extractAndStoreCrossThreadFacts,
 	hasCrossThreadFactStore,
 	isCrossThreadFactsEnabled,
+	loadCrossThreadFactsForInjection,
 	RECALL_MEMORY_TOOL_NAME,
 } from './cross-thread-facts';
 import { AgentEventBus } from './event-bus';
@@ -475,11 +476,50 @@ export class AgentRuntime {
 			);
 		}
 
+		await this.setListCrossThreadMemoryConfig(list, input, options?.persistence);
+
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
 		await this.setListWorkingMemoryConfig(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
+	}
+
+	private async setListCrossThreadMemoryConfig(
+		list: AgentMessageList,
+		input: AgentMessage[],
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<void> {
+		const crossThreadFacts = this.config.crossThreadFacts;
+		if (
+			!isCrossThreadFactsEnabled(crossThreadFacts) ||
+			crossThreadFacts.autoInject === false ||
+			!this.config.memory ||
+			!hasCrossThreadFactStore(this.config.memory) ||
+			!persistence?.agentId ||
+			!persistence.resourceId
+		) {
+			return;
+		}
+
+		try {
+			const section = await loadCrossThreadFactsForInjection({
+				memory: this.config.memory,
+				config: crossThreadFacts,
+				persistence,
+				input,
+			});
+			if (section) {
+				list.crossThreadMemory = { section };
+			}
+		} catch (error) {
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Cross-thread fact prefetch failed',
+				error,
+				source: 'cross-thread-memory',
+			});
+		}
 	}
 
 	/**

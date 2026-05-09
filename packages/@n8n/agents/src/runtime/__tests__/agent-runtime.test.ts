@@ -40,6 +40,7 @@ jest.mock('ai', () => {
 		...actual,
 		generateText: jest.fn(),
 		streamText: jest.fn(),
+		embed: jest.fn(),
 		tool: jest.fn((config: unknown) => config),
 		Output: {
 			object: jest.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
@@ -52,9 +53,10 @@ jest.mock('ai', () => {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { generateText, streamText } = require('ai') as {
+const { generateText, streamText, embed } = require('ai') as {
 	generateText: jest.Mock;
 	streamText: jest.Mock;
+	embed: jest.Mock;
 };
 
 /** Minimal successful generateText response. */
@@ -550,6 +552,7 @@ describe('AgentRuntime.stream() — working memory', () => {
 
 describe('AgentRuntime — cross-thread fact extraction scheduling', () => {
 	const fakeEmbedder = {} as EmbeddingModel;
+	const now = new Date('2026-05-09T12:00:00.000Z');
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -629,6 +632,246 @@ describe('AgentRuntime — cross-thread fact extraction scheduling', () => {
 
 		expect(result.finishReason).toBe('stop');
 		expect(settledBeforeExtraction).toBe(false);
+	});
+
+	function getSystemPromptFromGenerateCall(index = 0): string {
+		const calls = generateText.mock.calls as Array<[Record<string, unknown>]>;
+		const callArgs = calls[index][0];
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[0].role).toBe('system');
+		return String(messages[0].content);
+	}
+
+	function getSystemPromptFromStreamCall(index = 0): string {
+		const calls = streamText.mock.calls as Array<[Record<string, unknown>]>;
+		const callArgs = calls[index][0];
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[0].role).toBe('system');
+		return String(messages[0].content);
+	}
+
+	function makeMemoryFact(content: string, createdAt: Date, embedding = [1, 0]) {
+		return {
+			agentId: 'agent-1',
+			resourceId: 'user-1',
+			content,
+			contentHash: `${content}-${createdAt.toISOString()}`,
+			createdAt,
+			embedding,
+		};
+	}
+
+	async function createRuntimeWithInjectedFacts(config?: {
+		autoInject?: boolean;
+		sync?: boolean;
+		eventBus?: AgentEventBus;
+		tools?: BuiltTool[];
+	}) {
+		const memory = new InMemoryMemory();
+		await memory.saveCrossThreadFacts([
+			makeMemoryFact(
+				'The user prefers concise responses without emojis.',
+				new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+			),
+			makeMemoryFact(
+				'The user is working on cross-thread memory in @n8n/agents.',
+				new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
+			),
+		]);
+		const runtime = new AgentRuntime({
+			name: 'cross-thread-facts-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory,
+			...(config?.eventBus !== undefined && { eventBus: config.eventBus }),
+			...(config?.tools !== undefined && { tools: config.tools }),
+			crossThreadFacts: {
+				embedder: fakeEmbedder,
+				sync: config?.sync ?? true,
+				...(config?.autoInject !== undefined && { autoInject: config.autoInject }),
+			},
+		});
+		return { runtime, memory };
+	}
+
+	it('does not prefetch or inject when cross-thread memory is disabled', async () => {
+		const memory = new InMemoryMemory();
+		const searchSpy = jest.spyOn(memory, 'searchCrossThreadFacts');
+		const runtime = new AgentRuntime({
+			name: 'cross-thread-facts-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory,
+		});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(searchSpy).not.toHaveBeenCalled();
+		expect(embed).not.toHaveBeenCalled();
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Relevant facts from prior conversations, retrieved for this turn.',
+		);
+	});
+
+	it('does not prefetch or inject when autoInject is false', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedFacts({ autoInject: false });
+		const searchSpy = jest.spyOn(memory, 'searchCrossThreadFacts');
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(searchSpy).not.toHaveBeenCalled();
+		expect(embed).not.toHaveBeenCalled();
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Relevant facts from prior conversations, retrieved for this turn.',
+		);
+	});
+
+	it('injects relevant cross-thread facts before generateText and keeps recall_memory available', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedFacts();
+		const searchSpy = jest.spyOn(memory, 'searchCrossThreadFacts');
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(embed).toHaveBeenCalledWith({
+			model: fakeEmbedder,
+			value: 'What should you remember about my style?',
+		});
+		expect(searchSpy).toHaveBeenCalledWith(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'What should you remember about my style?',
+			expect.objectContaining({ topK: 5, queryEmbedding: [1, 0] }),
+		);
+		const prompt = getSystemPromptFromGenerateCall();
+		expect(prompt).toContain('<memory>');
+		expect(prompt).toContain('Relevant facts from prior conversations, retrieved for this turn.');
+		expect(prompt.indexOf('The user prefers concise responses without emojis.')).toBeLessThan(
+			prompt.indexOf('The user is working on cross-thread memory in @n8n/agents.'),
+		);
+		expect(prompt).toContain('The user prefers concise responses without emojis.');
+		expect(prompt).toContain('The user is working on cross-thread memory in @n8n/agents.');
+		const calls = generateText.mock.calls as Array<[{ tools?: Record<string, unknown> }]>;
+		const toolArgs = calls[0][0];
+		expect(toolArgs.tools).toHaveProperty('recall_memory');
+	});
+
+	it('injects relevant cross-thread facts before streamText', async () => {
+		const { runtime } = await createRuntimeWithInjectedFacts();
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		streamText.mockReturnValueOnce(makeStreamSuccess('done'));
+		generateText.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		const { stream } = await runtime.stream('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+		await collectChunks(stream);
+
+		expect(getSystemPromptFromStreamCall()).toContain('<memory>');
+		expect(getSystemPromptFromStreamCall()).toContain(
+			'The user prefers concise responses without emojis.',
+		);
+	});
+
+	it('does not inject a memory section when no facts are found', async () => {
+		const runtime = createRuntimeWithFactMemory(true);
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Relevant facts from prior conversations, retrieved for this turn.',
+		);
+	});
+
+	it('does not persist injected facts into thread messages', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedFacts();
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		const storedMessages = await memory.getMessages('thread-1');
+		expect(JSON.stringify(storedMessages)).not.toContain('<memory>');
+		expect(JSON.stringify(storedMessages)).not.toContain('concise responses without emojis');
+	});
+
+	it('preserves injected memory context across suspended resume', async () => {
+		const approvalTool = makeInterruptibleTool();
+		const { runtime } = await createRuntimeWithInjectedFacts({ tools: [approvalTool] });
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tool-call-1', 'approve', { question: 'ok' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('resumed'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		const first = await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+		const pending = first.pendingSuspend?.[0];
+		expect(pending).toBeDefined();
+
+		await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: pending!.runId, toolCallId: pending!.toolCallId },
+		);
+
+		expect(getSystemPromptFromGenerateCall(1)).toContain('<memory>');
+		expect(getSystemPromptFromGenerateCall(1)).toContain(
+			'The user prefers concise responses without emojis.',
+		);
+	});
+
+	it('emits a non-fatal error when enabled prefetch fails', async () => {
+		const bus = new AgentEventBus();
+		const { runtime, memory } = await createRuntimeWithInjectedFacts({ eventBus: bus });
+		const errors: unknown[] = [];
+		bus.on(AgentEvent.Error, (event) => {
+			if (event.type === AgentEvent.Error) errors.push(event);
+		});
+		jest.spyOn(memory, 'searchCrossThreadFacts').mockRejectedValueOnce(new Error('search failed'));
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		const result = await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(result.finishReason).toBe('stop');
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Relevant facts from prior conversations, retrieved for this turn.',
+		);
+		expect(errors).toEqual([
+			expect.objectContaining({
+				type: AgentEvent.Error,
+				source: 'cross-thread-memory',
+				message: 'Cross-thread fact prefetch failed',
+			}),
+		]);
 	});
 });
 

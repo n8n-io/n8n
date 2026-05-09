@@ -23,6 +23,10 @@ export interface WorkingMemoryContext {
 	instruction?: string;
 }
 
+export interface CrossThreadMemoryContext {
+	section: string;
+}
+
 /**
  * Message container with Set-based source tracking.
  *
@@ -111,6 +115,9 @@ export class AgentMessageList {
 
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
+
+	/** Retrieved fact memory context for this run. Set by buildMessageList / resume. */
+	crossThreadMemory: CrossThreadMemoryContext | undefined;
 
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
@@ -214,6 +221,11 @@ export class AgentMessageList {
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
 
+		const crossThreadSection = this.crossThreadMemory?.section.trim();
+		if (crossThreadSection) {
+			systemPrompt += `\n\n${crossThreadSection}`;
+		}
+
 		const wmState = this.workingMemory?.state?.trim();
 		if (this.workingMemory && wmState) {
 			const wmInstruction = buildWorkingMemoryInstruction(
@@ -257,6 +269,9 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.crossThreadMemory !== undefined && {
+				crossThreadMemory: this.crossThreadMemory,
+			}),
 		};
 	}
 
@@ -271,6 +286,7 @@ export class AgentMessageList {
 			if (inputIdSet.has(m.id)) list.inputSet.add(m);
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
 		}
+		list.crossThreadMemory = data.crossThreadMemory;
 		list.sortAllByCreatedAt();
 		return list;
 	}

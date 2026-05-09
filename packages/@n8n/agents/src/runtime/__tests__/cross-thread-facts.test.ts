@@ -6,6 +6,7 @@ import {
 	createRecallMemoryTool,
 	extractAndStoreCrossThreadFacts,
 	rankCrossThreadFacts,
+	renderCrossThreadFactsForInjection,
 	renderCrossThreadFactExtractionTranscript,
 	renderCrossThreadFactExtractionPrompt,
 	requireCrossThreadMemoryScope,
@@ -87,6 +88,23 @@ describe('cross-thread facts', () => {
 		const config = withCrossThreadFactDefaults({ embedder: fakeEmbedder });
 
 		expect(config.dedupeSimilarityThreshold).toBe(0.86);
+	});
+
+	it('defaults auto-injection to on with topK 5 and a memory section prompt', () => {
+		const config = withCrossThreadFactDefaults({ embedder: fakeEmbedder });
+
+		expect(config.autoInject).toBe(true);
+		expect(config.autoInjectTopK).toBe(5);
+		expect(config.injectionPrompt).toContain('Relevant facts from prior conversations');
+	});
+
+	it('allows SDK consumers to override the memory injection prompt', () => {
+		const config = withCrossThreadFactDefaults({
+			embedder: fakeEmbedder,
+			prompts: { injection: 'Custom memory guidance.' },
+		});
+
+		expect(config.injectionPrompt).toBe('Custom memory guidance.');
 	});
 
 	it('hardens default extraction instructions against transcript-level memory commands', () => {
@@ -432,10 +450,40 @@ describe('cross-thread facts', () => {
 		expect(tool.systemInstruction).toContain('durable user facts are extracted automatically');
 		expect(tool.systemInstruction).toContain('Do not claim that you lack memory-write capability');
 		expect(tool.systemInstruction).toContain('recall_memory only reads existing facts');
+		expect(tool.systemInstruction).toContain('Relevant facts may already be surfaced');
+		expect(tool.systemInstruction).toContain('additional or more specific');
 		expect(tool.systemInstruction).toContain('use all facts needed to answer');
 		expect(tool.systemInstruction).toContain('Obey recalled user style preferences');
 		expect(tool.systemInstruction).toContain('no emojis');
 		expect(tool.systemInstruction).toContain('resourceId is the user id');
+	});
+
+	it('renders injected cross-thread facts most-recent-first with relative ages', () => {
+		const now = new Date('2026-05-09T12:00:00.000Z');
+		const rendered = renderCrossThreadFactsForInjection(
+			[
+				makeStoredFact({
+					id: 'older',
+					content: 'The user is working on cross-thread memory.',
+					createdAt: new Date('2026-04-25T12:00:00.000Z'),
+				}),
+				makeStoredFact({
+					id: 'newer',
+					content: 'The user prefers concise responses.',
+					createdAt: new Date('2026-05-07T12:00:00.000Z'),
+				}),
+			],
+			'Relevant facts from prior conversations.',
+			now,
+		);
+
+		expect(rendered).toContain('<memory>');
+		expect(rendered).toContain('Relevant facts from prior conversations.');
+		expect(rendered.indexOf('concise responses')).toBeLessThan(
+			rendered.indexOf('cross-thread memory'),
+		);
+		expect(rendered).toContain('- The user prefers concise responses. (2 days ago)');
+		expect(rendered).toContain('- The user is working on cross-thread memory. (2 weeks ago)');
 	});
 
 	it('isolates facts by agentId and resourceId', async () => {
