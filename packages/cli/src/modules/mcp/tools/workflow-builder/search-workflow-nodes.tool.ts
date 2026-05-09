@@ -66,7 +66,6 @@ export const createSearchWorkflowNodesTool = (
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			console.log(telemetryPayload.results.data);
 
 			return {
 				content: [{ type: 'text', text: results }],
