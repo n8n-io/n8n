@@ -774,10 +774,10 @@ export const videoFields: INodeProperties[] = [
 						name: 'Public',
 						value: 'public',
 					},
-					{
-						name: 'Unlisted',
-						value: 'unlistef',
-					},
+				{
+					name: 'Unlisted',
+					value: 'unlisted',
+				},
 				],
 				default: '',
 				description: "The playlist's privacy status",
