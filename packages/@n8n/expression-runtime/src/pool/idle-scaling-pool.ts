@@ -13,6 +13,7 @@ export class IdleScalingPool implements IPool {
 	private innerPool: IsolatePool | null = null;
 	private pendingScaleUp: Promise<void> | null = null;
 	private pendingScaleDown: Promise<void> | null = null;
+	private readonly borrowedBridges = new Set<RuntimeBridge>();
 	private idleTimer?: NodeJS.Timeout;
 	private disposed = false;
 	private disposePromise?: Promise<void>;
@@ -38,11 +39,14 @@ export class IdleScalingPool implements IPool {
 			this.triggerScaleUp();
 			throw new PoolExhaustedError();
 		}
-		this.resetIdleTimer();
-		return this.innerPool.acquire();
+		this.clearIdleTimer();
+		const bridge = this.innerPool.acquire();
+		this.borrowedBridges.add(bridge);
+		return bridge;
 	}
 
 	async release(bridge: RuntimeBridge): Promise<void> {
+		const wasBorrowed = this.borrowedBridges.delete(bridge);
 		if (this.innerPool && !this.disposed) {
 			// Pool is live: delegate so the inner pool disposes and replenishes.
 			await this.innerPool.release(bridge);
@@ -50,6 +54,9 @@ export class IdleScalingPool implements IPool {
 			// Pool is idle, disposed, or the bridge came from cold-start fallback:
 			// no pool to delegate to, just dispose to free the V8 isolate.
 			await bridge.dispose();
+		}
+		if (wasBorrowed && this.borrowedBridges.size === 0 && this.innerPool && !this.disposed) {
+			this.resetIdleTimer();
 		}
 	}
 
@@ -59,10 +66,7 @@ export class IdleScalingPool implements IPool {
 
 	private async doDispose(): Promise<void> {
 		this.disposed = true;
-		if (this.idleTimer) {
-			clearTimeout(this.idleTimer);
-			this.idleTimer = undefined;
-		}
+		this.clearIdleTimer();
 		await this.drainPendingTransitions();
 		if (this.innerPool) {
 			const toDispose = this.innerPool;
@@ -92,9 +96,16 @@ export class IdleScalingPool implements IPool {
 
 	private resetIdleTimer(): void {
 		if (this.idleTimeoutMs === undefined) return;
-		if (this.idleTimer) clearTimeout(this.idleTimer);
+		this.clearIdleTimer();
 		this.idleTimer = setTimeout(() => this.triggerScaleDown(), this.idleTimeoutMs);
 		this.idleTimer.unref();
+	}
+
+	private clearIdleTimer(): void {
+		if (this.idleTimer) {
+			clearTimeout(this.idleTimer);
+			this.idleTimer = undefined;
+		}
 	}
 
 	private triggerScaleUp(): void {
@@ -123,7 +134,15 @@ export class IdleScalingPool implements IPool {
 	}
 
 	private triggerScaleDown(): void {
-		if (this.pendingScaleDown || this.pendingScaleUp || !this.innerPool || this.disposed) return;
+		if (
+			this.pendingScaleDown ||
+			this.pendingScaleUp ||
+			!this.innerPool ||
+			this.disposed ||
+			this.borrowedBridges.size > 0
+		) {
+			return;
+		}
 		this.logger?.info('[IdleScalingPool] Scaling to 0 after inactivity', {
 			idleTimeoutMs: this.idleTimeoutMs,
 		});
