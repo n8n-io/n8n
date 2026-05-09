@@ -655,6 +655,14 @@ export const configureToolFunction = (
 					}
 
 					if (parameter.sendIn === 'path') {
+						if (argument === undefined || argument === null) {
+							throw new NodeOperationError(
+								ctx.getNode(),
+								`Model did not provide path parameter '${parameter.name}'. Path parameters must always be provided to construct a valid URL.`,
+								{ itemIndex },
+							);
+						}
+
 						argument = String(argument);
 
 						//remove " or ' from start or end
