@@ -145,7 +145,7 @@ export class Telemetry {
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			const axiosInstance = axios.create();
 			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
+				cfg.headers.setContentType && cfg.headers.setContentType('application/json', false);
 				return cfg;
 			});
 			this.rudderStack = new RudderStack(key, {

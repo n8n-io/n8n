@@ -27,7 +27,7 @@ axios.defaults.proxy = false;
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
 	if (config.data === undefined) {
-		config.headers.setContentType(false, false);
+		config.headers.setContentType && config.headers.setContentType(false, false);
 	}
 
 	setAxiosAgents(config);
@@ -38,9 +38,16 @@ axios.interceptors.request.use((config) => {
 
 function applyVendorHeaders(config: AxiosRequestConfig) {
 	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
-		config.headers = {
-			...Container.get(AiConfig).openAiDefaultHeaders,
-			...(config.headers ?? {}),
-		};
+		const openAiHeaders = Container.get(AiConfig).openAiDefaultHeaders;
+		if (config.headers && typeof config.headers.set === 'function') {
+			for (const [key, value] of Object.entries(openAiHeaders)) {
+				config.headers.set(key, value as string);
+			}
+		} else {
+			config.headers = {
+				...openAiHeaders,
+				...(config.headers ?? {}),
+			};
+		}
 	}
 }
