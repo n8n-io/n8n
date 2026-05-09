@@ -60,7 +60,7 @@
     "chardet": "2.0.0",
     "cron": "catalog:",
     "fast-glob": "catalog:",
-    "file-type": "16.5.4",
+    "file-type": "21.3.1",
     "form-data": "catalog:",
     "htmlparser2": "^10.0.0",
     "http-proxy-agent": "catalog:",
