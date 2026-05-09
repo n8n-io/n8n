@@ -164,6 +164,29 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).not.toContain('Current template');
 	});
 
+	it('wraps saved working memory in a session-memory section', () => {
+		const list = new AgentMessageList();
+		list.crossThreadMemory = {
+			section: '<memory>\n- Cross-thread fact\n</memory>',
+		};
+		list.workingMemory = {
+			template: '# Thread memory\n- Template-only field:',
+			structured: false,
+			state: 'Saved session note.',
+		};
+
+		const prompt = systemContent(list);
+		const sessionMemoryStart = prompt.indexOf('<session-memory>');
+		const sessionMemoryEnd = prompt.indexOf('</session-memory>');
+
+		expect(sessionMemoryStart).toBeGreaterThan(prompt.indexOf('</memory>'));
+		expect(sessionMemoryEnd).toBeGreaterThan(sessionMemoryStart);
+		expect(prompt.slice(sessionMemoryStart, sessionMemoryEnd)).toContain('Saved session note.');
+		expect(prompt.slice(sessionMemoryStart, sessionMemoryEnd)).toContain(
+			'Thread working memory (private, read-only):',
+		);
+	});
+
 	it('keeps recent history messages in LLM context when working memory is empty', () => {
 		const list = new AgentMessageList();
 		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);

@@ -234,10 +234,11 @@ export class AgentMessageList {
 				this.workingMemory.instruction,
 			);
 			systemPrompt +=
+				'\n\n<session-memory>\n' +
 				wmInstruction +
 				'\n\nThread working memory (private, read-only):\n```\n' +
 				wmState +
-				'\n```\n';
+				'\n```\n</session-memory>\n';
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions
