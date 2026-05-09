@@ -65,13 +65,11 @@ const onCopySecretToClipboard = () => {
 	});
 };
 
-const onInput = () => {
-	if (infoTextErrorMessage.value) infoTextErrorMessage.value = '';
-};
-
 const verifying = ref(false);
-const onContinue = async () => {
+
+const verifyCode = async () => {
 	if (authenticatorCode.value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) return;
+	if (verifying.value) return;
 	verifying.value = true;
 	try {
 		await usersStore.verifyMfaCode({ mfaCode: authenticatorCode.value });
@@ -81,6 +79,17 @@ const onContinue = async () => {
 	} finally {
 		verifying.value = false;
 	}
+};
+
+const onInput = () => {
+	if (infoTextErrorMessage.value) infoTextErrorMessage.value = '';
+	if (authenticatorCode.value.length === MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) {
+		void verifyCode();
+	}
+};
+
+const onContinue = async () => {
+	await verifyCode();
 };
 
 const onDownloadClick = () => {
