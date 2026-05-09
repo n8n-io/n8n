@@ -27,14 +27,22 @@ interface DeleteTestRunParams {
 	runId: string;
 }
 
+export type TestCaseExecutionStatus =
+	| 'new'
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'warning'
+	| 'cancelled';
+
 export interface TestCaseExecutionRecord {
 	id: string;
-	testRunId: string;
-	executionId: string;
-	status: 'running' | 'completed' | 'error';
+	testRunId?: string; // FK not surfaced by API; store stamps it on records.
+	executionId: string | null;
+	status: TestCaseExecutionStatus;
 	createdAt: string;
 	updatedAt: string;
-	runAt: string;
+	runAt: string | null;
 	metrics?: Record<string, number>;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;

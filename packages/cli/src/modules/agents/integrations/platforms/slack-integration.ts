@@ -1,6 +1,10 @@
 import { Service } from '@n8n/di';
 
-import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
+import {
+	AgentChatIntegration,
+	type AgentChatIntegrationContext,
+	type UnauthenticatedWebhookResponse,
+} from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
 
 /**
@@ -35,6 +39,21 @@ export class SlackIntegration extends AgentChatIntegration {
 		const signingSecret = this.extractSigningSecret(ctx.credential);
 		const { createSlackAdapter } = await loadSlackAdapter();
 		return createSlackAdapter({ botToken, signingSecret });
+	}
+
+	/**
+	 * Echo Slack's `url_verification` challenge so the webhook URL can be
+	 * verified during manifest install — before the user has configured the
+	 * bot token + signing secret in n8n. Slack's docs:
+	 * https://api.slack.com/events/url_verification
+	 */
+	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+		if (!body || typeof body !== 'object') return undefined;
+		const evt = body as { type?: unknown; challenge?: unknown };
+		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {
+			return { status: 200, body: { challenge: evt.challenge } };
+		}
+		return undefined;
 	}
 
 	/**

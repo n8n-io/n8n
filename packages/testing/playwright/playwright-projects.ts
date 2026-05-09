@@ -202,6 +202,14 @@ export function getProjects(): Project[] {
 			);
 		}
 
+		projects.push({
+			name: 'coverage',
+			testDir: './tests/e2e',
+			timeout: 60000,
+			fullyParallel: true,
+			use: { containerConfig: {} },
+		});
+
 		for (const { name, config } of CI_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,

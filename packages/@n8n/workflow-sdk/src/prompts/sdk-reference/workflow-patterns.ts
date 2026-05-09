@@ -144,7 +144,7 @@ const hasResults = ifElse({
     parameters: {
       conditions: {
         options: { caseSensitive: true, typeValidation: 'loose' },
-        conditions: [{ leftValue: '={{ $json.results }}', operator: { type: 'array', operation: 'notEmpty' } }],
+        conditions: [{ leftValue: expr('{{ $json.results }}'), operator: { type: 'array', operation: 'notEmpty' } }],
         combinator: 'and'
       }
     }
@@ -180,7 +180,7 @@ const checkValid = ifElse({
     parameters: {
       conditions: {
         options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
-        conditions: [{ leftValue: '={{ $json.status }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'active' }],
+        conditions: [{ leftValue: expr('{{ $json.status }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'active' }],
         combinator: 'and'
       }
     }
@@ -207,8 +207,8 @@ const routeByPriority = switchCase({
     parameters: {
       rules: {
         values: [
-          { outputKey: 'urgent', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }], combinator: 'and' } },
-          { outputKey: 'normal', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }], combinator: 'and' } },
+          { outputKey: 'urgent', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }], combinator: 'and' } },
+          { outputKey: 'normal', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }], combinator: 'and' } },
         ]
       }
     }

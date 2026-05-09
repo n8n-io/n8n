@@ -62,6 +62,8 @@ function makeService(agentsToolsService: AgentsToolsService): AgentsService {
 		mock<AgentExecutionService>(),
 		mock<AgentPublishedVersionRepository>(),
 		mock<AgentSkillsService>(),
+		mock(),
+		mock(),
 	);
 }
 

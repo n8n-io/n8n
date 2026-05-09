@@ -282,11 +282,9 @@ describe('GoogleGemini -> utils', () => {
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
 
-			await expect(uploadFile.call(mockExecuteFunctions, fileContent, mimeType)).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Upload failed', {
-					description: 'Error uploading file',
-				}),
-			);
+			const promise = uploadFile.call(mockExecuteFunctions, fileContent, mimeType);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Upload failed');
 		});
 	});
 
@@ -463,17 +461,14 @@ describe('GoogleGemini -> utils', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('');
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
 
-			await expect(
-				transferFile.call(mockExecuteFunctions, 0, undefined, 'application/octet-stream'),
-			).rejects.toThrow(
-				new NodeOperationError(
-					mockExecuteFunctions.getNode(),
-					'Binary property name or download URL is required',
-					{
-						description: 'Error uploading file',
-					},
-				),
+			const promise = transferFile.call(
+				mockExecuteFunctions,
+				0,
+				undefined,
+				'application/octet-stream',
 			);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Binary property name or download URL is required');
 		});
 
 		it('should throw error when upload URL is not received', async () => {
@@ -495,16 +490,14 @@ describe('GoogleGemini -> utils', () => {
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
 
-			await expect(
-				transferFile.call(
-					mockExecuteFunctions,
-					0,
-					'https://example.com/file.pdf',
-					'application/octet-stream',
-				),
-			).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Failed to get upload URL'),
+			const promise = transferFile.call(
+				mockExecuteFunctions,
+				0,
+				'https://example.com/file.pdf',
+				'application/octet-stream',
 			);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Failed to get upload URL');
 		});
 
 		it('should poll until file is active and throw error on failure', async () => {
@@ -552,18 +545,14 @@ describe('GoogleGemini -> utils', () => {
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
 
-			await expect(
-				transferFile.call(
-					mockExecuteFunctions,
-					0,
-					'https://example.com/file.pdf',
-					'application/octet-stream',
-				),
-			).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Processing failed', {
-					description: 'Error uploading file',
-				}),
+			const promise = transferFile.call(
+				mockExecuteFunctions,
+				0,
+				'https://example.com/file.pdf',
+				'application/octet-stream',
 			);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Processing failed');
 		});
 	});
 
@@ -881,19 +870,15 @@ describe('GoogleGemini -> utils', () => {
 
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
 
-			await expect(
-				uploadToFileSearchStore.call(
-					mockExecuteFunctions,
-					0,
-					fileSearchStoreName,
-					displayName,
-					'https://example.com/file.pdf',
-				),
-			).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Upload failed', {
-					description: 'Error uploading file to File Search store',
-				}),
+			const promise = uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
+				'https://example.com/file.pdf',
 			);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Upload failed');
 		});
 
 		it('should throw error when binary property name is missing', async () => {
@@ -903,17 +888,14 @@ describe('GoogleGemini -> utils', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('');
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
 
-			await expect(
-				uploadToFileSearchStore.call(mockExecuteFunctions, 0, fileSearchStoreName, displayName),
-			).rejects.toThrow(
-				new NodeOperationError(
-					mockExecuteFunctions.getNode(),
-					'Binary property name or download URL is required',
-					{
-						description: 'Error uploading file',
-					},
-				),
+			const promise = uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
 			);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Binary property name or download URL is required');
 		});
 
 		it('should return undefined when response is missing', async () => {
