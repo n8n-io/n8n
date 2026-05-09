@@ -32,6 +32,7 @@ const props = defineProps<{
 	isBuilderConfigured: boolean;
 	isBuildChatStreaming: boolean;
 	isPublished: boolean;
+	isFullWidth: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
@@ -45,6 +46,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:connected-triggers': [triggers: string[]];
+	'update:full-width': [fullWidth: boolean];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
 }>();
@@ -54,6 +56,13 @@ const sessionMenuMaxHeight = 'calc((var(--spacing--xl) * 5) + var(--spacing--xs)
 
 // `sessionOptions` already match `DropdownMenuItemProps`; alias for template clarity.
 const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => props.sessionOptions);
+const fullWidthToggleLabel = computed(() =>
+	i18n.baseText(
+		props.isFullWidth
+			? 'agents.builder.chat.fullWidth.collapse.ariaLabel'
+			: 'agents.builder.chat.fullWidth.expand.ariaLabel',
+	),
+);
 </script>
 
 <template>
@@ -87,24 +96,56 @@ const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => pr
 					</N8nButton>
 				</template>
 			</N8nDropdownMenu>
-			<N8nTooltip
-				placement="left"
-				:content="i18n.baseText('agents.builder.chat.newChat.ariaLabel')"
-			>
-				<N8nButton
-					v-if="currentSessionHasMessages"
-					variant="ghost"
-					iconOnly
-					size="small"
-					:class="$style.newChatBtn"
-					:aria-label="i18n.baseText('agents.builder.chat.newChat.ariaLabel')"
-					data-testid="agent-chat-new-chat-btn"
-					@click="emit('new-chat')"
+			<div :class="$style.sessionActions">
+				<N8nTooltip
+					placement="left"
+					:content="i18n.baseText('agents.builder.chat.newChat.ariaLabel')"
 				>
-					<N8nIcon icon="plus" :size="14" />
-				</N8nButton>
-			</N8nTooltip>
+					<N8nButton
+						v-if="currentSessionHasMessages"
+						variant="ghost"
+						icon-only
+						size="small"
+						:class="$style.headerIconBtn"
+						:aria-label="i18n.baseText('agents.builder.chat.newChat.ariaLabel')"
+						data-testid="agent-chat-new-chat-btn"
+						@click="emit('new-chat')"
+					>
+						<N8nIcon icon="plus" :size="14" />
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip placement="left" :content="fullWidthToggleLabel">
+					<N8nButton
+						variant="ghost"
+						icon-only
+						size="small"
+						:class="$style.headerIconBtn"
+						:aria-label="fullWidthToggleLabel"
+						data-testid="agent-chat-full-width-toggle"
+						@click="emit('update:full-width', !isFullWidth)"
+					>
+						<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
+					</N8nButton>
+				</N8nTooltip>
+			</div>
 		</div>
+		<N8nTooltip
+			v-if="initialized && chatMode === 'build'"
+			placement="left"
+			:content="fullWidthToggleLabel"
+		>
+			<N8nButton
+				variant="ghost"
+				icon-only
+				size="small"
+				:class="[$style.headerIconBtn, $style.floatingFullWidthToggle]"
+				:aria-label="fullWidthToggleLabel"
+				data-testid="agent-build-chat-full-width-toggle"
+				@click="emit('update:full-width', !isFullWidth)"
+			>
+				<N8nIcon :icon="isFullWidth ? 'minimize-2' : 'maximize-2'" :size="14" />
+			</N8nButton>
+		</N8nTooltip>
 		<div :class="$style.chatBody">
 			<AgentChatPanel
 				v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -220,13 +261,26 @@ const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => pr
 	margin-left: calc(var(--spacing--5xs) * -1);
 }
 
-.newChatBtn {
+.sessionActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.headerIconBtn {
 	color: var(--text-color--subtle);
 
 	&:hover,
 	&:focus-visible {
 		color: var(--text-color);
 	}
+}
+
+.floatingFullWidthToggle {
+	position: absolute;
+	top: var(--spacing--2xs);
+	right: var(--spacing--sm);
+	z-index: 2;
 }
 
 .sessionMenu {
@@ -246,5 +300,7 @@ const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => pr
 .chatBody > * {
 	flex: 1;
 	min-height: 0;
+	max-width: 45rem;
+	margin: 0 auto;
 }
 </style>

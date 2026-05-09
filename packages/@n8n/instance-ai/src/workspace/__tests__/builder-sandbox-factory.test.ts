@@ -109,14 +109,6 @@ jest.mock('../n8n-sandbox-sandbox', () => ({
 	},
 }));
 
-jest.mock('../n8n-sandbox-image-manager', () => ({
-	N8nSandboxImageManager: class {
-		getDockerfile() {
-			return 'FROM node:20';
-		}
-	},
-}));
-
 jest.mock('../pack-workspace-sdk', () => ({
 	packWorkspaceSdk: jest.fn().mockResolvedValue(null),
 	isLinkWorkspaceSdkEnabled: jest.fn().mockReturnValue(false),
