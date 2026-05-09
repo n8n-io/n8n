@@ -101,12 +101,17 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
-
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
 			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);
+
+		// Email changes invalidate other sessions, like password and 2FA changes.
+		if (fieldsChanged.includes('email')) {
+			await this.authService.invalidateOtherSessions(userId);
+		}
+
+		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged });
 
@@ -259,6 +264,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
+		await this.authService.invalidateOtherSessions(updatedUser.id);
 		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });

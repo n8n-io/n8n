@@ -20,7 +20,7 @@ import {
 	N8nFormInputs,
 	N8nHeading,
 	N8nIcon,
-	N8nInfoTip,
+	N8nNotice,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -303,13 +303,12 @@ onMounted(() => {
 						}}</template>
 					</N8nText>
 				</div>
-				<N8nInfoTip
+				<N8nNotice
 					v-if="mfaMethod === 'security_key' && !webauthnWaiting"
 					theme="info"
-					:class="$style.infoTip"
-				>
-					{{ i18.baseText('mfa.login.security_key.info') }}
-				</N8nInfoTip>
+					:content="i18.baseText('mfa.login.security_key.info')"
+					:class="$style.infoNotice"
+				/>
 				<N8nText v-if="webauthnError" color="danger" size="small" :class="$style.errorText">
 					{{ webauthnError }}
 				</N8nText>
@@ -440,6 +439,13 @@ body {
 
 .infoTip {
 	margin-bottom: var(--spacing--xs);
+}
+
+.infoNotice {
+	margin-bottom: var(--spacing--3xs);
+	&:last-child {
+		margin-bottom: var(--spacing--xs);
+	}
 }
 
 .errorText {

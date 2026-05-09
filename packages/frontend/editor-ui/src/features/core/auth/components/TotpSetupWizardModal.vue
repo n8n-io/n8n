@@ -18,13 +18,10 @@ import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
 	TOTP_SETUP_WIZARD_MODAL_KEY,
-	VIEWS,
 } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 import { useClipboard } from '@/app/composables/useClipboard';
-import router from '@/app/router';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { twoFactorWizardBus } from '../auth.eventBus';
 import MfaWizardSteps from './MfaWizardSteps.vue';
@@ -35,7 +32,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
-const settingsStore = useSettingsStore();
 const toast = useToast();
 const clipboard = useClipboard();
 const uiStore = useUIStore();
@@ -127,10 +123,6 @@ const onEnable = async () => {
 		});
 		twoFactorWizardBus.emit('completed', { method: 'totp' });
 		uiStore.closeModal(TOTP_SETUP_WIZARD_MODAL_KEY);
-		if (settingsStore.isMFAEnforced) {
-			await usersStore.logout();
-			await router.push({ name: VIEWS.SIGNIN });
-		}
 	} catch (e) {
 		if (e.errorCode === MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED) {
 			toast.showMessage({

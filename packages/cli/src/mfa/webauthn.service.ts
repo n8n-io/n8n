@@ -37,11 +37,18 @@ export class WebAuthnService {
 	async generateRegistrationOptions(
 		userId: string,
 		email: string,
-		existingCredentialIds: string[],
+		displayName: string,
+		_existingCredentialIds: string[],
 		attachment: 'platform' | 'cross-platform',
 	) {
 		const { generateRegistrationOptions } = await import('@simplewebauthn/server');
 
+		// Platform path is strict so the OS goes straight to its passkey/biometric
+		// flow. Cross-platform path leaves attachment unset on purpose: Firefox on
+		// macOS hangs when given a strict `cross-platform` and otherwise can't
+		// reach the OS picker. Letting the OS show its native picker (iCloud first
+		// with "More Options → Use Security Key") matches what GitHub does and
+		// works in Firefox. We classify the actual authenticator from the response.
 		const authenticatorSelection =
 			attachment === 'platform'
 				? ({
@@ -50,17 +57,20 @@ export class WebAuthnService {
 						userVerification: 'required',
 					} as const)
 				: ({
-						authenticatorAttachment: 'cross-platform',
-						residentKey: 'discouraged',
 						userVerification: 'preferred',
 					} as const);
 
+		// Intentionally not passing excludeCredentials — Firefox hangs at the OS
+		// dialog when an excluded credential entry lacks transports, and our
+		// replace-on-register flow already enforces a single credential per user.
+		// `userDisplayName` must not be empty: Firefox/macOS hangs the security
+		// key dialog when the field is an empty string.
 		const options = await generateRegistrationOptions({
 			rpName: this.getRpName(),
 			rpID: this.getRpId(),
 			userName: email,
+			userDisplayName: displayName || email,
 			attestationType: 'none',
-			excludeCredentials: existingCredentialIds.map((id) => ({ id })),
 			authenticatorSelection,
 		});
 

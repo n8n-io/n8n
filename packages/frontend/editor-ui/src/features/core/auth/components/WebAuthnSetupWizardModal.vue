@@ -11,9 +11,7 @@ import {
 } from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
-import { VIEWS, WEBAUTHN_SETUP_WIZARD_MODAL_KEY } from '@/app/constants';
-import router from '@/app/router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { WEBAUTHN_SETUP_WIZARD_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -30,7 +28,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const settingsStore = useSettingsStore();
 const toast = useToast();
 
 const method = computed<'passkey' | 'security_key'>(() => props.data?.method ?? 'passkey');
@@ -108,10 +105,6 @@ const onRegister = async () => {
 		});
 		twoFactorWizardBus.emit('completed', { method: completed });
 		uiStore.closeModal(WEBAUTHN_SETUP_WIZARD_MODAL_KEY);
-		if (settingsStore.isMFAEnforced) {
-			await usersStore.logout();
-			await router.push({ name: VIEWS.SIGNIN });
-		}
 	} catch (e) {
 		// NotAllowedError covers both user-cancellation and the focus loss that
 		// happens when a password manager (e.g. Bitwarden) intercepts the prompt
@@ -159,14 +152,13 @@ const onRegister = async () => {
 					data-test-id="mfa-webauthn-label-input"
 				/>
 			</N8nInputLabel>
-			<N8nInfoTip
+			<N8nNotice
 				v-if="method === 'security_key'"
 				theme="info"
-				:class="$style.infoTip"
+				:content="i18n.baseText('settings.personal.twoFactor.securityKeyWizard.info')"
+				:class="$style.infoNotice"
 				data-test-id="mfa-webauthn-pin-info"
-			>
-				{{ i18n.baseText('settings.personal.twoFactor.securityKeyWizard.info') }}
-			</N8nInfoTip>
+			/>
 			<N8nInfoTip
 				v-if="inlineError"
 				theme="danger"
@@ -279,6 +271,13 @@ const onRegister = async () => {
 
 .infoTip {
 	margin-bottom: 0;
+}
+
+.infoNotice {
+	margin-bottom: var(--spacing--3xs);
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 
 .footer {

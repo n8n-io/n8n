@@ -175,6 +175,7 @@ import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { AddMfaMethodToUser1783100000000 } from '../common/1783100000000-AddMfaMethodToUser';
+import { AddTokensValidAfterToUser1783200000000 } from '../common/1783200000000-AddTokensValidAfterToUser';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -355,4 +356,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	AddMfaMethodToUser1783100000000,
+	AddTokensValidAfterToUser1783200000000,
 ];

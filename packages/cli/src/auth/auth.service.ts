@@ -20,8 +20,6 @@ import { UrlService } from '@/services/url.service';
 interface AuthJwtPayload {
 	/** User Id */
 	id: string;
-	/** This hash is derived from email and bcrypt of password */
-	hash: string;
 	/** This is a client generated unique string to prevent session hijacking */
 	browserId?: string;
 	/** This indicates if mfa was used during the creation of this token */
@@ -31,12 +29,12 @@ interface AuthJwtPayload {
 }
 
 interface IssuedJWT extends AuthJwtPayload {
+	iat: number;
 	exp: number;
 }
 
 interface PasswordResetToken {
 	sub: string;
-	hash: string;
 }
 
 interface CreateAuthMiddlewareOptions {
@@ -234,7 +232,6 @@ export class AuthService {
 	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
-			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
 			...(isEmbed && { isEmbed }),
@@ -318,12 +315,13 @@ export class AuthService {
 		});
 
 		if (
-			// If not user is found
+			// If no user is found
 			!user ||
 			// or, If the user has been deactivated (i.e. LDAP users)
 			user.disabled ||
-			// or, If the email or password has been updated
-			jwtPayload.hash !== this.createJWTHash(user)
+			// or, If the user has bumped `tokensValidAfter` since this JWT
+			// was issued (password change, email change, any 2FA mutation, etc.)
+			this.isTokenStale(user, jwtPayload)
 		) {
 			throw new AuthError('Unauthorized');
 		}
@@ -365,7 +363,7 @@ export class AuthService {
 	}
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
-		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
+		const payload: PasswordResetToken = { sub: user.id };
 		return this.jwtService.sign(payload, { expiresIn });
 	}
 
@@ -383,7 +381,7 @@ export class AuthService {
 	}
 
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
-		let decodedToken: PasswordResetToken;
+		let decodedToken: PasswordResetToken & { iat: number };
 		try {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
@@ -408,20 +406,44 @@ export class AuthService {
 			return;
 		}
 
-		if (decodedToken.hash !== this.createJWTHash(user)) {
-			this.logger.debug('Password updated since this token was generated');
+		if (this.isTokenStale(user, decodedToken)) {
+			this.logger.debug('Password reset token issued before account was last secured');
 			return;
 		}
 
 		return user;
 	}
 
-	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
-		const payload = [email, password];
-		if (mfaEnabled && mfaSecret) {
-			payload.push(mfaSecret.substring(0, 3));
+	/**
+	 * Bumps the user's `tokensValidAfter` timestamp so any JWT issued before now
+	 * is rejected by the auth middleware. The session that triggered the change
+	 * should follow up with `issueCookie` to receive a fresh JWT in the same
+	 * response. Call this on any sensitive account mutation: 2FA enable/disable,
+	 * method switch, credential add/remove.
+	 */
+	async invalidateOtherSessions(userId: string) {
+		await this.userRepository.update(userId, { tokensValidAfter: new Date() });
+	}
+
+	private isTokenStale(user: User, jwt: { iat: number }): boolean {
+		const validAfter = user.tokensValidAfter;
+		if (!validAfter) return false;
+
+		// `tokensValidAfter` may come back as a Date (Postgres) or a string
+		// (sqlite) depending on the driver — normalise to a millisecond stamp.
+		let validAfterMs: number;
+		if (validAfter instanceof Date) {
+			validAfterMs = validAfter.getTime();
+		} else if (typeof validAfter === 'string') {
+			validAfterMs = Date.parse(validAfter);
+		} else {
+			return false;
 		}
-		return this.hash(payload.join(':')).substring(0, 10);
+		if (Number.isNaN(validAfterMs)) return false;
+
+		// Floor the bump to whole seconds so the mutating session's matching
+		// freshly-issued JWT (with the same `iat` second) isn't itself rejected.
+		return jwt.iat < Math.floor(validAfterMs / 1000);
 	}
 
 	private hash(input: string) {

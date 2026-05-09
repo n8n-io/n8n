@@ -153,6 +153,7 @@ export class MFAController {
 			},
 		});
 
+		await this.authService.invalidateOtherSessions(id);
 		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
 	}
 
@@ -204,6 +205,7 @@ export class MFAController {
 			relations: ['role'],
 		});
 
+		await this.authService.invalidateOtherSessions(userId);
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}
 
@@ -236,7 +238,7 @@ export class MFAController {
 	async getWebAuthnRegistrationOptions(
 		req: AuthenticatedRequest<{}, {}, {}, { attachment?: string }>,
 	) {
-		const { id, email } = req.user;
+		const { id, email, firstName, lastName } = req.user;
 		const { attachment } = req.query;
 
 		if (attachment !== 'platform' && attachment !== 'cross-platform') {
@@ -248,9 +250,12 @@ export class MFAController {
 		const existingCredentials = await this.mfaService.webauthn.getUserCredentials(id);
 		const existingIds = existingCredentials.map((c) => c.credentialId);
 
+		const displayName = [firstName, lastName].filter(Boolean).join(' ').trim();
+
 		return await this.mfaService.webauthn.generateRegistrationOptions(
 			id,
 			email,
+			displayName,
 			existingIds,
 			attachment,
 		);
@@ -293,15 +298,25 @@ export class MFAController {
 		await this.mfaService.webauthn.deleteAllUserCredentials(userId);
 		await this.mfaService.clearTotpState(userId);
 
+		const transports = (response as { response?: { transports?: string[] } })?.response?.transports;
+
 		const savedCredential = await this.mfaService.webauthn.saveCredential(
 			userId,
 			label.trim(),
 			verification.registrationInfo,
-			(response as { response?: { transports?: string[] } })?.response?.transports,
+			transports,
 		);
 
-		const method = attachment === 'platform' ? 'passkey' : 'security_key';
+		// Classify from the actual authenticator, not the client-provided hint:
+		// when `attachment === 'cross-platform'` the OS picker may still route the
+		// user through iCloud Keychain or Windows Hello, in which case we should
+		// record this as a passkey rather than a security key.
+		const isPlatformAuthenticator =
+			(transports ?? []).includes('internal') ||
+			verification.registrationInfo.credentialDeviceType === 'multiDevice';
+		const method = isPlatformAuthenticator ? 'passkey' : 'security_key';
 		const updatedUser = await this.mfaService.setMfaMethod(userId, method);
+		await this.authService.invalidateOtherSessions(userId);
 		this.authService.issueCookie(res, updatedUser, true, req.browserId);
 
 		return {
@@ -370,6 +385,7 @@ export class MFAController {
 				where: { id: userId },
 				relations: ['role'],
 			});
+			await this.authService.invalidateOtherSessions(userId);
 			this.authService.issueCookie(res, updatedUser, false, req.browserId);
 		}
 
