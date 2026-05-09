@@ -256,7 +256,15 @@ export function handleRequest({
 }): {
 	nodesToBeExecuted: NodeToBeExecuted[];
 } {
-	// 1. collect nodes to be put on the stack
+	// 1. create metadata for current node (must succeed before scheduling tools)
+	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
+	if (!result) {
+		// Fallback for edge cases where the agent’s execution context has no source.
+		// The empty stack means no tool execution will happen.
+		return { nodesToBeExecuted: [] };
+	}
+
+	// 2. collect nodes to be put on the stack
 	const { nodesToBeExecuted, subNodeExecutionData } = prepareRequestedNodesForExecution(
 		workflow,
 		currentNode,
@@ -265,14 +273,6 @@ export function handleRequest({
 		runData,
 		executionData,
 	);
-
-	// 2. create metadata for current node
-	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
-	if (!result) {
-		// Fallback for edge cases where the agent’s execution context has no source.
-		// The empty stack means no tool execution will happen.
-		return { nodesToBeExecuted: [] };
-	}
 
 	// Preserve the original pairedItem.item from the agent's input so the resumed
 	// execution can keep the same upstream item lineage after the tool call returns.

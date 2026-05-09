@@ -36,7 +36,9 @@ describe('handleRequests', () => {
 				currentNode,
 				request,
 				runIndex: 1,
-				executionData: mock<IExecuteData>(),
+				executionData: mock<IExecuteData>({
+					source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0 }] },
+				}),
 				runData: mock<IRunData>(),
 			}),
 		).toThrowError('Workflow does not contain a node with the name of "does not exist".');
