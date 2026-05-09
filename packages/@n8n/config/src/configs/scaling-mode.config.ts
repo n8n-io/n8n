@@ -124,6 +124,9 @@ class BullConfig {
 	@Env('N8N_WORKER_DRAIN_ON_SIGTERM')
 	drainOnSigterm: boolean = false;
 
+	@Env('N8N_WORKER_DRAIN_SIGNALS_ENABLED')
+	workerDrainSignalsEnabled: boolean = false;
+
 	@Nested
 	settings: SettingsConfig;
 }

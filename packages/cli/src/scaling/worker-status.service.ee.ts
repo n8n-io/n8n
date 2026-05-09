@@ -29,6 +29,15 @@ export class WorkerStatusService {
 		});
 	}
 
+	async drainWorker(workerId: string) {
+		if (this.instanceSettings.instanceType !== 'main') return;
+
+		return await this.publisher.publishCommand({
+			command: 'drain-worker',
+			targets: [workerId],
+		});
+	}
+
 	@OnPubSubEvent('response-to-get-worker-status', { instanceType: 'main' })
 	handleWorkerStatusResponse(payload: WorkerStatus & { requestingUserId: string }) {
 		// Send only to the user who requested worker status

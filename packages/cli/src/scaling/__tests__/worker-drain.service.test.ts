@@ -21,6 +21,24 @@ beforeEach(() => {
 });
 
 describe('WorkerDrainService', () => {
+	describe('PubSub handlers', () => {
+		it('delegates drain-worker events to enterDrain()', async () => {
+			const enterDrainSpy = jest.spyOn(service, 'enterDrain').mockResolvedValue(undefined);
+
+			await service.handleDrainWorkerEvent();
+
+			expect(enterDrainSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('delegates resume-worker events to exitDrain()', async () => {
+			const exitDrainSpy = jest.spyOn(service, 'exitDrain').mockResolvedValue(undefined);
+
+			await service.handleResumeWorkerEvent();
+
+			expect(exitDrainSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('enterDrain', () => {
 		it('pauses the local queue and marks as draining on a worker instance', async () => {
 			await service.enterDrain();
@@ -123,9 +141,7 @@ describe('WorkerDrainService', () => {
 			});
 
 			it('resolves before the deadline when the job count drops to 0', async () => {
-				scalingService.getRunningJobsCount
-					.mockReturnValueOnce(1)
-					.mockReturnValue(0);
+				scalingService.getRunningJobsCount.mockReturnValueOnce(1).mockReturnValue(0);
 
 				const promise = service.waitForActiveJobsToFinish(5000);
 				await jest.advanceTimersByTimeAsync(600);

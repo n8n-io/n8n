@@ -28,7 +28,9 @@ export const SELF_SEND_COMMANDS = new Set<PubSub.Command['command']>([
 export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
+	'drain-worker',
+	'resume-worker',
 	'relay-execution-lifecycle-event',
 	'relay-chat-stream-event',
 	'cancel-test-run',
-]);
+] as PubSub.Command['command'][]);

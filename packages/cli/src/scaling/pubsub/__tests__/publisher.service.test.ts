@@ -141,6 +141,54 @@ describe('Publisher', () => {
 				}),
 			);
 		});
+
+		it('should not debounce `drain-worker`', async () => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command: 'drain-worker' as never });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
+					debounce: false,
+				}),
+			);
+		});
+
+		it('should not debounce `resume-worker`', async () => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command: 'resume-worker' as never });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
+					debounce: false,
+				}),
+			);
+		});
 	});
 
 	describe('publishWorkerResponse', () => {

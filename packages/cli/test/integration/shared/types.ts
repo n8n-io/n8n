@@ -46,6 +46,7 @@ type EndpointGroup =
 	| 'insights'
 	| 'module-settings'
 	| 'security-settings'
+	| 'orchestration'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'

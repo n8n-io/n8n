@@ -116,15 +116,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.initScalingService();
 
 		this.workerDrainService = Container.get(WorkerDrainService);
-
-		if (!inTest) {
-			process.on('SIGUSR2', () => {
-				void this.workerDrainService.enterDrain();
-			});
-			process.on('SIGUSR1', () => {
-				void this.workerDrainService.exitDrain();
-			});
-		}
+		this.registerWorkerDrainSignalHandlers();
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
@@ -146,6 +138,27 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private registerWorkerDrainSignalHandlers() {
+		if (!this.shouldRegisterWorkerDrainSignalHandlers()) return;
+
+		process.on('SIGUSR2', () => {
+			void this.workerDrainService.enterDrain();
+		});
+		process.on('SIGUSR1', () => {
+			void this.workerDrainService.exitDrain();
+		});
+	}
+
+	private shouldRegisterWorkerDrainSignalHandlers({
+		inTestMode = inTest,
+		workerDrainSignalsEnabled = this.globalConfig.queue.bull.workerDrainSignalsEnabled,
+	}: {
+		inTestMode?: boolean;
+		workerDrainSignalsEnabled?: boolean;
+	} = {}) {
+		return !inTestMode && workerDrainSignalsEnabled;
 	}
 
 	async initEventBus() {

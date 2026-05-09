@@ -14,6 +14,8 @@ export type PubSubEventName =
 	| 'community-package-uninstall'
 	| 'community-package-update'
 	| 'get-worker-status'
+	| 'drain-worker'
+	| 'resume-worker'
 	| 'reload-external-secrets-providers'
 	| 'reload-license'
 	| 'reload-oidc-config'

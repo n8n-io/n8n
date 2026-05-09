@@ -50,6 +50,8 @@ export namespace PubSub {
 		export type CommunityPackageUninstall = ToCommand<'community-package-uninstall'>;
 		export type GetWorkerId = ToCommand<'get-worker-id'>;
 		export type GetWorkerStatus = ToCommand<'get-worker-status'>;
+		export type DrainWorker = ToCommand<'drain-worker'>;
+		export type ResumeWorker = ToCommand<'resume-worker'>;
 		export type AddWebhooksTriggersAndPollers = ToCommand<'add-webhooks-triggers-and-pollers'>;
 		export type RemoveTriggersAndPollers = ToCommand<'remove-triggers-and-pollers'>;
 		export type DisplayWorkflowActivation = ToCommand<'display-workflow-activation'>;
@@ -78,6 +80,8 @@ export namespace PubSub {
 		| Commands.CommunityPackageUninstall
 		| Commands.GetWorkerId
 		| Commands.GetWorkerStatus
+		| Commands.DrainWorker
+		| Commands.ResumeWorker
 		| Commands.AddWebhooksTriggersAndPollers
 		| Commands.RemoveTriggersAndPollers
 		| Commands.DisplayWorkflowActivation

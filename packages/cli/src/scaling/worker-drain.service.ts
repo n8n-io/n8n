@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { sleep, UnexpectedError } from 'n8n-workflow';
@@ -21,6 +22,16 @@ export class WorkerDrainService {
 
 	isDraining(): boolean {
 		return this.draining;
+	}
+
+	@OnPubSubEvent('drain-worker', { instanceType: 'worker' })
+	async handleDrainWorkerEvent(): Promise<void> {
+		await this.enterDrain();
+	}
+
+	@OnPubSubEvent('resume-worker', { instanceType: 'worker' })
+	async handleResumeWorkerEvent(): Promise<void> {
+		await this.exitDrain();
 	}
 
 	async enterDrain(): Promise<void> {

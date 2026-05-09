@@ -96,6 +96,75 @@ describe('Worker', () => {
 		});
 	});
 
+	describe('registerWorkerDrainSignalHandlers', () => {
+		afterEach(() => {
+			Container.get(GlobalConfig).queue.bull.workerDrainSignalsEnabled = false;
+		});
+
+		it.each([
+			{ inTestMode: true, workerDrainSignalsEnabled: false, shouldRegister: false },
+			{ inTestMode: true, workerDrainSignalsEnabled: true, shouldRegister: false },
+			{ inTestMode: false, workerDrainSignalsEnabled: false, shouldRegister: false },
+			{ inTestMode: false, workerDrainSignalsEnabled: true, shouldRegister: true },
+		])(
+			'should return $shouldRegister for inTest=$inTestMode and workerDrainSignalsEnabled=$workerDrainSignalsEnabled',
+			({ inTestMode, workerDrainSignalsEnabled, shouldRegister }) => {
+				const worker = new Worker();
+
+				expect(
+					worker['shouldRegisterWorkerDrainSignalHandlers']({
+						inTestMode,
+						workerDrainSignalsEnabled,
+					}),
+				).toBe(shouldRegister);
+			},
+		);
+
+		it('should not register SIGUSR handlers by default', async () => {
+			const processOnSpy = jest.spyOn(process, 'on').mockImplementation(() => process);
+			const worker = new Worker();
+			worker['workerDrainService'] = mockWorkerDrainService;
+
+			worker['registerWorkerDrainSignalHandlers']();
+
+			expect(processOnSpy).not.toHaveBeenCalledWith('SIGUSR1', expect.any(Function));
+			expect(processOnSpy).not.toHaveBeenCalledWith('SIGUSR2', expect.any(Function));
+			processOnSpy.mockRestore();
+		});
+
+		it('should register SIGUSR handlers when workerDrainSignalsEnabled is true', () => {
+			Container.get(GlobalConfig).queue.bull.workerDrainSignalsEnabled = true;
+			const processOnSpy = jest.spyOn(process, 'on').mockImplementation(() => process);
+			const worker = new Worker();
+			worker['workerDrainService'] = mockWorkerDrainService;
+			jest
+				.spyOn(worker as any, 'shouldRegisterWorkerDrainSignalHandlers')
+				.mockImplementation(() => true);
+
+			worker['registerWorkerDrainSignalHandlers']();
+
+			expect(processOnSpy).toHaveBeenCalledWith('SIGUSR1', expect.any(Function));
+			expect(processOnSpy).toHaveBeenCalledWith('SIGUSR2', expect.any(Function));
+			processOnSpy.mockRestore();
+		});
+
+		it('should not register SIGUSR handlers in test mode even when the flag is enabled', () => {
+			Container.get(GlobalConfig).queue.bull.workerDrainSignalsEnabled = true;
+			const processOnSpy = jest.spyOn(process, 'on').mockImplementation(() => process);
+			const worker = new Worker();
+			worker['workerDrainService'] = mockWorkerDrainService;
+			jest
+				.spyOn(worker as any, 'shouldRegisterWorkerDrainSignalHandlers')
+				.mockImplementation(() => false);
+
+			worker['registerWorkerDrainSignalHandlers']();
+
+			expect(processOnSpy).not.toHaveBeenCalledWith('SIGUSR1', expect.any(Function));
+			expect(processOnSpy).not.toHaveBeenCalledWith('SIGUSR2', expect.any(Function));
+			processOnSpy.mockRestore();
+		});
+	});
+
 	describe('onTerminationSignal', () => {
 		let worker: Worker;
 		let processExitSpy: jest.SpyInstance;
@@ -105,9 +174,7 @@ describe('Worker', () => {
 			processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 			worker = new Worker();
 			// errorReporter and workerDrainService are set in init(), not the constructor
-			// @ts-expect-error protected property
 			worker['errorReporter'] = mockErrorReporter;
-			// @ts-expect-error private property
 			worker['workerDrainService'] = mockWorkerDrainService;
 			jest.spyOn(worker, 'stopProcess').mockResolvedValue(undefined);
 			mockWorkerDrainService.enterDrain.mockResolvedValue(undefined);
@@ -116,7 +183,7 @@ describe('Worker', () => {
 			mockErrorReporter.shutdown.mockResolvedValue(undefined);
 			mockShutdownService.isShuttingDown.mockReturnValue(false);
 			mockShutdownService.waitForShutdown.mockResolvedValue(undefined);
-			mockShutdownService.shutdown.mockResolvedValue(undefined);
+			mockShutdownService.shutdown.mockReturnValue(undefined);
 		});
 
 		afterEach(() => {
