@@ -2,7 +2,7 @@ import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/d
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Cipher } from 'n8n-core';
+import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
@@ -15,7 +15,12 @@ import * as checkAccess from '@/permissions.ee/check-access';
 import type { IDependency } from '@/public-api/types';
 
 // Set up real Cipher with mocked InstanceSettings for encryption
-const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }));
+const cipher = new Cipher(
+	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+	new CipherAes256GCM(),
+	new CipherAes256CBC(),
+	new EncryptionKeyProxy(),
+);
 Container.set(Cipher, cipher);
 
 describe('CredentialsService', () => {
@@ -489,7 +494,7 @@ describe('CredentialsService', () => {
 				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 				// mock credential that doesn't have secret expression yet
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-secret' });
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-secret' });
 
 				await expect(
 					updateCredential(existingCredential, memberUser, {
@@ -514,7 +519,7 @@ describe('CredentialsService', () => {
 				// Mock credential that already has secret expression
 				jest
 					.mocked(credentialsService.decrypt)
-					.mockReturnValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
+					.mockResolvedValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
 
 				await expect(
 					updateCredential(existingCredential, memberUser, {
@@ -537,7 +542,7 @@ describe('CredentialsService', () => {
 
 				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
-				jest.mocked(credentialsService.decrypt).mockReturnValue({
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({
 					apiKey: 'currentPlainTextValue',
 				});
 				jest
@@ -569,7 +574,7 @@ describe('CredentialsService', () => {
 				// Mock credential that has existing secret expression
 				jest
 					.mocked(credentialsService.decrypt)
-					.mockReturnValue({ apiKey: '{{ $secrets.vault.myKey }}' });
+					.mockResolvedValue({ apiKey: '{{ $secrets.vault.myKey }}' });
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
@@ -591,7 +596,7 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				// Mock credential not using any external secret expressions
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
@@ -611,7 +616,7 @@ describe('CredentialsService', () => {
 				});
 				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
+				jest.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
 				jest
 					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
 					.mockResolvedValue(true);

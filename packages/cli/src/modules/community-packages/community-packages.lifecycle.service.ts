@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -38,6 +39,9 @@ export type CommunityPackageInstallPresentation = 'ui' | 'publicApi';
 
 export type MissingInstalledPackageBehavior = 'badRequest' | 'notFound';
 
+const MANAGED_BY_ENV_MESSAGE =
+	'Community packages are managed via environment variables on this instance and cannot be modified through the API.';
+
 @Service()
 export class CommunityPackagesLifecycleService {
 	constructor(
@@ -48,7 +52,14 @@ export class CommunityPackagesLifecycleService {
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly communityPackagesConfig: CommunityPackagesConfig,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
+
+	private assertNotManagedByEnv() {
+		if (this.instanceSettingsLoaderConfig.communityPackagesManagedByEnv) {
+			throw new BadRequestError(MANAGED_BY_ENV_MESSAGE);
+		}
+	}
 
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
@@ -99,6 +110,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
 	): Promise<InstalledPackages> {
+		this.assertNotManagedByEnv();
 		const { name, verify, version } = args;
 
 		if (!name) {
@@ -221,6 +233,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<InstalledPackages> {
+		this.assertNotManagedByEnv();
 		const { name, version, verify } = args;
 
 		let checksum = args.checksum;
@@ -324,6 +337,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<void> {
+		this.assertNotManagedByEnv();
 		if (!packageName) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}

@@ -7,7 +7,6 @@ import {
 	getSettingsFilePath,
 	logLevelSchema,
 	permissionModeSchema,
-	portSchema,
 	TOOL_GROUP_DEFINITIONS,
 } from './config';
 import { logger } from './logger';
@@ -30,7 +29,6 @@ interface ResourcePermissions {
 
 const persistentSettingsSchema = z.object({
 	logLevel: logLevelSchema.optional(),
-	port: portSchema.optional(),
 	permissions: z
 		.object(
 			Object.fromEntries(

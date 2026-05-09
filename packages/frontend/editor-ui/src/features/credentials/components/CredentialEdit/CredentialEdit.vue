@@ -142,6 +142,11 @@ const contextNode = computed<INode | null>(() => {
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
 });
 
+const hideAskAssistant = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
+});
+
 const activeNodeType = computed(() => {
 	const activeNode = contextNode.value;
 
@@ -888,8 +893,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && contextNode.value) {
-		updateNodeAuthType(workflowsStore.workflowId, contextNode.value, appliedAuthType);
+	if (appliedAuthType && contextNode.value && workflowDocumentStore.value) {
+		updateNodeAuthType(
+			workflowDocumentStore.value.updateNodeProperties,
+			contextNode.value,
+			appliedAuthType,
+		);
 		pendingAuthType.value = null;
 	}
 
@@ -1179,6 +1188,7 @@ async function deleteCredential() {
 async function oAuthCredentialAuthorize() {
 	let url;
 
+	credentialsStore.pendingOAuthRefresh = true;
 	const credential = await saveCredential();
 	if (!credential) {
 		return;
@@ -1433,7 +1443,7 @@ const { width } = useElementSize(credNameRef);
 						:class="$style.saveButton"
 						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
-						:saved="false"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:saving-label="
 							isTesting
 								? i18n.baseText('credentialEdit.credentialEdit.testing')
@@ -1495,6 +1505,7 @@ const { width } = useElementSize(credNameRef);
 						:use-custom-oauth="useCustomOAuth"
 						:is-quick-connect-mode="isQuickConnectMode"
 						:context-node="contextNode"
+						:hide-ask-assistant="hideAskAssistant"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@quick-connect="onQuickConnect"

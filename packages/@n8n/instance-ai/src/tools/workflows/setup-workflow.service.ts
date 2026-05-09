@@ -304,7 +304,10 @@ export async function buildSetupRequests(
 			existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 			const existingOnNode = node.credentials?.[credentialType];
-			if (!existingOnNode?.id && existingCredentials.length > 0) {
+			// Only auto-apply when there is exactly one candidate. With multiple
+			// candidates, picking the first is a silent guess — surface the list
+			// so the setup wizard can prompt the user to choose.
+			if (!existingOnNode?.id && existingCredentials.length === 1) {
 				isAutoApplied = true;
 				if (nodeCredentials) {
 					nodeCredentials[credentialType] = {
@@ -770,7 +773,12 @@ export async function analyzeWorkflow(
 				req.credentialType !== undefined ||
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
-		);
+		)
+		// Hide cards the user has nothing to do on: credentials already set and
+		// tested, no parameter issues, not a trigger awaiting testing. Trigger
+		// steps are always kept — triggers require user testing regardless of
+		// credential state.
+		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
 
 	sortByExecutionOrder(
 		setupRequests,

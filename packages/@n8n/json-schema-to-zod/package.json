@@ -1,6 +1,6 @@
 {
   "name": "@n8n/json-schema-to-zod",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -60,7 +60,7 @@
     "url": "https://github.com/n8n-io/n8n"
   },
   "peerDependencies": {
-    "zod": "^3.0.0"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

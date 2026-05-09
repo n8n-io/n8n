@@ -1,5 +1,4 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
-import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -58,6 +57,7 @@ const outputSchema = {
 			z.object({
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
+				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
 		.describe('List of credentials that were automatically assigned to nodes'),
@@ -148,7 +148,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
-			const workflowJson = layoutWorkflowJSON(result.workflow);
+			const workflowJson = result.workflow;
 
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
@@ -184,6 +184,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
 				parentFolderId: folderId,
+				source: 'n8n-mcp',
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();

@@ -25,6 +25,7 @@ packages/**/.turbo
 *.swp
 CHANGELOG-*.md
 *.mdx
+!packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
 *.junit.xml
@@ -35,6 +36,7 @@ packages/testing/playwright/playwright-report
 packages/testing/playwright/test-results
 packages/testing/playwright/eval-results.json
 packages/@n8n/instance-ai/eval-results.json
+packages/@n8n/instance-ai/eval-pr-comment.md
 packages/testing/playwright/.playwright-browsers
 packages/testing/playwright/.playwright-cli
 test-results/
@@ -59,6 +61,8 @@ packages/cli/src/commands/export/outputs
 .data/
 .claude/settings.local.json
 .claude/plans/
+.claude/worktrees/
+.claude/specs/
 .cursor/plans/
 .superset
 .conductor

@@ -29,6 +29,10 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
+	test('returns circle-check for complete-checkpoint', () => {
+		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
+	});
+
 	test('returns share for delegate', () => {
 		expect(getToolIcon('delegate')).toBe('share');
 	});

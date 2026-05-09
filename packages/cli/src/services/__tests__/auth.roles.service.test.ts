@@ -13,7 +13,7 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 } from '@n8n/permissions';
-import type { EntityManager, Repository } from '@n8n/typeorm';
+import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 const SHARING_SCOPES = PERSONAL_SPACE_SHARING_SETTING.scopes;
@@ -429,6 +429,7 @@ describe('AuthRolesService', () => {
 					const scopes = roleDef.scopes.map((scopeSlug) => createMinimalScope(scopeSlug));
 					if (roleDef.slug === PROJECT_OWNER_ROLE_SLUG) {
 						scopes.push(createMinimalScope('workflow:publish'));
+						scopes.push(createMinimalScope('agent:publish'));
 						scopes.push(createMinimalScope('workflow:share'));
 						scopes.push(createMinimalScope('credential:share'));
 						scopes.push(createMinimalScope('credential:move'));
@@ -446,8 +447,8 @@ describe('AuthRolesService', () => {
 			scopeRepository.find.mockResolvedValue(allScopes);
 			// syncScopes calls roleRepository.find({ relations: ['scopes'], ... }); syncRoles calls it with select/where.
 			// Return [] for the obsolete-scopes lookup so syncScopes does not save; return correctRoles for syncRoles.
-			roleRepository.find.mockImplementation(async (opts?: { relations?: string[] }) =>
-				opts?.relations?.includes('scopes') ? [] : correctRoles,
+			roleRepository.find.mockImplementation(async (opts?: FindManyOptions<Role>) =>
+				(opts?.relations as string[] | undefined)?.includes('scopes') ? [] : correctRoles,
 			);
 			roleRepository.save.mockImplementation(async (entities) => entities as never);
 

@@ -10,7 +10,8 @@ export { N8nClient } from './clients/n8n-client';
 export type { WorkflowResponse, WorkflowNodeResponse, ExecutionDetail } from './clients/n8n-client';
 
 // -- Test case data --
-export { loadWorkflowTestCases } from './data/workflows';
+export { loadWorkflowTestCasesWithFiles } from './data/workflows';
+export type { WorkflowTestCaseWithFile } from './data/workflows';
 
 // -- Credentials --
 export { seedCredentials, cleanupCredentials } from './credentials/seeder';
@@ -38,3 +39,38 @@ export type {
 	ChecklistItem,
 	ChecklistResult,
 } from './types';
+
+// -- Comparison (regression detection) --
+export {
+	compareBuckets,
+	byVerdict,
+	improvements,
+	hardRegressions,
+	softRegressions,
+	watchList,
+} from './comparison/compare';
+export type {
+	ComparisonResult,
+	ScenarioComparison,
+	ScenarioCounts,
+	ExperimentBucket,
+	AggregateComparison,
+	FailureCategoryComparison,
+} from './comparison/compare';
+export {
+	classifyScenario,
+	fishersExactOneSidedLeft,
+	wilsonInterval,
+} from './comparison/statistics';
+export type {
+	ScenarioVerdict,
+	ScenarioClassification,
+	ClassifyOptions,
+	TierThresholds,
+} from './comparison/statistics';
+export { formatComparisonMarkdown, formatComparisonTerminal } from './comparison/format';
+export {
+	fetchBaselineBucket,
+	findLatestBaseline,
+	BASELINE_EXPERIMENT_PREFIX,
+} from './comparison/fetch-baseline';

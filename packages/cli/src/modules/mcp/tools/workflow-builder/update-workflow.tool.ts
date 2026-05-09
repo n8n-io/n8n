@@ -1,5 +1,4 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
-import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -7,6 +6,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { CODE_BUILDER_VALIDATE_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
@@ -48,6 +48,7 @@ const outputSchema = {
 			z.object({
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
+				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
 		.describe('List of credentials that were automatically assigned to nodes'),
@@ -79,6 +80,7 @@ export const createUpdateWorkflowTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
+	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -119,6 +121,8 @@ export const createUpdateWorkflowTool = (
 				workflowFinderService,
 			);
 
+			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
+
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
 			);
@@ -127,7 +131,7 @@ export const createUpdateWorkflowTool = (
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
-			const workflowJson = layoutWorkflowJSON(result.workflow);
+			const workflowJson = result.workflow;
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
@@ -174,7 +178,10 @@ export const createUpdateWorkflowTool = (
 
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: true,
+				source: 'n8n-mcp',
 			});
+
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;

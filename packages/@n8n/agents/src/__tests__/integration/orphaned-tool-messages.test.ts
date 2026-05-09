@@ -28,95 +28,92 @@ describe('orphaned tool messages in memory', () => {
 	}
 
 	/**
-	 * Seed memory with a conversation that has tool-call / tool-result pairs
-	 * surrounded by plain user/assistant exchanges.
+	 * Seed memory with a conversation that has settled tool-call blocks
+	 * (state: 'resolved') surrounded by plain user/assistant exchanges.
 	 *
-	 * Message layout (indices 0–7):
-	 *   0: user   "How many widgets?"
-	 *   1: assistant  text + tool-call(call_1)
-	 *   2: tool   tool-result(call_1)
-	 *   3: assistant  "There are 10 widgets"
-	 *   4: user   "What about gadgets?"
-	 *   5: assistant  text + tool-call(call_2)
-	 *   6: tool   tool-result(call_2)
-	 *   7: assistant  "There are 5 gadgets"
+	 * Message layout (indices 0–5):
+	 *   0: user      "How many widgets?"
+	 *   1: assistant  text + tool-call(call_1, state:'resolved', output:{count:10})
+	 *   2: assistant  "There are 10 widgets"
+	 *   3: user      "What about gadgets?"
+	 *   4: assistant  text + tool-call(call_2, state:'resolved', output:{count:5})
+	 *   5: assistant  "There are 5 gadgets"
 	 */
 	function buildSeedMessages(): AgentDbMessage[] {
+		const now = Date.now();
 		return [
 			{
 				id: 'm1',
-				createdAt: new Date(),
+				createdAt: new Date(now),
 				role: 'user',
 				content: [{ type: 'text', text: 'How many widgets do we have?' }],
 			},
 			{
 				id: 'm2',
-				createdAt: new Date(),
+				createdAt: new Date(now + 1),
 				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Let me look that up.' },
-					{ type: 'tool-call', toolCallId: 'call_1', toolName: 'lookup', input: { id: 'widgets' } },
+					{
+						type: 'tool-call',
+						toolCallId: 'call_1',
+						toolName: 'lookup',
+						input: { id: 'widgets' },
+						state: 'resolved',
+						output: { count: 10 },
+					},
 				],
 			},
 			{
 				id: 'm3',
-				createdAt: new Date(),
-				role: 'tool',
-				content: [
-					{ type: 'tool-result', toolCallId: 'call_1', toolName: 'lookup', result: { count: 10 } },
-				],
-			},
-			{
-				id: 'm4',
-				createdAt: new Date(),
+				createdAt: new Date(now + 2),
 				role: 'assistant',
 				content: [{ type: 'text', text: 'There are 10 widgets in stock.' }],
 			},
 			{
-				id: 'm5',
-				createdAt: new Date(),
+				id: 'm4',
+				createdAt: new Date(now + 3),
 				role: 'user',
 				content: [{ type: 'text', text: 'What about gadgets?' }],
 			},
 			{
-				id: 'm6',
-				createdAt: new Date(),
+				id: 'm5',
+				createdAt: new Date(now + 4),
 				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Let me check.' },
-					{ type: 'tool-call', toolCallId: 'call_2', toolName: 'lookup', input: { id: 'gadgets' } },
+					{
+						type: 'tool-call',
+						toolCallId: 'call_2',
+						toolName: 'lookup',
+						input: { id: 'gadgets' },
+						state: 'resolved',
+						output: { count: 5 },
+					},
 				],
 			},
 			{
-				id: 'm7',
-				createdAt: new Date(),
-				role: 'tool',
-				content: [
-					{ type: 'tool-result', toolCallId: 'call_2', toolName: 'lookup', result: { count: 5 } },
-				],
-			},
-			{
-				id: 'm8',
-				createdAt: new Date(),
+				id: 'm6',
+				createdAt: new Date(now + 5),
 				role: 'assistant',
 				content: [{ type: 'text', text: 'There are 5 gadgets in stock.' }],
 			},
 		];
 	}
 
-	it('handles orphaned tool results when tool-call message is truncated from history', async () => {
+	it('handles partial history window when earlier messages are truncated', async () => {
 		const { memory, cleanup } = createSqliteMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-orphan-result';
 
-		// Seed 8 messages into the thread
+		// Seed 6 messages into the thread
 		await memory.saveMessages({ threadId, messages: buildSeedMessages() });
 
-		// lastMessages=6 → loads messages 2–7
-		// Message at index 2 is a tool-result for call_1, but the matching
-		// assistant+tool-call (index 1) is truncated. This is an orphaned tool result.
-		const mem = new Memory().storage(memory).lastMessages(6);
+		// lastMessages=4 → loads messages 2–5
+		// Each tool-call block carries its own result (state:'resolved'), so there
+		// are no orphan issues regardless of window boundaries.
+		const mem = new Memory().storage(memory).lastMessages(4);
 
 		const agent = new Agent('orphan-result-test')
 			.model(getModel('anthropic'))
@@ -132,7 +129,7 @@ describe('orphaned tool messages in memory', () => {
 		expect(result.finishReason).toBe('stop');
 	});
 
-	it('handles orphaned tool calls when tool-result message is truncated from history', async () => {
+	it('handles pending tool-call blocks (interrupted turn) in history', async () => {
 		const { memory, cleanup } = createSqliteMemory();
 		cleanups.push(cleanup);
 
@@ -140,8 +137,9 @@ describe('orphaned tool messages in memory', () => {
 		const now = Date.now();
 
 		// Store a conversation where the last saved message is an assistant
-		// with a tool-call but the tool-result was never persisted (simulating
-		// a partial save / interrupted turn).
+		// with a pending tool-call block (simulating a partial save / interrupted turn).
+		// stripOrphanedToolMessages will drop the pending block so the LLM receives
+		// only the user message.
 		const messages: AgentDbMessage[] = [
 			{
 				id: 'm1',
@@ -160,6 +158,7 @@ describe('orphaned tool messages in memory', () => {
 						toolCallId: 'call_orphan',
 						toolName: 'lookup',
 						input: { id: 'widgets' },
+						state: 'pending',
 					},
 				],
 			},

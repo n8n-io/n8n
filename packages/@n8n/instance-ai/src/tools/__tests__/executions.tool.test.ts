@@ -12,7 +12,9 @@ function createMockContext(
 ): InstanceAiContext {
 	return {
 		userId: 'user-1',
-		workflowService: {} as never,
+		workflowService: {
+			get: jest.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
+		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {
 			list: jest.fn(),
 			getStatus: jest.fn(),
@@ -138,10 +140,14 @@ describe('executions tool', () => {
 			expect(context.executionService.run).not.toHaveBeenCalled();
 		});
 
-		it('should suspend for confirmation when approval is needed (default permission)', async () => {
+		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const suspendFn = jest.fn();
 			const context = createMockContext({
 				permissions: {},
+			});
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf-1',
+				name: 'My Workflow',
 			});
 
 			const tool = createExecutionsTool(context);
@@ -149,25 +155,26 @@ describe('executions tool', () => {
 				{
 					action: 'run' as const,
 					workflowId: 'wf-1',
-					workflowName: 'My Workflow',
 				},
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
 
+			expect(context.workflowService.get).toHaveBeenCalledWith('wf-1');
 			expect(suspendFn).toHaveBeenCalled();
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: expect.stringContaining('My Workflow'),
+					message: 'Execute workflow "My Workflow" (ID: wf-1)?',
 					severity: 'warning',
 					requestId: expect.any(String),
 				}),
 			);
 		});
 
-		it('should use workflowId in message when workflowName is not provided', async () => {
+		it('should fall back to workflowId in message when lookup fails', async () => {
 			const suspendFn = jest.fn();
 			const context = createMockContext({ permissions: {} });
+			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
 
 			const tool = createExecutionsTool(context);
 			await tool.execute!(
@@ -179,7 +186,7 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: expect.stringContaining('wf-42'),
+					message: 'Execute workflow "wf-42" (ID: wf-42)?',
 				}),
 			);
 		});
@@ -270,6 +277,50 @@ describe('executions tool', () => {
 
 			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
 				timeout: undefined,
+			});
+		});
+
+		describe('allowedRunWorkflowIds scope', () => {
+			it('runs without HITL when always_allow + workflow id is in the allow-list', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-1']),
+				});
+				(context.executionService.run as jest.Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+				const suspendFn = jest.fn();
+
+				const tool = createExecutionsTool(context);
+				await tool.execute!(
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
+					timeout: undefined,
+				});
+			});
+
+			it('still requires HITL approval when always_allow is set but workflow id is NOT in the allow-list', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-other']),
+				});
+				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Off-scope WF' });
+				const suspendFn = jest.fn();
+
+				const tool = createExecutionsTool(context);
+				const result = await tool.execute!(
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ denied: true, reason: 'Awaiting confirmation' });
 			});
 		});
 	});

@@ -35,6 +35,13 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const trackClickedNewAgent = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent,
+	}),
+}));
+
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
@@ -58,6 +65,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
+			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value"></button>
 			</div>
@@ -295,6 +303,33 @@ describe('ProjectHeader', () => {
 		});
 	});
 
+	describe('new agent telemetry', () => {
+		beforeEach(() => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			projectsStore.currentProject = createTestProject({ scopes: ['workflow:create'] });
+		});
+
+		it('tracks source=button when the agent main button is clicked', async () => {
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			await userEvent.click(getByTestId('add-resource-agent'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('button');
+		});
+
+		it('tracks source=dropdown when the agent action is selected from the dropdown', async () => {
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+			await waitFor(() => expect(getByTestId('action-agent')).toBeVisible());
+			await userEvent.click(getByTestId('action-agent'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
+		});
+	});
+
 	describe('dropdown', () => {
 		it('should create a credential', async () => {
 			const project = createTestProject({
@@ -462,7 +497,7 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(3);
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
 		});
 
 		it('should pass empty array when no modules are active', () => {

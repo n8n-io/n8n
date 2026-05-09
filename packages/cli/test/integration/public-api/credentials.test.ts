@@ -4,6 +4,7 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
@@ -11,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	affixRoleToSaveCredential,
@@ -56,7 +58,7 @@ async function getDecryptedCredentialData(
 		id: credentialId,
 	});
 	const credentialsService = Container.get(CredentialsService);
-	return credentialsService.decrypt(credential, true);
+	return await credentialsService.decrypt(credential, true);
 }
 
 describe('POST /credentials', () => {
@@ -362,6 +364,92 @@ describe('GET /credentials', () => {
 			.query({ cursor: first.body.nextCursor });
 		expect(second.statusCode).toBe(200);
 		expect(second.body.data.length).toBe(1);
+	});
+});
+
+describe('GET /credentials/:id', () => {
+	test('should return owned credential for owner without credential data', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should return owned credential for member', async () => {
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+		const savedCredential = await saveCredential(dbCredential(), { user: memberWithReadScope });
+
+		const response = await authMemberWithReadScopeAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should not return non-owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('POST /credentials/:id/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test credential with stored data when body is empty', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+
+		const credential = dbCredential();
+		const savedCredential = await saveCredential(credential, { user: owner });
+
+		const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalledWith(
+			owner.id,
+			savedCredential.type,
+			expect.objectContaining({
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			}),
+		);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.post('/credentials/123/test');
+
+		expect(response.statusCode).toBe(404);
 	});
 });
 
