@@ -85,12 +85,13 @@ vi.mock('@n8n/design-system', async () => {
 	};
 });
 
-function renderSelect() {
+function renderSelect({ canCreateCredential = true } = {}) {
 	return mount(AgentCredentialSelect, {
 		props: {
 			modelValue: '',
 			placeholder: 'Select a credential...',
 			dataTestId: 'agent-credential-select',
+			credentialPermissions: { create: canCreateCredential },
 			credentials: [
 				{ id: 'z', name: 'Zulu Slack', typeDisplayName: 'Slack' },
 				{ id: 'a', name: 'alpha Slack', typeDisplayName: 'Slack' },
@@ -138,6 +139,14 @@ describe('AgentCredentialSelect', () => {
 		const footer = wrapper.find('[data-testid="credential-select-footer"]');
 		expect(footer.text()).toContain('Create new credential');
 		expect(wrapper.find('[data-test-id="node-credentials-select-item-new"]').exists()).toBe(true);
+	});
+
+	it('disables the create action when the caller cannot create credentials', () => {
+		const wrapper = renderSelect({ canCreateCredential: false });
+
+		expect(
+			wrapper.find('[data-test-id="node-credentials-select-item-new"]').attributes(),
+		).toHaveProperty('disabled');
 	});
 
 	it('emits create when the footer action is clicked', async () => {

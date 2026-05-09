@@ -17,6 +17,7 @@ const props = defineProps<{
 	credentials: AgentCredentialOption[];
 	placeholder: string;
 	dataTestId: string;
+	credentialPermissions: PermissionsRecord['credential'];
 	loading?: boolean;
 	disabled?: boolean;
 }>();
@@ -25,10 +26,6 @@ const emit = defineEmits<{
 	'update:modelValue': [credentialId: string];
 	create: [];
 }>();
-
-const credentialPermissions = {
-	create: true,
-} satisfies PermissionsRecord['credential'];
 
 const credentialOptions = computed<DropdownCredentialOption[]>(() =>
 	[...props.credentials]

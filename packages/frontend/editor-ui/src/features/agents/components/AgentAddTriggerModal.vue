@@ -15,6 +15,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
@@ -44,6 +46,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const { publish, publishing } = useAgentPublish();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -88,6 +91,19 @@ const SCHEDULE_ICON: IconName = 'clock';
 const currentIntegration = computed<ChatIntegrationDescriptor | null>(
 	() => integrations.value.find((i) => i.type === selectedTriggerType.value) ?? null,
 );
+
+const projectForPermissions = computed(() => {
+	if (projectsStore.currentProject?.id === props.data.projectId)
+		return projectsStore.currentProject;
+	if (projectsStore.personalProject?.id === props.data.projectId)
+		return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === props.data.projectId) ?? null;
+});
+
+const credentialPermissions = computed(() => {
+	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
+	return { ...permissions, create: !!permissions.create };
+});
 
 // Backend integration descriptors ship icon names that may include legacy
 // aliases (e.g. `hashtag`, `paper-plane`); N8nIcon resolves them at runtime
@@ -526,6 +542,7 @@ onMounted(async () => {
 								:class="$style.select"
 								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
 								:credentials="credentialsByType[currentIntegration.type] ?? []"
+								:credential-permissions="credentialPermissions"
 								:loading="credentialsLoading"
 								:disabled="isLoading(currentIntegration.type)"
 								:data-test-id="`${currentIntegration.type}-credential-select`"

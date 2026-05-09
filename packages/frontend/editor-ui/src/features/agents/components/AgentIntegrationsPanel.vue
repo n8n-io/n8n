@@ -6,6 +6,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
@@ -48,6 +50,7 @@ const emit = defineEmits<{
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 
 interface IntegrationConfig {
 	type: string;
@@ -113,6 +116,17 @@ const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
 const copied = ref(false);
 const showManifest = ref(false);
+
+const projectForPermissions = computed(() => {
+	if (projectsStore.currentProject?.id === props.projectId) return projectsStore.currentProject;
+	if (projectsStore.personalProject?.id === props.projectId) return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === props.projectId) ?? null;
+});
+
+const credentialPermissions = computed(() => {
+	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
+	return { ...permissions, create: !!permissions.create };
+});
 
 function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
@@ -397,6 +411,7 @@ onMounted(async () => {
 							:class="$style.select"
 							placeholder="Select a credential..."
 							:credentials="credentialsByType[config.type] ?? []"
+							:credential-permissions="credentialPermissions"
 							:loading="credentialsLoading"
 							:disabled="isLoading(config.type)"
 							:data-test-id="`${config.type}-credential-select`"

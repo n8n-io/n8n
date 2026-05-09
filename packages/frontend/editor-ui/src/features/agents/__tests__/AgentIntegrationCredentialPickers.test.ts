@@ -23,6 +23,12 @@ const {
 	ensureLoaded: vi.fn(),
 }));
 
+const projectState = vi.hoisted(() => ({
+	currentProject: { id: 'project-1', name: 'Project', scopes: ['credential:create'] },
+	personalProject: null,
+	myProjects: [],
+}));
+
 const slackIntegration = {
 	type: 'slack',
 	label: 'Slack',
@@ -63,6 +69,10 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectState,
+}));
+
 vi.mock('../composables/useAgentApi', () => ({
 	getIntegrationStatus,
 	connectIntegration,
@@ -90,12 +100,13 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 }));
 
 const AgentCredentialSelectStub = {
-	props: ['modelValue', 'credentials', 'dataTestId', 'placeholder'],
+	props: ['modelValue', 'credentials', 'dataTestId', 'placeholder', 'credentialPermissions'],
 	emits: ['create', 'update:modelValue'],
 	template: `
 		<div
 			data-testid="agent-credential-select-stub"
 			:data-test-id-prop="dataTestId"
+			:data-can-create="String(credentialPermissions.create)"
 			:data-options="credentials.map((credential) => credential.name).join('|')"
 		>
 			<button data-testid="stub-create-credential" @click="$emit('create')" />
@@ -128,6 +139,13 @@ const globalStubs = {
 describe('agent integration credential picker usage', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		projectState.currentProject = {
+			id: 'project-1',
+			name: 'Project',
+			scopes: ['credential:create'],
+		};
+		projectState.personalProject = null;
+		projectState.myProjects = [];
 		getIntegrationStatus.mockResolvedValue({ integrations: [] });
 		ensureLoaded.mockResolvedValue([slackIntegration]);
 		fetchAllCredentialsForWorkflow.mockResolvedValue([
@@ -157,6 +175,7 @@ describe('agent integration credential picker usage', () => {
 		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
 		expect(picker.exists()).toBe(true);
 		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
+		expect(picker.attributes('data-can-create')).toBe('true');
 
 		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
 
@@ -187,6 +206,7 @@ describe('agent integration credential picker usage', () => {
 		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
 		expect(picker.exists()).toBe(true);
 		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
+		expect(picker.attributes('data-can-create')).toBe('true');
 
 		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
 
@@ -199,5 +219,25 @@ describe('agent integration credential picker usage', () => {
 			undefined,
 			{ hideAskAssistant: true },
 		);
+	});
+
+	it('passes denied credential creation permission to the shared picker', async () => {
+		projectState.currentProject = { id: 'project-1', name: 'Project', scopes: [] };
+
+		const wrapper = mount(AgentIntegrationsPanel, {
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				isPublished: true,
+				focusType: 'slack',
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-credential-select-stub"]').attributes('data-can-create'),
+		).toBe('false');
 	});
 });
