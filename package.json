@@ -162,7 +162,7 @@
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
       "avsc": "5.7.9",
-      "brace-expansion@<=2.1.0": "2.1.0",
+      "brace-expansion@<=2.1.0": "5.0.5",
       "@xmldom/xmldom": "0.8.13",
       "langsmith": "0.5.19",
       "yaml@<=2.8.3": "2.8.3",
