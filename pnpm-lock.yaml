@@ -413,7 +413,7 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.4
   tmp: 0.2.4
-  nodemailer: 7.0.11
+  nodemailer: 8.0.5
   validator: 13.15.26
   zod: 3.25.67
   js-yaml: 4.1.1
@@ -882,7 +882,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1056,7 +1056,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1815,7 +1815,7 @@ importers:
         version: 7.0.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2303,7 +2303,7 @@ importers:
         version: 0.9.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -2331,7 +2331,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2396,7 +2396,7 @@ importers:
         version: link:../vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -2489,7 +2489,7 @@ importers:
         version: 20.19.21
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       nodemon:
         specifier: ^2.0.20
         version: 2.0.22
@@ -2877,8 +2877,8 @@ importers:
         specifier: 'catalog:'
         version: 3.3.8
       nodemailer:
-        specifier: 7.0.11
-        version: 7.0.11
+        specifier: 8.0.5
+        version: 8.0.5
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -3329,7 +3329,7 @@ importers:
         version: 5.2.4(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       unplugin-icons:
         specifier: ^0.19.0
         version: 0.19.0(@vue/compiler-sfc@3.5.26)
@@ -3769,7 +3769,7 @@ importers:
         version: 4.0.16(bufferutil@4.0.9)(playwright@1.58.0)(utf-8-validate@5.0.10)(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.1)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -4136,7 +4136,7 @@ importers:
         version: 5.2.4(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
@@ -4379,8 +4379,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 7.0.11
-        version: 7.0.11
+        specifier: 8.0.5
+        version: 8.0.5
       oracledb:
         specifier: 6.9.0
         version: 6.9.0
@@ -4561,7 +4561,7 @@ importers:
         version: link:../../@n8n/vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -4625,7 +4625,7 @@ importers:
         version: 20.19.21
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -4757,7 +4757,7 @@ importers:
         version: link:../../@n8n/vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+        version: 4.1.1(vitest@4.1.1)
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -18605,8 +18605,8 @@ packages:
     resolution: {integrity: sha512-X75ZN8DCLftGM5iKwoYLA3rjnrAEs97MkzvSd4q2746Tgpg8b8XWiBGiBG4ZpgcAqBgtgPHTiAc8ZMCvZuikDw==}
     engines: {node: '>=10'}
 
-  nodemailer@7.0.11:
-    resolution: {integrity: sha512-gnXhNRE0FNhD7wPSCGhdNh46Hs6nm+uTyg+Kq0cZukNQiYdnCsoQjodNP9BQVG9XrcK/v6/MgpAPBUFyzh9pvw==}
+  nodemailer@8.0.5:
+    resolution: {integrity: sha512-0PF8Yb1yZuQfQbq+5/pZJrtF6WQcjTd5/S4JOHs9PGFxuTqoB/icwuB44pOdURHJbRKX1PPoJZtY7R4VUoCC8w==}
     engines: {node: '>=6.0.0'}
 
   nodemon@2.0.22:
@@ -19726,6 +19726,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -32810,7 +32811,7 @@ snapshots:
       tinyrainbow: 3.0.3
       vitest: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  '@vitest/coverage-v8@4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))':
+  '@vitest/coverage-v8@4.1.1(vitest@4.1.1)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.1.1
@@ -39645,7 +39646,7 @@ snapshots:
       iconv-lite: 0.7.2
       libmime: 5.3.7
       linkify-it: 5.0.0
-      nodemailer: 7.0.11
+      nodemailer: 8.0.5
       punycode.js: 2.3.1
       tlds: 1.261.0
 
@@ -40996,7 +40997,7 @@ snapshots:
       util: 0.12.5
       vm-browserify: 1.1.2
 
-  nodemailer@7.0.11: {}
+  nodemailer@8.0.5: {}
 
   nodemon@2.0.22:
     dependencies:

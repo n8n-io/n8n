@@ -90,7 +90,7 @@ catalog:
   mime-types: 3.0.2
   mysql2: 3.17.0
   nanoid: 3.3.8
-  nodemailer: 7.0.11
+  nodemailer: 8.0.5
   openai: 6.19.0
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
@@ -167,3 +167,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Renovate security update: nodemailer@8.0.5
+  - nodemailer@8.0.5
