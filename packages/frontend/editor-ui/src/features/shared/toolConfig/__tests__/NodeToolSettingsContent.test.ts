@@ -275,6 +275,31 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
+	it('reloads personal project credentials when the shared store is already populated', async () => {
+		credentialsStore.allCredentials = [
+			{
+				id: 'team-cred',
+				name: 'Team credential',
+				type: 'testApi',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				isManaged: false,
+				data: '',
+			},
+		];
+
+		renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
 	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
 		credentialsStore.allCredentials = [
 			{

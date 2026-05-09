@@ -4,6 +4,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import N8nOption from '@n8n/design-system/components/N8nOption';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -45,6 +46,7 @@ const emit = defineEmits<{
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
 
+const rootStore = useRootStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 

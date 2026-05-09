@@ -11,6 +11,7 @@ import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -44,6 +45,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();

@@ -356,14 +356,12 @@ onMounted(async () => {
 		projectsStore.setCurrentProject(projectsStore.personalProject);
 	}
 
-	// Ensure credentials are loaded for the credentials selector to work. When
-	// a project is supplied, always refresh so previously loaded personal
-	// credentials do not bleed into this tool config.
+	// Ensure credentials are loaded for the credentials selector to work.
+	// Always refresh for the resolved project context so previously loaded
+	// credentials from another project do not bleed into this tool config.
 	const projectId = credentialProjectId.value;
-	if (projectId && (props.projectId || credentialsStore.allCredentials.length === 0)) {
-		if (props.projectId) {
-			credentialsStore.setCredentials([]);
-		}
+	if (projectId) {
+		credentialsStore.setCredentials([]);
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
 			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
