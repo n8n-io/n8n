@@ -1,3 +1,4 @@
+import type { EmbeddingModel } from 'ai';
 import { z } from 'zod';
 
 import { isLlmMessage } from '../../sdk/message';
@@ -99,6 +100,16 @@ function makeErrorStream(error: Error) {
 			controller.error(error);
 		},
 	});
+}
+
+function deferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
 }
 
 /** Collect all chunks from a ReadableStream. */
@@ -530,6 +541,94 @@ describe('AgentRuntime.stream() — working memory', () => {
 		const callArgs = calls[0]?.[0] ?? {};
 		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
 		expect(savedWorkingMemory).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Cross-thread fact extraction — post-turn scheduling
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — cross-thread fact extraction scheduling', () => {
+	const fakeEmbedder = {} as EmbeddingModel;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	function createRuntimeWithFactMemory(sync?: boolean) {
+		const runtime = new AgentRuntime({
+			name: 'cross-thread-facts-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: new InMemoryMemory(),
+			crossThreadFacts: {
+				embedder: fakeEmbedder,
+				...(sync !== undefined && { sync }),
+			},
+		});
+		return runtime;
+	}
+
+	function mockTurnAndDelayedExtraction() {
+		const extractionStarted = deferred<undefined>();
+		const extractionResult = deferred<{ text: string }>();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('turn complete'))
+			.mockImplementationOnce(async () => {
+				extractionStarted.resolve(undefined);
+				const result = await extractionResult.promise;
+				return result;
+			});
+
+		return { extractionStarted, extractionResult };
+	}
+
+	it('does not wait for fact extraction by default', async () => {
+		const runtime = createRuntimeWithFactMemory();
+		const { extractionStarted, extractionResult } = mockTurnAndDelayedExtraction();
+
+		const resultPromise = runtime.generate('remember that I prefer short updates', {
+			persistence: { threadId: 't-facts-async', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		await extractionStarted.promise;
+		const settledBeforeExtraction = await Promise.race([
+			resultPromise.then(() => true),
+			new Promise<boolean>((resolve) => {
+				setImmediate(() => resolve(false));
+			}),
+		]);
+
+		extractionResult.resolve({ text: '{"facts":[]}' });
+		const result = await resultPromise;
+		await runtime.dispose();
+
+		expect(result.finishReason).toBe('stop');
+		expect(settledBeforeExtraction).toBe(true);
+	});
+
+	it('waits for fact extraction when sync is true', async () => {
+		const runtime = createRuntimeWithFactMemory(true);
+		const { extractionStarted, extractionResult } = mockTurnAndDelayedExtraction();
+
+		const resultPromise = runtime.generate('remember that I prefer short updates', {
+			persistence: { threadId: 't-facts-sync', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		await extractionStarted.promise;
+		const settledBeforeExtraction = await Promise.race([
+			resultPromise.then(() => true),
+			new Promise<boolean>((resolve) => {
+				setImmediate(() => resolve(false));
+			}),
+		]);
+
+		extractionResult.resolve({ text: '{"facts":[]}' });
+		const result = await resultPromise;
+
+		expect(result.finishReason).toBe('stop');
+		expect(settledBeforeExtraction).toBe(false);
 	});
 });
 

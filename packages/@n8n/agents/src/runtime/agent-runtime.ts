@@ -1172,7 +1172,7 @@ export class AgentRuntime {
 		);
 
 		if (isCrossThreadFactsEnabled(this.config.crossThreadFacts)) {
-			await this.extractCrossThreadFacts(options.persistence, delta);
+			await this.dispatchCrossThreadFacts(options.persistence, delta);
 		}
 
 		// Generate and save embeddings if semantic recall is configured
@@ -1187,7 +1187,7 @@ export class AgentRuntime {
 		await this.dispatchObservationalMemory(options.persistence);
 	}
 
-	private async extractCrossThreadFacts(
+	private async dispatchCrossThreadFacts(
 		persistence: AgentPersistenceOptions,
 		messages: AgentDbMessage[],
 	): Promise<void> {
@@ -1199,7 +1199,7 @@ export class AgentRuntime {
 			return;
 		}
 
-		await extractAndStoreCrossThreadFacts({
+		const promise = extractAndStoreCrossThreadFacts({
 			memory: this.config.memory,
 			config: this.config.crossThreadFacts,
 			model: this.config.model,
@@ -1207,7 +1207,16 @@ export class AgentRuntime {
 			persistence,
 			messages,
 			eventBus: this.eventBus,
-		});
+		}).then(
+			() => undefined,
+			() => undefined,
+		);
+
+		if (this.config.crossThreadFacts.sync) {
+			await promise;
+		} else {
+			this.backgroundTasks.track(promise);
+		}
 	}
 
 	private async saveEmbeddingsForMessages(

@@ -35,6 +35,7 @@ describe('cross-thread facts', () => {
 			.storage(memory)
 			.lastMessages(1)
 			.crossThreadFacts({
+				sync: true,
 				topK: 3,
 				embedder: createEmbeddingModel('openai/text-embedding-3-small', {
 					apiKey: requireEnv(OPENAI_API_KEY_ENV),

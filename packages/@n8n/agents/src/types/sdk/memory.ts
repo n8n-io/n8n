@@ -179,6 +179,11 @@ export interface CrossThreadFactsConfig {
 	/** @default 240 */
 	maxFactLength?: number;
 	/**
+	 * When true, wait for post-turn extraction before completing the run.
+	 * Defaults to false so extraction runs in the background.
+	 */
+	sync?: boolean;
+	/**
 	 * Embedding model supplied by the SDK consumer. The SDK does not resolve
 	 * credentials or read provider API keys from the environment for this feature.
 	 */
