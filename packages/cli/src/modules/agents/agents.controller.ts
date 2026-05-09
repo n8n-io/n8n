@@ -225,7 +225,11 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId } = req.params;
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 		return await credentialProvider.list();
 	}
 
@@ -401,7 +405,11 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message, sessionId } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -553,7 +561,11 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
@@ -606,7 +618,11 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			req.user,
+		);
 
 		const { send } = initSseStream(res);
 
