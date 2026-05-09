@@ -59,6 +59,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
 		fetchAllCredentialsForWorkflow,
+		getCredentialTypeByName: () => ({ displayName: 'Slack' }),
 	}),
 }));
 
@@ -89,12 +90,11 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 }));
 
 const AgentCredentialSelectStub = {
-	props: ['modelValue', 'credentials', 'createLabel', 'dataTestId', 'placeholder'],
+	props: ['modelValue', 'credentials', 'dataTestId', 'placeholder'],
 	emits: ['create', 'update:modelValue'],
 	template: `
 		<div
 			data-testid="agent-credential-select-stub"
-			:data-create-label="createLabel"
 			:data-test-id-prop="dataTestId"
 			:data-options="credentials.map((credential) => credential.name).join('|')"
 		>
@@ -157,7 +157,6 @@ describe('agent integration credential picker usage', () => {
 		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
 		expect(picker.exists()).toBe(true);
 		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
-		expect(picker.attributes('data-create-label')).toBe('agents.builder.addTrigger.newCredential');
 
 		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
 
@@ -188,7 +187,6 @@ describe('agent integration credential picker usage', () => {
 		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
 		expect(picker.exists()).toBe(true);
 		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
-		expect(picker.attributes('data-create-label')).toBe('New credential');
 
 		await wrapper.find('[data-testid="stub-create-credential"]').trigger('click');
 

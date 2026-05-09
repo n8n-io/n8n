@@ -23,12 +23,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
-import AgentCredentialSelect from './AgentCredentialSelect.vue';
-
-interface CredentialOption {
-	id: string;
-	name: string;
-}
+import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -76,7 +71,7 @@ const {
 } = useAgentIntegrationStatus(props.data.projectId, props.data.agentId);
 
 const selectedCredentials = ref<Record<string, string>>({});
-const credentialsByType = ref<Record<string, CredentialOption[]>>({});
+const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
 
 // Track credentials that existed before the user opened the "new credential"
@@ -299,7 +294,12 @@ async function fetchCredentials() {
 		for (const integration of integrations.value) {
 			credentialsByType.value[integration.type] = allCredentials
 				.filter((c) => integration.credentialTypes.includes(c.type))
-				.map((c) => ({ id: c.id, name: c.name }));
+				.map((c) => ({
+					id: c.id,
+					name: c.name,
+					typeDisplayName: credentialsStore.getCredentialTypeByName(c.type)?.displayName,
+					homeProject: c.homeProject,
+				}));
 		}
 	} catch {
 		for (const integration of integrations.value) {
@@ -526,7 +526,6 @@ onMounted(async () => {
 								:class="$style.select"
 								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
 								:credentials="credentialsByType[currentIntegration.type] ?? []"
-								:create-label="i18n.baseText('agents.builder.addTrigger.newCredential')"
 								:loading="credentialsLoading"
 								:disabled="isLoading(currentIntegration.type)"
 								:data-test-id="`${currentIntegration.type}-credential-select`"

@@ -8,7 +8,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
-import AgentCredentialSelect from './AgentCredentialSelect.vue';
+import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -48,11 +48,6 @@ const emit = defineEmits<{
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-
-interface CredentialOption {
-	id: string;
-	name: string;
-}
 
 interface IntegrationConfig {
 	type: string;
@@ -114,7 +109,7 @@ const {
 
 // UI-only state — stays local.
 const selectedCredentials = ref<Record<string, string>>({});
-const credentialsByType = ref<Record<string, CredentialOption[]>>({});
+const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
 const copied = ref(false);
 const showManifest = ref(false);
@@ -260,7 +255,12 @@ async function fetchCredentials() {
 		for (const config of integrationConfigs) {
 			credentialsByType.value[config.type] = allCredentials
 				.filter((c) => config.credentialTypes.includes(c.type))
-				.map((c) => ({ id: c.id, name: c.name }));
+				.map((c) => ({
+					id: c.id,
+					name: c.name,
+					typeDisplayName: credentialsStore.getCredentialTypeByName(c.type)?.displayName,
+					homeProject: c.homeProject,
+				}));
 		}
 	} catch {
 		for (const config of integrationConfigs) {
@@ -397,7 +397,6 @@ onMounted(async () => {
 							:class="$style.select"
 							placeholder="Select a credential..."
 							:credentials="credentialsByType[config.type] ?? []"
-							create-label="New credential"
 							:loading="credentialsLoading"
 							:disabled="isLoading(config.type)"
 							:data-test-id="`${config.type}-credential-select`"
