@@ -184,6 +184,14 @@ export interface CrossThreadFactsConfig {
 	 */
 	sync?: boolean;
 	/**
+	 * Skip storing a candidate fact when an existing scoped fact or earlier
+	 * candidate has vector similarity greater than or equal to this threshold.
+	 * Set to false to keep exact-hash dedupe only.
+	 *
+	 * @default 0.86
+	 */
+	dedupeSimilarityThreshold?: number | false;
+	/**
 	 * Embedding model supplied by the SDK consumer. The SDK does not resolve
 	 * credentials or read provider API keys from the environment for this feature.
 	 */
