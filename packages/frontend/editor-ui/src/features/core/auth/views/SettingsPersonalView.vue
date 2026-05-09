@@ -342,12 +342,16 @@ async function onMfaDisableClick() {
 }
 
 const onPickerSelected = ({ method }: { method: TwoFactorMethod }) => {
+	const replacing = activeMfaMethod.value;
 	if (method === 'totp') {
-		uiStore.openModal(TOTP_SETUP_WIZARD_MODAL_KEY);
+		uiStore.openModalWithData({
+			name: TOTP_SETUP_WIZARD_MODAL_KEY,
+			data: { replacing },
+		});
 	} else {
 		uiStore.openModalWithData({
 			name: WEBAUTHN_SETUP_WIZARD_MODAL_KEY,
-			data: { method },
+			data: { method, replacing },
 		});
 	}
 };

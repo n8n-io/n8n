@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nInfoTip, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+} from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
 import { VIEWS, WEBAUTHN_SETUP_WIZARD_MODAL_KEY } from '@/app/constants';
@@ -14,7 +21,10 @@ import { twoFactorWizardBus, type TwoFactorMethod } from '../auth.eventBus';
 import MfaWizardSteps from './MfaWizardSteps.vue';
 
 const props = defineProps<{
-	data?: { method: 'passkey' | 'security_key' };
+	data?: {
+		method: 'passkey' | 'security_key';
+		replacing?: 'totp' | 'passkey' | 'security_key' | null;
+	};
 }>();
 
 const i18n = useI18n();
@@ -68,6 +78,12 @@ const submitLabel = computed(() =>
 );
 
 const tone = computed(() => (method.value === 'passkey' ? 'passkey' : 'security_key'));
+
+const replacing = computed(() => props.data?.replacing ?? null);
+const replaceWarning = computed(() => {
+	if (!replacing.value) return '';
+	return i18n.baseText(`settings.personal.twoFactor.replaceWarning.${replacing.value}` as never);
+});
 
 const onBack = () => {
 	twoFactorWizardBus.emit('back');
@@ -129,6 +145,13 @@ const onRegister = async () => {
 			</div>
 			<div :class="$style.heading">{{ heading }}</div>
 			<div :class="$style.description">{{ description }}</div>
+			<N8nNotice
+				v-if="replaceWarning"
+				theme="warning"
+				:content="replaceWarning"
+				:class="$style.replaceNotice"
+				data-test-id="mfa-replace-warning"
+			/>
 			<N8nInputLabel :label="labelFieldLabel" :class="$style.labelField">
 				<N8nInput
 					v-model="label"
@@ -236,6 +259,10 @@ const onRegister = async () => {
 .errorTip {
 	margin-top: var(--spacing--2xs);
 	margin-bottom: 0;
+}
+
+.replaceNotice {
+	margin-bottom: var(--spacing--xs);
 }
 
 .description {

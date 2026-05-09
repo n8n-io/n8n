@@ -247,11 +247,24 @@ import InstanceAiCredentialSetupModal, {
 		</ModalRoot>
 
 		<ModalRoot :name="TOTP_SETUP_WIZARD_MODAL_KEY">
-			<TotpSetupWizardModal />
+			<template
+				#default="{ data }: { data: { replacing?: 'totp' | 'passkey' | 'security_key' | null } }"
+			>
+				<TotpSetupWizardModal :data="data" />
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="WEBAUTHN_SETUP_WIZARD_MODAL_KEY">
-			<template #default="{ data }: { data: { method: 'passkey' | 'security_key' } }">
+			<template
+				#default="{
+					data,
+				}: {
+					data: {
+						method: 'passkey' | 'security_key';
+						replacing?: 'totp' | 'passkey' | 'security_key' | null;
+					};
+				}"
+			>
 				<WebAuthnSetupWizardModal :data="data" />
 			</template>
 		</ModalRoot>

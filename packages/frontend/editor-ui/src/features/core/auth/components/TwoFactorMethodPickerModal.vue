@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
 import { TWO_FACTOR_METHOD_PICKER_MODAL_KEY } from '@/app/constants';
@@ -18,7 +18,6 @@ const uiStore = useUIStore();
 
 const current = computed(() => props.data?.current ?? null);
 const isChange = computed(() => current.value !== null);
-const selected = ref<TwoFactorMethod | null>(null);
 
 const title = computed(() =>
 	isChange.value
@@ -26,22 +25,13 @@ const title = computed(() =>
 		: i18n.baseText('settings.personal.twoFactor.picker.title.enable'),
 );
 
-const showReplaceWarning = computed(
-	() => isChange.value && selected.value !== null && selected.value !== current.value,
-);
-
-const select = (method: TwoFactorMethod) => {
-	selected.value = method;
-};
-
 const onCancel = () => {
 	twoFactorPickerBus.emit('cancelled');
 	uiStore.closeModal(TWO_FACTOR_METHOD_PICKER_MODAL_KEY);
 };
 
-const onContinue = () => {
-	if (!selected.value) return;
-	twoFactorPickerBus.emit('selected', { method: selected.value });
+const onSetUp = (method: TwoFactorMethod) => {
+	twoFactorPickerBus.emit('selected', { method });
 	uiStore.closeModal(TWO_FACTOR_METHOD_PICKER_MODAL_KEY);
 };
 
@@ -92,12 +82,8 @@ const methods: MethodOption[] = [
 			<div
 				v-for="option in methods"
 				:key="option.method"
-				:class="[$style.card, { [$style.selected]: selected === option.method }]"
-				role="button"
-				tabindex="0"
+				:class="$style.card"
 				:data-test-id="`mfa-picker-${option.method}`"
-				@click="select(option.method)"
-				@keydown.enter="select(option.method)"
 			>
 				<div :class="[$style.iconBox, $style[`tone_${option.tone}`]]">
 					<N8nIcon :icon="option.icon" />
@@ -113,21 +99,21 @@ const methods: MethodOption[] = [
 						{{ i18n.baseText(option.descriptionKey as never) }}
 					</N8nText>
 				</div>
+				<N8nButton
+					variant="subtle"
+					size="small"
+					:disabled="current === option.method"
+					:data-test-id="`mfa-picker-${option.method}-setup`"
+					@click="onSetUp(option.method)"
+				>
+					{{ i18n.baseText('settings.personal.twoFactor.picker.setUp') }}
+				</N8nButton>
 			</div>
-			<N8nNotice
-				v-if="showReplaceWarning"
-				theme="warning"
-				:content="i18n.baseText('settings.personal.twoFactor.picker.replaceWarning')"
-				:class="$style.warningTip"
-			/>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('settings.personal.twoFactor.cancel') }}
-				</N8nButton>
-				<N8nButton :disabled="!selected" data-test-id="mfa-picker-continue" @click="onContinue">
-					{{ i18n.baseText('settings.personal.twoFactor.picker.continue') }}
 				</N8nButton>
 			</div>
 		</template>
@@ -151,26 +137,7 @@ const methods: MethodOption[] = [
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--md);
 	margin-bottom: var(--spacing--3xs);
-	cursor: pointer;
-	transition:
-		border-color 0.15s,
-		background-color 0.15s;
 	align-items: center;
-
-	&:hover {
-		border-color: var(--color--primary);
-		background-color: var(--color--background--light-2);
-	}
-
-	&:focus-visible {
-		outline: none;
-		border-color: var(--color--primary);
-	}
-}
-
-.selected {
-	border-color: var(--color--primary);
-	background-color: var(--color--background--light-2);
 }
 
 .iconBox {
@@ -222,10 +189,6 @@ const methods: MethodOption[] = [
 	margin-left: var(--spacing--3xs);
 	vertical-align: middle;
 	font-weight: var(--font-weight--medium);
-}
-
-.warningTip {
-	margin-top: var(--spacing--xs);
 }
 
 .footer {

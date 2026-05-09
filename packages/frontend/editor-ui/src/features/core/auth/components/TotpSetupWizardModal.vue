@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useI18n } from '@n8n/i18n';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInfoTip,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
 import {
@@ -21,6 +28,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { twoFactorWizardBus } from '../auth.eventBus';
 import MfaWizardSteps from './MfaWizardSteps.vue';
+
+const props = defineProps<{
+	data?: { replacing?: 'totp' | 'passkey' | 'security_key' | null };
+}>();
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
@@ -39,6 +50,12 @@ const loadingQrCode = ref(true);
 const showRecoveryCodes = ref(false);
 const submitting = ref(false);
 
+const replacing = computed(() => props.data?.replacing ?? null);
+const replaceWarning = computed(() => {
+	if (!replacing.value) return '';
+	return i18n.baseText(`settings.personal.twoFactor.replaceWarning.${replacing.value}` as never);
+});
+
 const onCopySecretToClipboard = () => {
 	void clipboard.copy(secret.value);
 	toast.showToast({
@@ -48,20 +65,22 @@ const onCopySecretToClipboard = () => {
 	});
 };
 
-const onInput = (value: string) => {
-	if (value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) {
-		infoTextErrorMessage.value = '';
-		return;
+const onInput = () => {
+	if (infoTextErrorMessage.value) infoTextErrorMessage.value = '';
+};
+
+const verifying = ref(false);
+const onContinue = async () => {
+	if (authenticatorCode.value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) return;
+	verifying.value = true;
+	try {
+		await usersStore.verifyMfaCode({ mfaCode: authenticatorCode.value });
+		showRecoveryCodes.value = true;
+	} catch {
+		infoTextErrorMessage.value = i18n.baseText('mfa.setup.invalidCode');
+	} finally {
+		verifying.value = false;
 	}
-	usersStore
-		.verifyMfaCode({ mfaCode: value })
-		.then(() => {
-			showRecoveryCodes.value = true;
-			authenticatorCode.value = value;
-		})
-		.catch(() => {
-			infoTextErrorMessage.value = i18n.baseText('mfa.setup.invalidCode');
-		});
 };
 
 const onDownloadClick = () => {
@@ -161,6 +180,12 @@ onMounted(async () => {
 			</div>
 
 			<div v-if="!showRecoveryCodes" :class="$style.container">
+				<N8nNotice
+					v-if="replaceWarning"
+					theme="warning"
+					:content="replaceWarning"
+					data-test-id="mfa-replace-warning"
+				/>
 				<div :class="$style.textContainer">
 					<N8nText size="large" color="text-dark" :bold="true">{{
 						i18n.baseText('mfa.setup.step1.instruction1.title')
@@ -248,7 +273,16 @@ onMounted(async () => {
 					{{ i18n.baseText('settings.personal.twoFactor.back') }}
 				</N8nButton>
 				<N8nButton
-					v-if="showRecoveryCodes"
+					v-if="!showRecoveryCodes"
+					:disabled="authenticatorCode.length !== 6"
+					:loading="verifying"
+					data-test-id="mfa-continue-button"
+					@click="onContinue"
+				>
+					{{ i18n.baseText('settings.personal.twoFactor.picker.continue') }}
+				</N8nButton>
+				<N8nButton
+					v-else
 					:disabled="!recoveryCodesDownloaded"
 					:loading="submitting"
 					data-test-id="mfa-save-button"
