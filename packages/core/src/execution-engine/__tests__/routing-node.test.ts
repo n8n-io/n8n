@@ -2061,6 +2061,69 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
+				description: 'single parameter, postReceive: setKeyValue resolves $execution.id',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions.body.jsonData.root',
+												},
+											},
+											{
+												type: 'setKeyValue',
+												properties: {
+													name: '={{ $responseItem.name }}',
+													executionId: '={{ $execution.id }}',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'Jim',
+								executionId: 'test-exec-123',
+							},
+						},
+					],
+				],
+			},
+			{
 				description: 'single parameter, routing.request.url resolves $execution.id',
 				input: {
 					node: {
