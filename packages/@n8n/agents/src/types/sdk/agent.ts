@@ -287,4 +287,5 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	agentId?: string;
 };

@@ -1,3 +1,4 @@
+import type { EmbeddingModel } from 'ai';
 import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
@@ -96,11 +97,96 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
+	// --- Cross-thread fact memory (optional) ---
+	saveCrossThreadFacts?(facts: NewCrossThreadFact[]): Promise<CrossThreadFact[]>;
+	searchCrossThreadFacts?(
+		scope: CrossThreadMemoryScope,
+		query: string,
+		opts?: CrossThreadFactSearchOptions,
+	): Promise<RetrievedCrossThreadFact[]>;
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
 	/** Return a serializable descriptor of this backend for schema persistence. */
 	describe(): MemoryDescriptor;
+}
+
+export interface CrossThreadMemoryScope {
+	agentId: string;
+	/** n8n maps this to the user id for cross-thread facts. */
+	resourceId: string;
+}
+
+export interface CrossThreadFact {
+	id: string;
+	agentId: string;
+	resourceId: string;
+	content: string;
+	contentHash: string;
+	createdAt: Date;
+	updatedAt: Date;
+	sourceThreadId?: string;
+	sourceMessageId?: string;
+	embedding?: number[];
+	embeddingModel?: string;
+	metadata?: JSONObject;
+}
+
+export type NewCrossThreadFact = Omit<CrossThreadFact, 'id' | 'updatedAt'>;
+
+export interface RetrievedCrossThreadFact extends CrossThreadFact {
+	lexicalScore: number;
+	vectorScore: number;
+	rrfScore: number;
+	recencyFactor: number;
+	finalScore: number;
+}
+
+export interface CrossThreadFactSearchOptions {
+	topK?: number;
+	halfLifeDays?: number;
+	queryEmbedding?: number[];
+}
+
+export interface BuiltCrossThreadFactStore {
+	saveCrossThreadFacts(facts: NewCrossThreadFact[]): Promise<CrossThreadFact[]>;
+	searchCrossThreadFacts(
+		scope: CrossThreadMemoryScope,
+		query: string,
+		opts?: CrossThreadFactSearchOptions,
+	): Promise<RetrievedCrossThreadFact[]>;
+}
+
+export interface CrossThreadFactPrompts {
+	/** Custom fact extraction instructions. Replaces the default template entirely. */
+	extraction?: string;
+	/** Custom recall_memory usage instruction. Replaces the default template entirely. */
+	recallToolInstruction?: string;
+}
+
+export interface CrossThreadFactsConfig {
+	/**
+	 * False disables an otherwise persisted JSON config. Calling `Memory.crossThreadFacts()`
+	 * enables the feature by default.
+	 */
+	enabled?: boolean;
+	/** @default 5 */
+	topK?: number;
+	/** @default 180 */
+	halfLifeDays?: number;
+	/** @default 5 */
+	maxFactsPerTurn?: number;
+	/** @default 240 */
+	maxFactLength?: number;
+	/**
+	 * Embedding model supplied by the SDK consumer. The SDK does not resolve
+	 * credentials or read provider API keys from the environment for this feature.
+	 */
+	embedder?: EmbeddingModel;
+	/** Non-secret model identifier persisted with stored fact embeddings for inspection/debugging. */
+	embeddingModel?: string;
+	/** Override the default prompt templates. */
+	prompts?: CrossThreadFactPrompts;
 }
 
 // --- Semantic Recall Config ---
@@ -140,6 +226,7 @@ export interface MemoryConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
+	crossThreadFacts?: CrossThreadFactsConfig;
 	titleGeneration?: TitleGenerationConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 }

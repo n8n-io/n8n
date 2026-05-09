@@ -7,6 +7,7 @@ import { Memory, normalizeMemoryConfig } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import { isCrossThreadFactsEnabled, RECALL_MEMORY_TOOL_NAME } from '../runtime/cross-thread-facts';
 import { AgentEventBus } from '../runtime/event-bus';
 import { hasObservationStore } from '../runtime/observation-store';
 import {
@@ -743,6 +744,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalTools.push(...wsTools);
 		}
 
+		if (
+			isCrossThreadFactsEnabled(this.memoryConfig?.crossThreadFacts) &&
+			finalTools.some((t) => t.name === RECALL_MEMORY_TOOL_NAME)
+		) {
+			throw new Error(
+				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved for cross-thread fact memory.`,
+			);
+		}
+
 		let finalStaticTools = finalTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
@@ -767,6 +777,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
 		let mcpTools = mcpToolLists.flat();
+
+		if (
+			isCrossThreadFactsEnabled(this.memoryConfig?.crossThreadFacts) &&
+			mcpTools.some((t) => t.name === RECALL_MEMORY_TOOL_NAME)
+		) {
+			throw new Error(
+				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved for cross-thread fact memory.`,
+			);
+		}
 
 		// Apply global requireToolApproval to MCP tools (per-server approval is already
 		// handled inside McpClient/McpConnection.listTools()).
@@ -819,6 +838,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			lastMessages: this.memoryConfig?.lastMessages,
 			workingMemory: this.memoryConfig?.workingMemory,
 			semanticRecall: this.memoryConfig?.semanticRecall,
+			crossThreadFacts: this.memoryConfig?.crossThreadFacts,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,

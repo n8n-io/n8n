@@ -1,10 +1,16 @@
 import type { z } from 'zod';
 
+import {
+	hasCrossThreadFactStore,
+	isCrossThreadFactsEnabled,
+	withCrossThreadFactDefaults,
+} from '../runtime/cross-thread-facts';
 import { InMemoryMemory } from '../runtime/memory-store';
 import { hasObservationStore } from '../runtime/observation-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
+	CrossThreadFactsConfig,
 	MemoryConfig,
 	ObservationalMemoryConfig,
 	SemanticRecallConfig,
@@ -87,6 +93,8 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
+	private crossThreadFactsConfig?: CrossThreadFactsConfig;
+
 	private workingMemorySchema?: ZodObjectSchema;
 
 	private workingMemoryTemplate?: string;
@@ -130,6 +138,16 @@ export class Memory {
 	/** Enable semantic recall (RAG-based retrieval of relevant past messages). */
 	semanticRecall(config: SemanticRecallConfig): this {
 		this.semanticRecallConfig = config;
+		return this;
+	}
+
+	/** Enable cross-thread durable fact memory and the built-in recall_memory(query) tool. */
+	crossThreadFacts(config: CrossThreadFactsConfig = {}): this {
+		if (config.enabled === false) {
+			this.crossThreadFactsConfig = undefined;
+		} else {
+			this.crossThreadFactsConfig = config;
+		}
 		return this;
 	}
 
@@ -253,6 +271,15 @@ export class Memory {
 			}
 		}
 
+		if (isCrossThreadFactsEnabled(this.crossThreadFactsConfig)) {
+			if (!hasCrossThreadFactStore(memory)) {
+				throw new Error(
+					'Cross-thread facts require a storage backend that implements saveCrossThreadFacts() and searchCrossThreadFacts().',
+				);
+			}
+			withCrossThreadFactDefaults(this.crossThreadFactsConfig);
+		}
+
 		let workingMemory: MemoryConfig['workingMemory'];
 		if (this.workingMemorySchema) {
 			workingMemory = {
@@ -280,6 +307,7 @@ export class Memory {
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
+			crossThreadFacts: this.crossThreadFactsConfig,
 			titleGeneration: this.titleGenerationConfig,
 			observationalMemory: this.observationalMemoryConfig,
 		});

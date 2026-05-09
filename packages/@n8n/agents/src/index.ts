@@ -3,6 +3,7 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltCrossThreadFactStore,
 	BuiltGuardrail,
 	BuiltEval,
 	RunOptions,
@@ -29,6 +30,13 @@ export type {
 	AgentRunState,
 	MemoryConfig,
 	MemoryDescriptor,
+	CrossThreadFact,
+	CrossThreadFactPrompts,
+	CrossThreadFactSearchOptions,
+	CrossThreadFactsConfig,
+	CrossThreadMemoryScope,
+	NewCrossThreadFact,
+	RetrievedCrossThreadFact,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -36,6 +44,7 @@ export type {
 	McpServerConfig,
 	McpVerifyResult,
 	ModelConfig,
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
@@ -119,10 +128,16 @@ export {
 	DEFAULT_COMPACTOR_PROMPT,
 	DEFAULT_OBSERVER_PROMPT,
 } from './runtime/observational-cycle';
+export {
+	DEFAULT_CROSS_THREAD_FACT_EXTRACTION_PROMPT,
+	DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION,
+	rankCrossThreadFacts,
+	RECALL_MEMORY_TOOL_NAME,
+} from './runtime/cross-thread-facts';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
-export { createModel } from './runtime/model-factory';
+export { createEmbeddingModel, createModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 
 export { Workspace } from './workspace';

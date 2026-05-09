@@ -13,6 +13,7 @@ import type {
 	BuiltTelemetry,
 	BuiltTool,
 	CheckpointStore,
+	CrossThreadFactsConfig,
 	FinishReason,
 	GenerateResult,
 	GoogleThinkingConfig,
@@ -31,6 +32,13 @@ import type {
 	XaiThinkingConfig,
 } from '../types';
 import { BackgroundTaskTracker } from './background-task-tracker';
+import {
+	createRecallMemoryTool,
+	extractAndStoreCrossThreadFacts,
+	hasCrossThreadFactStore,
+	isCrossThreadFactsEnabled,
+	RECALL_MEMORY_TOOL_NAME,
+} from './cross-thread-facts';
 import { AgentEventBus } from './event-bus';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
@@ -88,6 +96,7 @@ export interface AgentRuntimeConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
+	crossThreadFacts?: CrossThreadFactsConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
@@ -1162,6 +1171,10 @@ export class AgentRuntime {
 			delta,
 		);
 
+		if (isCrossThreadFactsEnabled(this.config.crossThreadFacts)) {
+			await this.extractCrossThreadFacts(options.persistence, delta);
+		}
+
 		// Generate and save embeddings if semantic recall is configured
 		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
 			await this.saveEmbeddingsForMessages(
@@ -1172,6 +1185,29 @@ export class AgentRuntime {
 		}
 
 		await this.dispatchObservationalMemory(options.persistence);
+	}
+
+	private async extractCrossThreadFacts(
+		persistence: AgentPersistenceOptions,
+		messages: AgentDbMessage[],
+	): Promise<void> {
+		if (
+			!this.config.memory ||
+			!this.config.crossThreadFacts ||
+			!hasCrossThreadFactStore(this.config.memory)
+		) {
+			return;
+		}
+
+		await extractAndStoreCrossThreadFacts({
+			memory: this.config.memory,
+			config: this.config.crossThreadFacts,
+			model: this.config.model,
+			threadId: persistence.threadId,
+			persistence,
+			messages,
+			eventBus: this.eventBus,
+		});
 	}
 
 	private async saveEmbeddingsForMessages(
@@ -1693,7 +1729,10 @@ export class AgentRuntime {
 	private buildLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const allUserTools = this.config.tools ?? [];
+		const allUserTools = this.buildToolsWithBuiltIns(
+			this.config.tools ?? [],
+			execOptions?.persistence,
+		);
 		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
@@ -1709,6 +1748,37 @@ export class AgentRuntime {
 				: undefined,
 			effectiveInstructions: this.composeEffectiveInstructions(allUserTools),
 		};
+	}
+
+	private buildToolsWithBuiltIns(
+		tools: BuiltTool[],
+		persistence: AgentPersistenceOptions | undefined,
+	): BuiltTool[] {
+		const crossThreadFacts = this.config.crossThreadFacts;
+		if (!isCrossThreadFactsEnabled(crossThreadFacts)) {
+			return tools;
+		}
+
+		if (!this.config.memory || !hasCrossThreadFactStore(this.config.memory)) {
+			throw new Error(
+				'Cross-thread facts require a memory backend with cross-thread fact storage.',
+			);
+		}
+
+		if (tools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved for cross-thread fact memory.`,
+			);
+		}
+
+		return [
+			...tools,
+			createRecallMemoryTool({
+				memory: this.config.memory,
+				config: crossThreadFacts,
+				persistence,
+			}),
+		];
 	}
 
 	/**

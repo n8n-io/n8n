@@ -1,4 +1,14 @@
-import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
+import { rankCrossThreadFacts } from './cross-thread-facts';
+import type {
+	BuiltMemory,
+	CrossThreadFact,
+	CrossThreadFactSearchOptions,
+	CrossThreadMemoryScope,
+	MemoryDescriptor,
+	NewCrossThreadFact,
+	RetrievedCrossThreadFact,
+	Thread,
+} from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
 import type {
 	BuiltObservationStore,
@@ -55,6 +65,8 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 	private cursorsByScope = new Map<string, ObservationCursor>();
 
 	private locksByScope = new Map<string, ObservationLockHandle>();
+
+	private crossThreadFacts: CrossThreadFact[] = [];
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getWorkingMemory(params: {
@@ -176,6 +188,49 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 
 	describe(): MemoryDescriptor {
 		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
+	}
+
+	// ── Cross-thread facts ──────────────────────────────────────────────
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveCrossThreadFacts(facts: NewCrossThreadFact[]): Promise<CrossThreadFact[]> {
+		const saved: CrossThreadFact[] = [];
+		for (const fact of facts) {
+			const duplicate = this.crossThreadFacts.find(
+				(existing) =>
+					existing.agentId === fact.agentId &&
+					existing.resourceId === fact.resourceId &&
+					existing.contentHash === fact.contentHash,
+			);
+			if (duplicate) {
+				saved.push({ ...duplicate });
+				continue;
+			}
+
+			const now = new Date();
+			const row: CrossThreadFact = {
+				...fact,
+				id: crypto.randomUUID(),
+				createdAt: new Date(fact.createdAt),
+				updatedAt: now,
+			};
+			this.crossThreadFacts.push(row);
+			saved.push({ ...row });
+		}
+		return saved;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async searchCrossThreadFacts(
+		scope: CrossThreadMemoryScope,
+		query: string,
+		opts?: CrossThreadFactSearchOptions,
+	): Promise<RetrievedCrossThreadFact[]> {
+		const scoped = this.crossThreadFacts
+			.filter((fact) => fact.agentId === scope.agentId && fact.resourceId === scope.resourceId)
+			.map((fact) => ({ ...fact, createdAt: new Date(fact.createdAt) }));
+
+		return rankCrossThreadFacts(scoped, query, opts);
 	}
 
 	// ── Observational memory ─────────────────────────────────────────────
