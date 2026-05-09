@@ -167,3 +167,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Renovate security update: mjml@5.0.0
+  - mjml@5.0.0
