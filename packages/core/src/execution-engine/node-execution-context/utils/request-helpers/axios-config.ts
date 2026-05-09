@@ -27,7 +27,20 @@ axios.defaults.proxy = false;
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
 	if (config.data === undefined) {
-		config.headers.setContentType(false, false);
+		// axios may provide an AxiosHeaders instance which exposes `setContentType`.
+		// However, callers can also supply plain objects for `config.headers`.
+		// Guard the call to avoid "setContentType is not a function" errors.
+		const headersAny = config.headers as any;
+		if (headersAny && typeof headersAny.setContentType === 'function') {
+			headersAny.setContentType(false, false);
+		} else if (headersAny && typeof headersAny === 'object') {
+			// Ensure there's no Content-Type header set (case-insensitive).
+			for (const key of Object.keys(headersAny)) {
+				if (key.toLowerCase() === 'content-type') {
+					delete headersAny[key];
+				}
+			}
+		}
 	}
 
 	setAxiosAgents(config);

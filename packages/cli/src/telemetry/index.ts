@@ -145,7 +145,22 @@ export class Telemetry {
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			const axiosInstance = axios.create();
 			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
+				const headersAny = cfg.headers as any;
+				if (headersAny && typeof headersAny.setContentType === 'function') {
+					headersAny.setContentType('application/json', false);
+				} else if (headersAny && typeof headersAny === 'object') {
+					// Ensure Content-Type is set consistently when headers is a plain object
+					let hasContentType = false;
+					for (const key of Object.keys(headersAny)) {
+						if (key.toLowerCase() === 'content-type') {
+							hasContentType = true;
+							break;
+						}
+					}
+					if (!hasContentType) {
+						headersAny['Content-Type'] = 'application/json';
+					}
+				}
 				return cfg;
 			});
 			this.rudderStack = new RudderStack(key, {
