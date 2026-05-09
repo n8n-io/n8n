@@ -1,0 +1,457 @@
+#
+#                █████
+#               ░░███
+#       ██████  ███████    ██████
+#      ███░░███░░░███░    ░░░░░███
+#     ░███ ░███  ░███      ███████
+#     ░███ ░███  ░███ ███ ███░░███
+#     ░░██████   ░░█████ ░░████████
+#      ░░░░░░     ░░░░░   ░░░░░░░░
+#
+#   Copyright (C) 2026 — 2026, Ota. All Rights Reserved.
+#
+#   DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+#   Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+#   You may not use this file except in compliance with that License.
+#   Unless required by applicable law or agreed to in writing, software distributed under the
+#   License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+#   either express or implied. See the License for the specific language governing permissions
+#   and limitations under the License.
+#
+#   If you need additional information or have any questions, please email: os@ota.run
+
+version: 1
+project:
+  name: n8n
+  description: Monorepo for the n8n workflow automation platform
+  type: application
+execution:
+  default_context: host
+  contexts:
+    host:
+      backend: native
+runtimes:
+  node: ">=24"
+tools:
+  pnpm: ">=10.22.0"
+env:
+  sources:
+    - kind: dotenv
+      path: .env.local
+readiness:
+  probes:
+    app-backend-ready:
+      kind: http
+      target:
+        kind: task
+        name: dev
+        listener: backend
+        address_view: host
+      path: /healthz/readiness
+      timeout: 10000
+    app-editor-ready:
+      kind: http
+      target:
+        kind: task
+        name: dev
+        listener: editor
+        address_view: host
+      path: /
+      timeout: 10000
+    backend-ready:
+      kind: http
+      target:
+        kind: task
+        name: dev:be
+        listener: backend
+        address_view: host
+      path: /healthz/readiness
+      timeout: 10000
+    editor-ready:
+      kind: http
+      target:
+        kind: task
+        name: dev:fe
+        listener: editor
+        address_view: host
+      path: /
+      timeout: 10000
+    ai-backend-ready:
+      kind: http
+      target:
+        kind: task
+        name: dev:ai
+        listener: backend
+        address_view: host
+      path: /healthz/readiness
+      timeout: 10000
+    runtime-backend-ready:
+      kind: http
+      target:
+        kind: task
+        name: start
+        listener: backend
+        address_view: host
+      path: /healthz/readiness
+      timeout: 10000
+tasks:
+  setup:env-local:
+    context: host
+    description: Create a local env overlay from the contributor template when needed
+    notes: |
+      n8n documents `.env.local` as optional for development.
+      This task only materializes the template when the file is missing.
+    category: setup
+    run: test -f .env.local || cp .env.local.example .env.local
+    safe_for_agent: true
+  install:
+    context: host
+    description: Install all workspace dependencies with pnpm
+    notes: |
+      This is the canonical monorepo bootstrap step for contributors.
+      It links workspace packages and prepares the repo for build and development flows.
+    category: setup
+    run: pnpm install
+    depends_on:
+      - setup:env-local
+    safe_for_agent: true
+  build:
+    context: host
+    description: Build the full monorepo
+    notes: |
+      n8n documents `pnpm build` as part of the required first-time setup path
+      and as the production-mode verification step after development changes.
+    category: build
+    run: pnpm build
+    depends_on:
+      - install
+    safe_for_agent: true
+  setup:
+    context: host
+    description: Prepare the repo for contributor work
+    notes: |
+      This follows the documented first-time setup path:
+      create `.env.local` if needed, install workspace dependencies, and build the monorepo.
+    category: setup
+    run: pnpm build
+    depends_on:
+      - install
+    safe_for_agent: true
+  typecheck:
+    context: host
+    description: Run the monorepo typecheck flow
+    category: test
+    run: pnpm typecheck
+    depends_on:
+      - install
+    safe_for_agent: true
+  lint:
+    context: host
+    description: Run the monorepo lint suite
+    category: test
+    run: pnpm lint
+    depends_on:
+      - install
+    safe_for_agent: true
+  test:
+    context: host
+    description: Run the monorepo test suite
+    category: test
+    run: pnpm test
+    depends_on:
+      - setup
+    safe_for_agent: true
+  dev:
+    context: host
+    description: Start the full n8n local development workflow
+    notes: |
+      This is the documented full development mode.
+      It runs the broader local development stack in parallel and is the canonical repo workflow.
+    category: dev
+    run: pnpm dev
+    depends_on:
+      - install
+    runtime:
+      kind: service
+      readiness:
+        probe: app-backend-ready
+        interval: 5s
+        retries: 12
+        start_period: 10s
+      listeners:
+        backend:
+          protocol: http
+          bind:
+            address: 127.0.0.1
+            port:
+              mode: fixed
+              value: 5678
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 5678
+              path: /
+        editor:
+          protocol: http
+          bind:
+            address: 127.0.0.1
+            port:
+              mode: fixed
+              value: 8080
+          project:
+            host:
+              address: 127.0.0.1
+              port:
+                mode: fixed
+                value: 8080
+              path: /
+  dev:be:
+    context: host
+    description: Start the backend-focused development workflow
+    notes: |
+      This is the documented selective development path when frontend packages are not needed.
+      It is the narrower default agent runtime because it exposes one stable backend service surface.
+    category: dev
+    run: pnpm dev:be
+    depends_on:
+      - install
+    safe_for_agent: true
+    runtime:
+      kind: service
+      readiness:
+        probe: backend-ready
+        interval: 5s
+        retries: 12
+        start_period: 10s
+      listeners:
+        backend:
+          protocol: http
+          bind:
+            address: 127.0.0.1
+            port:
+              mode: fixed
+              value: 5678
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 5678
+              path: /
+  dev:fe:
+    context: host
+    description: Start the frontend-focused development workflow
+    notes: |
+      This runs the editor-ui and design system development surfaces without the broader backend watch graph.
+    category: dev
+    run: pnpm dev:fe
+    depends_on:
+      - install
+    safe_for_agent: true
+    runtime:
+      kind: service
+      readiness:
+        probe: editor-ready
+        interval: 5s
+        retries: 12
+        start_period: 10s
+      listeners:
+        editor:
+          protocol: http
+          bind:
+            address: 127.0.0.1
+            port:
+              mode: fixed
+              value: 8080
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 8080
+              path: /
+  dev:ai:
+    context: host
+    description: Start the AI-node-focused development workflow
+    notes: |
+      This is the documented selective development path for AI and LangChain node work.
+    category: dev
+    run: pnpm dev:ai
+    depends_on:
+      - install
+    runtime:
+      kind: service
+      readiness:
+        probe: backend-ready
+        interval: 5s
+        retries: 12
+        start_period: 10s
+      listeners:
+        backend:
+          protocol: http
+          bind:
+            address: 127.0.0.1
+            port:
+              mode: fixed
+              value: 5678
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 5678
+              path: /
+  start:
+    context: host
+    description: Start n8n from the built CLI entrypoint
+    notes: |
+      Use this after a successful build when you want the production-style local runtime path
+      rather than the watch-mode development workflow.
+    category: dev
+    run: pnpm start
+    depends_on:
+      - build
+    runtime:
+      kind: service
+      readiness:
+        probe: backend-ready
+        interval: 5s
+        retries: 12
+        start_period: 10s
+      listeners:
+        backend:
+          protocol: http
+          bind:
+            address: 127.0.0.1
+            port:
+              mode: fixed
+              value: 5678
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 5678
+              path: /
+workflows:
+  default: app
+  app:
+    intent: local_development
+    description: Canonical full local development workflow for backend and editor work
+    setup:
+      task: setup
+    run:
+      task: dev
+    readiness:
+      probes:
+        - app-backend-ready
+        - app-editor-ready
+    exposes:
+      - http://127.0.0.1:5678
+      - http://127.0.0.1:8080
+  backend:
+    intent: backend_development
+    description: Selective backend-only development workflow
+    setup:
+      task: setup
+    run:
+      task: dev:be
+    readiness:
+      probes:
+        - ai-backend-ready
+    exposes:
+      - http://127.0.0.1:5678
+  frontend:
+    intent: frontend_development
+    description: Selective frontend-only development workflow
+    setup:
+      task: setup
+    run:
+      task: dev:fe
+    readiness:
+      probes:
+        - editor-ready
+    exposes:
+      - http://127.0.0.1:8080
+  ai:
+    intent: ai_development
+    description: Selective AI-node development workflow
+    setup:
+      task: setup
+    run:
+      task: dev:ai
+    readiness:
+      probes:
+        - runtime-backend-ready
+    exposes:
+      - http://127.0.0.1:5678
+  runtime:
+    intent: local_runtime
+    description: Production-style local runtime from the built CLI entrypoint
+    setup:
+      task: build
+    run:
+      task: start
+    readiness:
+      probes:
+        - backend-ready
+    exposes:
+      - http://127.0.0.1:5678
+checks:
+  - name: node-installed
+    kind: precondition
+    severity: error
+    run: node --version
+    timeout: 10
+  - name: pnpm-installed
+    kind: precondition
+    severity: error
+    run: pnpm --version
+    timeout: 10
+  - name: workspace-dependencies-installed
+    kind: precondition
+    severity: error
+    run: test -d node_modules
+    timeout: 10
+agent:
+  entrypoint: setup
+  default_task: dev:be
+  safe_tasks:
+    - setup:env-local
+    - install
+    - build
+    - setup
+    - typecheck
+    - lint
+    - test
+    - dev:be
+    - dev:fe
+  verify_after_changes:
+    - typecheck
+    - build
+  writable_paths:
+    - packages
+    - docker
+    - scripts
+    - patches
+    - package.json
+    - pnpm-lock.yaml
+    - turbo.json
+    - CONTRIBUTING.md
+    - .env.local.example
+  protected_paths:
+    - ota.yaml
+  notes: |
+    n8n is a large pnpm monorepo with one canonical full local app workflow and several selective workflows.
+    The default repo workflow should stay the full `pnpm dev` path because that is the documented contributor front door.
+    Prefer `ota up --workflow backend` or `ota run dev:be` when a task only needs a stable backend runtime and explicit readiness on port 5678.
+    Prefer `ota up --workflow frontend` or `ota run dev:fe` when changing editor-ui or design-system surfaces.
+    Keep changes scoped to the smallest affected package or root config surface inside the monorepo.
