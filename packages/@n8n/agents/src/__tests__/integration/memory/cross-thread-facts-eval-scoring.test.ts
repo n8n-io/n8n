@@ -56,7 +56,7 @@ describe('cross-thread facts eval scoring', () => {
 		expect(result.metrics.endToEnd).toBe(false);
 	});
 
-	it('makes the exact-hash dedupe limit an explicit metric', () => {
+	it('makes stored-fact dedupe regressions an explicit metric', () => {
 		const result = scoreCrossThreadFactScenario(
 			{
 				recallPrompt: 'What repeated codename did I give you? Use memory.',
