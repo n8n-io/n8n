@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nInfoTip, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 
 import Modal from '@/app/components/Modal.vue';
 import { TWO_FACTOR_METHOD_PICKER_MODAL_KEY } from '@/app/constants';
@@ -114,9 +114,12 @@ const methods: MethodOption[] = [
 					</N8nText>
 				</div>
 			</div>
-			<N8nInfoTip v-if="showReplaceWarning" theme="warning" :class="$style.warningTip">
-				{{ i18n.baseText('settings.personal.twoFactor.picker.replaceWarning') }}
-			</N8nInfoTip>
+			<N8nNotice
+				v-if="showReplaceWarning"
+				theme="warning"
+				:content="i18n.baseText('settings.personal.twoFactor.picker.replaceWarning')"
+				:class="$style.warningTip"
+			/>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">

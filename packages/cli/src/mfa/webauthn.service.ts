@@ -73,7 +73,11 @@ export class WebAuthnService {
 		return options;
 	}
 
-	async verifyRegistrationResponse(userId: string, response: unknown) {
+	async verifyRegistrationResponse(
+		userId: string,
+		response: unknown,
+		attachment: 'platform' | 'cross-platform',
+	) {
 		const { verifyRegistrationResponse } = await import('@simplewebauthn/server');
 
 		const challenge = await this.cacheService.get(`webauthn:challenge:reg:${userId}`);
@@ -81,11 +85,17 @@ export class WebAuthnService {
 			throw new Error('WebAuthn registration challenge expired or not found');
 		}
 
+		// Mirror what we asked for in `generateRegistrationOptions`: passkeys must
+		// be user-verified (biometric/PIN), but cross-platform security keys can
+		// register without UV — many YubiKeys ship without a FIDO2 PIN set.
+		const requireUserVerification = attachment === 'platform';
+
 		const verification = await verifyRegistrationResponse({
 			response: response as Parameters<typeof verifyRegistrationResponse>[0]['response'],
 			expectedChallenge: challenge as string,
 			expectedOrigin: this.getOrigin(),
 			expectedRPID: this.getRpId(),
+			requireUserVerification,
 		});
 
 		await this.cacheService.delete(`webauthn:challenge:reg:${userId}`);
@@ -171,11 +181,18 @@ export class WebAuthnService {
 			throw new Error('WebAuthn credential not found');
 		}
 
+		// Security keys may be PIN-less, so we don't require UV during authentication
+		// for them. Passkeys are platform authenticators where UV is the whole point.
+		const transports = credential.transports ?? [];
+		const isPlatformOnly = transports.length > 0 && transports.every((t) => t === 'internal');
+		const requireUserVerification = isPlatformOnly;
+
 		const verification = await verifyAuthenticationResponse({
 			response: authResponse,
 			expectedChallenge: challenge as string,
 			expectedOrigin: this.getOrigin(),
 			expectedRPID: this.getRpId(),
+			requireUserVerification,
 			credential: {
 				id: credential.credentialId,
 				publicKey: new Uint8Array(credential.publicKey),

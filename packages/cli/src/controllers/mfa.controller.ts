@@ -282,6 +282,7 @@ export class MFAController {
 		const verification = await this.mfaService.webauthn.verifyRegistrationResponse(
 			userId,
 			response,
+			attachment,
 		);
 
 		if (!verification.verified || !verification.registrationInfo) {

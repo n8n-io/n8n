@@ -467,7 +467,9 @@ onBeforeUnmount(() => {
 										`settings.personal.twoFactor.method.${activeMfaMethod ?? 'totp'}.name` as never,
 									)
 								}}</N8nText>
-								<N8nBadge>{{ i18n.baseText('settings.personal.mfa.status.enabled') }}</N8nBadge>
+								<N8nBadge theme="success">{{
+									i18n.baseText('settings.personal.mfa.status.enabled')
+								}}</N8nBadge>
 							</div>
 							<N8nText size="small" color="text-light">{{
 								i18n.baseText(
@@ -485,7 +487,7 @@ onBeforeUnmount(() => {
 							@click="onChangeMethodClick"
 						/>
 						<N8nButton
-							variant="subtle"
+							variant="destructive"
 							size="small"
 							:class="$style.disableMfaButton"
 							:label="i18n.baseText('settings.personal.twoFactor.disable.button')"
