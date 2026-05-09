@@ -6,8 +6,10 @@ import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InsightsService } from '@/modules/insights/insights.service';
 import type { InsightsRequest } from '@/public-api/types';
+import { ProjectService } from '@/services/project.service.ee';
 
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
@@ -66,10 +68,22 @@ const insightsHandlers: InsightsHandlers = {
 				return handleError(error);
 			}
 
+			const { projectId } = query.data;
+			if (projectId) {
+				const project = await Container.get(ProjectService).getProjectWithScope(
+					req.user,
+					projectId,
+					['project:read'],
+				);
+				if (!project) {
+					throw new NotFoundError(`Could not find project with ID "${projectId}"`);
+				}
+			}
+
 			const summary = await Container.get(InsightsService).getInsightsSummary({
 				startDate,
 				endDate,
-				projectId: query.data.projectId,
+				projectId,
 			});
 
 			return res.json(summary);

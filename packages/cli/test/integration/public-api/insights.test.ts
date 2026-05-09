@@ -1,9 +1,14 @@
 import { insightsSummarySchema } from '@n8n/api-types';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
@@ -172,6 +177,47 @@ describe('GET /insights/summary', () => {
 			.expect(200);
 
 		expect(response.body.total.value).toBe(4);
+		expect(response.body.failed.value).toBe(1);
+	});
+
+	test('returns 404 when projectId does not match a project the caller can read', async () => {
+		const memberAlpha = await createMemberWithApiKey({ scopes: ['insights:read'] });
+		const projectAlpha = await createTeamProject();
+		const projectBeta = await createTeamProject();
+		await linkUserToProject(memberAlpha, projectAlpha, 'project:viewer');
+
+		const memberAgent = testServer.publicApiAgentFor(memberAlpha);
+
+		await memberAgent
+			.get('/insights/summary')
+			.query({
+				projectId: projectBeta.id,
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(404);
+	});
+
+	test('returns 200 when projectId matches a project the caller can read', async () => {
+		const memberAlpha = await createMemberWithApiKey({ scopes: ['insights:read'] });
+		const projectAlpha = await createTeamProject();
+		await linkUserToProject(memberAlpha, projectAlpha, 'project:viewer');
+
+		const workflow = await createWorkflow({}, projectAlpha);
+		await createSummaryMetrics(workflow, { success: 2, failure: 1 });
+
+		const memberAgent = testServer.publicApiAgentFor(memberAlpha);
+
+		const response = await memberAgent
+			.get('/insights/summary')
+			.query({
+				projectId: projectAlpha.id,
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(3);
 		expect(response.body.failed.value).toBe(1);
 	});
 });
