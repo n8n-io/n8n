@@ -167,3 +167,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Renovate security update: rollup@4.59.0
+  - rollup@4.59.0

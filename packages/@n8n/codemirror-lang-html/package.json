@@ -45,7 +45,7 @@
     "@rollup/plugin-node-resolve": "^9.0.0",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:",
-    "rollup": "^2.52.2"
+    "rollup": "^4.0.0"
   },
   "repository": {
     "type": "git",
