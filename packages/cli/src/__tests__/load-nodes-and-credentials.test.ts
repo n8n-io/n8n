@@ -3,6 +3,7 @@ import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import { CUSTOM_EXTENSION_ENV, CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
@@ -701,9 +702,17 @@ describe('LoadNodesAndCredentials', () => {
 	describe('getCustomDirectories', () => {
 		let instance: LoadNodesAndCredentials;
 		const originalEnv = process.env[CUSTOM_EXTENSION_ENV];
+		const mockInstanceDir = '/mock/instance/dir';
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(
+				mock(),
+				mock(),
+				mock<InstanceSettings>({ customExtensionDir: mockInstanceDir }),
+				mock(),
+				mock(),
+				mock(),
+			);
 		});
 
 		afterEach(() => {
@@ -718,6 +727,8 @@ describe('LoadNodesAndCredentials', () => {
 			process.env[CUSTOM_EXTENSION_ENV] = '/custom/path;';
 			const dirs = instance.getCustomDirectories();
 			expect(dirs).not.toContain('');
+			expect(dirs).not.toContain(undefined);
+			expect(dirs).toContain(mockInstanceDir);
 			expect(dirs).toContain('/custom/path');
 		});
 
@@ -725,6 +736,8 @@ describe('LoadNodesAndCredentials', () => {
 			process.env[CUSTOM_EXTENSION_ENV] = '/path/one;;/path/two';
 			const dirs = instance.getCustomDirectories();
 			expect(dirs).not.toContain('');
+			expect(dirs).not.toContain(undefined);
+			expect(dirs).toContain(mockInstanceDir);
 			expect(dirs).toContain('/path/one');
 			expect(dirs).toContain('/path/two');
 		});
