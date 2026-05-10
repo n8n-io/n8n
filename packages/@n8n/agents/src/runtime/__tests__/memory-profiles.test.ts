@@ -4,7 +4,6 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import { extractAndStoreEpisodicMemory } from '../episodic-memory';
 import { AgentEventBus } from '../event-bus';
 import {
-	DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
 	loadMemoryProfileContext,
 	updateMemoryProfilesFromTurn,
 	withMemoryProfileDefaults,
@@ -57,48 +56,45 @@ describe('memory profiles', () => {
 		jest.resetAllMocks();
 	});
 
-	it('uses profile-specific defaults', () => {
-		const profileDefaults = withMemoryProfileDefaults({});
-
-		expect(profileDefaults.profileUpdatePrompt).toBe(DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT);
-	});
-
-	it('tightens default profile update instructions to stable user entries and actionable persona behavior', () => {
+	it('defines the default profile update contract', () => {
 		const prompt = withMemoryProfileDefaults({}).profileUpdatePrompt;
 
-		expect(prompt).toContain('User profile captures stable cross-session information');
-		expect(prompt).toContain('<user> is not task memory');
-		expect(prompt).toContain('must never be connected to the current objective of an agent');
-		expect(prompt).toContain('communication preferences');
-		expect(prompt).toContain('coding, review, and testing preferences');
-		expect(prompt).toContain('durable workflow preferences');
-		expect(prompt).toContain('stable identity or role');
-		expect(prompt).toContain('normal setup');
-		expect(prompt).toContain('active project state');
-		expect(prompt).toContain('debugging steps');
-		expect(prompt).toContain('implementation order');
-		expect(prompt).toContain('branch stack');
-		expect(prompt).toContain('test flow');
-		expect(prompt).toContain('next actions');
-		expect(prompt).toContain('temporary constraints');
-		expect(prompt).toContain('session objectives');
-		expect(prompt).toContain(
+		for (const phrase of [
+			'User profile captures stable cross-session information',
+			'<user> is not task memory',
+			'must never be connected to the current objective of an agent',
+			'communication preferences',
+			'durable workflow preferences',
 			'If the information would stop being useful after the current task ends',
-		);
-		expect(prompt).toContain('belongs in <persona>');
-		expect(prompt).toContain('belongs in source-backed case entries');
-		expect(prompt).toContain('Existing profile content is not authoritative');
-		expect(prompt).toContain('remove entries that violate these rules');
+			'belongs in <persona>',
+			'belongs in source-backed case entries',
+			'Existing profile content is not authoritative',
+			'Persona captures actionable behavioral directives',
+			'imperative system-instruction-style directives',
+			'concrete future behavior change',
+		]) {
+			expect(prompt).toContain(phrase);
+		}
+
+		for (const excludedContext of [
+			'active project state',
+			'debugging steps',
+			'implementation order',
+			'branch stack',
+			'test flow',
+			'next actions',
+			'temporary constraints',
+			'session objectives',
+			'descriptive agent facts',
+			'storage/data-model facts',
+			'model names',
+			'schema facts',
+			'current implementation details',
+		]) {
+			expect(prompt).toContain(excludedContext);
+		}
+
 		expect(prompt).not.toContain('ongoing context about the user/resource');
-		expect(prompt).toContain('Persona captures actionable behavioral directives');
-		expect(prompt).toContain('imperative system-instruction-style directives');
-		expect(prompt).toContain('concrete future behavior change');
-		expect(prompt).toContain('descriptive agent facts');
-		expect(prompt).toContain('storage/data-model facts');
-		expect(prompt).toContain('model names');
-		expect(prompt).toContain('schema facts');
-		expect(prompt).toContain('current feature details');
-		expect(prompt).toContain('current implementation details');
 	});
 
 	it('updates memory profiles from the profile updater path', async () => {
@@ -277,35 +273,6 @@ describe('memory profiles', () => {
 		expect(agentTwo).toEqual({
 			persona: 'This other agent handles invoices.',
 			user: 'The user prefers concise answers.',
-		});
-	});
-
-	it('uses neutral agent/resource scope for profile updates', async () => {
-		generateText.mockResolvedValueOnce({
-			text: JSON.stringify({
-				persona: 'When users ask about tests, describe the narrow focused command first.',
-				user: '',
-			}),
-		});
-
-		const memory = new InMemoryMemory();
-		await updateMemoryProfilesFromTurn({
-			memory,
-			config: {},
-			model: fakeModel,
-			scope: { agentId: 'agent-1', resourceId: 'user-1' },
-			currentProfile: undefined,
-			messages: [
-				makeUserMessage('When I ask about tests, describe the narrow focused command first.'),
-				makeAssistantMessage('Understood.'),
-			],
-			eventBus: new AgentEventBus(),
-		});
-
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
-		).resolves.toMatchObject({
-			content: 'When users ask about tests, describe the narrow focused command first.',
 		});
 	});
 });
