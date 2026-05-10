@@ -1390,6 +1390,43 @@ describe('OauthService', () => {
 			expect(jest.mocked(ClientOAuth2).mock.calls[0][0].scopes).toEqual(['openid']);
 		});
 
+		it('should default to openid for non-dynamic OAuth2 credentials with whitespace-only scope', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/oauth2/auth?client_id=client_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const oauthCredentials = {
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				scope: '   ',
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(jest.mocked(ClientOAuth2).mock.calls[0][0].scopes).toEqual(['openid']);
+		});
+
 		it('should generate auth URI with PKCE flow', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const pkceChallenge = await import('pkce-challenge');
