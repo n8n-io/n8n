@@ -13,8 +13,9 @@ export function buildAskQuestionTool(): BuiltTool {
 		.description(
 			'Show a multiple-choice card in the chat UI and suspend until the user picks an ' +
 				'answer. Use when the request is ambiguous and the answer is one (or more) of a ' +
-				'known list of options. Do NOT use for free-text input — ask in prose for that. ' +
-				'Returns { values: string[] } with the selected values.',
+				'known list of options. The UI also includes an Other field, so returned values ' +
+				'may include user-entered freeform text when the listed options are incomplete. ' +
+				'Returns { values: string[] } with selected option values and/or Other text.',
 		)
 		.input(askQuestionInputSchema)
 		.suspend(askQuestionInputSchema)

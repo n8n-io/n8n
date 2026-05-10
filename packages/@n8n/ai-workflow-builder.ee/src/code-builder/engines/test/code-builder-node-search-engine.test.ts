@@ -627,7 +627,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 							displayOptions: { show: { hasOutputParser: [true] } },
 						},
 					},
-					message: 'Use with output parser for structured output',
+					searchHint: 'Use with output parser for structured output',
 				},
 			});
 			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
@@ -708,7 +708,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 							displayOptions: { show: { hasOutputParser: [true] } },
 						},
 					},
-					message: 'Test hint message',
+					searchHint: 'Test hint message',
 				},
 			});
 			const engine = new CodeBuilderNodeSearchEngine([agentNode]);

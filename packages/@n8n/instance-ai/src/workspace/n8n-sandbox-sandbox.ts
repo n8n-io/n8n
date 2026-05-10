@@ -5,17 +5,15 @@ import type {
 	ProviderStatus,
 	SandboxInfo,
 } from '@mastra/core/workspace';
+import { SandboxClient } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-
-import { N8nSandboxClient, type DockerfileStepsBuilder } from './n8n-sandbox-client';
 
 export interface N8nSandboxServiceSandboxOptions {
 	id?: string;
 	apiKey?: string;
 	serviceUrl?: string;
 	timeout?: number;
-	dockerfile?: DockerfileStepsBuilder;
 }
 
 function shellEscape(value: string): string {
@@ -37,13 +35,13 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 
 	private readonly instanceId = `n8n-sandbox-${randomUUID()}`;
 
-	private readonly client: N8nSandboxClient;
+	private readonly client: SandboxClient;
 
 	private sandboxId?: string;
 
 	constructor(private readonly options: N8nSandboxServiceSandboxOptions) {
 		super({ name: 'N8nSandboxServiceSandbox' });
-		this.client = new N8nSandboxClient({
+		this.client = new SandboxClient({
 			apiKey: options.apiKey,
 			baseUrl: options.serviceUrl,
 		});
@@ -60,9 +58,7 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 			return;
 		}
 
-		const sandbox = await this.client.createSandbox({
-			dockerfile: this.options.dockerfile,
-		});
+		const sandbox = await this.client.createSandbox();
 		this.sandboxId = sandbox.id;
 	}
 
@@ -83,8 +79,6 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 			lastUsedAt: new Date(sandbox.lastActiveAt * 1000),
 			metadata: {
 				remoteStatus: sandbox.status,
-				imageId: sandbox.imageId,
-				remoteProvider: sandbox.provider,
 			},
 		};
 	}
@@ -118,7 +112,7 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 		};
 	}
 
-	getClient(): N8nSandboxClient {
+	getClient(): SandboxClient {
 		return this.client;
 	}
 
