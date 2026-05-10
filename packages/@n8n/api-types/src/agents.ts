@@ -174,6 +174,12 @@ export interface AgentJsonConfig {
 			messageRange?: { before: number; after: number };
 			embedder?: string;
 		};
+		profiles?: {
+			enabled?: boolean;
+			prompts?: {
+				profileUpdate?: string;
+			};
+		};
 		observationalMemory?: {
 			enabled?: boolean;
 			trigger?:

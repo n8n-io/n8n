@@ -34,13 +34,28 @@ const ObservationalMemoryConfigSchema = z.object({
 	compactorPrompt: z.string().optional(),
 });
 
-const MemoryConfigSchema = z.object({
-	enabled: z.boolean(),
-	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
-	semanticRecall: SemanticRecallSchema.optional(),
-	observationalMemory: ObservationalMemoryConfigSchema.optional(),
-});
+const MemoryProfilesConfigSchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		prompts: z
+			.object({
+				profileUpdate: z.string().optional(),
+			})
+			.strict()
+			.optional(),
+	})
+	.strict();
+
+const MemoryConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		storage: z.enum(['n8n']),
+		lastMessages: z.number().int().min(1).max(200).optional(),
+		semanticRecall: SemanticRecallSchema.optional(),
+		profiles: MemoryProfilesConfigSchema.optional(),
+		observationalMemory: ObservationalMemoryConfigSchema.optional(),
+	})
+	.strict();
 
 const ThinkingConfigSchema = z.object({
 	provider: z.enum(['anthropic', 'openai']),

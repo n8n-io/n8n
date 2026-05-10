@@ -78,7 +78,7 @@ export class AgentsBuilderService {
 
 		const resourceId = user.id;
 		const resultStream = await builder.stream(message, {
-			persistence: { threadId: builderThreadId(agentId), resourceId },
+			persistence: { threadId: builderThreadId(agentId), agentId, resourceId },
 		});
 
 		yield* this.streamFromAgent(resultStream);
