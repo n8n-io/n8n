@@ -18,6 +18,7 @@ import type {
 	GoogleThinkingConfig,
 	ObservationalMemoryConfig,
 	OpenAIThinkingConfig,
+	MemoryProfilesConfig,
 	PendingToolCall,
 	RunOptions,
 	SemanticRecallConfig,
@@ -32,8 +33,17 @@ import type {
 } from '../types';
 import { BackgroundTaskTracker } from './background-task-tracker';
 import { AgentEventBus } from './event-bus';
+import {
+	isMemoryProfilesEnabled,
+	loadMemoryProfileContext,
+	updateMemoryProfilesFromTurn,
+} from './memory-profiles';
 import { saveMessagesToThread } from './memory-store';
-import { AgentMessageList, type SerializedMessageList } from './message-list';
+import {
+	AgentMessageList,
+	type MemoryProfileContext,
+	type SerializedMessageList,
+} from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
 import { hasObservationStore } from './observation-store';
@@ -88,6 +98,7 @@ export interface AgentRuntimeConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
+	profiles?: MemoryProfilesConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
@@ -466,11 +477,40 @@ export class AgentRuntime {
 			);
 		}
 
+		await this.setListMemoryProfileConfig(list, options?.persistence);
+
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
 		await this.setListWorkingMemoryConfig(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
+	}
+
+	private async setListMemoryProfileConfig(
+		list: AgentMessageList,
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<void> {
+		if (
+			!isMemoryProfilesEnabled(this.config.profiles) ||
+			!this.config.memory ||
+			!persistence?.resourceId
+		) {
+			return;
+		}
+
+		try {
+			list.memoryProfile = await loadMemoryProfileContext({
+				memory: this.config.memory,
+				persistence,
+			});
+		} catch (error) {
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Memory profile load failed',
+				error,
+				source: 'memory-profiles',
+			});
+		}
 	}
 
 	/**
@@ -1162,6 +1202,10 @@ export class AgentRuntime {
 			delta,
 		);
 
+		if (isMemoryProfilesEnabled(this.config.profiles)) {
+			this.dispatchMemoryProfileUpdate(options.persistence, delta, list);
+		}
+
 		// Generate and save embeddings if semantic recall is configured
 		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
 			await this.saveEmbeddingsForMessages(
@@ -1171,7 +1215,31 @@ export class AgentRuntime {
 			);
 		}
 
-		await this.dispatchObservationalMemory(options.persistence);
+		await this.dispatchObservationalMemory(options.persistence, list.memoryProfile);
+	}
+
+	private dispatchMemoryProfileUpdate(
+		persistence: AgentPersistenceOptions,
+		messages: AgentDbMessage[],
+		list: AgentMessageList,
+	): void {
+		if (!this.config.memory || !this.config.profiles) return;
+		if (!persistence.agentId || !persistence.resourceId) return;
+
+		const promise = updateMemoryProfilesFromTurn({
+			memory: this.config.memory,
+			config: this.config.profiles,
+			model: this.config.model,
+			scope: { agentId: persistence.agentId, resourceId: persistence.resourceId },
+			currentProfile: list.memoryProfile,
+			messages,
+			eventBus: this.eventBus,
+		}).then(
+			() => undefined,
+			() => undefined,
+		);
+
+		this.backgroundTasks.track(promise);
 	}
 
 	private async saveEmbeddingsForMessages(
@@ -1831,8 +1899,11 @@ export class AgentRuntime {
 		};
 	}
 
-	private async dispatchObservationalMemory(persistence: AgentPersistenceOptions): Promise<void> {
-		const cycle = this.buildObservationCycleOpts(persistence);
+	private async dispatchObservationalMemory(
+		persistence: AgentPersistenceOptions,
+		memoryProfile: MemoryProfileContext | undefined,
+	): Promise<void> {
+		const cycle = this.buildObservationCycleOpts(persistence, memoryProfile);
 		if (!cycle) return;
 		const trigger = cycle.trigger ?? { type: 'per-turn' };
 		if (trigger.type === 'idle-timer') {
@@ -1878,6 +1949,7 @@ export class AgentRuntime {
 
 	private buildObservationCycleOpts(
 		persistence: AgentPersistenceOptions | undefined,
+		memoryProfile: MemoryProfileContext | undefined,
 	): RunObservationalCycleOpts | null {
 		const obsConfig = this.config.observationalMemory;
 		const memory = this.config.memory;
@@ -1890,6 +1962,7 @@ export class AgentRuntime {
 			threadId: persistence.threadId,
 			resourceId: persistence.resourceId,
 			model: this.config.model,
+			memoryProfile,
 			workingMemory: {
 				template: workingMemory.template,
 				structured: workingMemory.structured,

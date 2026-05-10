@@ -7,6 +7,7 @@ import { advanceCursor, getDeltaSinceCursor } from './observation-cursor';
 import { withObservationLock } from './observation-lock';
 import { isLlmMessage } from '../sdk/message';
 import { AgentEvent } from '../types/runtime/event';
+import type { SerializedMessageList } from '../types/runtime/message-list';
 import type { ModelConfig } from '../types/sdk/agent';
 import type { BuiltMemory } from '../types/sdk/memory';
 import type { AgentDbMessage } from '../types/sdk/message';
@@ -32,9 +33,15 @@ const DEFAULT_COMPACTION_THRESHOLD = 5;
 export const DEFAULT_OBSERVER_PROMPT = `You maintain thread working memory for an agent.
 
 You receive the current working memory document and the new transcript delta since
-the last observation. Extract durable thread state that should help later turns in
-this same conversation: explicitly stated facts, preferences, identifiers, goals,
-decisions, constraints, open follow-ups, corrections, and concrete progress.
+the last observation. Extract only current-session state that should help later
+turns in this same conversation: the active objective, task state, decisions,
+open follow-ups, corrections, constraints that matter for this session, and
+concrete progress.
+
+Thread working memory is objective-driven. Capture what this thread is working
+on, objective-specific decisions, objective-specific constraints,
+objective-specific uncertainties or open questions, current task state,
+progress, and active follow-ups related to the objective.
 
 Output JSON Lines only, one object per line:
 {"kind":"observation","category":"<category>","text":"<short durable note>"}
@@ -43,9 +50,12 @@ Allowed categories: facts, preferences, goal, state, active_items, decisions,
 follow_ups, continuity, superseded, other.
 
 Evidence rules:
-- Transcript roles matter. User messages are authoritative for user facts,
-  preferences, goals, constraints, corrections, decisions, and requested work.
+- Transcript roles matter. User messages are authoritative for requested work,
+  current-session goals, constraints, corrections, and decisions.
 - Assistant messages are supporting context only. A normal assistant reply is not verification evidence.
+- Known persona and resource/user profiles are durable memory. Do not copy them
+  into thread working memory unless the live transcript adds session-specific
+  objective or task state.
 - Do not record assistant-created checklists, diagnostic questions, file/table
   guesses, or proposed next steps unless the user adopts them.
 - Do not turn assistant claims such as "memory drawer shows it", "chat replies
@@ -53,8 +63,14 @@ Evidence rules:
   the transcript includes concrete external evidence.
 
 Rules:
-- Prefer over-recording explicit user statements over missing useful state.
-- Preserve user-stated facts and preferences verbatim when short enough.
+- Prefer explicit session state over broad durable profile facts.
+- Do not record stable user identity, general communication style, long-lived
+  user preferences, or durable agent/persona facts as thread working memory.
+- Do not record general user preferences, repo-wide habits, style preferences,
+  or persona facts as session memory.
+- If a durable preference is relevant to the active objective:
+  record only the objective-specific application, not the durable preference itself. For example:
+  "For this task, do not run evals" instead of "User never wants evals run".
 - Record changes and corrections as latest state, not as debate history.
 - Record decisions, open follow-ups, and concrete progress only when supported
   by user statements or concrete transcript evidence.
@@ -87,8 +103,17 @@ Rules:
   hierarchy and use section headings rather than nesting top-level sections as
   bullets.
 - Working memory describes only this thread/session. Remove claims that this memory is available in other sessions, new threads, or cross-thread profiles unless an observation explicitly says the product provides that.
+- Aggressively prune non-objective material from thread working memory.
 - Preserve useful existing state.
-- Add durable new facts, preferences, goals, decisions, constraints, and open follow-ups.
+- Add only current-session objective, objective-specific decisions,
+  objective-specific constraints, objective-specific uncertainties, task state,
+  concrete progress, active items, and open follow-ups.
+- Remove stable user identity, general communication style, durable preferences,
+  and agent/persona facts unless they are needed as session-specific task state.
+- When durable preferences are relevant to this thread:
+  rewrite broad durable preferences into objective-specific constraints instead of copying them. For example:
+  "For this task, do not run evals" instead of
+  "User never wants evals run".
 - Replace stale or contradicted items with the latest state.
 - Move or remove stale items only when observations show they were corrected,
   resolved, abandoned, or superseded.
@@ -122,6 +147,7 @@ export interface RunObservationalCycleOpts {
 		structured: boolean;
 		schema?: z.ZodObject<z.ZodRawShape>;
 	};
+	memoryProfile?: SerializedMessageList['memoryProfile'];
 	observe?: ObserveFn;
 	compact?: CompactFn;
 	trigger?: ObservationalMemoryTrigger;
@@ -189,6 +215,7 @@ async function runInsideLock(
 			now,
 			trigger,
 			gap,
+			memoryProfile: opts.memoryProfile,
 			telemetry,
 		});
 	} catch (error) {
@@ -287,6 +314,7 @@ export function buildDefaultObserveFn(model: ModelConfig, observerPrompt?: strin
 			ctx.cursor ? `Last observed message time: ${ctx.cursor.lastObservedAt.toISOString()}` : '',
 			`Trigger: ${ctx.trigger.type}`,
 			ctx.gap ? `Computed temporal gap:\n${renderGapContext(ctx.gap)}` : '',
+			renderMemoryProfileContext(ctx.memoryProfile),
 			`Recent transcript:\n${renderTranscript(ctx.deltaMessages)}`,
 		]
 			.filter(Boolean)
@@ -301,6 +329,22 @@ export function buildDefaultObserveFn(model: ModelConfig, observerPrompt?: strin
 
 		return parseObservationJsonLines(text, ctx.threadId);
 	};
+}
+
+function renderMemoryProfileContext(
+	memoryProfile: SerializedMessageList['memoryProfile'] | undefined,
+): string {
+	const persona = memoryProfile?.persona?.trim();
+	const user = memoryProfile?.user?.trim();
+	if (!persona && !user) return '';
+
+	return [
+		'Known durable profiles (do not copy into thread working memory):',
+		persona ? `<persona>\n${persona}\n</persona>` : '',
+		user ? `<user>\n${user}\n</user>` : '',
+	]
+		.filter(Boolean)
+		.join('\n');
 }
 
 function getGapThresholdMs(opts: RunObservationalCycleOpts): number {

@@ -96,11 +96,69 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
+	// --- Mutable memory profiles (optional) ---
+	getMemoryProfile?(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
+	saveMemoryProfile?(
+		scope: MemoryProfileScope,
+		content: string,
+		metadata?: JSONObject | null,
+	): Promise<MemoryProfile>;
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
 	/** Return a serializable descriptor of this backend for schema persistence. */
 	describe(): MemoryDescriptor;
+}
+
+export interface AgentResourceScope {
+	agentId: string;
+	/** The resource/entity this agent memory belongs to. */
+	resourceId: string;
+}
+
+export type MemoryProfileScopeKind = 'agent' | 'resource';
+
+export interface MemoryProfileScope {
+	scopeKind: MemoryProfileScopeKind;
+	scopeId: string;
+}
+
+export interface MemoryProfile {
+	scopeKind: MemoryProfileScopeKind;
+	scopeId: string;
+	content: string;
+	metadata?: JSONObject | null;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface BuiltMemoryProfileStore {
+	getMemoryProfile(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
+	saveMemoryProfile(
+		scope: MemoryProfileScope,
+		content: string,
+		metadata?: JSONObject | null,
+	): Promise<MemoryProfile>;
+}
+
+export interface MemoryProfilePrompts {
+	/** Custom profile update instructions. Replaces the default template entirely. */
+	profileUpdate?: string;
+}
+
+export interface MemoryProfilesConfig {
+	/**
+	 * False disables an otherwise persisted JSON config. Calling `Memory.profiles()`
+	 * enables profile loading and profile updates by default.
+	 */
+	enabled?: boolean;
+	/**
+	 * Non-secret context about the agent used only by profile-update prompts to
+	 * decide what belongs in the agent-scoped persona profile.
+	 */
+	agentDescription?: string;
+	/** Override the default prompt templates. */
+	prompts?: MemoryProfilePrompts;
 }
 
 // --- Semantic Recall Config ---
@@ -140,6 +198,7 @@ export interface MemoryConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
+	profiles?: MemoryProfilesConfig;
 	titleGeneration?: TitleGenerationConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 }

@@ -819,6 +819,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			lastMessages: this.memoryConfig?.lastMessages,
 			workingMemory: this.memoryConfig?.workingMemory,
 			semanticRecall: this.memoryConfig?.semanticRecall,
+			profiles: this.memoryConfig?.profiles,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,

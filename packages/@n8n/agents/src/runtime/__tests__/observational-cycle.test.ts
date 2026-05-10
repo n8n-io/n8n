@@ -332,6 +332,14 @@ describe('runObservationalCycle', () => {
 		expect(call.system).toBe(DEFAULT_OBSERVER_PROMPT);
 		expect(call.system).toContain('category');
 		expect(call.system).toContain('Do not record assistant-only uncertainty');
+		expect(call.system).toContain('Extract only current-session state');
+		expect(call.system).toContain('Thread working memory is objective-driven');
+		expect(call.system).toContain('objective-specific decisions');
+		expect(call.system).toContain('objective-specific uncertainties');
+		expect(call.system).toContain('Do not record stable user identity');
+		expect(call.system).toContain('Do not record general user preferences');
+		expect(call.system).toContain('If a durable preference is relevant to the active objective');
+		expect(call.system).toContain('record only the objective-specific application');
 		expect(call.system).toContain(
 			'Record a follow-up or active item only when the user asks for it',
 		);
@@ -349,6 +357,29 @@ describe('runObservationalCycle', () => {
 		expect(call.prompt).toContain('Computed temporal gap:');
 		expect(call.prompt).toContain('User returned after 2h of inactivity.');
 		expect(call.prompt).toContain('[2026-05-07T12:00:00.000Z] [user] later');
+	});
+
+	it('passes durable profiles to the default observer as exclusion context', async () => {
+		const mem = new InMemoryMemory();
+		await save(mem, [msg('m1', 'current task is verifying the prompt')]);
+		mockGenerateText.mockResolvedValue({ text: '' });
+
+		await runObservationalCycle(
+			opts(mem, {
+				observe: undefined,
+				memoryProfile: {
+					persona: 'This agent specializes in memory debugging.',
+					user: 'The user prefers concise answers.',
+				},
+			}),
+		);
+
+		const call = mockGenerateText.mock.calls[0][0];
+		expect(call.prompt).toContain('Known durable profiles');
+		expect(call.prompt).toContain(
+			'<persona>\nThis agent specializes in memory debugging.\n</persona>',
+		);
+		expect(call.prompt).toContain('<user>\nThe user prefers concise answers.\n</user>');
 	});
 
 	it('groups queued rows with timestamps and durations in the default compactor prompt', async () => {
@@ -375,6 +406,13 @@ describe('runObservationalCycle', () => {
 		expect(compactorCall.system).toContain(
 			'Remove claims that this memory is available in other sessions, new threads, or cross-thread profiles',
 		);
+		expect(compactorCall.system).toContain('Add only current-session objective');
+		expect(compactorCall.system).toContain('Aggressively prune non-objective material');
+		expect(compactorCall.system).toContain('objective-specific decisions');
+		expect(compactorCall.system).toContain(
+			'rewrite broad durable preferences into objective-specific constraints',
+		);
+		expect(compactorCall.system).toContain('Remove stable user identity');
 		expect(compactorCall.system).toContain('Do not write assistant self-assessments');
 		expect(compactorCall.system).toContain('memory worked');
 		expect(compactorCall.system).toContain('A queued row based only on an assistant claim');
