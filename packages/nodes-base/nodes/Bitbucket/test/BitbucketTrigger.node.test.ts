@@ -80,6 +80,37 @@ describe('BitbucketTrigger', () => {
 			});
 		});
 
+		it('should return success for scoped API tokens that return account_id without username', async () => {
+			const mockCredentials: ICredentialsDecrypted = {
+				id: 'test-cred-id',
+				name: 'Test Bitbucket Credentials',
+				type: 'bitbucketApi',
+				data: {
+					username: 'testuser',
+					appPassword: 'testpassword',
+				},
+			};
+
+			// Scoped API tokens return account_id and uuid but no username field
+			const mockResponse = {
+				account_id: '{abc12345-1234-1234-1234-abc123456789}',
+				uuid: '{abc12345-1234-1234-1234-abc123456789}',
+				display_name: 'Test User',
+			};
+
+			mockCredentialTestFunctions.helpers.request.mockResolvedValue(mockResponse);
+
+			const result = await bitbucketTrigger.methods.credentialTest.bitbucketApiTest.call(
+				mockCredentialTestFunctions,
+				mockCredentials,
+			);
+
+			expect(result).toEqual({
+				status: 'OK',
+				message: 'Authentication successful!',
+			});
+		});
+
 		it('should return error for invalid credentials', async () => {
 			const mockCredentials: ICredentialsDecrypted = {
 				id: 'test-cred-id',
@@ -91,6 +122,7 @@ describe('BitbucketTrigger', () => {
 				},
 			};
 
+			// Invalid credentials return an error response with no account_id or uuid
 			const mockResponse = {
 				error: 'Invalid credentials',
 			};
