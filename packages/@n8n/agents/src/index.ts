@@ -3,7 +3,7 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
-	BuiltCrossThreadFactStore,
+	BuiltEpisodicMemoryStore,
 	BuiltMemoryProfileStore,
 	BuiltGuardrail,
 	BuiltEval,
@@ -34,13 +34,13 @@ export type {
 	MemoryProfile,
 	MemoryProfileScope,
 	MemoryProfileScopeKind,
-	CrossThreadFact,
-	CrossThreadFactPrompts,
-	CrossThreadFactSearchOptions,
-	CrossThreadFactsConfig,
-	CrossThreadMemoryScope,
-	NewCrossThreadFact,
-	RetrievedCrossThreadFact,
+	EpisodicMemoryEntry,
+	EpisodicMemoryPrompts,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryConfig,
+	EpisodicMemoryScope,
+	NewEpisodicMemoryEntry,
+	RetrievedEpisodicMemoryEntry,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -133,12 +133,12 @@ export {
 	DEFAULT_OBSERVER_PROMPT,
 } from './runtime/observational-cycle';
 export {
-	DEFAULT_CROSS_THREAD_FACT_EXTRACTION_PROMPT,
-	DEFAULT_CROSS_THREAD_PROFILE_UPDATE_PROMPT,
+	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
+	DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
 	DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION,
-	rankCrossThreadFacts,
+	rankEpisodicMemoryEntries,
 	RECALL_MEMORY_TOOL_NAME,
-} from './runtime/cross-thread-facts';
+} from './runtime/episodic-memory';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 

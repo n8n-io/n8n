@@ -97,13 +97,13 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
-	// --- Cross-thread fact memory (optional) ---
-	saveCrossThreadFacts?(facts: NewCrossThreadFact[]): Promise<CrossThreadFact[]>;
-	searchCrossThreadFacts?(
-		scope: CrossThreadMemoryScope,
+	// --- Episodic memory entries (optional) ---
+	saveEpisodicMemoryEntries?(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
+	searchEpisodicMemoryEntries?(
+		scope: EpisodicMemoryScope,
 		query: string,
-		opts?: CrossThreadFactSearchOptions,
-	): Promise<RetrievedCrossThreadFact[]>;
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]>;
 	// --- Mutable memory profiles (optional) ---
 	getMemoryProfile?(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
 	saveMemoryProfile?(
@@ -118,9 +118,9 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-export interface CrossThreadMemoryScope {
+export interface EpisodicMemoryScope {
 	agentId: string;
-	/** n8n maps this to the user id for cross-thread facts. */
+	/** n8n maps this to the user id for episodic memory entries. */
 	resourceId: string;
 }
 
@@ -140,7 +140,7 @@ export interface MemoryProfile {
 	updatedAt: Date;
 }
 
-export interface CrossThreadFact {
+export interface EpisodicMemoryEntry {
 	id: string;
 	agentId: string;
 	resourceId: string;
@@ -155,9 +155,9 @@ export interface CrossThreadFact {
 	metadata?: JSONObject;
 }
 
-export type NewCrossThreadFact = Omit<CrossThreadFact, 'id' | 'updatedAt'>;
+export type NewEpisodicMemoryEntry = Omit<EpisodicMemoryEntry, 'id' | 'updatedAt'>;
 
-export interface RetrievedCrossThreadFact extends CrossThreadFact {
+export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 	lexicalScore: number;
 	vectorScore: number;
 	rrfScore: number;
@@ -165,19 +165,19 @@ export interface RetrievedCrossThreadFact extends CrossThreadFact {
 	finalScore: number;
 }
 
-export interface CrossThreadFactSearchOptions {
+export interface EpisodicMemorySearchOptions {
 	topK?: number;
 	halfLifeDays?: number;
 	queryEmbedding?: number[];
 }
 
-export interface BuiltCrossThreadFactStore {
-	saveCrossThreadFacts(facts: NewCrossThreadFact[]): Promise<CrossThreadFact[]>;
-	searchCrossThreadFacts(
-		scope: CrossThreadMemoryScope,
+export interface BuiltEpisodicMemoryStore {
+	saveEpisodicMemoryEntries(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
+	searchEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
 		query: string,
-		opts?: CrossThreadFactSearchOptions,
-	): Promise<RetrievedCrossThreadFact[]>;
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]>;
 }
 
 export interface BuiltMemoryProfileStore {
@@ -189,20 +189,18 @@ export interface BuiltMemoryProfileStore {
 	): Promise<MemoryProfile>;
 }
 
-export interface CrossThreadFactPrompts {
-	/** Custom fact extraction instructions. Replaces the default template entirely. */
+export interface EpisodicMemoryPrompts {
+	/** Custom entry extraction instructions. Replaces the default template entirely. */
 	extraction?: string;
 	/** Custom recall_memory usage instruction. Replaces the default template entirely. */
 	recallToolInstruction?: string;
 	/** Custom instruction text used inside the auto-injected <memory> section. */
 	injection?: string;
-	/** Custom profile update instructions. Replaces the default template entirely. */
-	profileUpdate?: string;
 }
 
-export interface CrossThreadFactsConfig {
+export interface EpisodicMemoryConfig {
 	/**
-	 * False disables an otherwise persisted JSON config. Calling `Memory.crossThreadFacts()`
+	 * False disables an otherwise persisted JSON config. Calling `Memory.episodicMemory()`
 	 * enables the feature by default.
 	 */
 	enabled?: boolean;
@@ -211,34 +209,23 @@ export interface CrossThreadFactsConfig {
 	/** @default 180 */
 	halfLifeDays?: number;
 	/** @default 5 */
-	maxFactsPerTurn?: number;
-	/** @default 240 */
-	maxFactLength?: number;
+	maxEntriesPerTurn?: number;
+	/** @default 2000 */
+	maxEntryLength?: number;
 	/**
 	 * When true, wait for post-turn extraction before completing the run.
 	 * Defaults to false so extraction runs in the background.
 	 */
 	sync?: boolean;
 	/**
-	 * When true, retrieve and inject relevant facts into the system prompt before each turn.
+	 * When true, retrieve and inject relevant entries into the system prompt before each turn.
 	 * Defaults to true. recall_memory remains available for deliberate lookup.
 	 */
 	autoInject?: boolean;
-	/** Number of facts to inject before each turn. @default 12 */
+	/** Number of entries to inject before each turn. @default 12 */
 	autoInjectTopK?: number;
 	/**
-	 * Non-secret context about the agent used only by profile-update prompts to
-	 * decide what belongs in the agent-scoped persona profile.
-	 */
-	agentDescription?: string;
-	/**
-	 * When true, accepted cross-thread facts are offered to a prompt-based profile
-	 * updater that may rewrite optional agent/resource profiles on the configured
-	 * memory backend. Defaults to false; SDK consumers opt into profile mutation.
-	 */
-	profileUpdate?: boolean;
-	/**
-	 * Skip storing a candidate fact when an existing scoped fact or earlier
+	 * Skip storing a candidate entry when an existing scoped entry or earlier
 	 * candidate has vector similarity greater than or equal to this threshold.
 	 * Set to false to keep exact-hash dedupe only.
 	 *
@@ -250,10 +237,30 @@ export interface CrossThreadFactsConfig {
 	 * credentials or read provider API keys from the environment for this feature.
 	 */
 	embedder?: EmbeddingModel;
-	/** Non-secret model identifier persisted with stored fact embeddings for inspection/debugging. */
+	/** Non-secret model identifier persisted with stored entry embeddings for inspection/debugging. */
 	embeddingModel?: string;
 	/** Override the default prompt templates. */
-	prompts?: CrossThreadFactPrompts;
+	prompts?: EpisodicMemoryPrompts;
+}
+
+export interface MemoryProfilePrompts {
+	/** Custom profile update instructions. Replaces the default template entirely. */
+	profileUpdate?: string;
+}
+
+export interface MemoryProfilesConfig {
+	/**
+	 * False disables an otherwise persisted JSON config. Calling `Memory.profiles()`
+	 * enables profile loading and profile updates by default.
+	 */
+	enabled?: boolean;
+	/**
+	 * Non-secret context about the agent used only by profile-update prompts to
+	 * decide what belongs in the agent-scoped persona profile.
+	 */
+	agentDescription?: string;
+	/** Override the default prompt templates. */
+	prompts?: MemoryProfilePrompts;
 }
 
 // --- Semantic Recall Config ---
@@ -293,7 +300,8 @@ export interface MemoryConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
-	crossThreadFacts?: CrossThreadFactsConfig;
+	episodicMemory?: EpisodicMemoryConfig;
+	profiles?: MemoryProfilesConfig;
 	titleGeneration?: TitleGenerationConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 }

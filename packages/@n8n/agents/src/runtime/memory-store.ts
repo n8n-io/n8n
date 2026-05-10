@@ -1,14 +1,14 @@
-import { rankCrossThreadFacts } from './cross-thread-facts';
+import { rankEpisodicMemoryEntries } from './episodic-memory';
 import type {
 	BuiltMemory,
-	CrossThreadFact,
-	CrossThreadFactSearchOptions,
-	CrossThreadMemoryScope,
+	EpisodicMemoryEntry,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryScope,
 	MemoryDescriptor,
 	MemoryProfile,
 	MemoryProfileScope,
-	NewCrossThreadFact,
-	RetrievedCrossThreadFact,
+	NewEpisodicMemoryEntry,
+	RetrievedEpisodicMemoryEntry,
 	Thread,
 } from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
@@ -80,7 +80,7 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 
 	private locksByScope = new Map<string, ObservationLockHandle>();
 
-	private crossThreadFacts: CrossThreadFact[] = [];
+	private episodicMemory: EpisodicMemoryEntry[] = [];
 
 	private memoryProfilesByScope = new Map<string, MemoryProfile>();
 
@@ -206,17 +206,19 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
 	}
 
-	// ── Cross-thread facts ──────────────────────────────────────────────
+	// ── Episodic memory entries ──────────────────────────────────────────────
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async saveCrossThreadFacts(facts: NewCrossThreadFact[]): Promise<CrossThreadFact[]> {
-		const saved: CrossThreadFact[] = [];
-		for (const fact of facts) {
-			const duplicate = this.crossThreadFacts.find(
+	async saveEpisodicMemoryEntries(
+		entries: NewEpisodicMemoryEntry[],
+	): Promise<EpisodicMemoryEntry[]> {
+		const saved: EpisodicMemoryEntry[] = [];
+		for (const entry of entries) {
+			const duplicate = this.episodicMemory.find(
 				(existing) =>
-					existing.agentId === fact.agentId &&
-					existing.resourceId === fact.resourceId &&
-					existing.contentHash === fact.contentHash,
+					existing.agentId === entry.agentId &&
+					existing.resourceId === entry.resourceId &&
+					existing.contentHash === entry.contentHash,
 			);
 			if (duplicate) {
 				saved.push({ ...duplicate });
@@ -224,29 +226,29 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 			}
 
 			const now = new Date();
-			const row: CrossThreadFact = {
-				...fact,
+			const row: EpisodicMemoryEntry = {
+				...entry,
 				id: crypto.randomUUID(),
-				createdAt: new Date(fact.createdAt),
+				createdAt: new Date(entry.createdAt),
 				updatedAt: now,
 			};
-			this.crossThreadFacts.push(row);
+			this.episodicMemory.push(row);
 			saved.push({ ...row });
 		}
 		return saved;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async searchCrossThreadFacts(
-		scope: CrossThreadMemoryScope,
+	async searchEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
 		query: string,
-		opts?: CrossThreadFactSearchOptions,
-	): Promise<RetrievedCrossThreadFact[]> {
-		const scoped = this.crossThreadFacts
-			.filter((fact) => fact.agentId === scope.agentId && fact.resourceId === scope.resourceId)
-			.map((fact) => ({ ...fact, createdAt: new Date(fact.createdAt) }));
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]> {
+		const scoped = this.episodicMemory
+			.filter((entry) => entry.agentId === scope.agentId && entry.resourceId === scope.resourceId)
+			.map((entry) => ({ ...entry, createdAt: new Date(entry.createdAt) }));
 
-		return rankCrossThreadFacts(scoped, query, opts);
+		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
 
 	// ── Mutable memory profiles ──────────────────────────────────────────

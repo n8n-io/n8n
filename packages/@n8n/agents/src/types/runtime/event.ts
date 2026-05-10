@@ -32,7 +32,7 @@ export type AgentEventData =
 			 * (e.g. the observer/compactor). Absent on the main agent loop's
 			 * own errors.
 			 */
-			source?: 'observer' | 'compactor' | 'cross-thread-memory';
+			source?: 'observer' | 'compactor' | 'episodic-memory' | 'memory-profiles';
 	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;

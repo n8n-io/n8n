@@ -28,13 +28,13 @@ afterEach(async () => {
 	agents.length = 0;
 });
 
-describe('cross-thread facts', () => {
-	it('stores a durable fact and answers a later thread from injected memory', async () => {
+describe('episodic memory entries', () => {
+	it('stores a durable entry and answers a later thread from injected memory', async () => {
 		const { memory } = createInMemoryAgentMemory();
 		const mem = new Memory()
 			.storage(memory)
 			.lastMessages(1)
-			.crossThreadFacts({
+			.episodicMemory({
 				sync: true,
 				topK: 3,
 				embedder: createEmbeddingModel('openai/text-embedding-3-small', {
@@ -43,18 +43,18 @@ describe('cross-thread facts', () => {
 				embeddingModel: 'openai/text-embedding-3-small',
 				prompts: {
 					extraction:
-						'Extract durable user facts from the transcript. Return only JSON: {"facts":[{"content":"..."}]}. Include exact codenames.',
+						'Extract durable user entries from the transcript. Return only JSON: {"entries":[{"content":"..."}]}. Include exact codenames.',
 				},
 			});
 
-		const agent = new Agent('cross-thread-facts-test')
+		const agent = new Agent('episodic-memory-test')
 			.model({ id: getModel('anthropic'), apiKey: requireEnv(ANTHROPIC_API_KEY_ENV) })
 			.instructions(
 				[
-					'You are testing cross-thread fact memory.',
-					'Use the <memory> section when it contains enough relevant facts.',
+					'You are testing episodic memory.',
+					'Use the <memory> section when it contains enough relevant entries.',
 					'Only call recall_memory when the injected memory is insufficient.',
-					'If recall_memory returns facts, answer using those facts exactly.',
+					'If recall_memory returns entries, answer using those entries exactly.',
 					'Be concise.',
 				].join('\n'),
 			)
@@ -63,7 +63,7 @@ describe('cross-thread facts', () => {
 
 		const suffix = Date.now().toString(36);
 		const codename = `Nova-${suffix}`;
-		const agentId = 'agent-cross-thread-facts-test';
+		const agentId = 'agent-episodic-memory-test';
 		const resourceId = `user-${suffix}`;
 		const options = {
 			persistence: {
@@ -74,16 +74,16 @@ describe('cross-thread facts', () => {
 		};
 
 		await agent.generate(
-			`Remember this durable user fact for later: my cross-thread spike codename is ${codename}. Reply exactly: noted.`,
+			`Remember this durable user entry for later: my cross-thread spike codename is ${codename}. Reply exactly: noted.`,
 			options,
 		);
 
-		const storedFacts = await memory.searchCrossThreadFacts(
+		const storedFacts = await memory.searchEpisodicMemoryEntries(
 			{ agentId, resourceId },
 			'cross-thread spike codename',
 			{ topK: 3 },
 		);
-		expect(storedFacts.map((fact) => fact.content).join('\n')).toContain(codename);
+		expect(storedFacts.map((entry) => entry.content).join('\n')).toContain(codename);
 
 		const result = await agent.generate(
 			'What cross-thread spike codename did I tell you? Use available memory.',
@@ -98,7 +98,7 @@ describe('cross-thread facts', () => {
 		const mem = new Memory()
 			.storage(memory)
 			.lastMessages(1)
-			.crossThreadFacts({
+			.episodicMemory({
 				autoInject: false,
 				sync: true,
 				topK: 3,
@@ -108,17 +108,17 @@ describe('cross-thread facts', () => {
 				embeddingModel: 'openai/text-embedding-3-small',
 				prompts: {
 					extraction:
-						'Extract durable user facts from the transcript. Return only JSON: {"facts":[{"content":"..."}]}. Include exact codenames.',
+						'Extract durable user entries from the transcript. Return only JSON: {"entries":[{"content":"..."}]}. Include exact codenames.',
 				},
 			});
 
-		const agent = new Agent('cross-thread-facts-tool-test')
+		const agent = new Agent('episodic-memory-tool-test')
 			.model({ id: getModel('anthropic'), apiKey: requireEnv(ANTHROPIC_API_KEY_ENV) })
 			.instructions(
 				[
-					'You are testing cross-thread fact memory.',
+					'You are testing episodic memory.',
 					'When the user asks about information they previously shared, call recall_memory before answering.',
-					'If recall_memory returns facts, answer using those facts exactly.',
+					'If recall_memory returns entries, answer using those entries exactly.',
 					'Be concise.',
 				].join('\n'),
 			)
@@ -127,7 +127,7 @@ describe('cross-thread facts', () => {
 
 		const suffix = Date.now().toString(36);
 		const codename = `Orion-${suffix}`;
-		const agentId = 'agent-cross-thread-facts-tool-test';
+		const agentId = 'agent-episodic-memory-tool-test';
 		const resourceId = `user-${suffix}`;
 		const options = {
 			persistence: {
@@ -138,7 +138,7 @@ describe('cross-thread facts', () => {
 		};
 
 		await agent.generate(
-			`Remember this durable user fact for later: my cross-thread tool codename is ${codename}. Reply exactly: noted.`,
+			`Remember this durable user entry for later: my cross-thread tool codename is ${codename}. Reply exactly: noted.`,
 			options,
 		);
 

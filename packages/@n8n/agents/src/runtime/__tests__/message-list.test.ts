@@ -124,7 +124,7 @@ describe('AgentMessageList — forLlm working memory', () => {
 	it('does not inject the working-memory template when no state has been saved', () => {
 		const list = new AgentMessageList();
 		list.workingMemory = {
-			template: '# Thread memory\n- User facts:',
+			template: '# Thread memory\n- User entries:',
 			structured: false,
 			state: null,
 		};
@@ -166,15 +166,15 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).not.toContain('Current template');
 	});
 
-	it('renders persona, user, cross-thread memory, and session memory as separate sections', () => {
+	it('renders persona, user, episodic memory, and session memory inside memory_blocks', () => {
 		const list = new AgentMessageList();
 		list.memoryProfile = {
 			persona: 'This agent specializes in n8n memory work.',
 			user: 'The user prefers concise answers.',
 		};
-		list.crossThreadMemory = {
+		list.episodicMemory = {
 			section: '<memory>\n- The user is testing memory retrieval.\n</memory>',
-			facts: ['The user is testing memory retrieval.'],
+			entries: ['The user is testing memory retrieval.'],
 		};
 		list.workingMemory = {
 			template: '# Thread memory',
@@ -184,8 +184,27 @@ describe('AgentMessageList — forLlm working memory', () => {
 
 		const prompt = systemContent(list);
 
-		expect(prompt).toContain('<persona>\nThis agent specializes in n8n memory work.\n</persona>');
-		expect(prompt).toContain('<user>\nThe user prefers concise answers.\n</user>');
+		expect(prompt).toContain('<memory_blocks>');
+		expect(prompt).toContain(
+			[
+				'<persona>',
+				'<description>Durable behavior rules this agent should follow with this user.</description>',
+				'<value>',
+				'This agent specializes in n8n memory work.',
+				'</value>',
+				'</persona>',
+			].join('\n'),
+		);
+		expect(prompt).toContain(
+			[
+				'<user>',
+				'<description>Stable user preferences and context shared across agents.</description>',
+				'<value>',
+				'The user prefers concise answers.',
+				'</value>',
+				'</user>',
+			].join('\n'),
+		);
 		expect(prompt).toContain('<memory>\n- The user is testing memory retrieval.\n</memory>');
 		expect(prompt).toContain('<session-memory>');
 		expect(prompt).toContain('Current objective: verify prompt sections.');
@@ -198,7 +217,7 @@ describe('AgentMessageList — forLlm working memory', () => {
 		const list = new AgentMessageList();
 		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);
 		list.workingMemory = {
-			template: '# Thread memory\n- User facts:',
+			template: '# Thread memory\n- User entries:',
 			structured: false,
 			state: null,
 		};
@@ -290,12 +309,12 @@ describe('AgentMessageList — deserialize', () => {
 		expect(newMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
 	});
 
-	it('preserves injected profile and cross-thread memory context across serialization', () => {
+	it('preserves injected profile and episodic memory context across serialization', () => {
 		const list = new AgentMessageList();
 		list.memoryProfile = { persona: 'Agent profile.', user: 'Resource profile.' };
-		list.crossThreadMemory = {
-			section: '<memory>\n- Known fact.\n</memory>',
-			facts: ['Known fact.'],
+		list.episodicMemory = {
+			section: '<memory>\n- Known entry.\n</memory>',
+			entries: ['Known entry.'],
 		};
 
 		const restored = AgentMessageList.deserialize(list.serialize());
@@ -304,9 +323,9 @@ describe('AgentMessageList — deserialize', () => {
 			persona: 'Agent profile.',
 			user: 'Resource profile.',
 		});
-		expect(restored.crossThreadMemory).toEqual({
-			section: '<memory>\n- Known fact.\n</memory>',
-			facts: ['Known fact.'],
+		expect(restored.episodicMemory).toEqual({
+			section: '<memory>\n- Known entry.\n</memory>',
+			entries: ['Known entry.'],
 		});
 	});
 });

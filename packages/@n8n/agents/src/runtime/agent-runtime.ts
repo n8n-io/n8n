@@ -13,12 +13,13 @@ import type {
 	BuiltTelemetry,
 	BuiltTool,
 	CheckpointStore,
-	CrossThreadFactsConfig,
+	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
 	GoogleThinkingConfig,
 	ObservationalMemoryConfig,
 	OpenAIThinkingConfig,
+	MemoryProfilesConfig,
 	PendingToolCall,
 	RunOptions,
 	SemanticRecallConfig,
@@ -34,13 +35,15 @@ import type {
 import { BackgroundTaskTracker } from './background-task-tracker';
 import {
 	createRecallMemoryTool,
-	extractAndStoreCrossThreadFacts,
-	hasCrossThreadFactStore,
-	isCrossThreadFactsEnabled,
-	loadCrossThreadFactsForInjection,
+	extractAndStoreEpisodicMemory,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	isMemoryProfilesEnabled,
+	loadEpisodicMemoryForInjection,
 	loadMemoryProfileContext,
 	RECALL_MEMORY_TOOL_NAME,
-} from './cross-thread-facts';
+	updateMemoryProfilesFromTurn,
+} from './episodic-memory';
 import { AgentEventBus } from './event-bus';
 import { saveMessagesToThread } from './memory-store';
 import {
@@ -102,7 +105,8 @@ export interface AgentRuntimeConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
-	crossThreadFacts?: CrossThreadFactsConfig;
+	episodicMemory?: EpisodicMemoryConfig;
+	profiles?: MemoryProfilesConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
@@ -482,7 +486,7 @@ export class AgentRuntime {
 		}
 
 		await this.setListMemoryProfileConfig(list, options?.persistence);
-		await this.setListCrossThreadMemoryConfig(list, input, options?.persistence);
+		await this.setListEpisodicMemoryConfig(list, input, options?.persistence);
 
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
 		await this.setListWorkingMemoryConfig(list, options?.persistence);
@@ -491,17 +495,17 @@ export class AgentRuntime {
 		return list;
 	}
 
-	private async setListCrossThreadMemoryConfig(
+	private async setListEpisodicMemoryConfig(
 		list: AgentMessageList,
 		input: AgentMessage[],
 		persistence: AgentPersistenceOptions | undefined,
 	): Promise<void> {
-		const crossThreadFacts = this.config.crossThreadFacts;
+		const episodicMemory = this.config.episodicMemory;
 		if (
-			!isCrossThreadFactsEnabled(crossThreadFacts) ||
-			crossThreadFacts.autoInject === false ||
+			!isEpisodicMemoryEnabled(episodicMemory) ||
+			episodicMemory.autoInject === false ||
 			!this.config.memory ||
-			!hasCrossThreadFactStore(this.config.memory) ||
+			!hasEpisodicMemoryStore(this.config.memory) ||
 			!persistence?.agentId ||
 			!persistence.resourceId
 		) {
@@ -509,24 +513,24 @@ export class AgentRuntime {
 		}
 
 		try {
-			const injection = await loadCrossThreadFactsForInjection({
+			const injection = await loadEpisodicMemoryForInjection({
 				memory: this.config.memory,
-				config: crossThreadFacts,
+				config: episodicMemory,
 				persistence,
 				input,
 			});
 			if (injection) {
-				list.crossThreadMemory = {
+				list.episodicMemory = {
 					section: injection.section,
-					facts: injection.facts.map((fact) => fact.content),
+					entries: injection.entries.map((entry) => entry.content),
 				};
 			}
 		} catch (error) {
 			this.eventBus.emit({
 				type: AgentEvent.Error,
-				message: 'Cross-thread fact prefetch failed',
+				message: 'Episodic memory entry prefetch failed',
 				error,
-				source: 'cross-thread-memory',
+				source: 'episodic-memory',
 			});
 		}
 	}
@@ -535,9 +539,8 @@ export class AgentRuntime {
 		list: AgentMessageList,
 		persistence: AgentPersistenceOptions | undefined,
 	): Promise<void> {
-		const crossThreadFacts = this.config.crossThreadFacts;
 		if (
-			!isCrossThreadFactsEnabled(crossThreadFacts) ||
+			!isMemoryProfilesEnabled(this.config.profiles) ||
 			!this.config.memory ||
 			!persistence?.resourceId
 		) {
@@ -554,7 +557,7 @@ export class AgentRuntime {
 				type: AgentEvent.Error,
 				message: 'Memory profile load failed',
 				error,
-				source: 'cross-thread-memory',
+				source: 'memory-profiles',
 			});
 		}
 	}
@@ -1248,8 +1251,12 @@ export class AgentRuntime {
 			delta,
 		);
 
-		if (isCrossThreadFactsEnabled(this.config.crossThreadFacts)) {
-			await this.dispatchCrossThreadFacts(options.persistence, delta, list);
+		if (isEpisodicMemoryEnabled(this.config.episodicMemory)) {
+			await this.dispatchEpisodicMemoryEntries(options.persistence, delta, list);
+		}
+
+		if (isMemoryProfilesEnabled(this.config.profiles)) {
+			this.dispatchMemoryProfileUpdate(options.persistence, delta, list);
 		}
 
 		// Generate and save embeddings if semantic recall is configured
@@ -1264,39 +1271,63 @@ export class AgentRuntime {
 		await this.dispatchObservationalMemory(options.persistence, list.memoryProfile);
 	}
 
-	private async dispatchCrossThreadFacts(
+	private async dispatchEpisodicMemoryEntries(
 		persistence: AgentPersistenceOptions,
 		messages: AgentDbMessage[],
 		list: AgentMessageList,
 	): Promise<void> {
 		if (
 			!this.config.memory ||
-			!this.config.crossThreadFacts ||
-			!hasCrossThreadFactStore(this.config.memory)
+			!this.config.episodicMemory ||
+			!hasEpisodicMemoryStore(this.config.memory)
 		) {
 			return;
 		}
 
-		const promise = extractAndStoreCrossThreadFacts({
+		const promise = extractAndStoreEpisodicMemory({
 			memory: this.config.memory,
-			config: this.config.crossThreadFacts,
+			config: this.config.episodicMemory,
 			model: this.config.model,
 			threadId: persistence.threadId,
 			persistence,
 			messages,
 			memoryProfile: list.memoryProfile,
-			knownFacts: list.crossThreadMemory?.facts,
+			knownEntries: list.episodicMemory?.entries,
 			eventBus: this.eventBus,
 		}).then(
 			() => undefined,
 			() => undefined,
 		);
 
-		if (this.config.crossThreadFacts.sync) {
+		if (this.config.episodicMemory.sync) {
 			await promise;
 		} else {
 			this.backgroundTasks.track(promise);
 		}
+	}
+
+	private dispatchMemoryProfileUpdate(
+		persistence: AgentPersistenceOptions,
+		messages: AgentDbMessage[],
+		list: AgentMessageList,
+	): void {
+		if (!this.config.memory || !this.config.profiles) return;
+		if (!persistence.agentId || !persistence.resourceId) return;
+
+		const promise = updateMemoryProfilesFromTurn({
+			memory: this.config.memory,
+			config: this.config.profiles,
+			model: this.config.model,
+			scope: { agentId: persistence.agentId, resourceId: persistence.resourceId },
+			currentProfile: list.memoryProfile,
+			messages,
+			eventBus: this.eventBus,
+		}).then(
+			() => undefined,
+			() => undefined,
+		);
+
+		this.backgroundTasks.track(promise);
 	}
 
 	private async saveEmbeddingsForMessages(
@@ -1843,26 +1874,26 @@ export class AgentRuntime {
 		tools: BuiltTool[],
 		persistence: AgentPersistenceOptions | undefined,
 	): BuiltTool[] {
-		const crossThreadFacts = this.config.crossThreadFacts;
-		if (!isCrossThreadFactsEnabled(crossThreadFacts)) {
+		const episodicMemory = this.config.episodicMemory;
+		if (!isEpisodicMemoryEnabled(episodicMemory)) {
 			return tools;
 		}
 
-		if (!this.config.memory || !hasCrossThreadFactStore(this.config.memory)) {
+		if (!this.config.memory || !hasEpisodicMemoryStore(this.config.memory)) {
 			throw new Error(
-				'Cross-thread facts require a memory backend with cross-thread fact storage.',
+				'Episodic memory entries require a memory backend with episodic memory entry storage.',
 			);
 		}
 
 		if (tools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
-			throw new Error(`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved by cross-thread memory.`);
+			throw new Error(`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved by episodic memory.`);
 		}
 
 		return [
 			...tools,
 			createRecallMemoryTool({
 				memory: this.config.memory,
-				config: crossThreadFacts,
+				config: episodicMemory,
 				persistence,
 			}),
 		];

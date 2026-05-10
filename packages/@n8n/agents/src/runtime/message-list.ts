@@ -23,9 +23,9 @@ export interface WorkingMemoryContext {
 	instruction?: string;
 }
 
-export interface CrossThreadMemoryContext {
+export interface EpisodicMemoryContext {
 	section: string;
-	facts?: string[];
+	entries?: string[];
 }
 
 export interface MemoryProfileContext {
@@ -122,8 +122,8 @@ export class AgentMessageList {
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
 
-	/** Retrieved fact memory context for this run. Set by buildMessageList / resume. */
-	crossThreadMemory: CrossThreadMemoryContext | undefined;
+	/** Retrieved episodic memory context for this run. Set by buildMessageList / resume. */
+	episodicMemory: EpisodicMemoryContext | undefined;
 
 	/** Mutable profile context for this run. Set by buildMessageList / resume. */
 	memoryProfile: MemoryProfileContext | undefined;
@@ -229,20 +229,39 @@ export class AgentMessageList {
 	 */
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
+		const memoryBlocks: string[] = [];
 
 		const persona = this.memoryProfile?.persona?.trim();
 		if (persona) {
-			systemPrompt += `\n\n<persona>\n${persona}\n</persona>`;
+			memoryBlocks.push(
+				[
+					'<persona>',
+					'<description>Durable behavior rules this agent should follow with this user.</description>',
+					'<value>',
+					persona,
+					'</value>',
+					'</persona>',
+				].join('\n'),
+			);
 		}
 
 		const user = this.memoryProfile?.user?.trim();
 		if (user) {
-			systemPrompt += `\n\n<user>\n${user}\n</user>`;
+			memoryBlocks.push(
+				[
+					'<user>',
+					'<description>Stable user preferences and context shared across agents.</description>',
+					'<value>',
+					user,
+					'</value>',
+					'</user>',
+				].join('\n'),
+			);
 		}
 
-		const crossThreadSection = this.crossThreadMemory?.section.trim();
-		if (crossThreadSection) {
-			systemPrompt += `\n\n${crossThreadSection}`;
+		const episodicSection = this.episodicMemory?.section.trim();
+		if (episodicSection) {
+			memoryBlocks.push(episodicSection);
 		}
 
 		const wmState = this.workingMemory?.state?.trim();
@@ -252,12 +271,25 @@ export class AgentMessageList {
 				this.workingMemory.structured,
 				this.workingMemory.instruction,
 			);
-			systemPrompt +=
-				'\n\n<session-memory>\n' +
-				wmInstruction +
-				'\n\nThread working memory (private, read-only):\n```\n' +
-				wmState +
-				'\n```\n</session-memory>';
+			memoryBlocks.push(
+				[
+					'<session-memory>',
+					'<description>Current-thread objective, state, decisions, and open follow-ups.</description>',
+					'<value>',
+					wmInstruction,
+					'',
+					'Thread working memory (private, read-only):',
+					'```',
+					wmState,
+					'```',
+					'</value>',
+					'</session-memory>',
+				].join('\n'),
+			);
+		}
+
+		if (memoryBlocks.length > 0) {
+			systemPrompt += `\n\n<memory_blocks>\n${memoryBlocks.join('\n\n')}\n</memory_blocks>`;
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions
@@ -289,8 +321,8 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
-			...(this.crossThreadMemory !== undefined && {
-				crossThreadMemory: this.crossThreadMemory,
+			...(this.episodicMemory !== undefined && {
+				episodicMemory: this.episodicMemory,
 			}),
 			...(this.memoryProfile !== undefined && {
 				memoryProfile: this.memoryProfile,
@@ -309,7 +341,7 @@ export class AgentMessageList {
 			if (inputIdSet.has(m.id)) list.inputSet.add(m);
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
 		}
-		list.crossThreadMemory = data.crossThreadMemory;
+		list.episodicMemory = data.episodicMemory;
 		list.memoryProfile = data.memoryProfile;
 		list.sortAllByCreatedAt();
 		return list;

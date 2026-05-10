@@ -9,8 +9,8 @@ export interface SerializedMessageList {
 		persona?: string | null;
 		user?: string | null;
 	};
-	crossThreadMemory?: {
+	episodicMemory?: {
 		section: string;
-		facts?: string[];
+		entries?: string[];
 	};
 }

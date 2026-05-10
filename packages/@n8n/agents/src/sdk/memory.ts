@@ -1,17 +1,18 @@
 import type { z } from 'zod';
 
 import {
-	hasCrossThreadFactStore,
-	isCrossThreadFactsEnabled,
-	withCrossThreadFactDefaults,
-} from '../runtime/cross-thread-facts';
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	withEpisodicMemoryDefaults,
+} from '../runtime/episodic-memory';
 import { InMemoryMemory } from '../runtime/memory-store';
 import { hasObservationStore } from '../runtime/observation-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
-	CrossThreadFactsConfig,
+	EpisodicMemoryConfig,
 	MemoryConfig,
+	MemoryProfilesConfig,
 	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
@@ -93,7 +94,9 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
-	private crossThreadFactsConfig?: CrossThreadFactsConfig;
+	private episodicMemoryConfig?: EpisodicMemoryConfig;
+
+	private profilesConfig?: MemoryProfilesConfig;
 
 	private workingMemorySchema?: ZodObjectSchema;
 
@@ -141,12 +144,22 @@ export class Memory {
 		return this;
 	}
 
-	/** Enable cross-thread durable fact memory and the built-in recall_memory(query) tool. */
-	crossThreadFacts(config: CrossThreadFactsConfig = {}): this {
+	/** Enable episodic memory entries and the built-in recall_memory(query) tool. */
+	episodicMemory(config: EpisodicMemoryConfig = {}): this {
 		if (config.enabled === false) {
-			this.crossThreadFactsConfig = undefined;
+			this.episodicMemoryConfig = undefined;
 		} else {
-			this.crossThreadFactsConfig = config;
+			this.episodicMemoryConfig = config;
+		}
+		return this;
+	}
+
+	/** Enable mutable persona and user memory profiles. */
+	profiles(config: MemoryProfilesConfig = {}): this {
+		if (config.enabled === false) {
+			this.profilesConfig = undefined;
+		} else {
+			this.profilesConfig = config;
 		}
 		return this;
 	}
@@ -271,13 +284,21 @@ export class Memory {
 			}
 		}
 
-		if (isCrossThreadFactsEnabled(this.crossThreadFactsConfig)) {
-			if (!hasCrossThreadFactStore(memory)) {
+		if (isEpisodicMemoryEnabled(this.episodicMemoryConfig)) {
+			if (!hasEpisodicMemoryStore(memory)) {
 				throw new Error(
-					'Cross-thread facts require a storage backend that implements saveCrossThreadFacts() and searchCrossThreadFacts().',
+					'Episodic memory entries require a storage backend that implements saveEpisodicMemoryEntries() and searchEpisodicMemoryEntries().',
 				);
 			}
-			withCrossThreadFactDefaults(this.crossThreadFactsConfig);
+			withEpisodicMemoryDefaults(this.episodicMemoryConfig);
+		}
+
+		if (this.profilesConfig) {
+			if (!memory.getMemoryProfile || !memory.saveMemoryProfile) {
+				throw new Error(
+					'Memory profiles require a storage backend that implements getMemoryProfile() and saveMemoryProfile().',
+				);
+			}
 		}
 
 		let workingMemory: MemoryConfig['workingMemory'];
@@ -307,7 +328,8 @@ export class Memory {
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
-			crossThreadFacts: this.crossThreadFactsConfig,
+			episodicMemory: this.episodicMemoryConfig,
+			profiles: this.profilesConfig,
 			titleGeneration: this.titleGenerationConfig,
 			observationalMemory: this.observationalMemoryConfig,
 		});
