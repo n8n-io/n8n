@@ -48,7 +48,20 @@ export class InstanceAiTestController {
 		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
 
 		await this.memoryService.ensureThread(user.id, threadId);
-		return await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
+		const result = await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
+		// Diagnostic: confirm the seeded thread is visible to subsequent reads.
+		const verify = await this.threadRepo.findOneBy({ id: threadId });
+		const list = await this.memoryService.listThreads(user.id);
+		return {
+			...result,
+			_diag: {
+				threadFoundDirect: !!verify,
+				threadFoundResource: verify?.resourceId,
+				listedThreadIds: list.threads.map((t) => t.id),
+				listedTotal: list.total,
+				userId: user.id,
+			},
+		};
 	}
 
 	@Post('/test/liveness-sweep', { skipAuth: true })
