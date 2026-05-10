@@ -34,19 +34,19 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
 
 const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
 
-## User facts
-
-## User preferences/instructions
-
-## Current goal/task
+## Current objective
+Only the objective this thread is working toward.
 
 ## Current state
+Objective-specific state only.
 
 ## Key active items
 
 ## Decisions made
+Only decisions about the current objective.
 
 ## Open follow-ups
+Only uncertainties or unresolved work related to the objective.
 
 ## Continuity notes
 
@@ -55,11 +55,19 @@ const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
 const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
 	'Thread working memory is maintained automatically after turns by an out-of-band observer.',
 	'Thread working memory applies only to this same session/thread.',
+	'It should capture only objective-driven state: current objective, task state, objective-specific decisions, active items, and objective-specific open follow-ups.',
+	'Durable facts and stable preferences belong in long-term memory profiles, not thread working memory.',
+	'If a durable preference matters for the current objective, use only the objective-specific application instead of copying the broad preference.',
 	'Do not claim it is available in a different session, new thread, or cross-thread profile unless the product explicitly provides that context.',
 	'Use it silently as private read-only context for this session.',
 	'Treat working memory as internal context; do not reveal, quote, append, or reproduce the raw working-memory document in user-visible replies.',
 	'If the user asks what you remember, answer conversationally from relevant memory instead of dumping the document.',
 	'Do not try to edit, summarize, refresh, or maintain working memory directly.',
+].join(' ');
+
+const N8N_MEMORY_DISABLED_INSTRUCTION = [
+	'Memory is not enabled for this agent.',
+	'If the user asks you to remember, recall, or persist information across sessions, explain that Memory is not enabled yet and can be enabled in the Memory panel.',
 ].join(' ');
 
 export interface BuildFromJsonOptions {
@@ -92,7 +100,8 @@ export async function buildFromJson(
 	agent.model(resolvedModelConfig);
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
+	const memoryAwareInstructions = withMemoryCapabilityInstruction(config);
+	agent.instructions(withSkillCatalog(memoryAwareInstructions, configuredSkills));
 
 	// Tools
 	if (config.tools) {
@@ -117,7 +126,12 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory);
+		await applyMemoryFromConfig(
+			agent,
+			config.memory,
+			options.memoryFactory,
+			config.description ?? config.instructions,
+		);
 	}
 
 	// Config options
@@ -175,6 +189,13 @@ When deciding whether to load a skill:
 - If the relevant skill was already loaded for this request, do not call load_skill again.
 - If no skill clearly matches, do not call load_skill.
 - Do not load a skill just because it is listed here.${baseInstructions ? `\n\n${baseInstructions}` : ''}`;
+}
+
+function withMemoryCapabilityInstruction(config: AgentJsonConfig): string {
+	if (config.memory?.enabled === true) return config.instructions;
+
+	const baseInstructions = config.instructions.trimEnd();
+	return `${N8N_MEMORY_DISABLED_INSTRUCTION}${baseInstructions ? `\n\n${baseInstructions}` : ''}`;
 }
 
 function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
@@ -290,6 +311,7 @@ async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
+	agentDescription: string,
 ) {
 	const memory = new Memory();
 
@@ -307,6 +329,8 @@ async function applyMemoryFromConfig(
 	if (memoryConfig.semanticRecall) {
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
+
+	memory.profiles({ enabled: true, agentDescription });
 
 	if (memoryConfig.observationalMemory?.enabled !== false) {
 		const observationalMemory = memoryConfig.observationalMemory;

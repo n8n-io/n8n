@@ -124,7 +124,7 @@ describe('AgentMessageList — forLlm working memory', () => {
 	it('does not inject the working-memory template when no state has been saved', () => {
 		const list = new AgentMessageList();
 		list.workingMemory = {
-			template: '# Thread memory\n- User facts:',
+			template: '# Thread memory\n- User entries:',
 			structured: false,
 			state: null,
 		};
@@ -159,16 +159,60 @@ describe('AgentMessageList — forLlm working memory', () => {
 
 		expect(prompt).toContain('private');
 		expect(prompt).toContain('read-only');
+		expect(prompt).toContain('<session-memory>');
+		expect(prompt).toContain('</session-memory>');
 		expect(prompt).toContain('Saved memory: user prefers concise debugging answers.');
 		expect(prompt).not.toContain('Template-only field');
 		expect(prompt).not.toContain('Current template');
+	});
+
+	it('renders persona, user, and session memory inside memory_blocks', () => {
+		const list = new AgentMessageList();
+		list.memoryProfile = {
+			persona: 'This agent specializes in n8n memory work.',
+			user: 'The user prefers concise answers.',
+		};
+		list.workingMemory = {
+			template: '# Thread memory',
+			structured: false,
+			state: 'Current objective: verify prompt sections.',
+		};
+
+		const prompt = systemContent(list);
+
+		expect(prompt).toContain('<memory_blocks>');
+		expect(prompt).toContain(
+			[
+				'<persona>',
+				'<description>Durable behavior rules this agent should follow with this user.</description>',
+				'<value>',
+				'This agent specializes in n8n memory work.',
+				'</value>',
+				'</persona>',
+			].join('\n'),
+		);
+		expect(prompt).toContain(
+			[
+				'<user>',
+				'<description>Stable user preferences and context shared across agents.</description>',
+				'<value>',
+				'The user prefers concise answers.',
+				'</value>',
+				'</user>',
+			].join('\n'),
+		);
+		expect(prompt).toContain('<session-memory>');
+		expect(prompt).toContain('Current objective: verify prompt sections.');
+		expect(prompt.indexOf('<persona>')).toBeLessThan(prompt.indexOf('<user>'));
+		expect(prompt.indexOf('<user>')).toBeLessThan(prompt.indexOf('<session-memory>'));
+		expect(prompt).not.toContain('<memory>');
 	});
 
 	it('keeps recent history messages in LLM context when working memory is empty', () => {
 		const list = new AgentMessageList();
 		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);
 		list.workingMemory = {
-			template: '# Thread memory\n- User facts:',
+			template: '# Thread memory\n- User entries:',
 			structured: false,
 			state: null,
 		};
@@ -258,6 +302,18 @@ describe('AgentMessageList — deserialize', () => {
 		const [newMsg] = list2.turnDelta();
 		expect(newMsg.createdAt).toBeInstanceOf(Date);
 		expect(newMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
+	});
+
+	it('preserves injected profile context across serialization', () => {
+		const list = new AgentMessageList();
+		list.memoryProfile = { persona: 'Agent profile.', user: 'Resource profile.' };
+
+		const restored = AgentMessageList.deserialize(list.serialize());
+
+		expect(restored.memoryProfile).toEqual({
+			persona: 'Agent profile.',
+			user: 'Resource profile.',
+		});
 	});
 });
 

@@ -34,6 +34,7 @@ export type {
 	FinishReason,
 	TokenUsage,
 	ModelConfig,
+	AgentPersistenceOptions,
 	RunOptions,
 	ExecutionOptions,
 	PersistedExecutionOptions,
@@ -59,8 +60,15 @@ export type {
 
 export type {
 	Thread,
+	AgentResourceScope,
 	BuiltMemory,
+	BuiltMemoryProfileStore,
 	MemoryDescriptor,
+	MemoryProfile,
+	MemoryProfilePrompts,
+	MemoryProfileScope,
+	MemoryProfileScopeKind,
+	MemoryProfilesConfig,
 	SemanticRecallConfig,
 	MemoryConfig,
 	CheckpointStore,
