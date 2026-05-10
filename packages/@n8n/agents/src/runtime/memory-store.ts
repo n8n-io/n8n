@@ -1,8 +1,14 @@
+import { rankEpisodicMemoryEntries } from './episodic-memory';
 import type {
 	BuiltMemory,
+	EpisodicMemoryEntry,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryScope,
 	MemoryDescriptor,
 	MemoryProfile,
 	MemoryProfileScope,
+	NewEpisodicMemoryEntry,
+	RetrievedEpisodicMemoryEntry,
 	Thread,
 } from '../types';
 import type { AgentDbMessage } from '../types/sdk/message';
@@ -73,6 +79,8 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 	private cursorsByScope = new Map<string, ObservationCursor>();
 
 	private locksByScope = new Map<string, ObservationLockHandle>();
+
+	private episodicMemory: EpisodicMemoryEntry[] = [];
 
 	private memoryProfilesByScope = new Map<string, MemoryProfile>();
 
@@ -200,6 +208,51 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 
 	describe(): MemoryDescriptor {
 		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
+	}
+
+	// ── Episodic memory entries ──────────────────────────────────────────────
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveEpisodicMemoryEntries(
+		entries: NewEpisodicMemoryEntry[],
+	): Promise<EpisodicMemoryEntry[]> {
+		const saved: EpisodicMemoryEntry[] = [];
+		for (const entry of entries) {
+			const duplicate = this.episodicMemory.find(
+				(existing) =>
+					existing.agentId === entry.agentId &&
+					existing.resourceId === entry.resourceId &&
+					existing.contentHash === entry.contentHash,
+			);
+			if (duplicate) {
+				saved.push({ ...duplicate });
+				continue;
+			}
+
+			const now = new Date();
+			const row: EpisodicMemoryEntry = {
+				...entry,
+				id: crypto.randomUUID(),
+				createdAt: new Date(entry.createdAt),
+				updatedAt: now,
+			};
+			this.episodicMemory.push(row);
+			saved.push({ ...row });
+		}
+		return saved;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async searchEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]> {
+		const scoped = this.episodicMemory
+			.filter((entry) => entry.agentId === scope.agentId && entry.resourceId === scope.resourceId)
+			.map((entry) => ({ ...entry, createdAt: new Date(entry.createdAt) }));
+
+		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
 
 	// ── Mutable memory profiles ──────────────────────────────────────────

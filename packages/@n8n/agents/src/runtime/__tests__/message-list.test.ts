@@ -166,10 +166,14 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).not.toContain('Current template');
 	});
 
-	it('renders user profile and session memory inside memory_blocks', () => {
+	it('renders user profile, episodic memory, and session memory inside memory_blocks', () => {
 		const list = new AgentMessageList();
 		list.memoryProfile = {
 			userProfile: 'The user prefers concise answers.',
+		};
+		list.episodicMemory = {
+			section: '<memory>\n- The user is testing memory retrieval.\n</memory>',
+			entries: ['The user is testing memory retrieval.'],
 		};
 		list.workingMemory = {
 			template: '# Thread memory',
@@ -190,11 +194,12 @@ describe('AgentMessageList — forLlm working memory', () => {
 				'</user-profile>',
 			].join('\n'),
 		);
+		expect(prompt).toContain('<memory>\n- The user is testing memory retrieval.\n</memory>');
 		expect(prompt).toContain('<session-memory>');
 		expect(prompt).toContain('Current objective: verify prompt sections.');
-		expect(prompt.indexOf('<user-profile>')).toBeLessThan(prompt.indexOf('<session-memory>'));
+		expect(prompt.indexOf('<user-profile>')).toBeLessThan(prompt.indexOf('<memory>'));
+		expect(prompt.indexOf('<memory>')).toBeLessThan(prompt.indexOf('<session-memory>'));
 		expect(prompt).not.toContain('<agent-profile>');
-		expect(prompt).not.toContain('<memory>');
 	});
 
 	it('keeps recent history messages in LLM context when working memory is empty', () => {
@@ -293,14 +298,22 @@ describe('AgentMessageList — deserialize', () => {
 		expect(newMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
 	});
 
-	it('preserves injected profile context across serialization', () => {
+	it('preserves injected profile and episodic memory context across serialization', () => {
 		const list = new AgentMessageList();
 		list.memoryProfile = { userProfile: 'Resource profile.' };
+		list.episodicMemory = {
+			section: '<memory>\n- Known entry.\n</memory>',
+			entries: ['Known entry.'],
+		};
 
 		const restored = AgentMessageList.deserialize(list.serialize());
 
 		expect(restored.memoryProfile).toEqual({
 			userProfile: 'Resource profile.',
+		});
+		expect(restored.episodicMemory).toEqual({
+			section: '<memory>\n- Known entry.\n</memory>',
+			entries: ['Known entry.'],
 		});
 	});
 });

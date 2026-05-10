@@ -1,3 +1,4 @@
+import type { EmbeddingModel } from 'ai';
 import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
@@ -96,6 +97,13 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
+	// --- Episodic memory entries (optional) ---
+	saveEpisodicMemoryEntries?(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
+	searchEpisodicMemoryEntries?(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]>;
 	// --- Mutable memory profiles (optional) ---
 	getMemoryProfile?(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
 	saveMemoryProfile?(
@@ -116,6 +124,8 @@ export interface AgentResourceScope {
 	resourceId: string;
 }
 
+export type EpisodicMemoryScope = AgentResourceScope;
+
 export type MemoryProfileScopeKind = 'user-profile';
 
 export interface MemoryProfileScope {
@@ -134,6 +144,46 @@ export interface MemoryProfile {
 	updatedAt: Date;
 }
 
+export interface EpisodicMemoryEntry {
+	id: string;
+	agentId: string;
+	resourceId: string;
+	content: string;
+	contentHash: string;
+	createdAt: Date;
+	updatedAt: Date;
+	sourceThreadId?: string;
+	sourceMessageId?: string;
+	embedding?: number[];
+	embeddingModel?: string;
+	metadata?: JSONObject;
+}
+
+export type NewEpisodicMemoryEntry = Omit<EpisodicMemoryEntry, 'id' | 'updatedAt'>;
+
+export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
+	lexicalScore: number;
+	vectorScore: number;
+	rrfScore: number;
+	recencyFactor: number;
+	finalScore: number;
+}
+
+export interface EpisodicMemorySearchOptions {
+	topK?: number;
+	halfLifeDays?: number;
+	queryEmbedding?: number[];
+}
+
+export interface BuiltEpisodicMemoryStore {
+	saveEpisodicMemoryEntries(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
+	searchEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]>;
+}
+
 export interface BuiltMemoryProfileStore {
 	getMemoryProfile(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
 	saveMemoryProfile(
@@ -141,6 +191,38 @@ export interface BuiltMemoryProfileStore {
 		content: string,
 		metadata?: JSONObject | null,
 	): Promise<MemoryProfile>;
+}
+
+export interface EpisodicMemoryPrompts {
+	/** Custom entry extraction instructions. Replaces the default template entirely. */
+	extraction?: string;
+	/** Custom recall_memory usage instruction. Replaces the default template entirely. */
+	recallToolInstruction?: string;
+	/** Custom instruction text used inside the auto-injected <memory> section. */
+	injection?: string;
+}
+
+export interface EpisodicMemoryConfig {
+	/** False disables an otherwise persisted JSON config. */
+	enabled?: boolean;
+	topK?: number;
+	halfLifeDays?: number;
+	maxEntriesPerTurn?: number;
+	maxEntryLength?: number;
+	/** When true, wait for post-turn extraction before completing the run. */
+	sync?: boolean;
+	/** @default true */
+	autoInject?: boolean;
+	/** @default 12 */
+	autoInjectTopK?: number;
+	/** Set to false to keep exact-hash dedupe only. @default 0.86 */
+	dedupeSimilarityThreshold?: number | false;
+	/** Embedding model supplied by the SDK consumer. */
+	embedder?: EmbeddingModel;
+	/** Non-secret model identifier persisted with stored entry embeddings for inspection/debugging. */
+	embeddingModel?: string;
+	/** Override the default prompt templates. */
+	prompts?: EpisodicMemoryPrompts;
 }
 
 export interface MemoryProfilePrompts {
@@ -195,6 +277,7 @@ interface MemoryConfigBase {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
+	episodicMemory?: EpisodicMemoryConfig;
 	profiles?: MemoryProfilesConfig;
 	titleGeneration?: TitleGenerationConfig;
 }

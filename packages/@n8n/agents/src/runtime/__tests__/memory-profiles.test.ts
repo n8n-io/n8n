@@ -1,4 +1,7 @@
+import type { EmbeddingModel } from 'ai';
+
 import type { AgentDbMessage } from '../../types/sdk/message';
+import { extractAndStoreEpisodicMemory } from '../episodic-memory';
 import { AgentEventBus } from '../event-bus';
 import {
 	DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
@@ -8,16 +11,29 @@ import {
 import { InMemoryMemory } from '../memory-store';
 
 jest.mock('ai', () => ({
+	generateObject: jest.fn(),
 	generateText: jest.fn(),
+	embedMany: jest.fn(),
 }));
 
-const { generateText } = jest.requireMock<{
+const { generateObject, generateText, embedMany } = jest.requireMock<{
+	generateObject: jest.Mock;
 	generateText: jest.Mock<Promise<{ text: string }>, [{ prompt?: string; system?: string }]>;
+	embedMany: jest.Mock;
 }>('ai');
 
+const fakeEmbedder = {} as EmbeddingModel;
 const fakeModel = { doGenerate: jest.fn() } as unknown as Parameters<
 	typeof updateMemoryProfilesFromTurn
 >[0]['model'];
+
+function extractedEntry(
+	content: string,
+	evidence: string,
+	source: 'user_assertion' | 'user_accepted_assistant_proposal' = 'user_assertion',
+) {
+	return { content, source, evidence };
+}
 
 function makeUserMessage(text: string, id = 'user-1'): AgentDbMessage {
 	return {
@@ -54,7 +70,7 @@ describe('memory profiles', () => {
 			'User-profile may include durable user preferences',
 			'If the information would stop being useful after the current task ends',
 			'describes the agent',
-			'does not belong in <user-profile>',
+			'belongs in source-backed case entries',
 			'Existing profile content is not authoritative',
 			'Do not summarize, rewrite, or copy the agent',
 			'plain markdown bullet list',
@@ -104,6 +120,7 @@ describe('memory profiles', () => {
 			eventBus: new AgentEventBus(),
 		});
 
+		expect(embedMany).not.toHaveBeenCalled();
 		await expect(
 			memory.getMemoryProfile({
 				scopeKind: 'user-profile',
@@ -146,6 +163,41 @@ describe('memory profiles', () => {
 				resourceId: 'user-1',
 			}),
 		).resolves.toBeNull();
+	});
+
+	it('does not update memory profiles from episodic extraction alone', async () => {
+		generateObject.mockResolvedValueOnce({
+			object: {
+				entries: [
+					extractedEntry(
+						'The user prefers concise updates.',
+						'Remember that I prefer concise updates.',
+					),
+				],
+			},
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreEpisodicMemory({
+			memory,
+			config: { embedder: fakeEmbedder },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [makeUserMessage('Remember that I prefer concise updates.')],
+			eventBus: new AgentEventBus(),
+		});
+
+		await expect(
+			memory.getMemoryProfile({
+				scopeKind: 'user-profile',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+			}),
+		).resolves.toBeNull();
+		expect(generateObject).toHaveBeenCalledTimes(1);
+		expect(generateText).not.toHaveBeenCalled();
 	});
 
 	it('loads user profiles by agent and resource', async () => {

@@ -1,10 +1,16 @@
 import type { z } from 'zod';
 
+import {
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	withEpisodicMemoryDefaults,
+} from '../runtime/episodic-memory';
 import { InMemoryMemory } from '../runtime/memory-store';
 import { hasObservationStore } from '../runtime/observation-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
+	EpisodicMemoryConfig,
 	MemoryConfig,
 	MemoryProfilesConfig,
 	ObservationalMemoryConfig,
@@ -88,6 +94,8 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
+	private episodicMemoryConfig?: EpisodicMemoryConfig;
+
 	private profilesConfig?: MemoryProfilesConfig;
 
 	private workingMemorySchema?: ZodObjectSchema;
@@ -133,6 +141,16 @@ export class Memory {
 	/** Enable semantic recall (RAG-based retrieval of relevant past messages). */
 	semanticRecall(config: SemanticRecallConfig): this {
 		this.semanticRecallConfig = config;
+		return this;
+	}
+
+	/** Enable episodic memory entries and the built-in recall_memory(query) tool. */
+	episodicMemory(config: EpisodicMemoryConfig = {}): this {
+		if (config.enabled === false) {
+			this.episodicMemoryConfig = undefined;
+		} else {
+			this.episodicMemoryConfig = config;
+		}
 		return this;
 	}
 
@@ -258,6 +276,15 @@ export class Memory {
 			}
 		}
 
+		if (isEpisodicMemoryEnabled(this.episodicMemoryConfig)) {
+			if (!hasEpisodicMemoryStore(memory)) {
+				throw new Error(
+					'Episodic memory entries require a storage backend that implements saveEpisodicMemoryEntries() and searchEpisodicMemoryEntries().',
+				);
+			}
+			withEpisodicMemoryDefaults(this.episodicMemoryConfig);
+		}
+
 		if (this.profilesConfig) {
 			if (!memory.getMemoryProfile || !memory.saveMemoryProfile) {
 				throw new Error(
@@ -293,6 +320,7 @@ export class Memory {
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
+			episodicMemory: this.episodicMemoryConfig,
 			profiles: this.profilesConfig,
 			titleGeneration: this.titleGenerationConfig,
 		};

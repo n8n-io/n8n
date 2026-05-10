@@ -8,4 +8,8 @@ export interface SerializedMessageList {
 	memoryProfile?: {
 		userProfile?: string | null;
 	};
+	episodicMemory?: {
+		section: string;
+		entries?: string[];
+	};
 }

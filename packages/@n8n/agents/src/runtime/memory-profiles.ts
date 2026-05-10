@@ -40,7 +40,7 @@ Rules:
 - User-profile may include durable user preferences, including response style, communication style, workflow preferences, and priorities that should personalize future conversations.
 - If the information would stop being useful after the current task ends, it does not belong in <user-profile>.
 - If the information describes the agent's durable persona, role, identity, operating mode, or instructions, it does not belong in <user-profile>.
-- If the information needs source or provenance, it does not belong in <user-profile>.
+- If the information needs source or provenance, it belongs in source-backed case entries, not <user-profile>.
 - Existing profile content is not authoritative. Rewrite profiles to remove entries that violate these rules, even if no new durable information is present.
 - Do not summarize the conversation.
 - Do not add situational or one-task-only details.

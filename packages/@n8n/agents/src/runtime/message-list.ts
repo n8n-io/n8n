@@ -23,6 +23,11 @@ export interface WorkingMemoryContext {
 	instruction?: string;
 }
 
+export interface EpisodicMemoryContext {
+	section: string;
+	entries?: string[];
+}
+
 export interface MemoryProfileContext {
 	userProfile?: string | null;
 }
@@ -115,6 +120,9 @@ export class AgentMessageList {
 
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
+
+	/** Retrieved episodic memory context for this run. Set by buildMessageList / resume. */
+	episodicMemory: EpisodicMemoryContext | undefined;
 
 	/** Mutable profile context for this run. Set by buildMessageList / resume. */
 	memoryProfile: MemoryProfileContext | undefined;
@@ -236,6 +244,11 @@ export class AgentMessageList {
 			);
 		}
 
+		const episodicSection = this.episodicMemory?.section.trim();
+		if (episodicSection) {
+			memoryBlocks.push(episodicSection);
+		}
+
 		const wmState = this.workingMemory?.state?.trim();
 		if (this.workingMemory && wmState) {
 			const wmInstruction = buildWorkingMemoryInstruction(
@@ -293,6 +306,9 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.episodicMemory !== undefined && {
+				episodicMemory: this.episodicMemory,
+			}),
 			...(this.memoryProfile !== undefined && {
 				memoryProfile: this.memoryProfile,
 			}),
@@ -310,6 +326,7 @@ export class AgentMessageList {
 			if (inputIdSet.has(m.id)) list.inputSet.add(m);
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
 		}
+		list.episodicMemory = data.episodicMemory;
 		list.memoryProfile = data.memoryProfile;
 		list.sortAllByCreatedAt();
 		return list;

@@ -14,6 +14,7 @@ import type {
 	BuiltTelemetry,
 	BuiltTool,
 	CheckpointStore,
+	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
 	GoogleThinkingConfig,
@@ -33,6 +34,14 @@ import type {
 	XaiThinkingConfig,
 } from '../types';
 import { BackgroundTaskTracker } from './background-task-tracker';
+import {
+	createRecallMemoryTool,
+	extractAndStoreEpisodicMemory,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	loadEpisodicMemoryForInjection,
+	RECALL_MEMORY_TOOL_NAME,
+} from './episodic-memory';
 import { AgentEventBus } from './event-bus';
 import { toJsonValue } from './json-value';
 import {
@@ -183,6 +192,7 @@ export interface AgentRuntimeConfig {
 		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
+	episodicMemory?: EpisodicMemoryConfig;
 	profiles?: MemoryProfilesConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
@@ -575,12 +585,53 @@ export class AgentRuntime {
 		}
 
 		await this.setListMemoryProfileConfig(list, options?.persistence);
+		await this.setListEpisodicMemoryConfig(list, input, options?.persistence);
 
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
 		await this.setListWorkingMemoryConfig(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
+	}
+
+	private async setListEpisodicMemoryConfig(
+		list: AgentMessageList,
+		input: AgentMessage[],
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<void> {
+		const episodicMemory = this.config.episodicMemory;
+		if (
+			!isEpisodicMemoryEnabled(episodicMemory) ||
+			episodicMemory.autoInject === false ||
+			!this.config.memory ||
+			!hasEpisodicMemoryStore(this.config.memory) ||
+			!persistence?.agentId ||
+			!persistence.resourceId
+		) {
+			return;
+		}
+
+		try {
+			const injection = await loadEpisodicMemoryForInjection({
+				memory: this.config.memory,
+				config: episodicMemory,
+				persistence,
+				input,
+			});
+			if (injection) {
+				list.episodicMemory = {
+					section: injection.section,
+					entries: injection.entries.map((entry) => entry.content),
+				};
+			}
+		} catch (error) {
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Episodic memory entry prefetch failed',
+				error,
+				source: 'episodic-memory',
+			});
+		}
 	}
 
 	private async setListMemoryProfileConfig(
@@ -1418,6 +1469,10 @@ export class AgentRuntime {
 			delta,
 		);
 
+		if (isEpisodicMemoryEnabled(this.config.episodicMemory)) {
+			await this.dispatchEpisodicMemoryEntries(options.persistence, delta, list);
+		}
+
 		if (isMemoryProfilesEnabled(this.config.profiles)) {
 			this.dispatchMemoryProfileUpdate(options.persistence, delta, list);
 		}
@@ -1432,6 +1487,41 @@ export class AgentRuntime {
 		}
 
 		await this.dispatchObservationalMemory(options.persistence, list.memoryProfile);
+	}
+
+	private async dispatchEpisodicMemoryEntries(
+		persistence: AgentPersistenceOptions,
+		messages: AgentDbMessage[],
+		list: AgentMessageList,
+	): Promise<void> {
+		if (
+			!this.config.memory ||
+			!this.config.episodicMemory ||
+			!hasEpisodicMemoryStore(this.config.memory)
+		) {
+			return;
+		}
+
+		const promise = extractAndStoreEpisodicMemory({
+			memory: this.config.memory,
+			config: this.config.episodicMemory,
+			model: this.config.model,
+			threadId: persistence.threadId,
+			persistence,
+			messages,
+			memoryProfile: list.memoryProfile,
+			knownEntries: list.episodicMemory?.entries,
+			eventBus: this.eventBus,
+		}).then(
+			() => undefined,
+			() => undefined,
+		);
+
+		if (this.config.episodicMemory.sync) {
+			await promise;
+		} else {
+			this.backgroundTasks.track(promise);
+		}
 	}
 
 	private dispatchMemoryProfileUpdate(
@@ -1984,7 +2074,10 @@ export class AgentRuntime {
 	private buildLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const allUserTools = this.config.tools ?? [];
+		const allUserTools = this.buildToolsWithBuiltIns(
+			this.config.tools ?? [],
+			execOptions?.persistence,
+		);
 		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
@@ -2000,6 +2093,35 @@ export class AgentRuntime {
 				: undefined,
 			effectiveInstructions: this.composeEffectiveInstructions(allUserTools),
 		};
+	}
+
+	private buildToolsWithBuiltIns(
+		tools: BuiltTool[],
+		persistence: AgentPersistenceOptions | undefined,
+	): BuiltTool[] {
+		const episodicMemory = this.config.episodicMemory;
+		if (!isEpisodicMemoryEnabled(episodicMemory)) {
+			return tools;
+		}
+
+		if (!this.config.memory || !hasEpisodicMemoryStore(this.config.memory)) {
+			throw new Error(
+				'Episodic memory entries require a memory backend with episodic memory entry storage.',
+			);
+		}
+
+		if (tools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
+			throw new Error(`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved by episodic memory.`);
+		}
+
+		return [
+			...tools,
+			createRecallMemoryTool({
+				memory: this.config.memory,
+				config: episodicMemory,
+				persistence,
+			}),
+		];
 	}
 
 	/**

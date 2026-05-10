@@ -1,3 +1,4 @@
+import type { EmbeddingModel } from 'ai';
 import { z } from 'zod';
 
 import { isLlmMessage } from '../../sdk/message';
@@ -37,9 +38,11 @@ jest.mock('ai', () => {
 	const actual = jest.requireActual<AiImport>('ai');
 	return {
 		...actual,
+		generateObject: jest.fn(),
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		embed: jest.fn(),
+		embedMany: jest.fn(),
 		tool: jest.fn((config: unknown) => config),
 		Output: {
 			object: jest.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
@@ -52,9 +55,12 @@ jest.mock('ai', () => {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { generateText, streamText } = require('ai') as {
+const { generateObject, generateText, streamText, embed, embedMany } = require('ai') as {
+	generateObject: jest.Mock;
 	generateText: jest.Mock;
 	streamText: jest.Mock;
+	embed: jest.Mock;
+	embedMany: jest.Mock;
 };
 
 /** Minimal successful generateText response. */
@@ -100,6 +106,16 @@ function makeErrorStream(error: Error) {
 			controller.error(error);
 		},
 	});
+}
+
+function deferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
 }
 
 /** Collect all chunks from a ReadableStream. */
@@ -570,6 +586,379 @@ describe('AgentRuntime — memory profiles', () => {
 		expect(prompt).toContain('The user prefers concise answers.');
 		expect(prompt).not.toContain('<agent-profile>');
 		expect(prompt).not.toContain('<memory>');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Episodic memory entry extraction — post-turn scheduling
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
+	const fakeEmbedder = {} as EmbeddingModel;
+	const now = new Date('2026-05-09T12:00:00.000Z');
+
+	beforeEach(() => {
+		generateObject.mockReset();
+		generateText.mockReset();
+		streamText.mockReset();
+		embed.mockReset();
+		embedMany.mockReset();
+		generateObject.mockResolvedValue({ object: { entries: [] } });
+		embed.mockResolvedValue({ embedding: [1, 0] });
+		embedMany.mockResolvedValue({ embeddings: [] });
+	});
+
+	function createRuntimeWithEntryMemory(sync?: boolean) {
+		const runtime = new AgentRuntime({
+			name: 'episodic-memory-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: new InMemoryMemory(),
+			episodicMemory: {
+				embedder: fakeEmbedder,
+				...(sync !== undefined && { sync }),
+			},
+		});
+		return runtime;
+	}
+
+	function mockTurnAndDelayedExtraction() {
+		const extractionStarted = deferred<undefined>();
+		const extractionResult = deferred<{ object: { entries: [] } }>();
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('turn complete'));
+		generateObject.mockImplementationOnce(async () => {
+			extractionStarted.resolve(undefined);
+			const result = await extractionResult.promise;
+			return result;
+		});
+
+		return { extractionStarted, extractionResult };
+	}
+
+	it('does not wait for entry extraction by default', async () => {
+		const runtime = createRuntimeWithEntryMemory();
+		const { extractionStarted, extractionResult } = mockTurnAndDelayedExtraction();
+
+		const resultPromise = runtime.generate('remember that I prefer short updates', {
+			persistence: { threadId: 't-entries-async', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		await extractionStarted.promise;
+		const settledBeforeExtraction = await Promise.race([
+			resultPromise.then(() => true),
+			new Promise<boolean>((resolve) => {
+				setImmediate(() => resolve(false));
+			}),
+		]);
+
+		extractionResult.resolve({ object: { entries: [] } });
+		const result = await resultPromise;
+		await runtime.dispose();
+
+		expect(result.finishReason).toBe('stop');
+		expect(settledBeforeExtraction).toBe(true);
+	});
+
+	it('waits for entry extraction when sync is true', async () => {
+		const runtime = createRuntimeWithEntryMemory(true);
+		const { extractionStarted, extractionResult } = mockTurnAndDelayedExtraction();
+
+		const resultPromise = runtime.generate('remember that I prefer short updates', {
+			persistence: { threadId: 't-entries-sync', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		await extractionStarted.promise;
+		const settledBeforeExtraction = await Promise.race([
+			resultPromise.then(() => true),
+			new Promise<boolean>((resolve) => {
+				setImmediate(() => resolve(false));
+			}),
+		]);
+
+		extractionResult.resolve({ object: { entries: [] } });
+		const result = await resultPromise;
+
+		expect(result.finishReason).toBe('stop');
+		expect(settledBeforeExtraction).toBe(false);
+	});
+
+	function getSystemPromptFromGenerateCall(index = 0): string {
+		const calls = generateText.mock.calls as Array<[Record<string, unknown>]>;
+		const callArgs = calls[index][0];
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[0].role).toBe('system');
+		return String(messages[0].content);
+	}
+
+	function getSystemPromptFromStreamCall(index = 0): string {
+		const calls = streamText.mock.calls as Array<[Record<string, unknown>]>;
+		const callArgs = calls[index][0];
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[0].role).toBe('system');
+		return String(messages[0].content);
+	}
+
+	function makeMemoryEntry(content: string, createdAt: Date, embedding = [1, 0]) {
+		return {
+			agentId: 'agent-1',
+			resourceId: 'user-1',
+			content,
+			contentHash: `${content}-${createdAt.toISOString()}`,
+			createdAt,
+			embedding,
+		};
+	}
+
+	async function createRuntimeWithInjectedEntries(config?: {
+		autoInject?: boolean;
+		sync?: boolean;
+		profiles?: boolean;
+		eventBus?: AgentEventBus;
+		tools?: BuiltTool[];
+	}) {
+		const memory = new InMemoryMemory();
+		await memory.saveEpisodicMemoryEntries([
+			makeMemoryEntry(
+				'The user prefers concise responses without emojis.',
+				new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+			),
+			makeMemoryEntry(
+				'The user is working on cross-thread memory in @n8n/agents.',
+				new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
+			),
+		]);
+		const runtime = new AgentRuntime({
+			name: 'episodic-memory-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory,
+			...(config?.eventBus !== undefined && { eventBus: config.eventBus }),
+			...(config?.tools !== undefined && { tools: config.tools }),
+			episodicMemory: {
+				embedder: fakeEmbedder,
+				sync: config?.sync ?? true,
+				...(config?.autoInject !== undefined && { autoInject: config.autoInject }),
+			},
+			...(config?.profiles === true && { profiles: { enabled: true } }),
+		});
+		return { runtime, memory };
+	}
+
+	it('does not prefetch or inject when episodic memory is disabled', async () => {
+		const memory = new InMemoryMemory();
+		const searchSpy = jest.spyOn(memory, 'searchEpisodicMemoryEntries');
+		const runtime = new AgentRuntime({
+			name: 'episodic-memory-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory,
+		});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(searchSpy).not.toHaveBeenCalled();
+		expect(embed).not.toHaveBeenCalled();
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Source-backed case entries from prior conversations, retrieved for this turn.',
+		);
+	});
+
+	it('does not prefetch or inject when autoInject is false', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedEntries({ autoInject: false });
+		const searchSpy = jest.spyOn(memory, 'searchEpisodicMemoryEntries');
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(searchSpy).not.toHaveBeenCalled();
+		expect(embed).not.toHaveBeenCalled();
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Source-backed case entries from prior conversations, retrieved for this turn.',
+		);
+	});
+
+	it('injects relevant episodic memory entries before generateText and keeps recall_memory available', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedEntries();
+		const searchSpy = jest.spyOn(memory, 'searchEpisodicMemoryEntries');
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(embed).toHaveBeenCalledWith({
+			model: fakeEmbedder,
+			value: 'What should you remember about my style?',
+		});
+		expect(searchSpy).toHaveBeenCalledWith(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'What should you remember about my style?',
+			expect.objectContaining({ topK: 12, queryEmbedding: [1, 0] }),
+		);
+		const prompt = getSystemPromptFromGenerateCall();
+		expect(prompt).toContain('<memory>');
+		expect(prompt).toContain(
+			'Source-backed case entries from prior conversations, retrieved for this turn.',
+		);
+		expect(prompt.indexOf('The user prefers concise responses without emojis.')).toBeLessThan(
+			prompt.indexOf('The user is working on cross-thread memory in @n8n/agents.'),
+		);
+		expect(prompt).toContain('The user prefers concise responses without emojis.');
+		expect(prompt).toContain('The user is working on cross-thread memory in @n8n/agents.');
+		const calls = generateText.mock.calls as Array<[{ tools?: Record<string, unknown> }]>;
+		const toolArgs = calls[0][0];
+		expect(toolArgs.tools).toHaveProperty('recall_memory');
+	});
+
+	it('injects user profile before episodic memory entries when available', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedEntries({ profiles: true });
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'user-profile', agentId: 'agent-1', resourceId: 'user-1' },
+			'The user prefers concise answers.',
+		);
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		const prompt = getSystemPromptFromGenerateCall();
+		expect(prompt).toContain(
+			[
+				'<user-profile>',
+				'<description>Stable facts and preferences about the user or resource.</description>',
+				'<value>',
+				'The user prefers concise answers.',
+				'</value>',
+				'</user-profile>',
+			].join('\n'),
+		);
+		expect(prompt).not.toContain('<agent-profile>');
+		expect(prompt.indexOf('<user-profile>')).toBeLessThan(
+			prompt.indexOf('<memory>\n<description>Source-backed case entries'),
+		);
+	});
+
+	it('injects relevant episodic memory entries before streamText', async () => {
+		const { runtime } = await createRuntimeWithInjectedEntries();
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		streamText.mockReturnValueOnce(makeStreamSuccess('done'));
+		generateText.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		const { stream } = await runtime.stream('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+		await collectChunks(stream);
+
+		expect(getSystemPromptFromStreamCall()).toContain('<memory>');
+		expect(getSystemPromptFromStreamCall()).toContain(
+			'The user prefers concise responses without emojis.',
+		);
+	});
+
+	it('does not inject a memory section when no entries are found', async () => {
+		const runtime = createRuntimeWithEntryMemory(true);
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Source-backed case entries from prior conversations, retrieved for this turn.',
+		);
+	});
+
+	it('does not persist injected entries into thread messages', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedEntries();
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		const storedMessages = await memory.getMessages('thread-1');
+		expect(JSON.stringify(storedMessages)).not.toContain('<memory>');
+		expect(JSON.stringify(storedMessages)).not.toContain('concise responses without emojis');
+	});
+
+	it('preserves injected memory context across suspended resume', async () => {
+		const approvalTool = makeInterruptibleTool();
+		const { runtime } = await createRuntimeWithInjectedEntries({ tools: [approvalTool] });
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tool-call-1', 'approve', { question: 'ok' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('resumed'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		const first = await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+		const pending = first.pendingSuspend?.[0];
+		expect(pending).toBeDefined();
+
+		await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: pending!.runId, toolCallId: pending!.toolCallId },
+		);
+
+		expect(getSystemPromptFromGenerateCall(1)).toContain('<memory>');
+		expect(getSystemPromptFromGenerateCall(1)).toContain(
+			'The user prefers concise responses without emojis.',
+		);
+	});
+
+	it('emits a non-fatal error when enabled prefetch fails', async () => {
+		const bus = new AgentEventBus();
+		const { runtime, memory } = await createRuntimeWithInjectedEntries({ eventBus: bus });
+		const errors: unknown[] = [];
+		bus.on(AgentEvent.Error, (event) => {
+			if (event.type === AgentEvent.Error) errors.push(event);
+		});
+		jest
+			.spyOn(memory, 'searchEpisodicMemoryEntries')
+			.mockRejectedValueOnce(new Error('search failed'));
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"entries":[]}' });
+
+		const result = await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		expect(result.finishReason).toBe('stop');
+		expect(getSystemPromptFromGenerateCall()).not.toContain(
+			'Source-backed case entries from prior conversations, retrieved for this turn.',
+		);
+		expect(errors).toEqual([
+			expect.objectContaining({
+				type: AgentEvent.Error,
+				source: 'episodic-memory',
+				message: 'Episodic memory entry prefetch failed',
+			}),
+		]);
 	});
 });
 
