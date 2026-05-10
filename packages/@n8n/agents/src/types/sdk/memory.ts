@@ -104,6 +104,13 @@ export interface BuiltMemory {
 		query: string,
 		opts?: CrossThreadFactSearchOptions,
 	): Promise<RetrievedCrossThreadFact[]>;
+	// --- Mutable memory profiles (optional) ---
+	getMemoryProfile?(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
+	saveMemoryProfile?(
+		scope: MemoryProfileScope,
+		content: string,
+		metadata?: JSONObject | null,
+	): Promise<MemoryProfile>;
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
@@ -115,6 +122,22 @@ export interface CrossThreadMemoryScope {
 	agentId: string;
 	/** n8n maps this to the user id for cross-thread facts. */
 	resourceId: string;
+}
+
+export type MemoryProfileScopeKind = 'agent' | 'resource';
+
+export interface MemoryProfileScope {
+	scopeKind: MemoryProfileScopeKind;
+	scopeId: string;
+}
+
+export interface MemoryProfile {
+	scopeKind: MemoryProfileScopeKind;
+	scopeId: string;
+	content: string;
+	metadata?: JSONObject | null;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface CrossThreadFact {
@@ -157,6 +180,15 @@ export interface BuiltCrossThreadFactStore {
 	): Promise<RetrievedCrossThreadFact[]>;
 }
 
+export interface BuiltMemoryProfileStore {
+	getMemoryProfile(scope: MemoryProfileScope): Promise<MemoryProfile | null>;
+	saveMemoryProfile(
+		scope: MemoryProfileScope,
+		content: string,
+		metadata?: JSONObject | null,
+	): Promise<MemoryProfile>;
+}
+
 export interface CrossThreadFactPrompts {
 	/** Custom fact extraction instructions. Replaces the default template entirely. */
 	extraction?: string;
@@ -164,6 +196,8 @@ export interface CrossThreadFactPrompts {
 	recallToolInstruction?: string;
 	/** Custom instruction text used inside the auto-injected <memory> section. */
 	injection?: string;
+	/** Custom profile update instructions. Replaces the default template entirely. */
+	profileUpdate?: string;
 }
 
 export interface CrossThreadFactsConfig {
@@ -190,8 +224,19 @@ export interface CrossThreadFactsConfig {
 	 * Defaults to true. recall_memory remains available for deliberate lookup.
 	 */
 	autoInject?: boolean;
-	/** Number of facts to inject before each turn. @default 5 */
+	/** Number of facts to inject before each turn. @default 12 */
 	autoInjectTopK?: number;
+	/**
+	 * Non-secret context about the agent used only by profile-update prompts to
+	 * decide what belongs in the agent-scoped persona profile.
+	 */
+	agentDescription?: string;
+	/**
+	 * When true, accepted cross-thread facts are offered to a prompt-based profile
+	 * updater that may rewrite optional agent/resource profiles on the configured
+	 * memory backend. Defaults to false; SDK consumers opt into profile mutation.
+	 */
+	profileUpdate?: boolean;
 	/**
 	 * Skip storing a candidate fact when an existing scoped fact or earlier
 	 * candidate has vector similarity greater than or equal to this threshold.

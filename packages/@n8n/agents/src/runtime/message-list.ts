@@ -25,6 +25,12 @@ export interface WorkingMemoryContext {
 
 export interface CrossThreadMemoryContext {
 	section: string;
+	facts?: string[];
+}
+
+export interface MemoryProfileContext {
+	persona?: string | null;
+	user?: string | null;
 }
 
 /**
@@ -118,6 +124,9 @@ export class AgentMessageList {
 
 	/** Retrieved fact memory context for this run. Set by buildMessageList / resume. */
 	crossThreadMemory: CrossThreadMemoryContext | undefined;
+
+	/** Mutable profile context for this run. Set by buildMessageList / resume. */
+	memoryProfile: MemoryProfileContext | undefined;
 
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
@@ -221,6 +230,16 @@ export class AgentMessageList {
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
 
+		const persona = this.memoryProfile?.persona?.trim();
+		if (persona) {
+			systemPrompt += `\n\n<persona>\n${persona}\n</persona>`;
+		}
+
+		const user = this.memoryProfile?.user?.trim();
+		if (user) {
+			systemPrompt += `\n\n<user>\n${user}\n</user>`;
+		}
+
 		const crossThreadSection = this.crossThreadMemory?.section.trim();
 		if (crossThreadSection) {
 			systemPrompt += `\n\n${crossThreadSection}`;
@@ -238,7 +257,7 @@ export class AgentMessageList {
 				wmInstruction +
 				'\n\nThread working memory (private, read-only):\n```\n' +
 				wmState +
-				'\n```\n</session-memory>\n';
+				'\n```\n</session-memory>';
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions
@@ -273,6 +292,9 @@ export class AgentMessageList {
 			...(this.crossThreadMemory !== undefined && {
 				crossThreadMemory: this.crossThreadMemory,
 			}),
+			...(this.memoryProfile !== undefined && {
+				memoryProfile: this.memoryProfile,
+			}),
 		};
 	}
 
@@ -288,6 +310,7 @@ export class AgentMessageList {
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
 		}
 		list.crossThreadMemory = data.crossThreadMemory;
+		list.memoryProfile = data.memoryProfile;
 		list.sortAllByCreatedAt();
 		return list;
 	}

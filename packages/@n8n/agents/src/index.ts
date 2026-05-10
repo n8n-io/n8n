@@ -4,6 +4,7 @@ export type {
 	BuiltAgent,
 	BuiltMemory,
 	BuiltCrossThreadFactStore,
+	BuiltMemoryProfileStore,
 	BuiltGuardrail,
 	BuiltEval,
 	RunOptions,
@@ -30,6 +31,9 @@ export type {
 	AgentRunState,
 	MemoryConfig,
 	MemoryDescriptor,
+	MemoryProfile,
+	MemoryProfileScope,
+	MemoryProfileScopeKind,
 	CrossThreadFact,
 	CrossThreadFactPrompts,
 	CrossThreadFactSearchOptions,
@@ -130,6 +134,7 @@ export {
 } from './runtime/observational-cycle';
 export {
 	DEFAULT_CROSS_THREAD_FACT_EXTRACTION_PROMPT,
+	DEFAULT_CROSS_THREAD_PROFILE_UPDATE_PROMPT,
 	DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION,
 	rankCrossThreadFacts,
 	RECALL_MEMORY_TOOL_NAME,

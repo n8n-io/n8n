@@ -12,6 +12,7 @@ describe('buildWorkingMemoryInstruction', () => {
 
 		expect(result).toContain('out-of-band observer');
 		expect(result).toContain('only to this same session/thread');
+		expect(result).toContain('objective-driven state');
 		expect(result).toContain('different session');
 		expect(result).toContain('new thread');
 		expect(result).toContain('cross-thread profile');

@@ -94,6 +94,10 @@ export type ObserveFn = (ctx: {
 	now: Date;
 	trigger: ObservationalMemoryTrigger;
 	gap: ObservationGapContext | null;
+	memoryProfile?: {
+		persona?: string | null;
+		user?: string | null;
+	};
 	telemetry: BuiltTelemetry | undefined;
 }) => Promise<NewObservation[]>;
 

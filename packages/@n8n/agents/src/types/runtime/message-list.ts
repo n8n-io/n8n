@@ -5,7 +5,12 @@ export interface SerializedMessageList {
 	historyIds: string[];
 	inputIds: string[];
 	responseIds: string[];
+	memoryProfile?: {
+		persona?: string | null;
+		user?: string | null;
+	};
 	crossThreadMemory?: {
 		section: string;
+		facts?: string[];
 	};
 }

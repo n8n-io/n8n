@@ -38,11 +38,16 @@ import {
 	hasCrossThreadFactStore,
 	isCrossThreadFactsEnabled,
 	loadCrossThreadFactsForInjection,
+	loadMemoryProfileContext,
 	RECALL_MEMORY_TOOL_NAME,
 } from './cross-thread-facts';
 import { AgentEventBus } from './event-bus';
 import { saveMessagesToThread } from './memory-store';
-import { AgentMessageList, type SerializedMessageList } from './message-list';
+import {
+	AgentMessageList,
+	type MemoryProfileContext,
+	type SerializedMessageList,
+} from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
 import { hasObservationStore } from './observation-store';
@@ -476,6 +481,7 @@ export class AgentRuntime {
 			);
 		}
 
+		await this.setListMemoryProfileConfig(list, options?.persistence);
 		await this.setListCrossThreadMemoryConfig(list, input, options?.persistence);
 
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
@@ -503,19 +509,50 @@ export class AgentRuntime {
 		}
 
 		try {
-			const section = await loadCrossThreadFactsForInjection({
+			const injection = await loadCrossThreadFactsForInjection({
 				memory: this.config.memory,
 				config: crossThreadFacts,
 				persistence,
 				input,
 			});
-			if (section) {
-				list.crossThreadMemory = { section };
+			if (injection) {
+				list.crossThreadMemory = {
+					section: injection.section,
+					facts: injection.facts.map((fact) => fact.content),
+				};
 			}
 		} catch (error) {
 			this.eventBus.emit({
 				type: AgentEvent.Error,
 				message: 'Cross-thread fact prefetch failed',
+				error,
+				source: 'cross-thread-memory',
+			});
+		}
+	}
+
+	private async setListMemoryProfileConfig(
+		list: AgentMessageList,
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<void> {
+		const crossThreadFacts = this.config.crossThreadFacts;
+		if (
+			!isCrossThreadFactsEnabled(crossThreadFacts) ||
+			!this.config.memory ||
+			!persistence?.resourceId
+		) {
+			return;
+		}
+
+		try {
+			list.memoryProfile = await loadMemoryProfileContext({
+				memory: this.config.memory,
+				persistence,
+			});
+		} catch (error) {
+			this.eventBus.emit({
+				type: AgentEvent.Error,
+				message: 'Memory profile load failed',
 				error,
 				source: 'cross-thread-memory',
 			});
@@ -1212,7 +1249,7 @@ export class AgentRuntime {
 		);
 
 		if (isCrossThreadFactsEnabled(this.config.crossThreadFacts)) {
-			await this.dispatchCrossThreadFacts(options.persistence, delta);
+			await this.dispatchCrossThreadFacts(options.persistence, delta, list);
 		}
 
 		// Generate and save embeddings if semantic recall is configured
@@ -1224,12 +1261,13 @@ export class AgentRuntime {
 			);
 		}
 
-		await this.dispatchObservationalMemory(options.persistence);
+		await this.dispatchObservationalMemory(options.persistence, list.memoryProfile);
 	}
 
 	private async dispatchCrossThreadFacts(
 		persistence: AgentPersistenceOptions,
 		messages: AgentDbMessage[],
+		list: AgentMessageList,
 	): Promise<void> {
 		if (
 			!this.config.memory ||
@@ -1246,6 +1284,8 @@ export class AgentRuntime {
 			threadId: persistence.threadId,
 			persistence,
 			messages,
+			memoryProfile: list.memoryProfile,
+			knownFacts: list.crossThreadMemory?.facts,
 			eventBus: this.eventBus,
 		}).then(
 			() => undefined,
@@ -1815,9 +1855,7 @@ export class AgentRuntime {
 		}
 
 		if (tools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
-			throw new Error(
-				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved for cross-thread fact memory.`,
-			);
+			throw new Error(`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved by cross-thread memory.`);
 		}
 
 		return [
@@ -1950,8 +1988,11 @@ export class AgentRuntime {
 		};
 	}
 
-	private async dispatchObservationalMemory(persistence: AgentPersistenceOptions): Promise<void> {
-		const cycle = this.buildObservationCycleOpts(persistence);
+	private async dispatchObservationalMemory(
+		persistence: AgentPersistenceOptions,
+		memoryProfile: MemoryProfileContext | undefined,
+	): Promise<void> {
+		const cycle = this.buildObservationCycleOpts(persistence, memoryProfile);
 		if (!cycle) return;
 		const trigger = cycle.trigger ?? { type: 'per-turn' };
 		if (trigger.type === 'idle-timer') {
@@ -1997,6 +2038,7 @@ export class AgentRuntime {
 
 	private buildObservationCycleOpts(
 		persistence: AgentPersistenceOptions | undefined,
+		memoryProfile: MemoryProfileContext | undefined,
 	): RunObservationalCycleOpts | null {
 		const obsConfig = this.config.observationalMemory;
 		const memory = this.config.memory;
@@ -2009,6 +2051,7 @@ export class AgentRuntime {
 			threadId: persistence.threadId,
 			resourceId: persistence.resourceId,
 			model: this.config.model,
+			memoryProfile,
 			workingMemory: {
 				template: workingMemory.template,
 				structured: workingMemory.structured,

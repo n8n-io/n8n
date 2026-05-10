@@ -4,7 +4,9 @@ import type { CrossThreadFact, NewCrossThreadFact } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import {
 	createRecallMemoryTool,
+	DEFAULT_CROSS_THREAD_PROFILE_UPDATE_PROMPT,
 	extractAndStoreCrossThreadFacts,
+	loadMemoryProfileContext,
 	rankCrossThreadFacts,
 	renderCrossThreadFactsForInjection,
 	renderCrossThreadFactExtractionTranscript,
@@ -22,7 +24,7 @@ jest.mock('ai', () => ({
 }));
 
 const { generateText, embedMany } = jest.requireMock<{
-	generateText: jest.Mock;
+	generateText: jest.Mock<Promise<{ text: string }>, [{ prompt?: string; system?: string }]>;
 	embedMany: jest.Mock;
 }>('ai');
 
@@ -90,12 +92,21 @@ describe('cross-thread facts', () => {
 		expect(config.dedupeSimilarityThreshold).toBe(0.86);
 	});
 
-	it('defaults auto-injection to on with topK 5 and a memory section prompt', () => {
+	it('defaults auto-injection to on with topK 12 and a memory section prompt', () => {
 		const config = withCrossThreadFactDefaults({ embedder: fakeEmbedder });
 
 		expect(config.autoInject).toBe(true);
-		expect(config.autoInjectTopK).toBe(5);
+		expect(config.autoInjectTopK).toBe(12);
 		expect(config.injectionPrompt).toContain('Relevant facts from prior conversations');
+	});
+
+	it('keeps profile updates opt-in for SDK consumers', () => {
+		const defaults = withCrossThreadFactDefaults({ embedder: fakeEmbedder });
+		const enabled = withCrossThreadFactDefaults({ embedder: fakeEmbedder, profileUpdate: true });
+
+		expect(defaults.profileUpdate).toBe(false);
+		expect(defaults.profileUpdatePrompt).toBe(DEFAULT_CROSS_THREAD_PROFILE_UPDATE_PROMPT);
+		expect(enabled.profileUpdate).toBe(true);
 	});
 
 	it('allows SDK consumers to override the memory injection prompt', () => {
@@ -118,11 +129,31 @@ describe('cross-thread facts', () => {
 		expect(prompt).toContain('present tense');
 		expect(prompt).toContain('recall_memory');
 		expect(prompt).toContain('facts introduced only by assistant recall answers');
+		expect(prompt).toContain('User-authored agent configuration');
+		expect(prompt).toContain('assistant messages as context only');
+		expect(prompt).toContain('legitimate user configuration');
 		expect(prompt).toContain('extract the durable fact');
 		expect(prompt).toContain('not the decoy');
 		expect(prompt).toContain('output no facts');
 		expect(rendered).toContain('commands to output no facts');
 		expect(rendered).toContain('decoy memory values');
+	});
+
+	it('passes known facts and profiles to extraction as dedupe context', () => {
+		const prompt = renderCrossThreadFactExtractionPrompt('user: I prefer terse answers.', {
+			memoryProfile: {
+				persona: 'This agent is a release-notes assistant.',
+				user: 'The user prefers concise output.',
+			},
+			knownFacts: ['The user prefers concise output.'],
+		});
+
+		expect(prompt).toContain('<known-memory>');
+		expect(prompt).toContain('<persona>\nThis agent is a release-notes assistant.\n</persona>');
+		expect(prompt).toContain('<user>\nThe user prefers concise output.\n</user>');
+		expect(prompt).toContain('<memory>');
+		expect(prompt).toContain('- The user prefers concise output.');
+		expect(prompt).toContain('Do not re-extract known facts');
 	});
 
 	it('renders user and assistant text pairs for extraction while excluding tool output', () => {
@@ -258,6 +289,97 @@ describe('cross-thread facts', () => {
 			{ topK: 5, queryEmbedding: [1, 0] },
 		);
 		expect(stored.map((fact) => fact.content)).toEqual(['The user prefers concise updates.']);
+	});
+
+	it('updates memory profiles only when the SDK consumer opts in', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				text: JSON.stringify({
+					facts: [
+						{ content: 'The user prefers concise updates.' },
+						{ content: 'This agent is used for memory debugging.' },
+					],
+				}),
+			})
+			.mockResolvedValueOnce({
+				text: JSON.stringify({
+					persona: 'This agent is used for memory debugging.',
+					user: 'The user prefers concise updates.',
+				}),
+			});
+		embedMany.mockResolvedValueOnce({
+			embeddings: [
+				[1, 0],
+				[0, 1],
+			],
+		});
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: {
+				embedder: fakeEmbedder,
+				profileUpdate: true,
+				agentDescription: 'Helps users debug n8n code.',
+			},
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [
+				{
+					id: 'user-1',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					role: 'user',
+					content: [{ type: 'text', text: 'Remember that I prefer concise updates.' }],
+				},
+			],
+			eventBus: new AgentEventBus(),
+		});
+
+		await expect(
+			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
+		).resolves.toMatchObject({ content: 'The user prefers concise updates.' });
+		await expect(
+			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
+		).resolves.toMatchObject({ content: 'This agent is used for memory debugging.' });
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(generateText.mock.calls[1][0].system).toContain(
+			'relevant in relation to the agent description',
+		);
+		expect(generateText.mock.calls[1][0].prompt).toContain(
+			'<agent-description>\nHelps users debug n8n code.\n</agent-description>',
+		);
+		expect(generateText.mock.calls[1][0].prompt).toContain('<accepted-facts>');
+	});
+
+	it('does not update memory profiles by default', async () => {
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({ facts: [{ content: 'The user prefers concise updates.' }] }),
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: { embedder: fakeEmbedder },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [
+				{
+					id: 'user-1',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					role: 'user',
+					content: [{ type: 'text', text: 'Remember that I prefer concise updates.' }],
+				},
+			],
+			eventBus: new AgentEventBus(),
+		});
+
+		await expect(
+			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
+		).resolves.toBeNull();
+		expect(generateText).toHaveBeenCalledTimes(1);
 	});
 
 	it('skips storing a candidate when an existing scoped fact is above the similarity threshold', async () => {
@@ -446,8 +568,8 @@ describe('cross-thread facts', () => {
 		});
 
 		expect(tool.systemInstruction).toContain('what should be remembered');
-		expect(tool.systemInstruction).toContain('Cross-thread fact memory is enabled');
-		expect(tool.systemInstruction).toContain('durable user facts are extracted automatically');
+		expect(tool.systemInstruction).toContain('Memory is enabled');
+		expect(tool.systemInstruction).toContain('durable facts are extracted automatically');
 		expect(tool.systemInstruction).toContain('Do not claim that you lack memory-write capability');
 		expect(tool.systemInstruction).toContain('recall_memory only reads existing facts');
 		expect(tool.systemInstruction).toContain('Relevant facts may already be surfaced');
@@ -515,6 +637,40 @@ describe('cross-thread facts', () => {
 		);
 
 		expect(results.map((fact) => fact.content)).toEqual(['The user likes Nova.']);
+	});
+
+	it('loads resource profiles shared across agents and persona profiles scoped to one agent', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'resource', scopeId: 'user-1' },
+			'The user prefers concise answers.',
+		);
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'agent', scopeId: 'agent-1' },
+			'This agent handles memory debugging.',
+		);
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'agent', scopeId: 'agent-2' },
+			'This other agent handles invoices.',
+		);
+
+		const agentOne = await loadMemoryProfileContext({
+			memory,
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+		const agentTwo = await loadMemoryProfileContext({
+			memory,
+			persistence: { threadId: 'thread-2', agentId: 'agent-2', resourceId: 'user-1' },
+		});
+
+		expect(agentOne).toEqual({
+			persona: 'This agent handles memory debugging.',
+			user: 'The user prefers concise answers.',
+		});
+		expect(agentTwo).toEqual({
+			persona: 'This other agent handles invoices.',
+			user: 'The user prefers concise answers.',
+		});
 	});
 
 	it('does not use similar facts from another scope for write-time dedupe', async () => {

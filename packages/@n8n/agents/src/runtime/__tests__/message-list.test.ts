@@ -159,32 +159,39 @@ describe('AgentMessageList — forLlm working memory', () => {
 
 		expect(prompt).toContain('private');
 		expect(prompt).toContain('read-only');
+		expect(prompt).toContain('<session-memory>');
+		expect(prompt).toContain('</session-memory>');
 		expect(prompt).toContain('Saved memory: user prefers concise debugging answers.');
 		expect(prompt).not.toContain('Template-only field');
 		expect(prompt).not.toContain('Current template');
 	});
 
-	it('wraps saved working memory in a session-memory section', () => {
+	it('renders persona, user, cross-thread memory, and session memory as separate sections', () => {
 		const list = new AgentMessageList();
+		list.memoryProfile = {
+			persona: 'This agent specializes in n8n memory work.',
+			user: 'The user prefers concise answers.',
+		};
 		list.crossThreadMemory = {
-			section: '<memory>\n- Cross-thread fact\n</memory>',
+			section: '<memory>\n- The user is testing memory retrieval.\n</memory>',
+			facts: ['The user is testing memory retrieval.'],
 		};
 		list.workingMemory = {
-			template: '# Thread memory\n- Template-only field:',
+			template: '# Thread memory',
 			structured: false,
-			state: 'Saved session note.',
+			state: 'Current objective: verify prompt sections.',
 		};
 
 		const prompt = systemContent(list);
-		const sessionMemoryStart = prompt.indexOf('<session-memory>');
-		const sessionMemoryEnd = prompt.indexOf('</session-memory>');
 
-		expect(sessionMemoryStart).toBeGreaterThan(prompt.indexOf('</memory>'));
-		expect(sessionMemoryEnd).toBeGreaterThan(sessionMemoryStart);
-		expect(prompt.slice(sessionMemoryStart, sessionMemoryEnd)).toContain('Saved session note.');
-		expect(prompt.slice(sessionMemoryStart, sessionMemoryEnd)).toContain(
-			'Thread working memory (private, read-only):',
-		);
+		expect(prompt).toContain('<persona>\nThis agent specializes in n8n memory work.\n</persona>');
+		expect(prompt).toContain('<user>\nThe user prefers concise answers.\n</user>');
+		expect(prompt).toContain('<memory>\n- The user is testing memory retrieval.\n</memory>');
+		expect(prompt).toContain('<session-memory>');
+		expect(prompt).toContain('Current objective: verify prompt sections.');
+		expect(prompt.indexOf('<persona>')).toBeLessThan(prompt.indexOf('<user>'));
+		expect(prompt.indexOf('<user>')).toBeLessThan(prompt.indexOf('<memory>'));
+		expect(prompt.indexOf('<memory>')).toBeLessThan(prompt.indexOf('<session-memory>'));
 	});
 
 	it('keeps recent history messages in LLM context when working memory is empty', () => {
@@ -281,6 +288,26 @@ describe('AgentMessageList — deserialize', () => {
 		const [newMsg] = list2.turnDelta();
 		expect(newMsg.createdAt).toBeInstanceOf(Date);
 		expect(newMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
+	});
+
+	it('preserves injected profile and cross-thread memory context across serialization', () => {
+		const list = new AgentMessageList();
+		list.memoryProfile = { persona: 'Agent profile.', user: 'Resource profile.' };
+		list.crossThreadMemory = {
+			section: '<memory>\n- Known fact.\n</memory>',
+			facts: ['Known fact.'],
+		};
+
+		const restored = AgentMessageList.deserialize(list.serialize());
+
+		expect(restored.memoryProfile).toEqual({
+			persona: 'Agent profile.',
+			user: 'Resource profile.',
+		});
+		expect(restored.crossThreadMemory).toEqual({
+			section: '<memory>\n- Known fact.\n</memory>',
+			facts: ['Known fact.'],
+		});
 	});
 });
 

@@ -753,7 +753,7 @@ describe('AgentRuntime — cross-thread fact extraction scheduling', () => {
 		expect(searchSpy).toHaveBeenCalledWith(
 			{ agentId: 'agent-1', resourceId: 'user-1' },
 			'What should you remember about my style?',
-			expect.objectContaining({ topK: 5, queryEmbedding: [1, 0] }),
+			expect.objectContaining({ topK: 12, queryEmbedding: [1, 0] }),
 		);
 		const prompt = getSystemPromptFromGenerateCall();
 		expect(prompt).toContain('<memory>');
@@ -766,6 +766,36 @@ describe('AgentRuntime — cross-thread fact extraction scheduling', () => {
 		const calls = generateText.mock.calls as Array<[{ tools?: Record<string, unknown> }]>;
 		const toolArgs = calls[0][0];
 		expect(toolArgs.tools).toHaveProperty('recall_memory');
+	});
+
+	it('injects agent persona and resource profile before cross-thread facts when available', async () => {
+		const { runtime, memory } = await createRuntimeWithInjectedFacts();
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'agent', scopeId: 'agent-1' },
+			'This agent specializes in release automation.',
+		);
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'resource', scopeId: 'user-1' },
+			'The user prefers concise answers.',
+		);
+		embed.mockResolvedValueOnce({ embedding: [1, 0] });
+		generateText
+			.mockResolvedValueOnce(makeGenerateSuccess('done'))
+			.mockResolvedValueOnce({ text: '{"facts":[]}' });
+
+		await runtime.generate('What should you remember about my style?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		const prompt = getSystemPromptFromGenerateCall();
+		expect(prompt).toContain(
+			'<persona>\nThis agent specializes in release automation.\n</persona>',
+		);
+		expect(prompt).toContain('<user>\nThe user prefers concise answers.\n</user>');
+		expect(prompt.indexOf('<persona>')).toBeLessThan(prompt.indexOf('<user>'));
+		expect(prompt.indexOf('<user>')).toBeLessThan(
+			prompt.indexOf('<memory>\nRelevant facts from prior conversations'),
+		);
 	});
 
 	it('injects relevant cross-thread facts before streamText', async () => {

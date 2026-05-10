@@ -5,6 +5,8 @@ import type {
 	CrossThreadFactSearchOptions,
 	CrossThreadMemoryScope,
 	MemoryDescriptor,
+	MemoryProfile,
+	MemoryProfileScope,
 	NewCrossThreadFact,
 	RetrievedCrossThreadFact,
 	Thread,
@@ -27,6 +29,18 @@ interface StoredMessage {
 
 function scopeKey(scopeKind: ScopeKind, scopeId: string): string {
 	return `${scopeKind}:${scopeId}`;
+}
+
+function memoryProfileKey(scope: MemoryProfileScope): string {
+	return `${scope.scopeKind}:${scope.scopeId}`;
+}
+
+function cloneMemoryProfile(profile: MemoryProfile): MemoryProfile {
+	return {
+		...profile,
+		createdAt: new Date(profile.createdAt),
+		updatedAt: new Date(profile.updatedAt),
+	};
 }
 
 function cloneCursor(cursor: ObservationCursor): ObservationCursor {
@@ -67,6 +81,8 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 	private locksByScope = new Map<string, ObservationLockHandle>();
 
 	private crossThreadFacts: CrossThreadFact[] = [];
+
+	private memoryProfilesByScope = new Map<string, MemoryProfile>();
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getWorkingMemory(params: {
@@ -231,6 +247,33 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 			.map((fact) => ({ ...fact, createdAt: new Date(fact.createdAt) }));
 
 		return rankCrossThreadFacts(scoped, query, opts);
+	}
+
+	// ── Mutable memory profiles ──────────────────────────────────────────
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async getMemoryProfile(scope: MemoryProfileScope): Promise<MemoryProfile | null> {
+		const profile = this.memoryProfilesByScope.get(memoryProfileKey(scope));
+		return profile ? cloneMemoryProfile(profile) : null;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveMemoryProfile(
+		scope: MemoryProfileScope,
+		content: string,
+		metadata: MemoryProfile['metadata'] = null,
+	): Promise<MemoryProfile> {
+		const now = new Date();
+		const existing = this.memoryProfilesByScope.get(memoryProfileKey(scope));
+		const profile: MemoryProfile = {
+			...scope,
+			content,
+			metadata,
+			createdAt: existing?.createdAt ?? now,
+			updatedAt: now,
+		};
+		this.memoryProfilesByScope.set(memoryProfileKey(scope), profile);
+		return cloneMemoryProfile(profile);
 	}
 
 	// ── Observational memory ─────────────────────────────────────────────
