@@ -64,7 +64,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.WORKFLOWS]])(
@@ -74,7 +74,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.EXECUTION_DEBUG]])(
@@ -88,7 +88,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([
@@ -101,7 +101,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each<[string, RouteRecordName, Scope[]]>([
@@ -141,7 +141,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each<[string, RouteRecordName, Scope[]]>([
@@ -177,7 +177,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([

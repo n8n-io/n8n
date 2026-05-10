@@ -187,6 +187,45 @@ describe('CredentialsRepository', () => {
 			);
 			expect(credentials).toHaveLength(1);
 		});
+
+		test('should narrow results by credential type when type is provided', async () => {
+			// ARRANGE
+			const slackCred = mock<CredentialsEntity>({
+				id: 'global-slack',
+				isGlobal: true,
+				type: 'slackOAuth2Api',
+			});
+			entityManager.find.mockResolvedValueOnce([slackCred]);
+
+			// ACT
+			const credentials = await repository.findAllGlobalCredentials({ type: 'slackOAuth2Api' });
+
+			// ASSERT — the where clause must include both isGlobal AND a type matcher
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({
+						isGlobal: true,
+						type: expect.anything(),
+					}),
+				}),
+			);
+			expect(credentials).toEqual([slackCred]);
+		});
+
+		test('should not add a type filter when type is omitted', async () => {
+			// ARRANGE
+			entityManager.find.mockResolvedValueOnce([]);
+
+			// ACT
+			await repository.findAllGlobalCredentials();
+
+			// ASSERT — where contains isGlobal but NOT type
+			const findCall = entityManager.find.mock.calls.find((call) => call[0] === CredentialsEntity);
+			const findArg = findCall?.[1] as { where?: Record<string, unknown> };
+			expect(findArg?.where).toBeDefined();
+			expect(findArg?.where).not.toHaveProperty('type');
+		});
 	});
 
 	describe('findAllPersonalCredentials', () => {

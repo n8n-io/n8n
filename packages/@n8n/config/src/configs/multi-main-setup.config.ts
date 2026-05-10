@@ -13,4 +13,8 @@ export class MultiMainSetupConfig {
 	/** Interval in seconds between leader eligibility checks in multi-main setup. */
 	@Env('N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL')
 	interval: number = 3;
+
+	/** Whether to use the new leader election implementation (Lua-script based). */
+	@Env('N8N_NEW_LEADER_ELECTION_IMPLEMENTATION')
+	newLeaderElection: boolean = false;
 }

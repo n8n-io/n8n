@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
@@ -12,6 +13,8 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+import { resolveAuthUrl } from '../../credentials/SalesforceJwtApi.credentials';
 
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -42,13 +45,10 @@ function getOptions(
 
 async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: IDataObject,
+	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
-	const authUrl =
-		credentials.environment === 'sandbox'
-			? 'https://test.salesforce.com'
-			: 'https://login.salesforce.com';
+	const authUrl = resolveAuthUrl(credentials);
 
 	const signature = jwt.sign(
 		{
@@ -415,14 +415,14 @@ export function getConditions(options: IDataObject): string | undefined {
 export function getDefaultFields(sobject: string) {
 	return (
 		{
-			Account: 'id,name,type',
-			Lead: 'id,company,firstname,lastname,street,postalCode,city,email,status',
-			Contact: 'id,firstname,lastname,email',
-			Opportunity: 'id,accountId,amount,probability,type',
-			Case: 'id,accountId,contactId,priority,status,subject,type',
-			Task: 'id,subject,status,priority',
-			Attachment: 'id,name',
-			User: 'id,name,email',
+			Account: 'id,name,type,LastModifiedDate',
+			Lead: 'id,company,firstname,lastname,street,postalCode,city,email,status,LastModifiedDate',
+			Contact: 'id,firstname,lastname,email,LastModifiedDate',
+			Opportunity: 'id,accountId,amount,probability,type,LastModifiedDate',
+			Case: 'id,accountId,contactId,priority,status,subject,type,LastModifiedDate',
+			Task: 'id,subject,status,priority,LastModifiedDate',
+			Attachment: 'id,name,LastModifiedDate',
+			User: 'id,name,email,LastModifiedDate',
 		} as IDataObject
 	)[sobject];
 }
@@ -446,7 +446,10 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 			);
 		}
 	} else {
-		fields.push.apply(fields, ((getDefaultFields(validSobject) as string) || 'id').split(','));
+		fields.push.apply(
+			fields,
+			((getDefaultFields(validSobject) as string) || 'id,LastModifiedDate').split(','),
+		);
 	}
 	const conditions = getConditions(options);
 
@@ -487,10 +490,12 @@ export function filterAndManageProcessedItems(
 	for (const item of responseData) {
 		if (typeof item.Id !== 'string') continue;
 
-		const itemId = item.Id;
-		if (!processedIdsSet.has(itemId)) {
+		const itemKey =
+			typeof item.LastModifiedDate === 'string' ? `${item.Id}_${item.LastModifiedDate}` : item.Id;
+
+		if (!processedIdsSet.has(itemKey)) {
 			newItems.push(item);
-			newItemIds.push(itemId);
+			newItemIds.push(itemKey);
 		}
 	}
 

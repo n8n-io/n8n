@@ -1,5 +1,5 @@
 import type { ClusterCheckSummary, ClusterInfoResponse } from '@n8n/api-types';
-import { Get, GlobalScope, RestController } from '@n8n/decorators';
+import { Get, RestController } from '@n8n/decorators';
 
 import { CheckService } from './checks/check.service';
 import { InstanceRegistryService } from './instance-registry.service';
@@ -12,7 +12,6 @@ export class InstanceRegistryController {
 	) {}
 
 	@Get('/')
-	@GlobalScope('orchestration:read')
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
 		const [instances, { results }] = await Promise.all([
 			this.instanceRegistryService.getAllInstances(),
