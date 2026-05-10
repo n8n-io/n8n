@@ -173,4 +173,48 @@ describe('Execution Metadata functions', () => {
 			test1: longValue.slice(0, 512),
 		});
 	});
+
+	// GHC-8254: AI Agent node with Chinese name fails with "Custom date key can only contain characters A-Za-z0-9_"
+	describe('Unicode support in keys (GHC-8254)', () => {
+		test('should allow Chinese characters in keys', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			// Simulates AI Agent node named "测试" generating key "response_测试"
+			const chineseKey = 'response_测试';
+			expect(() => setWorkflowExecutionMetadata(executionData, chineseKey, 'value1')).not.toThrow();
+
+			expect(metadata).toHaveProperty(chineseKey, 'value1');
+		});
+
+		test('should allow other Unicode characters (Japanese, Korean)', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			// Japanese
+			const japaneseKey = 'response_テスト';
+			expect(() => setWorkflowExecutionMetadata(executionData, japaneseKey, 'value1')).not.toThrow();
+
+			// Korean
+			const koreanKey = 'response_테스트';
+			expect(() => setWorkflowExecutionMetadata(executionData, koreanKey, 'value2')).not.toThrow();
+
+			expect(metadata).toHaveProperty(japaneseKey, 'value1');
+			expect(metadata).toHaveProperty(koreanKey, 'value2');
+		});
+
+		test('should still reject special characters that could cause issues', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			// Control characters should still be rejected
+			expect(() => setWorkflowExecutionMetadata(executionData, 'test\x00key', 'value')).toThrow(
+				InvalidExecutionMetadataError,
+			);
+
+			// Newlines should be rejected
+			expect(() => setWorkflowExecutionMetadata(executionData, 'test\nkey', 'value')).toThrow(
+				InvalidExecutionMetadataError,
+			);
+
+			expect(metadata).toEqual({});
+		});
+	});
 });
