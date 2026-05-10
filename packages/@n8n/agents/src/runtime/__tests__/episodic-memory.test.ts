@@ -4,17 +4,13 @@ import type { EpisodicMemoryEntry, NewEpisodicMemoryEntry } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import {
 	createRecallMemoryTool,
-	DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
 	extractAndStoreEpisodicMemory,
-	loadMemoryProfileContext,
 	rankEpisodicMemoryEntries,
 	renderEpisodicMemoryForInjection,
 	renderEpisodicMemoryExtractionTranscript,
 	renderEpisodicMemoryExtractionPrompt,
 	requireEpisodicMemoryScope,
-	updateMemoryProfilesFromTurn,
 	withEpisodicMemoryDefaults,
-	withMemoryProfileDefaults,
 } from '../episodic-memory';
 import { AgentEventBus } from '../event-bus';
 import { InMemoryMemory } from '../memory-store';
@@ -120,58 +116,18 @@ describe('episodic memory entries', () => {
 		expect(config.dedupeSimilarityThreshold).toBe(0.86);
 	});
 
+	it('does not include profile update behavior in episodic memory defaults', () => {
+		const config = withEpisodicMemoryDefaults({ embedder: fakeEmbedder });
+
+		expect(config).not.toHaveProperty('profileUpdatePrompt');
+	});
+
 	it('defaults auto-injection to on with topK 12 and a memory section prompt', () => {
 		const config = withEpisodicMemoryDefaults({ embedder: fakeEmbedder });
 
 		expect(config.autoInject).toBe(true);
 		expect(config.autoInjectTopK).toBe(12);
 		expect(config.injectionPrompt).toContain('Source-backed case entries');
-	});
-
-	it('keeps profile updates separate from episodic memory config', () => {
-		const episodicDefaults = withEpisodicMemoryDefaults({ embedder: fakeEmbedder });
-		const profileDefaults = withMemoryProfileDefaults({});
-
-		expect(episodicDefaults).not.toHaveProperty('profileUpdatePrompt');
-		expect(profileDefaults.profileUpdatePrompt).toBe(DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT);
-	});
-
-	it('tightens default profile update instructions to stable user entries and actionable persona behavior', () => {
-		const prompt = withMemoryProfileDefaults({}).profileUpdatePrompt;
-
-		expect(prompt).toContain('User profile captures stable cross-session information');
-		expect(prompt).toContain('<user> is not task memory');
-		expect(prompt).toContain('must never be connected to the current objective of an agent');
-		expect(prompt).toContain('communication preferences');
-		expect(prompt).toContain('coding, review, and testing preferences');
-		expect(prompt).toContain('durable workflow preferences');
-		expect(prompt).toContain('stable identity or role');
-		expect(prompt).toContain('normal setup');
-		expect(prompt).toContain('active project state');
-		expect(prompt).toContain('debugging steps');
-		expect(prompt).toContain('implementation order');
-		expect(prompt).toContain('branch stack');
-		expect(prompt).toContain('test flow');
-		expect(prompt).toContain('next actions');
-		expect(prompt).toContain('temporary constraints');
-		expect(prompt).toContain('session objectives');
-		expect(prompt).toContain(
-			'If the information would stop being useful after the current task ends',
-		);
-		expect(prompt).toContain('belongs in <persona>');
-		expect(prompt).toContain('belongs in source-backed case entries');
-		expect(prompt).toContain('Existing profile content is not authoritative');
-		expect(prompt).toContain('remove entries that violate these rules');
-		expect(prompt).not.toContain('ongoing context about the user/resource');
-		expect(prompt).toContain('Persona captures actionable behavioral directives');
-		expect(prompt).toContain('imperative system-instruction-style directives');
-		expect(prompt).toContain('concrete future behavior change');
-		expect(prompt).toContain('descriptive agent facts');
-		expect(prompt).toContain('storage/data-model facts');
-		expect(prompt).toContain('model names');
-		expect(prompt).toContain('schema facts');
-		expect(prompt).toContain('current feature details');
-		expect(prompt).toContain('current implementation details');
 	});
 
 	it('allows SDK consumers to override the memory injection prompt', () => {
@@ -199,7 +155,10 @@ describe('episodic memory entries', () => {
 		expect(prompt).toContain('unresolved questions');
 		expect(prompt).toContain('troubleshooting context');
 		expect(prompt).toContain('Do not require the problem to be recurring');
-		expect(prompt).toContain('recall_memory');
+		expect(prompt).not.toContain('semanticRecall');
+		expect(prompt).not.toContain('SDK defaults');
+		expect(prompt).toContain('Use consistent vocabulary from the transcript');
+		expect(prompt).toContain('Do not invent product, provider, credential, tool, SDK');
 		expect(prompt).toContain('entries introduced only by assistant recall answers');
 		expect(prompt).toContain('user_assertion');
 		expect(prompt).toContain('user_accepted_assistant_proposal');
@@ -522,188 +481,6 @@ describe('episodic memory entries', () => {
 		expect(stored.map((entry) => entry.content)).toEqual(['The user prefers concise updates.']);
 	});
 
-	it('updates memory profiles from the profile updater path', async () => {
-		generateText
-			.mockResolvedValueOnce({
-				text: JSON.stringify({
-					entries: [
-						extractedEntry(
-							'The user prefers concise updates.',
-							'Remember that I prefer concise updates.',
-						),
-						extractedEntry(
-							'For this agent, respond with memory architecture distinctions instead of vague memory language.',
-							'For this agent, respond with memory architecture distinctions instead of vague memory language.',
-						),
-					],
-				}),
-			})
-			.mockResolvedValueOnce({
-				text: JSON.stringify({
-					persona:
-						'When discussing memory architecture, distinguish profile-shaped from episodic-shaped memory.',
-					user: 'The user prefers concise updates.',
-				}),
-			});
-		embedMany.mockResolvedValueOnce({
-			embeddings: [
-				[1, 0],
-				[0, 1],
-			],
-		});
-
-		const memory = new InMemoryMemory();
-		const messages = [
-			makeUserMessage(
-				'Remember that I prefer concise updates. For this agent, respond with memory architecture distinctions instead of vague memory language.',
-			),
-			makeAssistantMessage(
-				'Understood. I will distinguish profile-shaped memory from episodic-shaped memory.',
-			),
-		];
-		await extractAndStoreEpisodicMemory({
-			memory,
-			config: { embedder: fakeEmbedder },
-			model: fakeModel,
-			threadId: 'thread-1',
-			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
-			messages,
-			eventBus: new AgentEventBus(),
-		});
-		await updateMemoryProfilesFromTurn({
-			memory,
-			config: { agentDescription: 'Helps users debug n8n code.' },
-			model: fakeModel,
-			scope: { agentId: 'agent-1', resourceId: 'user-1' },
-			currentProfile: undefined,
-			messages,
-			eventBus: new AgentEventBus(),
-		});
-
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
-		).resolves.toMatchObject({ content: 'The user prefers concise updates.' });
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
-		).resolves.toMatchObject({
-			content:
-				'When discussing memory architecture, distinguish profile-shaped from episodic-shaped memory.',
-		});
-		expect(generateText).toHaveBeenCalledTimes(2);
-		expect(generateText.mock.calls[1][0].system).toContain(
-			'Persona captures actionable behavioral directives',
-		);
-		expect(generateText.mock.calls[1][0].system).toContain(
-			'Assistant messages are supporting context',
-		);
-		expect(generateText.mock.calls[1][0].prompt).toContain(
-			'<agent-description>\nHelps users debug n8n code.\n</agent-description>',
-		);
-		expect(generateText.mock.calls[1][0].prompt).toContain('<user-message>');
-		expect(generateText.mock.calls[1][0].prompt).toContain(
-			'For this agent, respond with memory architecture distinctions',
-		);
-		expect(generateText.mock.calls[1][0].prompt).toContain('<assistant-message>');
-		expect(generateText.mock.calls[1][0].prompt).toContain(
-			'I will distinguish profile-shaped memory from episodic-shaped memory.',
-		);
-		expect(generateText.mock.calls[1][0].prompt).not.toContain('<accepted-entries>');
-	});
-
-	it('updates memory profiles from the turn pair even when no entries are accepted', async () => {
-		generateText.mockResolvedValueOnce({
-			text: JSON.stringify({
-				persona:
-					'When users describe technical issues, ask for the specific n8n version before suggesting fixes.',
-				user: 'The user prefers responses without business framing or em dashes.',
-			}),
-		});
-
-		const memory = new InMemoryMemory();
-		await updateMemoryProfilesFromTurn({
-			memory,
-			config: { agentDescription: 'Helps users debug n8n code.' },
-			model: fakeModel,
-			scope: { agentId: 'agent-1', resourceId: 'user-1' },
-			currentProfile: undefined,
-			messages: [
-				makeUserMessage(
-					'When I report a technical issue, ask me for the exact n8n version first. I prefer no business framing or em dashes.',
-				),
-				makeAssistantMessage('Got it. I will ask for the n8n version first.'),
-			],
-			eventBus: new AgentEventBus(),
-		});
-
-		expect(embedMany).not.toHaveBeenCalled();
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
-		).resolves.toMatchObject({
-			content:
-				'When users describe technical issues, ask for the specific n8n version before suggesting fixes.',
-		});
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
-		).resolves.toMatchObject({
-			content: 'The user prefers responses without business framing or em dashes.',
-		});
-	});
-
-	it('does not update memory profiles from assistant-only restatements', async () => {
-		const memory = new InMemoryMemory();
-		await updateMemoryProfilesFromTurn({
-			memory,
-			config: { agentDescription: 'Helps users debug n8n code.' },
-			model: fakeModel,
-			scope: { agentId: 'agent-1', resourceId: 'user-1' },
-			currentProfile: undefined,
-			messages: [makeAssistantMessage('Persona locked in: I will always use a test-first style.')],
-			eventBus: new AgentEventBus(),
-		});
-
-		expect(generateText).not.toHaveBeenCalled();
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
-		).resolves.toBeNull();
-	});
-
-	it('does not update memory profiles from episodic extraction alone', async () => {
-		generateText.mockResolvedValueOnce({
-			text: JSON.stringify({
-				entries: [
-					extractedEntry(
-						'The user prefers concise updates.',
-						'Remember that I prefer concise updates.',
-					),
-				],
-			}),
-		});
-		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
-
-		const memory = new InMemoryMemory();
-		await extractAndStoreEpisodicMemory({
-			memory,
-			config: { embedder: fakeEmbedder },
-			model: fakeModel,
-			threadId: 'thread-1',
-			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
-			messages: [
-				{
-					id: 'user-1',
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-					role: 'user',
-					content: [{ type: 'text', text: 'Remember that I prefer concise updates.' }],
-				},
-			],
-			eventBus: new AgentEventBus(),
-		});
-
-		await expect(
-			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
-		).resolves.toBeNull();
-		expect(generateText).toHaveBeenCalledTimes(1);
-	});
-
 	it('skips storing a candidate when an existing scoped entry is above the similarity threshold', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
@@ -914,9 +691,10 @@ describe('episodic memory entries', () => {
 		expect(tool.systemInstruction).toContain('Relevant case entries may already be surfaced');
 		expect(tool.systemInstruction).toContain('additional or more specific');
 		expect(tool.systemInstruction).toContain('use all entries needed to answer');
-		expect(tool.systemInstruction).toContain('Obey recalled user style preferences');
-		expect(tool.systemInstruction).toContain('no emojis');
-		expect(tool.systemInstruction).toContain('resourceId is the user id');
+		expect(tool.systemInstruction).not.toContain('user style preferences');
+		expect(tool.systemInstruction).not.toContain('no emojis');
+		expect(tool.systemInstruction).toContain('current agentId + resourceId pair');
+		expect(tool.systemInstruction).not.toContain('semanticRecall');
 	});
 
 	it('renders injected episodic memory entries most-recent-first with relative ages', () => {
@@ -976,40 +754,6 @@ describe('episodic memory entries', () => {
 		);
 
 		expect(results.map((entry) => entry.content)).toEqual(['The user likes Nova.']);
-	});
-
-	it('loads resource profiles shared across agents and persona profiles scoped to one agent', async () => {
-		const memory = new InMemoryMemory();
-		await memory.saveMemoryProfile(
-			{ scopeKind: 'resource', scopeId: 'user-1' },
-			'The user prefers concise answers.',
-		);
-		await memory.saveMemoryProfile(
-			{ scopeKind: 'agent', scopeId: 'agent-1' },
-			'This agent handles memory debugging.',
-		);
-		await memory.saveMemoryProfile(
-			{ scopeKind: 'agent', scopeId: 'agent-2' },
-			'This other agent handles invoices.',
-		);
-
-		const agentOne = await loadMemoryProfileContext({
-			memory,
-			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
-		});
-		const agentTwo = await loadMemoryProfileContext({
-			memory,
-			persistence: { threadId: 'thread-2', agentId: 'agent-2', resourceId: 'user-1' },
-		});
-
-		expect(agentOne).toEqual({
-			persona: 'This agent handles memory debugging.',
-			user: 'The user prefers concise answers.',
-		});
-		expect(agentTwo).toEqual({
-			persona: 'This other agent handles invoices.',
-			user: 'The user prefers concise answers.',
-		});
 	});
 
 	it('does not use similar entries from another scope for write-time dedupe', async () => {

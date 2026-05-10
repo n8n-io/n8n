@@ -118,11 +118,13 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-export interface EpisodicMemoryScope {
+export interface AgentResourceScope {
 	agentId: string;
-	/** n8n maps this to the user id for episodic memory entries. */
+	/** The resource/entity this agent memory belongs to. */
 	resourceId: string;
 }
+
+export type EpisodicMemoryScope = AgentResourceScope;
 
 export type MemoryProfileScopeKind = 'agent' | 'resource';
 

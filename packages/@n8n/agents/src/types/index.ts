@@ -60,6 +60,7 @@ export type {
 
 export type {
 	Thread,
+	AgentResourceScope,
 	BuiltMemory,
 	BuiltEpisodicMemoryStore,
 	BuiltMemoryProfileStore,

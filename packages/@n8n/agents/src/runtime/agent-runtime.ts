@@ -38,13 +38,15 @@ import {
 	extractAndStoreEpisodicMemory,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
-	isMemoryProfilesEnabled,
 	loadEpisodicMemoryForInjection,
-	loadMemoryProfileContext,
 	RECALL_MEMORY_TOOL_NAME,
-	updateMemoryProfilesFromTurn,
 } from './episodic-memory';
 import { AgentEventBus } from './event-bus';
+import {
+	isMemoryProfilesEnabled,
+	loadMemoryProfileContext,
+	updateMemoryProfilesFromTurn,
+} from './memory-profiles';
 import { saveMessagesToThread } from './memory-store';
 import {
 	AgentMessageList,

@@ -9,6 +9,7 @@ export type {
 	BuiltEval,
 	RunOptions,
 	AgentResult,
+	AgentResourceScope,
 	GenerateResult,
 	StreamResult,
 	EvalInput,
@@ -134,11 +135,11 @@ export {
 } from './runtime/observational-cycle';
 export {
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
-	DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
 	DEFAULT_RECALL_MEMORY_TOOL_INSTRUCTION,
 	rankEpisodicMemoryEntries,
 	RECALL_MEMORY_TOOL_NAME,
 } from './runtime/episodic-memory';
+export { DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT } from './runtime/memory-profiles';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
