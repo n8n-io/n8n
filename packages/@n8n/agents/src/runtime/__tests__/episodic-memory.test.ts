@@ -166,10 +166,20 @@ describe('episodic memory entries', () => {
 		expect(prompt).toContain('directly supported by the cited evidence');
 		expect(prompt).toContain('Do not infer missing causes');
 		expect(prompt).toContain('Preserve uncertainty');
+		expect(prompt).toContain('Preserve causal mappings');
+		expect(prompt).toContain('which entity, account, record, configuration, or service holds');
+		expect(prompt).toContain('which one is read, checked, routed through');
+		expect(prompt).toContain('source emits value A while a matcher expects value B');
+		expect(prompt).toContain('Do not split causal relationships into disconnected entries');
+		expect(prompt).toContain('symptom, causal mapping, and resolution');
 		expect(prompt).toContain('Only include entries likely to help future case recall');
 		expect(prompt).toContain('low-value narration');
 		expect(prompt).toContain('stable user preferences');
 		expect(prompt).toContain('persona behavior rules');
+		expect(prompt).not.toContain('Acme');
+		expect(prompt).not.toContain('Stripe');
+		expect(prompt).not.toContain('support queue');
+		expect(prompt).not.toContain('n8n');
 		expect(prompt).toContain('assistant messages as context only');
 		expect(prompt).toContain('extract the user');
 		expect(prompt).toContain('not the decoy');
@@ -294,6 +304,40 @@ describe('episodic memory entries', () => {
 			{ topK: 5, queryEmbedding: [1, 0] },
 		);
 		expect(stored.map((entry) => entry.content)).toEqual(['The user prefers concise updates.']);
+	});
+
+	it('preserves causal direction for record-state and entitlement-check mappings', async () => {
+		const evidence =
+			'We found two customer records: the old record holds the active subscription, but the new record is used for entitlement checks, so access stays blocked until the records are merged and entitlements are refreshed.';
+		const content =
+			'The old customer record holds the active subscription while the new customer record is used for entitlement checks; access stays blocked until the records are merged and entitlements are refreshed.';
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({
+				entries: [extractedEntry(content, evidence)],
+			}),
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreEpisodicMemory({
+			memory,
+			config: { embedder: fakeEmbedder },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [makeUserMessage(evidence)],
+			eventBus: new AgentEventBus(),
+		});
+
+		const stored = await memory.searchEpisodicMemoryEntries(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'subscription entitlement checks',
+			{ topK: 5, queryEmbedding: [1, 0] },
+		);
+		expect(stored.map((entry) => entry.content)).toEqual([content]);
+		expect(stored[0]?.agentId).toBe('agent-1');
+		expect(stored[0]?.resourceId).toBe('user-1');
+		expect(stored[0]?.sourceThreadId).toBe('thread-1');
 	});
 
 	it('stores user-accepted assistant proposals when the acceptance is exact user evidence', async () => {
