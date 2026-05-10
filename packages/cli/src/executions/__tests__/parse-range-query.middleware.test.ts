@@ -14,6 +14,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('errors', () => {

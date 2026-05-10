@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { isVNode } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialResolvers } from './useCredentialResolvers';
@@ -32,6 +33,7 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 		...actual,
 		getCredentialResolvers: vi.fn(),
 		getCredentialResolverTypes: vi.fn(),
+		getCredentialResolverWorkflows: vi.fn(),
 		deleteCredentialResolver: vi.fn(),
 	};
 });
@@ -67,6 +69,7 @@ describe('useCredentialResolvers', () => {
 
 		vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([]);
 		vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue([]);
+		vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -181,6 +184,80 @@ describe('useCredentialResolvers', () => {
 
 			expect(result).toBe(false);
 			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+		});
+
+		it('should fetch affected workflows before showing confirm dialog', async () => {
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			expect(restApiClient.getCredentialResolverWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				'resolver-1',
+			);
+		});
+
+		it('should pass affected workflows as VNode to confirm message', async () => {
+			const workflows = [
+				{ id: 'wf-1', name: 'My Workflow' },
+				{ id: 'wf-2', name: 'Other Workflow' },
+			];
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue(workflows);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			const confirmMessage = mockConfirm.mock.calls[0][0];
+			expect(isVNode(confirmMessage)).toBe(true);
+			expect(confirmMessage.props).toEqual(
+				expect.objectContaining({
+					resolverName: 'Test Resolver',
+					affectedWorkflows: workflows,
+				}),
+			);
+		});
+
+		it('should fall back to VNode with empty workflows when affected workflows fetch fails', async () => {
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockRejectedValue(
+				new Error('Network error'),
+			);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			expect(mockConfirm).toHaveBeenCalled();
+			const confirmMessage = mockConfirm.mock.calls[0][0];
+			expect(isVNode(confirmMessage)).toBe(true);
+			expect(confirmMessage.props).toEqual(
+				expect.objectContaining({
+					resolverName: 'Test Resolver',
+					affectedWorkflows: [],
+				}),
+			);
+		});
+
+		it('should pass all affected workflows to VNode including overflow', async () => {
+			const manyWorkflows = Array.from({ length: 8 }, (_, i) => ({
+				id: `wf-${i}`,
+				name: `Workflow ${i}`,
+			}));
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue(manyWorkflows);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			const confirmMessage = mockConfirm.mock.calls[0][0];
+			expect(isVNode(confirmMessage)).toBe(true);
+			// Component receives all workflows; truncation is handled in the template
+			expect(confirmMessage.props?.affectedWorkflows).toHaveLength(8);
 		});
 	});
 

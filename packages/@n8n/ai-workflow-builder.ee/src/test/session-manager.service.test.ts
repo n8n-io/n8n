@@ -1279,6 +1279,66 @@ describe('SessionManagerService', () => {
 				});
 			});
 
+			it('should truncate messages at restore point when activeVersionCardId is set', async () => {
+				const msg1 = new HumanMessage('First message');
+				msg1.additional_kwargs = { messageId: 'msg-1' };
+				const msg2 = new AIMessage('First response');
+				msg2.additional_kwargs = { messageId: 'msg-2' };
+				const versionCard = new AIMessage('Version card');
+				versionCard.additional_kwargs = { messageId: 'version-card-1' };
+				const msg3 = new HumanMessage('Collapsed message');
+				msg3.additional_kwargs = { messageId: 'msg-3' };
+				const msg4 = new AIMessage('Collapsed response');
+				msg4.additional_kwargs = { messageId: 'msg-4' };
+
+				mockStorage.getSession.mockResolvedValue({
+					messages: [msg1, msg2, versionCard, msg3, msg4],
+					updatedAt: new Date(),
+					activeVersionCardId: 'version-card-1',
+				});
+
+				const result = await serviceWithStorage.loadSessionMessages('thread-123');
+
+				expect(result).toEqual([msg1, msg2]);
+				expect(result).not.toContainEqual(
+					expect.objectContaining({ additional_kwargs: { messageId: 'version-card-1' } }),
+				);
+			});
+
+			it('should return all messages when activeVersionCardId is null', async () => {
+				const msg1 = new HumanMessage('Hello');
+				msg1.additional_kwargs = { messageId: 'msg-1' };
+				const msg2 = new AIMessage('Hi');
+				msg2.additional_kwargs = { messageId: 'msg-2' };
+
+				mockStorage.getSession.mockResolvedValue({
+					messages: [msg1, msg2],
+					updatedAt: new Date(),
+					activeVersionCardId: null,
+				});
+
+				const result = await serviceWithStorage.loadSessionMessages('thread-123');
+
+				expect(result).toEqual([msg1, msg2]);
+			});
+
+			it('should return all messages when activeVersionCardId does not match any message', async () => {
+				const msg1 = new HumanMessage('Hello');
+				msg1.additional_kwargs = { messageId: 'msg-1' };
+				const msg2 = new AIMessage('Hi');
+				msg2.additional_kwargs = { messageId: 'msg-2' };
+
+				mockStorage.getSession.mockResolvedValue({
+					messages: [msg1, msg2],
+					updatedAt: new Date(),
+					activeVersionCardId: 'non-existent-id',
+				});
+
+				const result = await serviceWithStorage.loadSessionMessages('thread-123');
+
+				expect(result).toEqual([msg1, msg2]);
+			});
+
 			it('should strip cache_control markers from loaded messages', async () => {
 				const messageWithCache = new HumanMessage('Hello');
 				messageWithCache.content = [
@@ -1607,10 +1667,12 @@ describe('SessionManagerService', () => {
 				);
 
 				expect(result).toBe(true);
+				// Storage keeps FULL messages (for frontend collapsed rendering).
+				// Only the in-memory checkpointer is truncated.
 				expect(mockStorage.saveSession).toHaveBeenCalledWith(
 					expect.any(String),
 					expect.objectContaining({
-						messages: [msg1],
+						messages: [msg1, msg2],
 						previousSummary: 'Summary',
 					}),
 				);

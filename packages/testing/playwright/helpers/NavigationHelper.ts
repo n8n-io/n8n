@@ -216,6 +216,14 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to Instance AI page
+	 * URL: /instance-ai
+	 */
+	async toInstanceAi() {
+		await this.page.goto('/instance-ai');
+	}
+
+	/**
 	 * Navigate to ChatHub chat page
 	 * URL: /home/chat
 	 */

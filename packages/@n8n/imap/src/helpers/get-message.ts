@@ -14,7 +14,7 @@ export async function getMessage(
 	/** an ImapMessage from the node-imap library */
 	message: ImapMessage,
 ): Promise<Message> {
-	return await new Promise((resolve) => {
+	return await new Promise((resolve, reject) => {
 		let attributes: ImapMessageAttributes;
 		const parts: MessageBodyPart[] = [];
 
@@ -35,6 +35,7 @@ export async function getMessage(
 					body: /^HEADER/g.test(info.which) ? parseHeader(body) : body,
 				});
 			});
+			stream.on('error', reject);
 		};
 
 		const messageOnAttributes = (attrs: ImapMessageAttributes) => {
@@ -44,11 +45,13 @@ export async function getMessage(
 		const messageOnEnd = () => {
 			message.removeListener('body', messageOnBody);
 			message.removeListener('attributes', messageOnAttributes);
+			message.removeListener('error', reject);
 			resolve({ attributes, parts });
 		};
 
 		message.on('body', messageOnBody);
 		message.once('attributes', messageOnAttributes);
 		message.once('end', messageOnEnd);
+		message.once('error', reject);
 	});
 }

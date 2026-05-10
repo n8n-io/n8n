@@ -241,6 +241,7 @@ export async function autoMapInputData(
 	sheet: GoogleSheet,
 	items: INodeExecutionData[],
 	options: IDataObject,
+	prefetchedColumnNames?: string[],
 ) {
 	const returnData: IDataObject[] = [];
 	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
@@ -254,9 +255,15 @@ export async function autoMapInputData(
 	}
 
 	let columnNames: string[] = [];
-	const response = await sheet.getData(`${sheetName}!${headerRow}:${headerRow}`, 'FORMATTED_VALUE');
-
-	columnNames = response ? response[0] : [];
+	if (prefetchedColumnNames !== undefined) {
+		columnNames = prefetchedColumnNames;
+	} else {
+		const response = await sheet.getData(
+			`${sheetName}!${headerRow}:${headerRow}`,
+			'FORMATTED_VALUE',
+		);
+		columnNames = response ? response[0] : [];
+	}
 
 	if (handlingExtraData === 'insertInNewColumn') {
 		if (!columnNames.length) {
@@ -285,9 +292,10 @@ export async function autoMapInputData(
 			returnData.push(item.json);
 		});
 		if (newColumns.size) {
+			columnNames = columnNames.concat([...newColumns]);
 			await sheet.updateRows(
 				sheetName,
-				[columnNames.concat([...newColumns])],
+				[columnNames],
 				(options.cellFormat as ValueInputOption) || 'RAW',
 				headerRow,
 			);
@@ -310,6 +318,14 @@ export async function autoMapInputData(
 			});
 			returnData.push(item.json);
 		});
+	}
+
+	// Store the final resolved column names so convertObjectArrayToSheetDataArray
+	// can reuse them without an extra API call. Filter out ROW_NUMBER since it
+	// is a virtual field and is never written as a sheet column header.
+	const columnNamesForHint = columnNames.filter((name) => name !== ROW_NUMBER);
+	if (columnNamesForHint.length > 0) {
+		sheet.setColumnNamesHint(columnNamesForHint);
 	}
 
 	return returnData;

@@ -1,0 +1,78 @@
+name: 'Release: Create GitHub Releases'
+run-name: 'Creating GitHub Releases for ${{ inputs.version-tag }} (${{ inputs.track }})'
+
+on:
+  workflow_call:
+    inputs:
+      track:
+        required: true
+        type: string
+      version-tag:
+        required: true
+        type: string
+      body:
+        required: true
+        type: string
+      commit:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release Track'
+        required: true
+        type: choice
+        options: [stable, beta, v1]
+      version-tag:
+        description: 'Version tag (e.g. n8n@2.7.0).'
+        required: true
+        type: string
+      body:
+        description: 'Release notes body.'
+        required: true
+        type: string
+      commit:
+        description: 'Commitish the release points to (e.g. branch name or SHA).'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  create-github-releases:
+    name: Create GitHub releases
+    runs-on: ubuntu-slim
+    environment: release
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          fetch-depth: 1
+
+      - name: Setup NodeJS
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Create GitHub releases
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          RELEASE_TAG: ${{ inputs.version-tag }}
+          BODY: ${{ inputs.body }}
+          IS_PRE_RELEASE: ${{ inputs.track == 'beta' }}
+          MAKE_LATEST: ${{ inputs.track == 'stable' }}
+          COMMIT: ${{ inputs.commit }}
+          ADDITIONAL_TAGS: ${{ inputs.track }}
+        run: node ./.github/scripts/create-github-release.mjs

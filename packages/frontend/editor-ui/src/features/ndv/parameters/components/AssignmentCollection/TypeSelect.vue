@@ -6,10 +6,7 @@ import { computed, useCssModule } from 'vue';
 import { Primitive } from 'reka-ui';
 
 import { N8nIcon } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 
 interface Props {
 	modelValue: string;
@@ -35,6 +32,7 @@ const selectedType = computed(() => types.find((type) => type.type === props.mod
 const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	return types.map((type) => ({
 		id: type.type,
+		testId: `action-${type.type}`,
 		label: i18n.baseText(`type.${type.type}` as BaseTextKey),
 		icon: { type: 'icon' as const, value: type.icon },
 		checked: type.type === props.modelValue,
@@ -51,6 +49,7 @@ const onSelect = (type: string): void => {
 	<div :class="$style.wrapper" data-test-id="assignment-type-select">
 		<N8nDropdownMenu
 			:items="menuItems"
+			content-test-id="assignment-type-select-dropdown"
 			:disabled="isReadOnly"
 			placement="bottom-start"
 			:extra-popper-class="$style.dropdownContent"

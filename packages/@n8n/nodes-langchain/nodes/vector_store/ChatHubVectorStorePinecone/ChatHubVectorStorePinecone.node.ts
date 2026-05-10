@@ -13,6 +13,11 @@ import type {
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
+import {
+	filterChatHubMetadata,
+	filterChatHubInsertDocuments,
+	CHAT_HUB_RETRIEVE_METADATA_KEYS,
+} from '../shared/chatHub';
 
 type ChatHubVectorStorePineconeApiCredentials = {
 	apiKey: string;
@@ -104,7 +109,10 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 		displayName: 'ChatHub Pinecone Vector Store',
 		name: 'chatHubVectorStorePinecone',
 		description: 'Internal-use vector store for ChatHub',
-		icon: { light: 'file:../VectorStorePinecone/pinecone.svg', dark: 'file:pinecone.dark.svg' },
+		icon: {
+			light: 'file:../VectorStorePinecone/pinecone.svg',
+			dark: 'file:../VectorStorePinecone/pinecone.dark.svg',
+		},
 		docsUrl: 'https://docs.n8n.io',
 		credentials: [
 			{
@@ -139,7 +147,18 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 			filter,
 		};
 
-		return await PineconeStore.fromExistingIndex(embeddings, config);
+		const store = await PineconeStore.fromExistingIndex(embeddings, config);
+
+		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
+		store.similaritySearchVectorWithScore = async (...args) => {
+			const results = await originalSearch(...args);
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
+
+		return store;
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
@@ -163,7 +182,7 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 
 		const pineconeIndex = client.Index(credentials.pineconeIndex);
 
-		await PineconeStore.fromDocuments(documents, embeddings, {
+		await PineconeStore.fromDocuments(filterChatHubInsertDocuments(documents), embeddings, {
 			namespace: namespaceName,
 			pineconeIndex,
 		});

@@ -20,7 +20,13 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 interface Props
 	extends Pick<
 			PopoverContentProps,
-			'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference' | 'positionStrategy'
+			| 'side'
+			| 'align'
+			| 'sideFlip'
+			| 'sideOffset'
+			| 'reference'
+			| 'positionStrategy'
+			| 'collisionPadding'
 		>,
 		Pick<PopoverRootProps, 'open'> {
 	/**
@@ -83,8 +89,10 @@ const props = withDefaults(defineProps<Props>(), {
 	forceMount: false,
 	enableSlideIn: true,
 	scrollType: 'hover',
-	sideOffset: 5,
+	sideOffset: 4,
+	align: 'start',
 	sideFlip: undefined,
+	collisionPadding: 5,
 	suppressAutoFocus: false,
 	zIndex: 999,
 	showArrow: false,
@@ -140,6 +148,7 @@ watch(
 				:side-flip="sideFlip"
 				:align="align"
 				:side-offset="sideOffset"
+				:collision-padding="collisionPadding"
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width, zIndex }"
 				:reference="reference"
@@ -168,18 +177,28 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .popoverContent {
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
+	--popover--offset--slide-x: 0;
+	--popover--offset--slide-y: 0;
+	--popover--offset--origin-x: center;
+	--popover--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--popover--offset--slide-x);
+	--animation--popover-in--translate-y: var(--popover--offset--slide-y);
+
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
 	box-shadow:
-		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+		var(--shadow--md),
+		inset var(--shadow--outline);
 	will-change: transform, opacity;
+	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 
 	&.enableSlideIn {
-		animation-duration: 400ms;
-		animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+		&[data-state='open'] {
+			@include motion.popover-in;
+		}
 	}
 
 	&[data-state='closed'] {
@@ -188,68 +207,52 @@ watch(
 }
 
 .popoverContent[data-state='open'][data-side='top'] {
-	animation-name: slideDownAndFade;
+	--popover--offset--slide-y: -2px;
+	--popover--offset--origin-y: bottom;
 }
 
 .popoverContent[data-state='open'][data-side='right'] {
-	animation-name: slideLeftAndFade;
+	--popover--offset--slide-x: 2px;
+	--popover--offset--origin-x: left;
 }
 
 .popoverContent[data-state='open'][data-side='bottom'] {
-	animation-name: slideUpAndFade;
+	--popover--offset--slide-y: 2px;
+	--popover--offset--origin-y: top;
 }
 
 .popoverContent[data-state='open'][data-side='left'] {
-	animation-name: slideRightAndFade;
+	--popover--offset--slide-x: -2px;
+	--popover--offset--origin-x: right;
 }
 
-@keyframes slideUpAndFade {
-	from {
-		opacity: 0;
-		transform: translateY(2px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+.popoverContent[data-state='open'][data-side='top'][data-align='start'],
+.popoverContent[data-state='open'][data-side='bottom'][data-align='start'] {
+	--popover--offset--slide-x: -2px;
+	--popover--offset--origin-x: left;
 }
 
-@keyframes slideRightAndFade {
-	from {
-		opacity: 0;
-		transform: translateX(-2px);
-	}
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
+.popoverContent[data-state='open'][data-side='top'][data-align='end'],
+.popoverContent[data-state='open'][data-side='bottom'][data-align='end'] {
+	--popover--offset--slide-x: 2px;
+	--popover--offset--origin-x: right;
 }
 
-@keyframes slideDownAndFade {
-	from {
-		opacity: 0;
-		transform: translateY(-2px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+.popoverContent[data-state='open'][data-side='left'][data-align='start'],
+.popoverContent[data-state='open'][data-side='right'][data-align='start'] {
+	--popover--offset--slide-y: -2px;
+	--popover--offset--origin-y: top;
 }
 
-@keyframes slideLeftAndFade {
-	from {
-		opacity: 0;
-		transform: translateX(2px);
-	}
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
+.popoverContent[data-state='open'][data-side='left'][data-align='end'],
+.popoverContent[data-state='open'][data-side='right'][data-align='end'] {
+	--popover--offset--slide-y: 2px;
+	--popover--offset--origin-y: bottom;
 }
 
 .popoverArrow {
-	fill: var(--color--foreground--tint-2);
-	stroke: var(--color--foreground);
+	fill: var(--background--surface);
+	stroke: var(--border-color);
 	stroke-width: 1px;
 }
 </style>

@@ -970,8 +970,8 @@ describe('POST /credentials', () => {
 			//
 			// ASSERT
 			//
-			.expect(400, {
-				code: 400,
+			.expect(403, {
+				code: 403,
 				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
@@ -986,7 +986,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1013,7 +1013,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1063,7 +1063,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: false });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1089,7 +1089,7 @@ describe('POST /credentials', () => {
 		delete payload.isGlobal;
 
 		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1288,7 +1288,7 @@ describe('PATCH /credentials/:id', () => {
 			credential.type,
 			credential.data,
 		);
-		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
+		expect(await credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
@@ -1422,10 +1422,11 @@ describe('PATCH /credentials/:id', () => {
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
 		const unencryptedData = createCredentialsFromCredentialsEntity(dbCredential!);
-		expect(unencryptedData.getData().oauthTokenData).toEqual(credential.data.oauthTokenData);
+		const decryptedData = await unencryptedData.getData();
+		expect(decryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
 
 		// was overwritten
-		expect(unencryptedData.getData().accessToken).toBe(patchPayload.data.accessToken);
+		expect(decryptedData.accessToken).toBe(patchPayload.data.accessToken);
 	});
 
 	test('should fail with invalid inputs', async () => {

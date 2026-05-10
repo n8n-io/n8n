@@ -39,6 +39,10 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
@@ -50,10 +54,13 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
 export const useActions = () => {
-	const workflowState = injectWorkflowState();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
@@ -251,9 +258,10 @@ export const useActions = () => {
 
 	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
-		const { workflowTriggerNodes } = useWorkflowsStore();
+		const { workflowId } = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const hasTrigger = addedNodes.some((node) => useNodeTypesStore().isTriggerNode(node.type));
-		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
+		const workflowContainsTrigger = workflowDocumentStore.workflowTriggerNodes.length > 0;
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 
@@ -280,7 +288,7 @@ export const useActions = () => {
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
 
-		const { allNodes } = useWorkflowsStore();
+		const allNodes = workflowDocumentStore.value.allNodes;
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -373,23 +381,19 @@ export const useActions = () => {
 		return { nodes, connections };
 	}
 
-	// Hook into addNode action to set the last node parameters, adjust default name and track the action selected
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
 		telemetry?: Telemetry,
 		rootView = '',
 	) {
-		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
-			if (name !== 'addNode' || args[0].type !== action.key) return;
-			after(() => {
-				workflowState.setLastNodeParameters(action);
-				if (telemetry) trackActionSelected(action, telemetry, rootView);
-				// Unsubscribe from the store watcher
-				storeWatcher();
-			});
+		const { off } = workflowDocumentStore.value.onNodesChange((event) => {
+			if (event.action !== CHANGE_ACTION.ADD) return;
+			if (!('node' in event.payload) || event.payload.node.type !== action.key) return;
+			workflowDocumentStore.value.setLastNodeParameters(action);
+			if (telemetry) trackActionSelected(action, telemetry, rootView);
+			off();
 		});
-		return storeWatcher;
+		return off;
 	}
 
 	function trackActionSelected(

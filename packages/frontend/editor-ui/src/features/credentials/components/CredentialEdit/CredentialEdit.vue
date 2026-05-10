@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -31,6 +31,10 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -64,7 +68,6 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -84,7 +87,6 @@ const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 const externalSecretsStore = useExternalSecretsStore();
@@ -127,8 +129,26 @@ const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
+const workflowDocumentStore = computed(() =>
+	workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined,
+);
+
+const contextNode = computed<INode | null>(() => {
+	if (ndvStore.activeNode) return ndvStore.activeNode;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
+	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
+});
+
+const hideAskAssistant = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
+});
+
 const activeNodeType = computed(() => {
-	const activeNode = ndvStore.activeNode;
+	const activeNode = contextNode.value;
 
 	if (activeNode) {
 		return nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
@@ -145,14 +165,21 @@ const selectedCredentialType = computed(() => {
 	if (selectedCredential.value !== '') {
 		return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 	} else if (requiredCredentials.value) {
-		// Otherwise, use credential type that corresponds to the first auth option in the node definition
+		// Use the recommended auth option (managed OAuth sorts first) or the first available
 		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-		// But only if there is zero or one auth options available
 		if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
 			return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-		} else {
-			return activeNodeType.value?.credentials ? activeNodeType.value.credentials[0] : null;
 		}
+		// No auth options — fall back to the explicitly requested type or the first credential
+		if (props.activeId) {
+			const nodeCredential = activeNodeType.value?.credentials?.find(
+				(c) => c.name === props.activeId,
+			);
+			if (nodeCredential) {
+				return nodeCredential;
+			}
+		}
+		return activeNodeType.value?.credentials?.[0] ?? null;
 	}
 
 	return null;
@@ -303,6 +330,19 @@ const requiredPropertiesFilled = computed(() => {
 				return false;
 			}
 		}
+
+		if (property.type === 'json' && credentialProperty) {
+			const jsonValue = String(credentialProperty);
+			const containsExpression = isExpression(jsonValue);
+			// Sentinels represent a previously-saved value, and expressions are always valid
+			if (!containsExpression && jsonValue !== CREDENTIAL_EMPTY_VALUE) {
+				try {
+					JSON.parse(jsonValue);
+				} catch {
+					return false;
+				}
+			}
+		}
 	}
 	return true;
 });
@@ -353,9 +393,22 @@ const showSaveButton = computed(() => {
 	return true;
 });
 
+const showHeaderSaveButton = computed(
+	() =>
+		showSaveButton.value &&
+		!!credentialType.value &&
+		(activeTab.value === 'connection' || activeTab.value === 'sharing'),
+);
+
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
 const homeProject = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	if (overrideProjectId) {
+		const override = projectsStore.myProjects.find((p) => p.id === overrideProjectId);
+		if (override) return override;
+	}
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
 });
@@ -397,7 +450,9 @@ onMounted(async () => {
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
-	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	const projectId =
+		overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
 	if (projectId) {
 		try {
 			await externalSecretsStore.fetchSecretsForProject(projectId);
@@ -407,9 +462,14 @@ onMounted(async () => {
 	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
-		credentialName.value = await credentialsStore.getNewCredentialName({
-			credentialTypeName: defaultCredentialTypeName.value,
-		});
+		const modalSuggestedName = isCredentialModalState(modalState)
+			? modalState.suggestedName
+			: undefined;
+		credentialName.value = modalSuggestedName
+			? modalSuggestedName
+			: await credentialsStore.getNewCredentialName({
+					credentialTypeName: defaultCredentialTypeName.value,
+				});
 
 		credentialData.value = {
 			...credentialData.value,
@@ -464,7 +524,7 @@ onMounted(async () => {
 async function beforeClose() {
 	let keepEditing = false;
 
-	if (hasUnsavedChanges.value) {
+	if (hasUnsavedChanges.value && !isNewCredential.value) {
 		const displayName = credentialType.value ? credentialType.value.displayName : '';
 		const confirmAction = await message.confirm(
 			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', {
@@ -833,8 +893,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && ndvStore.activeNode) {
-		updateNodeAuthType(workflowState, ndvStore.activeNode, appliedAuthType);
+	if (appliedAuthType && contextNode.value && workflowDocumentStore.value) {
+		updateNodeAuthType(
+			workflowDocumentStore.value.updateNodeProperties,
+			contextNode.value,
+			appliedAuthType,
+		);
 		pendingAuthType.value = null;
 	}
 
@@ -857,6 +921,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (credential) {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
+
+		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
+		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
+			await loadCurrentCredential(credential.id);
+			setCredentialPropertyDefaults();
+		}
 
 		if (isCredentialTestable.value) {
 			isTesting.value = true;
@@ -1118,6 +1188,7 @@ async function deleteCredential() {
 async function oAuthCredentialAuthorize() {
 	let url;
 
+	credentialsStore.pendingOAuthRefresh = true;
 	const credential = await saveCredential();
 	if (!credential) {
 		return;
@@ -1143,7 +1214,11 @@ async function oAuthCredentialAuthorize() {
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
-			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
+			{
+				message: i18n.baseText(
+					'credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message',
+				),
+			},
 		);
 
 		return;
@@ -1263,9 +1338,7 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 async function onQuickConnect(): Promise<void> {
 	if (!credentialTypeName.value || !ndvStore.activeNode) return;
 
-	const serviceName =
-		getAppNameFromCredType(credentialType.value?.displayName ?? '') ||
-		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
+	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,
@@ -1297,14 +1370,13 @@ function resetCredentialData(): void {
 		}
 	}
 
-	const { currentProject, personalProject } = projectsStore;
-	const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-	const homeProject = currentProject ?? personalProject ?? {};
+	const resolvedProject = homeProject.value ?? {};
+	const scopes = ('scopes' in resolvedProject ? resolvedProject.scopes : undefined) ?? [];
 
 	credentialData.value = {
 		...credentialData.value,
 		scopes: scopes as unknown as CredentialInformation,
-		homeProject,
+		homeProject: resolvedProject,
 	};
 }
 
@@ -1366,6 +1438,20 @@ const { width } = useElementSize(credNameRef);
 					</div>
 				</div>
 				<div :class="$style.credActions">
+					<SaveButton
+						v-if="showHeaderSaveButton"
+						:class="$style.saveButton"
+						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:is-saving="isSaving || isTesting"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
+						"
+						data-test-id="credential-save-button"
+						@click="saveCredential"
+					/>
 					<N8nIconButton
 						variant="subtle"
 						v-if="currentCredential && credentialPermissions.delete"
@@ -1418,6 +1504,8 @@ const { width } = useElementSize(credNameRef);
 						:managed-oauth-available="managedOAuthAvailable"
 						:use-custom-oauth="useCustomOAuth"
 						:is-quick-connect-mode="isQuickConnectMode"
+						:context-node="contextNode"
+						:hide-ask-assistant="hideAskAssistant"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@quick-connect="onQuickConnect"
@@ -1425,20 +1513,6 @@ const { width } = useElementSize(credNameRef);
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
 						@update:is-resolvable="onResolvableChange"
-					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
-						:is-saving="isSaving || isTesting"
-						:saved="false"
-						:saving-label="
-							isTesting
-								? i18n.baseText('credentialEdit.credentialEdit.testing')
-								: i18n.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
 					/>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
@@ -1451,20 +1525,6 @@ const { width } = useElementSize(credNameRef);
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
-					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
-						:is-saving="isSaving || isTesting"
-						:saved="false"
-						:saving-label="
-							isTesting
-								? i18n.baseText('credentialEdit.credentialEdit.testing')
-								: i18n.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
@@ -1495,7 +1555,7 @@ const { width } = useElementSize(credNameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
-	padding-bottom: 100px;
+	padding-bottom: var(--spacing--lg);
 	padding-inline: var(--spacing--4xs);
 }
 
@@ -1551,12 +1611,10 @@ const { width } = useElementSize(credNameRef);
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+	gap: var(--spacing--2xs);
 	margin-right: var(--spacing--xl);
 	margin-bottom: var(--spacing--lg);
-
-	> * {
-		margin-left: var(--spacing--2xs);
-	}
+	flex-shrink: 0;
 }
 
 .credIcon {
@@ -1566,6 +1624,6 @@ const { width } = useElementSize(credNameRef);
 }
 
 .saveButton {
-	margin-left: 1px;
+	flex-shrink: 0;
 }
 </style>

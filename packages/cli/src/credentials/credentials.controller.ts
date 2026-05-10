@@ -28,14 +28,15 @@ import {
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -75,7 +76,9 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
-			externalSecretsStore: query.externalSecretsStore,
+			filters: {
+				externalSecretsStore: query.externalSecretsStore,
+			},
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -137,40 +140,15 @@ export class CredentialsController {
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
 	async testCredentials(req: CredentialRequest.Test) {
-		const { credentials } = req.body;
+		try {
+			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
 
-		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
-			credentials.id,
-			req.user,
-			['credential:read'],
-		);
-
-		if (!storedCredential) {
-			throw new ForbiddenError();
+			throw error;
 		}
-
-		const mergedCredentials = deepCopy(credentials);
-		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
-
-		// When a sharee (or project viewer) opens a credential, the fields and the
-		// credential data are missing so the payload will be empty
-		// We need to replace the credential contents with the db version if that's the case
-		// So the credential can be tested properly
-		await this.credentialsService.replaceCredentialContentsForSharee(
-			req.user,
-			storedCredential,
-			decryptedData,
-			mergedCredentials,
-		);
-
-		if (mergedCredentials.data) {
-			mergedCredentials.data = this.credentialsService.unredact(
-				mergedCredentials.data,
-				decryptedData,
-			);
-		}
-
-		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
 
 	@Post('/')
@@ -197,6 +175,7 @@ export class CredentialsController {
 			projectType: project?.type,
 			uiContext: payload.uiContext,
 			isDynamic: newCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
 		});
 
 		return newCredential;
@@ -239,7 +218,7 @@ export class CredentialsController {
 			req.body,
 			credential,
 		);
-		const newCredentialData = this.credentialsService.createEncryptedData({
+		const newCredentialData = await this.credentialsService.createEncryptedData({
 			id: credential.id,
 			name: preparedCredentialData.name,
 			type: preparedCredentialData.type,
@@ -263,7 +242,13 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
-		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
+		const responseData = await this.credentialsService.update(
+			credentialId,
+			newCredentialData,
+			body.data
+				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
+				: undefined,
+		);
 
 		if (responseData === null) {
 			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);
@@ -279,6 +264,7 @@ export class CredentialsController {
 			credentialType: credential.type,
 			credentialId: credential.id,
 			isDynamic: newCredentialData.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

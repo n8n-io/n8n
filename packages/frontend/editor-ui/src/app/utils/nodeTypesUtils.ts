@@ -1,4 +1,9 @@
-import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
+import type {
+	AppliedThemeOption,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	NodeAuthenticationOption,
+} from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -22,8 +27,6 @@ import {
 	type ResourceMapperField,
 	type Themed,
 } from 'n8n-workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
-
 /*
 	Constants and utility functions mainly used to get information about
 	or manipulate node types and nodes.
@@ -38,6 +41,14 @@ export function getAppNameFromCredType(name: string) {
 		.split(' ')
 		.filter((word) => !CRED_KEYWORDS_TO_FILTER.includes(word))
 		.join(' ');
+}
+
+/**
+ * True when the node uses the HTTP-request proxy-auth pattern
+ * (parameter key `nodeCredentialType` is present).
+ */
+export function hasProxyAuth(node: INodeUi): boolean {
+	return Object.keys(node.parameters).includes('nodeCredentialType');
 }
 
 export function getAppNameFromNodeName(name: string) {
@@ -361,7 +372,7 @@ export const getCredentialsRelatedFields = (
 };
 
 export const updateNodeAuthType = (
-	workflowState: WorkflowState,
+	updateNodeProperties: (info: INodeUpdatePropertiesInformation) => void,
 	node: INodeUi | null,
 	type: string,
 ) => {
@@ -372,7 +383,7 @@ export const updateNodeAuthType = (
 	if (nodeType) {
 		const nodeAuthField = getMainAuthField(nodeType);
 		if (nodeAuthField) {
-			const updateInformation = {
+			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: node.name,
 				properties: {
 					parameters: {
@@ -381,7 +392,7 @@ export const updateNodeAuthType = (
 					},
 				},
 			};
-			workflowState.updateNodeProperties(updateInformation);
+			updateNodeProperties(updateInformation);
 		}
 	}
 };
