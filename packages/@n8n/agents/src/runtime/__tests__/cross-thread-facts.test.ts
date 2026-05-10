@@ -33,6 +33,14 @@ const fakeModel = { doGenerate: jest.fn() } as unknown as Parameters<
 	typeof extractAndStoreCrossThreadFacts
 >[0]['model'];
 
+function extractedFact(
+	content: string,
+	evidence: string,
+	source: 'user_assertion' | 'user_accepted_assistant_proposal' = 'user_assertion',
+) {
+	return { content, source, evidence };
+}
+
 function makeFact(overrides: Partial<NewCrossThreadFact> = {}): NewCrossThreadFact {
 	return {
 		agentId: 'agent-1',
@@ -73,7 +81,7 @@ function makeAssistantMessage(text: string, id = 'assistant-1'): AgentDbMessage 
 
 describe('cross-thread facts', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	it('wraps transcripts as untrusted data for extraction', () => {
@@ -127,6 +135,24 @@ describe('cross-thread facts', () => {
 		expect(enabled.profileUpdate).toBe(true);
 	});
 
+	it('tightens default profile update instructions to stable user facts and actionable persona behavior', () => {
+		const prompt = withCrossThreadFactDefaults({ embedder: fakeEmbedder }).profileUpdatePrompt;
+
+		expect(prompt).toContain('User profile captures stable cross-session user/resource identity');
+		expect(prompt).toContain('active project state');
+		expect(prompt).toContain('debugging steps');
+		expect(prompt).toContain('implementation order');
+		expect(prompt).toContain('branch stack');
+		expect(prompt).toContain('test flow');
+		expect(prompt).toContain('next actions');
+		expect(prompt).toContain('temporary constraints');
+		expect(prompt).toContain('session objectives');
+		expect(prompt).toContain('Persona captures actionable behavioral directives');
+		expect(prompt).toContain('descriptive agent facts');
+		expect(prompt).toContain('storage/data-model facts');
+		expect(prompt).toContain('current implementation details');
+	});
+
 	it('allows SDK consumers to override the memory injection prompt', () => {
 		const config = withCrossThreadFactDefaults({
 			embedder: fakeEmbedder,
@@ -147,6 +173,9 @@ describe('cross-thread facts', () => {
 		expect(prompt).toContain('present tense');
 		expect(prompt).toContain('recall_memory');
 		expect(prompt).toContain('facts introduced only by assistant recall answers');
+		expect(prompt).toContain('user_assertion');
+		expect(prompt).toContain('user_accepted_assistant_proposal');
+		expect(prompt).toContain('exact user-message evidence');
 		expect(prompt).toContain('User-authored agent configuration');
 		expect(prompt).toContain('assistant messages as context only');
 		expect(prompt).toContain('legitimate user configuration');
@@ -214,13 +243,151 @@ describe('cross-thread facts', () => {
 		expect(transcript).not.toContain('tool output');
 	});
 
+	it('rejects default-extracted facts that do not cite exact user-message evidence', async () => {
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({
+				facts: [extractedFact('The user prefers concise updates.', 'You prefer concise updates.')],
+			}),
+		});
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: { embedder: fakeEmbedder },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [
+				makeUserMessage('Can you summarize this briefly?'),
+				makeAssistantMessage('You prefer concise updates.'),
+			],
+			eventBus: new AgentEventBus(),
+		});
+
+		expect(embedMany).not.toHaveBeenCalled();
+		await expect(
+			memory.searchCrossThreadFacts({ agentId: 'agent-1', resourceId: 'user-1' }, 'concise'),
+		).resolves.toHaveLength(0);
+	});
+
+	it('stores default-extracted facts that cite exact user-message evidence', async () => {
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({
+				facts: [
+					extractedFact(
+						'The user prefers concise updates.',
+						'Remember that I prefer concise updates.',
+					),
+				],
+			}),
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: { embedder: fakeEmbedder },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [makeUserMessage('Remember that I prefer concise updates.')],
+			eventBus: new AgentEventBus(),
+		});
+
+		const stored = await memory.searchCrossThreadFacts(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'concise updates',
+			{ topK: 5, queryEmbedding: [1, 0] },
+		);
+		expect(stored.map((fact) => fact.content)).toEqual(['The user prefers concise updates.']);
+	});
+
+	it('stores user-accepted assistant proposals when the acceptance is exact user evidence', async () => {
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({
+				facts: [
+					extractedFact(
+						'The user prefers narrow regression tests around real input shape.',
+						'Yes, use narrow regression tests around real input shape going forward.',
+						'user_accepted_assistant_proposal',
+					),
+				],
+			}),
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: { embedder: fakeEmbedder },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [
+				makeUserMessage('What testing approach should we use?', 'user-1'),
+				makeAssistantMessage(
+					'I suggest narrow regression tests around real input shape.',
+					'assistant-1',
+				),
+				makeUserMessage(
+					'Yes, use narrow regression tests around real input shape going forward.',
+					'user-2',
+				),
+			],
+			eventBus: new AgentEventBus(),
+		});
+
+		const stored = await memory.searchCrossThreadFacts(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'regression tests',
+			{ topK: 5, queryEmbedding: [1, 0] },
+		);
+		expect(stored.map((fact) => fact.content)).toEqual([
+			'The user prefers narrow regression tests around real input shape.',
+		]);
+	});
+
+	it('keeps legacy extracted fact output working for custom extraction prompts', async () => {
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({ facts: [{ content: 'The user prefers concise updates.' }] }),
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: { embedder: fakeEmbedder, prompts: { extraction: 'custom extraction prompt' } },
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [makeUserMessage('Remember that I prefer concise updates.')],
+			eventBus: new AgentEventBus(),
+		});
+
+		const stored = await memory.searchCrossThreadFacts(
+			{ agentId: 'agent-1', resourceId: 'user-1' },
+			'concise updates',
+			{ topK: 5, queryEmbedding: [1, 0] },
+		);
+		expect(stored.map((fact) => fact.content)).toEqual(['The user prefers concise updates.']);
+	});
+
 	it('dedupes same-turn extracted facts before embedding and storage', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
 				facts: [
-					{ content: 'The user prefers concise updates.' },
-					{ content: 'The user  prefers concise updates.' },
-					{ content: 'The user does not want emojis.' },
+					extractedFact(
+						'The user prefers concise updates.',
+						'Remember that I prefer concise updates and do not want emojis.',
+					),
+					extractedFact(
+						'The user  prefers concise updates.',
+						'Remember that I prefer concise updates and do not want emojis.',
+					),
+					extractedFact(
+						'The user does not want emojis.',
+						'Remember that I prefer concise updates and do not want emojis.',
+					),
 				],
 			}),
 		});
@@ -243,7 +410,12 @@ describe('cross-thread facts', () => {
 					id: 'user-1',
 					createdAt: new Date('2026-01-01T00:00:00.000Z'),
 					role: 'user',
-					content: [{ type: 'text', text: 'Remember that I prefer concise updates.' }],
+					content: [
+						{
+							type: 'text',
+							text: 'Remember that I prefer concise updates and do not want emojis.',
+						},
+					],
 				},
 			],
 			eventBus: new AgentEventBus(),
@@ -271,8 +443,14 @@ describe('cross-thread facts', () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
 				facts: [
-					{ content: 'The user prefers concise updates.' },
-					{ content: 'The user prefers brief status responses.' },
+					extractedFact(
+						'The user prefers concise updates.',
+						'Remember that I prefer concise updates.',
+					),
+					extractedFact(
+						'The user prefers brief status responses.',
+						'Remember that I prefer concise updates.',
+					),
 				],
 			}),
 		});
@@ -314,14 +492,21 @@ describe('cross-thread facts', () => {
 			.mockResolvedValueOnce({
 				text: JSON.stringify({
 					facts: [
-						{ content: 'The user prefers concise updates.' },
-						{ content: 'This agent is used for memory debugging.' },
+						extractedFact(
+							'The user prefers concise updates.',
+							'Remember that I prefer concise updates.',
+						),
+						extractedFact(
+							'For this agent, respond with memory architecture distinctions instead of vague memory language.',
+							'For this agent, respond with memory architecture distinctions instead of vague memory language.',
+						),
 					],
 				}),
 			})
 			.mockResolvedValueOnce({
 				text: JSON.stringify({
-					persona: 'This agent is used for memory debugging.',
+					persona:
+						'When discussing memory architecture, distinguish profile-shaped from episodic-shaped memory.',
 					user: 'The user prefers concise updates.',
 				}),
 			});
@@ -359,9 +544,14 @@ describe('cross-thread facts', () => {
 		).resolves.toMatchObject({ content: 'The user prefers concise updates.' });
 		await expect(
 			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
-		).resolves.toMatchObject({ content: 'This agent is used for memory debugging.' });
+		).resolves.toMatchObject({
+			content:
+				'When discussing memory architecture, distinguish profile-shaped from episodic-shaped memory.',
+		});
 		expect(generateText).toHaveBeenCalledTimes(2);
-		expect(generateText.mock.calls[1][0].system).toContain('Persona captures behavioral rules');
+		expect(generateText.mock.calls[1][0].system).toContain(
+			'Persona captures actionable behavioral directives',
+		);
 		expect(generateText.mock.calls[1][0].system).toContain(
 			'Assistant messages are supporting context',
 		);
@@ -427,10 +617,14 @@ describe('cross-thread facts', () => {
 	it('does not update memory profiles from assistant-only restatements', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				facts: [{ content: 'This agent should always use a test-first style.' }],
+				facts: [
+					extractedFact(
+						'This agent should always use a test-first style.',
+						'Persona locked in: I will always use a test-first style.',
+					),
+				],
 			}),
 		});
-		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
 
 		const memory = new InMemoryMemory();
 		await extractAndStoreCrossThreadFacts({
@@ -455,7 +649,14 @@ describe('cross-thread facts', () => {
 
 	it('does not update memory profiles by default', async () => {
 		generateText.mockResolvedValueOnce({
-			text: JSON.stringify({ facts: [{ content: 'The user prefers concise updates.' }] }),
+			text: JSON.stringify({
+				facts: [
+					extractedFact(
+						'The user prefers concise updates.',
+						'Remember that I prefer concise updates.',
+					),
+				],
+			}),
 		});
 		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
 
@@ -486,7 +687,9 @@ describe('cross-thread facts', () => {
 	it('skips storing a candidate when an existing scoped fact is above the similarity threshold', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				facts: [{ content: 'The user prefers short status updates.' }],
+				facts: [
+					extractedFact('The user prefers short status updates.', 'I prefer short status updates.'),
+				],
 			}),
 		});
 		embedMany.mockResolvedValueOnce({ embeddings: [[0.95, 0.05]] });
@@ -528,7 +731,9 @@ describe('cross-thread facts', () => {
 	it('stores a candidate when existing scoped facts are below the similarity threshold', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				facts: [{ content: 'The user prefers short status updates.' }],
+				facts: [
+					extractedFact('The user prefers short status updates.', 'I prefer short status updates.'),
+				],
 			}),
 		});
 		embedMany.mockResolvedValueOnce({ embeddings: [[0, 1]] });
@@ -576,7 +781,9 @@ describe('cross-thread facts', () => {
 	it('can disable similarity dedupe while keeping exact-hash dedupe', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				facts: [{ content: 'The user prefers short status updates.' }],
+				facts: [
+					extractedFact('The user prefers short status updates.', 'I prefer short status updates.'),
+				],
 			}),
 		});
 		embedMany.mockResolvedValueOnce({ embeddings: [[0.95, 0.05]] });
@@ -777,7 +984,9 @@ describe('cross-thread facts', () => {
 	it('does not use similar facts from another scope for write-time dedupe', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				facts: [{ content: 'The user prefers short status updates.' }],
+				facts: [
+					extractedFact('The user prefers short status updates.', 'I prefer short status updates.'),
+				],
 			}),
 		});
 		embedMany.mockResolvedValueOnce({ embeddings: [[0.95, 0.05]] });
