@@ -157,3 +157,66 @@ test.describe(
 		});
 	},
 );
+
+test.describe(
+	'Resource Mapper field deletion persistence (GHC-8230)',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test('should persist field deletion after closing and reopening NDV', async ({ n8n }) => {
+			// GHC-8230: Deleting a mapped column in Google Sheets node doesn't trigger workflow save
+			// This test verifies that when a user deletes a column mapping, the change is saved
+			// and persists when the node is reopened
+			await n8n.start.fromBlankCanvas();
+
+			// Add Google Sheets node with "Append or Update Row" operation
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Google Sheets', {
+				action: 'Append or Update Row',
+				closeNDV: false,
+			});
+
+			// Set up the node with Map Each Column Manually mode
+			// The resourceMapper should already be visible for v4+ of Google Sheets node
+			await expect(n8n.ndv.getResourceMapperFieldsContainer()).toBeVisible();
+
+			// Fill in multiple column mappings as described in the bug report
+			await n8n.ndv.fillParameterInputByName('test1', '1');
+			await n8n.ndv.fillParameterInputByName('test2', '2');
+			await n8n.ndv.fillParameterInputByName('test3', '3');
+
+			// Wait for auto-save to complete
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+
+			// Verify all three fields are present
+			await expect(n8n.ndv.getParameterInput('test1')).toBeVisible();
+			await expect(n8n.ndv.getParameterInput('test2')).toBeVisible();
+			await expect(n8n.ndv.getParameterInput('test3')).toBeVisible();
+
+			// Delete the 'test2' field using the trash icon
+			await n8n.ndv.getResourceMapperRemoveFieldButton('test2').click();
+
+			// Verify the field is removed from the UI
+			await expect(n8n.ndv.getParameterInput('test2')).toHaveCount(0);
+			await expect(n8n.ndv.getParameterInput('test1')).toBeVisible();
+			await expect(n8n.ndv.getParameterInput('test3')).toBeVisible();
+
+			// BUG: The deletion should trigger a workflow save, but it doesn't
+			// Wait for the save to complete (this should happen but currently doesn't due to the bug)
+			await n8n.canvas.waitForSaveWorkflowCompleted({ timeout: 3000 });
+
+			// Close the NDV
+			await n8n.ndv.close();
+
+			// Reopen the Google Sheets node
+			await n8n.canvas.openNode('Google Sheets');
+
+			// Verify the deleted field remains deleted (should be absent)
+			// BUG: Currently the field reappears because the deletion wasn't saved
+			await expect(n8n.ndv.getParameterInput('test2')).toHaveCount(0);
+			await expect(n8n.ndv.getParameterInput('test1')).toBeVisible();
+			await expect(n8n.ndv.getParameterInput('test3')).toBeVisible();
+		});
+	},
+);
