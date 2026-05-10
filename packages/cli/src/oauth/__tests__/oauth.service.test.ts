@@ -1589,7 +1589,6 @@ describe('OauthService', () => {
 					registration_endpoint: 'https://auth.example.com/register',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_methods_supported: ['client_secret_basic'],
-					code_challenge_methods_supported: ['S256'],
 				},
 			} as any);
 
