@@ -179,3 +179,85 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		expect(parsed.success).toBe(true);
 	});
 });
+
+describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
+	const memoryBase = { enabled: true, storage: 'n8n' as const };
+	const enabledEpisodicMemoryBase = {
+		enabled: true,
+		credential: 'openai-credential-id',
+	} as const;
+
+	it('accepts episodic memory entries with an embedding model and credential reference', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: {
+					...enabledEpisodicMemoryBase,
+					embedder: 'openai/text-embedding-3-small',
+					topK: 8,
+					autoInject: false,
+					autoInjectTopK: 4,
+					maxEntriesPerTurn: 5,
+					maxEntryLength: 2000,
+					dedupeSimilarityThreshold: false,
+					prompts: {
+						extraction: 'Extract source-backed case entries.',
+						recallToolInstruction: 'Use recall_memory when entries may help.',
+						injection: 'Use these surfaced entries if relevant.',
+					},
+				},
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts the default embedding model path and disabled episodic memory without credentials', () => {
+		for (const episodicMemory of [enabledEpisodicMemoryBase, { enabled: false }] satisfies Array<
+			NonNullable<AgentJsonConfig['memory']>['episodicMemory']
+		>) {
+			const parsed = AgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				memory: { ...memoryBase, episodicMemory },
+			});
+
+			expect(parsed.success).toBe(true);
+		}
+	});
+
+	it('rejects legacy and invalid enabled episodic memory config', () => {
+		const cases = [
+			{
+				...memoryBase,
+				crossThreadFacts: { enabled: true, credential: 'openai-credential-id' },
+			},
+			{
+				...memoryBase,
+				episodicMemory: { ...enabledEpisodicMemoryBase, autoInjectTopK: 0 },
+			},
+			{
+				...memoryBase,
+				episodicMemory: {
+					...enabledEpisodicMemoryBase,
+					dedupeSimilarityThreshold: -0.1,
+				},
+			},
+			{
+				...memoryBase,
+				episodicMemory: {
+					...enabledEpisodicMemoryBase,
+					dedupeSimilarityThreshold: 1.1,
+				},
+			},
+			{
+				...memoryBase,
+				episodicMemory: { enabled: true, embedder: 'openai/text-embedding-3-small' },
+			},
+		];
+
+		for (const memory of cases) {
+			expect(AgentJsonConfigSchema.safeParse({ ...baseConfig, memory }).success).toBe(false);
+		}
+	});
+});

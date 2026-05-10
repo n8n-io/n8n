@@ -174,6 +174,27 @@ export interface AgentJsonConfig {
 			messageRange?: { before: number; after: number };
 			embedder?: string;
 		};
+		episodicMemory?:
+			| {
+					enabled: true;
+					topK?: number;
+					autoInject?: boolean;
+					autoInjectTopK?: number;
+					halfLifeDays?: number;
+					maxEntriesPerTurn?: number;
+					maxEntryLength?: number;
+					dedupeSimilarityThreshold?: number | false;
+					embedder?: string;
+					credential: string;
+					prompts?: {
+						extraction?: string;
+						recallToolInstruction?: string;
+						injection?: string;
+					};
+			  }
+			| {
+					enabled: false;
+			  };
 		observationalMemory?: {
 			enabled?: boolean;
 			trigger?:

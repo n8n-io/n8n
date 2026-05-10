@@ -63,6 +63,20 @@ describe('buildFromJson()', () => {
 						observerPrompt?: string;
 						compactorPrompt?: string;
 					};
+					episodicMemory?: {
+						enabled?: boolean;
+						topK?: number;
+						autoInject?: boolean;
+						autoInjectTopK?: number;
+						dedupeSimilarityThreshold?: number | false;
+						embeddingModel?: string;
+						embedder?: unknown;
+						prompts?: {
+							extraction?: string;
+							recallToolInstruction?: string;
+							injection?: string;
+						};
+					};
 					profiles?: {
 						enabled?: boolean;
 						prompts?: {
@@ -86,6 +100,8 @@ describe('buildFromJson()', () => {
 		saveWorkingMemory: jest.fn(),
 		getMemoryProfile: jest.fn(),
 		saveMemoryProfile: jest.fn(),
+		saveEpisodicMemoryEntries: jest.fn(),
+		searchEpisodicMemoryEntries: jest.fn(),
 		appendObservations: jest.fn(),
 		getObservations: jest.fn(),
 		getMessagesForScope: jest.fn(),
@@ -553,6 +569,64 @@ describe('buildFromJson()', () => {
 		});
 	});
 
+	it('resolves episodic memory entry embeddings through n8n credentials', async () => {
+		const mockMemory = makeMockMemoryBackend();
+		const config = makeConfig({
+			description: 'Helps users debug and review n8n code.',
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'openai-embedding-credential',
+					topK: 7,
+					autoInject: false,
+					autoInjectTopK: 4,
+					dedupeSimilarityThreshold: 0.86,
+					prompts: {
+						extraction: 'Extract case entries.',
+						recallToolInstruction: 'Use recall_memory before answering memory questions.',
+						injection: 'Use these entries when relevant.',
+					},
+				},
+			},
+		});
+		const credentialProvider = makeMockCredentialProvider();
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(mockMemory),
+			},
+		);
+
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('my-anthropic-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('openai-embedding-credential');
+		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
+			enabled: true,
+			topK: 7,
+			autoInject: false,
+			autoInjectTopK: 4,
+			dedupeSimilarityThreshold: 0.86,
+			embeddingModel: 'openai/text-embedding-3-small',
+			prompts: {
+				extraction: 'Extract case entries.',
+				recallToolInstruction: 'Use recall_memory before answering memory questions.',
+				injection: 'Use these entries when relevant.',
+			},
+		});
+		expect(getMemoryConfig(agent)?.profiles).toMatchObject({
+			enabled: true,
+		});
+		expect(getMemoryConfig(agent)?.profiles).not.toHaveProperty('agentDescription');
+		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeDefined();
+		expect(agent.snapshot.instructions).not.toContain('Memory is not enabled');
+		expect(agent.snapshot.instructions).not.toContain('Memory panel');
+	});
+
 	it('enables profiles implicitly when memory is enabled', async () => {
 		const agent = await buildFromJson(
 			makeConfig({
@@ -572,6 +646,30 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.profiles).toMatchObject({
 			enabled: true,
 		});
+	});
+
+	it('does not resolve embedding credentials when episodic memory entries are disabled', async () => {
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: false },
+			},
+		});
+		const credentialProvider = makeMockCredentialProvider();
+
+		await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(credentialProvider.resolve).toHaveBeenCalledTimes(1);
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('my-anthropic-key');
 	});
 
 	it('applies observational memory defaults when memory is enabled', async () => {

@@ -1,13 +1,19 @@
+import * as agentsSdk from '@n8n/agents';
 import type {
 	AgentDbMessage,
 	AgentMessage,
 	BuiltMemory,
 	BuiltObservationStore,
+	EpisodicMemoryEntry,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryScope,
 	MemoryDescriptor,
+	NewEpisodicMemoryEntry,
 	NewObservation,
 	Observation,
 	ObservationCursor,
 	ObservationLockHandle,
+	RetrievedEpisodicMemoryEntry,
 	ScopeKind,
 	Thread,
 } from '@n8n/agents';
@@ -17,12 +23,14 @@ import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeo
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { AgentMemoryProfileEntity } from '../entities/agent-memory-profile.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
+import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
 import { AgentMemoryProfileRepository } from '../repositories/agent-memory-profile.repository';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
@@ -33,6 +41,12 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 /** Key inside the metadata JSON where working memory content is stored. */
 const WORKING_MEMORY_KEY = 'workingMemory';
+
+type RankEpisodicMemoryEntries = (
+	entries: EpisodicMemoryEntry[],
+	query: string,
+	opts?: EpisodicMemorySearchOptions,
+) => RetrievedEpisodicMemoryEntry[];
 
 type MemoryProfileScope = {
 	scopeKind: 'user-profile';
@@ -52,6 +66,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	constructor(
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
+		private readonly memoryEntryRepository: AgentMemoryEntryRepository,
 		private readonly memoryProfileRepository: AgentMemoryProfileRepository,
 		private readonly resourceRepository: AgentResourceRepository,
 		private readonly observationRepository: AgentObservationRepository,
@@ -196,6 +211,64 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			threadId,
 			...(resourceId !== undefined && { resourceId }),
 		});
+	}
+
+	// ── Episodic memory entries ───────────────────────────────────────────────
+
+	async saveEpisodicMemoryEntries(
+		entries: NewEpisodicMemoryEntry[],
+	): Promise<EpisodicMemoryEntry[]> {
+		const saved: EpisodicMemoryEntry[] = [];
+
+		for (const entry of entries) {
+			const existing = await this.memoryEntryRepository.findOneBy({
+				agentId: entry.agentId,
+				resourceId: entry.resourceId,
+				contentHash: entry.contentHash,
+			});
+			if (existing) {
+				saved.push(this.toEpisodicMemoryEntry(existing));
+				continue;
+			}
+
+			const entity = this.memoryEntryRepository.create({
+				agentId: entry.agentId,
+				resourceId: entry.resourceId,
+				content: entry.content,
+				contentHash: entry.contentHash,
+				sourceThreadId: entry.sourceThreadId ?? null,
+				sourceMessageId: entry.sourceMessageId ?? null,
+				embeddingModel: entry.embeddingModel ?? null,
+				embedding: entry.embedding ?? null,
+				metadata: entry.metadata ?? null,
+				createdAt: entry.createdAt,
+			});
+			const persisted = await this.memoryEntryRepository.save(entity);
+			saved.push(this.toEpisodicMemoryEntry(persisted));
+		}
+
+		return saved;
+	}
+
+	async searchEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		query: string,
+		opts?: EpisodicMemorySearchOptions,
+	): Promise<RetrievedEpisodicMemoryEntry[]> {
+		const entities = await this.memoryEntryRepository.find({
+			where: { agentId: scope.agentId, resourceId: scope.resourceId },
+		});
+
+		const rankEpisodicMemoryEntries = (
+			agentsSdk as { rankEpisodicMemoryEntries: RankEpisodicMemoryEntries }
+		).rankEpisodicMemoryEntries;
+
+		const rankedEntries: RetrievedEpisodicMemoryEntry[] = rankEpisodicMemoryEntries(
+			entities.map((entity) => this.toEpisodicMemoryEntry(entity)),
+			query,
+			opts,
+		);
+		return rankedEntries;
 	}
 
 	// ── Mutable memory profiles ─────────────────────────────────────────
@@ -447,6 +520,23 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			durationMs: entity.durationMs === null ? null : Number(entity.durationMs),
 			schemaVersion: Number(entity.schemaVersion),
 			createdAt: entity.createdAt,
+		};
+	}
+
+	private toEpisodicMemoryEntry(entity: AgentMemoryEntryEntity): EpisodicMemoryEntry {
+		return {
+			id: entity.id,
+			agentId: entity.agentId,
+			resourceId: entity.resourceId,
+			content: entity.content,
+			contentHash: entity.contentHash,
+			createdAt: entity.createdAt,
+			updatedAt: entity.updatedAt,
+			sourceThreadId: entity.sourceThreadId ?? undefined,
+			sourceMessageId: entity.sourceMessageId ?? undefined,
+			embedding: entity.embedding ?? undefined,
+			embeddingModel: entity.embeddingModel ?? undefined,
+			metadata: entity.metadata ?? undefined,
 		};
 	}
 

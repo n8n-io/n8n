@@ -34,12 +34,48 @@ const ObservationalMemoryConfigSchema = z.object({
 	compactorPrompt: z.string().optional(),
 });
 
+const EpisodicMemoryPromptsSchema = z
+	.object({
+		extraction: z.string().optional(),
+		recallToolInstruction: z.string().optional(),
+		injection: z.string().optional(),
+	})
+	.strict();
+
+const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
+	z
+		.object({
+			enabled: z.literal(true),
+			topK: z.number().int().min(1).max(100).optional(),
+			autoInject: z.boolean().optional(),
+			autoInjectTopK: z.number().int().min(1).max(100).optional(),
+			halfLifeDays: z.number().int().min(1).optional(),
+			maxEntriesPerTurn: z.number().int().min(1).max(20).optional(),
+			maxEntryLength: z.number().int().min(40).max(2000).optional(),
+			dedupeSimilarityThreshold: z.union([z.number().min(0).max(1), z.literal(false)]).optional(),
+			embedder: z
+				.string()
+				.min(1)
+				.regex(/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i)
+				.optional(),
+			credential: z.string().min(1),
+			prompts: EpisodicMemoryPromptsSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			enabled: z.literal(false),
+		})
+		.strict(),
+]);
+
 const MemoryConfigSchema = z
 	.object({
 		enabled: z.boolean(),
 		storage: z.enum(['n8n']),
 		lastMessages: z.number().int().min(1).max(200).optional(),
 		semanticRecall: SemanticRecallSchema.optional(),
+		episodicMemory: EpisodicMemoryConfigSchema.optional(),
 		observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	})
 	.strict();

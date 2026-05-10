@@ -6,6 +6,7 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_CASE_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
@@ -31,6 +32,8 @@ const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
 const SettingsAgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
+const AgentCaseMemoryCredentialModal = async (): Promise<unknown> =>
+	await import('./components/AgentCaseMemoryCredentialModal.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -84,6 +87,17 @@ export const AgentsModule: FrontendModuleDescription = {
 					connectedTriggers: [],
 					onConnectedTriggersChange: () => {},
 					onTriggerAdded: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_CASE_MEMORY_CREDENTIAL_MODAL_KEY,
+			component: AgentCaseMemoryCredentialModal,
+			initialState: {
+				open: false,
+				data: {
+					initialValue: null,
+					onSelect: () => {},
 				},
 			},
 		},

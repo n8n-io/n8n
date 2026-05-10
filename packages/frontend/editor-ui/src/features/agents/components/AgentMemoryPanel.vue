@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { AgentMemoryProfilesResponse } from '@n8n/api-types';
-import { N8nCollapsiblePanel, N8nText, N8nSwitch } from '@n8n/design-system';
+import { N8nCollapsiblePanel, N8nSwitch, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUIStore } from '@/app/stores/ui.store';
 import { getAgentMemoryProfiles } from '../composables/useAgentApi';
+import { AGENT_CASE_MEMORY_CREDENTIAL_MODAL_KEY } from '../constants';
 import type { AgentJsonConfig } from '../types';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 
@@ -21,7 +23,15 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
+
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
+const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
+const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const episodicMemoryCredential = computed(() =>
+	episodicMemory.value?.enabled ? episodicMemory.value.credential : null,
+);
+
 const canLoadProfiles = computed(
 	() => !props.disabled && Boolean(props.projectId && props.agentId),
 );
@@ -82,6 +92,48 @@ function onProfilesExpandedChange(expanded: boolean) {
 	if (expanded && !profilesLoaded.value && !profilesLoading.value) {
 		void loadProfiles();
 	}
+}
+
+function enableEpisodicMemory(credentialId: string) {
+	const existingMemory = props.config?.memory;
+	const updatedMemory: NonNullable<AgentJsonConfig['memory']> = {
+		...existingMemory,
+		enabled: true,
+		storage: 'n8n',
+		lastMessages: existingMemory?.lastMessages ?? 10,
+		episodicMemory: {
+			enabled: true,
+			credential: credentialId,
+		},
+	};
+
+	emit('update:config', { memory: updatedMemory });
+}
+
+function disableEpisodicMemory() {
+	const updatedMemory: NonNullable<AgentJsonConfig['memory']> = {
+		...props.config?.memory,
+		enabled: props.config?.memory?.enabled ?? false,
+		storage: 'n8n',
+		episodicMemory: { enabled: false },
+	};
+
+	emit('update:config', { memory: updatedMemory });
+}
+
+function onEpisodicMemoryToggle(enabled: boolean) {
+	if (!enabled) {
+		disableEpisodicMemory();
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_CASE_MEMORY_CREDENTIAL_MODAL_KEY,
+		data: {
+			initialValue: episodicMemoryCredential.value,
+			onSelect: enableEpisodicMemory,
+		},
+	});
 }
 </script>
 
@@ -151,6 +203,23 @@ function onProfilesExpandedChange(expanded: boolean) {
 				</template>
 			</div>
 		</N8nCollapsiblePanel>
+
+		<div :class="$style.row">
+			<div :class="$style.titleGroup">
+				<N8nText size="small" :bold="true">
+					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
+				</N8nText>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
+				</N8nText>
+			</div>
+			<N8nSwitch
+				:model-value="episodicMemoryEnabled"
+				:disabled="props.disabled"
+				data-testid="agent-case-memory-toggle"
+				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
+			/>
+		</div>
 	</div>
 </template>
 

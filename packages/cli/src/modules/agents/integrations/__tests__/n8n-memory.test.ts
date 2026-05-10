@@ -1,13 +1,19 @@
-import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '@n8n/agents';
+import {
+	OBSERVATION_SCHEMA_VERSION,
+	type NewEpisodicMemoryEntry,
+	type NewObservation,
+} from '@n8n/agents';
 import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
 import type { AgentMemoryProfileEntity } from '../../entities/agent-memory-profile.entity';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../../entities/agent-thread.entity';
+import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
 import type { AgentMemoryProfileRepository } from '../../repositories/agent-memory-profile.repository';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
@@ -21,6 +27,7 @@ describe('N8nMemory', () => {
 	let memory: N8nMemory;
 	let messageRepository: jest.Mocked<AgentMessageRepository>;
 	let threadRepository: jest.Mocked<AgentThreadRepository>;
+	let memoryEntryRepository: jest.Mocked<AgentMemoryEntryRepository>;
 	let memoryProfileRepository: jest.Mocked<AgentMemoryProfileRepository>;
 	let resourceRepository: jest.Mocked<AgentResourceRepository>;
 	let observationRepository: jest.Mocked<AgentObservationRepository>;
@@ -34,6 +41,7 @@ describe('N8nMemory', () => {
 
 		messageRepository = mock<AgentMessageRepository>();
 		threadRepository = mock<AgentThreadRepository>();
+		memoryEntryRepository = mock<AgentMemoryEntryRepository>();
 		memoryProfileRepository = mock<AgentMemoryProfileRepository>();
 		resourceRepository = mock<AgentResourceRepository>();
 		observationRepository = mock<AgentObservationRepository>();
@@ -52,6 +60,7 @@ describe('N8nMemory', () => {
 		memory = new N8nMemory(
 			threadRepository,
 			messageRepository,
+			memoryEntryRepository,
 			memoryProfileRepository,
 			resourceRepository,
 			observationRepository,
@@ -358,6 +367,133 @@ describe('N8nMemory', () => {
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
 			expect(threadRepository.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('episodic memory entries', () => {
+		const createdAt = new Date('2026-05-09T10:00:00.000Z');
+
+		function makeEntry(overrides: Partial<NewEpisodicMemoryEntry> = {}): NewEpisodicMemoryEntry {
+			return {
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+				content: 'The workspace stayed inactive after renewal until entitlements refreshed.',
+				contentHash: 'hash-1',
+				createdAt,
+				sourceThreadId: 'thread-1',
+				sourceMessageId: 'message-1',
+				embedding: [0.9, 0.1],
+				embeddingModel: 'openai/text-embedding-3-small',
+				metadata: { kind: 'case' },
+				...overrides,
+			};
+		}
+
+		function makeEntryEntity(
+			overrides: Partial<AgentMemoryEntryEntity> = {},
+		): AgentMemoryEntryEntity {
+			return {
+				id: 'entry-1',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+				content: 'The workspace stayed inactive after renewal until entitlements refreshed.',
+				contentHash: 'hash-1',
+				sourceThreadId: 'thread-1',
+				sourceMessageId: 'message-1',
+				embeddingModel: 'openai/text-embedding-3-small',
+				embedding: [0.9, 0.1],
+				metadata: { kind: 'case' },
+				createdAt,
+				updatedAt: new Date('2026-05-09T10:05:00.000Z'),
+				...overrides,
+			} as AgentMemoryEntryEntity;
+		}
+
+		beforeEach(() => {
+			memoryEntryRepository.create.mockImplementation((input) => {
+				const entity = makeEntryEntity({ id: 'new-entry', updatedAt: createdAt });
+				Object.assign(entity, input);
+				return entity;
+			});
+			memoryEntryRepository.save.mockImplementation(
+				async (entity) => entity as AgentMemoryEntryEntity,
+			);
+		});
+
+		it('dedupes entries by agentId, resourceId, and exact content hash', async () => {
+			const existing = makeEntryEntity({ id: 'existing-entry' });
+			memoryEntryRepository.findOneBy.mockResolvedValue(existing);
+
+			const result = await memory.saveEpisodicMemoryEntries([makeEntry()]);
+
+			expect(memoryEntryRepository.findOneBy).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				resourceId: 'user-1',
+				contentHash: 'hash-1',
+			});
+			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
+			expect(result).toEqual([
+				expect.objectContaining({
+					id: 'existing-entry',
+					content: 'The workspace stayed inactive after renewal until entitlements refreshed.',
+				}),
+			]);
+		});
+
+		it('persists new entries with nullable source and embedding fields normalized', async () => {
+			memoryEntryRepository.findOneBy.mockResolvedValue(null);
+
+			await memory.saveEpisodicMemoryEntries([
+				makeEntry({
+					sourceThreadId: undefined,
+					sourceMessageId: undefined,
+					embedding: undefined,
+					embeddingModel: undefined,
+					metadata: undefined,
+				}),
+			]);
+
+			expect(memoryEntryRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
+					resourceId: 'user-1',
+					contentHash: 'hash-1',
+					sourceThreadId: null,
+					sourceMessageId: null,
+					embeddingModel: null,
+					embedding: null,
+					metadata: null,
+					createdAt,
+				}),
+			);
+			expect(memoryEntryRepository.save).toHaveBeenCalled();
+		});
+
+		it('searches only within the agentId and resourceId scope and ranks candidates', async () => {
+			memoryEntryRepository.find.mockResolvedValue([
+				makeEntryEntity({
+					id: 'weaker',
+					content: 'A webhook retried because the destination returned HTTP 503.',
+					embedding: [0.1, 0.9],
+				}),
+				makeEntryEntity({
+					id: 'target',
+					content: 'The workspace stayed inactive after renewal until entitlements refreshed.',
+					contentHash: 'hash-2',
+					embedding: [0.9, 0.1],
+				}),
+			]);
+
+			const result = await memory.searchEpisodicMemoryEntries(
+				{ agentId: 'agent-1', resourceId: 'user-1' },
+				'Why did the renewed workspace stay inactive?',
+				{ queryEmbedding: [0.9, 0.1], topK: 1 },
+			);
+
+			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
+				where: { agentId: 'agent-1', resourceId: 'user-1' },
+			});
+			expect(result.map((entry) => entry.id)).toEqual(['target']);
 		});
 	});
 

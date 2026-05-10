@@ -11,9 +11,16 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.memory.title': 'Memory',
 				'agents.builder.memory.description':
 					'Keeps session context and learned behavior available.',
+				'agents.builder.memory.episodicMemory.label': 'Case memory',
+				'agents.builder.memory.episodicMemory.hint':
+					'Remember source-backed details from previous cases so this agent can recognize similar issues across sessions.',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
 	}),
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openModalWithData: vi.fn() }),
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -55,7 +62,7 @@ function mountColumn() {
 				AgentMemoryPanel: {
 					props: ['projectId', 'agentId'],
 					template:
-						'<div data-testid="agent-memory-panel" :data-project-id="projectId" :data-agent-id="agentId"><button data-testid="agent-memory-toggle" /></div>',
+						'<div data-testid="agent-memory-panel" :data-project-id="projectId" :data-agent-id="agentId"><button data-testid="agent-memory-toggle" /><button data-testid="agent-case-memory-toggle" /></div>',
 				},
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
@@ -69,6 +76,7 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = mountColumn();
 
 		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-case-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-memory-panel"]').attributes()).toMatchObject({
 			'data-project-id': 'project-1',
 			'data-agent-id': 'agent-1',

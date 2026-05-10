@@ -136,6 +136,6 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-case-memory-toggle"]').exists()).toBe(false);
 	});
 });
