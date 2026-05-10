@@ -9,7 +9,9 @@ export const isHttpRequestNodeType = (nodeType: string): boolean =>
 
 import type {
 	CredentialTypeSetupState,
+	NodeGroupItem,
 	NodeSetupState,
+	SetupCardItem,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
 import { type INode, type INodeParameters, type INodeProperties, NodeHelpers } from 'n8n-workflow';
@@ -296,4 +298,18 @@ export function buildTriggerSetupState(
 		node,
 		isComplete: allCredentialsComplete && hasTriggerExecuted,
 	};
+}
+
+export function isCardComplete(card: SetupCardItem): boolean {
+	if (card.nodeGroup) {
+		const { parentState, subnodeCards } = card.nodeGroup;
+		return (!parentState || parentState.isComplete) && subnodeCards.every((c) => c.isComplete);
+	}
+	return card.state.isComplete;
+}
+
+export function isNodeGroupCard(
+	card: SetupCardItem,
+): card is { nodeGroup: NodeGroupItem; state?: undefined } {
+	return !!card.nodeGroup;
 }

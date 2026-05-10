@@ -3,12 +3,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { vi } from 'vitest';
 import {
@@ -482,6 +483,43 @@ describe('ResourceLocator', () => {
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
 	});
 
+	it('falls back to workflow homeProject ID when currentProjectId is not available', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		projectsStore.currentProjectId = undefined as unknown as string;
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+
+		const mockWorkflowDocumentStore = shallowRef({
+			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: mockWorkflowDocumentStore,
+				},
+			},
+		});
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'/projects/home-project-456/datatables/new',
+			'_blank',
+		);
+	});
+
 	it('clears cached resources after URL redirect so fresh data is fetched on re-open', async () => {
 		const TEST_ITEMS = [{ name: 'Old Table', value: 'old-table' }];
 		const TEST_ITEMS_UPDATED = [
@@ -701,6 +739,179 @@ describe('ResourceLocator', () => {
 				resolvePromise({ results: [], paginationToken: null });
 			}
 			vi.useRealTimers();
+		});
+	});
+
+	describe('credential change resets value', () => {
+		it('should reset value when node credentials change', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Change credentials on the node
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toEqual([
+				[
+					{
+						...modelValue,
+						cachedResultName: '',
+						cachedResultUrl: '',
+						value: '',
+					},
+				],
+			]);
+		});
+
+		it('should not reset value when credentials have not changed', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Re-render with same credentials but different parameter
+			await rerender({
+				node: {
+					...node,
+					parameters: { ...node.parameters, operation: 'list' },
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on initial mount', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node: TEST_NODE_MULTI_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset when value is already empty', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: '',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on first credential assignment', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			// Start with no credentials
+			const node = {
+				...TEST_NODE_MULTI_MODE,
+				credentials: undefined,
+			};
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Assign credentials for the first time
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '1234',
+							name: 'Test Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
 		});
 	});
 

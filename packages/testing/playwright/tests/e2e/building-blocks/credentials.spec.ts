@@ -67,8 +67,7 @@ test.describe(
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Notion', { action: 'Append a block' });
 
-			await n8n.ndv.getNodeCredentialsSelect().click();
-			await n8n.ndv.credentialDropdownCreateNewCredential().click();
+			await n8n.ndv.clickCreateNewCredential();
 			await n8n.canvas.credentialModal.addCredential(
 				{
 					apiKey: '1234567890',

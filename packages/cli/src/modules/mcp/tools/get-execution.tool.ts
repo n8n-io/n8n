@@ -1,6 +1,6 @@
 import type { ExecutionRepository, User } from '@n8n/db';
 import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError, jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -18,7 +18,7 @@ const inputSchema = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs.',
+			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs. Use `false` to quickly check execution status',
 		),
 	nodeNames: z
 		.array(z.string())
@@ -110,18 +110,9 @@ export const createGetExecutionTool = (
 			}
 
 			if (!execution) {
-				// Check if execution exists at all
-				const executionExists = await executionRepository.existsBy({ id: executionId });
-				if (!executionExists) {
-					throw new WorkflowAccessError(
-						`Execution with ID '${executionId}' does not exist`,
-						'execution_does_not_exist',
-					);
-				}
-
 				throw new WorkflowAccessError(
-					`Execution '${executionId}' does not belong to workflow '${workflowId}'`,
-					'execution_workflow_mismatch',
+					`Execution '${executionId}' not found for workflow '${workflowId}'`,
+					'execution_not_found',
 				);
 			}
 
@@ -161,9 +152,14 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// `structuredContent` is JSON-serialized by the MCP SDK transport, so
+			// cycles in `output` (e.g. the HTTP socket loop in
+			// `executionData.contextData`) hang the call unless replaced here.
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		} catch (er) {
 			const error = ensureError(er);
@@ -194,9 +190,11 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		}
 	},

@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { DataSource, Repository, In, Like, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
@@ -14,6 +14,7 @@ import type {
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
+import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -22,15 +23,13 @@ import {
 	WorkflowTagMapping,
 	WorkflowDependency,
 	User,
-	SharedWorkflow,
-	Project,
-	ProjectRelation,
 } from '../entities';
 import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
+import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
@@ -60,6 +59,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
 		super(WorkflowEntity, dataSource.manager);
@@ -830,7 +830,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	/**
 	 * Build a subquery that returns workflow IDs based on sharing permissions.
-	 * This replicates the logic from WorkflowSharingService but as a subquery.
+	 * Delegates to SharedWorkflowRepository.buildSharedWorkflowIdsSubquery.
 	 */
 	private buildSharedWorkflowIdsSubquery(
 		user: User,
@@ -845,64 +845,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	): SelectQueryBuilder<any> {
-		const {
-			projectRoles,
-			workflowRoles,
-			isPersonalProject,
-			personalProjectOwnerId,
-			onlySharedWithMe,
-			projectId,
-		} = sharingOptions;
-
-		const subquery = this.manager
-			.createQueryBuilder()
-			.select('sw.workflowId')
-			.from(SharedWorkflow, 'sw');
-
-		// Handle different sharing scenarios
-		// Check explicit filters first (isPersonalProject, onlySharedWithMe) before falling back to user's global permissions
-		if (isPersonalProject) {
-			// Personal project - get owned workflows using the project owner's ID (not the requesting user's)
-			const ownerUserId = personalProjectOwnerId ?? user.id;
-			subquery
-				.innerJoin(Project, 'p', 'sw.projectId = p.id')
-				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sw.role = :ownerRole', { ownerRole: 'workflow:owner' })
-				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: ownerUserId })
-				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-
-			// Filter by the specific project ID when specified
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
-		} else if (onlySharedWithMe) {
-			// Shared with me - workflows shared (as editor) to user's personal project
-			subquery
-				.innerJoin(Project, 'p', 'sw.projectId = p.id')
-				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
-				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
-				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-		} else if (hasGlobalScope(user, 'workflow:read')) {
-			// User has global scope - return all workflow IDs in the specified project (if any)
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.where('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
-		} else {
-			// Standard sharing based on roles
-			if (!workflowRoles || !projectRoles) {
-				throw new Error('workflowRoles and projectRoles are required when not using special cases');
-			}
-
-			subquery
-				.innerJoin(Project, 'p', 'sw.projectId = p.id')
-				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
-				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
-				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
-		}
-
-		return subquery;
+		return this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, sharingOptions);
 	}
 
 	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
@@ -947,33 +890,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (typeof filter?.availableInMCP === 'boolean') {
-			const dbType = this.globalConfig.database.type;
-
-			if (filter.availableInMCP) {
-				// When filtering for true, only match explicit true values
-				if (dbType === 'postgresdb') {
-					qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
-						availableInMCP: 'true',
-					});
-				} else if (dbType === 'sqlite') {
-					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-						availableInMCP: 1, // SQLite stores booleans as 0/1
-					});
-				}
-			} else {
-				// When filtering for false, match explicit false OR null/undefined (field not set)
-				if (dbType === 'postgresdb') {
-					qb.andWhere(
-						"(workflow.settings ->> 'availableInMCP' = :availableInMCP OR workflow.settings ->> 'availableInMCP' IS NULL)",
-						{ availableInMCP: 'false' },
-					);
-				} else if (dbType === 'sqlite') {
-					qb.andWhere(
-						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL)",
-						{ availableInMCP: 0 }, // SQLite stores booleans as 0/1
-					);
-				}
-			}
+			applyWorkflowBooleanSettingFilter(
+				qb,
+				this.globalConfig,
+				'availableInMCP',
+				filter.availableInMCP,
+				{
+					includeNullOnFalse: true,
+				},
+			);
 		}
 	}
 

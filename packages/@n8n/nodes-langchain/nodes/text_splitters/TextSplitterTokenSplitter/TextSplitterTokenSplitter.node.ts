@@ -14,7 +14,7 @@ export class TextSplitterTokenSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Token Splitter',
 		name: 'textSplitterTokenSplitter',
-		icon: 'fa:grip-lines-vertical',
+		icon: 'node:token-splitter',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,

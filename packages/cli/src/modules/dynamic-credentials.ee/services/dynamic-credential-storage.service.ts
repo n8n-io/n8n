@@ -67,7 +67,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				return this.handleMissingResolver(credentialStoreMetadata, resolverId);
 			}
 
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			const credentialType = this.loadNodesAndCredentials.getCredential(

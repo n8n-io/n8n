@@ -5,10 +5,16 @@ import { VIEWS } from '@/app/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
-import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	type useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 export function useWorkflowImport(
 	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>,
+	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>,
 ) {
 	const route = useRoute();
 	const { resetWorkspace, initializeWorkspace, fitView } = useCanvasOperations();
@@ -28,13 +34,27 @@ export function useWorkflowImport(
 
 		const { workflowDocumentStore } = await initializeWorkspace({
 			...workflowData,
-			id: isDemoRoute.value ? 'demo' : workflowData.id,
 			nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 		} as IWorkflowDb);
 
 		currentWorkflowDocumentStore.value = workflowDocumentStore;
+		currentNDVStore.value = useNDVStore(
+			createWorkflowDocumentId(
+				workflowDocumentStore.workflowId,
+				workflowDocumentStore.workflowVersion,
+			),
+		);
 
-		fitView();
+		if (isDemoRoute.value) {
+			// VueFlow drops edges when node handles haven't been created yet
+			// ("Edge source or target is missing"). Clear connections so VueFlow only
+			// processes nodes first, then re-apply via onNodesInitialized when handles exist.
+			workflowDocumentStore.setConnections({});
+			canvasEventBus.emit('setConnections:onNodesInit', workflowData.connections);
+			canvasEventBus.emit('fitView:onNodesInit');
+		} else {
+			fitView();
+		}
 	}
 
 	return { importWorkflowExact };
