@@ -14,11 +14,7 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import {
-	resolveCredentials,
-	type CredentialEntry,
-	type CredentialMap,
-} from './resolve-credentials';
+import { resolveCredentials, type CredentialEntry } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
@@ -167,9 +163,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 
 // Re-export from shared module for backward compatibility
 export {
-	buildCredentialMap,
 	resolveCredentials,
-	type CredentialMap,
 	type CredentialResolutionResult,
 } from './resolve-credentials';
 
@@ -286,7 +280,6 @@ export function classifySubmitFailure(
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
-	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
 	availableCredentials?: CredentialEntry[],
 ) {
@@ -294,8 +287,7 @@ export function createSubmitWorkflowTool(
 		id: 'submit-workflow',
 		description:
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
-			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
+			'and saves it to n8n as a draft. Publishing is a separate user-controlled workflow action.',
 		inputSchema: submitWorkflowInputSchema,
 		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
@@ -432,15 +424,9 @@ export function createSubmitWorkflowTool(
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined in toJSON().
 			// For updates: restore from the existing workflow's resolved credentials.
-			// For new nodes: look up credentials by name from the credential service.
-			// Unresolved credentials are mocked via pinned data when available.
-			const mockResult = await resolveCredentials(
-				json,
-				workflowId,
-				context,
-				credentialMap,
-				availableCredentials,
-			);
+			// For new nodes: preserve explicit valid credentials; unresolved credentials
+			// are mocked with sidecar pin data for verification.
+			const mockResult = await resolveCredentials(json, workflowId, context, availableCredentials);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale

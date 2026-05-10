@@ -9,12 +9,6 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
 
-/**
- * Credential map passed from the orchestrator.
- * Keyed by credential type (e.g., "openAiApi", "gmailOAuth2", "slackApi").
- */
-export type CredentialMap = Map<string, { id: string; name: string }>;
-
 /** Flat credential entry — preserves duplicates of the same type. */
 export interface CredentialEntry {
 	id: string;
@@ -24,11 +18,10 @@ export interface CredentialEntry {
 
 /**
  * Paired credential snapshot produced from a single `credentialService.list()`
- * call: a type-keyed map for fallback resolution AND a flat list for
- * validating raw credential ids without losing duplicates of the same type.
+ * call. The flat list validates raw credential ids without losing duplicates
+ * of the same type.
  */
 export interface CredentialSnapshot {
-	map: CredentialMap;
 	list: CredentialEntry[];
 }
 
@@ -39,29 +32,16 @@ export interface CredentialSnapshot {
 export async function buildCredentialSnapshot(
 	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
 ): Promise<CredentialSnapshot> {
-	const map: CredentialMap = new Map();
 	const list: CredentialEntry[] = [];
 	try {
 		const allCreds = await credentialService.list();
 		for (const cred of allCreds) {
-			map.set(cred.type, { id: cred.id, name: cred.name });
 			list.push({ id: cred.id, name: cred.name, type: cred.type });
 		}
 	} catch {
 		// Non-fatal — credentials will be unresolved
 	}
-	return { map, list };
-}
-
-/**
- * Build a credential map from all available credentials.
- * Non-fatal — returns an empty map if listing fails.
- */
-export async function buildCredentialMap(
-	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
-): Promise<CredentialMap> {
-	const { map } = await buildCredentialSnapshot(credentialService);
-	return map;
+	return { list };
 }
 
 /** Result of credential resolution — includes mock metadata and sidecar verification data. */
@@ -82,7 +62,7 @@ export interface CredentialResolutionResult {
  * `newCredential()` produces `NewCredentialImpl` which serializes to `undefined`
  * in `toJSON()`. Resolution strategy (in order):
  * 1. Restore from the existing workflow (preserve the user's chosen credential on updates)
- * 2. Match by credential type from the credential map (fallback for new nodes)
+ * 2. Preserve explicit valid raw credential ids
  * 3. Mock: remove the credential key and produce sidecar verification pin data
  *
  * Mocked credentials produce verification-only pin data that is returned separately
@@ -92,7 +72,6 @@ export async function resolveCredentials(
 	json: WorkflowJSON,
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,
-	credentialMap: CredentialMap,
 	availableCredentials?: CredentialEntry[],
 ): Promise<CredentialResolutionResult> {
 	const mockedNodeNames: string[] = [];
@@ -174,17 +153,7 @@ export async function resolveCredentials(
 				continue;
 			}
 
-			// Try 2: look up by credential type from the map (fallback for new nodes).
-			// Note: the map only stores one credential per type, so when multiple
-			// credentials of the same type exist this is an arbitrary pick.
-			const fromMap = credentialMap.get(key);
-			if (fromMap) {
-				creds[key] = fromMap;
-				cleanupMockPinData(json, node.name);
-				continue;
-			}
-
-			// Try 3: Mock — remove the credential key and produce sidecar verification data.
+			// Mock — remove the credential key and produce sidecar verification data.
 			// The credential key is deleted so the saved workflow doesn't reference a
 			// non-existent credential. Verification pin data is produced so the execution
 			// engine can skip this node during test runs.

@@ -125,7 +125,7 @@ const testAction = z.object({
 	credentialId: credentialIdField,
 });
 
-const inputSchema = sanitizeInputSchema(
+const fullInputSchema = sanitizeInputSchema(
 	z.discriminatedUnion('action', [
 		listAction,
 		getAction,
@@ -136,7 +136,25 @@ const inputSchema = sanitizeInputSchema(
 	]),
 );
 
-type Input = z.infer<typeof inputSchema>;
+const builderInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [listAction, getAction, searchTypesAction, testAction]),
+);
+
+type CredentialsToolSurface = 'full' | 'builder';
+
+type Input = z.infer<typeof fullInputSchema>;
+
+function buildInputSchema(surface: CredentialsToolSurface) {
+	return surface === 'builder' ? builderInputSchema : fullInputSchema;
+}
+
+function getToolDescription(surface: CredentialsToolSurface): string {
+	if (surface === 'builder') {
+		return 'Inspect credentials during build — list, get, search available types, and test connections. Setup is handled after workflow verification.';
+	}
+
+	return 'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.';
+}
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────
 
@@ -340,11 +358,15 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createCredentialsTool(context: InstanceAiContext) {
+export function createCredentialsTool(
+	context: InstanceAiContext,
+	surface: CredentialsToolSurface = 'full',
+) {
+	const inputSchema = buildInputSchema(surface);
+
 	return createTool({
 		id: CREDENTIALS_TOOL_ID,
-		description:
-			'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.',
+		description: getToolDescription(surface),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

@@ -46,9 +46,68 @@ function resumeCtx(resumeData: {
 	return { agent: { resumeData, suspend: jest.fn() } } as never;
 }
 
+function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
+		.inputSchema;
+}
+
+function getDescription(tool: unknown): string {
+	return (tool as { description: string }).description;
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('credentials tool', () => {
+	describe('surface filtering', () => {
+		it('should support setup on the full surface', () => {
+			const tool = createCredentialsTool(createMockContext(), 'full');
+			const schema = getInputSchema(tool);
+
+			expect(
+				schema.safeParse({
+					action: 'setup',
+					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+				}).success,
+			).toBe(true);
+			expect(getDescription(tool)).toContain('set up new credentials');
+		});
+
+		it('should describe only build-safe actions on the builder surface', () => {
+			const tool = createCredentialsTool(createMockContext(), 'builder');
+
+			expect(getDescription(tool)).toContain('Inspect credentials during build');
+			expect(getDescription(tool)).not.toContain('delete');
+			expect(getDescription(tool)).not.toContain('set up new credentials');
+		});
+
+		it.each([
+			[{ action: 'list' }],
+			[{ action: 'get', credentialId: 'cred-1' }],
+			[{ action: 'search-types', query: 'slack' }],
+			[{ action: 'test', credentialId: 'cred-1' }],
+		])('should support %p on the builder surface', (input) => {
+			const tool = createCredentialsTool(createMockContext(), 'builder');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(true);
+		});
+
+		it.each([
+			[
+				{
+					action: 'setup',
+					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+				},
+			],
+			[{ action: 'delete', credentialId: 'cred-1' }],
+		])('should reject %p on the builder surface', (input) => {
+			const tool = createCredentialsTool(createMockContext(), 'builder');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(false);
+		});
+	});
+
 	// ── list ────────────────────────────────────────────────────────────────
 
 	describe('list action', () => {

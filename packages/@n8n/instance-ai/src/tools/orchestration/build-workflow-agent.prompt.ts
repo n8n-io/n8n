@@ -278,13 +278,16 @@ const BUILDER_SPECIFIC_PATTERNS_SANDBOX = buildBuilderSpecificPatterns('sandbox'
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
-// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) uses raw {id, name}
-// objects because `submit-workflow` runs the code natively via tsx and expects that
-// form. Rules 2 and 3 are mode-agnostic and mirror the shared WORKFLOW_RULES.
+// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) uses explicit
+// raw {id, name} objects because `submit-workflow` runs the code natively via
+// tsx and expects that form. Rules 2 and 3 are mode-agnostic and mirror the
+// shared WORKFLOW_RULES.
 const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
-1. **Always use raw credential objects from \`credentials(action="list")\`**
-   - Wire credentials as \`{ id, name }\` objects returned by \`credentials(action="list")\`
+1. **Only use explicitly selected raw credential objects**
+   - Wire credentials as \`{ id, name }\` objects only when the user selected that credential, named an unambiguous credential, or you are preserving a credential already present on an existing workflow
+   - If a credential is absent, ambiguous, fake, null, or not explicitly selected, omit it and let \`submit-workflow\` mock it for verification
+   - Do NOT call credential setup or workflow setup during build; setup happens after verification
    - NEVER use placeholder strings, fake API keys, or hardcoded auth values
    - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
    - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
@@ -317,9 +320,9 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	const sandboxOverride =
 		mode === 'sandbox'
 			? "> **Sandbox credential override**: The SDK pattern examples below use `newCredential('X')`. " +
-				"In sandbox mode, replace every `newCredential('X')` with the raw `{ id, name }` object from " +
-				'`credentials(action="list")`. `newCredential()` serializes to `undefined` in sandbox and will ' +
-				'silently drop credentials from the saved workflow.'
+				"In sandbox mode, replace `newCredential('X')` with a raw `{ id, name }` object only when the " +
+				'user explicitly selected that credential or you are preserving an existing workflow credential. ' +
+				'Otherwise omit the credential and let `submit-workflow` mock it for verification.'
 			: null;
 	return [
 		SDK_CODE_RULES,
@@ -360,10 +363,11 @@ ${PLACEHOLDERS_RULE}
 Do NOT produce visible output until step 5. All reasoning happens internally.
 
 ## Credential Rules (tool mode)
-- Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
+- Use \`newCredential('Credential Name')\` only when the user selected or named that credential unambiguously; otherwise omit credentials and let the build tools mock them for verification.
 - NEVER use raw credential objects like \`{ id: '...', name: '...' }\` — that form is for sandbox mode only.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
-- Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
+- Do NOT call credential setup or workflow setup during build; setup happens after verification.
+- Unresolved credentials (where the user chose mock data, no credential is available, or no explicit selection was made) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
 ${SDK_RULES_AND_PATTERNS_TOOL}
 `;
@@ -477,7 +481,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 ### Step 2: Submit and test the chunk
 
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
-   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. However, they must be **published** via \`workflows(action="publish")\` before the parent workflow can call them in production (trigger-based) executions.
+   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. Do not publish during build; publishing remains the user's decision after testing. For production executions, supporting sub-workflows must be published by the user before the parent workflow can call them.
 2. Run the chunk: \`executions(action="run")\` with \`inputData\` matching the trigger schema.
    - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
    - **Event-based triggers** (e.g. Linear Trigger, GitHub Trigger, Slack Trigger): pass \`inputData\` matching what the trigger would normally emit. The system injects it as the trigger node's output — e.g. \`inputData: { action: "create", data: { id: "123", title: "Test issue" } }\` for a Linear Trigger. No need to rebuild the workflow with a Manual Trigger.
@@ -555,7 +559,7 @@ ${ASK_USER_FALLBACK}
 - You CANNOT find or use n8n API keys — they do not exist in the sandbox environment
 - Do NOT spend time searching for API keys, config files, environment variables, or process info — none of it is accessible
 
-**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`executions(action="run" | "debug" | "get")\`, \`credentials(action="list" | "test")\`, \`nodes(action="explore-resources")\`, \`workflows(action="publish" | "unpublish")\`, \`data-tables(action="list" | "create" | "schema")\`, etc. These tools communicate with n8n internally — no HTTP required.
+**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`executions(action="run" | "debug" | "get")\`, \`credentials(action="list" | "get" | "search-types" | "test")\`, \`nodes(action="explore-resources")\`, \`workflows(action="list" | "get" | "get-as-code")\`, \`data-tables(action="list" | "create" | "schema")\`, etc. These tools communicate with n8n internally — no HTTP required.
 
 ## Sandbox-Specific Rules
 
@@ -574,6 +578,8 @@ credentials: {
 \`\`\`
 
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
+
+Only wire a credential when the user selected it, named an unambiguous credential, or you are preserving a credential already present on an existing workflow. If the credential is absent, ambiguous, fake, null, or not explicitly selected, omit it and rely on \`submit-workflow\` to mock it for verification. Do not call credential setup or workflow setup during build; setup is shown after verification by the orchestrator.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
@@ -595,7 +601,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 ### For simple workflows (< 5 nodes, single integration):
 
-1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
+1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. Wire a credential only when it was explicitly selected by the user, named unambiguously, or already present on the workflow you are updating. If a required credential is missing or ambiguous, omit it; \`submit-workflow\` records the mocked credential and the orchestrator routes to setup after verification.
 
 2. **Discover nodes**:
    a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`nodes(action="suggested")\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
@@ -611,7 +617,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 3. **Get node schemas**: Call \`nodes(action="type-definition")\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
    **Important**: Only call \`nodes(action="type-definition")\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`nodes(action="search")\` results instead.
 
-4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`nodes(action="explore-resources")\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
+4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`nodes(action="explore-resources")\` with the node type, method name, and the matching explicit credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
    - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
@@ -649,7 +655,7 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish — the user will decide when to publish after testing.
+8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish — the user will decide when to publish after testing. If you created supporting sub-workflows, mention that they must be published before the parent workflow can run in production.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

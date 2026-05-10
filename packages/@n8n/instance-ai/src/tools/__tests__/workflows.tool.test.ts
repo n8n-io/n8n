@@ -78,6 +78,15 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
+function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
+		.inputSchema;
+}
+
+function getDescription(tool: unknown): string {
+	return (tool as { description: string }).description;
+}
+
 describe('workflows tool', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -98,6 +107,50 @@ describe('workflows tool', () => {
 				name: 'Test WF',
 				code: '// generated code',
 			});
+		});
+
+		it('should describe only build-safe actions on the builder surface', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'builder');
+
+			expect(getDescription(tool)).toContain('Inspect workflows during build');
+			expect(getDescription(tool)).not.toContain('set up');
+			expect(getDescription(tool)).not.toContain('publish');
+			expect(getDescription(tool)).not.toContain('archive');
+		});
+
+		it.each([
+			[{ action: 'list' }],
+			[{ action: 'get', workflowId: 'w1' }],
+			[{ action: 'get-as-code', workflowId: 'w1' }],
+		])('should support %p on the builder surface', (input) => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'builder');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(true);
+		});
+
+		it.each([
+			[{ action: 'setup', workflowId: 'w1' }],
+			[{ action: 'publish', workflowId: 'w1' }],
+			[{ action: 'unpublish', workflowId: 'w1' }],
+			[{ action: 'delete', workflowId: 'w1' }],
+			[{ action: 'unarchive', workflowId: 'w1' }],
+			[{ action: 'list-versions', workflowId: 'w1' }],
+			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
+			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
+			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
+		])('should reject %p on the builder surface', (input) => {
+			const context = createMockContext();
+			context.workflowService.listVersions = jest.fn();
+			context.workflowService.getVersion = jest.fn();
+			context.workflowService.restoreVersion = jest.fn();
+			context.workflowService.updateVersion = jest.fn();
+			const tool = createWorkflowsTool(context, 'builder');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse(input).success).toBe(false);
 		});
 	});
 

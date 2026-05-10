@@ -52,16 +52,14 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import {
-	buildCredentialSnapshot,
-	type CredentialEntry,
-	type CredentialMap,
-} from '../workflows/resolve-credentials';
+import { createCredentialsTool } from '../credentials.tool';
+import { buildCredentialSnapshot, type CredentialEntry } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import {
 	type SubmitWorkflowAttempt,
 	type SubmitWorkflowOutput,
 } from '../workflows/submit-workflow.tool';
+import { createWorkflowsTool } from '../workflows.tool';
 
 interface BuilderMemoryBinding {
 	resource: string;
@@ -341,14 +339,15 @@ The system tracks file hashes. If you edit the code and then call \`executions(a
 ### Resource discovery
 
 Before writing code that uses external services, **resolve real resource IDs**:
-- Call \`nodes(action="explore-resources")\` for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
+- Call \`nodes(action="explore-resources")\` for any parameter with searchListMethod when a matching explicit credential is attached (calendars, spreadsheets, channels, models, etc.)
 - Do NOT use "primary", "default", or any assumed identifier — look up the actual value
 - Call \`nodes(action="suggested")\` early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
 - Check @builderHint annotations in node type definitions for critical configuration guidance
 
 ### Publishing
 
-Do NOT call \`workflows(action="publish")\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
+Do NOT call \`workflows(action="publish")\`. Publishing is the user's decision after testing. Your job ends at a successful submit and verification.
+If you created supporting sub-workflows, mention that they must be published before the parent workflow can run in production.
 `;
 
 function hashContent(content: string | null): string {
@@ -615,13 +614,13 @@ export async function startBuildWorkflowAgentTask(
 
 	let builderTools: ToolsInput;
 	let prompt = BUILDER_AGENT_PROMPT;
-	let credMap: CredentialMap | undefined;
 	let availableCredentials: CredentialEntry[] | undefined;
 
 	if (useSandbox) {
 		const credentialSnapshot = await buildCredentialSnapshot(domainContext.credentialService);
-		credMap = credentialSnapshot.map;
 		availableCredentials = credentialSnapshot.list;
+		const builderWorkflowsTool = createWorkflowsTool(domainContext, 'builder');
+		const builderCredentialsTool = createCredentialsTool(domainContext, 'builder');
 
 		const toolNames = [
 			'nodes',
@@ -638,6 +637,8 @@ export async function startBuildWorkflowAgentTask(
 				builderTools[name] = context.domainTools[name];
 			}
 		}
+		builderTools.workflows = builderWorkflowsTool;
+		builderTools.credentials = builderCredentialsTool;
 		if (context.workflowTaskService && context.domainContext) {
 			builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(context);
 		}
@@ -656,6 +657,10 @@ export async function startBuildWorkflowAgentTask(
 			if (name in context.domainTools) {
 				builderTools[name] = context.domainTools[name];
 			}
+		}
+		if (domainContext) {
+			builderTools.workflows = createWorkflowsTool(domainContext, 'builder');
+			builderTools.credentials = createCredentialsTool(domainContext, 'builder');
 		}
 
 		if (!builderTools['build-workflow']) {
@@ -808,9 +813,8 @@ export async function startBuildWorkflowAgentTask(
 									const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
 									let rawCode = generateWorkflowCode(json);
 									// Preserve the original id so credentials stay bound across saves.
-									// Stripping the id forced resolution through resolveCredentials,
-									// which does last-write-wins by credential type when a user has
-									// multiple credentials of the same type.
+									// Stripping the id makes the credential unresolved, so the build
+									// path mocks it until the user completes setup.
 									rawCode = rawCode.replace(
 										/newCredential\('([^']*)',\s*'([^']*)'\)/g,
 										"{ id: '$2', name: '$1' }",
@@ -830,7 +834,6 @@ export async function startBuildWorkflowAgentTask(
 							builderTools['submit-workflow'] = createIdentityEnforcedSubmitWorkflowTool({
 								context: domainContext,
 								workspace,
-								credentialMap: credMap,
 								availableCredentials,
 								root,
 								currentRunId: context.runId,

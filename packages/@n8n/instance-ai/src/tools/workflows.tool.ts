@@ -144,7 +144,17 @@ type Input =
 
 type PublishInput = z.infer<typeof publishExtendedAction>;
 
-function buildInputSchema(context: InstanceAiContext, surface: 'full' | 'orchestrator') {
+type WorkflowsToolSurface = 'full' | 'orchestrator' | 'builder';
+
+const builderInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [listAction, getAction, getAsCodeAction]),
+);
+
+function buildInputSchema(context: InstanceAiContext, surface: WorkflowsToolSurface) {
+	if (surface === 'builder') {
+		return builderInputSchema;
+	}
+
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
 
@@ -701,11 +711,19 @@ function formatFieldValue(value: string | null): string {
 	return `"${value}"`;
 }
 
+function getToolDescription(surface: WorkflowsToolSurface): string {
+	if (surface === 'builder') {
+		return 'Inspect workflows during build — list workflows, get workflow details, and convert existing workflows to TypeScript SDK code.';
+	}
+
+	return 'Manage workflows — list, inspect, archive, restore, set up, publish, unpublish, and manage versions. Workflow results use activeVersionId: null for unpublished workflows.';
+}
+
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createWorkflowsTool(
 	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
+	surface: WorkflowsToolSurface = 'full',
 ) {
 	// Closure state for the setup action's suspend/resume cycle
 	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
@@ -717,8 +735,7 @@ export function createWorkflowsTool(
 
 	return createTool({
 		id: 'workflows',
-		description:
-			'Manage workflows — list, inspect, archive, restore, set up, publish, unpublish, and manage versions. Workflow results use activeVersionId: null for unpublished workflows.',
+		description: getToolDescription(surface),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

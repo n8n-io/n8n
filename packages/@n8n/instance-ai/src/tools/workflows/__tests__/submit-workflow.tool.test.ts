@@ -130,7 +130,6 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 		const tool = createSubmitWorkflowTool(
 			context,
 			makeBuildSuccessWorkspace(),
-			new Map(),
 		) as unknown as Executable;
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
@@ -145,7 +144,6 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext(),
 			makeBuildSuccessWorkspace(),
-			new Map(),
 		) as unknown as Executable;
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
@@ -190,7 +188,6 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ createWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
-			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
@@ -211,7 +208,6 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ updateWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
-			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
