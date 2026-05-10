@@ -163,8 +163,13 @@ describe('cross-thread facts', () => {
 		expect(prompt).toContain('remove entries that violate these rules');
 		expect(prompt).not.toContain('ongoing context about the user/resource');
 		expect(prompt).toContain('Persona captures actionable behavioral directives');
+		expect(prompt).toContain('imperative system-instruction-style directives');
+		expect(prompt).toContain('concrete future behavior change');
 		expect(prompt).toContain('descriptive agent facts');
 		expect(prompt).toContain('storage/data-model facts');
+		expect(prompt).toContain('model names');
+		expect(prompt).toContain('schema facts');
+		expect(prompt).toContain('current feature details');
 		expect(prompt).toContain('current implementation details');
 	});
 
@@ -191,6 +196,14 @@ describe('cross-thread facts', () => {
 		expect(prompt).toContain('user_assertion');
 		expect(prompt).toContain('user_accepted_assistant_proposal');
 		expect(prompt).toContain('exact user-message evidence');
+		expect(prompt).toContain('directly supported by the cited evidence');
+		expect(prompt).toContain('Do not infer missing causes');
+		expect(prompt).toContain('Preserve uncertainty');
+		expect(prompt).toContain(
+			'future answers, future behavior, debugging continuity, or source-backed recall',
+		);
+		expect(prompt).toContain('low-value narration');
+		expect(prompt).toContain('only matter inside the current thread');
 		expect(prompt).toContain('User-authored agent configuration');
 		expect(prompt).toContain('assistant messages as context only');
 		expect(prompt).toContain('legitimate user configuration');
