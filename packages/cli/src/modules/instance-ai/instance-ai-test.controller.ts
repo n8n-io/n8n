@@ -87,7 +87,10 @@ export class InstanceAiTestController {
 		for (const { id } of threads) {
 			await this.instanceAiService.clearThreadState(id);
 		}
-		await this.threadRepo.clear();
+		// `repo.clear()` issues TRUNCATE without CASCADE, which Postgres rejects
+		// when child tables (messages, snapshots, …) still reference these rows.
+		// QueryBuilder DELETE fires the FK CASCADE/SET-NULL actions correctly.
+		await this.threadRepo.createQueryBuilder().delete().execute();
 
 		const workflowIds = await this.workflowRepo.find({ select: ['id'] });
 		for (const { id } of workflowIds) {
