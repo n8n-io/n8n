@@ -121,6 +121,25 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath(extensionPath))).toBe(true);
 	});
 
+	it('should not block files outside config paths when CONFIG_FILES has trailing comma', async () => {
+		process.env[CONFIG_FILES] = '/path/to/config1,';
+		const unrelatedPath = '/tmp/unrelated-file.txt';
+		expect(isFilePathBlocked(await resolvePath(unrelatedPath))).toBe(false);
+	});
+
+	it('should not treat cwd as restricted when CONFIG_FILES has trailing comma', async () => {
+		process.env[CONFIG_FILES] = '/path/to/config1,';
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		const cwdFile = require('node:path').join(process.cwd(), 'package.json');
+		expect(isFilePathBlocked(await resolvePath(cwdFile))).toBe(false);
+	});
+
+	it('should not block files outside extension paths when CUSTOM_EXTENSION_ENV has trailing semicolon', async () => {
+		process.env[CUSTOM_EXTENSION_ENV] = '/path/to/extensions1;';
+		const unrelatedPath = '/tmp/unrelated-file.txt';
+		expect(isFilePathBlocked(await resolvePath(unrelatedPath))).toBe(false);
+	});
+
 	it('should return true when file paths in BINARY_DATA_STORAGE_PATH', async () => {
 		process.env[BINARY_DATA_STORAGE_PATH] = '/path/to/binary/storage';
 		const binaryPath = '/path/to/binary/storage/somefile';
