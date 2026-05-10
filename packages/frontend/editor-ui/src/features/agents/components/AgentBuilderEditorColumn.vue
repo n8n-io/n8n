@@ -116,7 +116,6 @@ const i18n = useI18n();
 						<AgentMemoryPanel
 							:config="localConfig"
 							:disabled="isBuildChatStreaming"
-							embedded
 							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
 						/>
