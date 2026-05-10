@@ -15,7 +15,6 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ErrorReporter } from 'n8n-core';
-import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
@@ -70,7 +69,6 @@ import {
 	type ModelConfig,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
-	type InstanceAiLivenessPolicyConfig,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
 	type SandboxConfig,
@@ -112,15 +110,13 @@ import { InstanceAiCompactionService } from './compaction.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
-const RUN_TIMEOUT_REASON = 'timeout';
-const RUN_TIMEOUT_MESSAGE =
-	'The run stopped making progress, so I cancelled it. You can retry or adjust the request.';
 
 function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
@@ -410,16 +406,7 @@ export class InstanceAiService {
 
 	private terminalOutcomeStorage?: TerminalOutcomeStorage;
 
-	/** Periodic sweep that applies the Instance AI liveness policy. */
-	private livenessTimeoutInterval?: NodeJS.Timeout;
-
-	private readonly livenessPolicyConfig: InstanceAiLivenessPolicyConfig;
-
-	private readonly livenessPolicy: InstanceAiLivenessPolicy;
-
-	private readonly timedOutRunIds = new Set<string>();
-
-	private readonly timedOutActiveRunThreads = new Set<string>();
+	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
@@ -457,10 +444,20 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
-		this.livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
+		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
 		});
-		this.livenessPolicy = new InstanceAiLivenessPolicy(this.livenessPolicyConfig);
+		this.liveness = new InstanceAiLivenessService<SuspendedRunState<User>>({
+			policy: new InstanceAiLivenessPolicy(livenessPolicyConfig),
+			backgroundTaskIdleTimeoutMs: livenessPolicyConfig.backgroundTaskIdleTimeoutMs,
+			runState: this.runState,
+			backgroundTasks: this.backgroundTasks,
+			eventBus: this.eventBus,
+			logger: this.logger,
+			finalizeCancelledSuspendedRun: (suspended, reason) => {
+				void this.finalizeCancelledSuspendedRun(suspended, reason);
+			},
+		});
 		this.builderSandboxSessions = new BuilderSandboxSessionRegistry(
 			this.instanceAiConfig.builderSandboxTtlMs,
 		);
@@ -489,80 +486,7 @@ export class InstanceAiService {
 			});
 		});
 
-		this.startLivenessTimeoutSweep();
-	}
-
-	private startLivenessTimeoutSweep(): void {
-		if (!this.livenessPolicy.hasEnabledTimeouts()) return;
-
-		this.livenessTimeoutInterval = setInterval(() => {
-			void this.sweepTimedOutWork();
-		}, Time.minutes.toMilliseconds);
-	}
-
-	private async sweepTimedOutWork(now = Date.now()): Promise<void> {
-		const { activeThreadIds, suspendedThreadIds, confirmationRequestIds } =
-			this.runState.sweepTimedOut(this.livenessPolicy, now);
-
-		for (const threadId of activeThreadIds) {
-			this.logger.debug('Cancelling timed-out active run', { threadId });
-			this.cancelTimedOutActiveRun(threadId);
-		}
-
-		for (const threadId of suspendedThreadIds) {
-			this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-			this.cancelTimedOutSuspendedRun(threadId);
-		}
-
-		for (const reqId of confirmationRequestIds) {
-			this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
-				requestId: reqId,
-			});
-			const pending = this.runState.getPendingConfirmation(reqId);
-			if (pending) {
-				const runId = this.runState.getActiveRunId(pending.threadId);
-				if (runId) this.publishRunTimeoutNotice(pending.threadId, runId);
-			}
-			this.runState.rejectPendingConfirmation(reqId);
-		}
-
-		try {
-			const timedOutTasks = await this.backgroundTasks.timeoutTimedOutTasks(
-				this.livenessPolicy,
-				now,
-			);
-			for (const task of timedOutTasks) {
-				this.logger.debug('Timed out background task', {
-					threadId: task.threadId,
-					taskId: task.taskId,
-					role: task.role,
-					timeoutReason: task.timeoutReason,
-				});
-			}
-		} catch (error) {
-			this.logger.warn('Failed to sweep timed-out background tasks', {
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private cancelTimedOutActiveRun(threadId: string): void {
-		const active = this.runState.cancelActiveRun(threadId);
-		if (!active) return;
-
-		this.timedOutRunIds.add(active.runId);
-		this.timedOutActiveRunThreads.add(threadId);
-		this.publishRunTimeoutNotice(threadId, active.runId);
-		active.abortController.abort();
-	}
-
-	private cancelTimedOutSuspendedRun(threadId: string): void {
-		const suspended = this.runState.cancelSuspendedRun(threadId);
-		if (!suspended) return;
-
-		this.timedOutRunIds.add(suspended.runId);
-		suspended.abortController.abort();
-		void this.finalizeCancelledSuspendedRun(suspended, RUN_TIMEOUT_REASON);
+		this.liveness.start();
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -1174,7 +1098,7 @@ export class InstanceAiService {
 		timeZone?: string,
 		pushRef?: string,
 	): string {
-		this.timedOutActiveRunThreads.delete(threadId);
+		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
@@ -1248,7 +1172,7 @@ export class InstanceAiService {
 				payload: {
 					role: task.role,
 					result: '',
-					error: reason === RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
+					error: reason === INSTANCE_AI_RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
 				},
 			});
 			void this.recordBackgroundTerminalOutcome(task).finally(() => {
@@ -1277,13 +1201,13 @@ export class InstanceAiService {
 
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
-			if (reason === RUN_TIMEOUT_REASON) this.timedOutRunIds.add(active.runId);
+			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
 			active.abortController.abort();
 			return;
 		}
 
 		if (suspended) {
-			if (reason === RUN_TIMEOUT_REASON) this.timedOutRunIds.add(suspended.runId);
+			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(suspended.runId);
 			suspended.abortController.abort();
 			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
@@ -1467,13 +1391,12 @@ export class InstanceAiService {
 			messageGroupId,
 			taskId,
 			agentId,
-			timeoutAt:
-				outcome.task.lastActivityAt + this.livenessPolicyConfig.backgroundTaskIdleTimeoutMs + 1,
+			timeoutAt: outcome.task.lastActivityAt + this.liveness.backgroundTaskIdleTimeoutMs + 1,
 		};
 	}
 
 	async runLivenessSweepForTest(now?: number): Promise<void> {
-		await this.sweepTimedOutWork(now);
+		await this.liveness.sweepTimedOutWork(now);
 	}
 
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
@@ -1614,7 +1537,7 @@ export class InstanceAiService {
 
 		this.creditedThreads.delete(threadId);
 		this.schedulerLocks.delete(threadId);
-		this.timedOutActiveRunThreads.delete(threadId);
+		this.liveness.clearThreadState(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
@@ -1625,11 +1548,7 @@ export class InstanceAiService {
 	}
 
 	async shutdown(): Promise<void> {
-		if (this.livenessTimeoutInterval) {
-			clearInterval(this.livenessTimeoutInterval);
-			this.livenessTimeoutInterval = undefined;
-		}
-
+		this.liveness.shutdown();
 		const { activeRuns, suspendedRuns } = this.runState.shutdown();
 		for (const run of activeRuns) {
 			run.abortController.abort();
@@ -1649,7 +1568,6 @@ export class InstanceAiService {
 			task.abortController.abort();
 			await this.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
-		this.timedOutActiveRunThreads.clear();
 		const threadsWithTraces = new Set(
 			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
 		);
@@ -2072,22 +1990,6 @@ export class InstanceAiService {
 			payload: { text: outcome.userFacingMessage },
 		});
 		return true;
-	}
-
-	private publishRunTimeoutNotice(threadId: string, runId: string): void {
-		const responseId = `run-timeout:${runId}`;
-		const alreadyPublished = this.eventBus
-			.getEventsForRun(threadId, runId)
-			.some((event) => event.responseId === responseId);
-		if (alreadyPublished) return;
-
-		this.eventBus.publish(threadId, {
-			type: 'text-delta',
-			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
-			responseId,
-			payload: { text: RUN_TIMEOUT_MESSAGE },
-		});
 	}
 
 	private async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
@@ -3222,11 +3124,11 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (signal.aborted) {
-				const cancellationReason = this.timedOutRunIds.delete(runId)
-					? RUN_TIMEOUT_REASON
+				const cancellationReason = this.liveness.consumeRunTimedOut(runId)
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
 					: getAbortReason(signal);
-				if (cancellationReason === RUN_TIMEOUT_REASON) {
-					this.publishRunTimeoutNotice(threadId, runId);
+				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+					this.liveness.publishRunTimeoutNotice(threadId, runId);
 				}
 				this.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
@@ -4004,7 +3906,7 @@ export class InstanceAiService {
 				const hasActiveRun = !!this.runState.getActiveRunId(opts.threadId);
 				const hasSuspendedRun = this.runState.hasSuspendedRun(opts.threadId);
 				if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
-					if (this.timedOutActiveRunThreads.has(opts.threadId)) {
+					if (this.liveness.hasTimedOutActiveRunThread(opts.threadId)) {
 						this.logger.debug('Skipping background auto-follow-up after active run timeout', {
 							threadId: opts.threadId,
 							taskId: task.taskId,
@@ -4210,8 +4112,8 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
-		if (reason === RUN_TIMEOUT_REASON) {
-			this.publishRunTimeoutNotice(suspended.threadId, suspended.runId);
+		if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+			this.liveness.publishRunTimeoutNotice(suspended.threadId, suspended.runId);
 		}
 		await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
 			status: 'cancelled',
