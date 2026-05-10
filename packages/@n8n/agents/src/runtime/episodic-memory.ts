@@ -181,7 +181,7 @@ export function hasEpisodicMemoryStore(
 	);
 }
 
-export function requireEpisodicMemoryScope(
+function requireEpisodicMemoryScope(
 	persistence: AgentPersistenceOptions | undefined,
 ): EpisodicMemoryScope {
 	return requireAgentResourceScope(persistence, 'Episodic memory entries');
@@ -338,7 +338,7 @@ export async function loadEpisodicMemoryForInjection(opts: {
 	};
 }
 
-export function renderEpisodicMemoryForInjection(
+function renderEpisodicMemoryForInjection(
 	entries: Array<Pick<EpisodicMemoryEntry, 'content' | 'createdAt'>>,
 	instruction: string,
 	now = new Date(),
@@ -428,7 +428,7 @@ export function rankEpisodicMemoryEntries(
 		.slice(0, topK);
 }
 
-export function renderEpisodicMemoryExtractionTranscript(messages: AgentDbMessage[]): string {
+function renderEpisodicMemoryExtractionTranscript(messages: AgentDbMessage[]): string {
 	return messages
 		.map((msg) => {
 			if (!isLlmMessage(msg) || (msg.role !== 'user' && msg.role !== 'assistant')) return '';
@@ -438,7 +438,7 @@ export function renderEpisodicMemoryExtractionTranscript(messages: AgentDbMessag
 		.join('\n\n');
 }
 
-export function renderEpisodicMemoryExtractionPrompt(
+function renderEpisodicMemoryExtractionPrompt(
 	transcript: string,
 	context: {
 		memoryProfile?: SerializedMessageList['memoryProfile'];

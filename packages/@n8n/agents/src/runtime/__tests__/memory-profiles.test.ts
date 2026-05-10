@@ -4,9 +4,9 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import { extractAndStoreEpisodicMemory } from '../episodic-memory';
 import { AgentEventBus } from '../event-bus';
 import {
+	DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
 	loadMemoryProfileContext,
 	updateMemoryProfilesFromTurn,
-	withMemoryProfileDefaults,
 } from '../memory-profiles';
 import { InMemoryMemory } from '../memory-store';
 
@@ -57,7 +57,7 @@ describe('memory profiles', () => {
 	});
 
 	it('defines the default profile update contract', () => {
-		const prompt = withMemoryProfileDefaults({}).profileUpdatePrompt;
+		const prompt = DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT;
 
 		for (const phrase of [
 			'User profile captures stable cross-session information',

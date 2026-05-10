@@ -65,7 +65,7 @@ interface ProfileUpdateTurn {
 	assistantMessage: string;
 }
 
-export function hasMemoryProfileStore(
+function hasMemoryProfileStore(
 	memory: BuiltMemory,
 ): memory is BuiltMemory & BuiltMemoryProfileStore {
 	return (
@@ -80,9 +80,7 @@ export function isMemoryProfilesEnabled(
 	return config !== undefined && config.enabled !== false;
 }
 
-export function withMemoryProfileDefaults(
-	config: MemoryProfilesConfig,
-): NormalizedMemoryProfilesConfig {
+function withMemoryProfileDefaults(config: MemoryProfilesConfig): NormalizedMemoryProfilesConfig {
 	return {
 		profileUpdatePrompt: config.prompts?.profileUpdate ?? DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
 		...(config.agentDescription !== undefined && { agentDescription: config.agentDescription }),
