@@ -62,10 +62,9 @@ describe('WaitingWebhooks', () => {
 		 * Act
 		 */
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123456' } }),
 			mock<express.Response>(),
 		);
-
 		/**
 		 * Assert
 		 */
@@ -84,10 +83,9 @@ describe('WaitingWebhooks', () => {
 		 * Act
 		 */
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123456' } }),
 			mock<express.Response>(),
 		);
-
 		/**
 		 * Assert
 		 */
@@ -106,14 +104,33 @@ describe('WaitingWebhooks', () => {
 		 * Act
 		 */
 		const promise = waitingWebhooks.executeWebhook(
-			mock<WaitingWebhookRequest>(),
+			mock<WaitingWebhookRequest>({ params: { path: '123456' } }),
 			mock<express.Response>(),
 		);
-
 		/**
 		 * Assert
 		 */
 		await expect(promise).rejects.toThrowError(ConflictError);
+	});
+
+	it('should throw NotFoundError if executionId is not numeric', async () => {
+		/**
+		 * Arrange
+		 */
+		const req = mock<WaitingWebhookRequest>({
+			params: { path: 'invalid-id' },
+		});
+
+		/**
+		 * Act
+		 */
+		const promise = waitingWebhooks.executeWebhook(req, mock<express.Response>());
+
+		/**
+		 * Assert
+		 */
+		await expect(promise).rejects.toThrowError(NotFoundError);
+		expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
 	});
 
 	describe('findAccessControlOptions', () => {
@@ -288,7 +305,7 @@ describe('WaitingWebhooks', () => {
 			});
 			// Request has wrong signature
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: nodeId },
+				params: { path: '123456', suffix: nodeId },
 				method: 'GET',
 				url: `/webhook/execution-id/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
 				headers: { host: 'example.com' },
@@ -348,7 +365,7 @@ describe('WaitingWebhooks', () => {
 			});
 			// Request has wrong signature
 			const req = mock<WaitingWebhookRequest>({
-				params: { path: 'execution-id', suffix: 'wait-node-id' },
+				params: { path: '123456', suffix: 'wait-node-id' },
 				method: 'GET',
 				url: `/webhook/execution-id/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
 				headers: { host: 'example.com' },
@@ -454,7 +471,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123456';
 			const lastNodeExecuted = 'HitlToolNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -582,7 +599,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123456';
 			const lastNodeExecuted = 'TestNode';
 			const inputOverrideData = [{ json: { test: 'data' } }] as any;
 
@@ -719,7 +736,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123456';
 			const lastNodeExecuted = 'HitlToolNode';
 			const inputOverrideData = [{ json: { toolInput: 'test' } }] as any;
 
@@ -857,7 +874,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123456';
 			const lastNodeExecuted = 'TestNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -989,7 +1006,7 @@ describe('WaitingWebhooks', () => {
 			/**
 			 * Arrange
 			 */
-			const executionId = 'test-execution-id';
+			const executionId = '123456';
 			const lastNodeExecuted = 'WaitNode';
 
 			const mockExecution = mock<IExecutionResponse>({
@@ -1127,7 +1144,7 @@ describe('WaitingWebhooks', () => {
 		}) {
 			const { nodeType, nodeName, nodeId, typeVersion = 1, nodeParameters = {} } = overrides;
 			return mock<IExecutionResponse>({
-				id: 'test-execution-id',
+				id: '123456',
 				status: 'waiting',
 				finished: false,
 				mode: 'manual',
@@ -1225,26 +1242,26 @@ describe('WaitingWebhooks', () => {
 					},
 				);
 
-			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: undefined },
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: '123456', suffix: undefined },
 				method: 'POST',
 			});
-			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			await waitingWebhooks.executeWebhook(req, createMockRes());
 
 			expect(mockEventService.emit).toHaveBeenCalledWith(
 				'execution-resumed',
-				expect.objectContaining({ executionId: 'test-execution-id', workflowId: 'workflow-id' }),
+				expect.objectContaining({ executionId: '123456', workflowId: 'workflow-id' }),
 			);
 		});
 
 		it('should not emit when no matching webhook found', async () => {
 			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
 
-			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: undefined },
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: '123456', suffix: undefined },
 				method: 'POST',
 			});
-			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrowError(
+			await expect(waitingWebhooks.executeWebhook(req, createMockRes())).rejects.toThrowError(
 				NotFoundError,
 			);
 
@@ -1266,11 +1283,11 @@ describe('WaitingWebhooks', () => {
 			);
 			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
 
-			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: '123456', suffix: sendAndWaitNodeId },
 				method: 'POST',
 			});
-			const result = await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			const result = await waitingWebhooks.executeWebhook(req, createMockRes());
 
 			expect(result).toEqual({ noWebhookResponse: true });
 			expect(mockEventService.emit).not.toHaveBeenCalledWith(
@@ -1311,11 +1328,11 @@ describe('WaitingWebhooks', () => {
 					return undefined;
 				});
 
-			const mockReq = mock<WaitingWebhookRequest>({
-				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: '123456', suffix: sendAndWaitNodeId },
 				method: 'POST',
 			});
-			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			await waitingWebhooks.executeWebhook(req, createMockRes());
 
 			expect(mockEventService.emit).not.toHaveBeenCalledWith(
 				'execution-resumed',

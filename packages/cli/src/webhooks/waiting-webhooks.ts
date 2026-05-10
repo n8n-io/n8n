@@ -180,6 +180,10 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		this.logReceivedWebhook(req.method, executionId);
 
+		if (!/^\d+$/.test(executionId)) {
+			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+		}
+
 		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
