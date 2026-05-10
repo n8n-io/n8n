@@ -53,6 +53,24 @@ function makeStoredFact(overrides: Partial<CrossThreadFact> = {}): CrossThreadFa
 	};
 }
 
+function makeUserMessage(text: string, id = 'user-1'): AgentDbMessage {
+	return {
+		id,
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		role: 'user',
+		content: [{ type: 'text', text }],
+	};
+}
+
+function makeAssistantMessage(text: string, id = 'assistant-1'): AgentDbMessage {
+	return {
+		id,
+		createdAt: new Date('2026-01-01T00:00:01.000Z'),
+		role: 'assistant',
+		content: [{ type: 'text', text }],
+	};
+}
+
 describe('cross-thread facts', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -326,12 +344,12 @@ describe('cross-thread facts', () => {
 			threadId: 'thread-1',
 			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
 			messages: [
-				{
-					id: 'user-1',
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-					role: 'user',
-					content: [{ type: 'text', text: 'Remember that I prefer concise updates.' }],
-				},
+				makeUserMessage(
+					'Remember that I prefer concise updates. For this agent, respond with memory architecture distinctions instead of vague memory language.',
+				),
+				makeAssistantMessage(
+					'Understood. I will distinguish profile-shaped memory from episodic-shaped memory.',
+				),
 			],
 			eventBus: new AgentEventBus(),
 		});
@@ -343,13 +361,96 @@ describe('cross-thread facts', () => {
 			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
 		).resolves.toMatchObject({ content: 'This agent is used for memory debugging.' });
 		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(generateText.mock.calls[1][0].system).toContain('Persona captures behavioral rules');
 		expect(generateText.mock.calls[1][0].system).toContain(
-			'relevant in relation to the agent description',
+			'Assistant messages are supporting context',
 		);
 		expect(generateText.mock.calls[1][0].prompt).toContain(
 			'<agent-description>\nHelps users debug n8n code.\n</agent-description>',
 		);
-		expect(generateText.mock.calls[1][0].prompt).toContain('<accepted-facts>');
+		expect(generateText.mock.calls[1][0].prompt).toContain('<user-message>');
+		expect(generateText.mock.calls[1][0].prompt).toContain(
+			'For this agent, respond with memory architecture distinctions',
+		);
+		expect(generateText.mock.calls[1][0].prompt).toContain('<assistant-message>');
+		expect(generateText.mock.calls[1][0].prompt).toContain(
+			'I will distinguish profile-shaped memory from episodic-shaped memory.',
+		);
+		expect(generateText.mock.calls[1][0].prompt).not.toContain('<accepted-facts>');
+	});
+
+	it('updates memory profiles from the turn pair even when no facts are accepted', async () => {
+		generateText
+			.mockResolvedValueOnce({ text: JSON.stringify({ facts: [] }) })
+			.mockResolvedValueOnce({
+				text: JSON.stringify({
+					persona:
+						'When users describe technical issues, ask for the specific n8n version before suggesting fixes.',
+					user: 'The user prefers responses without business framing or em dashes.',
+				}),
+			});
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: {
+				embedder: fakeEmbedder,
+				profileUpdate: true,
+				agentDescription: 'Helps users debug n8n code.',
+			},
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [
+				makeUserMessage(
+					'When I report a technical issue, ask me for the exact n8n version first. I prefer no business framing or em dashes.',
+				),
+				makeAssistantMessage('Got it. I will ask for the n8n version first.'),
+			],
+			eventBus: new AgentEventBus(),
+		});
+
+		expect(embedMany).not.toHaveBeenCalled();
+		await expect(
+			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
+		).resolves.toMatchObject({
+			content:
+				'When users describe technical issues, ask for the specific n8n version before suggesting fixes.',
+		});
+		await expect(
+			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
+		).resolves.toMatchObject({
+			content: 'The user prefers responses without business framing or em dashes.',
+		});
+	});
+
+	it('does not update memory profiles from assistant-only restatements', async () => {
+		generateText.mockResolvedValueOnce({
+			text: JSON.stringify({
+				facts: [{ content: 'This agent should always use a test-first style.' }],
+			}),
+		});
+		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
+
+		const memory = new InMemoryMemory();
+		await extractAndStoreCrossThreadFacts({
+			memory,
+			config: {
+				embedder: fakeEmbedder,
+				profileUpdate: true,
+				agentDescription: 'Helps users debug n8n code.',
+			},
+			model: fakeModel,
+			threadId: 'thread-1',
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+			messages: [makeAssistantMessage('Persona locked in: I will always use a test-first style.')],
+			eventBus: new AgentEventBus(),
+		});
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		await expect(
+			memory.getMemoryProfile({ scopeKind: 'agent', scopeId: 'agent-1' }),
+		).resolves.toBeNull();
 	});
 
 	it('does not update memory profiles by default', async () => {
