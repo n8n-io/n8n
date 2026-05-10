@@ -38,9 +38,11 @@ jest.mock('ai', () => {
 	const actual = jest.requireActual<AiImport>('ai');
 	return {
 		...actual,
+		generateObject: jest.fn(),
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		embed: jest.fn(),
+		embedMany: jest.fn(),
 		tool: jest.fn((config: unknown) => config),
 		Output: {
 			object: jest.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
@@ -53,10 +55,12 @@ jest.mock('ai', () => {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { generateText, streamText, embed } = require('ai') as {
+const { generateObject, generateText, streamText, embed, embedMany } = require('ai') as {
+	generateObject: jest.Mock;
 	generateText: jest.Mock;
 	streamText: jest.Mock;
 	embed: jest.Mock;
+	embedMany: jest.Mock;
 };
 
 /** Minimal successful generateText response. */
@@ -555,7 +559,14 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 	const now = new Date('2026-05-09T12:00:00.000Z');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		generateObject.mockReset();
+		generateText.mockReset();
+		streamText.mockReset();
+		embed.mockReset();
+		embedMany.mockReset();
+		generateObject.mockResolvedValue({ object: { entries: [] } });
+		embed.mockResolvedValue({ embedding: [1, 0] });
+		embedMany.mockResolvedValue({ embeddings: [] });
 	});
 
 	function createRuntimeWithEntryMemory(sync?: boolean) {
@@ -574,15 +585,14 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 
 	function mockTurnAndDelayedExtraction() {
 		const extractionStarted = deferred<undefined>();
-		const extractionResult = deferred<{ text: string }>();
+		const extractionResult = deferred<{ object: { entries: [] } }>();
 
-		generateText
-			.mockResolvedValueOnce(makeGenerateSuccess('turn complete'))
-			.mockImplementationOnce(async () => {
-				extractionStarted.resolve(undefined);
-				const result = await extractionResult.promise;
-				return result;
-			});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('turn complete'));
+		generateObject.mockImplementationOnce(async () => {
+			extractionStarted.resolve(undefined);
+			const result = await extractionResult.promise;
+			return result;
+		});
 
 		return { extractionStarted, extractionResult };
 	}
@@ -603,7 +613,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 			}),
 		]);
 
-		extractionResult.resolve({ text: '{"entries":[]}' });
+		extractionResult.resolve({ object: { entries: [] } });
 		const result = await resultPromise;
 		await runtime.dispose();
 
@@ -627,7 +637,7 @@ describe('AgentRuntime — episodic memory entry extraction scheduling', () => {
 			}),
 		]);
 
-		extractionResult.resolve({ text: '{"entries":[]}' });
+		extractionResult.resolve({ object: { entries: [] } });
 		const result = await resultPromise;
 
 		expect(result.finishReason).toBe('stop');

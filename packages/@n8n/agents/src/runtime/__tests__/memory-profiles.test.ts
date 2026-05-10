@@ -11,11 +11,13 @@ import {
 import { InMemoryMemory } from '../memory-store';
 
 jest.mock('ai', () => ({
+	generateObject: jest.fn(),
 	generateText: jest.fn(),
 	embedMany: jest.fn(),
 }));
 
-const { generateText, embedMany } = jest.requireMock<{
+const { generateObject, generateText, embedMany } = jest.requireMock<{
+	generateObject: jest.Mock;
 	generateText: jest.Mock<Promise<{ text: string }>, [{ prompt?: string; system?: string }]>;
 	embedMany: jest.Mock;
 }>('ai');
@@ -213,15 +215,15 @@ describe('memory profiles', () => {
 	});
 
 	it('does not update memory profiles from episodic extraction alone', async () => {
-		generateText.mockResolvedValueOnce({
-			text: JSON.stringify({
+		generateObject.mockResolvedValueOnce({
+			object: {
 				entries: [
 					extractedEntry(
 						'The user prefers concise updates.',
 						'Remember that I prefer concise updates.',
 					),
 				],
-			}),
+			},
 		});
 		embedMany.mockResolvedValueOnce({ embeddings: [[1, 0]] });
 
@@ -239,7 +241,8 @@ describe('memory profiles', () => {
 		await expect(
 			memory.getMemoryProfile({ scopeKind: 'resource', scopeId: 'user-1' }),
 		).resolves.toBeNull();
-		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(generateObject).toHaveBeenCalledTimes(1);
+		expect(generateText).not.toHaveBeenCalled();
 	});
 
 	it('loads resource profiles shared across agents and persona profiles scoped to one agent', async () => {
