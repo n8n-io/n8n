@@ -39,18 +39,48 @@ describe('WorkerDrainService', () => {
 		});
 	});
 
-	describe('enterDrain', () => {
-		it('pauses the local queue and marks as draining on a worker instance', async () => {
-			await service.enterDrain();
+		describe('enterDrain', () => {
+			it('pauses the local queue and marks as draining on a worker instance', async () => {
+				await service.enterDrain();
 
-			expect(scalingService.pauseLocalQueue).toHaveBeenCalledTimes(1);
-			expect(service.isDraining()).toBe(true);
-		});
+				expect(scalingService.pauseLocalQueue).toHaveBeenCalledTimes(1);
+				expect(service.isDraining()).toBe(true);
+			});
 
-		it('logs the drain signal message', async () => {
-			const logger = mockLogger();
-			// scoped() returns a new logger — make it return the same mock so we can assert on it
-			(logger.scoped as jest.Mock).mockReturnValue(logger);
+			it('rejects when pausing the local queue fails and does not start polling', async () => {
+				scalingService.pauseLocalQueue.mockRejectedValueOnce(new Error('pause failed'));
+
+				await expect(service.enterDrain()).rejects.toThrow('pause failed');
+
+				expect(service.isDraining()).toBe(false);
+				expect(scalingService.getRunningJobsCount).not.toHaveBeenCalled();
+			});
+
+			it('shares one in-flight pause attempt across concurrent calls', async () => {
+				let resolvePause!: () => void;
+				const pausePromise = new Promise<void>((resolve) => {
+					resolvePause = resolve;
+				});
+				scalingService.pauseLocalQueue.mockReturnValueOnce(pausePromise);
+
+				const firstEnterDrain = service.enterDrain();
+				const secondEnterDrain = service.enterDrain();
+
+				expect(scalingService.pauseLocalQueue).toHaveBeenCalledTimes(1);
+				expect(service.isDraining()).toBe(false);
+
+				resolvePause();
+
+				await expect(firstEnterDrain).resolves.toBeUndefined();
+				await expect(secondEnterDrain).resolves.toBeUndefined();
+				expect(service.isDraining()).toBe(true);
+				expect(scalingService.getRunningJobsCount).toHaveBeenCalledTimes(1);
+			});
+
+			it('logs the drain signal message', async () => {
+				const logger = mockLogger();
+				// scoped() returns a new logger — make it return the same mock so we can assert on it
+				(logger.scoped as jest.Mock).mockReturnValue(logger);
 			service = new WorkerDrainService(logger, scalingService, instanceSettings);
 
 			await service.enterDrain();
@@ -60,12 +90,13 @@ describe('WorkerDrainService', () => {
 			);
 		});
 
-		it('is idempotent — second call does not pause queue again', async () => {
-			await service.enterDrain();
-			await service.enterDrain();
+			it('is idempotent — second call does not pause queue again', async () => {
+				await service.enterDrain();
+				await service.enterDrain();
 
-			expect(scalingService.pauseLocalQueue).toHaveBeenCalledTimes(1);
-		});
+				expect(scalingService.pauseLocalQueue).toHaveBeenCalledTimes(1);
+				expect(service.isDraining()).toBe(true);
+			});
 
 		it('throws UnexpectedError when called on a non-worker instance', async () => {
 			// @ts-expect-error readonly property

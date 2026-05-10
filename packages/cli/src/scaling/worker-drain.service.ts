@@ -10,6 +10,8 @@ import { ScalingService } from './scaling.service';
 export class WorkerDrainService {
 	private draining = false;
 
+	private enterDrainPromise?: Promise<void>;
+
 	private readonly pollIntervalMs = 500;
 
 	constructor(
@@ -37,13 +39,19 @@ export class WorkerDrainService {
 	async enterDrain(): Promise<void> {
 		this.assertWorker();
 		if (this.draining) return;
+		if (this.enterDrainPromise) return this.enterDrainPromise;
 
-		this.draining = true;
 		this.logger.info('[Worker] Drain signal received. Stopping new job intake.');
 
-		await this.scalingService.pauseLocalQueue();
+		this.enterDrainPromise = (async () => {
+			await this.scalingService.pauseLocalQueue();
+			this.draining = true;
+			void this.watchForActiveJobsToFinish();
+		})().finally(() => {
+			this.enterDrainPromise = undefined;
+		});
 
-		void this.watchForActiveJobsToFinish();
+		return this.enterDrainPromise;
 	}
 
 	async exitDrain(): Promise<void> {

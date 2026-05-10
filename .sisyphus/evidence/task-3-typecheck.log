@@ -1,0 +1,7 @@
+
+> n8n@2.20.0 typecheck /Users/lucascrostarosa/workspace/n8n/packages/cli
+> tsc --noEmit
+
+
+COMMAND: corepack pnpm typecheck
+EXIT_CODE: 0

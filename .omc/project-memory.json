@@ -1,0 +1,281 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1778267645137,
+  "projectRoot": "/Users/lucascrostarosa/workspace/n8n",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": ">=22.16",
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "jest",
+        "version": "29.6.2",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "pnpm",
+    "runtime": "Node.js 22.16"
+  },
+  "build": {
+    "buildCommand": "pnpm build",
+    "testCommand": "pnpm test",
+    "lintCommand": "pnpm lint",
+    "devCommand": "pnpm dev",
+    "scripts": {
+      "prepare": "node scripts/prepare.mjs",
+      "preinstall": "node scripts/block-npm-install.js",
+      "build": "turbo run build",
+      "build:n8n": "node scripts/build-n8n.mjs",
+      "build:deploy": "node scripts/build-n8n.mjs",
+      "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
+      "build:docker:coverage": "BUILD_WITH_COVERAGE=true node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
+      "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
+      "build:docker:clean": "TURBO_FORCE=true node scripts/build-n8n.mjs && DOCKER_BUILD_NO_CACHE=true DOCKER_BUILD_BASE_IMAGE=true node scripts/dockerize-n8n.mjs",
+      "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
+      "typecheck": "turbo typecheck",
+      "dev": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
+      "dev:be": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
+      "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/n8n-nodes-langchain --filter=n8n --filter=n8n-core",
+      "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
+      "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
+      "dev:e2e": "pnpm --filter=n8n-playwright dev --ui",
+      "clean": "turbo run clean",
+      "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
+      "format": "turbo run format && node scripts/format.mjs",
+      "format:check": "turbo run format:check",
+      "lint": "turbo run lint",
+      "lint:styles": "turbo run lint:styles",
+      "lint:styles:fix": "turbo run lint:styles:fix",
+      "lint:affected": "turbo run lint --affected",
+      "lint:fix": "turbo run lint:fix",
+      "lint:ci": "turbo run lint lint:styles",
+      "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
+      "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
+      "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
+      "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
+      "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
+      "test:ci": "turbo run test --continue --concurrency=1",
+      "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**'",
+      "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**'",
+      "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**'",
+      "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**'",
+      "test:affected": "turbo run test --affected --concurrency=1",
+      "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
+      "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
+      "watch": "turbo run watch --concurrency=64",
+      "webhook": "./packages/cli/bin/n8n webhook",
+      "worker": "./packages/cli/bin/n8n worker",
+      "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
+      "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": true,
+    "workspaces": [],
+    "mainDirectories": [
+      "assets",
+      "scripts"
+    ],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "assets": {
+      "path": "assets",
+      "purpose": "Static assets",
+      "fileCount": 3,
+      "lastAccessed": 1778267645120,
+      "keyFiles": [
+        "n8n-logo.png",
+        "n8n-screenshot-readme.png",
+        "n8n-screenshot.png"
+      ]
+    },
+    "docker": {
+      "path": "docker",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1778267645120,
+      "keyFiles": []
+    },
+    "packages": {
+      "path": "packages",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1778267645122,
+      "keyFiles": []
+    },
+    "patches": {
+      "path": "patches",
+      "purpose": null,
+      "fileCount": 14,
+      "lastAccessed": 1778267645123,
+      "keyFiles": [
+        "@lezer__highlight.patch",
+        "@types__express-serve-static-core@5.0.6.patch",
+        "@types__uuencode@0.0.3.patch",
+        "@types__ws@8.18.1.patch",
+        "assert@2.1.0.patch"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 12,
+      "lastAccessed": 1778267645123,
+      "keyFiles": [
+        "block-npm-install.js",
+        "build-n8n.mjs",
+        "check-workspace-deps.mjs",
+        "dockerize-n8n.mjs",
+        "ensure-zx.mjs"
+      ]
+    },
+    "security": {
+      "path": "security",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1778267645123,
+      "keyFiles": [
+        "trivy-ignore-policy.rego",
+        "trivy.yaml",
+        "vex.openvex.json"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "packages/cli/src/commands/worker.ts",
+      "accessCount": 11,
+      "lastAccessed": 1778270983486,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/worker-server.ts",
+      "accessCount": 10,
+      "lastAccessed": 1778270983684,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/__tests__/worker-server.test.ts",
+      "accessCount": 9,
+      "lastAccessed": 1778269588081,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/worker-drain.service.ts",
+      "accessCount": 9,
+      "lastAccessed": 1778270983004,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/__tests__/scaling.service.test.ts",
+      "accessCount": 7,
+      "lastAccessed": 1778269588669,
+      "type": "file"
+    },
+    {
+      "path": "packages/@n8n/config/src/configs/scaling-mode.config.ts",
+      "accessCount": 6,
+      "lastAccessed": 1778269455308,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/commands/__tests__/worker.test.ts",
+      "accessCount": 6,
+      "lastAccessed": 1778269621108,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/scaling.service.ts",
+      "accessCount": 6,
+      "lastAccessed": 1778271021855,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/commands/base-command.ts",
+      "accessCount": 4,
+      "lastAccessed": 1778269567215,
+      "type": "file"
+    },
+    {
+      "path": "docs/worker-drain.md",
+      "accessCount": 2,
+      "lastAccessed": 1778268813928,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/job-processor.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778267735307,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/__tests__/job-processor.service.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778267742003,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/__tests__/worker-drain.service.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778269561083,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/commands/__tests__/start.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778269585043,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/pubsub/pubsub.event-map.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778270995968,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/pubsub/pubsub.registry.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778270996404,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/pubsub/pubsub.types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778270996478,
+      "type": "file"
+    },
+    {
+      "path": "packages/cli/src/scaling/worker-status.service.ee.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778271021416,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

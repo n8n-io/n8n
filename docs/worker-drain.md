@@ -8,7 +8,7 @@ The worker drain mechanism lets a running n8n worker in queue mode stop acceptin
 
 Use the orchestration API as the primary drain trigger for Kubernetes preStop hooks and similar operator automation:
 
-- **Route:** `POST /orchestration/worker/:workerId/drain`
+- **Route:** `POST /rest/orchestration/worker/:workerId/drain` by default, or `POST /${N8N_REST_ENDPOINT}/orchestration/worker/:workerId/drain` when a custom REST base path is configured
 - **Required scope:** `workersView:manage`
 - **License requirement:** Worker View must be licensed
 
@@ -16,7 +16,7 @@ The drain action is asynchronous and returns HTTP `202` after the worker drain r
 
 ## Kubernetes preStop Example
 
-Use a preStop hook that calls the drain endpoint for the current worker before Kubernetes sends `SIGTERM`.
+Use a preStop hook that calls the main n8n REST API drain endpoint for the current worker before Kubernetes sends `SIGTERM`. The drain API is exposed by the main n8n REST API, not by the worker server.
 
 ```yaml
 lifecycle:
@@ -28,13 +28,15 @@ lifecycle:
         - |
           curl -X POST \
             -H "Authorization: Bearer ${N8N_API_TOKEN}" \
-            "http://127.0.0.1:5678/orchestration/worker/${N8N_WORKER_ID}/drain"
+            "${N8N_MAIN_URL}/${N8N_REST_ENDPOINT:-rest}/orchestration/worker/${N8N_WORKER_ID}/drain"
 ```
+
+If the worker pod can't reach the main n8n REST API during `preStop`, use `N8N_WORKER_DRAIN_ON_SIGTERM=true` or the legacy local `SIGUSR2` fallback documented below.
 
 How it works:
 
 1. Kubernetes starts pod termination and runs the preStop hook.
-2. The hook calls `POST /orchestration/worker/:workerId/drain` for that worker.
+2. The hook calls the main n8n REST API at `POST /rest/orchestration/worker/:workerId/drain`, or the configured `/${N8N_REST_ENDPOINT}` base path, which publishes the targeted drain request to the worker.
 3. The worker pauses queue consumption and marks itself NotReady, `/healthz/readiness` returns HTTP 503 with `{"status":"draining"}`.
 4. In-flight executions continue until they complete or the shutdown timeout expires.
 5. Kubernetes then sends `SIGTERM`, which continues the normal graceful shutdown flow.
