@@ -103,6 +103,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
+import type { TypeORMMemoryStorage } from './storage/typeorm-memory-storage';
 import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
@@ -1300,6 +1301,7 @@ export class InstanceAiService {
 		timeoutAt: number;
 	}> {
 		const messageId = `msg_${nanoid()}`;
+		const messageText = 'I started a background workflow-builder task.';
 		const { runId, messageGroupId } = this.runState.startRun({ threadId, user });
 		if (!messageGroupId) {
 			throw new UnexpectedError('Failed to create message group for timeout simulation');
@@ -1319,7 +1321,7 @@ export class InstanceAiService {
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
 			responseId: `test-background-start:${runId}`,
-			payload: { text: 'I started a background workflow-builder task.' },
+			payload: { text: messageText },
 		});
 		this.eventBus.publish(threadId, {
 			type: 'agent-spawned',
@@ -1335,6 +1337,27 @@ export class InstanceAiService {
 				subtitle: 'Timeout simulation',
 				goal: 'Simulate a stuck background task timeout',
 			},
+		});
+
+		// Persist the assistant message so the FE renders it on a fresh page load.
+		// Live SSE events alone are lost when the browser navigates after the
+		// simulation API call.
+		const memoryStorage = this.compositeStore.stores.memory as TypeORMMemoryStorage;
+		await memoryStorage.saveMessages({
+			messages: [
+				{
+					id: messageId,
+					threadId,
+					resourceId: user.id,
+					role: 'assistant',
+					content: {
+						format: 2,
+						parts: [{ type: 'text', text: messageText }],
+						content: messageText,
+					},
+					createdAt: new Date(),
+				},
+			],
 		});
 
 		const outcome = this.backgroundTasks.spawn({
