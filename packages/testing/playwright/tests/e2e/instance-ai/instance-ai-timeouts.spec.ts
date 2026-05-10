@@ -1,19 +1,6 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
-test.use({
-	...instanceAiTestConfig,
-	capability: {
-		...instanceAiTestConfig.capability,
-		env: {
-			...instanceAiTestConfig.capability.env,
-			N8N_INSTANCE_AI_ACTIVE_RUN_IDLE_TIMEOUT: '0',
-			N8N_INSTANCE_AI_ACTIVE_RUN_MAX_LIFETIME: '0',
-			N8N_INSTANCE_AI_BACKGROUND_TASK_IDLE_TIMEOUT: '1000',
-			N8N_INSTANCE_AI_BACKGROUND_TASK_MAX_LIFETIME: '0',
-			N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT: '0',
-		},
-	},
-});
+test.use(instanceAiTestConfig);
 
 test.describe('Instance AI timeouts', () => {
 	test('should show a timeout message when a stuck background task times out', async ({

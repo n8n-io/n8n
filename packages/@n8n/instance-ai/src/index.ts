@@ -111,6 +111,8 @@ export type {
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
 export {
+	createInstanceAiLivenessPolicyConfig,
+	INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
 	InstanceAiLivenessPolicy,
 	type InstanceAiLivenessDecision,
 	type InstanceAiLivenessInput,

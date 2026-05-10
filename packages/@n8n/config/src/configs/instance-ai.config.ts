@@ -113,20 +113,4 @@ export class InstanceAiConfig {
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 10 * 60 * 1000; // 10 minutes
-
-	/** Idle timeout in milliseconds for detached Instance AI background tasks. 0 = no timeout. */
-	@Env('N8N_INSTANCE_AI_BACKGROUND_TASK_IDLE_TIMEOUT')
-	backgroundTaskIdleTimeout: number = 10 * 60 * 1000; // 10 minutes
-
-	/** Maximum lifetime in milliseconds for detached Instance AI background tasks. 0 = no timeout. */
-	@Env('N8N_INSTANCE_AI_BACKGROUND_TASK_MAX_LIFETIME')
-	backgroundTaskMaxLifetime: number = 30 * 60 * 1000; // 30 minutes
-
-	/** Idle timeout in milliseconds for active Instance AI orchestrator runs. 0 = no timeout. */
-	@Env('N8N_INSTANCE_AI_ACTIVE_RUN_IDLE_TIMEOUT')
-	activeRunIdleTimeout: number = 10 * 60 * 1000; // 10 minutes
-
-	/** Maximum lifetime in milliseconds for active Instance AI orchestrator runs. 0 = no timeout. */
-	@Env('N8N_INSTANCE_AI_ACTIVE_RUN_MAX_LIFETIME')
-	activeRunMaxLifetime: number = 30 * 60 * 1000; // 30 minutes
 }

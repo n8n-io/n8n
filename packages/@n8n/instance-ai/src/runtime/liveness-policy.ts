@@ -14,6 +14,25 @@ export interface InstanceAiLivenessPolicyConfig {
 	activeRunMaxLifetimeMs: number;
 }
 
+const MINUTE_MS = 60_000;
+
+export const INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG = {
+	confirmationTimeoutMs: 10 * MINUTE_MS,
+	backgroundTaskIdleTimeoutMs: 10 * MINUTE_MS,
+	backgroundTaskMaxLifetimeMs: 30 * MINUTE_MS,
+	activeRunIdleTimeoutMs: 10 * MINUTE_MS,
+	activeRunMaxLifetimeMs: 30 * MINUTE_MS,
+} satisfies InstanceAiLivenessPolicyConfig;
+
+export function createInstanceAiLivenessPolicyConfig(
+	overrides: Partial<Pick<InstanceAiLivenessPolicyConfig, 'confirmationTimeoutMs'>> = {},
+): InstanceAiLivenessPolicyConfig {
+	return {
+		...INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+		...overrides,
+	};
+}
+
 export interface InstanceAiLivenessInput {
 	surface: InstanceAiLivenessSurface;
 	startedAt: number;

@@ -1,18 +1,31 @@
-import { InstanceAiLivenessPolicy } from '../liveness-policy';
+import {
+	createInstanceAiLivenessPolicyConfig,
+	INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+	InstanceAiLivenessPolicy,
+} from '../liveness-policy';
 
 const minute = 60_000;
 
 function createPolicy() {
-	return new InstanceAiLivenessPolicy({
-		confirmationTimeoutMs: 10 * minute,
-		backgroundTaskIdleTimeoutMs: 10 * minute,
-		backgroundTaskMaxLifetimeMs: 30 * minute,
-		activeRunIdleTimeoutMs: 10 * minute,
-		activeRunMaxLifetimeMs: 30 * minute,
-	});
+	return new InstanceAiLivenessPolicy(INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG);
 }
 
 describe('InstanceAiLivenessPolicy', () => {
+	it('keeps default liveness limits centralized and allows the existing confirmation override', () => {
+		expect(INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG).toEqual({
+			confirmationTimeoutMs: 10 * minute,
+			backgroundTaskIdleTimeoutMs: 10 * minute,
+			backgroundTaskMaxLifetimeMs: 30 * minute,
+			activeRunIdleTimeoutMs: 10 * minute,
+			activeRunMaxLifetimeMs: 30 * minute,
+		});
+
+		expect(createInstanceAiLivenessPolicyConfig({ confirmationTimeoutMs: 42_000 })).toEqual({
+			...INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+			confirmationTimeoutMs: 42_000,
+		});
+	});
+
 	it('keeps active work alive while it is still reporting activity', () => {
 		const decision = createPolicy().evaluate({
 			surface: 'background-task',

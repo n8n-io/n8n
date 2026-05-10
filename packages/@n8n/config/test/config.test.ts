@@ -294,10 +294,6 @@ describe('GlobalConfig', () => {
 			snapshotPruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 600_000,
-			backgroundTaskIdleTimeout: 600_000,
-			backgroundTaskMaxLifetime: 1_800_000,
-			activeRunIdleTimeout: 600_000,
-			activeRunMaxLifetime: 1_800_000,
 		},
 		queue: {
 			health: {

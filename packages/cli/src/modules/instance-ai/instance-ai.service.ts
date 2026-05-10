@@ -42,6 +42,7 @@ import {
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	InstanceAiTerminalResponseGuard,
+	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
@@ -69,6 +70,7 @@ import {
 	type ModelConfig,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
+	type InstanceAiLivenessPolicyConfig,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
 	type SandboxConfig,
@@ -411,6 +413,8 @@ export class InstanceAiService {
 	/** Periodic sweep that applies the Instance AI liveness policy. */
 	private livenessTimeoutInterval?: NodeJS.Timeout;
 
+	private readonly livenessPolicyConfig: InstanceAiLivenessPolicyConfig;
+
 	private readonly livenessPolicy: InstanceAiLivenessPolicy;
 
 	private readonly timedOutRunIds = new Set<string>();
@@ -453,13 +457,10 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
-		this.livenessPolicy = new InstanceAiLivenessPolicy({
+		this.livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
-			backgroundTaskIdleTimeoutMs: this.instanceAiConfig.backgroundTaskIdleTimeout,
-			backgroundTaskMaxLifetimeMs: this.instanceAiConfig.backgroundTaskMaxLifetime,
-			activeRunIdleTimeoutMs: this.instanceAiConfig.activeRunIdleTimeout,
-			activeRunMaxLifetimeMs: this.instanceAiConfig.activeRunMaxLifetime,
 		});
+		this.livenessPolicy = new InstanceAiLivenessPolicy(this.livenessPolicyConfig);
 		this.builderSandboxSessions = new BuilderSandboxSessionRegistry(
 			this.instanceAiConfig.builderSandboxTtlMs,
 		);
@@ -1466,7 +1467,8 @@ export class InstanceAiService {
 			messageGroupId,
 			taskId,
 			agentId,
-			timeoutAt: outcome.task.lastActivityAt + this.instanceAiConfig.backgroundTaskIdleTimeout + 1,
+			timeoutAt:
+				outcome.task.lastActivityAt + this.livenessPolicyConfig.backgroundTaskIdleTimeoutMs + 1,
 		};
 	}
 
