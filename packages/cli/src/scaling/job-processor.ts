@@ -12,6 +12,7 @@ import {
 import type { Tool } from '@langchain/core/tools';
 import type {
 	ExecutionStatus,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -20,9 +21,11 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 	CloseFunction,
+	GenericValue,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
+	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	Workflow,
 	UnexpectedError,
@@ -95,7 +98,10 @@ export class JobProcessor {
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
+			workflowName: execution.workflowData.name,
 			jobId: job.id,
+			...(job.data.projectId !== undefined && { projectId: job.data.projectId }),
+			...(job.data.projectName !== undefined && { projectName: job.data.projectName }),
 		});
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
@@ -163,7 +169,9 @@ export class JobProcessor {
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
+				pushRef,
+			}) as (type: string, data: IDataObject | IDataObject[]) => void;
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
@@ -214,7 +222,10 @@ export class JobProcessor {
 				{
 					executionId,
 					workflowId,
+					workflowName: execution.workflowData.name,
 					jobId: job.id,
+					...(job.data.projectId && { projectId: job.data.projectId }),
+					...(job.data.projectName && { projectName: job.data.projectName }),
 				},
 			);
 		};
@@ -287,6 +298,10 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
+		if (run?.status === 'canceled') {
+			throw new ManualExecutionCancelledError(executionId);
+		}
+
 		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
 			? this.deriveJobFinishedProps(run, startedAt)
 			: await this.fetchJobFinishedResult(executionId);
@@ -294,8 +309,11 @@ export class JobProcessor {
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
+			workflowName: execution.workflowData.name,
 			jobId: job.id,
 			success: props.success,
+			...(job.data.projectId && { projectId: job.data.projectId }),
+			...(job.data.projectName && { projectName: job.data.projectName }),
 		});
 
 		const msg: JobFinishedMessage = {
@@ -379,6 +397,7 @@ export class JobProcessor {
 			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
+			waitTill: run.waitTill ?? null,
 		};
 	}
 
@@ -403,6 +422,7 @@ export class JobProcessor {
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 			usedDynamicCredentials: !!execution.data?.executionData?.runtimeData?.credentials,
 			metadata: execution.data?.resultData?.metadata,
+			waitTill: execution.waitTill ?? null,
 		};
 	}
 
@@ -528,7 +548,10 @@ export class JobProcessor {
 
 				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
 
-				const response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				let response: IDataObject | IDataObject[] | GenericValue | GenericValue[] = [];
+				if (Array.isArray(result)) {
+					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				}
 
 				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
 					[{ json: { response } as INodeExecutionData['json'] }],

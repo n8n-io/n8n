@@ -2,11 +2,13 @@ import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -17,21 +19,32 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
 		return this.createWorkflow(workflowData);
 	}
+
+	exposeValidateSignature(req: express.Request): { valid: boolean; webhookPath?: string } {
+		return this.validateSignature(req);
+	}
+
+	exposeValidateToken(
+		req: express.Request,
+		execution: IExecutionResponse,
+	): { valid: boolean; webhookPath?: string } {
+		return this.validateToken(req, execution);
+	}
 }
 
 describe('WaitingWebhooks', () => {
-	const SIGNING_SECRET = 'test-secret';
+	const TEST_HMAC_SECRET = 'test-hmac-secret-key';
 	const executionRepository = mock<ExecutionRepository>();
 	const mockWebhookService = mock<WebhookService>();
-	const mockInstanceSettings = mock<InstanceSettings>({
-		hmacSignatureSecret: SIGNING_SECRET,
-	});
+	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
+	const mockEventService = mock<EventService>();
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
 		executionRepository,
 		mockWebhookService,
 		mockInstanceSettings,
+		mockEventService,
 	);
 
 	beforeEach(() => {
@@ -110,110 +123,245 @@ describe('WaitingWebhooks', () => {
 		});
 	});
 
-	describe('validateSignatureInRequest', () => {
+	describe('validateSignature', () => {
 		const EXAMPLE_HOST = 'example.com';
-		const generateValidSignature = (host = EXAMPLE_HOST) =>
-			generateUrlSignature(
-				prepareUrlForSigning(new URL('/webhook/test', `http://${host}`)),
-				SIGNING_SECRET,
-			);
 
-		const createMockRequest = (opts: { host?: string; signature: string }) =>
-			mock<express.Request>({
-				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=` + opts.signature,
-				host: opts.host ?? EXAMPLE_HOST,
-				query: { [WAITING_TOKEN_QUERY_PARAM]: opts.signature },
+		// Helper to generate proper HMAC signature for a URL
+		const generateTestSignature = (urlPath: string) => {
+			const crypto = require('crypto');
+			return crypto.createHmac('sha256', TEST_HMAC_SECRET).update(urlPath).digest('hex');
+		};
+
+		const createMockRequest = (opts: { host?: string; signature?: string; path?: string }) => {
+			const urlPath = opts.path ?? '/webhook/test';
+			const fullUrl = opts.signature
+				? `${urlPath}?${WAITING_TOKEN_QUERY_PARAM}=${opts.signature}`
+				: urlPath;
+			return mock<express.Request>({
+				url: fullUrl,
 				headers: { host: opts.host ?? EXAMPLE_HOST },
 			});
+		};
 
-		it('should validate signature correctly', () => {
+		it('should validate signature correctly when HMAC matches', () => {
 			/* Arrange */
-			const signature = generateValidSignature();
-			const mockReq = createMockRequest({ signature });
+			const urlPath = '/webhook/test';
+			const validSignature = generateTestSignature(urlPath);
+			const mockReq = createMockRequest({ signature: validSignature, path: urlPath });
 
 			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
 
 			/* Assert */
-			expect(result).toBe(true);
-		});
-
-		it('should validate signature correctly when host contains a port', () => {
-			/* Arrange */
-			const signature = generateValidSignature('example.com:8080');
-			const mockReq = createMockRequest({
-				signature,
-				host: 'example.com:8080',
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(true);
-		});
-
-		it('should validate signature correctly when n8n is behind a reverse proxy', () => {
-			/* Arrange */
-			const signature = generateValidSignature('proxy.example.com');
-			const mockReq = mock<express.Request>({
-				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
-				host: 'proxy.example.com',
-				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
-				headers: {
-					host: 'localhost',
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					'x-forwarded-host': 'proxy.example.com',
-				},
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(true);
+			expect(result).toEqual({ valid: true, webhookPath: undefined });
 		});
 
 		it('should return false when signature is missing', () => {
 			/* Arrange */
-			const mockReq = mock<express.Request>({
-				url: '/webhook/test',
-				hostname: 'example.com',
-				query: {},
-			});
+			const mockReq = createMockRequest({});
 
 			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
 
 			/* Assert */
-			expect(result).toBe(false);
+			expect(result).toEqual({ valid: false });
 		});
 
-		it('should return false when signature is empty', () => {
+		it('should return false when signature is invalid', () => {
 			/* Arrange */
-			const mockReq = mock<express.Request>({
-				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=`,
-				hostname: 'example.com',
-				query: { [WAITING_TOKEN_QUERY_PARAM]: '' },
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(false);
-		});
-
-		it('should return false when signatures do not match', () => {
-			/* Arrange */
-			const wrongSignature = 'wrong-signature';
+			const wrongSignature = 'b'.repeat(64);
 			const mockReq = createMockRequest({ signature: wrongSignature });
 
 			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
 
 			/* Assert */
-			expect(result).toBe(false);
+			expect(result).toEqual({ valid: false, webhookPath: undefined });
+		});
+
+		it('should return false when signature length is wrong', () => {
+			/* Arrange */
+			const shortSignature = 'abc123';
+			const mockReq = createMockRequest({ signature: shortSignature });
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: false, webhookPath: undefined });
+		});
+
+		it('should extract suffix from signature when appended (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=hmac/suffix */
+			const urlPath = '/webhook/test';
+			const validSignature = generateTestSignature(urlPath);
+			const signatureWithSuffix = `${validSignature}/my-suffix`;
+			const mockReq = createMockRequest({ signature: signatureWithSuffix, path: urlPath });
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'my-suffix' });
+		});
+
+		it('should handle nested suffix paths (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=hmac/path/to/suffix */
+			const urlPath = '/webhook/test';
+			const validSignature = generateTestSignature(urlPath);
+			const signatureWithNestedSuffix = `${validSignature}/path/to/suffix`;
+			const mockReq = createMockRequest({ signature: signatureWithNestedSuffix, path: urlPath });
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'path/to/suffix' });
+		});
+
+		it('should validate signature correctly when nodeId suffix is part of signed URL (send-and-wait)', () => {
+			/* Arrange - Send-and-wait URLs include nodeId in the signed path along with query params.
+			 * The signature is computed from pathname + query params (excluding signature itself). */
+			const nodeId = '3a3e4b33-52d1-41f9-9c69-2829030062ff';
+			const pathWithNodeId = `/webhook-waiting/123/${nodeId}`;
+			const pathWithParams = `${pathWithNodeId}?approved=true`;
+			// Signature generated for full path including nodeId and query params
+			const validSignature = generateTestSignature(pathWithParams);
+			// Construct URL with both approved and signature params
+			const fullUrl = `${pathWithNodeId}?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${validSignature}`;
+			const mockReq = mock<express.Request>({
+				url: fullUrl,
+				headers: { host: EXAMPLE_HOST },
+			});
+
+			/* Act - Don't pass suffix because nodeId is part of signed URL */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: undefined });
+		});
+	});
+
+	describe('executeWebhook - signature validation', () => {
+		it('should return 401 with HTML for send-and-wait requests with invalid signature', async () => {
+			/* Arrange */
+			const nodeId = 'send-and-wait-node-id';
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'SendAndWaitNode',
+						runData: {},
+						error: undefined,
+					},
+					resumeToken: 'a'.repeat(64),
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: nodeId,
+							name: 'SendAndWaitNode',
+							type: 'n8n-nodes-base.sendAndWait',
+							parameters: { operation: SEND_AND_WAIT_OPERATION },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const mockStatus = jest.fn().mockReturnThis();
+			const mockRender = jest.fn();
+			const mockJson = jest.fn();
+			const res = mock<express.Response>({
+				status: mockStatus,
+				render: mockRender,
+				json: mockJson,
+			});
+			// Request has wrong signature
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: nodeId },
+				method: 'GET',
+				url: `/webhook/execution-id/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				headers: { host: 'example.com' },
+			});
+
+			/* Act */
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			/* Assert */
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
+			expect(mockJson).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should return 401 with JSON for non-send-and-wait requests with invalid token', async () => {
+			/* Arrange */
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'WaitNode',
+						runData: {},
+						error: undefined,
+					},
+					resumeToken: 'a'.repeat(64),
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'wait-node-id',
+							name: 'WaitNode',
+							type: 'n8n-nodes-base.wait',
+							parameters: { operation: 'webhook' },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const mockStatus = jest.fn().mockReturnThis();
+			const mockRender = jest.fn();
+			const mockJson = jest.fn();
+			const res = mock<express.Response>({
+				status: mockStatus,
+				render: mockRender,
+				json: mockJson,
+			});
+			// Request has wrong signature
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: 'wait-node-id' },
+				method: 'GET',
+				url: `/webhook/execution-id/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				headers: { host: 'example.com' },
+			});
+
+			/* Act */
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			/* Assert */
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockJson).toHaveBeenCalledWith({ error: 'Invalid token' });
+			expect(mockRender).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 
@@ -371,6 +519,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -500,6 +649,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -636,6 +786,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -772,6 +923,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -903,6 +1055,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -961,6 +1114,213 @@ describe('WaitingWebhooks', () => {
 			 */
 			const nodeExecutionStack = mockExecution.data.executionData!.nodeExecutionStack;
 			expect(nodeExecutionStack[0].node.rewireOutputLogTo).toBeUndefined();
+		});
+	});
+
+	describe('execution-resumed event', () => {
+		function createMockExecution(overrides: {
+			nodeType: string;
+			nodeName: string;
+			nodeId: string;
+			typeVersion?: number;
+			nodeParameters?: Record<string, string>;
+		}) {
+			const { nodeType, nodeName, nodeId, typeVersion = 1, nodeParameters = {} } = overrides;
+			return mock<IExecutionResponse>({
+				id: 'test-execution-id',
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					resumeToken: undefined,
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: nodeName,
+									type: nodeType,
+									typeVersion,
+									parameters: nodeParameters,
+									id: nodeId,
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						error: undefined,
+						runData: {
+							[nodeName]: [{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] }],
+						},
+						lastNodeExecuted: nodeName,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: nodeName,
+							type: nodeType,
+							typeVersion,
+							parameters: nodeParameters,
+							id: nodeId,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: null,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+		}
+
+		function createMockRes(): express.Response {
+			return mock<express.Response>({
+				status: jest.fn().mockReturnThis(),
+				json: jest.fn(),
+				render: jest.fn(),
+			});
+		}
+
+		beforeEach(() => {
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			executionRepository.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.wait',
+					nodeName: 'WaitNode',
+					nodeId: 'node-id',
+				}),
+			);
+		});
+
+		it('should emit when execution successfully resumes', async () => {
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return undefined;
+					},
+				);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: undefined },
+				method: 'POST',
+			});
+			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.objectContaining({ executionId: 'test-execution-id', workflowId: 'workflow-id' }),
+			);
+		});
+
+		it('should not emit when no matching webhook found', async () => {
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: undefined },
+				method: 'POST',
+			});
+			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrowError(
+				NotFoundError,
+			);
+
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit for send-and-wait already-responded requests', async () => {
+			const sendAndWaitNodeId = 'send-and-wait-node-id';
+			executionRepository.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.sendAndWait',
+					nodeName: 'SendAndWaitNode',
+					nodeId: sendAndWaitNodeId,
+					nodeParameters: { operation: SEND_AND_WAIT_OPERATION },
+				}),
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+				method: 'POST',
+			});
+			const result = await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit for active send-and-wait webhook call', async () => {
+			const sendAndWaitNodeId = 'send-and-wait-node-id';
+			executionRepository.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.emailSend',
+					nodeName: 'SendAndWaitNode',
+					nodeId: sendAndWaitNodeId,
+					typeVersion: 2,
+					nodeParameters: { operation: SEND_AND_WAIT_OPERATION },
+				}),
+			);
+			// Webhook IS found — simulates an active send-and-wait response
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: sendAndWaitNodeId,
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: sendAndWaitNodeId,
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, done) => {
+					done(null, { noWebhookResponse: true });
+					return undefined;
+				});
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+				method: 'POST',
+			});
+			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
 		});
 	});
 });

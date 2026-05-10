@@ -19,6 +19,7 @@ describe('List query middleware', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
 		mockRes = { status: () => ({ json: jest.fn() }) } as unknown as Response;

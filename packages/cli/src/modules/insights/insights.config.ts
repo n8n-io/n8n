@@ -1,5 +1,7 @@
 import { Config, Env } from '@n8n/config';
 
+import { INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants';
+
 @Config
 export class InsightsConfig {
 	/**
@@ -45,11 +47,11 @@ export class InsightsConfig {
 	flushIntervalSeconds: number = 30;
 
 	/**
-	 * How old (days) insights data must be to qualify for regular deletion
-	 * Default: -1 (no pruning)
+	 * How old (days) insights data must be to qualify for regular deletion.
+	 * Default: 365. Values are capped at 730 (two years).
 	 */
 	@Env('N8N_INSIGHTS_MAX_AGE_DAYS')
-	maxAgeDays: number = -1;
+	maxAgeDays: number = INSIGHTS_MAX_AGE_DAYS_DEFAULT;
 
 	/**
 	 * How often (hours) insights data will be checked for regular deletion.

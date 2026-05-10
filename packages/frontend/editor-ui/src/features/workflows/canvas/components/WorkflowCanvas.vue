@@ -6,11 +6,15 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import type { Workflow } from 'n8n-workflow';
-import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -19,12 +23,11 @@ defineOptions({
 const props = withDefaults(
 	defineProps<{
 		id?: string;
-		workflow: IWorkflowDb;
-		workflowObject: Workflow;
 		fallbackNodes?: IWorkflowDb['nodes'];
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
 		initialViewport?: ViewportTransform | null;
@@ -40,18 +43,23 @@ const props = withDefaults(
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
+const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
-const workflow = toRef(props, 'workflow');
-const workflowObject = toRef(props, 'workflowObject');
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
 
 const nodes = computed(() => {
 	return props.showFallbackNodes
-		? [...props.workflow.nodes, ...props.fallbackNodes]
-		: props.workflow.nodes;
+		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
+		: workflowDocumentStore.value.allNodes;
 });
-const connections = computed(() => props.workflow.connections);
+const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
 	nodes,
@@ -147,13 +155,13 @@ defineExpose({
 	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<div id="canvas" :class="$style.canvas">
 			<Canvas
-				v-if="workflow"
 				:id="id"
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:can-execute="canExecute"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
 				:initial-viewport="initialViewport"

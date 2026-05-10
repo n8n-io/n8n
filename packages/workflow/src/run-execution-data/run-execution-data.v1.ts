@@ -56,10 +56,10 @@ export interface IRunExecutionDataV1 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
+	 * Random token used to validate waiting webhook/form requests.
+	 * Generated when execution starts. Presence signals validation is required.
 	 */
-	validateSignature?: boolean;
+	resumeToken?: string;
 	waitTill?: Date;
 	pushRef?: string;
 

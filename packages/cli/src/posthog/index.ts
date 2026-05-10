@@ -1,3 +1,4 @@
+import { EVAL_PARALLEL_EXECUTION_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,9 +12,18 @@ import type { PostHog } from 'posthog-node';
  */
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
+const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+interface CachedFlags {
+	flags: FeatureFlags;
+	expiresAt: number;
+}
+
 @Service()
 export class PostHogClient {
 	private postHog?: PostHog;
+
+	private readonly flagsCache = new Map<string, CachedFlags>();
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -39,10 +49,16 @@ export class PostHogClient {
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		const instanceId = payload?.properties?.instance_id;
+
 		this.postHog?.capture({
+			event: payload.event,
 			distinctId: payload.userId,
 			sendFeatureFlags: true,
-			...payload,
+			properties: payload.properties,
+			...(typeof instanceId === 'string' && {
+				groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+			}),
 		});
 	}
 
@@ -57,11 +73,18 @@ export class PostHogClient {
 	}): void {
 		if (!instanceId) return;
 
-		this.postHog?.groupIdentify({
-			groupType: POSTHOG_GROUP_TYPE_INSTANCE,
-			groupKey: instanceId,
-			properties,
-			...(distinctId && { distinctId }),
+		this.postHog?.capture({
+			distinctId: distinctId || instanceId,
+			event: '$groupidentify',
+			sendFeatureFlags: true,
+			properties: {
+				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
+				$group_key: instanceId,
+				$group_set: properties,
+			},
+			groups: {
+				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,
+			},
 		});
 	}
 
@@ -78,16 +101,58 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
+		// Catch PostHog errors here (rather than letting them propagate) so
+		// env-var overrides still apply when PostHog is unreachable. Without
+		// this, a transient PostHog outage would short-circuit the override
+		// path and leave operators without an escape hatch.
+		let flags: FeatureFlags = {};
+		try {
+			flags = await this.fetchFlagsFromPostHog(user);
+		} catch {
+			// fall through to env overrides
+		}
+		return this.applyEnvOverrides(flags);
+	}
+
+	private async fetchFlagsFromPostHog(
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlags> {
 		if (!this.postHog) return {};
 
-		const fullId = [this.instanceSettings.instanceId, user.id].join('#');
+		const { instanceId } = this.instanceSettings;
+		const fullId = [instanceId, user.id].join('#');
+
+		const cached = this.flagsCache.get(fullId);
+		if (cached && cached.expiresAt > Date.now()) {
+			return cached.flags;
+		}
 
 		// cannot use local evaluation because that requires PostHog personal api key with org-wide
 		// https://github.com/PostHog/posthog/issues/4849
-		return await this.postHog.getAllFlags(fullId, {
+		const flags = await this.postHog.getAllFlags(fullId, {
 			personProperties: {
 				created_at_timestamp: user.createdAt.getTime().toString(),
 			},
+			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
 		});
+
+		if (flags && Object.keys(flags).length > 0) {
+			this.flagsCache.set(fullId, { flags, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+		}
+
+		return flags ?? {};
+	}
+
+	/**
+	 * Applies env-var overrides on top of PostHog-resolved flags. The override
+	 * is force-enable only — `false` defers to PostHog. Cached PostHog data is
+	 * stored without overrides so changing the env var (across restarts)
+	 * doesn't poison the cache.
+	 */
+	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
+		if (this.globalConfig.evaluation.parallelExecutionEnabled) {
+			return { ...flags, [EVAL_PARALLEL_EXECUTION_FLAG]: true };
+		}
+		return flags;
 	}
 }

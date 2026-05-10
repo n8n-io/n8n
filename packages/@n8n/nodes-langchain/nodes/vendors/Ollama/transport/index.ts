@@ -29,8 +29,12 @@ export async function apiRequest(
 		throw new Error('API key must be a string');
 	}
 
+<<<<<<< HEAD
 	const url = `${credentials.baseUrl.trim().replace(/\/+$/, '')}/${endpoint.trim().replace(/^\/+/, '')}`;
 
+=======
+	const url = `${credentials.baseUrl.replace(/\/$/, '')}${endpoint}`;
+>>>>>>> upstream/master
 	const headers = parameters?.headers ?? {};
 	if (apiKey) {
 		headers.Authorization = `Bearer ${apiKey}`;

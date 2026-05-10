@@ -8,6 +8,31 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
+export * from './agents';
+export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
+export {
+	ASK_LLM_TOOL_NAME,
+	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_QUESTION_TOOL_NAME,
+	interactiveToolNameSchema,
+	askLlmInputSchema,
+	askLlmResumeSchema,
+	askCredentialInputSchema,
+	askCredentialResumeSchema,
+	askQuestionOptionSchema,
+	askQuestionInputSchema,
+	askQuestionResumeSchema,
+	interactiveResumeDataSchema,
+	type InteractiveToolName,
+	type AskLlmInput,
+	type AskLlmResume,
+	type AskCredentialInput,
+	type AskCredentialResume,
+	type AskQuestionOption,
+	type AskQuestionInput,
+	type AskQuestionResume,
+	type InteractiveResumeData,
+} from './agent-builder-interactive';
 export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
@@ -84,6 +109,8 @@ export {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 } from './chat-hub';
 
+export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
+
 export type {
 	ChatHubPushMessage,
 	ChatHubStreamEvent,
@@ -105,16 +132,21 @@ export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
 
+export type { FavoriteResourceType } from './schemas/favorites.schema';
+export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
-export { passwordSchema } from './schemas/password.schema';
+export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export {
 	credentialResolverSchema,
 	credentialResolversSchema,
 	credentialResolverTypeSchema,
 	credentialResolverTypesSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	type CredentialResolver,
 	type CredentialResolverType,
+	type CredentialResolverAffectedWorkflow,
 } from './schemas/credential-resolver.schema';
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
@@ -149,6 +181,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export {
+	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,
 	type InsightsSummary,
@@ -167,6 +200,13 @@ export {
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
+
+export {
+	encryptionKeySchema,
+	encryptionKeysListSchema,
+	type EncryptionKey,
+	type EncryptionKeysList,
+} from './schemas/encryption-key.schema';
 
 export {
 	DATA_TABLE_COLUMN_REGEX,
@@ -232,6 +272,178 @@ export type {
 } from './schemas/secrets-provider.schema';
 
 export {
+	SECRETS_PROVIDER_KEY_PATTERN,
+	SECRETS_PROVIDER_KEY_REGEX,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
+
+export {
+	communityPackageResponseSchema,
+	type CommunityPackageResponse,
+} from './schemas/community-package.schema';
+
+export {
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
+
+export {
+	instanceAiEventTypeSchema,
+	instanceAiRunStatusSchema,
+	instanceAiConfirmationSeveritySchema,
+	instanceAiAgentStatusSchema,
+	instanceAiAgentKindSchema,
+	instanceAiEventSchema,
+	taskItemSchema,
+	taskListSchema,
+	plannedTaskArgSchema,
+	runStartPayloadSchema,
+	runFinishPayloadSchema,
+	agentSpawnedPayloadSchema,
+	agentCompletedPayloadSchema,
+	textDeltaPayloadSchema,
+	reasoningDeltaPayloadSchema,
+	toolCallPayloadSchema,
+	toolResultPayloadSchema,
+	toolErrorPayloadSchema,
+	confirmationRequestPayloadSchema,
+	confirmationInputTypeSchema,
+	credentialRequestSchema,
+	workflowSetupNodeSchema,
+	errorPayloadSchema,
+	filesystemRequestPayloadSchema,
+	mcpToolSchema,
+	mcpToolCallRequestSchema,
+	mcpToolCallResultSchema,
+	getRenderHint,
+	isDisplayableConfirmationRequest,
+	isSafeObjectKey,
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	UNLIMITED_CREDITS,
+	domainAccessActionSchema,
+	domainAccessMetaSchema,
+	webSearchMetaSchema,
+	credentialFlowSchema,
+	gatewayConfirmationRequiredWirePayloadSchema,
+	gatewayConfirmationRequiredPayloadSchema,
+	instanceGatewayResourceDecisionSchema,
+	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
+	InstanceAiSendMessageRequest,
+	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalSubAgentRequest,
+	instanceAiGatewayKeySchema,
+	InstanceAiGatewayEventsQuery,
+	InstanceAiEventsQuery,
+	InstanceAiCorrectTaskRequest,
+	InstanceAiEnsureThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
+	applyBranchReadOnlyOverrides,
+} from './schemas/instance-ai.schema';
+
+export type {
+	RunId,
+	AgentId,
+	ThreadId,
+	ToolCallId,
+	InstanceAiEventType,
+	InstanceAiRunStatus,
+	InstanceAiConfirmation,
+	InstanceAiConfirmationInputType,
+	InstanceAiConfirmationRequestPayload,
+	InstanceAiConfirmationSeverity,
+	InstanceAiCredentialRequest,
+	InstanceAiAgentStatus,
+	InstanceAiAgentKind,
+	TaskItem,
+	TaskList,
+	InstanceAiRunStartEvent,
+	InstanceAiRunFinishEvent,
+	InstanceAiAgentSpawnedEvent,
+	InstanceAiAgentCompletedEvent,
+	InstanceAiTextDeltaEvent,
+	InstanceAiReasoningDeltaEvent,
+	InstanceAiToolCallEvent,
+	InstanceAiToolResultEvent,
+	InstanceAiToolErrorEvent,
+	InstanceAiConfirmationRequestEvent,
+	InstanceAiErrorEvent,
+	InstanceAiFilesystemRequestEvent,
+	InstanceAiFilesystemResponse,
+	InstanceAiGatewayCapabilities,
+	McpTool,
+	McpToolAnnotations,
+	McpToolCallRequest,
+	McpToolCallResult,
+	InstanceAiEvent,
+	InstanceAiAttachment,
+	InstanceAiSendMessageResponse,
+	InstanceAiToolCallState,
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiMessage,
+	InstanceAiThreadSummary,
+	InstanceAiSSEConnectionState,
+	InstanceAiThreadInfo,
+	InstanceAiThreadListResponse,
+	InstanceAiEnsureThreadResponse,
+	InstanceAiStoredMessage,
+	InstanceAiThreadMessagesResponse,
+	InstanceAiRichMessagesResponse,
+	InstanceAiThreadStatusResponse,
+	InstanceAiAdminSettingsResponse,
+	InstanceAiUserPreferencesResponse,
+	InstanceAiModelCredential,
+	InstanceAiPermissionMode,
+	InstanceAiPermissions,
+	InstanceAiTargetResource,
+	DomainAccessAction,
+	DomainAccessMeta,
+	WebSearchMeta,
+	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredWirePayload,
+	GatewayConfirmationRequiredPayload,
+	InstanceGatewayResourceDecision,
+	ToolCategory,
+	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalToolCall,
+	InstanceAiEvalToolResult,
+	InstanceAiEvalSubAgentResponse,
+} from './schemas/instance-ai.schema';
+
+export {
+	createInitialState,
+	reduceEvent,
+	findAgent,
+	toAgentTree,
+} from './schemas/agent-run-reducer';
+
+export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+
+export {
+	EVAL_PARALLEL_EXECUTION_FLAG,
+	startTestRunPayloadSchema,
+	StartTestRunRequestDto,
+	type StartTestRunPayload,
+} from './schemas/evaluations.schema';
+
+export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+
+export {
+	X_N8N_FEATURE_HEADER,
+	X_N8N_VERSION_HEADER,
+	N8N_PROXY_FEATURES,
+	buildProxyHeaders,
+	type N8nProxyFeature,
+	type ProxyHeaderInput,
+} from './constants/proxy-feature';

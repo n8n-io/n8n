@@ -1,18 +1,18 @@
 import { Calculator } from '@langchain/community/tools/calculator';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolCalculator } from './ToolCalculator.node';
 
 describe('ToolCalculator', () => {
 	describe('supplyData', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should return Calculator tool instance', async () => {
@@ -20,7 +20,7 @@ describe('ToolCalculator', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ name: 'test calculator' })),
+					getNode: vi.fn(() => mock<INode>({ name: 'test calculator' })),
 				}),
 			);
 
@@ -32,7 +32,7 @@ describe('ToolCalculator', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ name: 'Calculator (1)' })),
+					getNode: vi.fn(() => mock<INode>({ name: 'Calculator (1)' })),
 				}),
 			);
 
@@ -43,7 +43,7 @@ describe('ToolCalculator', () => {
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should execute calculator and return result', async () => {
@@ -55,8 +55,8 @@ describe('ToolCalculator', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test calculator' })),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test calculator' })),
 			});
 
 			const result = await node.execute.call(mockExecute);
@@ -87,8 +87,8 @@ describe('ToolCalculator', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test calculator' })),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test calculator' })),
 			});
 
 			const result = await node.execute.call(mockExecute);

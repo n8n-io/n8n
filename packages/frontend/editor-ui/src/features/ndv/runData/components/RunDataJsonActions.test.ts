@@ -10,6 +10,10 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -55,9 +59,11 @@ async function createPiniaWithActiveNode() {
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
-	workflowsStore.workflowExecutionData = {
+	workflowsStore.setWorkflowId(workflow.id);
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.addNode(node);
+	workflowDocumentStore.initPristineNodeMetadata(node.name);
+	workflowsStore.setWorkflowExecutionData({
 		id: '1',
 		finished: true,
 		mode: 'trigger',
@@ -115,7 +121,7 @@ async function createPiniaWithActiveNode() {
 				},
 			},
 		}),
-	};
+	});
 
 	ndvStore.setActiveNodeName(node.name, 'other');
 
