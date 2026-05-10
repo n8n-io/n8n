@@ -1011,7 +1011,7 @@ export class AgentsService {
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId },
+			persistence: { threadId, agentId, resourceId },
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1137,7 +1137,7 @@ export class AgentsService {
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
 
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
+			persistence: { threadId, agentId, resourceId: executionId },
 		});
 
 		const reader = resultStream.stream.getReader();

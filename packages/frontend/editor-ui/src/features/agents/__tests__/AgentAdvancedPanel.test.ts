@@ -128,4 +128,14 @@ describe('AgentAdvancedPanel', () => {
 		const concurrency = wrapper.find('[data-testid="agent-concurrency-input"]');
 		expect(concurrency.attributes('disabled')).toBeDefined();
 	});
+
+	it('does not render memory controls in the advanced panel', () => {
+		const config = makeConfig();
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+
+		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(false);
+	});
 });

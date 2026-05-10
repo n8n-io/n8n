@@ -17,12 +17,14 @@ import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeo
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { AgentMemoryProfileEntity } from '../entities/agent-memory-profile.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
+import { AgentMemoryProfileRepository } from '../repositories/agent-memory-profile.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
@@ -32,11 +34,24 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 /** Key inside the metadata JSON where working memory content is stored. */
 const WORKING_MEMORY_KEY = 'workingMemory';
 
+type MemoryProfileScope = {
+	scopeKind: 'agent' | 'resource';
+	scopeId: string;
+};
+
+type MemoryProfile = MemoryProfileScope & {
+	content: string;
+	metadata: AgentMemoryProfileEntity['metadata'];
+	createdAt: Date;
+	updatedAt: Date;
+};
+
 @Service()
 export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	constructor(
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
+		private readonly memoryProfileRepository: AgentMemoryProfileRepository,
 		private readonly resourceRepository: AgentResourceRepository,
 		private readonly observationRepository: AgentObservationRepository,
 		private readonly observationCursorRepository: AgentObservationCursorRepository,
@@ -180,6 +195,35 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			threadId,
 			...(resourceId !== undefined && { resourceId }),
 		});
+	}
+
+	// ── Mutable memory profiles ─────────────────────────────────────────
+
+	async getMemoryProfile(scope: MemoryProfileScope): Promise<MemoryProfile | null> {
+		const entity = await this.memoryProfileRepository.findOneBy(scope);
+		return entity ? this.toMemoryProfile(entity) : null;
+	}
+
+	async saveMemoryProfile(
+		scope: MemoryProfileScope,
+		content: string,
+		metadata: MemoryProfile['metadata'] = null,
+	): Promise<MemoryProfile> {
+		const existing = await this.memoryProfileRepository.findOneBy(scope);
+		if (existing) {
+			existing.content = content;
+			existing.metadata = metadata ?? null;
+			const saved = await this.memoryProfileRepository.save(existing);
+			return this.toMemoryProfile(saved);
+		}
+
+		const entity = this.memoryProfileRepository.create();
+		entity.scopeKind = scope.scopeKind;
+		entity.scopeId = scope.scopeId;
+		entity.content = content;
+		entity.metadata = metadata ?? null;
+		const saved = await this.memoryProfileRepository.save(entity);
+		return this.toMemoryProfile(saved);
 	}
 
 	// ── Working memory ───────────────────────────────────────────────────
@@ -401,6 +445,17 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 			durationMs: entity.durationMs === null ? null : Number(entity.durationMs),
 			schemaVersion: Number(entity.schemaVersion),
 			createdAt: entity.createdAt,
+		};
+	}
+
+	private toMemoryProfile(entity: AgentMemoryProfileEntity): MemoryProfile {
+		return {
+			scopeKind: entity.scopeKind,
+			scopeId: entity.scopeId,
+			content: entity.content,
+			metadata: entity.metadata,
+			createdAt: entity.createdAt,
+			updatedAt: entity.updatedAt,
 		};
 	}
 

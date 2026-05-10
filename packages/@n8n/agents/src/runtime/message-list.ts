@@ -23,6 +23,11 @@ export interface WorkingMemoryContext {
 	instruction?: string;
 }
 
+export interface MemoryProfileContext {
+	persona?: string | null;
+	user?: string | null;
+}
+
 /**
  * Message container with Set-based source tracking.
  *
@@ -111,6 +116,9 @@ export class AgentMessageList {
 
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
+
+	/** Mutable profile context for this run. Set by buildMessageList / resume. */
+	memoryProfile: MemoryProfileContext | undefined;
 
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
@@ -213,6 +221,35 @@ export class AgentMessageList {
 	 */
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
+		const memoryBlocks: string[] = [];
+
+		const persona = this.memoryProfile?.persona?.trim();
+		if (persona) {
+			memoryBlocks.push(
+				[
+					'<persona>',
+					'<description>Durable behavior rules this agent should follow with this user.</description>',
+					'<value>',
+					persona,
+					'</value>',
+					'</persona>',
+				].join('\n'),
+			);
+		}
+
+		const user = this.memoryProfile?.user?.trim();
+		if (user) {
+			memoryBlocks.push(
+				[
+					'<user>',
+					'<description>Stable user preferences and context shared across agents.</description>',
+					'<value>',
+					user,
+					'</value>',
+					'</user>',
+				].join('\n'),
+			);
+		}
 
 		const wmState = this.workingMemory?.state?.trim();
 		if (this.workingMemory && wmState) {
@@ -221,11 +258,25 @@ export class AgentMessageList {
 				this.workingMemory.structured,
 				this.workingMemory.instruction,
 			);
-			systemPrompt +=
-				wmInstruction +
-				'\n\nThread working memory (private, read-only):\n```\n' +
-				wmState +
-				'\n```\n';
+			memoryBlocks.push(
+				[
+					'<session-memory>',
+					'<description>Current-thread objective, state, decisions, and open follow-ups.</description>',
+					'<value>',
+					wmInstruction,
+					'',
+					'Thread working memory (private, read-only):',
+					'```',
+					wmState,
+					'```',
+					'</value>',
+					'</session-memory>',
+				].join('\n'),
+			);
+		}
+
+		if (memoryBlocks.length > 0) {
+			systemPrompt += `\n\n<memory_blocks>\n${memoryBlocks.join('\n\n')}\n</memory_blocks>`;
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions
@@ -257,6 +308,9 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.memoryProfile !== undefined && {
+				memoryProfile: this.memoryProfile,
+			}),
 		};
 	}
 
@@ -271,6 +325,7 @@ export class AgentMessageList {
 			if (inputIdSet.has(m.id)) list.inputSet.add(m);
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
 		}
+		list.memoryProfile = data.memoryProfile;
 		list.sortAllByCreatedAt();
 		return list;
 	}

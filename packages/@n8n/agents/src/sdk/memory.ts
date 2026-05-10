@@ -6,6 +6,7 @@ import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
 	MemoryConfig,
+	MemoryProfilesConfig,
 	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
@@ -87,6 +88,8 @@ export class Memory {
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
+	private profilesConfig?: MemoryProfilesConfig;
+
 	private workingMemorySchema?: ZodObjectSchema;
 
 	private workingMemoryTemplate?: string;
@@ -130,6 +133,16 @@ export class Memory {
 	/** Enable semantic recall (RAG-based retrieval of relevant past messages). */
 	semanticRecall(config: SemanticRecallConfig): this {
 		this.semanticRecallConfig = config;
+		return this;
+	}
+
+	/** Enable mutable persona and user memory profiles. */
+	profiles(config: MemoryProfilesConfig = {}): this {
+		if (config.enabled === false) {
+			this.profilesConfig = undefined;
+		} else {
+			this.profilesConfig = config;
+		}
 		return this;
 	}
 
@@ -245,6 +258,14 @@ export class Memory {
 			}
 		}
 
+		if (this.profilesConfig) {
+			if (!memory.getMemoryProfile || !memory.saveMemoryProfile) {
+				throw new Error(
+					'Memory profiles require a storage backend that implements getMemoryProfile() and saveMemoryProfile().',
+				);
+			}
+		}
+
 		let workingMemory: MemoryConfig['workingMemory'];
 		if (this.workingMemorySchema) {
 			workingMemory = {
@@ -272,6 +293,7 @@ export class Memory {
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
+			profiles: this.profilesConfig,
 			titleGeneration: this.titleGenerationConfig,
 		};
 

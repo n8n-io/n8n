@@ -3,10 +3,12 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltMemoryProfileStore,
 	BuiltGuardrail,
 	BuiltEval,
 	RunOptions,
 	AgentResult,
+	AgentResourceScope,
 	GenerateResult,
 	StreamResult,
 	EvalInput,
@@ -30,6 +32,9 @@ export type {
 	MemoryConfig,
 	MemoryDescriptor,
 	ObservationCapableMemory,
+	MemoryProfile,
+	MemoryProfileScope,
+	MemoryProfileScopeKind,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -37,6 +42,7 @@ export type {
 	McpServerConfig,
 	McpVerifyResult,
 	ModelConfig,
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
@@ -120,10 +126,11 @@ export {
 	DEFAULT_COMPACTOR_PROMPT,
 	DEFAULT_OBSERVER_PROMPT,
 } from './runtime/observational-cycle';
+export { DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT } from './runtime/memory-profiles';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
-export { createModel } from './runtime/model-factory';
+export { createEmbeddingModel, createModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 
 export { Workspace } from './workspace';

@@ -2,12 +2,14 @@ import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '@n8n/agents';
 import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentMemoryProfileEntity } from '../../entities/agent-memory-profile.entity';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../../entities/agent-thread.entity';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
+import type { AgentMemoryProfileRepository } from '../../repositories/agent-memory-profile.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
@@ -19,6 +21,7 @@ describe('N8nMemory', () => {
 	let memory: N8nMemory;
 	let messageRepository: jest.Mocked<AgentMessageRepository>;
 	let threadRepository: jest.Mocked<AgentThreadRepository>;
+	let memoryProfileRepository: jest.Mocked<AgentMemoryProfileRepository>;
 	let resourceRepository: jest.Mocked<AgentResourceRepository>;
 	let observationRepository: jest.Mocked<AgentObservationRepository>;
 	let observationCursorRepository: jest.Mocked<AgentObservationCursorRepository>;
@@ -31,6 +34,7 @@ describe('N8nMemory', () => {
 
 		messageRepository = mock<AgentMessageRepository>();
 		threadRepository = mock<AgentThreadRepository>();
+		memoryProfileRepository = mock<AgentMemoryProfileRepository>();
 		resourceRepository = mock<AgentResourceRepository>();
 		observationRepository = mock<AgentObservationRepository>();
 		observationCursorRepository = mock<AgentObservationCursorRepository>();
@@ -48,6 +52,7 @@ describe('N8nMemory', () => {
 		memory = new N8nMemory(
 			threadRepository,
 			messageRepository,
+			memoryProfileRepository,
 			resourceRepository,
 			observationRepository,
 			observationCursorRepository,
@@ -353,6 +358,100 @@ describe('N8nMemory', () => {
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
 			expect(threadRepository.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('memory profiles', () => {
+		const createdAt = new Date('2026-05-09T10:00:00.000Z');
+		const updatedAt = new Date('2026-05-09T10:05:00.000Z');
+
+		function makeProfile(
+			overrides: Partial<AgentMemoryProfileEntity> = {},
+		): AgentMemoryProfileEntity {
+			return {
+				id: 'profile-1',
+				scopeKind: 'resource',
+				scopeId: 'user-1',
+				content: 'The user prefers concise answers.',
+				metadata: { source: 'memory' },
+				createdAt,
+				updatedAt,
+				...overrides,
+			} as AgentMemoryProfileEntity;
+		}
+
+		it('loads profiles by scope kind and scope id', async () => {
+			memoryProfileRepository.findOneBy.mockResolvedValue(makeProfile());
+
+			const result = await memory.getMemoryProfile({
+				scopeKind: 'resource',
+				scopeId: 'user-1',
+			});
+
+			expect(memoryProfileRepository.findOneBy).toHaveBeenCalledWith({
+				scopeKind: 'resource',
+				scopeId: 'user-1',
+			});
+			expect(result).toMatchObject({
+				scopeKind: 'resource',
+				scopeId: 'user-1',
+				content: 'The user prefers concise answers.',
+			});
+		});
+
+		it('upserts an existing profile without touching another scope', async () => {
+			const existing = makeProfile({ id: 'existing-profile' });
+			memoryProfileRepository.findOneBy.mockResolvedValue(existing);
+			memoryProfileRepository.save.mockImplementation(
+				async (entity) => entity as AgentMemoryProfileEntity,
+			);
+
+			await memory.saveMemoryProfile(
+				{ scopeKind: 'resource', scopeId: 'user-1' },
+				'The user prefers terse answers.',
+			);
+
+			expect(memoryProfileRepository.findOneBy).toHaveBeenCalledWith({
+				scopeKind: 'resource',
+				scopeId: 'user-1',
+			});
+			expect(memoryProfileRepository.create).not.toHaveBeenCalled();
+			expect(memoryProfileRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'existing-profile',
+					scopeKind: 'resource',
+					scopeId: 'user-1',
+					content: 'The user prefers terse answers.',
+				}),
+			);
+		});
+
+		it('creates persona profiles in an agent scope independently from resource profiles', async () => {
+			memoryProfileRepository.findOneBy.mockResolvedValue(null);
+			memoryProfileRepository.create.mockReturnValue(makeProfile({ id: 'new-profile' }));
+			memoryProfileRepository.save.mockImplementation(
+				async (entity) => entity as AgentMemoryProfileEntity,
+			);
+
+			const result = await memory.saveMemoryProfile(
+				{ scopeKind: 'agent', scopeId: 'agent-1' },
+				'This agent handles memory debugging.',
+			);
+
+			expect(memoryProfileRepository.create).toHaveBeenCalledWith();
+			expect(memoryProfileRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					scopeKind: 'agent',
+					scopeId: 'agent-1',
+					content: 'This agent handles memory debugging.',
+					metadata: null,
+				}),
+			);
+			expect(result).toMatchObject({
+				scopeKind: 'agent',
+				scopeId: 'agent-1',
+				content: 'This agent handles memory debugging.',
+			});
 		});
 	});
 

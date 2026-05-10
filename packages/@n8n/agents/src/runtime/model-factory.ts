@@ -11,7 +11,7 @@ import {
 import type { ModelConfig } from '../types/sdk/agent';
 
 type FetchFn = typeof globalThis.fetch;
-type CreateEmbeddingProviderFn = (opts?: { apiKey?: string }) => {
+type CreateEmbeddingProviderFn = (opts?: Record<string, unknown>) => {
 	embeddingModel(model: string): EmbeddingModel;
 };
 
@@ -232,7 +232,7 @@ type EmbeddingModelId = `${EmbeddingProvider}/${string}`;
  */
 export function createEmbeddingModel(
 	embedderString: EmbeddingModelId | (string & {}),
-	apiKey?: string,
+	opts?: Record<string, unknown> | string,
 ): EmbeddingModel {
 	const [provider, ...rest] = embedderString.split('/');
 	const modelName = rest.join('/');
@@ -245,5 +245,6 @@ export function createEmbeddingModel(
 
 	const mod = require(entry.pkg) as Record<string, CreateEmbeddingProviderFn>;
 	const factory = mod[entry.factory];
-	return factory({ apiKey }).embeddingModel(modelName);
+	const providerOptions = typeof opts === 'string' ? { apiKey: opts } : opts;
+	return factory(providerOptions).embeddingModel(modelName);
 }

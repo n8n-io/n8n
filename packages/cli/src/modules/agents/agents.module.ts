@@ -97,6 +97,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
+		const { AgentMemoryProfileEntity } = await import('./entities/agent-memory-profile.entity');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
@@ -112,6 +113,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			AgentMemoryProfileEntity,
 			AgentExecutionThread,
 			AgentExecution,
 			AgentPublishedVersion,

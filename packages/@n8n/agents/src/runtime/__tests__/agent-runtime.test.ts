@@ -39,6 +39,7 @@ jest.mock('ai', () => {
 		...actual,
 		generateText: jest.fn(),
 		streamText: jest.fn(),
+		embed: jest.fn(),
 		tool: jest.fn((config: unknown) => config),
 		Output: {
 			object: jest.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
@@ -212,7 +213,7 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		generateText.mockRejectedValue(new Error('API failure'));
 
 		const { runtime } = createRuntime();
-		await expect(runtime.generate('hello')).resolves.toBeDefined();
+		await runtime.generate('hello');
 	});
 
 	it('returns finishReason "error" when the LLM call throws', async () => {
@@ -513,7 +514,7 @@ describe('AgentRuntime.stream() — working memory', () => {
 			memory,
 			lastMessages: 5,
 			workingMemory: {
-				template: '# Thread memory\n- User facts:',
+				template: '# Thread memory\n- User entries:',
 				structured: false,
 				scope: 'thread',
 			},
@@ -530,6 +531,50 @@ describe('AgentRuntime.stream() — working memory', () => {
 		const callArgs = calls[0]?.[0] ?? {};
 		expect(callArgs.tools ?? {}).not.toHaveProperty('update_working_memory');
 		expect(savedWorkingMemory).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Memory profiles
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — memory profiles', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('loads persona and user profiles into the system prompt', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'agent', scopeId: 'agent-1' },
+			'When debugging, ask for the exact version before suggesting fixes.',
+		);
+		await memory.saveMemoryProfile(
+			{ scopeKind: 'resource', scopeId: 'user-1' },
+			'The user prefers concise answers.',
+		);
+		const runtime = new AgentRuntime({
+			name: 'memory-profile-runtime',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory,
+			profiles: { enabled: true },
+		});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('What should I check first?', {
+			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
+		});
+
+		const calls = generateText.mock.calls as Array<[Record<string, unknown>]>;
+		const messages = calls[0][0].messages as Array<Record<string, unknown>>;
+		const prompt = String(messages[0].content);
+		expect(prompt).toContain('<memory_blocks>');
+		expect(prompt).toContain('When debugging, ask for the exact version before suggesting fixes.');
+		expect(prompt).toContain('The user prefers concise answers.');
+		expect(prompt.indexOf('<persona>')).toBeLessThan(prompt.indexOf('<user>'));
+		expect(prompt).not.toContain('<memory>');
 	});
 });
 

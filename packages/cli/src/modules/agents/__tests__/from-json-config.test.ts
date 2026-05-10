@@ -63,6 +63,13 @@ describe('buildFromJson()', () => {
 						observerPrompt?: string;
 						compactorPrompt?: string;
 					};
+					profiles?: {
+						enabled?: boolean;
+						agentDescription?: string;
+						prompts?: {
+							profileUpdate?: string;
+						};
+					};
 				};
 			}
 		).memoryConfig;
@@ -78,6 +85,8 @@ describe('buildFromJson()', () => {
 		deleteMessages: jest.fn(),
 		getWorkingMemory: jest.fn().mockResolvedValue(null),
 		saveWorkingMemory: jest.fn(),
+		getMemoryProfile: jest.fn(),
+		saveMemoryProfile: jest.fn(),
 		appendObservations: jest.fn(),
 		getObservations: jest.fn(),
 		getMessagesForScope: jest.fn(),
@@ -107,7 +116,23 @@ describe('buildFromJson()', () => {
 		expect(snap.name).toBe('test-agent');
 		expect(snap.model.provider).toBe('anthropic');
 		expect(snap.model.name).toBe('claude-sonnet-4-5');
-		expect(snap.instructions).toBe('You are a test agent.');
+		expect(snap.instructions).toContain('You are a test agent.');
+	});
+
+	it('tells agents how to answer memory capability questions when Memory is disabled', async () => {
+		const agent = await buildFromJson(
+			makeConfig(),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.instructions).toContain('Memory is not enabled');
+		expect(agent.snapshot.instructions).toContain('Memory panel');
+		expect(agent.snapshot.instructions).toContain('remember, recall, or persist information');
 	});
 
 	it('handles multi-slash model string for aggregator providers', async () => {
@@ -193,6 +218,8 @@ describe('buildFromJson()', () => {
 		expect(instructions).toContain("call load_skill once with that skill's id");
 		expect(instructions).toContain('do not call load_skill again');
 		expect(instructions).toContain('Do not load a skill just because it is listed here');
+		expect(instructions).toContain('Memory is not enabled');
+		expect(instructions).toContain('Memory panel');
 		expect(instructions).not.toContain('Extract decisions and action items.');
 	});
 
@@ -450,6 +477,7 @@ describe('buildFromJson()', () => {
 	it('configures memory when enabled', async () => {
 		const mockMemory = makeMockMemoryBackend();
 		const config = makeConfig({
+			description: 'Helps users debug and review n8n code.',
 			memory: {
 				enabled: true,
 				storage: 'n8n',
@@ -484,29 +512,28 @@ describe('buildFromJson()', () => {
 			scope: 'thread',
 		});
 		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('# Thread memory');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Current goal/task');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Current objective');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain(
+			'Only the objective this thread is working toward.',
+		);
 		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Key active items');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Continuity notes');
-		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('## Resolved or superseded');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).not.toContain('## User facts');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).not.toContain(
+			'## User preferences/instructions',
+		);
 		expect(getMemoryConfig(agent)?.workingMemory?.template).not.toContain('- Current goal/task:');
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
 			'Treat working memory as internal context',
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
+			'Durable facts and stable preferences belong in long-term memory profiles',
+		);
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('objective-driven state');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
 			'only to this same session/thread',
 		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('different session');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('new thread');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('cross-thread profile');
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
 			'instead of dumping the document',
-		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('Use it silently');
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
-			'Do not say "I added", "I saved", or "I updated memory"',
-		);
-		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
-			'remember, add, save, or update memory',
 		);
 		expect(getMemoryConfig(agent)?.workingMemory?.instruction).not.toContain(
 			'current-state snapshot',
@@ -524,6 +551,28 @@ describe('buildFromJson()', () => {
 			gapThresholdMs: 30 * 60_000,
 			observerPrompt: 'Observe.',
 			compactorPrompt: 'Compact.',
+		});
+	});
+
+	it('enables profiles implicitly when memory is enabled', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.profiles).toMatchObject({
+			enabled: true,
+			agentDescription: 'You are a test agent.',
 		});
 	});
 
@@ -627,6 +676,22 @@ describe('AgentJsonConfigSchema', () => {
 			instructions: 'Be helpful.',
 		};
 		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('rejects explicit profile settings because profiles are implicit with Memory', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				profiles: { enabled: false },
+			},
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects invalid model format (no slash)', () => {
