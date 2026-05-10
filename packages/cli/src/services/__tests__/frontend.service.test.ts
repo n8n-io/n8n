@@ -265,6 +265,22 @@ describe('FrontendService', () => {
 
 			expect(settings.communityNodesManagedByEnv).toBe(false);
 		});
+
+		it('should filter empty strings from NODE_FUNCTION_ALLOW_BUILTIN with trailing comma', async () => {
+			process.env = { ...process.env, NODE_FUNCTION_ALLOW_BUILTIN: 'fs,path,' };
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.allowedModules.builtIn).toEqual(['fs', 'path']);
+			expect(settings.allowedModules.builtIn).not.toContain('');
+		});
+
+		it('should filter empty strings from NODE_FUNCTION_ALLOW_EXTERNAL with trailing comma', async () => {
+			process.env = { ...process.env, NODE_FUNCTION_ALLOW_EXTERNAL: 'lodash,' };
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.allowedModules.external).toEqual(['lodash']);
+			expect(settings.allowedModules.external).not.toContain('');
+		});
 	});
 
 	describe('getPublicSettings', () => {

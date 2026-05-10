@@ -272,7 +272,7 @@ export class LoadNodesAndCredentials {
 		const customDirectories = [this.instanceSettings.customExtensionDir];
 
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';').filter(Boolean);
 			customDirectories.push(...customExtensionFolders);
 		}
 

@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
-import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
+import { CUSTOM_EXTENSION_ENV, CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
@@ -695,6 +695,38 @@ describe('LoadNodesAndCredentials', () => {
 			});
 			expect(createAiTools).toHaveBeenCalledWith(instance.types, expectedKnown);
 			expect(createHitlTools).toHaveBeenCalledWith(instance.types, expectedKnown);
+		});
+	});
+
+	describe('getCustomDirectories', () => {
+		let instance: LoadNodesAndCredentials;
+		const originalEnv = process.env[CUSTOM_EXTENSION_ENV];
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+		});
+
+		afterEach(() => {
+			if (originalEnv === undefined) {
+				delete process.env[CUSTOM_EXTENSION_ENV];
+			} else {
+				process.env[CUSTOM_EXTENSION_ENV] = originalEnv;
+			}
+		});
+
+		it('should not include empty string when N8N_CUSTOM_EXTENSIONS has a trailing semicolon', () => {
+			process.env[CUSTOM_EXTENSION_ENV] = '/custom/path;';
+			const dirs = instance.getCustomDirectories();
+			expect(dirs).not.toContain('');
+			expect(dirs).toContain('/custom/path');
+		});
+
+		it('should not include empty strings when N8N_CUSTOM_EXTENSIONS has consecutive semicolons', () => {
+			process.env[CUSTOM_EXTENSION_ENV] = '/path/one;;/path/two';
+			const dirs = instance.getCustomDirectories();
+			expect(dirs).not.toContain('');
+			expect(dirs).toContain('/path/one');
+			expect(dirs).toContain('/path/two');
 		});
 	});
 
