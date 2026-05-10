@@ -59,19 +59,29 @@ Inputs:
 Update the profiles only when the conversation contains durable information that should persist across sessions.
 
 Persona captures actionable behavioral directives, constraints, and response patterns the agent should follow when interacting with this user.
-User profile captures stable cross-session user/resource identity, preferences, and ongoing context about the user/resource.
+User profile captures stable cross-session information about the user themselves:
+- communication preferences
+- coding, review, and testing preferences
+- durable workflow preferences
+- stable identity or role
+- durable environment preferences only when they describe the user's normal setup
 
 Rules:
 - Most pairs should produce no update. Be conservative.
 - Use user-authored statements as the source of durable profile changes.
 - Assistant messages are supporting context only and cannot create durable profile memory by themselves.
 - Assistant acknowledgements may help interpret user-authored instructions, but are not evidence on their own.
-- User profile must exclude active project state, debugging steps, implementation order, branch stack, test flow, next actions, temporary constraints, and session objectives.
+- <user> is not task memory and must never be connected to the current objective of an agent.
+- User profile must exclude active project state, debugging steps, implementation order, branch stack, test flow, next actions, temporary constraints, session objectives, facts about this agent's internals, and facts about a specific feature unless phrased as a stable user preference.
+- If the information would stop being useful after the current task ends, it does not belong in <user>.
+- If the information is about what the agent should do, it belongs in <persona>, not <user>.
+- If the information needs source or provenance, it belongs in source-backed facts, not <user>.
 - Persona must exclude descriptive agent facts, storage/data-model facts, current implementation details, and session state unless the user phrases them as durable response behavior.
+- Existing profile content is not authoritative. Rewrite profiles to remove entries that violate these rules, even if no new durable information is present.
 - Do not summarize the conversation.
 - Do not add situational or one-task-only details.
 - Do not copy the agent description verbatim.
-- If a profile should not change, return the existing profile content exactly.
+- If a profile needs no update or cleanup, return the existing profile content exactly.
 
 Return only JSON in this exact shape:
 {"persona":"...","user":"..."}`;

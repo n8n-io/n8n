@@ -138,7 +138,14 @@ describe('cross-thread facts', () => {
 	it('tightens default profile update instructions to stable user facts and actionable persona behavior', () => {
 		const prompt = withCrossThreadFactDefaults({ embedder: fakeEmbedder }).profileUpdatePrompt;
 
-		expect(prompt).toContain('User profile captures stable cross-session user/resource identity');
+		expect(prompt).toContain('User profile captures stable cross-session information');
+		expect(prompt).toContain('<user> is not task memory');
+		expect(prompt).toContain('must never be connected to the current objective of an agent');
+		expect(prompt).toContain('communication preferences');
+		expect(prompt).toContain('coding, review, and testing preferences');
+		expect(prompt).toContain('durable workflow preferences');
+		expect(prompt).toContain('stable identity or role');
+		expect(prompt).toContain('normal setup');
 		expect(prompt).toContain('active project state');
 		expect(prompt).toContain('debugging steps');
 		expect(prompt).toContain('implementation order');
@@ -147,6 +154,14 @@ describe('cross-thread facts', () => {
 		expect(prompt).toContain('next actions');
 		expect(prompt).toContain('temporary constraints');
 		expect(prompt).toContain('session objectives');
+		expect(prompt).toContain(
+			'If the information would stop being useful after the current task ends',
+		);
+		expect(prompt).toContain('belongs in <persona>');
+		expect(prompt).toContain('belongs in source-backed facts');
+		expect(prompt).toContain('Existing profile content is not authoritative');
+		expect(prompt).toContain('remove entries that violate these rules');
+		expect(prompt).not.toContain('ongoing context about the user/resource');
 		expect(prompt).toContain('Persona captures actionable behavioral directives');
 		expect(prompt).toContain('descriptive agent facts');
 		expect(prompt).toContain('storage/data-model facts');
