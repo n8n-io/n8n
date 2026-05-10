@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -14,9 +15,7 @@ export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	// Sticky map of node name → placeholder parameter names.
@@ -28,7 +27,7 @@ export function useBuilderSetupCards() {
 	// Detect current placeholders (reactive, recomputes when node params change)
 	const detectedPlaceholders = computed(() => {
 		const result = new Map<string, string[]>();
-		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			const placeholders = findPlaceholderDetails(node.parameters);
 			if (placeholders.length > 0) {
 				result.set(node.name, [...new Set(placeholders.map((p) => p.path[0]).filter(Boolean))]);
@@ -79,13 +78,13 @@ export function useBuilderSetupCards() {
 	const isAllComplete = computed(
 		() =>
 			isInitialCredentialTestingDone.value &&
-			(baseCards.value.length === 0 || baseCards.value.every((card) => card.state.isComplete)),
+			(baseCards.value.length === 0 || baseCards.value.every((card) => isCardComplete(card))),
 	);
 
 	function skipToFirstIncomplete() {
 		const current = baseCards.value[currentStepIndex.value];
-		if (!current?.state.isComplete) return;
-		const firstIncomplete = baseCards.value.findIndex((c) => !c.state.isComplete);
+		if (!current || !isCardComplete(current)) return;
+		const firstIncomplete = baseCards.value.findIndex((c) => !isCardComplete(c));
 		if (firstIncomplete !== -1) {
 			currentStepIndex.value = firstIncomplete;
 		}
@@ -126,10 +125,12 @@ export function useBuilderSetupCards() {
 	}
 
 	function continueCurrent() {
+		const card = currentCard.value;
+		const nodeType = card?.nodeGroup ? card.nodeGroup.parentNode.type : card?.state?.node.type;
 		builderStore.trackWorkflowBuilderJourney('setup_wizard_step_completed', {
 			step: currentStepIndex.value + 1,
 			total: totalCards.value,
-			node_type: currentCard.value?.state.node.type,
+			node_type: nodeType,
 		});
 		goToNext();
 	}
@@ -139,7 +140,7 @@ export function useBuilderSetupCards() {
 	 * Dismisses the wizard when all cards are complete.
 	 */
 	function onStepExecuted() {
-		if (!currentCard.value?.state.isComplete) return;
+		if (!currentCard.value || !isCardComplete(currentCard.value)) return;
 		if (isAllComplete.value && currentStepIndex.value === totalCards.value - 1) {
 			builderStore.wizardHasExecutedWorkflow = true;
 		} else {

@@ -2,9 +2,12 @@ import {
 	removeWorkflowExecutionData,
 	convertWorkflowTagsToIds,
 	sortNodesByExecutionOrder,
+	sanitizeConnections,
+	ensureNodePosition,
 } from './workflowUtils';
 import type { IWorkflowDb } from '@/Interface';
-import type { INodeIssues } from 'n8n-workflow';
+import type { IConnection, IConnections, INodeIssues } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe('workflowUtils', () => {
 	describe('convertWorkflowTagsToIds', () => {
@@ -487,6 +490,73 @@ describe('workflowUtils', () => {
 			]);
 		});
 
+		it('should process loop-body output before done output for loop nodes', () => {
+			// Trigger → Loop Over Items → (done) → Wait
+			//                            → (loop) → HTTP Request → (back to Loop)
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const loop = makeNode('Loop', [100, 0]);
+			const wait = makeNode('Wait', [200, -100]);
+			const httpRequest = makeNode('HTTP Request', [200, 100]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+				Loop: {
+					main: [
+						// output 0 = "done"
+						[{ node: 'Wait', type: 'main' as const, index: 0 }],
+						// output 1 = "loop"
+						[{ node: 'HTTP Request', type: 'main' as const, index: 0 }],
+					],
+				},
+				'HTTP Request': { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+			};
+
+			const nodeTypes = { Loop: 'n8n-nodes-base.splitInBatches' };
+
+			const result = sortNodesByExecutionOrder(
+				[wait, httpRequest, loop, trigger],
+				connections,
+				{},
+				nodeTypes,
+			);
+
+			// Loop body (HTTP Request) should come before done branch (Wait)
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Loop', 'HTTP Request', 'Wait']);
+		});
+
+		it('should handle loop node with multiple nodes in the loop body', () => {
+			// Trigger → Loop → (done) → Done Node
+			//                → (loop) → Step1 → Step2 → (back to Loop)
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const loop = makeNode('Loop', [100, 0]);
+			const doneNode = makeNode('Done', [200, -100]);
+			const step1 = makeNode('Step1', [200, 100]);
+			const step2 = makeNode('Step2', [300, 100]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main' as const, index: 0 }],
+						[{ node: 'Step1', type: 'main' as const, index: 0 }],
+					],
+				},
+				Step1: { main: [[{ node: 'Step2', type: 'main' as const, index: 0 }]] },
+				Step2: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+			};
+
+			const nodeTypes = { Loop: 'n8n-nodes-base.splitInBatches' };
+
+			const result = sortNodesByExecutionOrder(
+				[doneNode, step2, step1, loop, trigger],
+				connections,
+				{},
+				nodeTypes,
+			);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Loop', 'Step1', 'Step2', 'Done']);
+		});
+
 		it('should not follow main connections from connectionsByDestinationNode', () => {
 			const trigger = makeNode('Trigger', [0, 0], true);
 			const nodeA = makeNode('A', [100, 0]);
@@ -508,6 +578,189 @@ describe('workflowUtils', () => {
 			);
 
 			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A']);
+		});
+	});
+
+	describe('ensureNodePosition', () => {
+		it('should return valid position as-is', () => {
+			expect(ensureNodePosition([100, 200])).toEqual([100, 200]);
+		});
+
+		it('should return [0, 0] for undefined', () => {
+			expect(ensureNodePosition(undefined)).toEqual([0, 0]);
+		});
+
+		it('should return [0, 0] for a string', () => {
+			expect(ensureNodePosition('bad')).toEqual([0, 0]);
+		});
+
+		it('should return [0, 0] for an array with fewer than 2 elements', () => {
+			expect(ensureNodePosition([100])).toEqual([0, 0]);
+		});
+
+		it('should return [0, 0] for an array with non-numeric strings', () => {
+			expect(ensureNodePosition(['a', 'b'])).toEqual([0, 0]);
+		});
+
+		it('should coerce numeric strings to numbers', () => {
+			expect(ensureNodePosition(['100', '200'])).toEqual([100, 200]);
+		});
+	});
+
+	describe('sanitizeConnections', () => {
+		it('should return empty object for empty connections', () => {
+			expect(sanitizeConnections({})).toEqual({});
+		});
+
+		it('should return empty object for non-object input', () => {
+			expect(sanitizeConnections('broken')).toEqual({});
+		});
+
+		it('should pass through valid connections unchanged', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			expect(sanitizeConnections(connections)).toEqual(connections);
+		});
+
+		it('should strip connection type when buckets is a string', () => {
+			const connections = {
+				Start: { main: 'not-an-array' },
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({ Start: {} });
+		});
+
+		it('should strip connection type when buckets is a number', () => {
+			const connections = {
+				Start: { main: 42 },
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({ Start: {} });
+		});
+
+		it('should skip node entry when value is not an object', () => {
+			const connections = {
+				Start: 'broken',
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({});
+		});
+
+		it('should skip node entry when value is null', () => {
+			const connections = {
+				Start: null,
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({});
+		});
+
+		it('should nullify bucket when it is an object instead of an array', () => {
+			const connections = {
+				Start: {
+					main: [{ node: 'Foo', type: 'main', index: 0 }],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({
+				Start: { main: [null] },
+			});
+		});
+
+		it('should preserve null buckets in sparse connections', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						null as unknown as IConnection[],
+						[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+			expect(sanitizeConnections(connections)).toEqual(connections);
+		});
+
+		it('should keep valid types and strip malformed ones on the same node', () => {
+			const connections = {
+				Start: {
+					[NodeConnectionTypes.Main]: 'not-an-array',
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({
+				Start: {
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			});
+		});
+
+		it('should drop connections whose source or target nodes are missing', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'End', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Missing', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+				Missing: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			expect(sanitizeConnections(connections, ['Start', 'End'])).toEqual({
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			});
+		});
+
+		it('should drop malformed entries inside a valid bucket', () => {
+			const connections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'End', type: NodeConnectionTypes.Main, index: 0 },
+							null,
+							'broken',
+							{ node: 'Other', type: NodeConnectionTypes.Main },
+						],
+					],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			});
+		});
+
+		it('should drop malformed entries before checking valid node names', () => {
+			const connections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[
+							null,
+							{ node: 'End', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Missing', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections, ['Start', 'End'])).toEqual({
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			});
 		});
 	});
 });

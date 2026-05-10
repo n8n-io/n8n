@@ -73,11 +73,7 @@ export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
 
 export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 
-export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
-	control: 'control',
-	variantResources: 'variant-resources',
-	variantInspiration: 'variant-inspiration',
-});
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
 export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
@@ -96,8 +92,6 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 	codeNoPinData: 'code-no-pin-data',
 	codePinData: 'code-pin-data',
 });
-
-export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
 
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
@@ -125,7 +119,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
-	QUICK_CONNECT_EXPERIMENT.name,
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,

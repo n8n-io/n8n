@@ -11,6 +11,7 @@ import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/commu
 import { computed, ref } from 'vue';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
@@ -96,6 +97,12 @@ const hasActions = computed(() => {
 
 const nodeActions = computed(() => {
 	return actions[props.nodeType.name] || [];
+});
+
+const nodeListIconSize = computed(() => {
+	const icon = props.nodeType.icon;
+	const iconName = typeof icon === 'string' ? icon : undefined;
+	return getNodeIconSize('nodeList', iconName);
 });
 
 const shortNodeType = computed<string>(() => i18n.shortNodeType(props.nodeType.name) || '');
@@ -187,12 +194,15 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		@dragend="onDragEnd"
 	>
 		<template #icon>
-			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon
-				:class="$style.nodeIcon"
-				:node-type="nodeType"
-				color-default="var(--color--foreground--shade-2)"
-			/>
+			<div :class="$style.iconWrapper">
+				<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
+				<NodeIcon
+					:class="$style.nodeIcon"
+					:node-type="nodeType"
+					:size="nodeListIconSize"
+					color-default="var(--color--foreground--shade-2)"
+				/>
+			</div>
 		</template>
 
 		<template v-if="isOfficial" #extraDetails>
@@ -256,6 +266,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	user-select: none;
 }
 
+.iconWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 .nodeIcon {
 	z-index: 2;
 }
@@ -264,9 +281,11 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	background-color: var(--node-type--supplemental--color--background);
 	border-radius: 50%;
 	height: 40px;
-	position: absolute;
-	transform: translate(-7px, -7px);
 	width: 40px;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 	z-index: 1;
 }
 

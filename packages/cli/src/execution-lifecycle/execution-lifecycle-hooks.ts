@@ -11,9 +11,8 @@ import {
 	InstanceSettings,
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
-
-import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
+	ExecutionStatus,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -24,12 +23,15 @@ import type {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
+import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // eslint-disable-next-line import-x/no-cycle
@@ -43,8 +45,6 @@ import {
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
-import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
-import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 
 @Service()
 class ModulesHooksRegistry {
@@ -58,11 +58,12 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteAfter':
 					hooks.addHandler(eventName, async function (runData, newStaticData) {
 						const context = {
-							type: 'workflowExecuteAfter',
+							type: 'workflowExecuteAfter' as const,
 							workflow: this.workflowData,
 							runData,
 							newStaticData,
 							executionId: this.executionId,
+							retryOf: this.retryOf,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -72,10 +73,11 @@ class ModulesHooksRegistry {
 				case 'nodeExecuteBefore':
 					hooks.addHandler(eventName, async function (nodeName, taskData) {
 						const context = {
-							type: 'nodeExecuteBefore',
+							type: 'nodeExecuteBefore' as const,
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -85,11 +87,12 @@ class ModulesHooksRegistry {
 				case 'nodeExecuteAfter':
 					hooks.addHandler(eventName, async function (nodeName, taskData, executionData) {
 						const context = {
-							type: 'nodeExecuteAfter',
+							type: 'nodeExecuteAfter' as const,
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
 							executionData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -99,7 +102,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteBefore':
 					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
-							type: 'workflowExecuteBefore',
+							type: 'workflowExecuteBefore' as const,
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
@@ -113,7 +116,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteResume':
 					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
-							type: 'workflowExecuteResume',
+							type: 'workflowExecuteResume' as const,
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
@@ -135,14 +138,41 @@ type HooksSetupParameters = {
 	parentExecution?: RelatedExecution;
 };
 
-function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
+function hookFunctionsWorkflowEvents(
+	hooks: ExecutionLifecycleHooks,
+	userId?: string,
+	projectId?: string,
+	projectName?: string,
+) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
 		const { executionId, workflowData, mode } = this;
-		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
+		eventService.emit('workflow-pre-execute', {
+			executionId,
+			data: workflowData,
+			mode,
+			projectId,
+			projectName,
+		});
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
-		if (runData.status === 'waiting') return;
+		if (runData.status === 'waiting') {
+			const { executionId, workflowData: workflow } = this;
+			const lastNodeName = runData.data.resultData.lastNodeExecuted;
+			const lastNodeTaskData = lastNodeName
+				? runData.data.resultData.runData[lastNodeName]
+				: undefined;
+			const latestTask = lastNodeTaskData?.at(-1);
+			const isWaitingForWebhook = latestTask?.metadata?.resumeUrl;
+			if (isWaitingForWebhook) {
+				// As of today we only emit the execution-waiting event for webhook wait nodes.
+				eventService.emit('execution-waiting', {
+					executionId,
+					workflowId: workflow.id,
+				});
+			}
+			return;
+		}
 
 		const { executionId, workflowData: workflow } = this;
 
@@ -154,7 +184,14 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 			}
 		}
 
-		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
+		eventService.emit('workflow-post-execute', {
+			executionId,
+			runData,
+			workflow,
+			userId,
+			projectId,
+			projectName,
+		});
 	});
 }
 
@@ -535,7 +572,7 @@ function hookFunctionsSave(
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 
-				await executionPersistence.hardDelete({
+				await executionPersistence.deleteInFlightExecution({
 					workflowId: this.workflowData.id,
 					executionId: this.executionId,
 					storedAt: fullRunData.storedAt,
@@ -661,16 +698,19 @@ export function getLifecycleHooksForSubExecutions(
 	workflowData: IWorkflowBase,
 	userId?: string,
 	parentExecution?: RelatedExecution,
+	projectId?: string,
+	projectName?: string,
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
 
@@ -682,7 +722,12 @@ export function getLifecycleHooksForScalingWorker(
 	executionId: string,
 ): ExecutionLifecycleHooks {
 	const { pushRef, retryOf, executionMode, workflowData } = data;
-	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		executionMode,
+		executionId,
+		workflowData,
+		retryOf ?? undefined,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	hookFunctionsNodeEvents(hooks);
@@ -708,21 +753,29 @@ export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
-	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
+	const hooks = new ExecutionLifecycleHooks(
+		executionMode,
+		executionId,
+		workflowData,
+		retryOf ?? undefined,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
 
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-		// Don't delete executions before they are finished
-		if (!fullRunData.finished) return;
+		// Only process executions that have reached a terminal status.
+		// We check `status` (not the deprecated `finished` field) because
+		// errored executions have `finished = false` but a terminal `status`.
+		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+		if (!terminalStatuses.includes(fullRunData.status) && !fullRunData.waitTill) return;
 
 		const isManualMode = this.mode === 'manual';
 
@@ -746,7 +799,7 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.hardDelete({
+			await executionPersistence.deleteInFlightExecution({
 				workflowId: this.workflowData.id,
 				executionId: this.executionId,
 				storedAt: fullRunData.storedAt,
@@ -778,11 +831,16 @@ export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
-	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
+	const hooks = new ExecutionLifecycleHooks(
+		executionMode,
+		executionId,
+		workflowData,
+		retryOf ?? undefined,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
@@ -58,6 +59,11 @@ describe('SecretsProviderConnectionCard', () => {
 		settings: {
 			region: 'us-east-1',
 		},
+	};
+
+	const openActionsMenu = async () => {
+		const toggle = screen.getByTestId('secrets-provider-action-toggle');
+		await userEvent.click(within(toggle).getByRole('button'));
 	};
 
 	it('should render provider name in header', () => {
@@ -174,7 +180,7 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(queryByTestId('disconnected-badge')).not.toBeInTheDocument();
 	});
 
-	it('should show edit action when user has update permission', () => {
+	it('should show edit action when user has update permission', async () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
@@ -183,7 +189,8 @@ describe('SecretsProviderConnectionCard', () => {
 		});
 
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
-		expect(screen.getByTestId('action-edit')).toBeInTheDocument();
+		await openActionsMenu();
+		expect(await screen.findByTestId('action-edit')).toBeInTheDocument();
 	});
 
 	it('should not show edit action when user lacks update permission', () => {
@@ -198,7 +205,7 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
 	});
 
-	it('should show reload action when provider is connected and user has sync scope', () => {
+	it('should show reload action when provider is connected and user has sync scope', async () => {
 		const rbacStore = useRBACStore();
 		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
 
@@ -209,7 +216,8 @@ describe('SecretsProviderConnectionCard', () => {
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(screen.getByTestId('action-reload')).toBeInTheDocument();
+		await openActionsMenu();
+		expect(await screen.findByTestId('action-reload')).toBeInTheDocument();
 	});
 
 	it('should not show reload action when user lacks sync scope', () => {
@@ -270,7 +278,7 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(globalBadge ?? projectBadge).toBeInTheDocument();
 	});
 
-	it('should show activate option in context menu when provider is disabled and user can update', () => {
+	it('should show activate option in context menu when provider is disabled and user can update', async () => {
 		const disabledProvider: SecretProviderConnection = {
 			...mockProvider,
 			isEnabled: false,
@@ -282,7 +290,8 @@ describe('SecretsProviderConnectionCard', () => {
 			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(screen.getByTestId('action-activate')).toBeInTheDocument();
+		await openActionsMenu();
+		expect(await screen.findByTestId('action-activate')).toBeInTheDocument();
 	});
 
 	it('should not show activate option in context menu when provider is already enabled', () => {

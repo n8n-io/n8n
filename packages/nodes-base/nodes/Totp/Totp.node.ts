@@ -11,7 +11,8 @@ export class Totp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TOTP',
 		name: 'totp',
-		icon: 'fa:fingerprint',
+		icon: 'node:totp',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] }}',

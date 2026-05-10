@@ -21,6 +21,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
+	const ssoManagedByEnv = ref(false);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -37,6 +38,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const initialize = (options: {
 		authenticationMethod: UserManagementAuthenticationMethod;
+		managedByEnv?: boolean;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
@@ -52,6 +54,7 @@ export const useSSOStore = defineStore('sso', () => {
 		};
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
+		ssoManagedByEnv.value = options.managedByEnv ?? false;
 
 		isEnterpriseLdapEnabled.value = options.features.ldap;
 		if (options.config.ldap) {
@@ -135,6 +138,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
+		oidc.value.loginEnabled = config.loginEnabled;
 		return config;
 	};
 
@@ -143,6 +147,8 @@ export const useSSOStore = defineStore('sso', () => {
 		oidcConfig.value = savedConfig;
 		return savedConfig;
 	};
+
+	const testOidcConfig = async () => await ssoApi.testOidcConfig(rootStore.restApiContext);
 
 	const isOidcLoginEnabled = computed({
 		get: () => oidc.value.loginEnabled,
@@ -209,6 +215,7 @@ export const useSSOStore = defineStore('sso', () => {
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,
+		ssoManagedByEnv,
 
 		saml,
 		samlConfig,
@@ -227,6 +234,7 @@ export const useSSOStore = defineStore('sso', () => {
 		isDefaultAuthenticationOidc,
 		getOidcConfig,
 		saveOidcConfig,
+		testOidcConfig,
 
 		ldap,
 		isLdapLoginEnabled,

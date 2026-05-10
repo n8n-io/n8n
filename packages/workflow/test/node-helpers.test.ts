@@ -5275,6 +5275,60 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+
+		describe('_cnd string operators with undefined property value', () => {
+			const node: INode = { ...testNode };
+			const nodeTypeDescription: INodeTypeDescription = { ...testNodeType };
+
+			const baseParam: INodeProperties = {
+				displayName: 'Test',
+				name: 'test',
+				type: 'string',
+				default: '',
+			};
+
+			test('includes returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('startsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { startsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('endsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { endsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('regex returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { regex: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('includes returns true when property matches', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({ missingParam: 'foobar' }, param, node, nodeTypeDescription)).toBe(
+					true,
+				);
+			});
+		});
 	});
 
 	describe('makeDescription', () => {
@@ -6523,6 +6577,120 @@ describe('NodeHelpers', () => {
 
 			// When undefined, the default value (empty string) is used
 			expect(result?.resource).toBe('');
+		});
+	});
+
+	describe('getNodeParameters filter defaults', () => {
+		const filterProperty: INodeProperties = {
+			displayName: 'Conditions',
+			name: 'conditions',
+			type: 'filter',
+			default: {},
+		};
+
+		it('should add missing combinator and options to a filter parameter', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						conditions: [
+							{
+								leftValue: '={{ $json.field }}',
+								rightValue: 'value',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: true,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [
+						{
+							leftValue: '={{ $json.field }}',
+							rightValue: 'value',
+							operator: { type: 'string', operation: 'equals' },
+						},
+					],
+				},
+			});
+		});
+
+		it('should preserve existing combinator and options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'or',
+						options: {
+							caseSensitive: false,
+							leftValue: '',
+							typeValidation: 'loose',
+							version: 2,
+						},
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'or',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
+					},
+					conditions: [],
+				},
+			});
+		});
+
+		it('should fill in missing fields in partial options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'and',
+						options: { caseSensitive: false },
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [],
+				},
+			});
 		});
 	});
 });

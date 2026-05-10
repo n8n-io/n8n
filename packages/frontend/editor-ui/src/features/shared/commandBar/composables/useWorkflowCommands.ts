@@ -9,10 +9,8 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -55,7 +53,6 @@ const ITEM_ID = {
 
 export function useWorkflowCommands(): CommandGroup {
 	const i18n = useI18n();
-	const { editableWorkflow } = useCanvasOperations();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
@@ -71,7 +68,6 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const runWorkflow = useRunWorkflow({ router });
 
-	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
 
 	const isReadOnly = computed(
@@ -89,7 +85,9 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
-			editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
+			workflowDocumentStore.value.allNodes
+				.map((node) => Object.values(node.credentials ?? {}))
+				.flat(),
 			(cred) => cred.id,
 		);
 		if (credentials.length === 0) {
@@ -288,8 +286,8 @@ export function useWorkflowCommands(): CommandGroup {
 								name: DUPLICATE_MODAL_KEY,
 								data: {
 									id: workflowsStore.workflowId,
-									name: editableWorkflow.value.name,
-									tags: editableWorkflow.value.tags,
+									name: workflowDocumentStore.value.name,
+									tags: workflowDocumentStore.value.tags,
 								},
 							});
 						},
@@ -305,7 +303,7 @@ export function useWorkflowCommands(): CommandGroup {
 	]);
 
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
-		const subworkflows = editableWorkflow.value.nodes
+		const subworkflows = workflowDocumentStore.value.allNodes
 			.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
 			.map((node) => node?.parameters?.workflowId)
 			.filter(
@@ -330,7 +328,7 @@ export function useWorkflowCommands(): CommandGroup {
 						handler: () => {
 							const { href } = router.resolve({
 								name: VIEWS.WORKFLOW,
-								params: { name: workflow.id },
+								params: { workflowId: workflow.id },
 							});
 							window.open(href, '_blank', 'noreferrer');
 						},
@@ -353,7 +351,7 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.download'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: async () => {
-					const workflowData = await workflowHelpers.getWorkflowDataToSave();
+					const workflowData = workflowDocumentStore.value.serialize();
 					const { tags, ...data } = workflowData;
 					const exportData: IWorkflowToShare = {
 						...data,
@@ -368,7 +366,7 @@ export function useWorkflowCommands(): CommandGroup {
 					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
-					let name = editableWorkflow.value.name || 'unsaved_workflow';
+					let name = workflowDocumentStore.value.name || 'unsaved_workflow';
 					name = name.replace(/[^a-z0-9]/gi, '_');
 					telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 					saveAs(blob, name + '.json');

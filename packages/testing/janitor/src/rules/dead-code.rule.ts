@@ -3,6 +3,7 @@ import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
+import { isMethodFix, isPropertyFix } from '../types.js';
 import type { Violation, FixResult } from '../types.js';
 import { getRelativePath } from '../utils/paths.js';
 
@@ -259,7 +260,8 @@ export class DeadCodeRule extends BaseRule {
 
 		for (const violation of fileViolations) {
 			const fixData = violation.fixData;
-			if (!fixData || fixData.type === 'class' || fixData.type === 'edit') continue;
+			if (!fixData) continue;
+			if (!isMethodFix(fixData) && !isPropertyFix(fixData)) continue;
 
 			const classDecl = sourceFile.getClass(fixData.className);
 			if (!classDecl) continue;

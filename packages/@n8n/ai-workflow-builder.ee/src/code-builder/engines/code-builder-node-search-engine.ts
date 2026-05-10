@@ -115,19 +115,23 @@ export class CodeBuilderNodeSearchEngine {
 	 * @param limit - Maximum number of results to return
 	 * @returns Array of matching nodes sorted by relevance
 	 */
-	searchByName(query: string, limit: number = 20): CodeBuilderNodeSearchResult[] {
+	searchByName(
+		query: string,
+		limit: number = 20,
+		nodeFilter?: (nodeId: string) => boolean,
+	): CodeBuilderNodeSearchResult[] {
+		const nodeTypes = nodeFilter
+			? this.nodeTypes.filter((node) => nodeFilter(node.name))
+			: this.nodeTypes;
+
 		// Use sublimeSearch for fuzzy matching
-		const searchResults = sublimeSearch<INodeTypeDescription>(
-			query,
-			this.nodeTypes,
-			NODE_SEARCH_KEYS,
-		);
+		const searchResults = sublimeSearch<INodeTypeDescription>(query, nodeTypes, NODE_SEARCH_KEYS);
 
 		const queryLower = query.toLowerCase().trim();
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
 
 		// Direct type name match on all nodeTypes (catches nodes sublimeSearch ranked too low)
-		const typeNameMatches = this.nodeTypes
+		const typeNameMatches = nodeTypes
 			.filter((node) => {
 				if (fuzzyResultNames.has(node.name)) return false;
 				return getTypeName(node.name).toLowerCase() === queryLower;
@@ -161,7 +165,9 @@ export class CodeBuilderNodeSearchEngine {
 						inputs: item.inputs,
 						outputs: item.outputs,
 						score,
-						...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+						...(item.builderHint?.searchHint && {
+							builderHintMessage: item.builderHint.searchHint,
+						}),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
 				},
@@ -206,8 +212,8 @@ export class CodeBuilderNodeSearchEngine {
 						inputs: nodeType.inputs,
 						outputs: nodeType.outputs,
 						score: connectionScore,
-						...(nodeType.builderHint?.message && {
-							builderHintMessage: nodeType.builderHint.message,
+						...(nodeType.builderHint?.searchHint && {
+							builderHintMessage: nodeType.builderHint.searchHint,
 						}),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
@@ -236,7 +242,9 @@ export class CodeBuilderNodeSearchEngine {
 					inputs: item.inputs,
 					outputs: item.outputs,
 					score: connectionScore + nameScore,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+					...(item.builderHint?.searchHint && {
+						builderHintMessage: item.builderHint.searchHint,
+					}),
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 				};
 			});

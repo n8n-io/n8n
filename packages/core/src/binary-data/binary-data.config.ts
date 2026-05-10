@@ -63,4 +63,36 @@ export class BinaryDataConfig {
 
 		this.mode ??= executionsConfig.mode === 'queue' ? 'database' : 'filesystem';
 	}
+
+	/**
+	 * Two-phase init: reads or creates the signing.binary_data deployment-key row.
+	 * Must be called after DB migrations complete, before any signed-URL generation.
+	 * Precedence: N8N_BINARY_DATA_SIGNING_SECRET env → DB active row → derive-from-key (and persist)
+	 */
+	async initialize(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<void>;
+	}): Promise<void> {
+		if (process.env.N8N_BINARY_DATA_SIGNING_SECRET) {
+			return;
+		}
+		const existing = await repo.findActiveByType('signing.binary_data');
+		if (existing) {
+			this.signingSecret = existing.value;
+			return;
+		}
+		await repo.insertOrIgnore({
+			type: 'signing.binary_data',
+			value: this.signingSecret,
+			status: 'active',
+			algorithm: null,
+		});
+		const winner = await repo.findActiveByType('signing.binary_data');
+		if (winner) this.signingSecret = winner.value;
+	}
 }

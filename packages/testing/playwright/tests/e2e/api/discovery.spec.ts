@@ -39,7 +39,12 @@ test.describe(
 			});
 
 			const memberApi = await api.createApiForUser(member);
-			await memberApi.publicApi.createApiKey(`member-key-${nanoid()}`);
+			await memberApi.publicApi.createApiKey(`member-key-${nanoid()}`, [
+				'workflow:create',
+				'workflow:read',
+				'workflow:list',
+				'credential:create',
+			]);
 
 			const discovery = await memberApi.publicApi.getDiscovery();
 

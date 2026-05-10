@@ -5,7 +5,9 @@
  */
 
 import { deepCopy } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
+import { foldLegacyErrorConnections } from '../../../types/base';
 import type {
 	WorkflowJSON,
 	NodeJSON,
@@ -14,13 +16,23 @@ import type {
 	GraphNode,
 } from '../../../types/base';
 import { START_X, DEFAULT_Y } from '../../constants';
-import { calculateNodePositions } from '../../layout-utils';
+import { calculateNodePositions, calculateNodePositionsDagre } from '../../layout-utils';
 import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
 	parseVersion,
 } from '../../string-utils';
 import type { SerializerPlugin, SerializerContext } from '../types';
+
+/**
+ * Node types that require a webhookId for proper webhook path registration.
+ * Without it, n8n falls back to encoding the node name into the URL path.
+ */
+const WEBHOOK_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'@n8n/n8n-nodes-langchain.mcpTrigger',
+]);
 
 /**
  * Serialize a single node to NodeJSON format.
@@ -83,10 +95,30 @@ function serializeNode(
 		parameters: serializedParams,
 	};
 
+	// Generate webhookId for webhook-based nodes so n8n registers clean paths
+	// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard")
+	if (WEBHOOK_NODE_TYPES.has(instance.type)) {
+		n8nNode.webhookId = config.webhookId ?? randomUUID();
+	}
+
 	// Add optional properties
 	if (config.credentials) {
-		// Serialize credentials to ensure newCredential() markers are converted to JSON
-		n8nNode.credentials = deepCopy(config.credentials);
+		if (typeof config.credentials !== 'object') {
+			// Real workflows occasionally carry credentials as a primitive (e.g. the
+			// post-redaction string `"[REDACTED]"`). Pass through unchanged.
+			n8nNode.credentials = deepCopy(config.credentials);
+		} else {
+			// `NodeConfig.credentials` is typed wide (also accepts PlaceholderValue)
+			// at the public API. By this point `normalizeNodeConfig` has rewritten any
+			// placeholder() markers to newCredential() markers, so no __placeholder
+			// values remain at runtime. Narrow the value type for the serializer.
+			const resolvable: NonNullable<NodeJSON['credentials']> = {};
+			for (const [key, value] of Object.entries(config.credentials)) {
+				if (value && typeof value === 'object' && '__placeholder' in value) continue;
+				resolvable[key] = value;
+			}
+			n8nNode.credentials = deepCopy(resolvable);
+		}
 	}
 	if (config.disabled) {
 		n8nNode.disabled = config.disabled;
@@ -176,7 +208,9 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 		const connections: IConnections = {};
 
 		// Calculate positions for nodes without explicit positions
-		const nodePositions = calculateNodePositions(ctx.nodes);
+		const nodePositions = ctx.tidyUp
+			? calculateNodePositionsDagre(ctx.nodes)
+			: calculateNodePositions(ctx.nodes);
 
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
@@ -193,6 +227,13 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 				connections[nodeName] = nodeConns;
 			}
 		}
+
+		// Emit the modern error-pin shape (main[errorIndex]) regardless of
+		// whether the internal graph used an 'error' connection-type key (from
+		// .onError() or from an imported legacy workflow). Node info is passed
+		// so IF / Switch / SplitInBatches place the error slot at the right
+		// index even when some natural outputs are unwired.
+		foldLegacyErrorConnections(connections, nodes);
 
 		// Build the workflow JSON
 		const json: WorkflowJSON = {

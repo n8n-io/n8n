@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import type { AuthenticatedRequest } from '@n8n/db';
 
-import { License } from '@/license';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import * as discoverService from '../discover.service';
 
@@ -13,7 +13,6 @@ const handler = require('../discover.handler');
 describe('Discover Handler', () => {
 	let mockApiKeyRepository: jest.Mocked<ApiKeyRepository>;
 	let mockResponse: Partial<Response>;
-	const mockLicense = { isApiKeyScopesEnabled: jest.fn().mockReturnValue(true) };
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -22,31 +21,33 @@ describe('Discover Handler', () => {
 
 		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === ApiKeyRepository) return mockApiKeyRepository as any;
-			if (serviceClass === License) return mockLicense as any;
 			return {} as any;
 		});
 
 		mockResponse = {
 			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
 		};
 	});
 
-	it('should return 401 when API key header is missing', async () => {
+	it('should throw UnauthenticatedError when API key header is missing', async () => {
 		const req = {
 			headers: {},
 			query: {},
 		} as unknown as AuthenticatedRequest;
 
 		const handlerFn = handler.getDiscover[0];
-		await handlerFn(req, mockResponse);
-
-		expect(mockResponse.status).toHaveBeenCalledWith(401);
-		expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
+		let caught: unknown;
+		try {
+			await handlerFn(req, mockResponse as Response);
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).toBeInstanceOf(UnauthenticatedError);
+		expect(caught).toMatchObject({ message: 'Unauthorized', httpStatusCode: 401 });
 		expect(mockApiKeyRepository.findOne).not.toHaveBeenCalled();
 	});
 
-	it('should return 401 when API key not found in DB', async () => {
+	it('should throw UnauthenticatedError when API key not found in DB', async () => {
 		mockApiKeyRepository.findOne.mockResolvedValue(null);
 
 		const req = {
@@ -55,10 +56,14 @@ describe('Discover Handler', () => {
 		} as unknown as AuthenticatedRequest;
 
 		const handlerFn = handler.getDiscover[0];
-		await handlerFn(req, mockResponse);
-
-		expect(mockResponse.status).toHaveBeenCalledWith(401);
-		expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
+		let caught: unknown;
+		try {
+			await handlerFn(req, mockResponse as Response);
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).toBeInstanceOf(UnauthenticatedError);
+		expect(caught).toMatchObject({ message: 'Unauthorized', httpStatusCode: 401 });
 	});
 
 	it('should return discover data when API key is valid', async () => {
@@ -93,7 +98,6 @@ describe('Discover Handler', () => {
 		expect(mockResponse.json).toHaveBeenCalledWith({ data: mockDiscoverResponse });
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: false,
-			scopesEnabled: true,
 			resource: undefined,
 			operation: undefined,
 		});
@@ -146,7 +150,6 @@ describe('Discover Handler', () => {
 
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: true,
-			scopesEnabled: true,
 			resource: undefined,
 			operation: undefined,
 		});
@@ -173,7 +176,6 @@ describe('Discover Handler', () => {
 
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: false,
-			scopesEnabled: true,
 			resource: 'workflow',
 			operation: 'create',
 		});

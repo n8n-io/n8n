@@ -10,12 +10,13 @@ import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -119,9 +120,10 @@ export function handleHostedChatResponse(
 	responseMode: WebhookResponseMode,
 	didSendResponse: boolean,
 	executionId: string,
+	resumeToken?: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
-		res.send({ executionStarted: true, executionId });
+		res.send({ executionStarted: true, executionId, resumeToken });
 		process.nextTick(() => res.end());
 		return true;
 	}
@@ -367,7 +369,9 @@ export function prepareExecutionData(
 	];
 
 	if (
-		workflowStartNode.type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE &&
+		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
+			workflowStartNode.type,
+		) &&
 		runExecutionData?.executionData?.nodeExecutionStack
 	) {
 		merge(runExecutionData.executionData.nodeExecutionStack, nodeExecutionStack);
@@ -460,7 +464,15 @@ export async function executeWebhook(
 		additionalData.executionId = executionId;
 	}
 
-	const { responseMode, responseCode, responseData, checkAllMainOutputs } = evaluateResponseOptions(
+	const {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	} = evaluateResponseOptions(
 		workflowStartNode,
 		workflow,
 		req,
@@ -502,7 +514,11 @@ export async function executeWebhook(
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
-			[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+			[
+				MCP_TRIGGER_NODE_TYPE,
+				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+				CHAT_TRIGGER_NODE_TYPE,
+			].includes(workflowStartNode.type)
 		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -642,6 +658,7 @@ export async function executeWebhook(
 			pinData,
 			projectId: project?.id,
 			projectName: project?.name,
+			userId: webhookData.userId,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -718,13 +735,27 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		// Extract W3C trace context from webhook headers for OTEL propagation.
+		const traceparent = req.headers.traceparent;
+		if (
+			typeof traceparent === 'string' &&
+			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+		) {
+			const tracestate = req.headers.tracestate;
+			runData.tracingContext = {
+				traceparent,
+				tracestate:
+					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
+			};
+		}
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
 			executionId,
-			responsePromise,
+			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 
 		/**
@@ -741,14 +772,11 @@ export async function executeWebhook(
 				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
 			};
-			const evaluatedResponseData = workflow.expression.getComplexParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseData,
-				executionMode,
-				additionalKeys,
+			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
+				'responseData',
 				undefined,
 				'firstEntryJson',
-			) as string | undefined;
+			);
 
 			const responseBody = extractWebhookOnReceivedResponse(
 				evaluatedResponseData,
@@ -767,12 +795,22 @@ export async function executeWebhook(
 		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
+			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			if (runExecutionData.resumeToken) {
+				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
+			}
+			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
 			didSendResponse = true;
 		}
 
-		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+		didSendResponse = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			runExecutionData?.resumeToken,
+		);
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
@@ -866,10 +904,10 @@ export async function executeWebhook(
 					}
 
 					const result = await extractWebhookLastNodeResponse(
-						context,
 						responseData as WebhookResponseData,
 						lastNodeTaskData,
 						checkAllMainOutputs,
+						{ responsePropertyName, responseContentType, responseBinaryPropertyName },
 					);
 
 					if (!result.ok) {
@@ -971,7 +1009,38 @@ function evaluateResponseOptions(
 	// We can unify the behavior in the next major release and get rid of this flag
 	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	return { responseMode, responseCode, responseData, checkAllMainOutputs };
+	const responsePropertyName = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responsePropertyName,
+		executionMode,
+		additionalKeys,
+	) as string | undefined;
+
+	const responseContentType = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseContentType,
+		executionMode,
+		additionalKeys,
+	) as string | undefined;
+
+	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseBinaryPropertyName,
+		executionMode,
+		additionalKeys,
+		undefined,
+		'data',
+	);
+
+	return {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	};
 }
 
 /**

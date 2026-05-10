@@ -1,3 +1,4 @@
+import { afterAll, beforeAll } from 'vitest';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import type { IDataObject } from '../../src/interfaces';
@@ -21,6 +22,15 @@ export const workflow = new Workflow({
 	nodeTypes,
 });
 export const expression = workflow.expression;
+
+// acquireIsolate/releaseIsolate are no-ops for the legacy engine, so these
+// hooks are safe to register unconditionally.
+beforeAll(async () => {
+	await expression.acquireIsolate();
+});
+afterAll(async () => {
+	await expression.releaseIsolate();
+});
 
 export const evaluate = (value: string, values?: IDataObject[]) =>
 	expression.getParameterValue(

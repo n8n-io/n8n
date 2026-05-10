@@ -1,7 +1,7 @@
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	createRunExecutionData,
+	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
 import type {
 	ITaskData,
@@ -13,10 +13,10 @@ import type {
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionPreviewNodeSchema,
@@ -185,31 +185,41 @@ export async function displayForm({
 	}
 }
 
-export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: Workflow) => {
+export const waitingNodeTooltip = (
+	node: INodeUi | null | undefined,
+	workflow?: WorkflowObjectAccessors,
+	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
+) => {
 	if (!node) return '';
 	try {
-		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
-		if (waitingNodeTooltip) {
+		const waitingNodeTooltipFromNodeType = useNodeTypesStore().getNodeType(
+			node.type,
+		)?.waitingNodeTooltip;
+		if (waitingNodeTooltipFromNodeType) {
 			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			// Use signed URLs from metadata if available
+			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
 				$execution: {
 					id: activeExecutionId,
 					mode: 'test',
-					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
-					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+					resumeUrl:
+						metadata?.resumeUrl ?? `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeFormUrl:
+						metadata?.resumeFormUrl ?? `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
 				},
 			};
 			if (workflow) {
 				const tooltip = workflow.expression.getSimpleParameterValue(
 					node,
-					waitingNodeTooltip,
+					waitingNodeTooltipFromNodeType,
 					'internal',
 					additionalData,
 				);
 
 				return String(tooltip);
-			} else if (waitingNodeTooltip) {
-				return waitingNodeTooltip;
+			} else if (waitingNodeTooltipFromNodeType) {
+				return waitingNodeTooltipFromNodeType;
 			}
 		}
 	} catch (error) {
@@ -219,12 +229,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: 
 	return '';
 };
 
-/**
- * Check whether node execution data contains a trimmed item.
- */
-export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
-	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
-}
+export { isTrimmedNodeExecutionData };
 
 /**
  * Check whether task data contains a trimmed item.
