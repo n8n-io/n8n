@@ -208,8 +208,20 @@ export {
 	classifyAttachments,
 	buildAttachmentManifest,
 	isStructuredAttachment,
+	isParseableAttachment,
 } from './parsers/structured-file-parser';
 export type {
 	ClassifiedAttachment,
 	ParseableFormat,
+	TabularFormat,
+	TextLikeFormat,
+	SupportedFormat,
 } from './parsers/structured-file-parser';
+export {
+	getParseableAttachmentMimeTypes,
+	getSupportedAttachmentMimeTypes,
+	isSupportedAttachmentMimeType,
+	validateAttachmentMimeTypes,
+	UnsupportedAttachmentError,
+} from './parsers/validate-attachments';
+export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';

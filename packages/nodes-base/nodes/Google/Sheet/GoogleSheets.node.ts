@@ -15,7 +15,7 @@ export class GoogleSheets extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Read, update and write data to Google Sheets',
 			builderHint: {
-				message:
+				searchHint:
 					'For workflow data storage, DataTable with upsert avoids duplicates. Use Google Sheets when spreadsheet collaboration is specifically needed.',
 				relatedNodes: [
 					{

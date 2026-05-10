@@ -285,7 +285,7 @@
     "langchain": "catalog:",
     "@langchain/classic": "1.0.27",
     "lodash": "catalog:",
-    "mammoth": "1.11.0",
+    "mammoth": "1.12.0",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",
     "n8n-nodes-base": "workspace:*",

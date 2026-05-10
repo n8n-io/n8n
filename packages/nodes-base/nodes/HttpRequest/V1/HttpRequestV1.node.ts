@@ -699,6 +699,14 @@ export class HttpRequestV1 implements INodeType {
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			const url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
 			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
