@@ -125,195 +125,13 @@ jest.mock('@mastra/core/workflows', () => ({}));
 
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
-import {
-	resumeAgentRun,
-	type ManagedBackgroundTask,
-	type SpawnBackgroundTaskOptions,
-	type SpawnBackgroundTaskResult,
-	type SpawnManagedBackgroundTaskOptions,
-	type TerminalOutcome,
-} from '@n8n/instance-ai';
+import { resumeAgentRun, type TerminalResponseDecision } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiRunExecutionService } from '../run-execution/instance-ai-run-execution.service';
+import type { MessageTraceFinalization } from '../tracing/instance-ai-trace.service';
 
-type ServiceInternals = {
-	pendingCheckpointReentries: Map<string, Set<string>>;
-	queuePendingCheckpointReentry: (threadId: string, checkpointTaskId: string) => void;
-	drainPendingCheckpointReentries: (user: User, threadId: string) => Promise<void>;
-	reenterCheckpointById: jest.Mock<Promise<boolean>, [User, string, string, string?]>;
-	backgroundTasks: {
-		getRunningTasksByParentCheckpoint: jest.Mock;
-	};
-	runState: {
-		getActiveRunId: jest.Mock;
-		hasSuspendedRun: jest.Mock;
-	};
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
-};
-
-type RunningTask = { taskId: string };
-type MarkedWorkflow = { workflowId: string };
-type ArchiveIfAiTemporary = jest.MockedFunction<(workflowId: string) => Promise<boolean>>;
-
-type BackgroundTaskFollowUpServiceInternals = {
-	spawnBackgroundTask: (
-		runId: string,
-		opts: SpawnBackgroundTaskOptions,
-		snapshotStorage: unknown,
-		messageGroupIdOverride?: string,
-	) => SpawnBackgroundTaskResult;
-	backgroundTasks: {
-		spawn: jest.MockedFunction<
-			(options: SpawnManagedBackgroundTaskOptions) => {
-				status: 'started';
-				task: ManagedBackgroundTask;
-			}
-		>;
-		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
-	};
-	runState: {
-		getMessageGroupId: jest.MockedFunction<(threadId: string) => string | undefined>;
-		getThreadUser: jest.MockedFunction<(threadId: string) => User | undefined>;
-		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
-		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
-		getThreadResearchMode: jest.MockedFunction<(threadId: string) => boolean | undefined>;
-	};
-	liveness: {
-		hasTimedOutActiveRunThread: jest.MockedFunction<(threadId: string) => boolean>;
-	};
-	eventBus: {
-		publish: jest.MockedFunction<(threadId: string, event: InstanceAiEvent) => void>;
-	};
-	finalizeBackgroundTaskTracing: jest.MockedFunction<
-		(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
-	>;
-	handlePlannedTaskSettlement: jest.MockedFunction<
-		(
-			user: User,
-			task: ManagedBackgroundTask,
-			status: 'succeeded' | 'failed' | 'cancelled',
-		) => Promise<void>
-	>;
-	recordBackgroundTerminalOutcome: jest.MockedFunction<
-		(task: ManagedBackgroundTask) => Promise<void>
-	>;
-	saveAgentTreeSnapshot: jest.MockedFunction<
-		(
-			threadId: string,
-			runId: string,
-			snapshotStorage: unknown,
-			isUpdate?: boolean,
-			overrideMessageGroupId?: string,
-		) => Promise<void>
-	>;
-	startInternalFollowUpRun: jest.MockedFunction<
-		(
-			user: User,
-			threadId: string,
-			message: string,
-			researchMode?: boolean,
-			messageGroupId?: string,
-		) => Promise<string | undefined>
-	>;
-	queuePendingCheckpointReentry: jest.MockedFunction<
-		(threadId: string, checkpointTaskId: string) => void
-	>;
-	maybeReenterParentCheckpoint: jest.MockedFunction<
-		(user: User, threadId: string, task: ManagedBackgroundTask) => Promise<boolean>
-	>;
-	logger: { warn: jest.Mock; debug: jest.Mock };
-};
-
-function createBackgroundTaskFollowUpService({
-	timedOutThread = false,
-}: { timedOutThread?: boolean } = {}): {
-	service: BackgroundTaskFollowUpServiceInternals;
-	task: ManagedBackgroundTask;
-	getSpawnOptions: () => SpawnManagedBackgroundTaskOptions;
-} {
-	const service = Object.create(
-		InstanceAiService.prototype,
-	) as unknown as BackgroundTaskFollowUpServiceInternals;
-	let spawnOptions: SpawnManagedBackgroundTaskOptions | undefined;
-	const task: ManagedBackgroundTask = {
-		taskId: 'task-1',
-		threadId: 'thread-a',
-		runId: 'run-1',
-		role: 'workflow-builder',
-		agentId: 'agent-builder',
-		status: 'completed',
-		result: 'done',
-		startedAt: 0,
-		lastActivityAt: 0,
-		abortController: new AbortController(),
-		corrections: [],
-		messageGroupId: 'group-1',
-	};
-
-	service.backgroundTasks = {
-		spawn: jest.fn((options: SpawnManagedBackgroundTaskOptions) => {
-			spawnOptions = options;
-			return { status: 'started', task };
-		}),
-		getRunningTasks: jest.fn((_threadId: string) => []),
-	};
-	service.runState = {
-		getMessageGroupId: jest.fn((_threadId: string) => 'group-1'),
-		getThreadUser: jest.fn((_threadId: string) => fakeUser),
-		getActiveRunId: jest.fn((_threadId: string) => undefined),
-		hasSuspendedRun: jest.fn((_threadId: string) => false),
-		getThreadResearchMode: jest.fn((_threadId: string) => false),
-	};
-	service.liveness = {
-		hasTimedOutActiveRunThread: jest.fn((threadId: string) =>
-			timedOutThread ? threadId === 'thread-a' : false,
-		),
-	};
-	service.eventBus = { publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}) };
-	service.finalizeBackgroundTaskTracing = jest.fn(
-		async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
-	);
-	service.handlePlannedTaskSettlement = jest.fn(
-		async (
-			_user: User,
-			_task: ManagedBackgroundTask,
-			_status: 'succeeded' | 'failed' | 'cancelled',
-		) => {},
-	);
-	service.recordBackgroundTerminalOutcome = jest.fn(async (_task: ManagedBackgroundTask) => {});
-	service.saveAgentTreeSnapshot = jest.fn(
-		async (
-			_threadId: string,
-			_runId: string,
-			_snapshotStorage: unknown,
-			_isUpdate?: boolean,
-			_overrideMessageGroupId?: string,
-		) => {},
-	);
-	service.startInternalFollowUpRun = jest.fn(
-		async (
-			_user: User,
-			_threadId: string,
-			_message: string,
-			_researchMode?: boolean,
-			_messageGroupId?: string,
-		) => 'run-follow-up',
-	);
-	service.queuePendingCheckpointReentry = jest.fn();
-	service.maybeReenterParentCheckpoint = jest.fn(
-		async (_user: User, _threadId: string, _task: ManagedBackgroundTask) => false,
-	);
-	service.logger = { warn: jest.fn(), debug: jest.fn() };
-
-	return {
-		service,
-		task,
-		getSpawnOptions: () => {
-			if (!spawnOptions) throw new Error('Background task was not spawned');
-			return spawnOptions;
-		},
-	};
-}
+const fakeUser = { id: 'user-1' } as User;
 
 type StartRunServiceInternals = {
 	startRun: InstanceAiService['startRun'];
@@ -352,174 +170,31 @@ function createStartRunService(): StartRunServiceInternals {
 	return service;
 }
 
-type TemporaryCleanupService = {
-	reapAiTemporaryFromRun: (
-		threadId: string,
-		user: User,
-		createdWorkflowIds: Set<string> | undefined,
-	) => Promise<string[]>;
-	backgroundTasks: {
-		getRunningTasks: jest.MockedFunction<(threadId: string) => RunningTask[]>;
-	};
-	aiBuilderTemporaryWorkflowRepository: {
-		findByThread: jest.MockedFunction<(threadId: string) => Promise<MarkedWorkflow[]>>;
-	};
-	adapterService: {
-		createContext: jest.MockedFunction<
-			(
-				user: User,
-				options: { threadId: string },
-			) => { workflowService: { archiveIfAiTemporary: ArchiveIfAiTemporary } }
-		>;
-	};
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
-};
-
-function createCheckpointService(): ServiceInternals {
-	// Bypass the constructor — we only exercise the three pending-reentry helpers
-	// and their direct dependencies. Everything else (scheduler, event bus, etc.)
-	// is out of scope for this unit.
-	const service = Object.create(InstanceAiService.prototype) as unknown as ServiceInternals;
-
-	service.pendingCheckpointReentries = new Map();
-	service.reenterCheckpointById = jest.fn(
-		async (_user: User, _threadId: string, _checkpointTaskId: string, _mgid?: string) => true,
-	);
-	service.backgroundTasks = {
-		getRunningTasksByParentCheckpoint: jest.fn(() => []),
-	};
-	service.runState = {
-		getActiveRunId: jest.fn(() => undefined),
-		hasSuspendedRun: jest.fn(() => false),
-	};
-	service.logger = {
-		debug: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-	};
-
-	return service;
-}
-
-function createTemporaryCleanupService({
-	runningTaskCount = 0,
-	markedWorkflows = [],
-	archivedWorkflowIds = new Set<string>(),
-}: {
-	runningTaskCount?: number;
-	markedWorkflows?: MarkedWorkflow[];
-	archivedWorkflowIds?: Set<string>;
-} = {}): {
-	service: TemporaryCleanupService;
-	archiveIfAiTemporary: ArchiveIfAiTemporary;
-} {
-	const service = Object.create(InstanceAiService.prototype) as unknown as TemporaryCleanupService;
-	const runningTasks: RunningTask[] = Array.from({ length: runningTaskCount }, (_value, index) => ({
-		taskId: `task-${index}`,
-	}));
-	const archiveIfAiTemporary: ArchiveIfAiTemporary = jest.fn(async (workflowId: string) =>
-		archivedWorkflowIds.has(workflowId),
-	);
-
-	service.backgroundTasks = {
-		getRunningTasks: jest.fn((_threadId: string) => runningTasks),
-	};
-	service.aiBuilderTemporaryWorkflowRepository = {
-		findByThread: jest.fn(async (_threadId: string) => markedWorkflows),
-	};
-	service.adapterService = {
-		createContext: jest.fn((_user: User, _options: { threadId: string }) => ({
-			workflowService: { archiveIfAiTemporary },
-		})),
-	};
-	service.logger = {
-		debug: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-	};
-
-	return { service, archiveIfAiTemporary };
-}
-
-const fakeUser = { id: 'user-1' } as User;
-
-type TerminalOutcomeServiceInternals = {
-	replayUndeliveredTerminalOutcomes: (
-		threadId: string,
-		options?: { delivery?: 'snapshot' | 'event' },
-	) => Promise<void>;
-	createTerminalOutcomeStorage: jest.Mock;
-	dbSnapshotStorage: {
-		getLatest: jest.Mock;
-		save: jest.Mock;
-		updateLast: jest.Mock;
-	};
-	eventBus: {
-		getEventsForRun: jest.Mock;
-		publish: jest.Mock;
-	};
-	telemetry: { track: jest.Mock };
-	logger: { warn: jest.Mock };
-	pendingTerminalOutcomes: Map<string, TerminalOutcome>;
-};
-
-function createTerminalOutcomeService(
-	outcomes: TerminalOutcome[],
-	snapshotTree?: InstanceAiAgentNode,
-): TerminalOutcomeServiceInternals {
-	const storage = {
-		getUndelivered: jest.fn(async () => outcomes),
-		markDelivered: jest.fn(async () => {}),
-	};
-	const service = Object.create(InstanceAiService.prototype) as TerminalOutcomeServiceInternals;
-	service.createTerminalOutcomeStorage = jest.fn(() => storage);
-	service.dbSnapshotStorage = {
-		getLatest: jest.fn(async () =>
-			snapshotTree
-				? {
-						tree: snapshotTree,
-						runId: 'run-1',
-						messageGroupId: 'group-1',
-						runIds: ['run-1'],
-					}
-				: undefined,
-		),
-		save: jest.fn(async () => {}),
-		updateLast: jest.fn(async () => {}),
-	};
-	service.eventBus = {
-		getEventsForRun: jest.fn(() => []),
-		publish: jest.fn(),
-	};
-	service.telemetry = { track: jest.fn() };
-	service.logger = { warn: jest.fn() };
-	service.pendingTerminalOutcomes = new Map();
-	return service;
-}
-
 type TerminalGuardOrderServiceInternals = {
 	evaluateTerminalResponse: (
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		options?: { messageGroupId?: string; errorMessage?: string },
-	) => { action: string; reason: string } | undefined;
+	) => TerminalResponseDecision | undefined;
 	evaluateWaitingResponse: (
 		threadId: string,
 		runId: string,
 		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
 		options?: { messageGroupId?: string },
-	) => { reason: string } | undefined;
+	) => TerminalResponseDecision | undefined;
 	finishInvalidConfirmationRun: (args: {
 		threadId: string;
 		runId: string;
 		abortController: AbortController;
 		snapshotStorage: unknown;
-	}) => Promise<{ status: string; reason?: string }>;
+	}) => Promise<MessageTraceFinalization>;
 	publishRunFinish: (
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
+		reason?: string,
+		archivedWorkflowIds?: string[],
 	) => void;
 	runState: {
 		getRunIdsForMessageGroup: jest.Mock;
@@ -535,7 +210,9 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
-	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
+	traceService: {
+		getMessageGroupId: jest.Mock;
+	};
 	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
@@ -557,6 +234,7 @@ type TerminalGuardOrderServiceInternals = {
 			snapshotStorage: unknown;
 		},
 	) => Promise<void>;
+	runExecutionService: InstanceAiRunExecutionService;
 };
 
 type SnapshotServiceInternals = {
@@ -579,7 +257,9 @@ type SnapshotServiceInternals = {
 		getEventsForRun: jest.Mock;
 		getEventsForRuns: jest.Mock;
 	};
-	traceContextsByRunId: Map<string, { tracing?: { rootRun: { id: string; traceId: string } } }>;
+	traceService: {
+		getTraceContext: jest.Mock;
+	};
 	logger: { warn: jest.Mock };
 };
 
@@ -604,9 +284,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
-	service.traceContextsByRunId = new Map([
-		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
-	]);
+	service.traceService = { getMessageGroupId: jest.fn(() => 'group-1') };
 	service.threadPushRef = new Map();
 	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
@@ -614,6 +292,72 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
+	service.runExecutionService = new InstanceAiRunExecutionService({
+		instanceAiConfig: {} as never,
+		defaultTimeZone: 'UTC',
+		oauth2CallbackUrl: 'https://n8n.test/rest/oauth2-credential/callback',
+		webhookBaseUrl: 'https://n8n.test/webhook',
+		formBaseUrl: 'https://n8n.test/form',
+		adapterService: {} as never,
+		eventBus: service.eventBus as never,
+		settingsService: {} as never,
+		compositeStore: {} as never,
+		compactionService: {} as never,
+		aiService: {} as never,
+		dbSnapshotStorage: {} as never,
+		dbIterationLogStorage: {} as never,
+		sourceControlPreferencesService: {} as never,
+		telemetry: service.telemetry,
+		logger: service.logger as never,
+		mcpClientManager: {} as never,
+		runState: service.runState as never,
+		backgroundTasks: {} as never,
+		gatewayRegistry: {} as never,
+		domainAccessTrackersByThread: new Map(),
+		threadPushRef: service.threadPushRef,
+		liveness: {} as never,
+		sandboxService: {} as never,
+		traceService: service.traceService as never,
+		createMemoryConfig: () => ({}) as never,
+		ensureThreadExists: async () => {},
+		resolveProxyModel: async () => ({}) as never,
+		resolveAgentModelConfig: async () => ({}) as never,
+		getOrCreateWorkspace: async () => undefined,
+		createBuilderFactory: async () => undefined,
+		cancelBackgroundTask: () => {},
+		spawnBackgroundTask: () => ({ status: 'limit-reached' }),
+		sendCorrectionToTask: () => 'task-not-found',
+		getCheckpointAllowedWorkflowIds: async () => new Set(),
+		evaluateTerminalResponse: (threadId, runId, status, options) =>
+			service.evaluateTerminalResponse(threadId, runId, status, options),
+		evaluateWaitingResponse: (threadId, runId, confirmationEvent, options) =>
+			service.evaluateWaitingResponse(threadId, runId, confirmationEvent, options),
+		finishInvalidConfirmationRun: async (args) => await service.finishInvalidConfirmationRun(args),
+		configureTraceReplayMode: async () => {},
+		storeTraceContext: () => {},
+		finalizeRunTracing: async (...args) => {
+			await service.finalizeRunTracing(...args);
+		},
+		maybeFinalizeRunTraceRoot: async (...args) => {
+			await service.maybeFinalizeRunTraceRoot(...args);
+		},
+		reapAiTemporaryFromRun: async (...args) => await service.reapAiTemporaryFromRun(...args),
+		finalizeRun: async () => {},
+		publishRunFinish: (threadId, runId, status, reason, archivedWorkflowIds) =>
+			service.publishRunFinish(threadId, runId, status, reason, archivedWorkflowIds),
+		saveAgentTreeSnapshot: async (...args) => {
+			await service.saveAgentTreeSnapshot(...args);
+		},
+		countCreditsIfFirst: async () => {},
+		cleanupMastraSnapshots: async () => {},
+		schedulePlannedTasks: async (...args) => {
+			await service.schedulePlannedTasks(...args);
+		},
+		drainPendingCheckpointReentries: async (...args) => {
+			await service.drainPendingCheckpointReentries(...args);
+		},
+		finalizeCheckpointFollowUp: async () => {},
+	});
 	return service;
 }
 
@@ -627,25 +371,9 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: jest.fn(() => []),
 		getEventsForRuns: jest.fn(() => []),
 	};
-	service.traceContextsByRunId = new Map();
+	service.traceService = { getTraceContext: jest.fn(() => undefined) };
 	service.logger = { warn: jest.fn() };
 	return service;
-}
-
-function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
-	return {
-		id: 'group-1:task-1:completed',
-		threadId: 'thread-a',
-		runId: 'run-1',
-		messageGroupId: 'group-1',
-		correlationId: 'message-1',
-		taskId: 'task-1',
-		agentId: 'agent-builder',
-		status: 'completed',
-		userFacingMessage: 'The background workflow-builder task finished.',
-		createdAt: '2026-05-01T00:00:00.000Z',
-		...overrides,
-	};
 }
 
 function makeAgentTree(): InstanceAiAgentNode {
@@ -660,179 +388,6 @@ function makeAgentTree(): InstanceAiAgentNode {
 		timeline: [{ type: 'text', content: 'Initial response' }],
 	};
 }
-
-describe('InstanceAiService — background task auto-follow-up', () => {
-	it('starts an internal follow-up when the last direct background task settles normally', async () => {
-		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
-
-		const result = service.spawnBackgroundTask(
-			'run-1',
-			{
-				taskId: 'task-1',
-				threadId: 'thread-a',
-				agentId: 'agent-builder',
-				role: 'workflow-builder',
-				run: async () => 'done',
-			},
-			{},
-			'group-1',
-		);
-		await getSpawnOptions().onSettled?.(task);
-
-		expect(result).toEqual({ status: 'started', taskId: 'task-1', agentId: 'agent-builder' });
-		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
-			fakeUser,
-			'thread-a',
-			expect.stringContaining('<background-task-completed>'),
-			false,
-			'group-1',
-		);
-	});
-
-	it('skips internal follow-up when the active run already timed out', async () => {
-		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService({
-			timedOutThread: true,
-		});
-
-		service.spawnBackgroundTask(
-			'run-1',
-			{
-				taskId: 'task-1',
-				threadId: 'thread-a',
-				agentId: 'agent-builder',
-				role: 'workflow-builder',
-				run: async () => 'done',
-			},
-			{},
-			'group-1',
-		);
-		await getSpawnOptions().onSettled?.(task);
-
-		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
-		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith(
-			'thread-a',
-			'run-1',
-			{},
-			true,
-			'group-1',
-		);
-	});
-
-	it('clears the active-timeout guard when the user starts a new run', () => {
-		const service = createStartRunService();
-
-		service.startRun(fakeUser, 'thread-a', 'try again');
-
-		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
-		expect(service.executeRun).toHaveBeenCalled();
-	});
-});
-
-describe('InstanceAiService — pending checkpoint re-entry', () => {
-	describe('queuePendingCheckpointReentry', () => {
-		it('records a marker keyed by threadId + checkpointTaskId', () => {
-			const service = createCheckpointService();
-
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-
-			expect(service.pendingCheckpointReentries.get('thread-a')).toEqual(new Set(['cp-1']));
-		});
-
-		it('deduplicates markers for the same (thread, checkpoint) pair', () => {
-			const service = createCheckpointService();
-
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-
-			expect(service.pendingCheckpointReentries.get('thread-a')?.size).toBe(1);
-		});
-
-		it('keeps markers for different threads separate', () => {
-			const service = createCheckpointService();
-
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.queuePendingCheckpointReentry('thread-b', 'cp-1');
-
-			expect(service.pendingCheckpointReentries.get('thread-a')).toEqual(new Set(['cp-1']));
-			expect(service.pendingCheckpointReentries.get('thread-b')).toEqual(new Set(['cp-1']));
-		});
-	});
-
-	describe('drainPendingCheckpointReentries', () => {
-		it('fires re-entry for each queued marker when the thread is idle', async () => {
-			const service = createCheckpointService();
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.queuePendingCheckpointReentry('thread-a', 'cp-2');
-
-			await service.drainPendingCheckpointReentries(fakeUser, 'thread-a');
-
-			expect(service.reenterCheckpointById).toHaveBeenCalledTimes(2);
-			expect(service.reenterCheckpointById).toHaveBeenCalledWith(fakeUser, 'thread-a', 'cp-1');
-			expect(service.reenterCheckpointById).toHaveBeenCalledWith(fakeUser, 'thread-a', 'cp-2');
-			expect(service.pendingCheckpointReentries.get('thread-a')).toBeUndefined();
-		});
-
-		it('stops draining if a new run starts mid-drain', async () => {
-			const service = createCheckpointService();
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.queuePendingCheckpointReentry('thread-a', 'cp-2');
-
-			// After the first re-entry fires, simulate a new active run.
-			let calls = 0;
-			service.reenterCheckpointById.mockImplementation(async () => {
-				calls += 1;
-				if (calls === 1) {
-					service.runState.getActiveRunId.mockReturnValue('run-new');
-				}
-				return true;
-			});
-
-			await service.drainPendingCheckpointReentries(fakeUser, 'thread-a');
-
-			// First marker drained; second should remain queued for the next run's cleanup.
-			expect(service.reenterCheckpointById).toHaveBeenCalledTimes(1);
-			expect(service.pendingCheckpointReentries.get('thread-a')).toEqual(new Set(['cp-2']));
-		});
-
-		it('skips a marker whose parent-tagged siblings are still running', async () => {
-			const service = createCheckpointService();
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.queuePendingCheckpointReentry('thread-a', 'cp-2');
-
-			// cp-1 has a sibling still in flight, cp-2 is clear.
-			service.backgroundTasks.getRunningTasksByParentCheckpoint.mockImplementation(
-				(_threadId: string, cp: string) => (cp === 'cp-1' ? [{ taskId: 'sibling-running' }] : []),
-			);
-
-			await service.drainPendingCheckpointReentries(fakeUser, 'thread-a');
-
-			expect(service.reenterCheckpointById).toHaveBeenCalledTimes(1);
-			expect(service.reenterCheckpointById).toHaveBeenCalledWith(fakeUser, 'thread-a', 'cp-2');
-			// cp-1 stays queued — the sibling's own settlement will drive the next drain.
-			expect(service.pendingCheckpointReentries.get('thread-a')).toEqual(new Set(['cp-1']));
-		});
-
-		it('returns early when a suspended run is present', async () => {
-			const service = createCheckpointService();
-			service.queuePendingCheckpointReentry('thread-a', 'cp-1');
-			service.runState.hasSuspendedRun.mockReturnValue(true);
-
-			await service.drainPendingCheckpointReentries(fakeUser, 'thread-a');
-
-			expect(service.reenterCheckpointById).not.toHaveBeenCalled();
-			expect(service.pendingCheckpointReentries.get('thread-a')).toEqual(new Set(['cp-1']));
-		});
-
-		it('is a no-op when no markers are queued', async () => {
-			const service = createCheckpointService();
-
-			await service.drainPendingCheckpointReentries(fakeUser, 'thread-nonexistent');
-
-			expect(service.reenterCheckpointById).not.toHaveBeenCalled();
-		});
-	});
-});
 
 type RevalidationServiceInternals = {
 	revalidateActiveUser: (userId: string) => Promise<User | null>;
@@ -857,6 +412,17 @@ function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
 		...overrides,
 	} as unknown as User;
 }
+
+describe('InstanceAiService — startRun', () => {
+	it('clears the active-timeout guard when the user starts a new run', () => {
+		const service = createStartRunService();
+
+		service.startRun(fakeUser, 'thread-a', 'try again');
+
+		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
+		expect(service.executeRun).toHaveBeenCalled();
+	});
+});
 
 describe('InstanceAiService — revalidateActiveUser', () => {
 	it('returns the user when active and scoped for AI Assistant', async () => {
@@ -1011,125 +577,6 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		);
 		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
-	});
-});
-
-describe('InstanceAiService — terminal outcome replay', () => {
-	it('replays undelivered background outcomes into the persisted agent tree', async () => {
-		const outcome = makeTerminalOutcome();
-		const service = createTerminalOutcomeService([outcome], makeAgentTree());
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(service.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
-		const updatedTree = service.dbSnapshotStorage.updateLast.mock
-			.calls[0][1] as InstanceAiAgentNode;
-		expect(updatedTree.textContent).toContain(outcome.userFacingMessage);
-		expect(updatedTree.timeline).toContainEqual({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: `background-outcome:${outcome.id}`,
-		});
-		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-		expect(service.eventBus.publish).not.toHaveBeenCalled();
-	});
-
-	it('publishes recovered background outcomes when replaying for SSE delivery', async () => {
-		const outcome = makeTerminalOutcome();
-		const service = createTerminalOutcomeService([outcome], makeAgentTree());
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
-
-		expect(service.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
-		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
-			runId: outcome.runId,
-			agentId: 'agent-001',
-			responseId: `background-outcome:${outcome.id}`,
-			payload: { text: outcome.userFacingMessage },
-		});
-		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-	});
-
-	it('deduplicates replay by response id only', async () => {
-		const outcome = makeTerminalOutcome({ id: 'group-1:task-2:completed' });
-		const tree = makeAgentTree();
-		tree.textContent = `${tree.textContent}\n\n${outcome.userFacingMessage}`;
-		tree.timeline.push({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: 'background-outcome:different-id',
-		});
-		const service = createTerminalOutcomeService([outcome], tree);
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		const updatedTree = service.dbSnapshotStorage.updateLast.mock
-			.calls[0][1] as InstanceAiAgentNode;
-		expect(
-			updatedTree.timeline.filter(
-				(entry) => entry.type === 'text' && entry.content === outcome.userFacingMessage,
-			),
-		).toHaveLength(2);
-		expect(updatedTree.timeline).toContainEqual({
-			type: 'text',
-			content: outcome.userFacingMessage,
-			responseId: `background-outcome:${outcome.id}`,
-		});
-	});
-
-	it('creates a snapshot when replay has no prior agent tree', async () => {
-		const outcome = makeTerminalOutcome({ status: 'failed' });
-		const service = createTerminalOutcomeService([outcome]);
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(service.dbSnapshotStorage.save).toHaveBeenCalledTimes(1);
-		const savedTree = service.dbSnapshotStorage.save.mock.calls[0][1] as InstanceAiAgentNode;
-		expect(savedTree.status).toBe('error');
-		expect(savedTree.textContent).toBe(outcome.userFacingMessage);
-		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
-			'thread-a',
-			outcome.id,
-			expect.any(String),
-		);
-	});
-
-	it('publishes the deterministic line when snapshot replay fails', async () => {
-		const outcome = makeTerminalOutcome();
-		const service = createTerminalOutcomeService([outcome], makeAgentTree());
-		service.dbSnapshotStorage.updateLast.mockRejectedValue(new Error('storage unavailable'));
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
-
-		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
-			runId: outcome.runId,
-			agentId: 'agent-001',
-			responseId: `background-outcome:${outcome.id}`,
-			payload: { text: outcome.userFacingMessage },
-		});
-		expect(service.createTerminalOutcomeStorage().markDelivered).not.toHaveBeenCalled();
-	});
-
-	it('checks persisted outcomes on repeated replay calls', async () => {
-		const service = createTerminalOutcomeService([]);
-		const storage = service.createTerminalOutcomeStorage();
-		service.createTerminalOutcomeStorage.mockClear();
-
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
-
-		expect(service.createTerminalOutcomeStorage).toHaveBeenCalledTimes(2);
-		expect(storage.getUndelivered).toHaveBeenCalledTimes(2);
 	});
 });
 
@@ -1292,55 +739,13 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
-	});
-});
-
-describe('InstanceAiService — AI temporary workflow cleanup', () => {
-	it('defers cleanup while background tasks are running', async () => {
-		const { service, archiveIfAiTemporary } = createTemporaryCleanupService({
-			runningTaskCount: 1,
-			markedWorkflows: [{ workflowId: 'wf-marked' }],
-			archivedWorkflowIds: new Set(['wf-marked', 'wf-created']),
-		});
-
-		await expect(
-			service.reapAiTemporaryFromRun('thread-a', fakeUser, new Set(['wf-created'])),
-		).resolves.toEqual([]);
-
-		expect(service.backgroundTasks.getRunningTasks).toHaveBeenCalledWith('thread-a');
-		expect(service.aiBuilderTemporaryWorkflowRepository.findByThread).not.toHaveBeenCalled();
-		expect(service.adapterService.createContext).not.toHaveBeenCalled();
-		expect(archiveIfAiTemporary).not.toHaveBeenCalled();
-		expect(service.logger.debug).toHaveBeenCalledWith(
-			'Deferring AI-builder temporary workflow cleanup until tasks settle',
-			{
-				threadId: 'thread-a',
-				runningTaskCount: 1,
-			},
-		);
-	});
-
-	it('archives marked temporary workflows after background tasks settle', async () => {
-		const { service, archiveIfAiTemporary } = createTemporaryCleanupService({
-			markedWorkflows: [{ workflowId: 'wf-marked' }],
-			archivedWorkflowIds: new Set(['wf-marked', 'wf-created']),
-		});
-
-		await expect(
-			service.reapAiTemporaryFromRun('thread-a', fakeUser, new Set(['wf-created'])),
-		).resolves.toEqual(['wf-marked', 'wf-created']);
-
-		expect(service.backgroundTasks.getRunningTasks).toHaveBeenCalledWith('thread-a');
-		expect(service.aiBuilderTemporaryWorkflowRepository.findByThread).toHaveBeenCalledWith(
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith(
 			'thread-a',
+			'run-1',
+			{},
+			undefined,
+			undefined,
 		);
-		expect(service.adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
-			threadId: 'thread-a',
-		});
-		expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
-		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
-		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 	});
 });
 
