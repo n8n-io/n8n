@@ -180,10 +180,10 @@ export async function executeChain({
 
 	let chain: Runnable<{ query: string }>;
 	if (version >= 1.9) {
-		// use getAgentStepsParser to have more robust output parsing
+		// Use outputParser directly
 		chain = promptWithInstructions
 			.pipe(model)
-			.pipe(getAgentStepsParser(outputParser))
+			.pipe(outputParser)
 			.withConfig(getTracingConfig(context));
 	} else {
 		chain = promptWithInstructions

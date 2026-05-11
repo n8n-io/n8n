@@ -497,7 +497,7 @@ describe('chainExecutor', () => {
 			expect(pipeOutputParserMock).toHaveBeenCalledWith(expect.any(JsonOutputParser));
 		});
 
-		it('should use getAgentStepsParser for version 1.9+ when output parser is provided', async () => {
+		it('should use direct output parser for version 1.9+ when output parser is provided', async () => {
 			mockContext.getNode = vi.fn().mockReturnValue({
 				typeVersion: 1.9,
 			});
@@ -513,18 +513,15 @@ describe('chainExecutor', () => {
 				partialVariables: { formatInstructions: 'Format as JSON' },
 			});
 
-			const mockAgentStepsParser = vi.fn().mockResolvedValue({ result: 'parsed' });
-			(promptUtils.getAgentStepsParser as Mock).mockReturnValue(mockAgentStepsParser);
-
 			const mockChain = {
 				invoke: vi.fn().mockResolvedValue({ result: 'parsed' }),
 			};
 			const withConfigMock = vi.fn().mockReturnValue(mockChain);
-			const pipeAgentStepsParserMock = vi.fn().mockReturnValue({
+			const pipeOutputParserMock = vi.fn().mockReturnValue({
 				withConfig: withConfigMock,
 			});
 			const pipeMock = vi.fn().mockReturnValue({
-				pipe: pipeAgentStepsParserMock,
+				pipe: pipeOutputParserMock,
 			});
 
 			mockPromptTemplate.pipe = pipeMock;
@@ -540,9 +537,9 @@ describe('chainExecutor', () => {
 				outputParser: mockOutputParser,
 			});
 
-			expect(promptUtils.getAgentStepsParser).toHaveBeenCalledWith(mockOutputParser);
+			expect(promptUtils.getAgentStepsParser).not.toHaveBeenCalled();
 			expect(pipeMock).toHaveBeenCalledWith(fakeLLM);
-			expect(pipeAgentStepsParserMock).toHaveBeenCalledWith(mockAgentStepsParser);
+			expect(pipeOutputParserMock).toHaveBeenCalledWith(mockOutputParser);
 		});
 
 		it('should use direct output parser for versions < 1.9 when output parser is provided', async () => {
