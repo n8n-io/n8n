@@ -109,7 +109,6 @@ describe('ExecutionRecorder', () => {
 					output: { success: true },
 				},
 			]);
-			expect(record.timeline.some((e) => e.type === 'working-memory')).toBe(false);
 			expect(record.timeline.map((e) => e.type)).toEqual(['text', 'tool-call']);
 		});
 

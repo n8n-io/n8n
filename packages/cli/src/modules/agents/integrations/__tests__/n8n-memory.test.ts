@@ -173,9 +173,9 @@ describe('N8nMemory', () => {
 			const createdAt = new Date('2026-01-01T00:00:02.000Z');
 			const entity = makeMessageEntity('m2', createdAt, 'middle');
 			entity.content = {
-				...(entity.content as Record<string, unknown>),
+				...entity.content,
 				createdAt: createdAt.toISOString(),
-			} as AgentMessageEntity['content'];
+			};
 			messageRepository.find.mockResolvedValue([entity]);
 
 			const [result] = await memory.getMessages('thread-1');
@@ -230,9 +230,9 @@ describe('N8nMemory', () => {
 			const createdAt = new Date('2026-01-01T00:00:02.000Z');
 			const entity = makeMessageEntity('m2', createdAt, 'middle');
 			entity.content = {
-				...(entity.content as Record<string, unknown>),
+				...entity.content,
 				createdAt: createdAt.toISOString(),
-			} as AgentMessageEntity['content'];
+			};
 			messageRepository.find.mockResolvedValue([entity]);
 
 			const [result] = await memory.getMessagesForScope('thread', 'thread-1');

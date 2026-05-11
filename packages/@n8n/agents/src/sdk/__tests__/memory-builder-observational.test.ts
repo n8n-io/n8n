@@ -223,12 +223,12 @@ describe('Memory builder — observational memory', () => {
 					connectionParams: null,
 				}),
 			} as unknown as BuiltMemory;
-			const config: MemoryConfig = {
+			const config = {
 				memory: minimalBackend,
 				lastMessages: 10,
 				workingMemory: { template: '# Notes', structured: false, scope: 'thread' },
 				observationalMemory: { observe },
-			};
+			} as unknown as MemoryConfig;
 
 			expect(() =>
 				new Agent('a').model('openai/gpt-4o-mini').instructions('test').memory(config),
