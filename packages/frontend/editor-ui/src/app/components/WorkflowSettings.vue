@@ -49,7 +49,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
-import RedactionPermissionNotice from '@/app/components/RedactionPermissionNotice.vue';
+import RedactionLockedTooltip from '@/app/components/RedactionLockedTooltip.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -1215,10 +1215,10 @@ onBeforeUnmount(() => {
 							class="ignore-key-press-canvas"
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
-								<template #content>
-									<RedactionPermissionNotice @view-users="redactionMembersModalOpen = true" />
-								</template>
+							<RedactionLockedTooltip
+								:locked="isRedactionSettingLocked"
+								@view-users="redactionMembersModalOpen = true"
+							>
 								<N8nSelect
 									v-model="redactProductionData"
 									:disabled="
@@ -1241,7 +1241,7 @@ onBeforeUnmount(() => {
 									>
 									</N8nOption>
 								</N8nSelect>
-							</N8nTooltip>
+							</RedactionLockedTooltip>
 						</ElCol>
 					</ElRow>
 					<ElRow v-if="workflowHasDynamicCredentials" :class="$style['dynamic-credentials-hint']">
@@ -1284,10 +1284,10 @@ onBeforeUnmount(() => {
 							class="ignore-key-press-canvas"
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
-							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
-								<template #content>
-									<RedactionPermissionNotice @view-users="redactionMembersModalOpen = true" />
-								</template>
+							<RedactionLockedTooltip
+								:locked="isRedactionSettingLocked"
+								@view-users="redactionMembersModalOpen = true"
+							>
 								<N8nSelect
 									v-model="redactManualData"
 									:disabled="
@@ -1309,7 +1309,7 @@ onBeforeUnmount(() => {
 									>
 									</N8nOption>
 								</N8nSelect>
-							</N8nTooltip>
+							</RedactionLockedTooltip>
 						</ElCol>
 					</ElRow>
 				</template>
