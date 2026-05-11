@@ -12,7 +12,7 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and canEditAgent', () => {
-	it('child panels see disabled=true when canEditAgent is false even if not streaming', async () => {
+	it('child panels see disabled=true when canEditAgent is false', async () => {
 		const { default: AgentBuilderEditorColumn } = await import(
 			'../components/AgentBuilderEditorColumn.vue'
 		);
@@ -28,7 +28,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				appliedSkills: [],
 				connectedTriggers: [],
 				isBuildChatStreaming: false,
-				canEditAgent: false,
+				canEditAgent: false, // <<< Agent is read only
 				executionsDescription: '',
 			},
 			global: {
@@ -184,7 +184,7 @@ describe('AgentChatPanel — read-only build chat input', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 		expect(chatInput.props('disabled')).toBe(true);
 		expect(chatInput.props('canSubmit')).toBe(false);
-		expect(chatInput.props('placeholder')).toBe('agents.builder.readonly.tooltip');
+		expect(chatInput.props('placeholder')).toBe('agents.builder.readonly.placeholder');
 	});
 
 	it('does not disable ChatInputBase for endpoint=chat (test mode) regardless of canEditAgent', async () => {

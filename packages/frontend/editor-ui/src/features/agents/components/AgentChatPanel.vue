@@ -104,7 +104,7 @@ const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.ca
 
 const chatPlaceholder = computed(() =>
 	isBuilderReadOnly.value
-		? locale.baseText('agents.builder.readonly.tooltip')
+		? locale.baseText('agents.builder.readonly.placeholder')
 		: hasOpenInteractiveQuestion.value
 			? locale.baseText('agents.chat.answerQuestionPlaceholder')
 			: locale.baseText('agents.chat.input.placeholder'),
