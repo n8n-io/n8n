@@ -160,6 +160,7 @@ RULES:
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
    - For manual triggers: include the fields that downstream nodes reference
+   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
@@ -220,9 +221,12 @@ function buildUserPrompt(
 	return sections.join('\n');
 }
 
+const MAX_HINT_ATTEMPTS = 2;
+
 /**
- * Generate consistent mock hints for service nodes in a workflow.
- * One LLM call produces a global context, trigger data, and per-node hints.
+ * Generate consistent mock hints for service nodes in a workflow. One Sonnet
+ * call produces globalContext, triggerContent, and per-node hints — retried
+ * once if the LLM returns an empty triggerContent or any structural issue.
  */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
@@ -237,72 +241,78 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	if (nodeNames.length === 0) return emptyResult;
 
 	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const warnings: string[] = [];
 
-	try {
-		const agent = createEvalAgent('eval-hint-generator', {
-			instructions: SYSTEM_PROMPT,
-		});
+	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
+		let reason = '';
+		try {
+			const agent = createEvalAgent('eval-hint-generator', {
+				instructions: SYSTEM_PROMPT,
+			});
 
-		const result = await agent.generate(userPrompt, {
-			providerOptions: { anthropic: { maxTokens: 4096 } },
-		});
+			const result = await agent.generate(userPrompt, {
+				providerOptions: { anthropic: { maxTokens: 4096 } },
+			});
 
-		let text: string = extractText(result);
+			const text = extractText(result)
+				.replace(/^```(?:json)?\s*\n?/i, '')
+				.replace(/\n?\s*```\s*$/i, '')
+				.trim();
 
-		text = text
-			.replace(/^```(?:json)?\s*\n?/i, '')
-			.replace(/\n?\s*```\s*$/i, '')
-			.trim();
+			const parsed: Record<string, unknown> = jsonParse(text);
 
-		const parsed: Record<string, unknown> = jsonParse(text);
+			// globalContext may come back as a string or object — normalize to string
+			let globalContext = '';
+			if (typeof parsed.globalContext === 'string') {
+				globalContext = parsed.globalContext;
+			} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
+				globalContext = JSON.stringify(parsed.globalContext);
+			}
 
-		// globalContext may come back as a string or object — normalize to string
-		let globalContext = '';
-		if (typeof parsed.globalContext === 'string') {
-			globalContext = parsed.globalContext;
-		} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
-			globalContext = JSON.stringify(parsed.globalContext);
+			if (
+				typeof parsed.nodeHints !== 'object' ||
+				parsed.nodeHints === null ||
+				Array.isArray(parsed.nodeHints)
+			) {
+				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
+			} else {
+				const triggerContent =
+					typeof parsed.triggerContent === 'object' &&
+					parsed.triggerContent !== null &&
+					!Array.isArray(parsed.triggerContent)
+						? parsed.triggerContent
+						: {};
+				if (Object.keys(triggerContent).length === 0) {
+					reason = 'empty triggerContent';
+				} else {
+					// Coerce nodeHints values to strings — LLM may return objects instead of strings
+					const nodeHints: Record<string, string> = {};
+					for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
+						nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
+					}
+					return {
+						globalContext,
+						nodeHints,
+						triggerContent: triggerContent as Record<string, unknown>,
+						warnings,
+						bypassPinData: {},
+					};
+				}
+			}
+		} catch (error) {
+			reason = error instanceof Error ? error.message : String(error);
 		}
 
-		if (
-			typeof parsed.nodeHints !== 'object' ||
-			parsed.nodeHints === null ||
-			Array.isArray(parsed.nodeHints)
-		) {
-			const preview = text.slice(0, 300);
-			return {
-				...emptyResult,
-				warnings: [`Phase 1: LLM returned invalid structure. Raw: ${preview}`],
-			};
+		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		if (attempt < MAX_HINT_ATTEMPTS) {
+			Container.get(Logger).warn(
+				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
+			);
 		}
-
-		const warnings: string[] = [];
-		const triggerContent =
-			typeof parsed.triggerContent === 'object' &&
-			parsed.triggerContent !== null &&
-			!Array.isArray(parsed.triggerContent)
-				? parsed.triggerContent
-				: {};
-		if (Object.keys(triggerContent).length === 0) {
-			warnings.push('Phase 1: LLM returned empty triggerContent — trigger node will have no data');
-		}
-
-		// Coerce nodeHints values to strings — LLM may return objects instead of strings
-		const nodeHints: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
-			nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
-		}
-
-		return {
-			globalContext,
-			nodeHints,
-			triggerContent: triggerContent as Record<string, unknown>,
-			warnings,
-			bypassPinData: {},
-		};
-	} catch (error) {
-		const errorMsg = error instanceof Error ? error.message : String(error);
-		Container.get(Logger).error(`[EvalMock] Phase 1 hint generation failed: ${errorMsg}`);
-		return { ...emptyResult, warnings: [`Phase 1 error: ${errorMsg}`] };
 	}
+
+	Container.get(Logger).error(
+		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
+	);
+	return { ...emptyResult, warnings };
 }

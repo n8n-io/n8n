@@ -84,7 +84,7 @@ function onRetryMenuItemSelect(action: string): void {
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflowId, executionId: execution.id },
+				params: { workflowId: workflowId, executionId: execution.id },
 				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"

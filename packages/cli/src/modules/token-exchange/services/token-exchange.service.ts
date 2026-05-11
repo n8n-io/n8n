@@ -4,11 +4,10 @@ import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { JwtService } from '@/services/jwt.service';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
+import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
 import type {
 	ExternalTokenClaims,
 	ResolvedTrustedKey,
@@ -17,6 +16,7 @@ import type {
 import { ExternalTokenClaimsSchema } from '../token-exchange.schemas';
 import {
 	TOKEN_EXCHANGE_ISSUER,
+	TokenExchangeFailureReason,
 	type IssuedJwtPayload,
 	type IssuedTokenResult,
 } from '../token-exchange.types';
@@ -59,12 +59,18 @@ export class TokenExchangeService {
 	): Promise<{ claims: ExternalTokenClaims; resolvedKey: ResolvedTrustedKey }> {
 		const decoded = jwt.decode(subjectToken, { complete: true });
 		if (!decoded || typeof decoded === 'string') {
-			throw new BadRequestError('Invalid token format');
+			throw new TokenExchangeRequestError(
+				TokenExchangeFailureReason.InvalidFormat,
+				'Invalid token format',
+			);
 		}
 
 		const { kid } = decoded.header;
 		if (!kid) {
-			throw new BadRequestError('Token header missing kid');
+			throw new TokenExchangeRequestError(
+				TokenExchangeFailureReason.MissingKid,
+				'Token header missing kid',
+			);
 		}
 
 		const decodedPayload = decoded.payload;
@@ -73,12 +79,15 @@ export class TokenExchangeService {
 				? decodedPayload.iss
 				: undefined;
 		if (typeof iss !== 'string' || !iss) {
-			throw new BadRequestError('Token payload missing iss');
+			throw new TokenExchangeRequestError(
+				TokenExchangeFailureReason.MissingIss,
+				'Token payload missing iss',
+			);
 		}
 
 		const resolvedKey = await this.trustedKeyStore.getByKidAndIss(kid, iss);
 		if (!resolvedKey) {
-			throw new AuthError('Unknown key id');
+			throw new TokenExchangeAuthError(TokenExchangeFailureReason.UnknownKey, 'Unknown key id');
 		}
 
 		let payload: jwt.JwtPayload;
@@ -92,14 +101,20 @@ export class TokenExchangeService {
 				ignoreNotBefore: false,
 			});
 			if (typeof result === 'string' || !('iat' in result)) {
-				throw new AuthError('Unexpected token format');
+				throw new TokenExchangeAuthError(
+					TokenExchangeFailureReason.InvalidFormat,
+					'Unexpected token format',
+				);
 			}
 			payload = result;
 		} catch (error) {
-			if (error instanceof AuthError) throw error;
+			if (error instanceof TokenExchangeAuthError) throw error;
 			const message = error instanceof Error ? error.message : 'unknown error';
 			this.logger.warn('JWT verification failed', { error: message });
-			throw new AuthError('Token verification failed');
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.InvalidSignature,
+				'Token verification failed',
+			);
 		}
 
 		const claims = ExternalTokenClaimsSchema.parse(payload);
@@ -107,13 +122,19 @@ export class TokenExchangeService {
 		if (maxLifetimeSeconds !== undefined) {
 			const tokenLifetime = claims.exp - claims.iat;
 			if (tokenLifetime > maxLifetimeSeconds) {
-				throw new AuthError('Token lifetime exceeds maximum allowed');
+				throw new TokenExchangeAuthError(
+					TokenExchangeFailureReason.TokenTooLong,
+					'Token lifetime exceeds maximum allowed',
+				);
 			}
 		}
 
 		const consumed = await this.jtiStore.consume(claims.jti, new Date(claims.exp * 1000));
 		if (!consumed) {
-			throw new AuthError('Token has already been used');
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.TokenReplay,
+				'Token has already been used',
+			);
 		}
 
 		return { claims, resolvedKey };
@@ -161,7 +182,10 @@ export class TokenExchangeService {
 		);
 
 		if (exp <= now + MIN_REMAINING_LIFETIME_SECONDS) {
-			throw new AuthError('Subject token too close to expiry to issue a new token');
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.TokenNearExpiry,
+				'Subject token too close to expiry to issue a new token',
+			);
 		}
 
 		const resources = request.resource?.split(' ').filter(Boolean);

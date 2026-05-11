@@ -12,6 +12,7 @@ import { getConnectedTools } from '@utils/helpers';
 
 import { apiRequest } from '../../transport';
 import type { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces';
+import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -72,6 +73,15 @@ const properties: INodeProperties[] = [
 		],
 		default: 'qwen3.5-flash',
 		description: 'The model to use for generation',
+		displayOptions: {
+			show: { '@version': [1] },
+		},
+	},
+	{
+		...modelRLC('textModelSearch'),
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+		},
 	},
 	{
 		displayName: 'Messages',
@@ -246,20 +256,12 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-// All current dropdown models are multimodal. This list exists so that non-multimodal models
-// added later (e.g. via dynamic loading) are automatically routed to the text-generation endpoint.
-const MULTIMODAL_MODELS = [
-	'qwen3-max',
-	'qwen3-max-2026-01-23',
-	'qwen3.5-plus',
-	'qwen3.5-plus-2026-02-15',
-	'qwen3.5-397b-a17b',
-	'qwen3.5-flash',
-	'qwen3.5-flash-2026-02-23',
-	'qwen3.5-122b-a10b',
-	'qwen3.5-27b',
-	'qwen3.5-35b-a3b',
-];
+const TEXT_ONLY_PATTERNS = ['coder', 'math'];
+
+function isMultimodalModel(model: string): boolean {
+	const lower = model.toLowerCase();
+	return !TEXT_ONLY_PATTERNS.some((pattern) => lower.includes(pattern));
+}
 
 interface DashScopeToolCall {
 	id: string;
@@ -274,7 +276,11 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const model = this.getNodeParameter('modelId', itemIndex) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const model =
+		nodeVersion >= 1.1
+			? (this.getNodeParameter('modelId', itemIndex, '', { extractValue: true }) as string)
+			: (this.getNodeParameter('modelId', itemIndex) as string);
 	const messagesParam = this.getNodeParameter('messages', itemIndex) as {
 		messageValues: IMessage[];
 	};
@@ -282,7 +288,7 @@ export async function execute(
 	const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
 
-	const isMultimodal = MULTIMODAL_MODELS.includes(model);
+	const isMultimodal = isMultimodalModel(model);
 
 	const { tools, connectedTools } = await getTools.call(this);
 

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { type Request, type Response } from 'express';
@@ -7,7 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import type { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
+import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
@@ -15,18 +15,22 @@ import { OidcController } from '../oidc.controller.ee';
 import type { OidcService } from '../oidc.service.ee';
 
 const authService = mock<AuthService>();
+const eventService = mock<EventService>();
 const oidcService = mock<OidcService>();
 const urlService = mock<UrlService>();
 const globalConfig = mock<GlobalConfig>();
 const logger = mock<Logger>();
-const oidcSettingsLoader = mock<OidcInstanceSettingsLoader>();
+const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
+	ssoManagedByEnv: false,
+});
 const controller = new OidcController(
 	oidcService,
 	authService,
+	eventService,
 	urlService,
 	globalConfig,
 	logger,
-	oidcSettingsLoader,
+	instanceSettingsLoaderConfig,
 );
 
 const user = mock<User>({
@@ -82,6 +86,10 @@ describe('OidcController', () => {
 
 			// Verify that issueCookie was called with MFA flag set to true
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
+				user,
+				authenticationMethod: 'oidc',
+			});
 
 			// Verify redirect to home page
 			expect(res.redirect).toHaveBeenCalledWith('/');
@@ -255,6 +263,32 @@ describe('OidcController', () => {
 				secure: true,
 				maxAge: 15 * Time.minutes.toMilliseconds,
 			});
+		});
+	});
+
+	describe('OIDC env-managed write protection', () => {
+		const envManagedConfig = mock<InstanceSettingsLoaderConfig>({ ssoManagedByEnv: true });
+		const envManagedController = new OidcController(
+			oidcService,
+			authService,
+			eventService,
+			urlService,
+			globalConfig,
+			logger,
+			envManagedConfig,
+		);
+
+		test('saveConfiguration should reject writes when managed by env', async () => {
+			const req = mock<AuthenticatedRequest>();
+			const res = mock<Response>();
+
+			await expect(
+				envManagedController.saveConfiguration(req, res, {
+					clientId: 'id',
+					clientSecret: 'secret',
+					discoveryEndpoint: 'https://example.com',
+				} as any),
+			).rejects.toThrow('cannot be modified through the API');
 		});
 	});
 

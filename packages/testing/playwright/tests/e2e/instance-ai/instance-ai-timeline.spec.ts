@@ -15,6 +15,8 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact card test"',
 			);
 
+			await n8n.instanceAi.approveBuildPlan();
+
 			await n8n.instanceAi.waitForAssistantResponse(120_000);
 
 			// Artifact cards (N8nCard) should appear in the timeline after build

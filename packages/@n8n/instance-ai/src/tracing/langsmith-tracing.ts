@@ -104,6 +104,8 @@ interface CreateInstanceAiTraceContextOptions {
 	modelId?: unknown;
 	input: unknown;
 	metadata?: Record<string, unknown>;
+	n8nVersion?: string;
+	workflowSdkVersion?: string;
 	/** When set, traces are routed through the AI service proxy instead of directly to LangSmith. */
 	proxyConfig?: ServiceProxyConfig;
 }
@@ -432,6 +434,55 @@ function mergeRunTreeInputs(
  */
 export function releaseTraceClient(traceId: string): void {
 	traceClients.delete(traceId);
+}
+
+export interface SubmitLangsmithUserFeedbackOptions {
+	langsmithRunId: string;
+	langsmithTraceId: string;
+	key: string;
+	score?: number;
+	value?: string | number | boolean;
+	comment?: string;
+	feedbackId?: string;
+	sourceInfo?: Record<string, unknown>;
+	proxyConfig?: ServiceProxyConfig;
+}
+
+/**
+ * Submit a feedback record against a LangSmith run. Returns `false` if LangSmith
+ * tracing is disabled (no client available); otherwise returns `true` on success.
+ * Callers are responsible for deciding what to do with network errors — this
+ * helper surfaces them so the caller can log without branching on client setup.
+ */
+export async function submitLangsmithUserFeedback(
+	options: SubmitLangsmithUserFeedbackOptions,
+): Promise<boolean> {
+	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
+		return false;
+	}
+
+	const client = options.proxyConfig
+		? getOrCreateProxyClient(options.proxyConfig)
+		: getOrCreateDirectClient();
+
+	const call = async () => {
+		await client.createFeedback(options.langsmithRunId, options.key, {
+			score: options.score,
+			value: options.value,
+			comment: options.comment,
+			feedbackId: options.feedbackId,
+			sourceInfo: options.sourceInfo,
+			feedbackSourceType: 'api',
+		});
+	};
+
+	if (options.proxyConfig) {
+		const headers = await options.proxyConfig.getAuthHeaders();
+		await proxyHeaderStore.run(headers, call);
+	} else {
+		await call();
+	}
+	return true;
 }
 
 export function getTraceParentRun(): RunTree | undefined {
@@ -963,10 +1014,12 @@ function replayWrapTool(
 		resumeSchema: tool.resumeSchema,
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (input, context) => {
-			const event = traceIndex.next(agentRole, tool.id);
-			const remappedInput = idRemapper.remapInput(input);
+			const event = traceIndex.nextMatching(agentRole, tool.id);
+			const remappedInput: unknown = idRemapper.remapInput(input);
 			const realOutput = await tool.execute!(remappedInput, context);
-			idRemapper.learn(event.output, realOutput as Record<string, unknown>);
+			if (event) {
+				idRemapper.learn(event.output, realOutput as Record<string, unknown>);
+			}
 			return realOutput;
 		},
 		mastra: tool.mastra,
@@ -1000,7 +1053,12 @@ function pureReplayWrapTool(
 		resumeSchema: tool.resumeSchema,
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (_input, _context) => {
-			const event = traceIndex.next(agentRole, tool.id);
+			const event = traceIndex.nextMatching(agentRole, tool.id);
+			if (!event) {
+				throw new Error(
+					`No recorded output for pure-replay tool "${tool.id}" in role "${agentRole}"`,
+				);
+			}
 			return await Promise.resolve(idRemapper.remapOutput(event.output));
 		},
 		mastra: tool.mastra,
@@ -1255,6 +1313,10 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		user_id: options.userId,
 		...(options.modelId !== undefined
 			? { model_id: serializeModelIdForTrace(options.modelId) }
+			: {}),
+		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
+		...(options.workflowSdkVersion !== undefined
+			? { workflow_sdk_version: options.workflowSdkVersion }
 			: {}),
 		...options.metadata,
 	};

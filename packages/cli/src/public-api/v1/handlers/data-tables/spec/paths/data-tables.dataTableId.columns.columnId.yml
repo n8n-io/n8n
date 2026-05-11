@@ -1,0 +1,58 @@
+delete:
+  x-eov-operation-id: deleteDataTableColumn
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
+  tags:
+    - DataTable
+  summary: Delete a column
+  description: Remove a column from a data table. This will also delete all data in the column.
+  operationId: delete-data-table-column
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+    - $ref: '../schemas/parameters/columnId.yml'
+  responses:
+    '204':
+      description: Column deleted successfully
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []
+
+patch:
+  x-eov-operation-id: updateDataTableColumn
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
+  tags:
+    - DataTable
+  summary: Update a column
+  description: Rename and/or reorder a column in a data table.
+  operationId: update-data-table-column
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+    - $ref: '../schemas/parameters/columnId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/updateColumnRequest.yml'
+        example:
+          name: 'email'
+          index: 1
+  responses:
+    '200':
+      description: Column updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTableColumn.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
+  security:
+    - ApiKeyAuth: []

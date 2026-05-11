@@ -169,3 +169,30 @@ export interface WorkflowTestCaseResult {
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
 }
+
+// ---------------------------------------------------------------------------
+// Multi-run aggregation
+// ---------------------------------------------------------------------------
+
+export interface ScenarioAggregation {
+	scenario: TestScenario;
+	runs: ScenarioResult[];
+	passCount: number;
+	passRate: number;
+	/** probability at least 1 of k attempts passes */
+	passAtK: number[];
+	/** probability all k attempts pass */
+	passHatK: number[];
+}
+
+export interface TestCaseAggregation {
+	testCase: WorkflowTestCase;
+	runs: WorkflowTestCaseResult[];
+	buildSuccessCount: number;
+	scenarios: ScenarioAggregation[];
+}
+
+export interface MultiRunEvaluation {
+	totalRuns: number;
+	testCases: TestCaseAggregation[];
+}

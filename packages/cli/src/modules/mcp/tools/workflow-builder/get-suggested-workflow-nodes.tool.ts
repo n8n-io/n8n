@@ -4,10 +4,10 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
+import type { NodeCatalogService } from '@/node-catalog';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_SUGGESTED_NODES_TOOL } from './constants';
-import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const inputSchema = {
 	categories: z
@@ -29,13 +29,13 @@ const outputSchema = {
  */
 export const createGetSuggestedWorkflowNodesTool = (
 	user: User,
-	workflowBuilderToolsService: WorkflowBuilderToolsService,
+	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 	config: {
 		description:
-			'Get curated node recommendations for workflow technique categories. Returns recommended nodes with pattern hints and configuration guidance. Use after analyzing what kind of workflow to build.',
+			'Required workflow-planning step. Get curated node recommendations for workflow technique categories before searching for nodes or writing code. Returns recommended nodes with pattern hints and configuration guidance.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -54,7 +54,7 @@ export const createGetSuggestedWorkflowNodesTool = (
 		};
 
 		try {
-			const result = await workflowBuilderToolsService.getSuggestedNodes(categories);
+			const result = await nodeCatalogService.getSuggestedNodes(categories);
 
 			telemetryPayload.results = {
 				success: true,

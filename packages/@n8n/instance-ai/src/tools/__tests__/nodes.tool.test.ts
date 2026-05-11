@@ -101,6 +101,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 
 			expect(tool.description).toContain('node types');
+			expect(tool.description).not.toContain('targeted guides');
 		});
 	});
 
@@ -174,6 +175,72 @@ describe('nodes tool', () => {
 			expect(result).toEqual({
 				results: [],
 				error: 'Auth failed',
+			});
+		});
+	});
+
+	describe('type-definition action', () => {
+		it('should return a Zod-derived error when nodeTypes is missing', async () => {
+			// The discriminated union is flattened for Anthropic, so `nodeTypes`
+			// becomes optional at the top-level schema. The handler re-validates
+			// against the variant schema so missing fields return a structured
+			// error instead of crashing downstream on input.nodeTypes.map.
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const result = await tool.execute!({ action: 'type-definition' } as never, {} as never);
+
+			expect(result).toMatchObject({
+				definitions: [],
+				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
+		it('should return a Zod-derived error when nodeTypes is empty', async () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const result = await tool.execute!(
+				{ action: 'type-definition', nodeTypes: [] } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				definitions: [],
+				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
+		it('should surface node-level builder hints from type definitions', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: jest.fn(),
+					getDescription: jest.fn(),
+					listSearchable: jest.fn(),
+					exploreResources: jest.fn(),
+					getNodeTypeDefinition: jest.fn().mockResolvedValue({
+						content: 'export type IfNode = unknown;',
+						version: 'v23',
+						builderHint: 'Always include options, conditions, and combinator.',
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await tool.execute!(
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.if'] } as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: 'n8n-nodes-base.if',
+						version: 'v23',
+						content: 'export type IfNode = unknown;',
+						builderHint: 'Always include options, conditions, and combinator.',
+					},
+				],
 			});
 		});
 	});

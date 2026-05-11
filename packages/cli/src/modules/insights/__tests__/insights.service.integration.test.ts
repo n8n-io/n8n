@@ -85,22 +85,15 @@ describe('InsightsService (Integration)', () => {
 			shutdownSpy.mockRestore();
 		});
 
-		const setupMocks = (
-			instanceType: InstanceType,
-			isLeader: boolean = false,
-			isPruningEnabled: boolean = false,
-		) => {
+		const setupMocks = (instanceType: InstanceType, isLeader: boolean = false) => {
 			(instanceSettings as any).instanceType = instanceType;
 			Object.defineProperty(instanceSettings, 'isLeader', {
 				get: jest.fn(() => isLeader),
 			});
-			Object.defineProperty(pruningService, 'isPruningEnabled', {
-				get: jest.fn(() => isPruningEnabled),
-			});
 		};
 
 		test('starts flushing timer for main instance', async () => {
-			setupMocks('main', false, false);
+			setupMocks('main', false);
 
 			await insightsService.init();
 
@@ -109,18 +102,8 @@ describe('InsightsService (Integration)', () => {
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction and flushing timers for main leader instances', async () => {
-			setupMocks('main', true, false);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-		});
-
-		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', async () => {
-			setupMocks('main', true, true);
+		test('starts compaction, flushing and pruning timers for main leader instances', async () => {
+			setupMocks('main', true);
 
 			await insightsService.init();
 
@@ -130,7 +113,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('starts only collection flushing timer for webhook instance', async () => {
-			setupMocks('webhook', false, false);
+			setupMocks('webhook', false);
 
 			await insightsService.init();
 
@@ -140,7 +123,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('do no start any timers for non-main instances', async () => {
-			setupMocks('worker', false, false);
+			setupMocks('worker', false);
 
 			await insightsService.init();
 

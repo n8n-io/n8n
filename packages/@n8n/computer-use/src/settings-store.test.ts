@@ -24,7 +24,6 @@ function parseJson<T>(raw: string): T {
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
-	port: 7655,
 	allowedOrigins: [],
 	filesystem: { dir: process.cwd() },
 	computer: { shell: { timeout: 30_000 } },
@@ -87,6 +86,42 @@ describe('SettingsStore.create', () => {
 		await fs.writeFile(filePath, 'not-json', 'utf-8');
 		const store = await SettingsStore.create();
 		expect(store.getResourcePermissions('shell')).toEqual({ allow: [], deny: [] });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// SettingsStore.ensureInitialized
+// ---------------------------------------------------------------------------
+
+describe('SettingsStore.ensureInitialized', () => {
+	it('creates the settings file when absent', async () => {
+		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
+
+		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
+		const parsed = parseJson<Record<string, unknown>>(raw);
+
+		expect(parsed.permissions).toMatchObject({
+			filesystemRead: 'allow',
+			filesystemWrite: 'ask',
+			shell: 'deny',
+			computer: 'deny',
+			browser: 'ask',
+		});
+		expect(parsed.filesystemDir).toBe('');
+	});
+
+	it('does not overwrite an existing settings file', async () => {
+		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+		const dir = path.join(tmpDir, '.n8n-gateway');
+		const file = path.join(dir, 'settings.json');
+		await fs.mkdir(dir, { recursive: true });
+		const existing = JSON.stringify({ permissions: { shell: 'allow' }, filesystemDir: '/custom' });
+		await fs.writeFile(file, existing, 'utf-8');
+
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
+		const raw = await fs.readFile(file, 'utf-8');
+		expect(raw).toBe(existing);
 	});
 });
 

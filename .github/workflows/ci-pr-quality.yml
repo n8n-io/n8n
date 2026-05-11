@@ -1,6 +1,7 @@
 name: 'CI: PR Quality Checks'
 
 on:
+  merge_group:
   pull_request:
     types:
       - opened
@@ -48,6 +49,7 @@ jobs:
     # by checking the checkbox in the PR summary.
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to')
     runs-on: ubuntu-latest
@@ -76,6 +78,7 @@ jobs:
     # Allows for override via '/size-limit-override' comment
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to')
     runs-on: ubuntu-latest
@@ -97,3 +100,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/quality/check-pr-size.mjs
+
+  required-pr-quality-checks:
+    name: Required PR Quality Checks
+    needs: [check-ownership-checkbox, check-pr-size]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/actions/ci-filter
+          sparse-checkout-cone-mode: false
+      - name: Validate required checks
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: validate
+          job-results: ${{ toJSON(needs) }}
+

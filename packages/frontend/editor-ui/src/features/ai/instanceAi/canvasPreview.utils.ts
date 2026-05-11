@@ -92,6 +92,16 @@ export interface LatestExecution {
 /**
  * Walks an agent tree depth-first (most recent last) and returns the executionId
  * and workflowId from the latest completed run-workflow tool result.
+ *
+ * The workflowId preference order is:
+ *   1. The sibling build-workflow tool's result.workflowId (always the real
+ *      current-run ID, since build-workflow hits the live backend).
+ *   2. The run-workflow tool call's args.workflowId (falls back for flows that
+ *      run a pre-existing workflow without building it first).
+ *
+ * This ordering matters for trace-replay: the cached LLM's args.workflowId
+ * carries the ID from the original recording, but build-workflow's result
+ * always reflects the real workflow created during replay.
  */
 export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
@@ -108,10 +118,16 @@ export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution
 			typeof tc.result === 'object'
 		) {
 			const result = tc.result as Record<string, unknown>;
+			if (typeof result.executionId !== 'string') continue;
+
+			const buildResult = getLatestBuildResult(node);
 			const args = tc.args as Record<string, unknown> | undefined;
-			if (typeof result.executionId === 'string' && typeof args?.workflowId === 'string') {
-				return { executionId: result.executionId, workflowId: args.workflowId };
-			}
+			const workflowId =
+				buildResult?.workflowId ??
+				(typeof args?.workflowId === 'string' ? args.workflowId : undefined);
+			if (!workflowId) continue;
+
+			return { executionId: result.executionId, workflowId };
 		}
 	}
 	return undefined;

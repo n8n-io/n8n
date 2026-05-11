@@ -17,7 +17,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -88,13 +87,6 @@ const openAiNodeNoCreds: INodeUi = {
 	credentials: {},
 };
 
-const openAiNodeNoCreds2: INodeUi = {
-	...openAiNode,
-	id: '74b41295-a277-4cdf-8c46-6c3f85b335e9',
-	name: 'OpenAI no creds 2',
-	credentials: {},
-};
-
 const openAiApiCredentialType = {
 	name: 'openAiApi',
 	displayName: 'OpenAi',
@@ -152,7 +144,6 @@ describe('NodeCredentials', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let workflowDocumentStoreRef: ReturnType<
 		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
@@ -193,7 +184,6 @@ describe('NodeCredentials', () => {
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
 
 		projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
 		settingsStore.settings = {
@@ -264,6 +254,9 @@ describe('NodeCredentials', () => {
 			false,
 			undefined,
 			undefined,
+			httpNode.name,
+			httpNode,
+			{ hideAskAssistant: false },
 		);
 	});
 
@@ -297,6 +290,58 @@ describe('NodeCredentials', () => {
 
 		expect(screen.queryByText('OpenAi account')).not.toBeInTheDocument();
 		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();
+	});
+
+	it('should render the dropdown with saved credentials when node has a mismatched credentials object', async () => {
+		const anthropicApiCredentialType: ICredentialType = {
+			name: 'anthropicApi',
+			displayName: 'Anthropic',
+			documentationUrl: 'anthropic',
+			properties: [
+				{ displayName: 'API Key', name: 'apiKey', type: 'string', required: true, default: '' },
+			],
+		};
+
+		const mismatchedNode: INodeUi = {
+			...httpNode,
+			parameters: {
+				...httpNode.parameters,
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'anthropicApi',
+			},
+			credentials: { httpHeaderAuth: { id: 'header-auth-id', name: 'Header Auth' } },
+		};
+
+		credentialsStore.state.credentialTypes = {
+			...credentialsStore.state.credentialTypes,
+			anthropicApi: anthropicApiCredentialType,
+		};
+		credentialsStore.state.credentials = {
+			'anthropic-cred-id': createCredential({
+				id: 'anthropic-cred-id',
+				name: 'My Anthropic account',
+				type: 'anthropicApi',
+			}),
+		};
+
+		ndvStore.activeNode = mismatchedNode;
+
+		renderComponent(
+			{
+				props: {
+					node: mismatchedNode,
+					overrideCredType: 'anthropicApi',
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('node-credentials-select')).toBeInTheDocument();
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+		expect(screen.queryByText('My Anthropic account')).toBeInTheDocument();
 	});
 
 	it('should not ignored managed credentials in the dropdown if active node is not the HTTP node', async () => {
@@ -337,7 +382,7 @@ describe('NodeCredentials', () => {
 				c8vqdPpPClh4TgIO: createCredential(),
 			};
 
-			workflowsStore.allNodes = [openAiNodeNoCreds, openAiNodeNoCreds2];
+			const assignSpy = vi.spyOn(workflowDocumentStore, 'assignCredentialToMatchingNodes');
 
 			renderComponent(
 				{
@@ -348,7 +393,7 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
-			expect(workflowsStore.assignCredentialToMatchingNodes).not.toHaveBeenCalled();
+			expect(assignSpy).not.toHaveBeenCalled();
 		});
 
 		it('should call assignCredentialToMatchingNodes after selecting credentials', async () => {
@@ -364,7 +409,7 @@ describe('NodeCredentials', () => {
 				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
 			};
 
-			workflowsStore.allNodes = [openAiNodeWithCred, openAiNodeNoCreds2];
+			const assignSpy = vi.spyOn(workflowDocumentStore, 'assignCredentialToMatchingNodes');
 
 			renderComponent(
 				{
@@ -384,7 +429,7 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(openAiCreds!);
 
-			expect(workflowsStore.assignCredentialToMatchingNodes).toHaveBeenCalledWith({
+			expect(assignSpy).toHaveBeenCalledWith({
 				credentials: {
 					id: 'secondCred',
 					name: 'OpenAi account 2',
@@ -629,7 +674,7 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('setup-manually-link'));
 
-			// createNewCredential calls openNewCredential with (type, showAuthOptions, forceManualMode, projectId)
+			// createNewCredential calls openNewCredential with context for auth-option resolution
 			// "setup manually" passes forceManualMode=true
 			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
 				'slackOAuth2Api',
@@ -637,6 +682,13 @@ describe('NodeCredentials', () => {
 				true,
 				undefined,
 				undefined,
+				slackNode.name,
+				expect.objectContaining({
+					id: slackNode.id,
+					name: slackNode.name,
+					type: slackNode.type,
+				}),
+				{ hideAskAssistant: false },
 			);
 		});
 
@@ -902,6 +954,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isActionSupported: vi.fn(() => true),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -974,6 +1027,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchError: computed(() => null),
@@ -1001,6 +1055,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
+					isActionSupported: vi.fn(() => true),
 					balance: computed(() => undefined),
 					budget: computed(() => undefined),
 					fetchError: computed(() => null),

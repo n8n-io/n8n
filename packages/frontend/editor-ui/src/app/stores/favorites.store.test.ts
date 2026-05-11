@@ -9,6 +9,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
+const track = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
 vi.mock('@/app/api/favorites');
 
 const makeFavorite = (overrides: Partial<UserFavorite> = {}): UserFavorite => ({
@@ -140,6 +145,10 @@ describe('favorites.store', () => {
 				'workflow',
 			);
 			expect(store.favorites).toHaveLength(0);
+			expect(track).toHaveBeenCalledWith('User toggled favorite', {
+				action: 'removed',
+				resource_type: 'workflow',
+			});
 		});
 
 		it('should add a favorite and re-fetch when it is not favorited', async () => {
@@ -155,6 +164,10 @@ describe('favorites.store', () => {
 
 			expect(favoritesApi.addFavorite).toHaveBeenCalledWith(expect.anything(), 'wf-2', 'workflow');
 			expect(store.favorites).toEqual([newFavorite]);
+			expect(track).toHaveBeenCalledWith('User toggled favorite', {
+				action: 'added',
+				resource_type: 'workflow',
+			});
 		});
 
 		it('should not modify local state when addFavorite API throws', async () => {
@@ -166,6 +179,7 @@ describe('favorites.store', () => {
 
 			await expect(store.toggleFavorite('wf-2', 'workflow')).rejects.toThrow('API error');
 			expect(store.favorites).toHaveLength(0);
+			expect(track).not.toHaveBeenCalled();
 		});
 
 		it('should not remove from local state when removeFavorite API throws', async () => {
@@ -179,6 +193,7 @@ describe('favorites.store', () => {
 
 			await expect(store.toggleFavorite('wf-1', 'workflow')).rejects.toThrow('API error');
 			expect(store.favorites).toHaveLength(1);
+			expect(track).not.toHaveBeenCalled();
 		});
 	});
 
