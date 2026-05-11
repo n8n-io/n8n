@@ -77,7 +77,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('does nothing for the document store when the workflow is not the active one', async () => {
-		workflowsStore.workflow.id = 'other-workflow';
+		workflowsStore.setWorkflowId('other-workflow');
 
 		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
 
@@ -86,7 +86,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges settings and uses payload checksum for the active document', async () => {
-		workflowsStore.workflow.id = 'wf-current';
+		workflowsStore.setWorkflowId('wf-current');
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -106,7 +106,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('applies settings but skips checksum refresh when none is provided', async () => {
-		workflowsStore.workflow.id = 'wf-current';
+		workflowsStore.setWorkflowId('wf-current');
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
@@ -124,7 +124,7 @@ describe('workflowSettingsUpdated', () => {
 	});
 
 	it('merges multiple settings keys in one event', async () => {
-		workflowsStore.workflow.id = 'wf-current';
+		workflowsStore.setWorkflowId('wf-current');
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',

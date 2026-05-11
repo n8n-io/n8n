@@ -136,7 +136,7 @@ export class Webhook extends Node {
 				default: '',
 				placeholder: 'webhook',
 				builderHint: {
-					message: 'The webhook path that triggers this workflow',
+					propertyHint: 'The webhook path that triggers this workflow',
 					placeholderSupported: false,
 				},
 				description:

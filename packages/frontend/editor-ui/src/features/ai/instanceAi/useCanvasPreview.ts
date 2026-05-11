@@ -1,5 +1,4 @@
 import { computed, ref, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
@@ -32,28 +31,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 
-	// --- Preview state persistence ---
-	const pendingRestore = ref(true);
-
-	function currentThreadId(): string | null {
-		const id = route.params.threadId;
-		return typeof id === 'string' ? id : store.currentThreadId;
-	}
-
-	const debouncedSavePreviewState = useDebounceFn((tabId: string | undefined) => {
-		const threadId = currentThreadId();
-		if (!threadId) return;
-		// Coalesce undefined → null: JSON.stringify drops undefined keys, which
-		// would leave a stale activePreviewTab in backend metadata after close.
-		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId ?? null });
-	}, 500);
-
-	// Save activeTabId to thread metadata when it changes (skip during restore)
-	watch(activeTabId, (tabId) => {
-		if (pendingRestore.value) return;
-		void debouncedSavePreviewState(tabId);
-	});
-
 	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
@@ -70,21 +47,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		}
 
 		return result;
-	});
-
-	// Restore activeTabId from thread metadata when artifacts become available
-	watch(allArtifactTabs, (tabs) => {
-		if (!pendingRestore.value || tabs.length === 0) return;
-		pendingRestore.value = false;
-
-		const threadId = currentThreadId();
-		if (!threadId) return;
-
-		const metadata = store.getThreadMetadata(threadId);
-		const savedTabId = metadata?.activePreviewTab;
-		if (typeof savedTabId === 'string' && tabs.some((t) => t.id === savedTabId)) {
-			activeTabId.value = savedTabId;
-		}
 	});
 
 	// Derived preview state from active tab
@@ -106,15 +68,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	const dataTableRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
-
-	// Tracks whether the user sent a message in the current thread session.
-	// Used to distinguish live operations (should auto-open preview) from
-	// historical data being loaded (should not).
-	const userSentMessage = ref(false);
-
-	// Tracks whether the canvas was open before the most recent thread switch,
-	// so we can restore it when the new thread has a build result.
-	const wasCanvasOpenBeforeSwitch = ref(false);
 
 	// --- Actions ---
 
@@ -148,10 +101,6 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		return true;
 	}
 
-	function markUserSentMessage() {
-		userSentMessage.value = true;
-	}
-
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
@@ -164,8 +113,10 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		}
 	});
 
-	// --- Preserve canvas intent when switching threads ---
-
+	// --- Reset preview on thread switch ---
+	// Each thread is stateless for the preview panel: switching threads
+	// closes the panel. Past artifacts are reachable via their inline
+	// references in the message timeline.
 	watch(
 		() => route.params.threadId,
 		(threadId, oldThreadId) => {
@@ -175,10 +126,7 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 			// Skip if the thread ID hasn't actually changed
 			if (threadId === oldThreadId) return;
 
-			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
-			pendingRestore.value = true;
 			activeTabId.value = undefined;
-			userSentMessage.value = false;
 		},
 	);
 
@@ -199,38 +147,23 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
-	//   - Preview closed + live build/user message: auto-open to this workflow
-	//   - Preview open: switch to this workflow and refresh (workflowRefreshKey++)
-	//   - Thread switch with canvas open: restore canvas with new thread's workflow
-	//   - Thread switch with canvas closed: stay closed
+	//   - During hydration (loading past conversations from the server) → skip,
+	//     so re-entering an old thread doesn't pop the panel for past artifacts.
+	//   - Otherwise (live build / late run-sync delivery) → open or switch tab.
+	//
+	// `flush: 'sync'` is required: hydration runs `messages.value = […]` then
+	// clears `hydratingThreadId` in the same microtask. With the default `pre`
+	// flush the callback would fire AFTER that clear and skip the gate.
 	watch(
 		() => latestBuildResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
+			if (store.isHydratingThread) return;
 
-			const targetId = latestBuildResult.value.workflowId;
-
-			if (
-				!isPreviewVisible.value &&
-				!store.isStreaming &&
-				!userSentMessage.value &&
-				!wasCanvasOpenBeforeSwitch.value
-			) {
-				return;
-			}
-
-			// Note: previously we cleared workflowExecutions[targetId] here to
-			// drop "stale" prior-run state. We don't anymore — the build agent
-			// usually runs the workflow during build to verify it, and those
-			// push events are exactly what we want to surface on the canvas
-			// after the build completes. New executions overwrite the eventLog
-			// in useExecutionPushEvents when their executionId differs, so
-			// truly stale state can't leak across runs anyway.
-
-			wasCanvasOpenBeforeSwitch.value = false;
-			activeTabId.value = targetId;
+			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
@@ -279,22 +212,12 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		() => latestDataTableResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestDataTableResult.value) return;
+			if (store.isHydratingThread) return;
 
-			const targetId = latestDataTableResult.value.dataTableId;
-
-			if (
-				!isPreviewVisible.value &&
-				!store.isStreaming &&
-				!userSentMessage.value &&
-				!wasCanvasOpenBeforeSwitch.value
-			) {
-				return;
-			}
-
-			wasCanvasOpenBeforeSwitch.value = false;
-			activeTabId.value = targetId;
+			activeTabId.value = latestDataTableResult.value.dataTableId;
 			dataTableRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Close data table preview if the active table is deleted ---
@@ -325,12 +248,10 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		activeDataTableProjectId,
 		dataTableRefreshKey,
 		isPreviewVisible,
-		userSentMessage,
 		workflowRefreshKey,
 		selectTab,
 		closePreview,
 		openWorkflowPreview,
 		openDataTablePreview,
-		markUserSentMessage,
 	};
 }
