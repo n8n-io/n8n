@@ -259,12 +259,7 @@ const toolRows = computed(() =>
 	display: flex;
 	align-items: flex-start;
 	gap: var(--spacing--lg);
-	margin-bottom: var(--spacing--xs);
 	min-height: var(--height--lg);
-
-	&:last-child {
-		margin-bottom: 0;
-	}
 }
 
 .rowLabel {
@@ -280,6 +275,7 @@ const toolRows = computed(() =>
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+	margin-top: var(--spacing--5xs);
 }
 
 .disabled {

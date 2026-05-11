@@ -106,6 +106,8 @@ function onMemoryToggle(enabled: boolean) {
 	width: 100%;
 	height: 100%;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .header {

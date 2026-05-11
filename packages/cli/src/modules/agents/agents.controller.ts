@@ -671,6 +671,15 @@ export class AgentsController {
 			await this.agentRepository.save(agent);
 		}
 
+		// Notify peer mains so they connect the integration too — without this
+		// step inbound webhooks load-balanced to a follower would 404.
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			agentId,
+			type,
+			credentialId,
+			'connect',
+		);
+
 		return { status: 'connected' };
 	}
 
@@ -693,6 +702,13 @@ export class AgentsController {
 			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
 		);
 		await this.agentRepository.save(agent);
+
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			agentId,
+			type,
+			credentialId,
+			'disconnect',
+		);
 
 		return { status: 'disconnected' };
 	}
