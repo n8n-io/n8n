@@ -8,7 +8,7 @@ import { resolveMainInputCount } from './input-resolver';
 import { validateNodeConfig } from './schema-validator';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
-import { isPlaceholderValue } from '../workflow-builder/string-utils';
+import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
 export {
 	setSchemaBaseDirs,
@@ -1028,6 +1028,11 @@ function validateOutputUsage(
  * `PlaceholderValue`). Now that `placeholder()` returns a plain `string`, the
  * type system can no longer block placement; this validator does at runtime.
  *
+ * Uses `containsPlaceholderMarker` (not `isPlaceholderValue`) so that the
+ * marker is rejected anywhere in the value — including `expr(placeholder())`,
+ * which produces `=<__PLACEHOLDER_VALUE__…__>`, and placeholders embedded
+ * inside `={{ … }}` expressions.
+ *
  * Walks top-level properties only — the known declarations
  * (webhook `path`, langchain agent `text`) are top-level fields. Nested
  * collection / fixedCollection support can be added later if a node opts out
@@ -1052,7 +1057,7 @@ function validatePlaceholderSlots(
 		for (const prop of properties) {
 			if (prop.builderHint?.placeholderSupported !== false) continue;
 			const value = params[prop.name];
-			if (typeof value !== 'string' || !isPlaceholderValue(value)) continue;
+			if (!containsPlaceholderMarker(value)) continue;
 
 			errors.push(
 				new ValidationError(
