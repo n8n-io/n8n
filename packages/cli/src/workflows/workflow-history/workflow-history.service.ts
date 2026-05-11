@@ -5,6 +5,7 @@ import {
 	WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -26,6 +27,7 @@ export class WorkflowHistoryService {
 		private readonly logger: Logger,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 	) {}
@@ -105,6 +107,44 @@ export class WorkflowHistoryService {
 				versionId,
 			},
 		});
+	}
+
+	/**
+	 * Ensure a {@link WorkflowHistory} row exists for the workflow's *current*
+	 * draft state and return its `versionId`. Used by the eval-collections
+	 * setup wizard when the user picks "current draft" — the run is pinned to
+	 * an immutable snapshot so future edits don't break comparability with
+	 * sibling runs in the collection.
+	 *
+	 * Idempotent: if a history row already exists for the workflow's current
+	 * `versionId`, we return it unchanged (no duplicate snapshot, no churn in
+	 * the version history list). License-on instances will have a history row
+	 * from the regular save flow; license-off instances get the snapshot
+	 * lazily here for eval comparability without otherwise enabling history.
+	 */
+	async snapshotCurrent(workflowId: string): Promise<{ versionId: string }> {
+		const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+		if (!workflow) {
+			throw new UnexpectedError(`Workflow ${workflowId} not found`);
+		}
+
+		const existing = await this.workflowHistoryRepository.findOne({
+			where: { workflowId, versionId: workflow.versionId },
+			select: ['versionId'],
+		});
+		if (existing) return { versionId: existing.versionId };
+
+		await this.saveVersion(
+			'eval-snapshot',
+			{
+				versionId: workflow.versionId,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+			},
+			workflowId,
+		);
+
+		return { versionId: workflow.versionId };
 	}
 
 	async saveVersion(

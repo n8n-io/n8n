@@ -174,6 +174,15 @@ export type PubSubCommandMap = {
 		testRunId: string;
 	};
 
+	/**
+	 * Cancel every running test run inside an evaluation collection across all
+	 * main instances. Used when a user cancels a collection — each main checks
+	 * its in-flight runs and aborts those that belong to the collection.
+	 */
+	'cancel-collection': {
+		collectionId: string;
+	};
+
 	// #endregion
 
 	// #region Agents
