@@ -8,6 +8,7 @@ import { isLlmMessage } from '../sdk/message';
 import type {
 	AgentRunState,
 	AnthropicThinkingConfig,
+	AttributeValue,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTelemetry,
@@ -30,6 +31,7 @@ import type {
 	XaiThinkingConfig,
 } from '../types';
 import { AgentEventBus } from './event-bus';
+import { toJsonValue } from './json-value';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
@@ -67,6 +69,89 @@ import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
+
+interface TelemetrySpan {
+	end(): void;
+	recordException?(error: unknown): void;
+	setAttributes?(attributes: Record<string, AttributeValue>): void;
+	setStatus?(status: { code: number; message?: string }): void;
+}
+
+interface ActiveSpanTracer {
+	startActiveSpan<T>(
+		name: string,
+		options: { attributes?: Record<string, AttributeValue> },
+		fn: (span: TelemetrySpan) => T,
+	): T;
+}
+
+function isActiveSpanTracer(value: unknown): value is ActiveSpanTracer {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'startActiveSpan') === 'function'
+	);
+}
+
+function stringifyTelemetryValue(value: unknown): string | undefined {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return undefined;
+	}
+}
+
+function getToolInputSchema(tool: BuiltTool | BuiltProviderTool): unknown {
+	if (!tool.inputSchema) {
+		return undefined;
+	}
+
+	return isZodSchema(tool.inputSchema) ? zodToJsonSchema(tool.inputSchema) : tool.inputSchema;
+}
+
+function summarizeToolForTelemetry(tool: BuiltTool): Record<string, unknown> {
+	return {
+		name: tool.name,
+		description: tool.description,
+		type: tool.mcpTool ? 'mcp' : 'local',
+		...(tool.mcpServerName ? { mcp_server: tool.mcpServerName } : {}),
+		...(tool.suspendSchema || tool.resumeSchema || tool.withDefaultApproval
+			? { approval: true }
+			: {}),
+		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
+	};
+}
+
+function summarizeProviderToolForTelemetry(tool: BuiltProviderTool): Record<string, unknown> {
+	const [provider] = tool.name.split('.');
+	return {
+		name: tool.name,
+		provider,
+		type: 'provider',
+		args: tool.args,
+		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
+	};
+}
+
+function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<string, AttributeValue> {
+	const localTools = (config.tools ?? []).map(summarizeToolForTelemetry);
+	const providerTools = (config.providerTools ?? []).map(summarizeProviderToolForTelemetry);
+	const tools = [...localTools, ...providerTools];
+	const toolNames = tools
+		.map((tool) => (typeof tool.name === 'string' ? tool.name : undefined))
+		.filter((name): name is string => name !== undefined);
+
+	const serialized = stringifyTelemetryValue({
+		agent: config.name,
+		tool_count: tools.length,
+		tools,
+	});
+
+	return {
+		...(toolNames.length > 0 ? { 'langsmith.metadata.available_tools': toolNames } : {}),
+		...(serialized ? { 'gen_ai.prompt': serialized } : {}),
+	};
+}
 
 export interface AgentRuntimeConfig {
 	name: string;
@@ -246,8 +331,14 @@ export class AgentRuntime {
 		const runId = generateRunId();
 		let list: AgentMessageList | undefined = undefined;
 		try {
-			list = await this.initRun(input, options);
-			const rawResult = await this.runGenerateLoop({ list, options, runId });
+			const initializedList = await this.initRun(input, options);
+			list = initializedList;
+			const rawResult = await this.withTelemetryRootSpan(
+				'generate',
+				options,
+				runId,
+				async () => await this.runGenerateLoop({ list: initializedList, options, runId }),
+			);
 			return this.finalizeGenerate(rawResult, list, runId);
 		} catch (error) {
 			await this.flushTelemetry(options);
@@ -354,12 +445,18 @@ export class AgentRuntime {
 			await this.setListWorkingMemoryConfig(list, state.persistence);
 
 			if (method === 'generate') {
-				const rawResult = await this.runGenerateLoop({
-					list,
-					options: resumeOptions,
-					runId: options.runId,
-					pendingResume,
-				});
+				const rawResult = await this.withTelemetryRootSpan(
+					'generate',
+					resumeOptions,
+					options.runId,
+					async () =>
+						await this.runGenerateLoop({
+							list,
+							options: resumeOptions,
+							runId: options.runId,
+							pendingResume,
+						}),
+				);
 				if (!rawResult.pendingSuspend) {
 					await this.cleanupRun(options.runId);
 				}
@@ -621,6 +718,120 @@ export class AgentRuntime {
 		};
 	}
 
+	private buildTelemetryRootAttributes(
+		t: BuiltTelemetry,
+		spanName: string,
+		runId: string,
+	): Record<string, AttributeValue> {
+		const metadataAttributes = this.buildTelemetryMetadataAttributes(t, 'langsmith.metadata');
+
+		return {
+			'langsmith.traceable': 'true',
+			'langsmith.trace.name': spanName,
+			'langsmith.span.kind': 'chain',
+			'langsmith.metadata.agent_name': this.config.name,
+			'langsmith.metadata.agent_run_id': runId,
+			...metadataAttributes,
+			...buildAgentRootInputAttributes(this.config),
+		};
+	}
+
+	private buildTelemetryMetadataAttributes(
+		t: BuiltTelemetry,
+		prefix: string,
+	): Record<string, AttributeValue> {
+		return Object.fromEntries(
+			Object.entries(t.metadata ?? {}).map(([key, value]) => [`${prefix}.${key}`, value]),
+		);
+	}
+
+	private buildAiSdkOperationAttributes(
+		operationId: string,
+		t: BuiltTelemetry,
+	): Record<string, AttributeValue> {
+		const functionId = t.functionId ?? this.config.name;
+		return {
+			'operation.name': `${operationId} ${functionId}`,
+			'resource.name': functionId,
+			'ai.operationId': operationId,
+			'ai.telemetry.functionId': functionId,
+			...this.buildTelemetryMetadataAttributes(t, 'ai.telemetry.metadata'),
+		};
+	}
+
+	private async withTelemetryRootSpan<T>(
+		operation: 'generate' | 'stream',
+		options: ExecutionOptions | undefined,
+		runId: string,
+		fn: () => Promise<T>,
+	): Promise<T> {
+		const t = this.resolveTelemetry(options);
+		if (!t?.enabled || t.runtimeRootSpanEnabled === false || !isActiveSpanTracer(t.tracer)) {
+			return await fn();
+		}
+
+		const spanName = `${t.functionId ?? this.config.name}.${operation}`;
+		return await t.tracer.startActiveSpan(
+			spanName,
+			{ attributes: this.buildTelemetryRootAttributes(t, spanName, runId) },
+			async (span) => {
+				try {
+					return await fn();
+				} catch (error) {
+					span.recordException?.(error);
+					span.setStatus?.({ code: 2, message: String(error) });
+					throw error;
+				} finally {
+					span.end();
+				}
+			},
+		);
+	}
+
+	private async withTelemetryToolSpan<T>(
+		toolCallId: string,
+		toolName: string,
+		input: JSONValue,
+		t: BuiltTelemetry | undefined,
+		fn: () => Promise<T>,
+	): Promise<T> {
+		if (!t?.enabled || !isActiveSpanTracer(t.tracer)) {
+			return await fn();
+		}
+
+		const shouldRecordInputs = t.recordInputs ?? true;
+		const inputValue = shouldRecordInputs ? stringifyTelemetryValue(input) : undefined;
+
+		return await t.tracer.startActiveSpan(
+			'ai.toolCall',
+			{
+				attributes: {
+					...this.buildAiSdkOperationAttributes('ai.toolCall', t),
+					'ai.toolCall.name': toolName,
+					'ai.toolCall.id': toolCallId,
+					...(inputValue !== undefined ? { 'ai.toolCall.args': inputValue } : {}),
+				},
+			},
+			async (span) => {
+				try {
+					const result = await fn();
+					const shouldRecordOutputs = t.recordOutputs ?? true;
+					const outputValue = shouldRecordOutputs ? stringifyTelemetryValue(result) : undefined;
+					if (outputValue !== undefined) {
+						span.setAttributes?.({ 'ai.toolCall.result': outputValue });
+					}
+					return result;
+				} catch (error) {
+					span.recordException?.(error);
+					span.setStatus?.({ code: 2, message: String(error) });
+					throw error;
+				} finally {
+					span.end();
+				}
+			},
+		);
+	}
+
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
 		const { list, options, runId, pendingResume } = ctx;
@@ -815,7 +1026,12 @@ export class AgentRuntime {
 		};
 		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 
-		this.runStreamLoop({ ...ctx, writer })
+		this.withTelemetryRootSpan(
+			'stream',
+			options,
+			runId,
+			async () => await this.runStreamLoop({ ...ctx, writer }),
+		)
 			.catch(async (error: unknown) => {
 				await this.flushTelemetry(options);
 				await this.cleanupRun(runId);
@@ -1572,7 +1788,14 @@ export class AgentRuntime {
 
 		let toolResult: unknown;
 		try {
-			toolResult = await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry);
+			toolResult = await this.withTelemetryToolSpan(
+				toolCallId,
+				toolName,
+				toolInput,
+				resolvedTelemetry,
+				async () =>
+					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId),
+			);
 		} catch (error) {
 			return makeToolError(error as Error);
 		}
@@ -1623,7 +1846,7 @@ export class AgentRuntime {
 			? builtTool.toModelOutput(actualResult)
 			: actualResult;
 
-		list.setToolCallResult(toolCallId, modelResult as JSONValue);
+		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
 
 		const customMessage = builtTool?.toMessage?.(actualResult);
 		if (customMessage) {
