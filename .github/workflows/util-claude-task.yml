@@ -89,25 +89,11 @@ jobs:
 
       - name: Create MCP config
         env:
-          MCP_LINEAR_API_KEY: ${{ secrets.MCP_LINEAR_API_KEY }}
           MCP_NOTION_TOKEN: ${{ secrets.MCP_NOTION_TOKEN }}
         run: |
           cat > /tmp/mcp-config.json << 'MCPEOF'
           {
             "mcpServers": {
-              "linear": {
-                "command": "npx",
-                "args": [
-                  "-y",
-                  "mcp-remote",
-                  "https://mcp.linear.app/sse",
-                  "--header",
-                  "Authorization:${AUTH_HEADER}"
-                ],
-                "env": {
-                  "AUTH_HEADER": "Bearer MCP_LINEAR_API_KEY_PLACEHOLDER"
-                }
-              },
               "notion": {
                 "command": "npx",
                 "args": ["-y", "@notionhq/notion-mcp-server"],
@@ -118,7 +104,6 @@ jobs:
             }
           }
           MCPEOF
-          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${MCP_LINEAR_API_KEY}|g" /tmp/mcp-config.json
           sed -i "s|MCP_NOTION_TOKEN_PLACEHOLDER|${MCP_NOTION_TOKEN}|g" /tmp/mcp-config.json
 
       - name: Run Claude
@@ -148,7 +133,6 @@ jobs:
                   "TodoWrite",
                   "Skill",
                   "Task",
-                  "mcp__linear__*",
                   "mcp__notion__*"
                 ]
               },
