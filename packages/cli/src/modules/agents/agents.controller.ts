@@ -1,11 +1,14 @@
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
+	type AgentCredentialIntegration,
+	type AgentIntegrationStatusEntry,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
 	type AgentScheduleConfig,
 	type AgentSseEvent,
+	type AgentTelegramIntegrationSettings,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
@@ -34,6 +37,7 @@ import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -53,6 +57,8 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+
+const TELEGRAM_INTEGRATION_TYPE = 'telegram';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -102,6 +108,24 @@ export class AgentsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
+
+	private settingsForConnect(
+		type: string,
+		settings: AgentTelegramIntegrationSettings | undefined,
+	): AgentTelegramIntegrationSettings | undefined {
+		if (type !== TELEGRAM_INTEGRATION_TYPE) {
+			if (settings) {
+				throw new BadRequestError('Integration settings are only supported for Telegram');
+			}
+			return undefined;
+		}
+
+		if (!settings) {
+			throw new BadRequestError('Telegram access settings are required');
+		}
+
+		return settings;
+	}
 
 	@Post('/')
 	@ProjectScope('agent:create')
@@ -661,6 +685,7 @@ export class AgentsController {
 		@Body payload: AgentIntegrationDto,
 	) {
 		const { type, credentialId } = payload;
+		const settings = this.settingsForConnect(type, payload.settings);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.publishedVersion)
@@ -675,23 +700,46 @@ export class AgentsController {
 		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
 
-		await this.chatIntegrationService.connect(
-			agentId,
-			credentialId,
-			type,
-			req.user.id,
-			agent.projectId,
-		);
+		if (settings) {
+			await this.chatIntegrationService.connect(
+				agentId,
+				credentialId,
+				type,
+				req.user.id,
+				agent.projectId,
+				{ settings },
+			);
+		} else {
+			await this.chatIntegrationService.connect(
+				agentId,
+				credentialId,
+				type,
+				req.user.id,
+				agent.projectId,
+			);
+		}
 
 		// Persist the integration reference on the agent
 		const existing = agent.integrations ?? [];
 		const alreadyExists = existing.some(
 			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
-		if (!alreadyExists) {
-			agent.integrations = [...existing, { type, credentialId, credentialName: credential.name }];
-			await this.agentRepository.save(agent);
-		}
+		const integration: AgentCredentialIntegration = {
+			type,
+			credentialId,
+			credentialName: credential.name,
+			...(settings ? { settings } : {}),
+		};
+		agent.integrations = alreadyExists
+			? existing.map((existingIntegration) =>
+					isAgentCredentialIntegration(existingIntegration) &&
+					existingIntegration.type === type &&
+					existingIntegration.credentialId === credentialId
+						? integration
+						: existingIntegration,
+				)
+			: [...existing, integration];
+		await this.agentRepository.save(agent);
 
 		// Notify peer mains so they connect the integration too — without this
 		// step inbound webhooks load-balanced to a follower would 404.
@@ -700,6 +748,7 @@ export class AgentsController {
 			type,
 			credentialId,
 			'connect',
+			settings,
 		);
 
 		return { status: 'connected' };
@@ -802,10 +851,32 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
+		// Surface only integrations that are live in the chat service AND persisted
+		// on the agent — the persisted entry is the single source of truth for
+		// settings (the live bridge cannot drift since reconnect tears it down).
 		const chatStatus = this.chatIntegrationService.getStatus(agentId);
+		const liveKeys = new Set(
+			chatStatus.integrations
+				.filter((i): i is AgentIntegrationStatusEntry & { credentialId: string } =>
+					Boolean(i.credentialId),
+				)
+				.map((i) => `${i.type}:${i.credentialId}`),
+		);
+		const chatIntegrations: AgentIntegrationStatusEntry[] = (agent.integrations ?? [])
+			.filter(
+				(i): i is AgentCredentialIntegration =>
+					isAgentCredentialIntegration(i) && liveKeys.has(`${i.type}:${i.credentialId}`),
+			)
+			.map((i) => ({
+				type: i.type,
+				credentialId: i.credentialId,
+				...(i.settings ? { settings: i.settings } : {}),
+			}));
 		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
-		const connectedIntegrations = [...chatStatus.integrations, ...scheduleIntegrations];
+		const scheduleIntegrations: AgentIntegrationStatusEntry[] = schedule.active
+			? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }]
+			: [];
+		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
 
 		return {
 			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',

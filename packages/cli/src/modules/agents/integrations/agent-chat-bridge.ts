@@ -1,3 +1,4 @@
+import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
 import type { ActionEvent, Chat, Message, Thread } from 'chat';
@@ -77,6 +78,9 @@ export class AgentChatBridge {
 	 */
 	private readonly richInteractionInputs = new Map<string, unknown>();
 
+	/** Cached `Set` of the allowlist for O(1) per-message lookup. */
+	private readonly allowedUserIdSet: Set<string> | undefined;
+
 	constructor(
 		private readonly chat: Chat,
 		private readonly agentId: string,
@@ -85,12 +89,14 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
 		private readonly integrationType: string,
+		private readonly integrationSettings?: AgentTelegramIntegrationSettings,
 	) {
 		this.integration = Container.get(ChatIntegrationRegistry).get(integrationType);
 		if (this.integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
 		this.disableStreaming = this.integration?.disableStreaming ?? false;
+		this.allowedUserIdSet = integrationSettings && new Set(integrationSettings.allowedUserIds);
 		this.registerHandlers();
 	}
 
@@ -106,6 +112,7 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nProjectId: string,
 		integrationType: string,
+		integrationSettings?: AgentTelegramIntegrationSettings,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
 			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {
@@ -129,6 +136,7 @@ export class AgentChatBridge {
 			logger,
 			n8nProjectId,
 			integrationType,
+			integrationSettings,
 		);
 	}
 
@@ -139,6 +147,7 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
+				if (!this.canUserAccess(message.author.userId)) return;
 				await thread.subscribe();
 				await this.executeAndStream(thread, message);
 			} catch (error) {
@@ -148,6 +157,7 @@ export class AgentChatBridge {
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
+				if (!this.canUserAccess(message.author.userId)) return;
 				await this.executeAndStream(thread, message);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
@@ -156,6 +166,7 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
+				if (!this.canUserAccess(event.user.userId)) return;
 				await this.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
@@ -166,6 +177,13 @@ export class AgentChatBridge {
 	/** Release long-lived resources (callback store timer). */
 	dispose(): void {
 		this.callbackStore?.dispose();
+	}
+
+	private canUserAccess(userId: string): boolean {
+		if (this.integrationType !== 'telegram') return true;
+		const settings = this.integrationSettings;
+		if (!settings || settings.accessMode === 'public') return true;
+		return this.allowedUserIdSet?.has(userId) ?? false;
 	}
 
 	// ---------------------------------------------------------------------------

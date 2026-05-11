@@ -17,15 +17,24 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	type AgentTelegramIntegrationSettings,
+	type ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import {
+	resolveSavedTelegramSettings,
+	TELEGRAM_INTEGRATION_TYPE,
+} from '../utils/telegramAccessSettings';
 import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentTelegramAccessSettingsForm from './AgentTelegramAccessSettingsForm.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -64,6 +73,7 @@ const selectedTriggerType = ref<string>(props.data.initialTriggerType ?? '');
 const {
 	statuses,
 	connectedCredentials,
+	integrationSettings,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -76,6 +86,7 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+const telegramFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm>>();
 
 // Track credentials that existed before the user opened the "new credential"
 // modal, keyed by trigger type. After the modal closes we diff against the
@@ -125,6 +136,14 @@ function isLoading(type: string): boolean {
 
 function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
+}
+
+function isTelegram(type: string): boolean {
+	return type === TELEGRAM_INTEGRATION_TYPE;
+}
+
+function telegramSavedSettingsFor(type: string): AgentTelegramIntegrationSettings | undefined {
+	return resolveSavedTelegramSettings(integrationSettings.value[type], isConnected(type));
 }
 
 const CONNECTED_TEXT_KEYS = {
@@ -347,10 +366,15 @@ async function ensurePublished(): Promise<boolean> {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	let settings: AgentTelegramIntegrationSettings | undefined;
+	if (isTelegram(type)) {
+		if (telegramFormRef.value?.validationError) return;
+		settings = telegramFormRef.value?.currentSettings;
+	}
 	const published = await ensurePublished();
 	if (!published) return;
 	try {
-		await connect(type, credId);
+		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		props.data.onTriggerAdded({ triggerType: type, triggers });
 		emitConnectedTriggers();
@@ -558,24 +582,6 @@ onMounted(async () => {
 								@click="onEditCredential(currentIntegration.type)"
 							/>
 						</div>
-
-						<N8nText
-							v-if="hasError(currentIntegration.type)"
-							:class="$style.errorText"
-							size="small"
-						>
-							{{ errorMessages[currentIntegration.type] }}
-							<a
-								v-if="
-									selectedCredentials[currentIntegration.type] &&
-									!errorIsConflict[currentIntegration.type]
-								"
-								:class="$style.link"
-								href="#"
-								@click.prevent="onEditCredential(currentIntegration.type)"
-								>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
-							>
-						</N8nText>
 					</div>
 
 					<div v-else :class="$style.connectedSection">
@@ -583,6 +589,33 @@ onMounted(async () => {
 							{{ integrationConnectedText(currentIntegration.type) }}
 						</N8nText>
 					</div>
+
+					<!-- Telegram access settings — mounted once so the user's typed
+						 allowlist survives a disconnect → edit → reconnect. -->
+					<AgentTelegramAccessSettingsForm
+						v-if="isTelegram(currentIntegration.type)"
+						ref="telegramFormRef"
+						:disabled="isConnected(currentIntegration.type) || isLoading(currentIntegration.type)"
+						:saved-settings="telegramSavedSettingsFor(currentIntegration.type)"
+					/>
+
+					<N8nText
+						v-if="!isConnected(currentIntegration.type) && hasError(currentIntegration.type)"
+						:class="$style.errorText"
+						size="small"
+					>
+						{{ errorMessages[currentIntegration.type] }}
+						<a
+							v-if="
+								selectedCredentials[currentIntegration.type] &&
+								!errorIsConflict[currentIntegration.type]
+							"
+							:class="$style.link"
+							href="#"
+							@click.prevent="onEditCredential(currentIntegration.type)"
+							>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
+						>
+					</N8nText>
 
 					<!-- Slack manifest reference material. Integration actions live
 						 in the modal footer so they stay aligned with other modals. -->
@@ -626,7 +659,8 @@ onMounted(async () => {
 							:disabled="
 								!selectedCredentials[currentIntegration.type] ||
 								isLoading(currentIntegration.type) ||
-								publishing
+								publishing ||
+								(isTelegram(currentIntegration.type) && !!telegramFormRef?.validationError)
 							"
 							:loading="isLoading(currentIntegration.type) || publishing"
 							size="small"

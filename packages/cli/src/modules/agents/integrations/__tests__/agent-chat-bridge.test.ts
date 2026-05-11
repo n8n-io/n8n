@@ -90,6 +90,17 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	}
 }
 
+class TelegramTestIntegration extends AgentChatIntegration {
+	readonly type = 'telegram';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: string[] = [];
+	readonly displayLabel = 'Telegram';
+	readonly displayIcon = 'telegram';
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
 describe('AgentChatBridge — consumeStream', () => {
 	let registry: ChatIntegrationRegistry;
 	const componentMapper = mock<ComponentMapper>();
@@ -99,6 +110,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry = new ChatIntegrationRegistry();
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
+		registry.register(new TelegramTestIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -225,6 +237,119 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledTimes(1);
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
+		});
+	});
+
+	describe('Telegram access settings', () => {
+		it('silently ignores Telegram messages from users outside the private whitelist', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([{ type: 'text-delta', id: 't1', delta: 'Hello' }]),
+				),
+				resumeForChat: jest.fn(() => toStream([])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				'telegram',
+				{ accessMode: 'private', allowedUserIds: ['123'] },
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: '999' } });
+
+			expect(thread.subscribe).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('allows Telegram messages from users in the private whitelist', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([{ type: 'text-delta', id: 't1', delta: 'Hello' }]),
+				),
+				resumeForChat: jest.fn(() => toStream([])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				'telegram',
+				{ accessMode: 'private', allowedUserIds: ['123'] },
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: '123' } });
+
+			expect(thread.subscribe).toHaveBeenCalledTimes(1);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		});
+
+		it('allows legacy Telegram integrations without settings', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([{ type: 'text-delta', id: 't1', delta: 'Hello' }]),
+				),
+				resumeForChat: jest.fn(() => toStream([])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				'telegram',
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: '999' } });
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		});
+
+		it('silently ignores Telegram actions from users outside the private whitelist', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() => toStream([])),
+				resumeForChat: jest.fn(() => toStream([])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				'telegram',
+				{ accessMode: 'private', allowedUserIds: ['123'] },
+			);
+
+			await handlers.action!({
+				actionId: 'run-1:tool-1',
+				value: JSON.stringify({ response: 'yes' }),
+				thread,
+				threadId: thread.id,
+				user: { userId: '999' },
+			});
+
+			expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
 		});
 	});
 });

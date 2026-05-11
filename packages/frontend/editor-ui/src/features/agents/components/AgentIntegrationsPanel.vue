@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
+import { AGENT_SCHEDULE_TRIGGER_TYPE, type AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -9,8 +10,13 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import {
+	resolveSavedTelegramSettings,
+	TELEGRAM_INTEGRATION_TYPE,
+} from '../utils/telegramAccessSettings';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentTelegramAccessSettingsForm from './AgentTelegramAccessSettingsForm.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -48,6 +54,7 @@ const emit = defineEmits<{
 }>();
 
 const rootStore = useRootStore();
+const i18n = useI18n();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
@@ -101,6 +108,7 @@ const integrationConfigs: IntegrationConfig[] = [
 const {
 	statuses,
 	connectedCredentials,
+	integrationSettings,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -114,6 +122,15 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
 const credentialsLoading = ref(false);
+// Bound via a callback ref because the form is rendered inside a v-for and
+// Vue would otherwise collect it into an array; only the telegram card matches
+// its v-if, so a single ref to that one instance is what we want.
+const telegramFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm> | null>(null);
+function setTelegramFormRef(el: unknown): void {
+	telegramFormRef.value = (el ?? null) as InstanceType<
+		typeof AgentTelegramAccessSettingsForm
+	> | null;
+}
 const copied = ref(false);
 const showManifest = ref(false);
 
@@ -134,6 +151,14 @@ function isLoading(type: string): boolean {
 
 function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
+}
+
+function isTelegram(type: string): boolean {
+	return type === TELEGRAM_INTEGRATION_TYPE;
+}
+
+function telegramSavedSettingsFor(type: string): AgentTelegramIntegrationSettings | undefined {
+	return resolveSavedTelegramSettings(integrationSettings.value[type], isConnected(type));
 }
 
 // Webhook URLs in the integration manifests must use the instance's configured
@@ -288,8 +313,13 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	let settings: AgentTelegramIntegrationSettings | undefined;
+	if (isTelegram(type)) {
+		if (telegramFormRef.value?.validationError) return;
+		settings = telegramFormRef.value?.currentSettings;
+	}
 	try {
-		await connect(type, credId);
+		await connect(type, credId, settings);
 		const triggers = computeConnectedTriggers();
 		emit('trigger-added', { triggerType: type, triggers });
 		emitConnectedTriggers();
@@ -434,73 +464,90 @@ onMounted(async () => {
 					>
 						<N8nText size="small">{{ config.noCredentialsMessage }}</N8nText>
 					</div>
-
-					<N8nText v-if="hasError(config.type)" :class="$style.errorText" size="small">
-						{{ errorMessages[config.type] }}
-						<a
-							v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
-							:class="$style.link"
-							href="#"
-							@click.prevent="onEditCredential(config.type)"
-							>Edit credential</a
-						>
-					</N8nText>
-
-					<div :class="$style.actions">
-						<N8nButton
-							:disabled="!selectedCredentials[config.type] || isLoading(config.type)"
-							:loading="isLoading(config.type)"
-							size="small"
-							:data-testid="`${config.type}-connect-button`"
-							@click="onConnect(config.type)"
-						>
-							<N8nIcon icon="plug" :size="14" />
-							Connect
-						</N8nButton>
-					</div>
 				</div>
 
 				<div v-else :class="$style.connectedSection">
 					<N8nText size="small">
 						{{ config.connectedDescription }}
 					</N8nText>
+				</div>
 
-					<!-- Slack App Manifest (Slack only) -->
-					<template v-if="config.type === 'slack'">
-						<N8nText :class="$style.manifestHint" size="small">
-							Copy the app manifest and paste it into your Slack app's settings to configure events,
-							scopes, and interactivity.
-							<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
-						</N8nText>
-						<N8nButton variant="outline" size="small" @click="copyManifest">
-							<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
-							{{ copied ? 'Copied' : 'Copy manifest' }}
-						</N8nButton>
-					</template>
+				<!-- Telegram access settings — mounted once per card so the user's
+					 typed allowlist survives a disconnect → edit → reconnect. -->
+				<AgentTelegramAccessSettingsForm
+					v-if="isTelegram(config.type)"
+					:ref="setTelegramFormRef"
+					:disabled="isConnected(config.type) || isLoading(config.type)"
+					:saved-settings="telegramSavedSettingsFor(config.type)"
+				/>
 
+				<N8nText
+					v-if="!isConnected(config.type) && hasError(config.type)"
+					:class="$style.errorText"
+					size="small"
+				>
+					{{ errorMessages[config.type] }}
+					<a
+						v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
+						:class="$style.link"
+						href="#"
+						@click.prevent="onEditCredential(config.type)"
+						>Edit credential</a
+					>
+				</N8nText>
+
+				<!-- Slack App Manifest (Slack only, shown when connected) -->
+				<template v-if="isConnected(config.type) && config.type === 'slack'">
+					<N8nText :class="$style.manifestHint" size="small">
+						Copy the app manifest and paste it into your Slack app's settings to configure events,
+						scopes, and interactivity.
+						<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
+					</N8nText>
+					<N8nButton variant="outline" size="small" @click="copyManifest">
+						<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
+						{{ copied ? 'Copied' : 'Copy manifest' }}
+					</N8nButton>
+				</template>
+
+				<div v-if="!isConnected(config.type)" :class="$style.actions">
 					<N8nButton
-						:class="$style.actionButton"
-						variant="destructive"
+						:disabled="
+							!selectedCredentials[config.type] ||
+							isLoading(config.type) ||
+							(isTelegram(config.type) && !!telegramFormRef?.validationError)
+						"
 						:loading="isLoading(config.type)"
 						size="small"
-						:data-testid="`${config.type}-disconnect-button`"
-						@click="onDisconnect(config.type)"
+						:data-testid="`${config.type}-connect-button`"
+						@click="onConnect(config.type)"
 					>
-						<N8nIcon icon="unlink" :size="14" />
-						Disconnect
+						<N8nIcon icon="plug" :size="14" />
+						Connect
 					</N8nButton>
-
-					<!-- Manifest modal (Slack only) -->
-					<N8nDialog
-						v-if="config.type === 'slack'"
-						:open="showManifest"
-						header="Slack App Manifest"
-						size="medium"
-						@update:open="showManifest = $event"
-					>
-						<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
-					</N8nDialog>
 				</div>
+				<N8nButton
+					v-else
+					:class="$style.actionButton"
+					variant="destructive"
+					:loading="isLoading(config.type)"
+					size="small"
+					:data-testid="`${config.type}-disconnect-button`"
+					@click="onDisconnect(config.type)"
+				>
+					<N8nIcon icon="unlink" :size="14" />
+					Disconnect
+				</N8nButton>
+
+				<!-- Manifest modal (Slack only) -->
+				<N8nDialog
+					v-if="config.type === 'slack'"
+					:open="showManifest"
+					header="Slack App Manifest"
+					size="medium"
+					@update:open="showManifest = $event"
+				>
+					<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+				</N8nDialog>
 			</div>
 		</N8nCard>
 	</div>

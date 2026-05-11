@@ -1,3 +1,4 @@
+import { agentTelegramIntegrationSettingsSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { isValidCronExpression } from '../integrations/cron-validation';
@@ -24,6 +25,7 @@ export const AgentCredentialIntegrationSchema = z
 			}),
 		credentialId: z.string().min(1),
 		credentialName: z.string().min(1),
+		settings: agentTelegramIntegrationSettingsSchema.optional(),
 	})
 	.strict();
 

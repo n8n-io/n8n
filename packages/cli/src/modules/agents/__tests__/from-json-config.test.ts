@@ -706,6 +706,68 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
+	it('validates Telegram private integration settings', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					credentialName: 'Telegram Bot',
+					settings: { accessMode: 'private', allowedUserIds: ['123', '123', '456'] },
+				},
+			],
+		};
+
+		const parsed = AgentJsonConfigSchema.parse(config);
+
+		expect(parsed.integrations?.[0]).toMatchObject({
+			type: 'telegram',
+			settings: { accessMode: 'private', allowedUserIds: ['123', '456'] },
+		});
+	});
+
+	it('rejects Telegram private integration settings without valid user IDs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					credentialName: 'Telegram Bot',
+					settings: { accessMode: 'private', allowedUserIds: [] },
+				},
+			],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects Telegram integration settings with non-numeric user IDs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					credentialName: 'Telegram Bot',
+					settings: { accessMode: 'private', allowedUserIds: ['abc'] },
+				},
+			],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
 	it('parses an integrations array containing schedule + chat triggers', () => {
 		const config = {
 			name: 'test',
