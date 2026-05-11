@@ -94,12 +94,13 @@ const selectedPresetCronExpression = computed(
 	() => getSchedulePresetByCronExpression(cronExpression.value)?.cronExpression ?? '',
 );
 const nextScheduleOccurrence = computed(() =>
-	getNextScheduleOccurrence(nextOccurrenceCronExpression.value),
+	getNextScheduleOccurrence(nextOccurrenceCronExpression.value, rootStore.timezone),
 );
 const nextScheduleOccurrenceText = computed(() => {
 	if (!nextScheduleOccurrence.value) return '';
 
 	return new Intl.DateTimeFormat(undefined, {
+		timeZone: rootStore.timezone,
 		weekday: 'short',
 		day: 'numeric',
 		month: 'short',

@@ -34,13 +34,13 @@ export function getScheduleInputMode(cronExpression: string): ScheduleInputMode 
 	return getSchedulePresetByCronExpression(cronExpression) ? 'preset' : 'custom';
 }
 
-export function getNextScheduleOccurrence(cronExpression: string): Date | null {
+export function getNextScheduleOccurrence(cronExpression: string, timezone: string): Date | null {
 	if (!cronExpression.trim()) {
 		return null;
 	}
 
 	try {
-		return new CronTime(cronExpression).sendAt().toJSDate();
+		return new CronTime(cronExpression, timezone).sendAt().toJSDate();
 	} catch {
 		return null;
 	}

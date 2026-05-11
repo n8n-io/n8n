@@ -11,6 +11,7 @@ const cronTimeMock = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: {},
+		timezone: 'Europe/Berlin',
 	}),
 }));
 
@@ -293,7 +294,7 @@ describe('AgentScheduleTriggerCard', () => {
 
 		await wrapper.find('[data-testid="schedule-cron-input"]').trigger('blur');
 
-		expect(cronTimeMock).toHaveBeenCalledWith('0 0 * * FRI');
+		expect(cronTimeMock).toHaveBeenCalledWith('0 0 * * FRI', 'Europe/Berlin');
 	});
 
 	it('disables activation when the agent is not published', async () => {
