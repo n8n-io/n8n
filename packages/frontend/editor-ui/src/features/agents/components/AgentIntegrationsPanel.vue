@@ -520,6 +520,8 @@ onMounted(async () => {
 <style module>
 .panel {
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
 }
 
@@ -626,6 +628,8 @@ onMounted(async () => {
 	overflow-x: auto;
 	max-height: 300px;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	white-space: pre;
 	font-family: monospace;
 	color: var(--color--text);

@@ -142,10 +142,12 @@ const thinkingDisabledReason = computed(() =>
 	<N8nCollapsiblePanel
 		v-model="isExpanded"
 		:class="$style.panel"
-		:title="i18n.baseText('agents.builder.advanced.title')"
 		:disabled="!props.collapsible"
 		data-testid="agent-behavior-panel"
 	>
+		<template #title>
+			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
+		</template>
 		<div :class="$style.content">
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
@@ -257,6 +259,10 @@ const thinkingDisabledReason = computed(() =>
 .panel.panel > :first-child {
 	padding: 0;
 	min-height: auto;
+}
+
+.panel.panel > :first-child h3 {
+	margin: 0;
 }
 
 .panel.panel > [data-state] > :first-child {

@@ -111,7 +111,7 @@ beforeEach(() => {
 
 	// Set workflow ID so document store can be created
 	const workflowsStore = useWorkflowsStore();
-	workflowsStore.workflow.id = 'test-workflow';
+	workflowsStore.setWorkflowId('test-workflow');
 });
 
 afterEach(() => {
@@ -121,7 +121,7 @@ afterEach(() => {
 function setPinData(pinData: IPinData) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflow.id),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	workflowDocumentStore.setPinData(pinData);
 }
@@ -300,7 +300,10 @@ describe('useCanvasMapping', () => {
 				},
 			};
 
-			workflowsStore.workflow.connections = connections;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setConnections(connections);
 
 			const workflowObject = createTestWorkflowObject({
 				nodes,

@@ -17,6 +17,7 @@ import {
 import * as agents from '@n8n/agents';
 import { extractFromAIParameters } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	CredentialsRepository,
@@ -25,6 +26,7 @@ import {
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import {
@@ -42,6 +44,8 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { EphemeralNodeExecutor } from '@/node-execution';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -192,13 +196,46 @@ export class AgentsService {
 		return parts.join(':');
 	}
 
-	/** Remove all cached draft runtimes for an agent (all users). */
-	private clearRuntimes(agentId: string): void {
+	/**
+	 * Drop all cached runtimes (draft and published) for an agent and, in
+	 * multi-main mode, broadcast the invalidation to peer mains so their
+	 * caches stay in sync.
+	 *
+	 * Pass `skipBroadcast: true` from the pubsub handler to avoid a re-publish
+	 * loop when applying an event received from another main.
+	 */
+	private clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
 		for (const key of this.runtimes.keys()) {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
 				this.runtimes.delete(key);
 			}
 		}
+
+		if (options.skipBroadcast) return;
+		if (!this.globalConfig.multiMainSetup.enabled) return;
+
+		void this.publisher
+			.publishCommand({
+				command: 'agent-config-changed',
+				payload: { agentId },
+			})
+			.catch((error) => {
+				this.logger.warn(`[AgentsService] Failed to publish agent-config-changed for ${agentId}`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+	}
+
+	/**
+	 * Reconcile the local runtime cache when a peer main reports that an
+	 * agent's configuration changed. The originating main has already cleared
+	 * its own cache synchronously before publishing — this handler runs on
+	 * every other main so the next request rebuilds the runtime from the
+	 * current DB state.
+	 */
+	@OnPubSubEvent('agent-config-changed', { instanceType: 'main' })
+	handleAgentConfigChanged(payload: PubSubCommandMap['agent-config-changed']): void {
+		this.clearRuntimes(payload.agentId, { skipBroadcast: true });
 	}
 
 	constructor(
@@ -220,6 +257,8 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 		private readonly agentSkillsService: AgentSkillsService,
+		private readonly publisher: Publisher,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -1310,31 +1349,82 @@ export class AgentsService {
 
 		this.validateConfigRefs(result.config, entity);
 
+		// All optional fields on `AgentJsonConfigSchema` are treated as
+		// "preserve when omitted, replace when provided." A missing key on the
+		// inbound config means "the client isn't touching this", not "clear
+		// it" — without this distinction, a partial save (e.g. just
+		// `instructions`) would silently wipe integrations / tools / skills /
+		// memory and tear down anything wired to them. Required fields
+		// (`name`, `model`, `instructions`) are always present; Zod rejects
+		// payloads missing them, so we always overwrite.
+		//
+		// Zod's `.optional()` outputs `undefined` when a key is absent, which
+		// also matches "key sent as undefined" — both should preserve the
+		// stored value, so the `!== undefined` check is the right signal.
 		const previousIntegrations = entity.integrations ?? [];
-		const { schemaConfig, integrations: nextIntegrations } = decomposeJsonConfig(result.config);
+		const previousSchema = entity.schema ?? null;
 
-		entity.schema = schemaConfig as AgentJsonConfig;
+		const integrationsProvided = result.config.integrations !== undefined;
+		const toolsProvided = result.config.tools !== undefined;
+		const skillsProvided = result.config.skills !== undefined;
+		const descriptionProvided = result.config.description !== undefined;
+		const credentialProvided = result.config.credential !== undefined;
+		const memoryProvided = result.config.memory !== undefined;
+		const providerToolsProvided = result.config.providerTools !== undefined;
+		const configBlockProvided = result.config.config !== undefined;
+
+		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
+			decomposeJsonConfig(result.config);
+
+		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
+
+		// Overlay provided fields on the previous schema so omitted optionals
+		// keep their persisted value. Required fields (always present) are
+		// taken from the inbound directly.
+		const nextSchema: AgentJsonConfig = {
+			...(previousSchema ?? ({} as AgentJsonConfig)),
+			name: decomposedSchema.name,
+			model: decomposedSchema.model,
+			instructions: decomposedSchema.instructions,
+			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
+			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
+			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
+			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
+			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
+			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
+			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
+		};
+
+		entity.schema = nextSchema;
 		entity.name = result.config.name;
-		entity.description = result.config.description ?? null;
+		if (descriptionProvided) entity.description = result.config.description ?? null;
 		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
-		// Remove tool entries that are no longer referenced in the config
-		const referencedIds = new Set(
-			(result.config.tools ?? [])
-				.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
-				.map((t) => t.id),
-		);
-		const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
-		if (orphanIds.length > 0) {
-			const tools = { ...entity.tools };
-			for (const id of orphanIds) {
-				delete tools[id];
+		// Tool body pruning is gated on the client actually rewriting the
+		// tools refs — otherwise a partial save would orphan every persisted
+		// custom tool body because the empty `tools ?? []` makes them all
+		// look unreferenced.
+		if (toolsProvided) {
+			const referencedIds = new Set(
+				(result.config.tools ?? [])
+					.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
+					.map((t) => t.id),
+			);
+			const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
+			if (orphanIds.length > 0) {
+				const tools = { ...entity.tools };
+				for (const id of orphanIds) {
+					delete tools[id];
+				}
+				entity.tools = tools;
 			}
-			entity.tools = tools;
 		}
 
-		this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
+		// Same gating applies to skill bodies.
+		if (skillsProvided) {
+			this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
+		}
 
 		// Invalidate runtime caches
 		this.clearRuntimes(agentId);
@@ -1342,7 +1432,14 @@ export class AgentsService {
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
-		await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
+		// Skip integration reconciliation entirely when the client didn't send
+		// an `integrations` field — `previousIntegrations` and `nextIntegrations`
+		// are identical references, so even with the guard above, taking the
+		// diff would be wasted work and risks accidental disconnects if any
+		// future code path mutates the array in-place.
+		if (integrationsProvided) {
+			await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
+		}
 
 		return {
 			config: composeJsonConfig(saved) ?? result.config,

@@ -248,13 +248,12 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-	scrollbar-color: transparent transparent;
+	scrollbar-width: none;
 
 	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
 
-	&:hover,
-	&:focus-within {
-		scrollbar-color: var(--border) transparent;
+	&::-webkit-scrollbar {
+		display: none;
 	}
 }
 
@@ -343,6 +342,7 @@ watch(
 	color: var(--text-color--subtle);
 	max-height: 150px;
 	overflow-y: auto;
+	scrollbar-width: none;
 }
 
 .typingIndicator {

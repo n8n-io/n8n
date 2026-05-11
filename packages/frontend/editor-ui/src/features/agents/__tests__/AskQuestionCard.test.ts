@@ -26,6 +26,15 @@ function mountCard(props = {}) {
 					template:
 						'<button type="button" data-testid="n8n-checkbox" :aria-checked="String(modelValue)" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)"></button>',
 				},
+				N8nInput: {
+					props: ['modelValue', 'disabled', 'placeholder'],
+					template:
+						'<input :value="modelValue" :disabled="disabled" :placeholder="placeholder" v-bind="$attrs" @input="$emit(\'update:modelValue\', $event.target.value)" @keydown="$emit(\'keydown\', $event)" />',
+				},
+				N8nInputLabel: {
+					props: ['label'],
+					template: '<label><span>{{ label }}</span><slot /></label>',
+				},
 				N8nText: { template: '<p><slot/></p>' },
 			},
 		},
@@ -43,6 +52,7 @@ describe('AskQuestionCard', () => {
 		expect(wrapper.text()).toContain('Option A');
 		expect(wrapper.text()).toContain('Option B');
 		expect(wrapper.text()).toContain('Extra info');
+		expect(wrapper.find('[data-testid="ask-question-other-input"]').exists()).toBe(true);
 	});
 
 	it('emits submit with selected value after clicking a single-choice option', async () => {
@@ -86,7 +96,18 @@ describe('AskQuestionCard', () => {
 		const wrapper = mountCard({ disabled: true });
 		const buttons = wrapper.findAll('button[aria-pressed]');
 		await buttons[0].trigger('click');
+		await wrapper.find('[data-testid="ask-question-other-input"]').setValue('Different option');
+		await wrapper.find('[data-testid="ask-question-other-submit"]').trigger('click');
 		expect(wrapper.emitted('submit')).toBeFalsy();
+	});
+
+	it('submits typed Other text in single-choice mode', async () => {
+		const wrapper = mountCard();
+		await wrapper.find('[data-testid="ask-question-other-input"]').setValue('Use Microsoft Teams');
+		await wrapper.find('[data-testid="ask-question-other-submit"]').trigger('click');
+
+		const emitted = wrapper.emitted('submit') as unknown[][];
+		expect(emitted[0][0]).toEqual({ values: ['Use Microsoft Teams'] });
 	});
 
 	it('allows selecting multiple values when allowMultiple=true', async () => {
@@ -101,5 +122,25 @@ describe('AskQuestionCard', () => {
 		await submitBtn.trigger('click');
 		const emitted = wrapper.emitted('submit') as unknown[][];
 		expect(emitted[0][0]).toEqual({ values: ['a', 'b'] });
+	});
+
+	it('submits selected multiple values plus typed Other text', async () => {
+		const wrapper = mountCard({ allowMultiple: true });
+		const checkboxes = wrapper.findAll('[data-testid="ask-question-checkbox"]');
+		await checkboxes[0].trigger('click');
+		await wrapper.find('[data-testid="ask-question-other-input"]').setValue('Use Discord too');
+		await wrapper.find('[data-testid="ask-question-submit"]').trigger('click');
+
+		const emitted = wrapper.emitted('submit') as unknown[][];
+		expect(emitted[0][0]).toEqual({ values: ['a', 'Use Discord too'] });
+	});
+
+	it('allows typed Other text as the only multiple-choice value', async () => {
+		const wrapper = mountCard({ allowMultiple: true });
+		await wrapper.find('[data-testid="ask-question-other-input"]').setValue('Use Linear');
+		await wrapper.find('[data-testid="ask-question-submit"]').trigger('click');
+
+		const emitted = wrapper.emitted('submit') as unknown[][];
+		expect(emitted[0][0]).toEqual({ values: ['Use Linear'] });
 	});
 });
