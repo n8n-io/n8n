@@ -101,7 +101,7 @@ export class GatewayClient {
 
 	constructor(private readonly options: GatewayClientOptions) {}
 
-	/** Return the active API key — session key if available, otherwise the original key. */
+	/** Session key when the server has upgraded the pairing token; otherwise the original token. */
 	private get apiKey(): string {
 		return this.sessionKey ?? this.options.apiKey;
 	}

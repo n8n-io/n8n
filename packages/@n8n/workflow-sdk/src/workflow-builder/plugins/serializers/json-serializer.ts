@@ -108,14 +108,22 @@ function serializeNode(
 			// post-redaction string `"[REDACTED]"`). Pass through unchanged.
 			n8nNode.credentials = deepCopy(config.credentials);
 		} else {
-			// `NodeConfig.credentials` is typed wide (also accepts PlaceholderValue)
-			// at the public API. By this point `normalizeNodeConfig` has rewritten any
-			// placeholder() markers to newCredential() markers, so no __placeholder
-			// values remain at runtime. Narrow the value type for the serializer.
+			// `NodeConfig.credentials` is typed wide (string | { value } | etc.) at the
+			// public API. By this point `normalizeNodeConfig` has rewritten the loose
+			// shapes to `CredentialReference | NewCredentialValue`. Defensively skip
+			// any leftover placeholder marker strings or `{ value }` objects (they are
+			// placeholders the user must still fill in and have no `id`/`name` to
+			// serialize). Plain strings (e.g. legacy 'YOUR_CREDENTIALS' style refs)
+			// pass through unchanged for backwards compatibility.
 			const resolvable: NonNullable<NodeJSON['credentials']> = {};
 			for (const [key, value] of Object.entries(config.credentials)) {
-				if (value && typeof value === 'object' && '__placeholder' in value) continue;
-				resolvable[key] = value;
+				if (typeof value === 'string') {
+					if (value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')) continue;
+					resolvable[key] = value as unknown as { id?: string; name: string };
+					continue;
+				}
+				if (value && typeof value === 'object' && 'value' in value && !('id' in value)) continue;
+				resolvable[key] = value as { id?: string; name: string };
 			}
 			n8nNode.credentials = deepCopy(resolvable);
 		}

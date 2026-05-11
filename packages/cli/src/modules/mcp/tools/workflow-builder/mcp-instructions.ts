@@ -9,7 +9,6 @@
 import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
-	MCP_UPDATE_PARTIAL_WORKFLOW_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
@@ -25,11 +24,11 @@ export function getMcpInstructions(isBuilderEnabled: boolean): string {
 
 To build n8n workflows, follow these steps in order:
 
-1. Read the SDK reference: Call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) to learn the SDK patterns and syntax.
+1. Read the SDK reference: You MUST call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) before writing workflow code. Do not guess SDK syntax.
 
-2. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]) and utility nodes (e.g., ["set", "if", "merge", "code"]). Note the discriminators (resource/operation/mode) in the results.
+2. Get suggested nodes: You MUST call ${CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName} with all relevant workflow technique categories before searching for nodes. Use the recommendations, pattern hints, and configuration guidance to decide which nodes and patterns to use.
 
-3. (Optional) Get suggestions: Call ${CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName} with workflow technique categories for curated recommendations.
+3. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]), utility nodes (e.g., ["set", "if", "merge", "code"]), and suggested nodes you plan to use. Note the discriminators (resource/operation/mode) in the results.
 
 4. Get type definitions: Call ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName} with ALL node IDs you plan to use, including discriminators from search results. This returns the exact TypeScript parameter definitions. DO NOT skip this — guessing parameter names creates invalid workflows.
 
@@ -39,11 +38,9 @@ To build n8n workflows, follow these steps in order:
 
 7. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences) summarizing what the workflow does — this helps users find and understand their workflows.
 
-8. Update (small edits, preferred): Call ${MCP_UPDATE_PARTIAL_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setWorkflowMetadata). Use this for parameter tweaks, adding/removing single nodes, rewiring, and metadata changes — it avoids re-sending the full workflow code so iterations stay cheap. The whole batch is atomic: if any op fails the workflow is unchanged.
+8. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setWorkflowMetadata). The whole batch is atomic: if any op fails the workflow is unchanged.
 
-9. Update (full rewrite, fallback): Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and validated code only when the change is large enough that ${MCP_UPDATE_PARTIAL_WORKFLOW_TOOL.toolName} would need many ops to express (major restructuring). Follow steps 2-6 to prepare the new code first.
-
-10. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
+9. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.`;
 
 	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
 }

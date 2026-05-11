@@ -38,7 +38,6 @@ import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
-import { createUpdatePartialWorkflowTool } from './tools/workflow-builder/update-partial-workflow.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
 import { createGetSuggestedWorkflowNodesTool } from './tools/workflow-builder/get-suggested-workflow-nodes.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
@@ -404,30 +403,13 @@ export class McpService {
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 
-		const updatePartialTool = createUpdatePartialWorkflowTool(
-			user,
-			this.workflowFinderService,
-			this.workflowService,
-			this.urlService,
-			this.telemetry,
-			this.nodeTypes,
-			this.credentialsService,
-			this.sharedWorkflowRepository,
-			this.collaborationService,
-		);
-		server.registerTool(
-			updatePartialTool.name,
-			updatePartialTool.config,
-			updatePartialTool.handler,
-		);
-
 		// SDK reference as MCP resource — for clients that support resources.
 		server.resource(
 			'workflow-sdk-reference',
 			'n8n://workflow-sdk/reference',
 			{
 				description:
-					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows. Get this FIRST before building workflows to learn the SDK.',
+					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
 			async () => ({
 				contents: [
