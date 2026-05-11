@@ -4,7 +4,6 @@ import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getNodeParametersIssues } from '@/features/setupPanel/setupPanel.utils';
 import {
@@ -14,20 +13,14 @@ import {
 	type SetupCard,
 	type SetupCardGroup,
 } from '../instanceAiWorkflowSetup.utils';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useSetupCards(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>,
 	getCardCredentialId: (card: SetupCard) => string | null,
 	isCredentialTypeTestable: (name: string) => boolean,
 ) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 

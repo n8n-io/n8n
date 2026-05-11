@@ -30,7 +30,7 @@ test.describe(
 			await expect(n8n.ndv.getParameterInput('serverTransport')).toBeHidden();
 			await expect(n8n.ndv.getParameterInput('authentication')).toBeHidden();
 
-			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
+			await expect(n8n.ndv.getNodeCredentialsQuickConnectEmptyState()).toBeVisible();
 			await expect(n8n.ndv.getParameterInput('include')).toBeVisible();
 		});
 	},
