@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-08T12:51:58.412Z",
-	"totalViolations": 445,
+	"generated": "2026-05-11T13:19:16.191Z",
+	"totalViolations": 443,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -44,13 +44,7 @@
 		"pages/InstanceAiPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 19,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 45,
+				"line": 23,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -80,7 +74,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 69,
+				"line": 65,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -92,7 +86,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 78,
+				"line": 77,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -104,7 +98,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 98,
+				"line": 86,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -134,19 +128,19 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 120,
+				"line": 118,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 139,
+				"line": 124,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 157,
+				"line": 143,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -158,13 +152,13 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 191,
+				"line": 165,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 207,
+				"line": 195,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -176,42 +170,42 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 232,
+				"line": 215,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 238,
+				"line": 236,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 238,
+				"line": 242,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 242,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "deduplication",
-				"line": 139,
+				"line": 143,
 				"message": "Duplicate locator: this.page.getByTestId(\"workflow-preview-iframe\") in pages scope",
 				"hash": "d333305f8c67"
 			},
 			{
 				"rule": "deduplication",
-				"line": 161,
+				"line": 165,
 				"message": "Duplicate locator: this.page.getByTestId(\"workflow-preview-iframe\") in pages scope",
 				"hash": "d333305f8c67"
 			}
 		],
 		"pages/NodeDetailsViewPage.ts": [
-			{
-				"rule": "scope-lockdown",
-				"line": 34,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
 			{
 				"rule": "scope-lockdown",
 				"line": 38,
@@ -226,19 +220,19 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 114,
+				"line": 46,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 270,
+				"line": 118,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 319,
+				"line": 274,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -256,7 +250,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 347,
+				"line": 331,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -286,31 +280,25 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 369,
+				"line": 367,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 395,
+				"line": 373,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 431,
+				"line": 399,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 459,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 463,
+				"line": 435,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -328,13 +316,19 @@
 			},
 			{
 				"rule": "scope-lockdown",
+				"line": 467,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "4087a9cf20cb"
+			},
+			{
+				"rule": "scope-lockdown",
 				"line": 471,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 489,
+				"line": 475,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -346,49 +340,43 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 493,
+				"line": 497,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 504,
+				"line": 497,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 513,
+				"line": 508,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 575,
+				"line": 517,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 620,
+				"line": 579,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 626,
+				"line": 624,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 650,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 650,
+				"line": 630,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -400,19 +388,25 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 761,
+				"line": 654,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 806,
+				"line": 658,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 860,
+				"line": 765,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "4087a9cf20cb"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 810,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -424,13 +418,19 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 873,
+				"line": 868,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 879,
+				"line": 877,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "4087a9cf20cb"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 883,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -2048,25 +2048,25 @@
 		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 55,
+				"line": 44,
 				"message": "Direct page locator call: n8n.page.getByTestId('node-creator-plus-button')",
 				"hash": "2b61afc80039"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 66,
+				"line": 55,
 				"message": "Direct page locator call: n8n.page.getByTestId('execute-node-button')",
 				"hash": "af9330ed3874"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 67,
+				"line": 56,
 				"message": "Direct page locator call: n8n.page.getByTestId('delete-node-button')",
 				"hash": "01554562f936"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 68,
+				"line": 57,
 				"message": "Direct page locator call: n8n.page.getByTestId('disable-node-button')",
 				"hash": "4f683821335f"
 			}
@@ -2753,68 +2753,52 @@
 				"hash": "da9226aef0eb"
 			}
 		],
-		"tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-300.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 13,
-				"message": "Duplicate test logic: \"30 nodes, 10KB payload, steady 300 msg/s\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "b2b06b5bf9cc"
-			}
-		],
-		"tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 13,
-				"message": "Duplicate test logic: \"30 nodes, 10KB payload, steady 100 msg/s\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "523a788d9cb3"
-			}
-		],
-		"tests/infrastructure/benchmarks/kafka/load-60n-1kb-burst.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 13,
-				"message": "Duplicate test logic: \"60 nodes, 1KB payload, burst drain 10000 backlog\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "1fb8c721e201"
-			}
-		],
-		"tests/infrastructure/benchmarks/kafka/throughput-10n-100kb.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 19,
-				"message": "Duplicate test logic: \"10 nodes, 1KB payload, 100KB output/node, 5000 msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "53c1e0072183"
-			}
-		],
-		"tests/infrastructure/benchmarks/kafka/throughput-10n-10kb.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 19,
-				"message": "Duplicate test logic: \"10 nodes, 10KB payload, 10KB output/node, 5000 msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "fdf7b9dd7186"
-			}
-		],
-		"tests/infrastructure/benchmarks/kafka/throughput-30n-10kb.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 19,
-				"message": "Duplicate test logic: \"30 nodes, 10KB payload, 10KB output/node, 5000 msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "3d757209f969"
-			}
-		],
-		"tests/infrastructure/benchmarks/kafka/throughput-60n-10kb.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 19,
-				"message": "Duplicate test logic: \"60 nodes, 10KB payload, 10KB output/node, 5000 msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/load-30n-10kb-steady-200.spec.ts:\"30 nodes, 10KB payload, steady 200 msg/s\"",
-				"hash": "28822d0ca517"
-			}
-		],
-		"tests/infrastructure/benchmarks/webhook/throughput-sync.spec.ts": [
+		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
 			{
 				"rule": "duplicate-logic",
 				"line": 17,
-				"message": "Duplicate test logic: \"sync: 10 nodes, 10KB payload, 10KB output/node, 50 connections, 60s\" has identical structure to tests/infrastructure/benchmarks/webhook/throughput-async.spec.ts:\"async: 10 nodes, 10KB payload, 10KB output/node, 50 connections, 60s\"",
-				"hash": "6481e87468af"
+				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 250 msg/s × 240s (1 main + 1 worker)\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
+				"hash": "388616eecbaa"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 17,
+				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 150k msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
+				"hash": "1c5033214063"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/steady-rate-breaking-point.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 34,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
+				"hash": "5579d3e330e1"
+			}
+		],
+		"tests/infrastructure/benchmarks/kafka/output-size-impact.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 25,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/node-count-scaling.spec.ts:\"anonymous\"",
+				"hash": "d676f700b46d"
+			}
+		],
+		"tests/infrastructure/benchmarks/webhook/webhook-otel-overhead.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 26,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-main-scaling.spec.ts:\"anonymous\"",
+				"hash": "61c8c9b0f1ff"
+			}
+		],
+		"tests/infrastructure/benchmarks/webhook/webhook-single-instance.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 27,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-queue-baseline.spec.ts:\"anonymous\"",
+				"hash": "51d2d4fe3fdb"
 			}
 		],
 		"tests/infrastructure/benchmarks-local/instance-ai/thread-churn-delegation.spec.ts": [
