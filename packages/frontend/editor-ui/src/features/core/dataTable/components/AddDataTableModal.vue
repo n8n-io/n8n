@@ -210,20 +210,21 @@ const deriveNameFromFileName = (fileName: string): string => {
 
 const handleFileChange = async (uploadFile: UploadFile) => {
 	if (!uploadFile.raw) return;
-	selectedFile.value = uploadFile.raw;
+	const file = uploadFile.raw;
+	selectedFile.value = file;
 	if (dataTableName.value) return;
 
-	const baseName = deriveNameFromFileName(uploadFile.raw.name);
+	const baseName = deriveNameFromFileName(file.name);
 	if (!baseName) return;
 
 	const projectId = route.params.projectId as string;
 	try {
 		const suggested = await dataTableStore.findAvailableDataTableName(baseName, projectId);
-		if (!dataTableName.value) {
+		if (selectedFile.value === file && !dataTableName.value) {
 			dataTableName.value = suggested;
 		}
 	} catch {
-		if (!dataTableName.value) {
+		if (selectedFile.value === file && !dataTableName.value) {
 			dataTableName.value = baseName;
 		}
 	}

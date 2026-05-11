@@ -132,7 +132,8 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		baseName: string,
 		projectId: string,
 	): Promise<string> => {
-		const trimmed = baseName.trim();
+		const MAX_NAME_LENGTH = 128;
+		const trimmed = baseName.trim().slice(0, MAX_NAME_LENGTH).trim();
 		if (!trimmed || !projectId) return trimmed;
 
 		const response = await fetchDataTablesApi(
@@ -144,11 +145,18 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		const existingNames = new Set(response.data.map((t) => t.name.toLowerCase()));
 		if (!existingNames.has(trimmed.toLowerCase())) return trimmed;
 
-		let suffix = 2;
-		while (existingNames.has(`${trimmed} ${suffix}`.toLowerCase())) {
-			suffix++;
+		const buildCandidate = (n: number): string => {
+			const suffix = ` ${n}`;
+			const maxBaseLen = MAX_NAME_LENGTH - suffix.length;
+			const base = trimmed.length > maxBaseLen ? trimmed.slice(0, maxBaseLen).trim() : trimmed;
+			return `${base}${suffix}`;
+		};
+
+		let n = 2;
+		while (existingNames.has(buildCandidate(n).toLowerCase())) {
+			n++;
 		}
-		return `${trimmed} ${suffix}`;
+		return buildCandidate(n);
 	};
 
 	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
