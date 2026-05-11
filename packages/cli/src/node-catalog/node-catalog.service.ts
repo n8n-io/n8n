@@ -1,20 +1,14 @@
-import type { CodeBuilderSearchResult, NodeTypeParser } from '@n8n/ai-workflow-builder';
+import type {
+	CodeBuilderSearchResult,
+	NodeRequest,
+	NodeTypeParser,
+} from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-
-type NodeRequest =
-	| string
-	| {
-			nodeId: string;
-			version?: string;
-			resource?: string;
-			operation?: string;
-			mode?: string;
-	  };
 
 export type NodeFilter = (nodeId: string) => boolean;
 
@@ -25,10 +19,6 @@ export interface SearchNodesOptions {
 	 * callers should use module-level function references to avoid unbounded growth.
 	 */
 	nodeFilter?: NodeFilter;
-}
-
-interface InvokableTool<TInput> {
-	invoke(input: TInput): Promise<string>;
 }
 
 interface SearchState {
@@ -59,10 +49,6 @@ export class NodeCatalogService {
 	 * The cache stores the complete `CodeBuilderSearchResult`, so callers can consume only the fields they need.
 	 */
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
-
-	private getTool: InvokableTool<{ nodeIds: NodeRequest[] }> | undefined;
-
-	private suggestTool: InvokableTool<{ categories: string[] }> | undefined;
 
 	private readonly getCache = new Map<string, string>();
 
@@ -113,7 +99,7 @@ export class NodeCatalogService {
 		if (cached) return cached;
 
 		if (!state.search) {
-			const { searchCodeBuilderNodes } = await import('@n8n/ai-workflow-builder');
+			const { searchCodeBuilderNodes } = await import('@n8n/ai-utilities/node-catalog');
 			const nodeTypeParser = this.getNodeTypeParser();
 			state.search = (searchQueries: string[]) =>
 				nodeFilter
@@ -134,11 +120,8 @@ export class NodeCatalogService {
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
-		if (!this.getTool) {
-			const { createCodeBuilderGetTool } = await import('@n8n/ai-workflow-builder');
-			this.getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: this.nodeDefinitionDirs });
-		}
-		const result = await this.getTool.invoke({ nodeIds });
+		const { getNodeTypes } = await import('@n8n/ai-utilities/node-catalog');
+		const result = getNodeTypes(nodeIds, { nodeDefinitionDirs: this.nodeDefinitionDirs });
 		this.getCache.set(cacheKey, result);
 		return result;
 	}
@@ -149,17 +132,14 @@ export class NodeCatalogService {
 		const cached = this.suggestCache.get(cacheKey);
 		if (cached) return cached;
 
-		if (!this.suggestTool) {
-			const { createGetSuggestedNodesTool } = await import('@n8n/ai-workflow-builder');
-			this.suggestTool = createGetSuggestedNodesTool(this.getNodeTypeParser());
-		}
-		const result = await this.suggestTool.invoke({ categories });
+		const { getSuggestedNodes } = await import('@n8n/ai-utilities/node-catalog');
+		const result = getSuggestedNodes(this.getNodeTypeParser(), categories);
 		this.suggestCache.set(cacheKey, result);
 		return result;
 	}
 
 	private async doInitialize(): Promise<void> {
-		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-workflow-builder');
+		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-utilities/node-catalog');
 		const { setSchemaBaseDirs } = await import('@n8n/workflow-sdk');
 
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -179,13 +159,11 @@ export class NodeCatalogService {
 	private async refreshNodeTypes(): Promise<void> {
 		if (!this.nodeTypeParser) return;
 
-		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-workflow-builder');
+		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-utilities/node-catalog');
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
 
 		this.searchStates.clear();
-		this.getTool = undefined;
-		this.suggestTool = undefined;
 
 		this.getCache.clear();
 		this.suggestCache.clear();

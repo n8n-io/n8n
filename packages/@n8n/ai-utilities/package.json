@@ -9,6 +9,9 @@
     "*": {
       "text-editor": [
         "dist/esm/utils/text-editor.d.ts"
+      ],
+      "node-catalog": [
+        "dist/esm/node-catalog/index.d.ts"
       ]
     }
   },
@@ -22,6 +25,11 @@
       "types": "./dist/esm/utils/text-editor.d.ts",
       "import": "./dist/esm/utils/text-editor.js",
       "require": "./dist/cjs/utils/text-editor.js"
+    },
+    "./node-catalog": {
+      "types": "./dist/esm/node-catalog/index.d.ts",
+      "import": "./dist/esm/node-catalog/index.js",
+      "require": "./dist/cjs/node-catalog/index.js"
     },
     "./*": "./*"
   },
@@ -62,6 +70,7 @@
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",

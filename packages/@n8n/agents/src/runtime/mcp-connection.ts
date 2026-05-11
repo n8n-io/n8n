@@ -1,9 +1,9 @@
 /** Don't remove the .js extensions. That's how the @modelcontextprotocol/sdk is packaged. */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { CallToolResultSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import type { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../sdk/tool';
@@ -13,9 +13,48 @@ import type { BuiltTool } from '../types/sdk/tool';
 /** The raw result returned by an MCP tool call. */
 export type McpCallToolResult = CallToolResult;
 
+interface McpSdkModule {
+	Client: typeof import('@modelcontextprotocol/sdk/client/index.js').Client;
+	SSEClientTransport: typeof import('@modelcontextprotocol/sdk/client/sse.js').SSEClientTransport;
+	StdioClientTransport: typeof import('@modelcontextprotocol/sdk/client/stdio.js').StdioClientTransport;
+	StreamableHTTPClientTransport: typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js').StreamableHTTPClientTransport;
+	CallToolResultSchema: typeof import('@modelcontextprotocol/sdk/types.js').CallToolResultSchema;
+}
+
+let cachedSdk: McpSdkModule | undefined;
+
+/**
+ * Load the @modelcontextprotocol/sdk subpaths on first use. Deferred so the
+ * agents module's startup cost stays low — the SDK loads ~12 MB of code that
+ * is only needed once a user actually configures an MCP server.
+ */
+function loadMcpSdk(): McpSdkModule {
+	if (cachedSdk) return cachedSdk;
+	/* eslint-disable @typescript-eslint/no-require-imports */
+	cachedSdk = {
+		Client: (
+			require('@modelcontextprotocol/sdk/client/index.js') as typeof import('@modelcontextprotocol/sdk/client/index.js')
+		).Client,
+		SSEClientTransport: (
+			require('@modelcontextprotocol/sdk/client/sse.js') as typeof import('@modelcontextprotocol/sdk/client/sse.js')
+		).SSEClientTransport,
+		StdioClientTransport: (
+			require('@modelcontextprotocol/sdk/client/stdio.js') as typeof import('@modelcontextprotocol/sdk/client/stdio.js')
+		).StdioClientTransport,
+		StreamableHTTPClientTransport: (
+			require('@modelcontextprotocol/sdk/client/streamableHttp.js') as typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')
+		).StreamableHTTPClientTransport,
+		CallToolResultSchema: (
+			require('@modelcontextprotocol/sdk/types.js') as typeof import('@modelcontextprotocol/sdk/types.js')
+		).CallToolResultSchema,
+	};
+	/* eslint-enable @typescript-eslint/no-require-imports */
+	return cachedSdk;
+}
+
 /** Wraps a single MCP SDK Client instance for one server. Not publicly exported. */
 export class McpConnection {
-	private client: Client;
+	private client: Client | undefined;
 
 	private config: McpServerConfig;
 
@@ -28,14 +67,15 @@ export class McpConnection {
 	constructor(config: McpServerConfig, requireToolApproval = false) {
 		this.config = config;
 		this.shouldRequireToolApproval = requireToolApproval;
-		this.client = new Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 	}
 
 	async connect(): Promise<void> {
 		if (this.connectionPromise !== undefined) {
 			return await this.connectionPromise;
 		}
-		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config));
+		const sdk = loadMcpSdk();
+		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
+		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
 		try {
 			await this.connectionPromise;
 		} catch (error) {
@@ -47,9 +87,11 @@ export class McpConnection {
 	private async connectWithTransport(
 		transport: SSEClientTransport | StreamableHTTPClientTransport | StdioClientTransport,
 	): Promise<void> {
+		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
+		const client = this.client;
 		const timeoutMs = this.config.connectionTimeoutMs;
 		if (timeoutMs === undefined) {
-			await this.client.connect(transport);
+			await client.connect(transport);
 			return;
 		}
 		if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
@@ -60,7 +102,7 @@ export class McpConnection {
 		let timeoutId: ReturnType<typeof setTimeout> | undefined;
 		try {
 			await Promise.race([
-				this.client.connect(transport),
+				client.connect(transport),
 				new Promise<never>((_, reject) => {
 					timeoutId = setTimeout(() => {
 						reject(
@@ -72,7 +114,7 @@ export class McpConnection {
 				}),
 			]);
 		} catch (error) {
-			await this.client.close().catch(() => {});
+			await client.close().catch(() => {});
 			throw error;
 		} finally {
 			if (timeoutId !== undefined) clearTimeout(timeoutId);
@@ -81,6 +123,7 @@ export class McpConnection {
 
 	/** List tools from the server, resolving them into BuiltTool instances with prefixed names. */
 	async listTools(): Promise<BuiltTool[]> {
+		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const result = await this.client.listTools();
 		const resolver = new McpToolResolver();
 		const tools = resolver.resolve(this, result.tools);
@@ -117,6 +160,8 @@ export class McpConnection {
 	}
 
 	async callTool(name: string, args: Record<string, unknown>): Promise<McpCallToolResult> {
+		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
+		const { CallToolResultSchema } = loadMcpSdk();
 		const result = await this.client.callTool({ name, arguments: args }, CallToolResultSchema);
 		return result as McpCallToolResult;
 	}
@@ -132,7 +177,7 @@ export class McpConnection {
 
 	private async doDisconnect(): Promise<void> {
 		if (this.closed) return;
-		await this.client.close();
+		if (this.client) await this.client.close();
 		this.connectionPromise = undefined;
 		this.closed = true;
 	}
@@ -154,9 +199,10 @@ export class McpConnection {
 
 	private createTransport(
 		config: McpServerConfig,
+		sdk: McpSdkModule,
 	): SSEClientTransport | StreamableHTTPClientTransport | StdioClientTransport {
 		if (config.command) {
-			return new StdioClientTransport({
+			return new sdk.StdioClientTransport({
 				command: config.command,
 				args: config.args,
 				env: config.env,
@@ -168,10 +214,10 @@ export class McpConnection {
 				: undefined;
 
 			if (config.transport === 'streamableHttp') {
-				return new StreamableHTTPClientTransport(url, { requestInit });
+				return new sdk.StreamableHTTPClientTransport(url, { requestInit });
 			}
 
-			return new SSEClientTransport(url, { requestInit });
+			return new sdk.SSEClientTransport(url, { requestInit });
 		}
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
 	}
