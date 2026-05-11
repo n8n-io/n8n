@@ -36,19 +36,10 @@ export class ExecutionsController {
 
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-
-		if (accessibleWorkflowIds.length === 0) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
 		const { rangeQuery: query } = req;
 
-		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
-		query.accessibleWorkflowIds = accessibleWorkflowIds;
+		query.user = req.user;
+		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
@@ -87,6 +78,17 @@ export class ExecutionsController {
 		};
 	}
 
+	@Get('/versions/:workflowId')
+	async getVersions(req: ExecutionRequest.GetVersions) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
+			return [];
+		}
+
+		return await this.executionService.getExecutedVersions(req.params.workflowId);
+	}
+
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
 		if (!isPositiveInteger(req.params.id)) {
@@ -111,6 +113,22 @@ export class ExecutionsController {
 		const executionId = req.params.id;
 
 		return await this.executionService.stop(executionId, workflowIds);
+	}
+
+	/**
+	 * Stops executions based on the provided filter
+	 *
+	 * @returns { stopped: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 */
+	@Post('/stopMany')
+	async stopMany(req: ExecutionRequest.StopMany) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+
+		// Return early to avoid expensive db query
+		if (accessibleWorkflowIds.length === 0) return { stopped: 0 };
+
+		const stopped = await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+		return { stopped };
 	}
 
 	@Post('/:id/retry')

@@ -2,15 +2,15 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useSettingsStore } from '@/stores/settings.store';
-import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 
 import {
 	N8nActionDropdown,
@@ -36,7 +36,6 @@ const route = useRoute();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
-const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
@@ -44,7 +43,7 @@ const isAdvancedExecutionFilterEnabled = computed(
 );
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
-const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
+const workflowId = useInjectWorkflowId();
 const retryExecutionActions = computed(() => [
 	{
 		id: 'current-workflow',
@@ -85,7 +84,7 @@ function onRetryMenuItemSelect(action: string): void {
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: execution.id },
+				params: { workflowId: workflowId, executionId: execution.id },
 				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"
@@ -113,7 +112,7 @@ function onRetryMenuItemSelect(action: string): void {
 					<N8nText :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</N8nText>
 					{{ ' ' }}
 					<N8nText
-						v-if="executionUIDetails.name === 'running'"
+						v-if="executionUIDetails.name === 'running' && !execution.stoppedAt"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 						data-test-id="execution-time-in-status"
@@ -188,11 +187,11 @@ function onRetryMenuItemSelect(action: string): void {
 </template>
 
 <style module lang="scss">
-@use '@/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--execution-card--color--background);
-	--execution-list-item-highlight-background: var(--color--warning--tint-1);
+	--execution-list-item--color--background: var(--execution-card--color--background);
+	--execution-list-item--color--background--highlight: var(--color--warning--tint-1);
 
 	display: flex;
 	flex-direction: column;
@@ -209,7 +208,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--execution-card--color--background--hover);
+			--execution-list-item--color--background: var(--execution-card--color--background--hover);
 		}
 	}
 
@@ -298,7 +297,7 @@ function onRetryMenuItemSelect(action: string): void {
 }
 
 .executionLink {
-	background: var(--execution-list-item-background);
+	background: var(--execution-list-item--color--background);
 	display: flex;
 	width: 100%;
 	align-items: center;

@@ -2,18 +2,18 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { RunDataPanel } from './components/RunDataPanel';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
-import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { EditFieldsNode } from './components/nodes/EditFieldsNode';
+import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
 	readonly clipboard: ClipboardHelper;
-	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
-	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
+	readonly inputPanel = new RunDataPanel(this.container.getByTestId('ndv-input-panel'));
+	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
 
 	constructor(page: Page) {
 		super(page);
@@ -23,7 +23,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeCredentialsSelect() {
-		return this.page.getByTestId('node-credentials-select');
+		return this.container.getByTestId('node-credentials-select');
+	}
+
+	getNodeCredentialsEmptyState() {
+		return this.container.getByTestId('node-credentials-empty-state');
 	}
 
 	credentialDropdownCreateNewCredential() {
@@ -39,15 +43,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialSelect() {
-		return this.page.getByRole('combobox', { name: 'Select Credential' });
+		return this.container.getByRole('combobox', { name: 'Select Credential' });
 	}
 
 	async clickBackToCanvasButton() {
-		await this.clickByTestId('back-to-canvas');
+		await this.clickByTestId('ndv-close-button');
 	}
 
 	getParameterByLabel(labelName: string) {
-		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
+		return this.container.locator('.parameter-item').filter({ hasText: labelName });
+	}
+
+	getParameterTextboxByLabel(labelName: string) {
+		return this.getParameterByLabel(labelName).getByRole('textbox');
 	}
 
 	async fillParameterInput(labelName: string, value: string, index?: number) {
@@ -83,23 +91,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPanel() {
-		return this.page.getByTestId('output-panel');
+		return this.container.getByTestId('output-panel');
 	}
 
-	getContainer() {
+	get container() {
 		return this.page.getByTestId('ndv');
 	}
 
 	getInputPanel() {
-		return this.page.getByTestId('ndv-input-panel');
+		return this.container.getByTestId('ndv-input-panel');
 	}
 
 	getParameterExpressionPreviewValue() {
-		return this.page.getByTestId('parameter-expression-preview-value');
+		return this.container.getByTestId('parameter-expression-preview-value');
 	}
 
 	getParameterExpressionPreviewOutput() {
-		return this.page.getByTestId('parameter-expression-preview-output');
+		return this.container.getByTestId('parameter-expression-preview-output');
 	}
 
 	getInlineExpressionEditorPreview() {
@@ -109,22 +117,22 @@ export class NodeDetailsViewPage extends BasePage {
 	async activateParameterExpressionEditor(parameterName: string) {
 		const parameterInput = this.getParameterInput(parameterName);
 		await parameterInput.click();
-		await this.page
+		await this.container
 			.getByTestId(`${parameterName}-parameter-input-options-container`)
 			.getByTestId('radio-button-expression')
 			.click();
 	}
 
 	getEditPinnedDataButton() {
-		return this.page.getByTestId('ndv-edit-pinned-data');
+		return this.container.getByTestId('ndv-edit-pinned-data');
 	}
 
 	getRunDataPaneHeader() {
-		return this.page.getByTestId('run-data-pane-header');
+		return this.container.getByTestId('run-data-pane-header');
 	}
 
-	getOutputTable() {
-		return this.getOutputPanel().getByTestId('ndv-data-container').locator('table');
+	getEditOutputButton() {
+		return this.getRunDataPaneHeader().getByRole('button', { name: 'Edit Output' });
 	}
 
 	getOutputDataContainer() {
@@ -143,31 +151,18 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.savePinnedData();
 	}
 
-	async pastePinnedData(data: object) {
-		await this.getEditPinnedDataButton().click();
-
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
-		await editor.waitFor();
-		await editor.click();
-		await editor.fill('');
-
-		await this.clipboard.paste(JSON.stringify(data));
-
-		await this.savePinnedData();
-	}
-
 	async savePinnedData() {
 		await this.getRunDataPaneHeader().locator('button:visible').filter({ hasText: 'Save' }).click();
 	}
 
 	getAssignmentCollectionAdd(paramName: string) {
-		return this.page
+		return this.container
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-collection-drop-area');
 	}
 
 	getAssignmentCollectionDropArea() {
-		return this.page.getByTestId('assignment-collection-drop-area');
+		return this.container.getByTestId('assignment-collection-drop-area');
 	}
 
 	async clickAssignmentCollectionDropArea() {
@@ -175,9 +170,17 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentValue(paramName: string) {
-		return this.page
+		return this.container
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-value');
+	}
+
+	getAssignmentExpressionToggle(paramName: string) {
+		return this.getAssignmentValue(paramName).getByText('Expression');
+	}
+
+	async clickAssignmentExpressionToggle(paramName: string) {
+		await this.getAssignmentExpressionToggle(paramName).click();
 	}
 
 	/**
@@ -190,19 +193,19 @@ export class NodeDetailsViewPage extends BasePage {
 			const parameterInput = this.getParameterInput(parameterName);
 			return parameterInput.getByTestId('inline-expression-editor-input');
 		}
-		return this.page.getByTestId('inline-expression-editor-input');
+		return this.container.getByTestId('inline-expression-editor-input');
 	}
 
 	getNodeParameters() {
-		return this.page.getByTestId('node-parameters');
+		return this.container.getByTestId('node-parameters');
 	}
 
 	getParameterInputHint() {
-		return this.page.getByTestId('parameter-input-hint');
+		return this.container.getByTestId('parameter-input-hint');
 	}
 
 	getInputLabel() {
-		return this.page.getByTestId('input-label');
+		return this.container.getByTestId('input-label');
 	}
 
 	getNthParameter(index: number) {
@@ -210,19 +213,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialsLabel() {
-		return this.page.getByTestId('credentials-label');
+		return this.container.getByTestId('credentials-label');
 	}
 
 	async makeWebhookRequest(path: string) {
 		return await this.page.request.get(path);
-	}
-
-	getWebhookUrl() {
-		return this.page.locator('.webhook-url').textContent();
-	}
-
-	getVisiblePoppers() {
-		return this.page.locator('.el-popper:visible');
 	}
 
 	async clearExpressionEditor(parameterName?: string) {
@@ -239,7 +234,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInput(parameterName: string, index?: number) {
-		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
+		return locatorByIndex(this.container.getByTestId(`parameter-input-${parameterName}`), index);
+	}
+
+	getParameterInputTextbox(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).getByRole('textbox');
 	}
 
 	getParameterInputField(parameterName: string, index?: number) {
@@ -251,13 +250,20 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName, index).locator('.cm-content');
 	}
 
+	getParameterTextarea(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).locator('textarea');
+	}
+
 	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
 		await this.clickParameterDropdown(parameterName, index);
 		await this.selectFromVisibleDropdown(optionText);
 	}
 
 	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
-		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
+		await locatorByIndex(
+			this.container.getByTestId(`parameter-input-${parameterName}`),
+			index,
+		).click();
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
@@ -271,7 +277,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.locator('.param-options').click();
+		await this.container.getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
@@ -279,18 +285,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.selectFromVisibleDropdown(optionName);
 	}
 
-	getVisiblePopper() {
-		return this.page.locator('.el-popper:visible');
-	}
-
-	async waitForParameterDropdown(parameterName: string): Promise<void> {
-		const dropdown = this.getParameterInput(parameterName);
-		await dropdown.waitFor({ state: 'visible' });
-		await expect(dropdown).toBeEnabled();
-	}
-
 	async clickFloatingNode(nodeName: string) {
-		await this.page.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`).click();
+		await this.container
+			.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`)
+			.click();
 	}
 
 	async executePrevious() {
@@ -298,23 +296,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickAskAiTab() {
-		await this.page.locator('#tab-ask-ai').click();
+		await this.container.locator('#tab-ask-ai').click();
 	}
 
 	getAskAiTabPanel() {
-		return this.page.getByTestId('code-node-tab-ai');
+		return this.container.getByTestId('code-node-tab-ai');
 	}
 
 	getAskAiCtaButton() {
-		return this.page.getByTestId('ask-ai-cta');
+		return this.container.getByTestId('ask-ai-cta');
 	}
 
 	getAskAiPromptInput() {
-		return this.page.getByTestId('ask-ai-prompt-input');
+		return this.container.getByTestId('ask-ai-prompt-input');
 	}
 
 	getAskAiPromptCounter() {
-		return this.page.getByTestId('ask-ai-prompt-counter');
+		return this.container.getByTestId('ask-ai-prompt-counter');
 	}
 
 	getAskAiCtaTooltipNoInputData() {
@@ -330,11 +328,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeTabPanel() {
-		return this.page.getByTestId('code-node-tab-code');
+		return this.container.getByTestId('code-node-tab-code');
 	}
 
 	getCodeTab() {
-		return this.page.locator('#tab-code');
+		return this.container.locator('#tab-code');
 	}
 
 	getCodeEditor() {
@@ -387,68 +385,8 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
-	async setMultipleParameters(
-		parameters: Record<string, string | number | boolean>,
-	): Promise<void> {
-		for (const [parameterName, value] of Object.entries(parameters)) {
-			if (typeof value === 'string') {
-				const parameterType = await this.setupHelper.detectParameterType(parameterName);
-				if (parameterType === 'dropdown') {
-					await this.setParameterDropdown(parameterName, value);
-				} else {
-					await this.setParameterInput(parameterName, value);
-				}
-			} else if (typeof value === 'boolean') {
-				await this.setParameterSwitch(parameterName, value);
-			} else if (typeof value === 'number') {
-				await this.setParameterInput(parameterName, value.toString());
-			}
-		}
-	}
-
-	async getParameterValue(parameterName: string): Promise<string> {
-		const parameterType = await this.setupHelper.detectParameterType(parameterName);
-
-		switch (parameterType) {
-			case 'text':
-				return await this.getTextParameterValue(parameterName);
-			case 'dropdown':
-				return await this.getDropdownParameterValue(parameterName);
-			case 'switch':
-				return await this.getSwitchParameterValue(parameterName);
-			default:
-				return (await this.getParameterInput(parameterName).textContent()) ?? '';
-		}
-	}
-
-	private async getTextParameterValue(parameterName: string): Promise<string> {
-		const parameterContainer = this.getParameterInput(parameterName);
-		const input = parameterContainer.locator('input').first();
-		return await input.inputValue();
-	}
-
-	private async getDropdownParameterValue(parameterName: string): Promise<string> {
-		const selectedOption = this.getParameterInput(parameterName).locator('.el-select__tags-text');
-		return (await selectedOption.textContent()) ?? '';
-	}
-
-	private async getSwitchParameterValue(parameterName: string): Promise<string> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
-		const isEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
-		return isEnabled ? 'true' : 'false';
-	}
-
-	async validateParameter(parameterName: string, expectedValue: string): Promise<void> {
-		const actualValue = await this.getParameterValue(parameterName);
-		if (actualValue !== expectedValue) {
-			throw new Error(
-				`Parameter ${parameterName} has value "${actualValue}", expected "${expectedValue}"`,
-			);
-		}
-	}
-
 	getAssignmentCollectionContainer(paramName: string) {
-		return this.page.getByTestId(`assignment-collection-${paramName}`);
+		return this.container.getByTestId(`assignment-collection-${paramName}`);
 	}
 
 	async selectInputNode(nodeName: string) {
@@ -457,23 +395,20 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.getByRole('option', { name: nodeName }).click();
 	}
 
-	getInputTableHeader(index: number = 0) {
-		return this.getInputPanel().locator('table th').nth(index);
-	}
-
-	getInputTbodyCell(row: number, col: number) {
-		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
+	getAssignments(paramName: string) {
+		return this.getAssignmentCollectionContainer(paramName).getByTestId('assignment');
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
-		return this.getAssignmentCollectionContainer(paramName)
-			.getByTestId('assignment')
-			.nth(index)
-			.getByTestId('assignment-name');
+		return this.getAssignments(paramName).nth(index).getByTestId('assignment-name');
+	}
+
+	getAssignmentNameTextbox(paramName: string, index = 0) {
+		return this.getAssignmentName(paramName, index).getByRole('textbox');
 	}
 
 	getResourceMapperFieldsContainer() {
-		return this.page.getByTestId('mapping-fields-container');
+		return this.container.getByTestId('mapping-fields-container');
 	}
 
 	getResourceMapperParameterInputs() {
@@ -481,15 +416,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperSelectColumn() {
-		return this.page.getByTestId('matching-column-select');
+		return this.container.getByTestId('matching-column-select');
 	}
 
 	getResourceMapperColumnsOptionsButton() {
-		return this.page.getByTestId('columns-parameter-input-options-container');
+		return this.container.getByTestId('columns-parameter-input-options-container');
 	}
 
 	getResourceMapperRemoveFieldButton(fieldName: string) {
-		return this.page.getByTestId(`remove-field-button-${fieldName}`);
+		return this.container.getByTestId(`remove-field-button-${fieldName}`);
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
@@ -499,17 +434,13 @@ export class NodeDetailsViewPage extends BasePage {
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').click();
+		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
 		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
 		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
 	}
 
 	getAddValueButton() {
 		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
-	}
-
-	getCollectionAddOptionSelect() {
-		return this.getNodeParameters().getByTestId('collection-add-option-select');
 	}
 
 	getParameterSwitch(parameterName: string) {
@@ -573,19 +504,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('expression-modal-output');
 	}
 
-	async typeIntoParameterInput(parameterName: string, content: string): Promise<void> {
-		const input = this.getParameterInput(parameterName);
-		await input.type(content);
-	}
-
-	getInputTable() {
-		return this.getInputPanel().locator('table');
-	}
-
-	getInputTableCellSpan(row: number, col: number, dataName: string) {
-		return this.getInputTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
-	}
-
 	getAddFieldToSortByButton() {
 		return this.getNodeParameters().getByText('Add Field To Sort By');
 	}
@@ -595,6 +513,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.getByRole('option', { name: switchTo }).click();
 		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(2500);
+	}
+
+	getCopyInputButton() {
+		return this.container.getByTestId('copy-input');
 	}
 
 	getOutputPagination() {
@@ -610,28 +532,20 @@ export class NodeDetailsViewPage extends BasePage {
 		await pages.nth(pageNumber - 1).click();
 	}
 
-	async getCurrentOutputPage(): Promise<number> {
-		const activePage = this.getOutputPagination().locator('.el-pager li.is-active').first();
-		const pageText = await activePage.textContent();
-		return parseInt(pageText ?? '1', 10);
-	}
-
 	async setParameterInputValue(parameterName: string, value: string): Promise<void> {
 		const input = this.getParameterInput(parameterName).locator('input');
 		await input.clear();
 		await input.fill(value);
 	}
 
-	async clickGetBackToCanvas(): Promise<void> {
-		await this.clickBackToCanvasButton();
+	/** Waits for parameter input debounce (100ms) to flush. */
+	async waitForDebounce(): Promise<void> {
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(150);
 	}
 
 	getRunDataInfoCallout() {
-		return this.page.getByTestId('run-data-callout');
-	}
-
-	getOutputPanelTable() {
-		return this.getOutputTable();
+		return this.container.getByTestId('run-data-callout');
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
@@ -641,17 +555,34 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		const setupManually = this.container.getByTestId('setup-manually-link').nth(eq);
+		const setupCredential = this.container.getByTestId('setup-credential-button').nth(eq);
+		const credentialSelect = this.container.getByTestId('node-credentials-select').nth(eq);
+
+		// Wait for one of the three credential UI states to appear
+		await Promise.race([
+			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
+			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
+			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
+		]);
+
+		if (await setupManually.isVisible()) {
+			await setupManually.click();
+		} else if (await setupCredential.isVisible()) {
+			await setupCredential.click();
+		} else {
+			await credentialSelect.click();
+			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		}
 	}
 
 	// Run selector and linking helpers
 	getInputRunSelector() {
-		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+		return this.getInputPanel().getByTestId('run-selector');
 	}
 
 	getOutputRunSelector() {
-		return this.page.locator('[data-test-id="output-panel"] [data-test-id="run-selector"]');
+		return this.getOutputPanel().getByTestId('run-selector');
 	}
 
 	getInputRunSelectorInput() {
@@ -663,11 +594,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeRunErrorMessage() {
-		return this.page.getByTestId('node-error-message');
+		return this.container.getByTestId('node-error-message');
 	}
 
 	getNodeRunErrorDescription() {
-		return this.page.getByTestId('node-error-description');
+		return this.container.getByTestId('node-error-description');
 	}
 
 	async isOutputRunLinkingEnabled() {
@@ -703,21 +634,16 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.outputPanel.getRunSelectorInput().inputValue();
 	}
 
-	async expandSchemaItem(itemText: string) {
-		const item = this.outputPanel.getSchemaItem(itemText);
-		await item.locator('.toggle').click();
-	}
-
 	getExecuteNodeButton() {
-		return this.page.getByTestId('node-execute-button');
+		return this.container.getByTestId('node-execute-button');
 	}
 
 	getTriggerPanelExecuteButton() {
-		return this.page.getByTestId('trigger-execute-button');
+		return this.container.getByTestId('trigger-execute-button');
 	}
 
 	async openCodeEditorFullscreen() {
-		await this.page.getByTestId('code-editor-fullscreen-button').click();
+		await this.container.getByTestId('code-editor-fullscreen-button').click();
 	}
 
 	getCodeEditorFullscreen() {
@@ -732,28 +658,24 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
 	}
 
-	getWebhookTriggerListening() {
-		return this.page.getByTestId('trigger-listening');
-	}
-
 	getNodeRunSuccessIndicator() {
-		return this.page.getByTestId('node-run-status-success');
+		return this.container.getByTestId('node-run-status-success');
 	}
 
 	getNodeRunErrorIndicator() {
-		return this.page.getByTestId('node-run-status-danger');
+		return this.container.getByTestId('node-run-status-danger');
 	}
 
 	getNodeRunTooltipIndicator() {
-		return this.page.getByTestId('node-run-info');
+		return this.container.getByTestId('node-run-info');
 	}
 
 	getStaleNodeIndicator() {
-		return this.page.getByTestId('node-run-info-stale');
+		return this.container.getByTestId('node-run-info-stale');
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+		return this.container.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {
@@ -761,22 +683,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async openSettings() {
-		await this.page.getByTestId('tab-settings').click();
+		await this.container.getByTestId('tab-settings').click();
 	}
 
 	getNodeVersion() {
-		return this.page.getByTestId('node-version');
+		return this.container.getByTestId('node-version');
 	}
 
 	async searchOutputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.outputPanel.getSearchInput();
-		await searchInput.click();
-		await searchInput.fill(searchTerm);
-	}
-
-	async searchInputData(searchTerm: string) {
-		const searchInput = this.inputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
@@ -794,11 +713,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFloatingNodeByPosition(position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub') {
-		return this.page.locator(`[data-node-placement="${position}"]`);
+		return this.container.locator(`[data-node-placement="${position}"]`);
 	}
 
 	getNodeNameContainer() {
-		return this.getContainer().getByTestId('node-title-container');
+		return this.container.getByTestId('node-title-container');
 	}
 
 	async clickFloatingNodeByPosition(
@@ -830,19 +749,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAddSubNodeButton(connectionType: string, index: number = 0) {
-		return this.page.getByTestId(`add-subnode-${connectionType}-${index}`);
-	}
-
-	getSubNodeConnectionGroup(connectionType: string, index: number = 0) {
-		return this.page.getByTestId(`subnode-connection-group-${connectionType}-${index}`);
-	}
-
-	getFloatingSubNodes(connectionType: string, index: number = 0) {
-		return this.getSubNodeConnectionGroup(connectionType, index).getByTestId('floating-subnode');
+		return this.container.getByTestId(`add-subnode-${connectionType}-${index}`);
 	}
 
 	getNodesWithIssues() {
-		return this.page.locator('[class*="hasIssues"]');
+		return this.container.locator('[class*="hasIssues"]');
 	}
 
 	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
@@ -852,37 +763,73 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFloatingNode() {
-		return this.page.getByTestId('floating-node');
-	}
-
-	async getNodesWithIssuesCount() {
-		return await this.getNodesWithIssues().count();
+		return this.container.getByTestId('floating-node');
 	}
 
 	async addItemToFixedCollection(collectionName: string) {
-		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+		const collection = this.container.getByTestId(`fixed-collection-${collectionName}`);
+		const explicitAddControl = collection
+			.locator(
+				[
+					'[data-test-id="fixed-collection-add-top-level-button"]',
+					'[data-test-id="fixed-collection-add-top-level-dropdown"]',
+					'[data-test-id="fixed-collection-add-header"]',
+					'[data-test-id="fixed-collection-add-header-nested"]',
+					'[data-test-id="fixed-collection-add"]',
+				].join(', '),
+			)
+			.first();
+
+		if ((await explicitAddControl.count()) > 0 && (await explicitAddControl.isVisible())) {
+			await explicitAddControl.click();
+			return;
+		}
+
+		const addButtonByName = collection.getByRole('button', { name: /^Add / }).first();
+		if ((await addButtonByName.count()) > 0 && (await addButtonByName.isVisible())) {
+			await addButtonByName.click();
+			return;
+		}
+
+		// Fallback for legacy behavior where clicking the wrapper would add an item.
+		await collection.click();
 	}
 
-	async clickParameterItemAction(actionText: string) {
-		await this.page.getByTestId('parameter-item').getByText(actionText).click();
+	getFixedCollectionPropertyPicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionProperty(propertyName: string, index?: number) {
+		const picker = this.getFixedCollectionPropertyPicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
 	}
 
 	getParameterItemWithText(text: string) {
-		return this.page.getByTestId('parameter-item').getByText(text);
+		return this.container.getByTestId('parameter-item').getByText(text);
 	}
 
 	getParameterInputWithIssues(parameterPath: string) {
-		return this.page.locator(
+		return this.container.locator(
 			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
 		);
 	}
 
 	getResourceLocator(paramName: string) {
-		return this.page.getByTestId(`resource-locator-${paramName}`);
+		return this.container.getByTestId(`resource-locator-${paramName}`);
 	}
 
 	getResourceLocatorInput(paramName: string) {
 		return this.getResourceLocator(paramName).getByTestId('rlc-input-container');
+	}
+
+	getResourceLocatorInputField(paramName: string) {
+		return this.getResourceLocatorInput(paramName).locator('input');
+	}
+
+	getResourceLocatorLink(paramName: string) {
+		return this.getResourceLocatorInput(paramName).locator('a');
 	}
 
 	getResourceLocatorModeSelector(paramName: string) {
@@ -906,7 +853,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInputIssues() {
-		return this.page.getByTestId('parameter-issues');
+		return this.container.getByTestId('parameter-issues');
 	}
 
 	getResourceLocatorItems() {
@@ -918,7 +865,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExpressionModeToggle(index: number = 1) {
-		return this.page.getByTestId('radio-button-expression').nth(index);
+		return this.container.getByTestId('radio-button-expression').nth(index);
 	}
 
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
@@ -933,11 +880,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputSelect() {
-		return this.page.getByTestId('ndv-input-select').locator('input');
-	}
-
-	getInputTableRows() {
-		return this.getInputTable().locator('tr');
+		return this.container.getByTestId('ndv-input-select').locator('input');
 	}
 
 	getOutputRunSelectorInput() {
@@ -945,31 +888,27 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAiOutputModeToggle() {
-		return this.page.getByTestId('ai-output-mode-select');
+		return this.container.getByTestId('ai-output-mode-select');
 	}
 
 	getCredentialLabel(credentialType: string) {
-		return this.page.getByText(credentialType);
+		return this.container.getByText(credentialType);
 	}
 
 	getFilterComponent(paramName: string) {
-		return this.page.getByTestId(`filter-${paramName}`);
+		return this.container.getByTestId(`filter-${paramName}`);
 	}
 
 	getFilterConditions(paramName: string) {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition');
 	}
 
-	getFilterCondition(paramName: string, index: number = 0) {
-		return this.getFilterComponent(paramName).getByTestId('filter-condition').nth(index);
-	}
-
 	getFilterConditionLeft(paramName: string, index: number = 0) {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
 	}
 
-	getFilterConditionRight(paramName: string, index: number = 0) {
-		return this.getFilterComponent(paramName).getByTestId('filter-condition-right').nth(index);
+	getFilterConditionLeftInput(paramName: string, index: number = 0) {
+		return this.getFilterConditionLeft(paramName, index).locator('input');
 	}
 
 	getFilterConditionOperator(paramName: string, index: number = 0) {
@@ -993,31 +932,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getWebhookTestEvent() {
-		return this.page.getByText('Listening for test event');
-	}
-
-	getAddOptionDropdown() {
-		return this.page.getByRole('combobox', { name: 'Add option' });
-	}
-
-	/**
-	 * Adds an optional parameter from a collection dropdown
-	 * @param optionDisplayName - The display name of the option to add (e.g., 'Response Code')
-	 * @param parameterName - The parameter name to set after adding (e.g., 'responseCode')
-	 * @param parameterValue - The value to set for the parameter
-	 */
-	async setOptionalParameter(
-		optionDisplayName: string,
-		parameterName: string,
-		parameterValue: string | boolean,
-	): Promise<void> {
-		await this.getAddOptionDropdown().click();
-
-		// Step 2: Select the option by display name
-		await this.page.getByRole('option', { name: optionDisplayName }).click();
-
-		// Step 3: Set the parameter value
-		await this.setupHelper.setParameter(parameterName, parameterValue);
+		return this.container.getByText('Listening for test event');
 	}
 
 	async setInvalidExpression({

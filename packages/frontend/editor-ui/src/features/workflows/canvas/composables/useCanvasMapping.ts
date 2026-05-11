@@ -4,8 +4,12 @@
  */
 
 import { useI18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -36,7 +40,6 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	ITaskData,
-	Workflow,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -53,16 +56,17 @@ import {
 	SIMULATE_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
-} from '@/constants';
-import { sanitizeHtml } from '@/utils/htmlUtils';
+} from '@/app/constants';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
-import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import type { WorkflowObjectAccessors } from '@/app/types';
 
 export function useCanvasMapping({
 	nodes,
@@ -71,10 +75,13 @@ export function useCanvasMapping({
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
-	workflowObject: Ref<Workflow>;
+	workflowObject: Ref<WorkflowObjectAccessors>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
@@ -109,14 +116,23 @@ export function useCanvasMapping({
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
-		const icon = getNodeIconSource(source);
+		const icon = getNodeIconSource(
+			source,
+			node,
+			workflowDocumentStore.value.getExpressionHandler(),
+		);
 
 		return {
 			type: CanvasNodeRenderType.Default,
 			options: {
 				trigger: isTriggerNodeById.value[node.id],
 				configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
-				configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
+				configurable: nodeTypesStore.isConfigurableNode(
+					workflowObject.value,
+					node,
+					node.type,
+					node.typeVersion,
+				),
 				inputs: {
 					labelSize: nodeInputLabelSizeById.value[node.id],
 				},
@@ -126,6 +142,7 @@ export function useCanvasMapping({
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
+				placeholder: node.placeholder,
 			},
 		};
 	}
@@ -274,7 +291,7 @@ export function useCanvasMapping({
 
 	const nodePinnedDataById = computed(() =>
 		nodes.value.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
-			acc[node.id] = workflowsStore.pinDataByNodeName(node.name);
+			acc[node.id] = workflowDocumentStore.value.getNodePinData(node.name);
 			return acc;
 		}, {}),
 	);
@@ -364,12 +381,15 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	// Create a map for O(1) node lookups by name
+	const nodesByName = computed(() => new Map(nodes.value.map((n) => [n.name, n])));
+
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		nodeExecutionRunDataById,
-		(value) => {
-			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+		() => workflowsStore.workflowExecutionResultDataLastUpdate,
+		() => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(nodeExecutionRunDataById.value).reduce<
 				Record<string, ExecutionOutputMap>
 			>((acc, nodeId) => {
 				acc[nodeId] = {};
@@ -388,12 +408,61 @@ export function useCanvasMapping({
 
 							acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
 								outputIndex
-							] ?? { ...outputData };
+							] ?? {
+								...outputData,
+								...(connectionType !== NodeConnectionTypes.Main ? { byTarget: {} } : {}),
+							};
+							// For non-main connections, check if items are wrapped in a response field
+							// (common for AI nodes like embeddings, tools, etc.)
+							// Note: We check only the first item assuming uniform structure across all items
+							let itemCount = connectionTypeOutputIndexData.length;
+							if (
+								connectionType !== NodeConnectionTypes.Main &&
+								connectionTypeOutputIndexData.length > 0
+							) {
+								const firstItem = connectionTypeOutputIndexData[0];
+								// AI nodes typically wrap all items uniformly in response field
+								if (
+									firstItem?.json &&
+									typeof firstItem.json === 'object' &&
+									'response' in firstItem.json &&
+									Array.isArray(firstItem.json.response)
+								) {
+									// Use response array length for all items (assuming uniform structure)
+									itemCount = firstItem.json.response.length;
+								}
+							}
+
 							if (runIteration.executionStatus !== 'canceled') {
 								acc[nodeId][connectionType][outputIndex].iterations += 1;
 							}
-							acc[nodeId][connectionType][outputIndex].total +=
-								connectionTypeOutputIndexData.length;
+							acc[nodeId][connectionType][outputIndex].total += itemCount;
+
+							// For non-main connections, track per-target execution counts
+							if (connectionType !== NodeConnectionTypes.Main) {
+								const callingNodeName = runIteration.source?.[0]?.previousNode;
+								if (callingNodeName) {
+									const callingNode = nodesByName.value.get(callingNodeName);
+									if (callingNode) {
+										const targetId = callingNode.id;
+										const outputEntry = acc[nodeId][connectionType][outputIndex];
+
+										if (outputEntry.byTarget) {
+											if (!outputEntry.byTarget[targetId]) {
+												outputEntry.byTarget[targetId] = {
+													total: 0,
+													iterations: 0,
+												};
+											}
+
+											if (runIteration.executionStatus !== 'canceled') {
+												outputEntry.byTarget[targetId].iterations += 1;
+											}
+											outputEntry.byTarget[targetId].total += itemCount;
+										}
+									}
+								}
+							}
 						}
 					}
 				}
@@ -665,7 +734,7 @@ export function useCanvasMapping({
 					position: { x: node.position[0], y: node.position[1] },
 					data,
 					...additionalNodePropertiesById.value[node.id],
-					draggable: node.draggable ?? true,
+					draggable: node.draggable,
 				};
 			}),
 		];
@@ -711,7 +780,14 @@ export function useCanvasMapping({
 		} else if (nodeHasIssuesById.value[connection.source]) {
 			status = 'error';
 		} else if (runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled') {
-			status = 'success';
+			// For non-main connections (model, memory, tool, etc.), only mark as executed
+			// if the target node also executed, since these are passive connections
+			const isMainConnection = type === NodeConnectionTypes.Main;
+			const targetNodeHasAnyExecution = nodeExecutionRunDataById.value[connection.target];
+
+			if (isMainConnection || targetNodeHasAnyExecution) {
+				status = 'success';
+			}
 		}
 
 		const maxConnections = [
@@ -739,7 +815,7 @@ export function useCanvasMapping({
 	}
 
 	function getConnectionLabel(connection: CanvasConnection): string {
-		const fromNode = nodes.value.find((node) => node.name === connection.data?.source.node);
+		const fromNode = nodesByName.value.get(connection.data?.source.node ?? '');
 		if (!fromNode) {
 			return '';
 		}
@@ -754,13 +830,36 @@ export function useCanvasMapping({
 				: '';
 		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-			const runDataTotal =
-				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
-			const hasMultipleRunDataIterations =
-				(nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.iterations ?? 1) >
-				1;
+			const outputData = nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index];
 
-			return runDataTotal > 0
+			// For non-main connections, use per-target data if available
+			const isMainConnection = type === NodeConnectionTypes.Main;
+			const targetHasExecutionData = nodeExecutionRunDataById.value[connection.target];
+
+			if (!isMainConnection && outputData?.byTarget) {
+				// Look up the target node to get per-connection counts
+				const targetNodeId = connection.target;
+				const targetData = outputData.byTarget[targetNodeId];
+
+				if (targetData && targetData.total > 0 && targetHasExecutionData) {
+					return i18n.baseText(
+						targetData.iterations > 1 ? 'ndv.output.itemsTotal' : 'ndv.output.items',
+						{
+							adjustToNumber: targetData.total,
+							interpolate: { count: String(targetData.total) },
+						},
+					);
+				}
+
+				// Target hasn't executed, show no label
+				return '';
+			}
+
+			// For main connections, use aggregate counts
+			const runDataTotal = outputData?.total ?? 0;
+			const hasMultipleRunDataIterations = (outputData?.iterations ?? 1) > 1;
+
+			return runDataTotal > 0 && (isMainConnection || targetHasExecutionData)
 				? i18n.baseText(
 						hasMultipleRunDataIterations ? 'ndv.output.itemsTotal' : 'ndv.output.items',
 						{

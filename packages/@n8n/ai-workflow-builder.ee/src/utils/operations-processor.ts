@@ -1,7 +1,25 @@
-import type { INode, IConnections } from 'n8n-workflow';
+import type { INode, IConnections, INodeTypes } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
-import type { WorkflowState } from '../workflow-state';
+
+/**
+ * Minimal INodeTypes implementation for use with Workflow.renameNode().
+ * The renameNode method doesn't use nodeTypes, but the Workflow constructor requires it.
+ * By returning undefined, we ensure the Workflow constructor skips parameter processing
+ * for nodes (see lines 97-107 in workflow.ts), which preserves original parameters.
+ *
+ * Note: We cast the functions to the expected types because the INodeTypes interface
+ * doesn't explicitly allow undefined returns, but the Workflow constructor handles
+ * undefined gracefully by skipping parameter processing for that node.
+ */
+const minimalNodeTypes: INodeTypes = {
+	getByName: (() => undefined) as unknown as INodeTypes['getByName'],
+	getByNameAndVersion: (() => undefined) as unknown as INodeTypes['getByNameAndVersion'],
+	getKnownTypes() {
+		return {};
+	},
+};
 
 /**
  * Type for operation handler functions
@@ -29,22 +47,30 @@ function applyRemoveNodeOperation(
 
 	const nodesToRemove = new Set(operation.nodeIds);
 
+	// Build a set of node names to remove (connections are keyed by node name in n8n)
+	const nodeNamesToRemove = new Set<string>();
+	for (const node of workflow.nodes) {
+		if (nodesToRemove.has(node.id)) {
+			nodeNamesToRemove.add(node.name);
+		}
+	}
+
 	// Filter out removed nodes
 	const nodes = workflow.nodes.filter((node) => !nodesToRemove.has(node.id));
 
 	// Clean up connections
 	const cleanedConnections: IConnections = {};
 
-	// Copy connections, excluding those from/to removed nodes
-	for (const [sourceId, nodeConnections] of Object.entries(workflow.connections)) {
-		if (!nodesToRemove.has(sourceId)) {
-			cleanedConnections[sourceId] = {};
+	// Copy connections, excluding those from/to removed nodes (using node names)
+	for (const [sourceName, nodeConnections] of Object.entries(workflow.connections)) {
+		if (!nodeNamesToRemove.has(sourceName)) {
+			cleanedConnections[sourceName] = {};
 
 			for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
 				if (Array.isArray(outputs)) {
-					cleanedConnections[sourceId][connectionType] = outputs.map((outputConnections) => {
+					cleanedConnections[sourceName][connectionType] = outputs.map((outputConnections) => {
 						if (Array.isArray(outputConnections)) {
-							return outputConnections.filter((conn) => !nodesToRemove.has(conn.node));
+							return outputConnections.filter((conn) => !nodeNamesToRemove.has(conn.node));
 						}
 						return outputConnections;
 					});
@@ -273,6 +299,38 @@ function applySetNameOperation(
 }
 
 /**
+ * Handle 'renameNode' operation - rename a node and update all connection references and expressions.
+ * Uses the Workflow.renameNode() method to handle all the complexity of updating expressions,
+ * connections, and special node types.
+ */
+function applyRenameNodeOperation(
+	workflow: SimpleWorkflow,
+	operation: WorkflowOperation,
+): SimpleWorkflow {
+	if (operation.type !== 'renameNode') return workflow;
+
+	const { oldName, newName } = operation;
+
+	// Create a Workflow instance to leverage its renameNode method
+	// We use a minimal nodeTypes mock since renameNode doesn't need the full registry
+	const workflowInstance = new Workflow({
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+		nodeTypes: minimalNodeTypes,
+		active: false,
+	});
+
+	workflowInstance.renameNode(oldName, newName);
+
+	// Convert back to SimpleWorkflow format
+	return {
+		...workflow,
+		nodes: Object.values(workflowInstance.nodes),
+		connections: workflowInstance.connectionsBySourceNode,
+	};
+}
+
+/**
  * Map of operation types to their handler functions
  */
 const operationHandlers: Record<WorkflowOperation['type'], OperationHandler> = {
@@ -284,6 +342,7 @@ const operationHandlers: Record<WorkflowOperation['type'], OperationHandler> = {
 	mergeConnections: applyMergeConnectionsOperation,
 	removeConnection: applyRemoveConnectionOperation,
 	setName: applySetNameOperation,
+	renameNode: applyRenameNodeOperation,
 };
 
 /**
@@ -313,7 +372,10 @@ export function applyOperations(
  * Process operations node for the LangGraph workflow
  * This node applies accumulated operations to the workflow state
  */
-export function processOperations(state: typeof WorkflowState.State) {
+export function processOperations(state: {
+	workflowJSON: SimpleWorkflow;
+	workflowOperations?: WorkflowOperation[] | null;
+}) {
 	const { workflowJSON, workflowOperations } = state;
 
 	// If no operations to process, return unchanged
@@ -328,5 +390,6 @@ export function processOperations(state: typeof WorkflowState.State) {
 	return {
 		workflowJSON: newWorkflow,
 		workflowOperations: null, // Clear processed operations
+		workflowValidation: null, // Invalidate stale validation results
 	};
 }

@@ -1,8 +1,9 @@
-import { mock } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	audioModelSearch,
+	imageEditModelSearch,
 	imageGenerationModelSearch,
 	modelSearch,
 	videoGenerationModelSearch,
@@ -41,15 +42,21 @@ const mockResponse = {
 		{
 			name: 'models/gemini-2.5-flash-image',
 		},
+		{
+			name: 'models/gemini-3-pro-image',
+		},
+		{
+			name: 'models/gemini-3.1-flash-image-preview',
+		},
 	],
 };
 
 describe('GoogleGemini -> listSearch', () => {
 	const mockExecuteFunctions = mock<ILoadOptionsFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('modelSearch', () => {
@@ -133,6 +140,75 @@ describe('GoogleGemini -> listSearch', () => {
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-2.5-flash-image (Nano Banana)',
 						value: 'models/gemini-2.5-flash-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3-pro-image (Nano Banana Pro)',
+						value: 'models/gemini-3-pro-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-image-preview (Nano Banana 2)',
+						value: 'models/gemini-3.1-flash-image-preview',
+					},
+				],
+			});
+		});
+
+		it('should filter out image models', async () => {
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await imageGenerationModelSearch.call(mockExecuteFunctions, 'Exp');
+
+			expect(result).toEqual({
+				results: [
+					{
+						name: 'models/gemini-2.0-flash-exp-image-generation',
+						value: 'models/gemini-2.0-flash-exp-image-generation',
+					},
+				],
+			});
+		});
+	});
+
+	describe('imageEditModelSearch', () => {
+		it('should return image edit models', async () => {
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await imageEditModelSearch.call(mockExecuteFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-2.5-flash-image (Nano Banana)',
+						value: 'models/gemini-2.5-flash-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3-pro-image (Nano Banana Pro)',
+						value: 'models/gemini-3-pro-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-image-preview (Nano Banana 2)',
+						value: 'models/gemini-3.1-flash-image-preview',
+					},
+				],
+			});
+		});
+
+		it('should filter out image edit models', async () => {
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await imageEditModelSearch.call(mockExecuteFunctions, 'banana pro');
+
+			expect(result).toEqual({
+				results: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3-pro-image (Nano Banana Pro)',
+						value: 'models/gemini-3-pro-image',
 					},
 				],
 			});

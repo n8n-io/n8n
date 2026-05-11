@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "is_vip": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "website": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

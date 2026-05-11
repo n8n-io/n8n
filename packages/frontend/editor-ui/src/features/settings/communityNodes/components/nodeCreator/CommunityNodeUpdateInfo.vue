@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { i18n } from '@n8n/i18n';
 
 import { N8nButton, N8nCallout } from '@n8n/design-system';
@@ -22,7 +22,7 @@ const onUpdate = () => {
 	<N8nCallout theme="secondary" :iconless="true" style="margin-bottom: var(--spacing--sm)">
 		{{ i18n.baseText('communityNodeUpdateInfo.available') }}
 		<template v-if="props.packageName" #trailingContent>
-			<N8nButton type="secondary" @click="onUpdate">
+			<N8nButton variant="subtle" @click="onUpdate">
 				{{ i18n.baseText('generic.update') }}
 			</N8nButton>
 		</template>

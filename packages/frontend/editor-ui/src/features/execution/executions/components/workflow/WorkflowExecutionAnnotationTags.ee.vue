@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useExecutionsStore } from '../../executions.store';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -99,12 +99,11 @@ const onTagsEditEsc = () => {
 			/>
 			<div v-else-if="tagIds.length === 0">
 				<N8nButton
+					variant="ghost"
 					:class="[$style.addTagButton, 'clickable']"
 					:label="locale.baseText('executionAnnotationView.addTag')"
-					type="secondary"
-					size="mini"
+					size="xsmall"
 					:outline="false"
-					:text="true"
 					data-test-id="new-tag-link"
 					icon="plus"
 					@click="onTagsEditEnable"
@@ -127,11 +126,10 @@ const onTagsEditEsc = () => {
 				</span>
 				<span :class="$style.addTagWrapper">
 					<N8nButton
+						variant="ghost"
 						:class="[$style.addTagButton, $style.addTagButtonIconOnly, 'clickable']"
-						type="secondary"
-						size="mini"
+						size="xsmall"
 						:outline="false"
-						:text="true"
 						data-test-id="new-tag-link"
 						icon="plus"
 						@click="onTagsEditEnable"

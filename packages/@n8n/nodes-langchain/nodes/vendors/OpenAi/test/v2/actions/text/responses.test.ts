@@ -5,11 +5,11 @@ import type { FunctionTool } from 'openai/resources/responses/responses';
 import { getBinaryDataFile } from '../../../../helpers/binary-data';
 import { formatInputMessages, createRequest } from '../../../../v2/actions/text/helpers/responses';
 
-jest.mock('../../../../helpers/binary-data', () => ({
-	getBinaryDataFile: jest.fn(),
+vi.mock('../../../../helpers/binary-data', () => ({
+	getBinaryDataFile: vi.fn(),
 }));
 
-const mockGetBinaryDataFile = jest.mocked(getBinaryDataFile);
+const mockGetBinaryDataFile = vi.mocked(getBinaryDataFile);
 
 const createExecuteFunctionsMock = (parameters: IDataObject): IExecuteFunctions => {
 	const nodeParameters = parameters;
@@ -34,25 +34,25 @@ const createExecuteFunctionsMock = (parameters: IDataObject): IExecuteFunctions 
 			return undefined;
 		},
 		helpers: {
-			prepareBinaryData: jest.fn().mockResolvedValue({
+			prepareBinaryData: vi.fn().mockResolvedValue({
 				data: 'base64data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
 			}),
-			assertBinaryData: jest.fn().mockReturnValue({
+			assertBinaryData: vi.fn().mockReturnValue({
 				filename: 'test.txt',
 				contentType: 'text/plain',
 			}),
-			getBinaryDataBuffer: jest.fn().mockReturnValue(Buffer.from('test data')),
-			binaryToBuffer: jest.fn().mockResolvedValue(Buffer.from('test data')),
-			getBinaryStream: jest.fn().mockResolvedValue(Buffer.from('test data')),
+			getBinaryDataBuffer: vi.fn().mockReturnValue(Buffer.from('test data')),
+			binaryToBuffer: vi.fn().mockResolvedValue(Buffer.from('test data')),
+			getBinaryStream: vi.fn().mockResolvedValue(Buffer.from('test data')),
 		},
 	} as unknown as IExecuteFunctions;
 };
 
 describe('OpenAI Responses Helper Functions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockGetBinaryDataFile.mockResolvedValue({
 			filename: 'test.png',
 			contentType: 'image/png',
@@ -1103,65 +1103,6 @@ describe('OpenAI Responses Helper Functions', () => {
 			});
 		});
 
-		it('should handle MCP servers', async () => {
-			const executeFunctions = createExecuteFunctionsMock({});
-			const options = {
-				model: 'gpt-4',
-				messages: [
-					{
-						role: 'user',
-						type: 'text',
-						content: 'Hello',
-					},
-				],
-				options: {},
-				builtInTools: {
-					mcpServers: {
-						mcpServerOptions: [
-							{
-								serverLabel: 'Test Server',
-								serverUrl: 'https://example.com/mcp',
-								connectorId: 'conn_123',
-								authorization: 'Bearer token',
-								allowedTools: 'tool1, tool2',
-								headers: '{"X-Custom": "value"}',
-								serverDescription: 'Test MCP server',
-							},
-						],
-					},
-				},
-				tools: undefined,
-			};
-
-			const result = await createRequest.call(executeFunctions, 0, options);
-
-			expect(result).toEqual({
-				model: 'gpt-4',
-				input: [
-					{
-						role: 'user',
-						content: [{ type: 'input_text', text: 'Hello' }],
-					},
-				],
-				parallel_tool_calls: true,
-				store: true,
-				tools: [
-					{
-						type: 'mcp',
-						server_label: 'Test Server',
-						server_url: 'https://example.com/mcp',
-						connector_id: 'conn_123',
-						authorization: 'Bearer token',
-						allowed_tools: ['tool1', 'tool2'],
-						headers: { 'X-Custom': 'value' },
-						require_approval: 'never',
-						server_description: 'Test MCP server',
-					},
-				],
-				background: false,
-			});
-		});
-
 		it('should handle external tools', async () => {
 			const executeFunctions = createExecuteFunctionsMock({});
 			const externalTools = [
@@ -1389,41 +1330,6 @@ describe('OpenAI Responses Helper Functions', () => {
 
 			await expect(createRequest.call(executeFunctions, 0, options)).rejects.toThrow(
 				'Failed to parse filters',
-			);
-		});
-
-		it('should handle invalid JSON in MCP server headers', async () => {
-			const executeFunctions = createExecuteFunctionsMock({});
-			const options = {
-				model: 'gpt-4',
-				messages: [
-					{
-						role: 'user',
-						type: 'text',
-						content: 'Hello',
-					},
-				],
-				options: {},
-				builtInTools: {
-					mcpServers: {
-						mcpServerOptions: [
-							{
-								serverLabel: 'Test Server',
-								serverUrl: 'https://example.com/mcp',
-								connectorId: 'conn_123',
-								authorization: 'Bearer token',
-								allowedTools: 'tool1',
-								headers: 'invalid json',
-								serverDescription: 'Test MCP server',
-							},
-						],
-					},
-				},
-				tools: undefined,
-			};
-
-			await expect(createRequest.call(executeFunctions, 0, options)).rejects.toThrow(
-				'Failed to parse headers',
 			);
 		});
 	});

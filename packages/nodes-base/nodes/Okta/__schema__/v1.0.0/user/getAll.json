@@ -1,8 +1,37 @@
 {
     "type": "object",
     "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "created": {
             "type": "string"
+        },
+        "credentials": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "id": {
             "type": "string"
@@ -13,6 +42,18 @@
         "profile": {
             "type": "object",
             "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "countryCode": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -24,12 +65,47 @@
                 },
                 "login": {
                     "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                },
+                "managerEmail": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "string"
+                },
+                "site": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "userType": {
+                    "type": "string"
                 }
             }
         },
+        "realmId": {
+            "type": "string"
+        },
         "status": {
             "type": "string"
+        },
+        "type": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "version": 3
+    "version": 4
 }

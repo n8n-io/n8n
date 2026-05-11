@@ -11,6 +11,7 @@ import type {
 import { ApplicationError, deepCopy } from 'n8n-workflow';
 
 import type { IRequestBody } from './types';
+import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -20,7 +21,7 @@ export async function awsApiRequest(
 	body?: object | IRequestBody,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 	const requestOptions = {
 		qs: {
 			service,
@@ -35,7 +36,11 @@ export async function awsApiRequest(
 
 	try {
 		return JSON.parse(
-			(await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions)) as string,
+			(await this.helpers.requestWithAuthentication.call(
+				this,
+				credentialsType,
+				requestOptions,
+			)) as string,
 		);
 	} catch (error) {
 		const statusCode = (error.statusCode || error.cause?.statusCode) as number;

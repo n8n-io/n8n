@@ -1,4 +1,4 @@
-import type { Folder } from '@n8n/db';
+import type { Folder, Project } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
@@ -12,7 +12,7 @@ export class ProjectApiHelper {
 	 * @param projectName Optional base name for the project. If not provided, generates a default name.
 	 * @returns The created project data
 	 */
-	async createProject(projectName?: string) {
+	async createProject(projectName?: string): Promise<Project> {
 		const uniqueName = projectName ? `${projectName} (${nanoid(8)})` : `Test Project ${nanoid(8)}`;
 
 		const response = await this.api.request.post('/rest/projects', {
@@ -23,6 +23,23 @@ export class ProjectApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to create project: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Get the current logged-in user's personal project.
+	 * Uses the dedicated /rest/projects/personal endpoint which returns
+	 * only the authenticated user's personal project, not all visible personal projects.
+	 * @returns The current user's personal project
+	 */
+	async getMyPersonalProject(): Promise<Project> {
+		const response = await this.api.request.get('/rest/projects/personal');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get personal project: ${await response.text()}`);
 		}
 
 		const result = await response.json();
@@ -73,111 +90,49 @@ export class ProjectApiHelper {
 	}
 
 	/**
-	 * Update a folder
-	 * @param projectId The ID of the project containing the folder
-	 * @param folderId The ID of the folder to update
-	 * @param updates Object containing folder updates (name, parentFolderId, tagIds)
-	 * @returns True if update was successful
+	 * Private helper: Add multiple users to a project
+	 * @param projectId The ID of the project
+	 * @param relations Array of userId and role pairs
+	 * @returns True if users were added successfully
 	 */
-	async updateFolder(
+	private async addUsersToProject(
 		projectId: string,
-		folderId: string,
-		updates: { name?: string; parentFolderId?: string; tagIds?: string[] },
+		relations: Array<{ userId: string; role: string }>,
 	): Promise<boolean> {
-		const response = await this.api.request.patch(
-			`/rest/projects/${projectId}/folders/${folderId}`,
-			{
-				data: updates,
-			},
-		);
+		const response = await this.api.request.post(`/rest/projects/${projectId}/users`, {
+			data: { relations },
+		});
 
 		if (!response.ok()) {
-			throw new TestError(`Failed to update folder: ${await response.text()}`);
+			throw new TestError(`Failed to add users to project: ${await response.text()}`);
 		}
 
 		return true;
 	}
 
 	/**
-	 * Delete a folder
-	 * @param projectId The ID of the project containing the folder
-	 * @param folderId The ID of the folder to delete
-	 * @param deleteWorkflows Whether to delete workflows in the folder (default: false)
-	 * @returns True if deletion was successful
+	 * Add a user to a project
+	 * @param projectId The ID of the project
+	 * @param userId The ID of the user to add
+	 * @param role The role to assign to the user (e.g., 'project:editor', 'project:viewer', 'project:admin')
+	 * @returns True if user was added successfully
 	 */
-	async deleteFolder(
-		projectId: string,
-		folderId: string,
-		deleteWorkflows: boolean = false,
-	): Promise<boolean> {
-		const response = await this.api.request.delete(
-			`/rest/projects/${projectId}/folders/${folderId}?deleteWorkflows=${deleteWorkflows}`,
-		);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to delete folder: ${await response.text()}`);
-		}
-
-		return true;
+	async addUserToProject(projectId: string, userId: string, role: string): Promise<boolean> {
+		return await this.addUsersToProject(projectId, [{ userId, role }]);
 	}
 
 	/**
-	 * Get folder tree for a specific folder
+	 * Add a user to a project by email
 	 * @param projectId The ID of the project
-	 * @param folderId The ID of the folder to get the tree for
-	 * @returns The folder tree data
+	 * @param email The email of the user to add
+	 * @param role The role to assign to the user (e.g., 'project:editor', 'project:viewer', 'project:admin')
+	 * @returns True if user was added successfully
 	 */
-	async getFolderTree(projectId: string, folderId: string) {
-		const response = await this.api.request.get(
-			`/rest/projects/${projectId}/folders/${folderId}/tree`,
-		);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to get folder tree: ${await response.text()}`);
+	async addUserToProjectByEmail(projectId: string, email: string, role: string): Promise<boolean> {
+		const user = await this.api.users.getUserByEmail(email);
+		if (!user) {
+			throw new TestError(`User with email ${email} not found`);
 		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
-	/**
-	 * List folders in a project
-	 * @param projectId The ID of the project
-	 * @param filters Optional filters for the folder list
-	 * @returns The folder list data
-	 */
-	async listFolders(projectId: string, filters?: { search?: string; parentFolderId?: string }) {
-		const queryParams = new URLSearchParams();
-		if (filters?.search) queryParams.append('search', filters.search);
-		if (filters?.parentFolderId) queryParams.append('parentFolderId', filters.parentFolderId);
-
-		const url = `/rest/projects/${projectId}/folders${queryParams.toString() ? `?${queryParams}` : ''}`;
-		const response = await this.api.request.get(url);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to list folders: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
-	/**
-	 * Get folder content (counts of sub-folders and workflows)
-	 * @param projectId The ID of the project
-	 * @param folderId The ID of the folder
-	 * @returns Folder content counts
-	 */
-	async getFolderContent(projectId: string, folderId: string) {
-		const response = await this.api.request.get(
-			`/rest/projects/${projectId}/folders/${folderId}/content`,
-		);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to get folder content: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
+		return await this.addUserToProject(projectId, user.id, role);
 	}
 }

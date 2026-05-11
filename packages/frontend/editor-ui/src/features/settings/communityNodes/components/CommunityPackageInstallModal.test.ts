@@ -10,7 +10,7 @@ import { ref } from 'vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 
 vi.mock('../composables/useInstallNode');
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
 		pageEventQueue: [],
@@ -232,6 +232,10 @@ describe('CommunityPackageInstallModal', () => {
 				type: 'unverified',
 				packageName: 'n8n-nodes-test',
 				nodeType: 'n8n-nodes-test.TestNode',
+				telemetry: {
+					hasQuickConnect: false,
+					source: 'cnr settings page',
+				},
 			});
 		});
 

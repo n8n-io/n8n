@@ -46,6 +46,7 @@ type ExternalHooksMap = {
 	];
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
+	'oauth2.dynamicClientRegistration': [registerPayload: { redirect_uris: string[] }];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];
@@ -146,6 +147,10 @@ export class ExternalHooks {
 		}
 	}
 
+	hasHook<HookName extends HookNames>(hookName: HookName): boolean {
+		return !!this.registered[hookName]?.length;
+	}
+
 	async run<HookName extends HookNames>(
 		hookName: HookName,
 		hookParameters?: ExternalHooksMap[HookName],
@@ -158,7 +163,7 @@ export class ExternalHooks {
 
 		for (const hookFunction of hookFunctions) {
 			try {
-				await hookFunction.apply(context, hookParameters);
+				await hookFunction.apply(context, hookParameters!);
 			} catch (cause) {
 				this.logger.error(`There was a problem running hook "${hookName}"`);
 

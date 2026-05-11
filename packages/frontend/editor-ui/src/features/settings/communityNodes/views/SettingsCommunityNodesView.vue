@@ -4,22 +4,22 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted } from 'vue';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
-import { usePushConnection } from '@/composables/usePushConnection';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { usePushConnection } from '@/app/composables/usePushConnection';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
-import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
+import { N8nActionBox, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -36,6 +36,14 @@ const documentTitle = useDocumentTitle();
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
+
+const isManagedByEnv = computed((): boolean => {
+	return settingsStore.settings.communityNodesManagedByEnv ?? false;
+});
+
+const canInstall = computed((): boolean => {
+	return settingsStore.isUnverifiedPackagesEnabled && !isManagedByEnv.value;
+});
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {
@@ -67,7 +75,7 @@ const getEmptyStateDescription = computed(() => {
 });
 
 const getEmptyStateButtonText = computed(() => {
-	if (!settingsStore.isUnverifiedPackagesEnabled) return '';
+	if (!canInstall.value) return '';
 	return i18n.baseText('settings.communityNodes.empty.installPackageLabel');
 });
 
@@ -129,11 +137,9 @@ onMounted(async () => {
 			number_of_updates_available: packagesToUpdate.length,
 		});
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('settings.communityNodes.fetchError.title'),
-			i18n.baseText('settings.communityNodes.fetchError.message'),
-		);
+		toast.showError(error, i18n.baseText('settings.communityNodes.fetchError.title'), {
+			message: i18n.baseText('settings.communityNodes.fetchError.message'),
+		});
 	} finally {
 		loading.value = false;
 	}
@@ -155,16 +161,18 @@ onBeforeUnmount(() => {
 		<div :class="$style.headingContainer">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
 			<N8nButton
-				v-if="
-					settingsStore.isUnverifiedPackagesEnabled &&
-					communityNodesStore.getInstalledPackages.length > 0 &&
-					!loading
-				"
+				v-if="canInstall && communityNodesStore.getInstalledPackages.length > 0 && !loading"
 				:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
 				@click="openInstallModal"
 			/>
 		</div>
+		<N8nNotice
+			v-if="isManagedByEnv"
+			class="mb-l"
+			:content="i18n.baseText('settings.communityNodes.managedByEnv')"
+			data-test-id="community-nodes-managed-by-env"
+		/>
 		<div v-if="loading" :class="$style.cardsContainer">
 			<CommunityPackageCard
 				v-for="n in 2"

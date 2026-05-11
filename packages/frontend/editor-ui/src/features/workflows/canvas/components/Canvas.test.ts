@@ -11,7 +11,7 @@ import {
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/constants';
+import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 const matchMedia = global.window.matchMedia;
@@ -320,6 +320,18 @@ describe('Canvas', () => {
 			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
 
 			expect(container.querySelector('.icon')).toBeInTheDocument();
+		});
+	});
+
+	describe('hideControls prop', () => {
+		it('should not render CanvasControlButtons when hideControls is true', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					hideControls: true,
+				},
+			});
+
+			expect(queryByTestId('canvas-controls')).not.toBeInTheDocument();
 		});
 	});
 });

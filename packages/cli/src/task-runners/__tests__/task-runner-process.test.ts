@@ -24,7 +24,6 @@ require('child_process').spawn = spawnMock;
 describe('TaskRunnerProcess', () => {
 	const logger = mockInstance(Logger);
 	const runnerConfig = mockInstance(TaskRunnersConfig);
-	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal';
 	runnerConfig.insecureMode = false;
 	const authService = mock<TaskBrokerAuthService>();

@@ -1,0 +1,10 @@
+type: array
+items:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+  properties:
+    id:
+      type: string
+      example: 2tUt1wbLX592XDdX

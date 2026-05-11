@@ -3,8 +3,8 @@ import type { TestRunRecord } from '../../evaluation.api';
 import MetricsChart from './MetricsChart.vue';
 import TestRunsTable from './TestRunsTable.vue';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { VIEWS } from '@/app/constants';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 

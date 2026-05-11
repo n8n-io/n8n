@@ -316,6 +316,142 @@ describe('Evaluation Trigger Node', () => {
 				]);
 			});
 		});
+
+		describe('Data tables with filters', () => {
+			beforeEach(() => {
+				jest.resetAllMocks();
+				mockDataTable = {
+					getManyRowsAndCount: jest.fn(),
+					getColumns: jest.fn().mockResolvedValue([{ name: 'processed', type: 'number' }]),
+				};
+
+				mockExecuteFunctions = mockDeep<IExecuteFunctions>({
+					getNode: jest.fn().mockReturnValue({ typeVersion: 4.7 }),
+					helpers: {
+						getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
+					},
+				});
+			});
+
+			test('should process rows sequentially with filters when dataset changes', async () => {
+				// Simulate the user's scenario: 5 rows with processed=1, updating to processed=2 after each execution
+				// With each execution, one row is processed and thus no longer matches the filter
+				mockDataTable.getManyRowsAndCount
+					.mockResolvedValueOnce({
+						data: [{ id: 1, processed: 1 }],
+						count: 5,
+					})
+					.mockResolvedValueOnce({
+						data: [{ id: 2, processed: 1 }],
+						count: 4,
+					})
+					.mockResolvedValueOnce({
+						data: [{ id: 3, processed: 1 }],
+						count: 3,
+					});
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							limitRows: false,
+							dataTableId: 'mockDataTableId',
+							'filters.conditions': [
+								{
+									keyName: 'processed',
+									condition: 'eq',
+									keyValue: '1',
+								},
+							],
+							matchType: 'anyCondition',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				const evaluationTrigger = new EvaluationTrigger();
+
+				// First execution - no previous data
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				const result1 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+
+				expect(result1[0][0].json.row_id).toBe(1);
+				expect(result1[0][0].json.row_number).toBe(0);
+				expect(result1[0][0].json._rowsLeft).toBe(4);
+
+				// Verify first call used user filter only (no id filter yet)
+				expect(mockDataTable.getManyRowsAndCount).toHaveBeenNthCalledWith(1, {
+					skip: 0,
+					take: 1,
+					filter: {
+						type: 'or',
+						filters: [
+							{
+								columnName: 'processed',
+								condition: 'eq',
+								value: '1',
+							},
+						],
+					},
+				});
+
+				// Second execution - previous row was id=1
+				mockExecuteFunctions.getInputData.mockReturnValue(result1[0]);
+				const result2 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+
+				expect(result2[0][0].json.row_id).toBe(2);
+				expect(result2[0][0].json.row_number).toBe(1);
+
+				// Verify second call includes id > 1 filter
+				expect(mockDataTable.getManyRowsAndCount).toHaveBeenNthCalledWith(2, {
+					skip: 0,
+					take: 1,
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'processed',
+								condition: 'eq',
+								value: '1',
+							},
+							{
+								columnName: 'id',
+								condition: 'gt',
+								value: 1,
+							},
+						],
+					},
+				});
+
+				// Third execution - previous row was id=2
+				mockExecuteFunctions.getInputData.mockReturnValue(result2[0]);
+				const result3 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+
+				expect(result3[0][0].json.row_id).toBe(3);
+				expect(result3[0][0].json.row_number).toBe(2);
+
+				// Verify third call includes id > 2 filter
+				expect(mockDataTable.getManyRowsAndCount).toHaveBeenNthCalledWith(3, {
+					skip: 0,
+					take: 1,
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'processed',
+								condition: 'eq',
+								value: '1',
+							},
+							{
+								columnName: 'id',
+								condition: 'gt',
+								value: 2,
+							},
+						],
+					},
+				});
+			});
+		});
 	});
 
 	describe('customOperations.dataset.getRows', () => {

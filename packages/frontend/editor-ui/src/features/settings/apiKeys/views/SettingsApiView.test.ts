@@ -1,10 +1,10 @@
-import { fireEvent, screen } from '@testing-library/vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { fireEvent, screen, within } from '@testing-library/vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SettingsApiView from './SettingsApiView.vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
@@ -28,7 +28,7 @@ const assertHintsAreShown = ({ isSwaggerUIEnabled }: { isSwaggerUIEnabled: boole
 	expect(webhookDocsLink).toBeInTheDocument();
 	expect(webhookDocsLink).toHaveAttribute(
 		'href',
-		'https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/',
+		'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/',
 	);
 	expect(webhookDocsLink).toHaveAttribute('target', '_blank');
 
@@ -228,7 +228,7 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByTestId('action-toggle'));
+		await fireEvent.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
 		await fireEvent.click(screen.getByTestId('action-delete'));
 
 		expect(screen.getByText('Delete this API Key?')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import {
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
@@ -79,21 +79,22 @@ import {
 	REPORTED_SOURCE_EVENT,
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
+	REPORTED_SOURCE_LLM,
 } from '../users.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
-import { useToast } from '@/composables/useToast';
-import Modal from '@/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
+import Modal from '@/app/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
 import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '../users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { usePostHog } from '@/stores/posthog.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import { N8nButton, N8nFormInputs } from '@n8n/design-system';
@@ -519,6 +520,10 @@ const survey = computed<IFormInputs>(
 						{
 							label: 'YouTube',
 							value: REPORTED_SOURCE_YOUTUBE,
+						},
+						{
+							label: 'ChatGPT / LLM',
+							value: REPORTED_SOURCE_LLM,
 						},
 						{
 							label: i18n.baseText('personalizationModal.friendWordOfMouth'),

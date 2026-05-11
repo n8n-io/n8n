@@ -23,12 +23,20 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return   {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\",\n  \"base64\": \"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"\n  }"
+				"data": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"base64": "VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ="
+				}
 			},
 			"id": "ff53ab4c-43dd-4c35-b066-59d59e4a8209",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [520, 1040]
 		},
 		{

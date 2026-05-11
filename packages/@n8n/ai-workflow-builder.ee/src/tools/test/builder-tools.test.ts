@@ -1,198 +1,223 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { createRemoveConnectionTool, REMOVE_CONNECTION_TOOL } from '@/tools/remove-connection.tool';
-
 import { createNodeType, nodeTypes } from '../../../test/test-utils';
-import { createAddNodeTool, getAddNodeToolBase } from '../add-node.tool';
-import { getBuilderTools, getBuilderToolsForDisplay } from '../builder-tools';
-import { CONNECT_NODES_TOOL, createConnectNodesTool } from '../connect-nodes.tool';
-import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from '../get-node-parameter.tool';
-import { createNodeDetailsTool, NODE_DETAILS_TOOL } from '../node-details.tool';
-import { createNodeSearchTool, NODE_SEARCH_TOOL } from '../node-search.tool';
-import { createRemoveNodeTool, REMOVE_NODE_TOOL } from '../remove-node.tool';
-import {
-	createUpdateNodeParametersTool,
-	UPDATING_NODE_PARAMETER_TOOL,
-} from '../update-node-parameters.tool';
+import { getAddNodeToolBase } from '../add-node.tool';
+import { getBuilderToolsForDisplay } from '../builder-tools';
+
+jest.mock('../get-documentation.tool', () => ({
+	GET_DOCUMENTATION_TOOL: {
+		toolName: 'get_documentation',
+		displayTitle: 'Getting documentation',
+	},
+}));
+
+jest.mock('../get-workflow-examples.tool', () => ({
+	GET_WORKFLOW_EXAMPLES_TOOL: {
+		toolName: 'get_workflow_examples',
+		displayTitle: 'Retrieving workflow examples',
+	},
+}));
 
 jest.mock('../add-node.tool', () => ({
-	createAddNodeTool: jest.fn().mockReturnValue({
-		name: 'addNodeTool',
-		tool: { name: 'addNodeTool' },
-	}),
 	getAddNodeToolBase: jest.fn().mockReturnValue({
-		name: 'addNodeTool',
-		description: 'Add a node to the workflow',
+		toolName: 'add_node',
+		displayTitle: 'Add a node to the workflow',
 	}),
 }));
 
 jest.mock('../connect-nodes.tool', () => ({
 	CONNECT_NODES_TOOL: {
-		name: 'connectNodesTool',
-		description: 'Connect two nodes',
+		toolName: 'connect_nodes',
+		displayTitle: 'Connect two nodes',
 	},
-	createConnectNodesTool: jest.fn().mockReturnValue({
-		name: 'connectNodesTool',
-		tool: { name: 'connectNodesTool' },
-	}),
 }));
 
 jest.mock('../get-node-parameter.tool', () => ({
 	GET_NODE_PARAMETER_TOOL: {
-		name: 'getNodeParameterTool',
-		description: 'Get node parameters',
+		toolName: 'get_node_parameter',
+		displayTitle: 'Get node parameters',
 	},
-	createGetNodeParameterTool: jest.fn().mockReturnValue({
-		name: 'getNodeParameterTool',
-		tool: { name: 'getNodeParameterTool' },
-	}),
 }));
 
 jest.mock('../node-details.tool', () => ({
 	NODE_DETAILS_TOOL: {
-		name: 'nodeDetailsTool',
-		description: 'Get node details',
+		toolName: 'node_details',
+		displayTitle: 'Get node details',
 	},
-	createNodeDetailsTool: jest.fn().mockReturnValue({
-		name: 'nodeDetailsTool',
-		tool: { name: 'nodeDetailsTool' },
-	}),
 }));
 
 jest.mock('../node-search.tool', () => ({
 	NODE_SEARCH_TOOL: {
-		name: 'nodeSearchTool',
-		description: 'Search for nodes',
+		toolName: 'node_search',
+		displayTitle: 'Search for nodes',
 	},
-	createNodeSearchTool: jest.fn().mockReturnValue({
-		name: 'nodeSearchTool',
-		tool: { name: 'nodeSearchTool' },
-	}),
 }));
 
 jest.mock('../remove-node.tool', () => ({
 	REMOVE_NODE_TOOL: {
-		name: 'removeNodeTool',
-		description: 'Remove a node',
+		toolName: 'remove_node',
+		displayTitle: 'Remove a node',
 	},
-	createRemoveNodeTool: jest.fn().mockReturnValue({
-		name: 'removeNodeTool',
-		tool: { name: 'removeNodeTool' },
-	}),
+}));
+
+jest.mock('../rename-node.tool', () => ({
+	RENAME_NODE_TOOL: {
+		toolName: 'rename_node',
+		displayTitle: 'Renaming node',
+	},
 }));
 
 jest.mock('../update-node-parameters.tool', () => ({
 	UPDATING_NODE_PARAMETER_TOOL: {
-		name: 'updateNodeParametersTool',
-		description: 'Update node parameters',
+		toolName: 'update_node_parameters',
+		displayTitle: 'Update node parameters',
 	},
-	createUpdateNodeParametersTool: jest.fn().mockReturnValue({
-		name: 'updateNodeParametersTool',
-		tool: { name: 'updateNodeParametersTool' },
-	}),
 }));
 
 jest.mock('../remove-connection.tool', () => ({
 	REMOVE_CONNECTION_TOOL: {
-		name: 'removeConnectionTool',
-		description: 'Remove a connection between two nodes',
+		toolName: 'remove_connection',
+		displayTitle: 'Remove a connection between two nodes',
 	},
-	createRemoveConnectionTool: jest.fn().mockReturnValue({
-		name: 'removeConnectionTool',
-		tool: { name: 'removeConnectionTool' },
-	}),
+}));
+
+jest.mock('../validate-structure.tool', () => ({
+	VALIDATE_STRUCTURE_TOOL: {
+		toolName: 'validate_structure',
+		displayTitle: 'Validate workflow structure',
+	},
+}));
+
+jest.mock('../validate-configuration.tool', () => ({
+	VALIDATE_CONFIGURATION_TOOL: {
+		toolName: 'validate_configuration',
+		displayTitle: 'Validate node configuration',
+	},
+}));
+
+jest.mock('../introspect.tool', () => ({
+	INTROSPECT_TOOL: {
+		toolName: 'introspect',
+		displayTitle: 'Introspecting',
+	},
+}));
+
+jest.mock('../get-execution-schema.tool', () => ({
+	GET_EXECUTION_SCHEMA_TOOL: {
+		toolName: 'get_execution_schema',
+		displayTitle: 'Getting execution schema',
+	},
+}));
+
+jest.mock('../get-execution-logs.tool', () => ({
+	GET_EXECUTION_LOGS_TOOL: {
+		toolName: 'get_execution_logs',
+		displayTitle: 'Getting execution logs',
+	},
+}));
+
+jest.mock('../get-expression-data-mapping.tool', () => ({
+	GET_EXPRESSION_DATA_MAPPING_TOOL: {
+		toolName: 'get_expression_data_mapping',
+		displayTitle: 'Getting expression data mapping',
+	},
+}));
+
+jest.mock('../get-workflow-overview.tool', () => ({
+	GET_WORKFLOW_OVERVIEW_TOOL: {
+		toolName: 'get_workflow_overview',
+		displayTitle: 'Getting workflow overview',
+	},
+}));
+
+jest.mock('../get-node-context.tool', () => ({
+	GET_NODE_CONTEXT_TOOL: {
+		toolName: 'get_node_context',
+		displayTitle: 'Getting node context',
+	},
+}));
+
+jest.mock('@/code-builder/constants', () => ({
+	CODE_BUILDER_TEXT_EDITOR_TOOL: {
+		toolName: 'str_replace_based_edit_tool',
+		displayTitle: 'Editing workflow',
+	},
+	CODE_BUILDER_VALIDATE_TOOL: {
+		toolName: 'validate_workflow',
+		displayTitle: 'Validating workflow',
+	},
+	CODE_BUILDER_SEARCH_NODES_TOOL: {
+		toolName: 'search_nodes',
+		displayTitle: 'Searching nodes',
+	},
+	CODE_BUILDER_GET_NODE_TYPES_TOOL: {
+		toolName: 'get_node_types',
+		displayTitle: 'Getting node definitions',
+	},
+	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: {
+		toolName: 'get_suggested_nodes',
+		displayTitle: 'Getting suggested nodes',
+	},
 }));
 
 describe('builder-tools', () => {
-	let mockLogger: Logger;
-	let mockLlmComplexTask: BaseChatModel;
 	let parsedNodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockLogger = mock<Logger>();
-		mockLlmComplexTask = mock<BaseChatModel>();
 		parsedNodeTypes = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook];
 	});
 
-	describe('getBuilderTools', () => {
-		it('should return all builder tools in the correct order', () => {
-			const tools = getBuilderTools({
-				parsedNodeTypes,
-				logger: mockLogger,
-				llmComplexTask: mockLlmComplexTask,
-				instanceUrl: 'https://test.n8n.io',
-			});
-
-			expect(tools).toHaveLength(8);
-			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createAddNodeTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createRemoveConnectionTool).toHaveBeenCalled();
-			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
-			expect(createRemoveNodeTool).toHaveBeenCalledWith(mockLogger);
-			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
-				parsedNodeTypes,
-				mockLlmComplexTask,
-				mockLogger,
-				'https://test.n8n.io',
-			);
-			expect(createGetNodeParameterTool).toHaveBeenCalled();
-		});
-
-		it('should work without optional parameters', () => {
-			const tools = getBuilderTools({
-				parsedNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
-			});
-
-			expect(tools).toHaveLength(8);
-			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
-			expect(createRemoveNodeTool).toHaveBeenCalledWith(undefined);
-			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
-				parsedNodeTypes,
-				mockLlmComplexTask,
-				undefined,
-				undefined,
-			);
-		});
-
-		it('should pass through different node types', () => {
-			const customNodeTypes = [
-				createNodeType({ name: 'custom.node1' }),
-				createNodeType({ name: 'custom.node2' }),
-			];
-
-			getBuilderTools({
-				parsedNodeTypes: customNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
-			});
-
-			expect(createNodeSearchTool).toHaveBeenCalledWith(customNodeTypes);
-			expect(createNodeDetailsTool).toHaveBeenCalledWith(customNodeTypes);
-			expect(createAddNodeTool).toHaveBeenCalledWith(customNodeTypes);
-			expect(createConnectNodesTool).toHaveBeenCalledWith(customNodeTypes, undefined);
-		});
-	});
-
 	describe('getBuilderToolsForDisplay', () => {
-		it('should return all display tools in the correct order', () => {
+		// Base tools (always included): get_documentation, node_search, node_details, add_node,
+		// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
+		// get_node_parameter, validate_structure, validate_configuration,
+		// get_execution_schema, get_execution_logs, get_expression_data_mapping,
+		// get_workflow_overview, get_node_context
+		const BASE_TOOL_COUNT = 22;
+
+		it('should return base tools when no feature flags are provided', () => {
 			const tools = getBuilderToolsForDisplay({
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(8);
-			expect(tools[0]).toBe(NODE_SEARCH_TOOL);
-			expect(tools[1]).toBe(NODE_DETAILS_TOOL);
-			expect(tools[3]).toBe(CONNECT_NODES_TOOL);
-			expect(tools[4]).toBe(REMOVE_CONNECTION_TOOL);
-			expect(tools[5]).toBe(REMOVE_NODE_TOOL);
-			expect(tools[6]).toBe(UPDATING_NODE_PARAMETER_TOOL);
-			expect(tools[7]).toBe(GET_NODE_PARAMETER_TOOL);
+			expect(tools).toHaveLength(BASE_TOOL_COUNT);
+			expect(tools.map((t) => t.toolName)).not.toContain('get_workflow_examples');
+			expect(tools.map((t) => t.toolName)).not.toContain('introspect');
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
+		});
+
+		it('should include workflow examples tool when templateExamples flag is enabled', () => {
+			const tools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: true },
+			});
+
+			expect(tools).toHaveLength(BASE_TOOL_COUNT + 1);
+			expect(tools.map((t) => t.toolName)).toContain('get_workflow_examples');
+			expect(tools.map((t) => t.toolName)).not.toContain('introspect');
+		});
+
+		it('should include introspect tool when enableIntrospection flag is enabled', () => {
+			const tools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+				featureFlags: { enableIntrospection: true },
+			});
+
+			expect(tools).toHaveLength(BASE_TOOL_COUNT + 1);
+			expect(tools.map((t) => t.toolName)).toContain('introspect');
+			expect(tools.map((t) => t.toolName)).not.toContain('get_workflow_examples');
+		});
+
+		it('should include both conditional tools when both flags are enabled', () => {
+			const tools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: true, enableIntrospection: true },
+			});
+
+			expect(tools).toHaveLength(BASE_TOOL_COUNT + 2);
+			expect(tools.map((t) => t.toolName)).toContain('get_workflow_examples');
+			expect(tools.map((t) => t.toolName)).toContain('introspect');
 		});
 
 		it('should work with empty node types array', () => {
@@ -200,7 +225,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(8);
+			expect(tools).toHaveLength(BASE_TOOL_COUNT);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 
@@ -215,22 +240,6 @@ describe('builder-tools', () => {
 			});
 
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(customNodeTypes);
-		});
-	});
-
-	describe('consistency between getBuilderTools and getBuilderToolsForDisplay', () => {
-		it('should return the same number of tools', () => {
-			const builderTools = getBuilderTools({
-				parsedNodeTypes,
-				llmComplexTask: mockLlmComplexTask,
-				logger: mockLogger,
-			});
-
-			const displayTools = getBuilderToolsForDisplay({
-				nodeTypes: parsedNodeTypes,
-			});
-
-			expect(builderTools).toHaveLength(displayTools.length);
 		});
 	});
 });

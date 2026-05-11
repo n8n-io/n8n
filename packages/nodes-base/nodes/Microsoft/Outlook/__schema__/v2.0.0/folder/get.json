@@ -19,6 +19,9 @@
         "parentFolderId": {
             "type": "string"
         },
+        "sizeInBytes": {
+            "type": "integer"
+        },
         "totalItemCount": {
             "type": "integer"
         },
@@ -26,5 +29,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

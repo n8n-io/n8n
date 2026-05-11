@@ -23,10 +23,16 @@ export async function microsoftApiRequest(
 ) {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
+
+	let apiUrl = `${baseUrl}/v1.0/me${resource}`;
 	// If accessing shared mailbox
 	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
 	const options: IRequestOptions = {
@@ -200,21 +206,20 @@ export async function getSubfolders(
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
 		if ((folder.childFolderCount as number) > 0) {
-			let subfolders = await microsoftApiRequest.call(
+			let subfolders = await microsoftApiRequestAllItems.call(
 				this,
+				'value',
 				'GET',
 				`/mailFolders/${folder.id}/childFolders`,
 			);
 
 			if (addPathToDisplayName) {
-				subfolders = subfolders.value.map((subfolder: IDataObject) => {
+				subfolders = subfolders.map((subfolder: IDataObject) => {
 					return {
 						...subfolder,
 						displayName: `${folder.displayName}/${subfolder.displayName}`,
 					};
 				});
-			} else {
-				subfolders = subfolders.value;
 			}
 
 			returnData.push(

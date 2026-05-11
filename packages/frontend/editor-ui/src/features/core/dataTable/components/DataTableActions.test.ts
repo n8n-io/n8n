@@ -1,11 +1,18 @@
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
-import { DATA_TABLE_CARD_ACTIONS } from '@/features/core/dataTable/constants';
-import { MODAL_CONFIRM } from '@/constants';
+import {
+	DATA_TABLE_CARD_ACTIONS,
+	DOWNLOAD_DATA_TABLE_MODAL_KEY,
+} from '@/features/core/dataTable/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const mockMessage = {
 	confirm: vi.fn(),
@@ -17,17 +24,23 @@ const mockToast = {
 
 const mockDeleteDataTable = vi.fn();
 
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => mockMessage,
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: () => ({
 		deleteDataTable: mockDeleteDataTable,
+		projectPermissions: {
+			dataTable: {
+				delete: true,
+				update: true,
+			},
+		},
 	}),
 }));
 
@@ -67,20 +80,26 @@ const renderComponent = createComponentRenderer(DataTableActions, {
 	},
 });
 
+const openActionsDropdown = async (getByTestId: (testId: string) => HTMLElement) => {
+	const actionToggle = getByTestId('data-table-card-actions');
+	await userEvent.click(within(actionToggle).getByRole('button'));
+};
+
+let dataTableStore: MockedStore<typeof useDataTableStore>;
+let uiStore: MockedStore<typeof useUIStore>;
+
 describe('DataTableActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDeleteDataTable.mockResolvedValue(true);
+		createTestingPinia();
+		dataTableStore = mockedStore(useDataTableStore);
+		uiStore = mockedStore(useUIStore);
+		dataTableStore.deleteDataTable.mockResolvedValue(true);
 		mockMessage.confirm.mockResolvedValue(MODAL_CONFIRM);
 	});
 
 	it('should render N8nActionToggle with correct props', () => {
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId } = renderComponent();
 
 		const actionToggle = getByTestId('data-table-card-actions');
 		expect(actionToggle).toBeInTheDocument();
@@ -91,10 +110,6 @@ describe('DataTableActions', () => {
 			props: {
 				isReadOnly: true,
 			},
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
 		});
 
 		const actionToggle = getByTestId('data-table-card-actions');
@@ -102,15 +117,9 @@ describe('DataTableActions', () => {
 	});
 
 	it('should emit rename event when rename action is triggered', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId, emitted } = renderComponent();
 
-		// Click on the action toggle to open dropdown
-		await userEvent.click(getByTestId('data-table-card-actions'));
+		await openActionsDropdown(getByTestId);
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the rename action
@@ -126,15 +135,9 @@ describe('DataTableActions', () => {
 	});
 
 	it('should show confirmation dialog when delete action is triggered', async () => {
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId } = renderComponent();
 
-		// Click on the action toggle to open dropdown
-		await userEvent.click(getByTestId('data-table-card-actions'));
+		await openActionsDropdown(getByTestId);
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -151,15 +154,9 @@ describe('DataTableActions', () => {
 	});
 
 	it('should call delete when confirmed and emit onDeleted', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId, emitted } = renderComponent();
 
-		// Click on the action toggle to open dropdown
-		await userEvent.click(getByTestId('data-table-card-actions'));
+		await openActionsDropdown(getByTestId);
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -172,15 +169,9 @@ describe('DataTableActions', () => {
 	it('should not delete when confirmation is cancelled', async () => {
 		mockMessage.confirm.mockResolvedValue('cancel');
 
-		const { getByTestId, emitted } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId, emitted } = renderComponent();
 
-		// Click on the action toggle to open dropdown
-		await userEvent.click(getByTestId('data-table-card-actions'));
+		await openActionsDropdown(getByTestId);
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -193,15 +184,9 @@ describe('DataTableActions', () => {
 	it('should show error when delete fails', async () => {
 		mockDeleteDataTable.mockResolvedValue(false);
 
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId } = renderComponent();
 
-		// Click on the action toggle to open dropdown
-		await userEvent.click(getByTestId('data-table-card-actions'));
+		await openActionsDropdown(getByTestId);
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -217,15 +202,9 @@ describe('DataTableActions', () => {
 		const deleteError = new Error('Delete failed');
 		mockDeleteDataTable.mockRejectedValue(deleteError);
 
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: {},
-				stubActions: false,
-			}),
-		});
+		const { getByTestId } = renderComponent();
 
-		// Click on the action toggle to open dropdown
-		await userEvent.click(getByTestId('data-table-card-actions'));
+		await openActionsDropdown(getByTestId);
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		// Click on the delete action
@@ -237,6 +216,61 @@ describe('DataTableActions', () => {
 		);
 	});
 
+	describe('download CSV action', () => {
+		it('should open modal with data-table-specific key when download CSV is clicked', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					isReadOnly: false,
+					location: 'card',
+				},
+			});
+
+			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(
+				`${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${mockDataTable.id}`,
+			);
+		});
+
+		it('should use different modal keys for different data tables', async () => {
+			const anotherDataTable: DataTable = {
+				...mockDataTable,
+				id: '2',
+				name: 'Another DataTable',
+			};
+
+			const { getByTestId, unmount } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					isReadOnly: false,
+					location: 'card',
+				},
+			});
+
+			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
+
+			unmount();
+
+			const { getByTestId: getByTestId2 } = renderComponent({
+				props: {
+					dataTable: anotherDataTable,
+					isReadOnly: false,
+					location: 'card',
+				},
+			});
+
+			await openActionsDropdown(getByTestId2);
+			await userEvent.click(getByTestId2(`action-${DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV}`));
+
+			expect(uiStore.openModal).toHaveBeenCalledTimes(2);
+			expect(uiStore.openModal).toHaveBeenNthCalledWith(1, `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-1`);
+			expect(uiStore.openModal).toHaveBeenNthCalledWith(2, `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-2`);
+		});
+	});
+
 	describe('rename action visibility', () => {
 		it('should show rename action when location is breadcrumbs', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
@@ -245,14 +279,9 @@ describe('DataTableActions', () => {
 					isReadOnly: false,
 					location: 'breadcrumbs',
 				},
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
 			});
 
-			// Click on the action toggle to open dropdown
-			await userEvent.click(getByTestId('data-table-card-actions'));
+			await openActionsDropdown(getByTestId);
 			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 			// Check that rename action is present
@@ -266,14 +295,9 @@ describe('DataTableActions', () => {
 					isReadOnly: false,
 					location: 'card',
 				},
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
 			});
 
-			// Click on the action toggle to open dropdown
-			await userEvent.click(getByTestId('data-table-card-actions'));
+			await openActionsDropdown(getByTestId);
 			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 			// Check that rename action is NOT present

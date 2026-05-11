@@ -96,7 +96,7 @@ watchEffect(() => {
 
 	.chartWrapper {
 		position: relative;
-		height: var(--metrics-chart-height, 147px);
+		height: var(--metrics-chart--height, 147px);
 		width: 100%;
 		padding: var(--spacing--sm);
 	}

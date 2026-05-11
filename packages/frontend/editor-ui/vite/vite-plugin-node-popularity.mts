@@ -15,15 +15,15 @@ export function nodePopularityPlugin(): Plugin {
 		},
 		async load(id) {
 			if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-				// Try to load the data from the build directory
-				const buildDataPath = path.join(process.cwd(), '.build', 'node-popularity.json');
+				// Try to load the data from the data directory
+				const dataPath = path.join(process.cwd(), 'data', 'node-popularity.json');
 
 				try {
-					const data = await fs.readFile(buildDataPath, 'utf-8');
+					const data = await fs.readFile(dataPath, 'utf-8');
 					return `export default ${data}`;
 				} catch (error) {
 					// If file doesn't exist, return empty array
-					console.warn('Node popularity data not found at', buildDataPath, '- using empty array');
+					console.warn('Node popularity data not found at', dataPath, '- using empty array');
 					return 'export default []';
 				}
 			}

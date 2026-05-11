@@ -10,12 +10,17 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType: vi.fn(() => ({
 			name: 'test',
 			description: 'Test Node Description',
 		})),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 

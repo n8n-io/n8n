@@ -1,9 +1,9 @@
 import ProjectVariables from './ProjectVariables.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -15,6 +15,10 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -113,7 +117,33 @@ describe('ProjectVariables', () => {
 
 		const uiStore = mockedStore(useUIStore);
 
-		return { usersStore, settingsStore, environmentsStore, uiStore };
+		// Mock project store so that project header renders correctly
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = {
+			id: 'personal-project-id',
+			name: 'Current Project',
+			scopes: [
+				'projectVariable:create',
+				'projectVariable:read',
+				'projectVariable:update',
+				'projectVariable:delete',
+			],
+		} as Project;
+		projectsStore.currentProject = projectsStore.personalProject;
+
+		const sourceControlStore = mockedStore(useSourceControlStore);
+		sourceControlStore.preferences = {
+			branchReadOnly: false,
+		} as SourceControlPreferences;
+
+		return {
+			usersStore,
+			settingsStore,
+			environmentsStore,
+			uiStore,
+			projectsStore,
+			sourceControlStore,
+		};
 	};
 
 	it('should render variable entries', async () => {
@@ -239,9 +269,9 @@ describe('ProjectVariables', () => {
 			]);
 
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(getByTestId('add-resource-variable')).toBeVisible());
 
-			await userEvent.click(getByTestId('resources-list-add'));
+			await userEvent.click(getByTestId('add-resource-variable'));
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: VARIABLE_MODAL_KEY,
@@ -261,7 +291,7 @@ describe('ProjectVariables', () => {
 			const { uiStore } = userWithPrivileges(variables);
 
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 
 			await userEvent.hover(getByTestId('variables-row'));
 			expect(getByTestId('variable-row-edit-button')).toBeVisible();
@@ -298,10 +328,8 @@ describe('ProjectVariables', () => {
 
 			userWithPrivileges(variables);
 
-			const { getByTestId, queryAllByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
-
-			expect(queryAllByTestId('variables-row').length).toBe(2);
+			const { queryAllByTestId } = renderComponent();
+			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
 			await userEvent.hover(queryAllByTestId('variables-row')[0]);
 			expect(queryAllByTestId('variable-row-delete-button')[0]).toBeVisible();
@@ -324,13 +352,13 @@ describe('ProjectVariables', () => {
 			]);
 
 			const { getByTestId, queryAllByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
-			expect(queryAllByTestId('variables-row').length).toBe(2);
-
+			// Open filter popover first
+			await userEvent.click(getByTestId('resources-list-filters-trigger'));
 			await userEvent.click(getByTestId('variable-filter-incomplete'));
 
-			expect(queryAllByTestId('variables-row').length).toBe(1);
+			expect(queryAllByTestId('variables-row')).toHaveLength(1);
 		});
 	});
 
@@ -350,9 +378,8 @@ describe('ProjectVariables', () => {
 			]);
 
 			const { getByTestId, queryAllByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(queryAllByTestId('variables-row')).toHaveLength(2));
 
-			expect(queryAllByTestId('variables-row').length).toBe(2);
 			// Default sort should be ascending
 			expect(queryAllByTestId('variables-row')[0].querySelector('td')?.textContent).toBe('ALPHA');
 
@@ -401,7 +428,7 @@ describe('ProjectVariables', () => {
 	});
 
 	describe('permissions', () => {
-		it('should disable edit button when user lacks update permission', async () => {
+		it('should disable edit button when user lacks both global and project update permission', async () => {
 			const usersStore = mockedStore(useUsersStore);
 			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
 
@@ -417,15 +444,22 @@ describe('ProjectVariables', () => {
 				},
 			];
 
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = {
+				id: 'project-id',
+				name: 'Test Project',
+				scopes: ['projectVariable:read', 'projectVariable:list'],
+			} as Project;
+
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 
 			await userEvent.hover(getByTestId('variables-row'));
 			const editButton = getByTestId('variable-row-edit-button');
 			expect(editButton).toBeDisabled();
 		});
 
-		it('should disable delete button when user lacks delete permission', async () => {
+		it('should disable delete button when user lacks both global and project delete permission', async () => {
 			const usersStore = mockedStore(useUsersStore);
 			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
 
@@ -441,12 +475,150 @@ describe('ProjectVariables', () => {
 				},
 			];
 
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = {
+				id: 'project-id',
+				name: 'Test Project',
+				scopes: ['projectVariable:read', 'projectVariable:list'],
+			} as Project;
+
 			const { getByTestId } = renderComponent();
-			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 
 			await userEvent.hover(getByTestId('variables-row'));
 			const deleteButton = getByTestId('variable-row-delete-button');
 			expect(deleteButton).toBeDisabled();
+		});
+
+		it('should enable edit button when user has global update permission', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = {
+				globalScopes: ['variable:read', 'variable:list', 'variable:update'],
+			} as IUser;
+
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+
+			const environmentsStore = mockedStore(useEnvironmentsStore);
+			environmentsStore.variables = [
+				{
+					id: '1',
+					key: 'TEST_VAR',
+					value: 'value',
+				},
+			];
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = {
+				id: 'project-id',
+				name: 'Test Project',
+				scopes: ['projectVariable:read', 'projectVariable:list'],
+			} as Project;
+
+			const { getByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
+
+			await userEvent.hover(getByTestId('variables-row'));
+			const editButton = getByTestId('variable-row-edit-button');
+			expect(editButton).not.toBeDisabled();
+		});
+
+		it('should enable edit button when user has project update permission', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
+
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+
+			const environmentsStore = mockedStore(useEnvironmentsStore);
+			environmentsStore.variables = [
+				{
+					id: '1',
+					key: 'TEST_VAR',
+					value: 'value',
+				},
+			];
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = {
+				id: 'project-id',
+				name: 'Test Project',
+				scopes: ['projectVariable:read', 'projectVariable:list', 'projectVariable:update'],
+			} as Project;
+
+			const { getByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
+
+			await userEvent.hover(getByTestId('variables-row'));
+			const editButton = getByTestId('variable-row-edit-button');
+			expect(editButton).not.toBeDisabled();
+		});
+
+		it('should enable delete button when user has global delete permission', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = {
+				globalScopes: ['variable:read', 'variable:list', 'variable:delete'],
+			} as IUser;
+
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+
+			const environmentsStore = mockedStore(useEnvironmentsStore);
+			environmentsStore.variables = [
+				{
+					id: '1',
+					key: 'TEST_VAR',
+					value: 'value',
+				},
+			];
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = {
+				id: 'project-id',
+				name: 'Test Project',
+				scopes: ['projectVariable:read', 'projectVariable:list'],
+			} as Project;
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
+
+			await userEvent.hover(getByTestId('variables-row'));
+			const deleteButton = getByTestId('variable-row-delete-button');
+			expect(deleteButton).not.toBeDisabled();
+		});
+
+		it('should enable delete button when user has project delete permission', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { globalScopes: ['variable:read', 'variable:list'] } as IUser;
+
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+
+			const environmentsStore = mockedStore(useEnvironmentsStore);
+			environmentsStore.variables = [
+				{
+					id: '1',
+					key: 'TEST_VAR',
+					value: 'value',
+				},
+			];
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = {
+				id: 'project-id',
+				name: 'Test Project',
+				scopes: ['projectVariable:read', 'projectVariable:list', 'projectVariable:delete'],
+			} as Project;
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
+
+			await userEvent.hover(getByTestId('variables-row'));
+			const deleteButton = getByTestId('variable-row-delete-button');
+			expect(deleteButton).not.toBeDisabled();
 		});
 	});
 

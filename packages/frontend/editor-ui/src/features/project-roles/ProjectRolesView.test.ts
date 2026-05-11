@@ -1,11 +1,16 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useRolesStore } from '@/stores/roles.store';
+import { within } from '@testing-library/vue';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+
+const clickActionToggle = async (actionToggle: HTMLElement) => {
+	await userEvent.click(within(actionToggle).getByRole('button'));
+};
 
 // Mock vue-router
 const mockPush = vi.fn();
@@ -24,14 +29,14 @@ const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 const mockConfirm = vi.fn();
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,
 	}),
 }));
 
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({
 		confirm: mockConfirm,
 	}),
@@ -136,7 +141,7 @@ describe('ProjectRolesView', () => {
 
 		expect(getByText('Name')).toBeInTheDocument();
 		expect(getByText('Type')).toBeInTheDocument();
-		expect(getByText('Assigned to')).toBeInTheDocument();
+		expect(getByText('Projects assigned')).toBeInTheDocument();
 		expect(getByText('Last edited')).toBeInTheDocument();
 	});
 
@@ -240,7 +245,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			// Find and click the duplicate action
 			const duplicateButton = getByTestId('action-duplicate');
@@ -280,7 +285,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const duplicateButton = getByTestId('action-duplicate');
 			await userEvent.click(duplicateButton);
@@ -304,7 +309,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const duplicateButton = getByTestId('action-duplicate');
 			await userEvent.click(duplicateButton);
@@ -330,7 +335,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
@@ -360,7 +365,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
@@ -385,7 +390,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
@@ -411,7 +416,7 @@ describe('ProjectRolesView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			const actionToggle = getAllByTestId('action-toggle')[0];
 
-			await userEvent.click(actionToggle);
+			await clickActionToggle(actionToggle);
 
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);

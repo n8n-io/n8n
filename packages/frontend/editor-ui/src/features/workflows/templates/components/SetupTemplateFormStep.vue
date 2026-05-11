@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
-import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import { formatList } from '@/utils/formatters/listFormatter';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { getAppNameFromNodeName } from '@/app/utils/nodeTypesUtils';
+import { formatList } from '@/app/utils/formatters/listFormatter';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { BaseNode, CredentialUsages } from '../templates.types';
-import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { I18nT } from 'vue-i18n';
+import type { SetupCredentialsModalSource } from './SetupWorkflowCredentialsModal.vue';
 
 import { N8nHeading } from '@n8n/design-system';
 // Props
@@ -19,6 +20,7 @@ const props = withDefaults(
 		order: number;
 		credentials: CredentialUsages;
 		selectedCredentialId: string | null;
+		source?: SetupCredentialsModalSource;
 	}>(),
 	{
 		selectedCredentialId: null,
@@ -55,6 +57,13 @@ const nodeNames = computed(() => {
 	});
 });
 
+const credentialDescriptionKey = computed(() => {
+	if (props.source === 'builder') {
+		return 'templateSetup.credential.description.builder' as BaseTextKey;
+	}
+	return 'templateSetup.credential.description' as BaseTextKey;
+});
+
 //#endregion Computed
 
 //#region Methods
@@ -83,7 +92,7 @@ const onCredentialModalOpened = () => {
 		<p :class="$style.description" data-test-id="credential-step-description">
 			<I18nT
 				tag="span"
-				keypath="templateSetup.credential.description"
+				:keypath="credentialDescriptionKey"
 				:plural="credentials.usedBy.length"
 				scope="global"
 			>

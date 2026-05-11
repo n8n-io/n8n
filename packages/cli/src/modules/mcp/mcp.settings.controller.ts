@@ -1,18 +1,18 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope, Param } from '@n8n/decorators';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { type AuthenticatedRequest } from '@n8n/db';
+import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { listQueryMiddleware } from '@/middlewares';
+import type { ListQuery } from '@/requests';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
-import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
+import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 @RestController('/mcp')
 export class McpSettingsController {
@@ -21,8 +21,8 @@ export class McpSettingsController {
 		private readonly logger: Logger,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -32,6 +32,9 @@ export class McpSettingsController {
 		_res: Response,
 		@Body dto: UpdateMcpSettingsDto,
 	) {
+		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
+			throw new ForbiddenError('MCP settings are managed via environment variables');
+		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
 		try {
@@ -56,61 +59,43 @@ export class McpSettingsController {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 
-	@GlobalScope('mcp:manage')
-	@Patch('/workflows/:workflowId/toggle-access')
-	async toggleWorkflowMCPAccess(
+	@Get('/workflows', { middlewares: listQueryMiddleware })
+	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
+		const options: ListQuery.Options = {
+			...req.listQueryOptions,
+			filter: {
+				...req.listQueryOptions?.filter,
+				isArchived: false,
+				availableInMCP: false,
+			},
+		};
+
+		const { workflows, count } = await this.workflowService.getMany(
+			req.user,
+			options,
+			false, // includeScopes
+			false, // includeFolders
+			false, // onlySharedWithMe
+			['workflow:update'], // requiredScopes - only return workflows the user can edit
+		);
+
+		res.json({ count, data: workflows });
+	}
+
+	// Ideally we would use ProjectScope here but it only works if projectId is a URL parameter
+	@Patch('/workflows/toggle-access')
+	async toggleWorkflowsMCPAccess(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
-		@Body dto: UpdateWorkflowAvailabilityDto,
+		@Body dto: UpdateWorkflowsAvailabilityDto,
 	) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:update',
-		]);
-
-		if (!workflow) {
-			this.logger.warn('User attempted to update MCP availability without permissions', {
-				workflowId,
-				userId: req.user.id,
-			});
-			throw new NotFoundError(
-				'Could not load the workflow - you can only access workflows available to you',
-			);
-		}
-
-		if (!workflow.active && dto.availableInMCP) {
-			throw new BadRequestError('MCP access can only be set for active workflows');
-		}
-
-		const hasWebhooks = workflow.nodes.some(
-			(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
-		);
-
-		if (!hasWebhooks) {
-			throw new BadRequestError('MCP access can only be set for webhook-triggered workflows');
-		}
-
-		const workflowUpdate = new WorkflowEntity();
-		const currentSettings = workflow.settings ?? {};
-		workflowUpdate.settings = {
-			...currentSettings,
-			availableInMCP: dto.availableInMCP,
-		};
-		workflowUpdate.versionId = workflow.versionId;
-
-		const updatedWorkflow = await this.workflowService.update(
+		const { changedWorkflows, ...result } = await this.mcpSettingsService.bulkSetAvailableInMCP(
 			req.user,
-			workflowUpdate,
-			workflowId,
-			undefined, // tags
-			undefined, // parentFolderId
-			false, // forceSave
+			dto,
 		);
 
-		return {
-			id: updatedWorkflow.id,
-			settings: updatedWorkflow.settings,
-			versionId: updatedWorkflow.versionId,
-		};
+		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
+
+		return result;
 	}
 }

@@ -10,6 +10,7 @@ from src.constants import (
     BROKER_TASK_OFFER_ACCEPT,
     BROKER_TASK_SETTINGS,
     BROKER_RPC_RESPONSE,
+    BROKER_DRAIN,
 )
 from src.message_types import (
     BrokerMessage,
@@ -20,6 +21,7 @@ from src.message_types import (
     BrokerTaskSettings,
     BrokerTaskCancel,
     BrokerRpcResponse,
+    BrokerDrain,
 )
 
 
@@ -50,6 +52,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
         workflow_id = settings_dict.get("workflowId", "Unknown")
         node_name = settings_dict.get("nodeName", "Unknown")
         node_id = settings_dict.get("nodeId", "Unknown")
+        query = settings_dict.get("query")
     except KeyError as e:
         raise ValueError(f"Missing field in task settings message: {e}")
 
@@ -64,6 +67,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
             workflow_id=workflow_id,
             node_name=node_name,
             node_id=node_id,
+            query=query,
         ),
     )
 
@@ -106,6 +110,7 @@ MESSAGE_TYPE_MAP = {
     BROKER_TASK_SETTINGS: _parse_task_settings,
     BROKER_TASK_CANCEL: _parse_task_cancel,
     BROKER_RPC_RESPONSE: _parse_rpc_response,
+    BROKER_DRAIN: lambda _: BrokerDrain(),
 }
 
 

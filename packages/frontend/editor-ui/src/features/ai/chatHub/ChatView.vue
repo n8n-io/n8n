@@ -1,70 +1,130 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import {
-	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS,
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
-} from '@/constants';
-import { findOneFromModelsResponse } from '@/features/ai/chatHub/chat.utils';
+	VIEWS,
+} from '@/app/constants';
+import {
+	findOneFromModelsResponse,
+	flattenModel,
+	isLlmProvider,
+	unflattenModel,
+} from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
 import {
+	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
 } from '@/features/ai/chatHub/constants';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
-	chatHubConversationModelSchema,
-	type ChatHubProvider,
 	type ChatHubLLMProvider,
-	chatHubProviderSchema,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
-	type ChatHubMessageDto,
-	type ChatMessageId,
+	type ChatHubSendMessageRequest,
+	type ChatModelDto,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
-import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
-import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { useElementSize, useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { credentialsMapSchema, type CredentialsMap } from './chat.types';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useUIStore } from '@/stores/ui.store';
-import CredentialSelectorModal from '@/features/ai/chatHub/components/CredentialSelectorModal.vue';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
+import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import {
+	type ChatHubConversationModelWithCachedDisplayName,
+	chatHubConversationModelWithCachedDisplayNameSchema,
+	type ChatMessage as ChatMessageType,
+} from '@/features/ai/chatHub/chat.types';
+import { useI18n } from '@n8n/i18n';
+import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasRole } from '@/app/utils/rbac/checks';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import ChatGreetings from './components/ChatGreetings.vue';
+import { useChatSession } from './composables/useChatSession';
+import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
+import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue';
+import { useChatArtifacts } from './composables/useChatArtifacts';
+import { useChatInputFocus } from './composables/useChatInputFocus';
+import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
-const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+onBeforeMount(async () => {
+	await chatStore.fetchConfiguredTools();
+});
 
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
+const scrollableRef = useTemplateRef('scrollable');
+const chatLayoutRef = useTemplateRef('chatLayout');
+const chatLayoutElement = computed(() => chatLayoutRef.value?.$el);
+
+const welcomeScreenDismissed = ref(false);
+const showCreditsClaimedCallout = ref(false);
+const hasAttemptedAutoClaim = ref(false);
+
+const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCredits();
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
-const isNewSession = computed(() => sessionId.value !== route.params.id);
-const scrollableRef = useTemplateRef('scrollable');
-const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
+const isNewSessionOverride = computed(() => sessionId.value !== route.params.id);
+const shouldSkipNextScrollTrigger = ref(false);
 const currentConversation = computed(() =>
-	sessionId.value
-		? chatStore.sessions.find((session) => session.id === sessionId.value)
-		: undefined,
+	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 
-const { arrivedState } = useScroll(scrollContainerRef, { throttle: 100, offset: { bottom: 100 } });
+const canSelectTools = computed(() => !!selectedModel.value?.metadata.capabilities.functionCalling);
+const hadConversationBefore = useLocalStorage(
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE(usersStore.currentUserId ?? 'anonymous'),
+	false,
+);
+const hasSession = computed(() => (chatStore.sessions.ids?.length ?? 0) > 0);
 
-const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
+const showWelcomeScreen = computed<boolean | undefined>(() => {
+	if (hadConversationBefore.value || welcomeScreenDismissed.value) {
+		return false; // return false early to make UI ready fast
+	}
+
+	// Skip welcome screen if an agent is pre-selected via query params
+	if (route.query.workflowId || route.query.agentId) {
+		return false;
+	}
+
+	if (!chatStore.sessionsReady) {
+		return undefined; // not known yet
+	}
+
+	return (
+		!hasSession.value && (!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']))
+	);
+});
+
+const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayName | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
 	{
@@ -73,7 +133,7 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 		serializer: {
 			read: (value) => {
 				try {
-					return chatHubConversationModelSchema.parse(JSON.parse(value));
+					return chatHubConversationModelWithCachedDisplayNameSchema.parse(JSON.parse(value));
 				} catch (error) {
 					return null;
 				}
@@ -83,128 +143,236 @@ const selectedModel = useLocalStorage<ChatHubConversationModel | null>(
 	},
 );
 
-const selectedCredentials = useLocalStorage<CredentialsMap>(
-	LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(usersStore.currentUserId ?? 'anonymous'),
-	{},
-	{
-		writeDefaults: false,
-		shallow: true,
-		serializer: {
-			read: (value) => {
-				try {
-					return credentialsMapSchema.parse(JSON.parse(value));
-				} catch (error) {
-					return {};
-				}
-			},
-			write: (value) => JSON.stringify(value),
-		},
-	},
+const defaultAgent = computed(() =>
+	defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined,
 );
 
-const autoSelectCredentials = computed<CredentialsMap>(() =>
-	Object.fromEntries(
-		chatHubProviderSchema.options.map((provider) => {
-			if (provider === 'n8n') {
-				return [provider, null];
-			}
+const modelFromQuery = computed<ChatModelDto | null>(() => {
+	const agentId = route.query.agentId;
+	const workflowId = route.query.workflowId;
+	const provider = route.query.provider;
+	const model = route.query.model;
 
-			const lastCreatedCredential =
-				credentialsStore
-					.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[provider])
-					.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
-
-			return [provider, lastCreatedCredential];
-		}),
-	),
-);
-
-const mergedCredentials = computed(() => ({
-	...autoSelectCredentials.value,
-	...selectedCredentials.value,
-}));
-
-const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
-const isNewChat = computed(() => route.name === CHAT_VIEW);
-const credentialsId = computed(() =>
-	selectedModel.value ? mergedCredentials.value[selectedModel.value.provider] : undefined,
-);
-
-const modelRequiresCredentials = computed(() => {
-	if (!selectedModel.value) return false;
-
-	return selectedModel.value?.provider !== 'n8n';
-});
-
-const isMissingSelectedCredential = computed(() => {
-	if (!selectedModel.value) return false;
-
-	if (!modelRequiresCredentials.value) {
-		return false;
+	if (!isNewSessionOverride.value) {
+		return null;
 	}
 
-	return !credentialsId.value;
+	if (typeof agentId === 'string') {
+		return chatStore.getAgent({ provider: 'custom-agent', agentId });
+	}
+
+	if (typeof workflowId === 'string') {
+		return chatStore.getAgent({ provider: 'n8n', workflowId });
+	}
+
+	if (typeof provider === 'string' && typeof model === 'string') {
+		const parsedModel = chatHubConversationModelSchema.safeParse({
+			provider,
+			model,
+		});
+
+		if (parsedModel.success) {
+			return chatStore.getAgent(parsedModel.data);
+		}
+	}
+
+	return null;
 });
 
-const editingMessageId = ref<string>();
-const didSubmitInCurrentSession = ref(false);
-const initialization = ref({ credentialsFetched: false, modelsFetched: false });
-const credentialSelectorProvider = ref<ChatHubProvider | null>(null);
-const isInitialized = computed(
-	() => initialization.value.credentialsFetched && initialization.value.modelsFetched,
+const selectedModel = computed<ChatModelDto | null>(() => {
+	if (!isNewSessionOverride.value) {
+		const model = currentConversation.value ? unflattenModel(currentConversation.value) : null;
+
+		if (!model) {
+			return null;
+		}
+
+		return chatStore.getAgent(model, {
+			name: currentConversation.value?.agentName || currentConversation.value?.model,
+			icon: currentConversation.value?.agentIcon,
+		});
+	}
+
+	if (modelFromQuery.value) {
+		return modelFromQuery.value;
+	}
+
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.streaming.agent;
+	}
+
+	if (!defaultModel.value) {
+		return null;
+	}
+
+	return chatStore.getAgent(defaultModel.value, {
+		name: defaultModel.value.cachedDisplayName,
+		icon: defaultModel.value.cachedIcon,
+	});
+});
+
+const isAgentModel = computed(
+	() => !!selectedModel.value && !isLlmProvider(selectedModel.value.model.provider),
 );
 
-function scrollToBottom(smooth: boolean) {
-	scrollContainerRef.value?.scrollTo({
-		top: scrollableRef.value?.scrollHeight,
-		behavior: smooth ? 'smooth' : 'instant',
-	});
-}
+const customAgentId = computed(() =>
+	selectedModel.value?.model.provider === 'custom-agent'
+		? selectedModel.value.model.agentId
+		: undefined,
+);
+const { customAgent } = useCustomAgent(customAgentId);
 
-function scrollToMessage(messageId: ChatMessageId) {
-	scrollableRef.value?.querySelector(`[data-message-id="${messageId}"]`)?.scrollIntoView({
-		behavior: 'smooth',
-	});
-}
+const checkedToolIds = computed<string[]>(() => {
+	if (customAgent.value) {
+		return customAgent.value.toolIds;
+	}
 
-// Scroll to the bottom when a new message is added
+	if (currentConversation.value?.toolIds) {
+		return currentConversation.value.toolIds;
+	}
+
+	return modelFromQuery.value
+		? []
+		: chatStore.configuredTools.filter((t) => t.enabled).map((t) => t.definition.id);
+});
+
+const { credentialsByProvider, selectCredential } = useChatCredentials(
+	usersStore.currentUserId ?? 'anonymous',
+);
+
+// Dynamic credentials
+const { isEnabled: dynamicCredentialsEnabled } = useDynamicCredentials();
+const dynamicCredsWorkflowId = computed(() =>
+	selectedModel.value?.model.provider === 'n8n' && dynamicCredentialsEnabled.value
+		? selectedModel.value.model.workflowId
+		: null,
+);
+const dynamicCreds = useDynamicCredentialsStatus(dynamicCredsWorkflowId);
+const isDynamicCredentialsDrawerOpen = ref(false);
+
+const showDynamicCredentialsMissingCallout = computed(
+	() => messagingState.value === 'missingDynamicCredentials',
+);
+
+// Auto-close drawer when all credentials become connected
 watch(
-	() => chatMessages.value[chatMessages.value.length - 1]?.id,
-	(lastMessageId) => {
-		if (!lastMessageId) {
-			return;
-		}
-
-		if (lastMessageId !== chatStore.streamingMessageId) {
-			scrollToBottom(chatStore.streamingMessageId !== undefined);
-			return;
-		}
-
-		const message = chatStore
-			.getActiveMessages(sessionId.value)
-			.find((message) => message.id === lastMessageId);
-
-		if (message?.previousMessageId) {
-			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(message.previousMessageId);
+	() => dynamicCreds.allAuthenticated.value,
+	(allConnected) => {
+		if (allConnected && isDynamicCredentialsDrawerOpen.value) {
+			isDynamicCredentialsDrawerOpen.value = false;
 		}
 	},
-	{ immediate: true, flush: 'post' },
 );
 
-// Reload models when credentials are updated
-// TODO: fix duplicate requests
-watch(
-	mergedCredentials,
-	async (credentials) => {
-		const models = await chatStore.fetchChatModels(credentials);
-		const selected = selectedModel.value;
+const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
+	() => {
+		const provider = selectedModel.value?.model.provider;
 
-		if (selected === null) {
-			selectedModel.value = findOneFromModelsResponse(models) ?? null;
+		if (!provider) {
+			return null;
 		}
 
-		initialization.value.modelsFetched = true;
+		if (!isLlmProvider(provider)) {
+			return {};
+		}
+
+		const credentialsId = credentialsByProvider.value?.[provider];
+
+		if (!credentialsId) {
+			return null;
+		}
+
+		return {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]: {
+				id: credentialsId,
+				name: '',
+			},
+		};
+	},
+);
+const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
+
+const {
+	chatMessages,
+	isResponding,
+	isNewSession,
+	messagingState,
+	scrollContainerRef,
+	arrivedState,
+	scrollToBottom,
+	loadSession,
+} = useChatSession({
+	sessionId,
+	scrollableRef,
+	isNewSession: isNewSessionOverride,
+	extendMessagingState: () => {
+		if (chatStore.agentsReady && !selectedModel.value) {
+			return 'missingAgent';
+		}
+
+		if (chatStore.agentsReady && isMissingSelectedCredential.value) {
+			return 'missingCredentials';
+		}
+
+		if (dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value) {
+			return 'missingDynamicCredentials';
+		}
+
+		return null;
+	},
+	shouldSkipScroll: () => {
+		if (shouldSkipNextScrollTrigger.value) {
+			shouldSkipNextScrollTrigger.value = false;
+			return true;
+		}
+		return false;
+	},
+});
+
+const scrollContainerSize = useElementSize(scrollContainerRef);
+const artifacts = useChatArtifacts(chatLayoutElement, chatMessages);
+
+const isMainPanelNarrow = computed(() => scrollContainerSize.width.value < 600);
+
+const editingMessageId = ref<string>();
+const messageElementsRef = useTemplateRef('messages');
+const didSubmitInCurrentSession = ref(false);
+
+const canAcceptFiles = computed(() => {
+	const baseCondition =
+		(selectedModel.value?.metadata.allowFileUploads ?? false) && !isMissingSelectedCredential.value;
+
+	if (!baseCondition) return false;
+
+	// If editing, only allow file drops for human messages
+	if (editingMessageId.value) {
+		const editingMessage = chatMessages.value.find((msg) => msg.id === editingMessageId.value);
+		return editingMessage?.type === 'human';
+	}
+
+	return true;
+});
+
+const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
+
+useChatInputFocus(inputRef, {
+	disabled: computed(() => showWelcomeScreen.value === true || messagingState.value !== 'idle'),
+});
+
+// Preselect a model
+watch(
+	() => chatStore.agents,
+	(models) => {
+		const settings = settingsStore.moduleSettings?.['chat-hub'];
+
+		if (!models || !!selectedModel.value || !isNewSession.value || !settings) {
+			return;
+		}
+
+		const model = findOneFromModelsResponse(models, settings.providers);
+		if (model) {
+			void handleSelectAgent(model);
+		}
 	},
 	{ immediate: true },
 );
@@ -213,17 +381,25 @@ watch(
 	[sessionId, isNewSession],
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
+		editingMessageId.value = undefined;
 
-		if (!isNew && !chatStore.getConversation(id)) {
+		if (!isNew) {
 			try {
-				await chatStore.fetchMessages(id);
+				await loadSession(id);
 			} catch (error) {
-				toast.showError(error, 'Error fetching a conversation');
+				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
+	},
+	{ immediate: true },
+);
 
-		inputRef.value?.focus();
+// Focus prompt when new a new conversation is started
+watch(
+	[inputRef, sessionId],
+	([input]) => {
+		input?.focus();
 	},
 	{ immediate: true },
 );
@@ -236,39 +412,97 @@ watch(
 	{ immediate: true },
 );
 
-onMounted(async () => {
-	await Promise.all([
-		credentialsStore.fetchCredentialTypes(false),
-		credentialsStore.fetchAllCredentials(),
-	]);
-	initialization.value.credentialsFetched = true;
+// Reload models when credentials are updated
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (credentials) {
+			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
+
+// Keep cached display name up-to-date
+watch(
+	defaultAgent,
+	(agent, prevAgent) => {
+		if (defaultModel.value && agent?.name && agent.name !== prevAgent?.name) {
+			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
+		}
+
+		if (
+			defaultModel.value &&
+			agent?.icon &&
+			(agent.icon.type !== prevAgent?.icon?.type || agent.icon.value !== prevAgent.icon.value)
+		) {
+			defaultModel.value = { ...defaultModel.value, cachedIcon: agent.icon };
+		}
+	},
+	{ immediate: true },
+);
+
+// Auto-claim free AI credits if available when user lands on chat without credentials
+watch(
+	[welcomeScreenDismissed, userCanClaimOpenAiCredits, messagingState, () => chatStore.agentsReady],
+	async ([dismissed, canClaim, state, ready]) => {
+		if (!canClaim || hasAttemptedAutoClaim.value) return;
+
+		const shouldClaim = dismissed || (ready && state === 'missingCredentials');
+		if (shouldClaim) {
+			hasAttemptedAutoClaim.value = true;
+			const success = await claimCredits('chatHubAutoClaim');
+			if (success) {
+				showCreditsClaimedCallout.value = true;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+// Hide credits callout when user sends their first message
+watch(chatMessages, (messages) => {
+	if (messages.length > 0) {
+		showCreditsClaimedCallout.value = false;
+	}
 });
 
-function onSubmit(message: string) {
+// Update hadConversationBefore
+watch(
+	hasSession,
+	(value) => {
+		hadConversationBefore.value = hadConversationBefore.value || value;
+	},
+	{ immediate: true },
+);
+
+function handleDismissCreditsCallout() {
+	showCreditsClaimedCallout.value = false;
+}
+
+async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
-		chatStore.isResponding ||
+		isResponding.value ||
 		!selectedModel.value ||
-		isMissingSelectedCredential.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
 
 	didSubmitInCurrentSession.value = true;
+	editingMessageId.value = undefined;
 
-	const credentials = {};
-	if (selectedModel.value.provider !== 'n8n' && credentialsId.value) {
-		Object.assign(credentials, {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-				id: credentialsId.value,
-				name: '',
-			},
-		});
-	}
+	await chatStore.sendMessage(
+		sessionId.value,
+		message,
+		selectedModel.value,
+		credentialsForSelectedProvider.value,
+		attachments,
+	);
 
-	chatStore.sendMessage(sessionId.value, message, selectedModel.value, credentials);
-
-	inputRef.value?.setText('');
+	inputRef.value?.reset();
 
 	if (isNewSession.value) {
 		// TODO: this should not happen when submit fails
@@ -288,202 +522,375 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(
+	content: string,
+	keptAttachmentIndices: number[],
+	newFiles: File[],
+) {
 	if (
-		chatStore.isResponding ||
-		!['human', 'ai'].includes(message.type) ||
+		!editingMessageId.value ||
+		isResponding.value ||
 		!selectedModel.value ||
-		!credentialsId.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
 
-	const messageToEdit = message.revisionOfMessageId ?? message.id;
-
-	chatStore.editMessage(
+	await chatStore.editMessage(
 		sessionId.value,
-		messageToEdit,
-		message.content,
+		editingMessageId.value,
+		content,
 		selectedModel.value,
-		selectedModel.value.provider === 'n8n'
-			? {}
-			: {
-					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-						id: credentialsId.value,
-						name: '',
-					},
-				},
+		credentialsForSelectedProvider.value,
+		keptAttachmentIndices,
+		newFiles,
 	);
+
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatHubMessageDto) {
+async function handleRegenerateMessage(message: ChatMessageType) {
 	if (
-		chatStore.isResponding ||
+		isResponding.value ||
 		message.type !== 'ai' ||
 		!selectedModel.value ||
-		!credentialsId.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
 
-	const messageToRetry = message.retryOfMessageId ?? message.id;
+	const messageToRetry = message.id;
 
-	chatStore.regenerateMessage(
+	editingMessageId.value = undefined;
+
+	await chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
 		selectedModel.value,
-		selectedModel.value.provider === 'n8n'
-			? {}
-			: {
-					[PROVIDER_CREDENTIAL_TYPE_MAP[selectedModel.value.provider]]: {
-						id: credentialsId.value,
-						name: '',
-					},
-				},
+		credentialsForSelectedProvider.value,
 	);
 }
 
-function handleSelectModel(selection: ChatHubConversationModel) {
-	selectedModel.value = selection;
+async function handleSelectModel(
+	selection: ChatHubConversationModel,
+	selectedAgent?: ChatModelDto,
+) {
+	const agent = selectedAgent ?? chatStore.getAgent(selection);
+
+	if (currentConversation.value) {
+		try {
+			await chatStore.updateSessionModel(sessionId.value, selection, agent.name);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
+		}
+	} else {
+		defaultModel.value = {
+			...selection,
+			cachedDisplayName: agent.name,
+			cachedIcon: agent.icon ?? undefined,
+		};
+
+		// Remove query params (if exists) and focus input
+		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
+	}
 }
 
-function handleSelectCredentials(provider: ChatHubProvider, id: string) {
-	selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
+async function handleSelectAgent(selection: ChatModelDto) {
+	await handleSelectModel(selection.model, selection);
 }
 
 function handleSwitchAlternative(messageId: string) {
+	shouldSkipNextScrollTrigger.value = true;
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
 function handleConfigureCredentials(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0) {
-		uiStore.openNewCredential(credentialType);
-		return;
-	}
-
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
+	headerRef.value?.openCredentialSelector(provider);
 }
 
 function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
+function handleEditAgent(agentId: string) {
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			agentId,
+			credentials: credentialsByProvider,
+			onCreateCustomAgent: handleSelectAgent,
+		},
+	});
+}
+
+function openNewAgentCreator() {
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			credentials: credentialsByProvider,
+			onCreateCustomAgent: handleSelectAgent,
+		},
+	});
+}
+
+function handleOpenWorkflow(workflowId: string) {
+	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } });
+
+	window.open(routeData.href, '_blank');
+}
+
+function handleSelectPrompt(prompt: string) {
+	if (selectedModel.value) {
+		telemetry.track('User clicked chat hub suggested prompt', {
+			...flattenModel(selectedModel.value.model),
+			source: 'chat_hub',
+		});
+	}
+
+	inputRef.value?.setText(prompt);
+	inputRef.value?.focus();
+}
+
+function onFilesDropped(files: File[]) {
+	if (!editingMessageId.value) {
+		inputRef.value?.addAttachments(files);
+		return;
+	}
+
+	const index = chatMessages.value.findIndex((message) => message.id === editingMessageId.value);
+	messageElementsRef.value?.[index]?.addFiles(files);
 }
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.component,
-			{
-				[$style.isNewChat]: isNewChat,
-				[$style.isMobileDevice]: isMobileDevice,
-			},
-		]"
+	<ChatLayout
+		v-if="showWelcomeScreen !== undefined"
+		ref="chatLayout"
+		:class="{
+			[$style.chatLayout]: true,
+			[$style.isNewSession]: isNewSession,
+			[$style.isAgentNewSession]: isNewSession && isAgentModel,
+			[$style.isExistingSession]: !isNewSession,
+			[$style.isMobileDevice]: isMobileDevice,
+			[$style.isDraggingFile]: fileDrop.isDragging.value,
+			[$style.hasArtifact]: artifacts.isViewerVisible.value,
+			[$style.isMainPanelNarrow]: isMainPanelNarrow,
+			[$style.isResizing]: artifacts.isViewerResizing.value,
+		}"
+		@dragenter="fileDrop.handleDragEnter"
+		@dragleave="fileDrop.handleDragLeave"
+		@dragover="fileDrop.handleDragOver"
+		@drop="fileDrop.handleDrop"
+		@paste="fileDrop.handlePaste"
 	>
-		<ChatConversationHeader
-			v-if="isInitialized"
-			ref="headerRef"
-			:selected-model="selectedModel"
-			:credentials="mergedCredentials"
-			@select-model="handleSelectModel"
-			@set-credentials="handleConfigureCredentials"
-		/>
-
-		<CredentialSelectorModal
-			v-if="credentialSelectorProvider && credentialSelectorProvider !== 'n8n'"
-			:key="credentialSelectorProvider"
-			:provider="credentialSelectorProvider"
-			:initial-value="mergedCredentials[credentialSelectorProvider] ?? null"
-			@select="handleSelectCredentials"
-			@create-new="handleCreateNewCredential"
-		/>
-
-		<N8nScrollArea
-			v-if="isInitialized"
-			type="scroll"
-			:enable-vertical-scroll="true"
-			:enable-horizontal-scroll="false"
-			as-child
-			:class="$style.scrollArea"
+		<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+			<N8nText size="large" color="text-dark">{{
+				i18n.baseText('chatHub.chat.dropOverlay')
+			}}</N8nText>
+		</div>
+		<N8nResizeWrapper
+			:class="$style.mainContentResizer"
+			:width="artifacts.viewerSize.value"
+			:style="{
+				width: artifacts.isViewerVisible.value
+					? `${artifacts.viewerSize.value}px`
+					: isDynamicCredentialsDrawerOpen
+						? 'calc(100% - 340px)'
+						: '100%',
+			}"
+			:supported-directions="['right']"
+			:is-resizing-enabled="true"
+			@resize="artifacts.handleViewerResize"
+			@resizeend="artifacts.handleViewerResizeEnd"
 		>
-			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter v-if="isNewChat" :class="$style.starter" :is-mobile-device="isMobileDevice" />
+			<div :class="$style.mainContent">
+				<ChatConversationHeader
+					v-if="!showWelcomeScreen"
+					ref="headerRef"
+					:selected-model="selectedModel"
+					:credentials="credentialsByProvider"
+					:ready-to-show-model-selector="isNewSession || !!currentConversation"
+					:show-artifact-icon="
+						artifacts.allArtifacts.value.length > 0 && artifacts.isViewerCollapsed.value
+					"
+					:has-dynamic-credentials="dynamicCreds.hasDynamicCredentials.value"
+					@select-model="handleSelectModel"
+					@edit-custom-agent="handleEditAgent"
+					@create-custom-agent="openNewAgentCreator"
+					@select-credential="selectCredential"
+					@open-workflow="handleOpenWorkflow"
+					@reopen-artifact="artifacts.handleOpenViewer"
+					@toggle-dynamic-credentials="
+						isDynamicCredentialsDrawerOpen = !isDynamicCredentialsDrawerOpen
+					"
+				/>
 
-				<div v-else role="log" aria-live="polite" :class="$style.messageList">
-					<ChatMessage
-						v-for="(message, index) in chatMessages"
-						:key="message.id"
-						:message="message"
-						:compact="isMobileDevice"
-						:is-editing="editingMessageId === message.id"
-						:is-streaming="chatStore.streamingMessageId === message.id"
-						:min-height="
-							didSubmitInCurrentSession &&
-							message.type === 'ai' &&
-							index === chatMessages.length - 1 &&
-							scrollContainerRef
-								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
-								: undefined
-						"
-						@start-edit="handleStartEditMessage(message.id)"
-						@cancel-edit="handleCancelEditMessage"
-						@regenerate="handleRegenerateMessage"
-						@update="handleEditMessage"
-						@switch-alternative="handleSwitchAlternative"
-					/>
-				</div>
+				<N8nScrollArea
+					type="scroll"
+					:enable-vertical-scroll="true"
+					:enable-horizontal-scroll="false"
+					as-child
+					:class="$style.scrollArea"
+				>
+					<div ref="scrollable" :class="$style.scrollable">
+						<ChatGreetings
+							v-if="isNewSession"
+							:class="{ [$style.greetingsCentered]: !isAgentModel }"
+							:selected-agent="selectedModel"
+							:loading="!chatStore.agentsReady"
+							@select-prompt="handleSelectPrompt"
+						/>
 
-				<div :class="$style.promptContainer">
-					<N8nIconButton
-						v-if="!arrivedState.bottom && !isNewChat"
-						type="secondary"
-						icon="arrow-down"
-						:class="$style.scrollToBottomButton"
-						title="Scroll to bottom"
-						@click="scrollToBottom(true)"
-					/>
+						<div v-else role="log" aria-live="polite" :class="$style.messageList">
+							<ChatMessage
+								v-for="(message, index) in chatMessages"
+								:key="message.id"
+								ref="messages"
+								:message="message"
+								:compact="isMainPanelNarrow"
+								:is-editing="editingMessageId === message.id"
+								:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"
+								:has-session-streaming="isResponding"
+								:cached-agent-display-name="selectedModel?.name ?? null"
+								:cached-agent-icon="selectedModel?.icon ?? null"
+								:accepted-mime-types="selectedModel?.metadata.allowedFilesMimeTypes ?? ''"
+								:min-height="
+									didSubmitInCurrentSession &&
+									message.type === 'ai' &&
+									index === chatMessages.length - 1 &&
+									scrollContainerRef
+										? scrollContainerRef.offsetHeight -
+											30 /* padding-top */ -
+											200 /* padding-bottom */
+										: undefined
+								"
+								@start-edit="handleStartEditMessage(message.id)"
+								@cancel-edit="handleCancelEditMessage"
+								@regenerate="handleRegenerateMessage"
+								@update="handleEditMessage"
+								@switch-alternative="handleSwitchAlternative"
+								@open-artifact="artifacts.handleOpenViewer"
+							/>
+						</div>
 
-					<ChatPrompt
-						v-if="isInitialized"
-						ref="inputRef"
-						:class="$style.prompt"
-						:is-responding="chatStore.isResponding"
-						:selected-model="selectedModel"
-						:is-missing-credentials="isMissingSelectedCredential"
-						@submit="onSubmit"
-						@stop="onStop"
-						@select-model="handleConfigureModel"
-						@set-credentials="handleConfigureCredentials"
-					/>
-				</div>
+						<div v-if="!showWelcomeScreen" :class="$style.promptContainer">
+							<N8nIconButton
+								v-if="!arrivedState.bottom && !isNewSession"
+								variant="subtle"
+								icon="arrow-down"
+								:class="$style.scrollToBottomButton"
+								:title="i18n.baseText('chatHub.chat.scrollToBottom')"
+								@click="scrollToBottom(true)"
+							/>
+
+							<ChatPrompt
+								ref="inputRef"
+								:selected-model="selectedModel"
+								:checked-tool-ids="canSelectTools ? checkedToolIds : []"
+								:session-id="isNewSession ? undefined : sessionId"
+								:custom-agent-id="customAgentId"
+								:messaging-state="messagingState"
+								:is-tools-selectable="canSelectTools"
+								:is-new-session="isNewSession"
+								:show-credits-claimed-callout="showCreditsClaimedCallout"
+								:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
+								:ai-credits-quota="String(aiCreditsQuota)"
+								@submit="onSubmit"
+								@stop="onStop"
+								@select-model="handleConfigureModel"
+								@set-credentials="handleConfigureCredentials"
+								@edit-agent="handleEditAgent"
+								@dismiss-credits-callout="handleDismissCreditsCallout"
+								@open-dynamic-credentials="isDynamicCredentialsDrawerOpen = true"
+							/>
+						</div>
+					</div>
+				</N8nScrollArea>
+
+				<ChatStarter
+					v-if="isNewSession"
+					:show-welcome-screen="showWelcomeScreen"
+					@start-new-chat="
+						welcomeScreenDismissed = true;
+						inputRef?.focus();
+					"
+				/>
 			</div>
-		</N8nScrollArea>
-	</div>
+		</N8nResizeWrapper>
+		<DynamicCredentialsDrawer
+			v-if="isDynamicCredentialsDrawerOpen && dynamicCreds.hasDynamicCredentials.value"
+			:class="$style.dynamicCredentialsDrawer"
+			:credentials="dynamicCreds.credentials.value"
+			:connected-count="dynamicCreds.connectedCount.value"
+			:total-count="dynamicCreds.totalCount.value"
+			data-testid="dynamic-credentials-drawer"
+			@close="isDynamicCredentialsDrawerOpen = false"
+			@authorize="dynamicCreds.authorize"
+			@revoke="dynamicCreds.revoke"
+		/>
+		<ChatArtifactViewer
+			v-if="artifacts.isViewerVisible.value"
+			:key="sessionId"
+			:class="$style.artifactViewer"
+			:artifacts="artifacts.allArtifacts.value"
+			:selected-index="artifacts.selectedIndex.value"
+			@close="artifacts.handleCloseViewer"
+			@select-artifact="artifacts.handleSelect"
+			@download="artifacts.handleDownload"
+		/>
+	</ChatLayout>
 </template>
 
 <style lang="scss" module>
-.component {
-	margin: var(--spacing--4xs);
-	width: 100%;
-	background-color: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
+.chatLayout {
+	position: relative;
+	display: flex;
+	flex-direction: row;
+
+	&.hasArtifact {
+		.mainContent {
+			flex: 1;
+			min-width: 0;
+		}
+	}
+
+	&:not(.hasArtifact) {
+		.mainContent {
+			flex: 1;
+		}
+	}
+}
+
+.mainContentResizer {
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.mainContent {
 	display: flex;
 	flex-direction: column;
-	align-items: stretch;
+	overflow: hidden;
+	height: 100%;
+	flex: 1;
+}
+
+.dynamicCredentialsDrawer {
+	flex: 0 0 340px;
+	min-width: 300px;
+	max-width: 400px;
+	overflow: hidden;
+}
+
+.artifactViewer {
+	flex: 1;
+	min-width: 300px;
 	overflow: hidden;
 
-	&.isMobileDevice {
-		margin: 0;
-		border: none;
+	.isResizing & {
+		/* Prevent mouse event captured by iframe */
+		pointer-events: none;
 	}
 }
 
@@ -499,11 +906,22 @@ function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: start;
-	gap: var(--spacing--2xl);
+	gap: var(--spacing--xl);
 
-	.isNewChat & {
-		justify-content: center;
+	.isNewSession & {
+		justify-content: space-between;
 	}
+
+	.isAgentNewSession & {
+		padding-top: var(--spacing--2xl);
+	}
+}
+
+.greetingsCentered {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .header {
@@ -512,60 +930,66 @@ function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 	align-items: center;
 }
 
-.starter {
-	.isMobileDevice & {
-		padding-top: 30px;
-		padding-bottom: 200px;
-	}
-}
-
 .messageList {
-	width: 100%;
-	max-width: 55rem;
 	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
-	padding-top: 30px;
+	gap: var(--spacing--xl);
+	padding-top: var(--spacing--2xl);
 	padding-bottom: 200px;
-	padding-inline: 64px;
-
-	.isMobileDevice & {
-		padding-inline: var(--spacing--md);
-	}
 }
 
 .promptContainer {
 	display: flex;
 	justify-content: center;
+	padding-block: var(--spacing--md);
+	background: var(--color--background--light-2);
+	align-self: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewChat) & {
+	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
-		left: 0;
-		width: 100%;
-		padding-block: var(--spacing--md);
-		background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
+		left: 50%;
+		transform: translateX(-50%);
 	}
 }
 
-.prompt {
+.messageList,
+.promptContainer {
 	width: 100%;
-	max-width: 55rem;
+	max-width: 88ch;
 	padding-inline: 64px;
 
-	.isMobileDevice & {
+	.isMainPanelNarrow & {
 		padding-inline: var(--spacing--md);
 	}
 }
 
 .scrollToBottomButton {
 	position: absolute;
-	bottom: 100%;
+	bottom: calc(100% + var(--spacing--md));
 	left: auto;
 	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
+}
+
+.isDraggingFile {
+	border-color: var(--color--secondary);
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
+	pointer-events: none;
 }
 </style>

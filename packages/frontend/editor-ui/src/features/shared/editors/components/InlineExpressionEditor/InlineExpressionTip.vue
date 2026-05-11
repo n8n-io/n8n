@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { FIELDS_SECTION } from '../../plugins/codemirror/completions/constants';
 import { datatypeCompletions } from '../../plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '../../plugins/codemirror/completions/utils';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { type Completion, CompletionContext } from '@codemirror/autocomplete';
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
 import { watchDebounced } from '@vueuse/core';
@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
@@ -54,7 +54,7 @@ const tip = computed<TipId>(() => {
 	return 'default';
 });
 
-function getCompletionsWithDot(): readonly Completion[] {
+async function getCompletionsWithDot(): Promise<readonly Completion[]> {
 	if (!props.editorState || !props.selection || !props.unresolvedExpression) {
 		return [];
 	}
@@ -76,7 +76,7 @@ function getCompletionsWithDot(): readonly Completion[] {
 	});
 
 	const context = new CompletionContext(stateWithDot, cursorAfterDot, true);
-	const completionResult = datatypeCompletions(context);
+	const completionResult = await datatypeCompletions(context);
 	return completionResult?.options ?? [];
 }
 
@@ -94,8 +94,8 @@ watch(
 
 watchDebounced(
 	[() => props.selection, () => props.unresolvedExpression],
-	() => {
-		const completions = getCompletionsWithDot();
+	async () => {
+		const completions = await getCompletionsWithDot();
 		canAddDotToExpression.value = completions.length > 0;
 		resolvedExpressionHasFields.value = completions.some(
 			({ section }) => isCompletionSection(section) && section.name === FIELDS_SECTION.name,
@@ -107,9 +107,7 @@ watchDebounced(
 
 <template>
 	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
-		<N8nText size="small" :class="$style.tipText"
-			>{{ i18n.baseText('parameterInput.tip') }}:
-		</N8nText>
+		<N8nText size="small" :class="$style.tipText">{{ i18n.baseText('generic.tip') }}: </N8nText>
 
 		<div v-if="tip === 'drag'" :class="$style.content">
 			<N8nText size="small" :class="$style.text">

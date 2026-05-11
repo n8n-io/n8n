@@ -5,7 +5,7 @@ import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { type ComputedRef, ref } from 'vue';
-import type { CommunityNodeDetails } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import type { CommunityNodeDetails } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 
 vi.mock('./utils', () => ({
@@ -32,20 +32,38 @@ vi.mock('../../composables/useInstalledCommunityPackage', () => ({
 
 const getCommunityNodeAttributes = vi.fn();
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
+		getNodeType: vi.fn(),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
 vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
-		isInstanceOwner: true,
+		isAdmin: true,
+		isAdminOrOwner: true,
+		isInstanceOwner: false,
 	})),
 }));
 
-vi.mock('@/components/Node/NodeCreator/composables/useViewStacks', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(),
+}));
+
+vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
+	useQuickConnect: vi.fn(() => ({
+		getQuickConnectOption: vi.fn(() => undefined),
+		getQuickConnectOptionByPackageName: vi.fn(() => undefined),
+		getQuickConnectOptionByCredentialTypes: vi.fn(() => undefined),
+		connect: vi.fn(),
+		cancelConnect: vi.fn(),
+	})),
 }));
 
 describe('CommunityNodeInfo', () => {
@@ -95,7 +113,7 @@ describe('CommunityNodeInfo', () => {
 		global.fetch = vi.fn();
 
 		const { useViewStacks } = await import(
-			'@/components/Node/NodeCreator/composables/useViewStacks'
+			'@/features/shared/nodeCreator/composables/useViewStacks'
 		);
 		vi.mocked(useViewStacks).mockReturnValue({
 			activeViewStack: defaultViewStack,
@@ -132,13 +150,13 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 		expect(wrapper.getByTestId('verified-tag').textContent).toEqual('Verified');
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by contributor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('contributor');
 	});
 
 	it('should display update notice, should show verified badge for older versions', async () => {
 		const { useViewStacks } = await import(
-			'@/components/Node/NodeCreator/composables/useViewStacks'
+			'@/features/shared/nodeCreator/composables/useViewStacks'
 		);
 		vi.mocked(useViewStacks).mockReturnValue({
 			activeViewStack: {
@@ -175,8 +193,8 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 		expect(wrapper.getByTestId('verified-tag').textContent).toEqual('Verified');
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by contributor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('contributor');
 		expect(
 			wrapper.getByTestId('update-available').querySelector('.n8n-text')?.textContent?.trim(),
 		).toEqual('A new node package version is available');
@@ -184,7 +202,7 @@ describe('CommunityNodeInfo', () => {
 
 	it('should NOT display update notice for unverified update', async () => {
 		const { useViewStacks } = await import(
-			'@/components/Node/NodeCreator/composables/useViewStacks'
+			'@/features/shared/nodeCreator/composables/useViewStacks'
 		);
 		vi.mocked(useViewStacks).mockReturnValue({
 			activeViewStack: {
@@ -267,7 +285,89 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by testAuthor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('testAuthor');
+	});
+
+	describe('Quick connect', () => {
+		beforeEach(() => {
+			getCommunityNodeAttributes.mockResolvedValue({
+				npmVersion: '1.0.0',
+				authorName: 'contributor',
+				numberOfDownloads: 9999,
+				nodeVersions: [{ npmVersion: '1.0.0' }],
+			});
+
+			vi.mocked(useInstalledCommunityPackage).mockReturnValue({
+				...defaultUseInstalledCommunityPackage,
+				installedPackage: ref({
+					installedVersion: '1.0.0',
+					packageName: 'n8n-nodes-test',
+					unverifiedUpdate: false,
+				}) as ComputedRef<ExtendedPublicInstalledPackage>,
+			});
+		});
+
+		describe('Quick connect disabled', () => {
+			it('should not display quick connect tag when disabled', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByText(/Quick connect/)).not.toBeInTheDocument();
+			});
+
+			it('should not display quick connect banner when disabled', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
+			});
+		});
+
+		describe('Quick connect enabled', () => {
+			beforeEach(async () => {
+				const { useQuickConnect } = await import(
+					'@/features/credentials/quickConnect/composables/useQuickConnect'
+				);
+				const quickConnectOptionData = {
+					packageName: 'n8n-nodes-test',
+					credentialType: 'some-credentials',
+					text: 'This packages provides trial access',
+					quickConnectType: 'manual',
+					serviceName: 'Test service',
+				};
+				vi.mocked(useQuickConnect).mockReturnValue({
+					getQuickConnectOption: vi.fn(() => quickConnectOptionData),
+					getQuickConnectOptionByPackageName: vi.fn(() => quickConnectOptionData),
+					getQuickConnectOptionByCredentialTypes: vi.fn(() => quickConnectOptionData),
+					connect: vi.fn(),
+					cancelConnect: vi.fn(),
+				} as unknown as ReturnType<typeof useQuickConnect>);
+			});
+
+			it('should display quick connect tag', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByText(/Quick connect/)).toBeInTheDocument();
+			});
+
+			it('should display quick connect banner', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByTestId('quick-connect-banner')).toHaveTextContent(
+					'This packages provides trial access',
+				);
+			});
+		});
 	});
 });

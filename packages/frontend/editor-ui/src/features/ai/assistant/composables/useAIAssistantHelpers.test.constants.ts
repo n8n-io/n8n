@@ -1,4 +1,4 @@
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ChatRequest } from '../assistant.types';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

@@ -37,7 +37,7 @@ const showError = vi.fn();
 const removeNodeFromMergedNodes = vi.fn();
 
 const usersStore = {
-	isInstanceOwner: true,
+	isAdminOrOwner: true,
 };
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -46,18 +46,25 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/nodeCreator.store', () => ({
+vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		actions: [],
 		removeNodeFromMergedNodes,
 	})),
 }));
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
 		getNodeTypes,
 		communityNodeType: vi.fn(() => ({ isOfficialNode: true })),
+		fetchCommunityNodePreviews: vi.fn(),
+		getNodeType: vi.fn(),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
@@ -71,14 +78,14 @@ vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(() => usersStore),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showMessage: vi.fn(),
 		showError,
 	})),
 }));
 
-vi.mock('@/components/Node/NodeCreator/composables/useViewStacks', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(() => ({
 		activeViewStack: {
 			communityNodeDetails: {
@@ -210,7 +217,7 @@ describe('CommunityNodeDetails', () => {
 	});
 
 	it('should not render install button if not instance owner', async () => {
-		usersStore.isInstanceOwner = false;
+		usersStore.isAdminOrOwner = false;
 
 		const wrapper = renderComponent({ pinia });
 

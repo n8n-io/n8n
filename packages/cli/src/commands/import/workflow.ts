@@ -1,4 +1,3 @@
-import type { WorkflowEntity } from '@n8n/db';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -19,7 +18,7 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { IWorkflowToImport } from '@/interfaces';
+import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 
 function assertHasWorkflowsToImport(
@@ -34,6 +33,30 @@ function assertHasWorkflowsToImport(
 			throw new UserError('File does not seem to contain valid workflows.');
 		}
 	}
+}
+
+/**
+ * Creates workflow entities from plain objects while preserving versionMetadata metadata.
+ */
+function createWorkflowsWithVersionMetadata(
+	workflowRepository: WorkflowRepository,
+	workflows: IWorkflowToImport[],
+): IWorkflowWithVersionMetadata[] {
+	const createdWorkflows = workflowRepository.create(workflows);
+	return createdWorkflows.map((created, index) => ({
+		...created,
+		versionMetadata: workflows[index].versionMetadata,
+	}));
+}
+
+/**
+ * Creates a workflow entity from a plain object while preserving versionMetadata metadata.
+ */
+function createWorkflowWithVersionMetadata(
+	workflowRepository: WorkflowRepository,
+	workflow: IWorkflowToImport,
+): IWorkflowWithVersionMetadata {
+	return createWorkflowsWithVersionMetadata(workflowRepository, [workflow])[0];
 }
 
 const flagsSchema = z.object({
@@ -51,6 +74,16 @@ const flagsSchema = z.object({
 		.string()
 		.describe('The ID of the project to assign the imported workflows to')
 		.optional(),
+	activeState: z
+		.enum(['false', 'fromJson'], {
+			errorMap: () => ({
+				message: 'Valid values for flag "--activeState" are only "false" or "fromJson".',
+			}),
+		})
+		.describe(
+			'Whether to respect the JSON active field. "false" (default) deactivates all imported workflows. "fromJson" activates/deactivates each workflow based on its JSON active field.',
+		)
+		.default('false'),
 });
 
 @Command({
@@ -62,12 +95,19 @@ const flagsSchema = z.object({
 		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --activeState=fromJson',
 	],
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
 		const { flags } = this;
+
+		if (flags.activeState === 'fromJson' && this.globalConfig.executions.mode !== 'queue') {
+			throw new UserError(
+				'The "--activeState=fromJson" flag can only be used when n8n is running in queue or multi-main mode. In regular deployment mode, workflow activation is not supported.',
+			);
+		}
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -101,7 +141,9 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		await Container.get(ImportService).importWorkflows(workflows, project.id, {
+			activeState: flags.activeState,
+		});
 
 		this.reportSuccess(workflows.length);
 	}
@@ -183,34 +225,50 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		return await Container.get(WorkflowRepository).existsBy({ id: workflowId });
 	}
 
-	private async readWorkflows(path: string, separate: boolean): Promise<WorkflowEntity[]> {
+	private async readWorkflows(
+		path: string,
+		separate: boolean,
+	): Promise<IWorkflowWithVersionMetadata[]> {
 		if (process.platform === 'win32') {
 			path = path.replace(/\\/g, '/');
 		}
 
 		const workflowRepository = Container.get(WorkflowRepository);
 
-		if (separate) {
-			const files = await glob('*.json', {
-				cwd: path,
-				absolute: true,
-			});
-			return files.map((file) => {
-				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-				if (!workflow.id) {
-					workflow.id = generateNanoId();
-				}
-				return workflowRepository.create(workflow);
-			});
-		} else {
+		if (!separate) {
 			const workflows = jsonParse<IWorkflowToImport | IWorkflowToImport[]>(
 				fs.readFileSync(path, { encoding: 'utf8' }),
 			);
 			const workflowsArray = Array.isArray(workflows) ? workflows : [workflows];
 			assertHasWorkflowsToImport(workflowsArray);
 
-			return workflowRepository.create(workflowsArray);
+			return createWorkflowsWithVersionMetadata(workflowRepository, workflowsArray);
 		}
+
+		const files = await glob('*.json', {
+			cwd: path,
+			absolute: true,
+		});
+
+		const workflows: IWorkflowWithVersionMetadata[] = [];
+
+		for (const file of files) {
+			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
+			if (!workflow.id) {
+				workflow.id = generateNanoId();
+			}
+
+			try {
+				assertHasWorkflowsToImport([workflow]);
+
+				workflows.push(createWorkflowWithVersionMetadata(workflowRepository, workflow));
+			} catch (error) {
+				this.logger.warn(`Skipping invalid workflow file: ${file}`);
+				continue;
+			}
+		}
+
+		return workflows;
 	}
 
 	private async getProject(userId?: string, projectId?: string) {

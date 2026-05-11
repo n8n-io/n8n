@@ -3,13 +3,13 @@ import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getResourcePermissions } from '@n8n/permissions';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 import type { ExecutionSummary, AnnotationVote } from 'n8n-workflow';
 import type { CommandGroup, CommandBarItem } from '../types';
@@ -29,13 +29,13 @@ export function useExecutionCommands(): CommandGroup {
 	const router = useRouter();
 	const route = useRoute();
 	const executionsStore = useExecutionsStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const message = useMessage();
 	const telemetry = useTelemetry();
 
-	const workflowId = computed(() => route.params.name as string);
+	const workflowId = computed(() => route.params.workflowId as string);
 
 	const activeExecution = computed(() => {
 		return executionsStore.activeExecution as ExecutionSummary & {
@@ -44,7 +44,8 @@ export function useExecutionCommands(): CommandGroup {
 	});
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+		() =>
+			getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 	);
 
 	const isAnnotationEnabled = computed(
@@ -121,13 +122,13 @@ export function useExecutionCommands(): CommandGroup {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: workflowId.value, executionId: nextExecution.id },
+						params: { workflowId: workflowId.value, executionId: nextExecution.id },
 					})
 					.catch(() => {});
 			} else {
 				await router.replace({
 					name: VIEWS.EXECUTION_HOME,
-					params: { name: workflowId.value },
+					params: { workflowId: workflowId.value },
 				});
 			}
 
@@ -189,7 +190,7 @@ export function useExecutionCommands(): CommandGroup {
 		void router.push({
 			name: VIEWS.EXECUTION_DEBUG,
 			params: {
-				name: activeExecution.value.workflowId,
+				workflowId: activeExecution.value.workflowId,
 				executionId: activeExecution.value.id,
 			},
 		});

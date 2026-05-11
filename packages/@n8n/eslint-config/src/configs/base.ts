@@ -18,7 +18,6 @@ export const baseConfig = tseslint.config(
 		'eslint.config.mjs',
 		'tsup.config.ts',
 		'jest.config.js',
-		'cypress.config.js',
 		'vite.config.ts',
 		'vitest.config.ts',
 	]),
@@ -415,6 +414,7 @@ export const baseConfig = tseslint.config(
 			'n8n-local-rules/no-plain-errors': 'off',
 			'@typescript-eslint/unbound-method': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
 		},
 	},
 );

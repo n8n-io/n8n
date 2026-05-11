@@ -9,9 +9,18 @@ import type {
 	INodeParameters,
 	IConnection,
 	NodeConnectionType,
+	INodeListSearchResult,
+	IRunData,
+	ITaskDataConnections,
+	NodeExecutionSchema,
+	Schema,
+	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
+import type { ProgrammaticEvaluationResult } from '@/validation/types';
+
+import type { ResourceLocatorCallback } from '../src/types/callbacks';
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
@@ -320,6 +329,7 @@ export interface ParsedToolContent {
 			nodes?: INode[];
 			[key: string]: unknown;
 		}>;
+		workflowValidation?: ProgrammaticEvaluationResult | null;
 	};
 }
 
@@ -403,7 +413,130 @@ export const setupWorkflowState = (
 ) => {
 	mockGetCurrentTaskInput.mockReturnValue({
 		workflowJSON: workflow,
+		workflowOperations: null,
+		workflowContext: {},
+		workflowValidation: null,
+		messages: [],
+		previousSummary: 'EMPTY',
 	});
+};
+
+// ========== Execution Data Builders ==========
+
+// Build run data entry from simple JSON data
+export interface MockRunDataEntry {
+	json: Record<string, unknown>;
+	startTime?: number;
+	executionTime?: number;
+}
+
+// Create mock run data from simplified entries
+export const createMockRunData = (entries: Record<string, MockRunDataEntry[]>): IRunData => {
+	const runData: IRunData = {};
+	let executionIndex = 0;
+	for (const [nodeName, items] of Object.entries(entries)) {
+		runData[nodeName] = [
+			{
+				data: {
+					main: [items.map((item) => ({ json: item.json }))] as ITaskDataConnections['main'],
+				},
+				startTime: items[0]?.startTime ?? Date.now(),
+				executionTime: items[0]?.executionTime ?? 100,
+				executionIndex: executionIndex++,
+				source: [null],
+			},
+		];
+	}
+	return runData;
+};
+
+// Create mock execution schema from simplified entries
+export interface MockNodeSchema {
+	nodeName: string;
+	schema: Schema;
+}
+
+export const createMockExecutionSchema = (nodeSchemas: MockNodeSchema[]): NodeExecutionSchema[] => {
+	return nodeSchemas.map(({ nodeName, schema }) => ({
+		nodeName,
+		schema,
+	}));
+};
+
+// Helper to create a Schema object for testing
+export const createMockSchema = (
+	type: Schema['type'],
+	path: string,
+	value: Schema['value'],
+	key?: string,
+): Schema => ({
+	type,
+	path,
+	value,
+	...(key && { key }),
+});
+
+// Generate large test data for truncation tests
+export const createLargeTestData = (itemCount = 100, fieldValueSize = 30): IDataObject[] => {
+	return Array.from({ length: itemCount }, (_, i) => ({
+		id: i,
+		field: 'x'.repeat(fieldValueSize) + String(i),
+		extra: 'y'.repeat(fieldValueSize),
+	}));
+};
+
+// ========== Extended Workflow State Setup ==========
+
+export interface ExecutionDataOptions {
+	runData?: IRunData;
+	lastNodeExecuted?: string;
+	error?: { message: string; description?: string };
+}
+
+export interface ExpressionValueTestData {
+	expression: string;
+	resolvedValue: unknown;
+	nodeType?: string;
+}
+
+export interface WorkflowStateOptions {
+	workflow: SimpleWorkflow;
+	executionData?: ExecutionDataOptions;
+	executionSchema?: NodeExecutionSchema[];
+	expressionValues?: Record<string, ExpressionValueTestData[]>;
+}
+
+// Setup workflow state with execution context (extended version)
+export const setupWorkflowStateWithContext = (
+	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
+	options: WorkflowStateOptions,
+) => {
+	mockGetCurrentTaskInput.mockReturnValue({
+		workflowJSON: options.workflow,
+		workflowOperations: null,
+		workflowContext: {
+			executionData: options.executionData ?? null,
+			executionSchema: options.executionSchema ?? null,
+			expressionValues: options.expressionValues ?? null,
+		},
+		workflowValidation: null,
+		messages: [],
+		previousSummary: 'EMPTY',
+	});
+};
+
+// ========== AI Workflow Helpers ==========
+
+// Setup AI connections on workflow (e.g., model -> agent)
+export const setupAIWorkflowConnections = (
+	workflow: SimpleWorkflow,
+	modelNodeName: string,
+	agentNodeName: string,
+	connectionType: NodeConnectionType = 'ai_languageModel',
+) => {
+	workflow.connections[modelNodeName] = {
+		[connectionType]: [[{ node: agentNodeName, type: connectionType, index: 0 }]],
+	};
 };
 
 // ========== Common Tool Assertions ==========
@@ -491,16 +624,18 @@ export const expectNodeUpdated = (
 // Build add node input
 export const buildAddNodeInput = (overrides: {
 	nodeType: string;
+	nodeVersion?: number;
 	name?: string;
-	connectionParametersReasoning?: string;
-	connectionParameters?: Record<string, unknown>;
+	initialParametersReasoning?: string;
+	initialParameters?: Record<string, unknown>;
 }) => ({
 	nodeType: overrides.nodeType,
+	nodeVersion: overrides.nodeVersion ?? 1,
 	name: overrides.name ?? 'Test Node',
-	connectionParametersReasoning:
-		overrides.connectionParametersReasoning ??
-		'Standard node with static inputs/outputs, no connection parameters needed',
-	connectionParameters: overrides.connectionParameters ?? {},
+	initialParametersReasoning:
+		overrides.initialParametersReasoning ??
+		'Standard node with static inputs/outputs, no initial parameters needed',
+	initialParameters: overrides.initialParameters ?? {},
 });
 
 // Build connect nodes input
@@ -536,10 +671,12 @@ export const buildUpdateNodeInput = (nodeId: string, changes: string[]) => ({
 // Build node details input
 export const buildNodeDetailsInput = (overrides: {
 	nodeName: string;
+	nodeVersion?: number;
 	withParameters?: boolean;
 	withConnections?: boolean;
 }) => ({
 	nodeName: overrides.nodeName,
+	nodeVersion: overrides.nodeVersion ?? 1,
 	withParameters: overrides.withParameters ?? false,
 	withConnections: overrides.withConnections ?? true,
 });
@@ -597,3 +734,64 @@ export const REASONING = {
 	TRIGGER_NODE: 'Trigger node, no connection parameters needed',
 	WEBHOOK_NODE: 'Webhook is a trigger node, no connection parameters needed',
 } as const;
+
+// ========== Resource Locator Testing Utilities ==========
+
+// Create a node type with resource locator property
+export const createNodeTypeWithResourceLocator = (
+	nodeName: string,
+	parameterName: string,
+	searchMethod: string,
+	overrides: Partial<INodeTypeDescription> = {},
+): INodeTypeDescription =>
+	createNodeType({
+		name: nodeName,
+		displayName: overrides.displayName ?? 'Test Resource Node',
+		credentials: overrides.credentials ?? [{ name: 'testApi', required: true }],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: parameterName,
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: searchMethod,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+					},
+				],
+			},
+			...(overrides.properties ?? []),
+		],
+		...overrides,
+	});
+
+// Create a mock resource locator callback
+export const mockResourceLocatorCallback = (
+	results: INodeListSearchResult = { results: [] },
+): jest.MockedFunction<ResourceLocatorCallback> => {
+	return jest.fn().mockResolvedValue(results);
+};
+
+// Create sample resource locator results
+export const createResourceLocatorResults = (
+	items: Array<{ name: string; value: string; description?: string }>,
+	paginationToken?: string,
+): INodeListSearchResult => ({
+	results: items.map((item) => ({
+		name: item.name,
+		value: item.value,
+		...(item.description && { description: item.description }),
+	})),
+	...(paginationToken && { paginationToken }),
+});

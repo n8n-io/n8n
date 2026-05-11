@@ -642,6 +642,7 @@ export class GmailV1 implements INodeType {
 						}
 
 						const email: IEmail = {
+							from: (additionalFields.senderName as string) || '',
 							to: toStr,
 							cc: ccStr,
 							bcc: bccStr,

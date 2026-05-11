@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { formatTimeAgo } from '@/utils/formatters/dateFormatter';
+import { formatTimeAgo } from '@/app/utils/formatters/dateFormatter';
 
 const i18n = useI18n();
 

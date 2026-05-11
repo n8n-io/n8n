@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { i18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ContactAdministratorToInstall from '../ContactAdministratorToInstall.vue';
@@ -11,6 +11,8 @@ import { useInstalledCommunityPackage } from '../../composables/useInstalledComm
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import CommunityNodeUpdateInfo from './CommunityNodeUpdateInfo.vue';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 
 const { activeViewStack } = useViewStacks();
 
@@ -27,10 +29,16 @@ const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
 const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
 	useInstalledCommunityPackage(packageName);
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
 
 const nodeTypesStore = useNodeTypesStore();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const usersStore = useUsersStore();
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -155,8 +163,24 @@ onMounted(async () => {
 					{{ i18n.baseText('communityNodeInfo.publishedBy', { interpolate: { publisherName } }) }}
 				</N8nText>
 			</div>
+
+			<N8nTooltip v-if="quickConnect" placement="top">
+				<template #content>{{ i18n.baseText('communityNodeInfo.quickConnect.tooltip') }}</template>
+				<div>
+					<N8nIcon :class="$style.tooltipIcon" icon="quick-connect" />
+					<N8nText color="text-light" size="xsmall" bold data-test-id="quick-connect-tag">
+						{{ i18n.baseText('communityNodeInfo.quickConnect') }}
+					</N8nText>
+				</div>
+			</N8nTooltip>
 		</div>
-		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
+
+		<QuickConnectBanner
+			v-if="quickConnect"
+			:text="quickConnect?.text"
+			:disclaimer="quickConnect?.disclaimer"
+		/>
+		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
 
@@ -187,7 +211,7 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: left;
-	gap: var(--spacing--md);
+	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--md);
 	flex-wrap: wrap;
 }

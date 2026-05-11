@@ -1,26 +1,37 @@
 <script setup lang="ts">
-import RunData from '@/features/ndv/components/runData/RunData.vue';
+import RunData from '@/features/ndv/runData/components/RunData.vue';
 import { type LogEntry } from '@/features/execution/logs/logs.types';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
-import type { NodePanelType } from '@/features/ndv/ndv.types';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PopOutWindowKey } from '@/constants';
+import { PopOutWindowKey } from '@/app/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
+import { useUIStore } from '@/app/stores/ui.store';
 import { isSubNodeLog } from '../logs.utils';
-import RunDataItemCount from '@/features/ndv/components/runData/RunDataItemCount.vue';
+import RunDataItemCount from '@/features/ndv/runData/components/RunDataItemCount.vue';
+import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
-import NDVEmptyState from '@/features/ndv/components/panel/NDVEmptyState.vue';
+import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
-const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
+const {
+	title,
+	logEntry,
+	paneType,
+	collapsingTableColumnName,
+	showRedactedOverlay = true,
+} = defineProps<{
 	title: string;
 	paneType: NodePanelType;
 	logEntry: LogEntry;
 	collapsingTableColumnName: string | null;
 	searchShortcut?: SearchShortcut;
+	showRedactedOverlay?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -28,7 +39,9 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
+const uiStore = useUIStore();
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
@@ -83,7 +96,6 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:class="$style.component"
 		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
-		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"
 		:pane-type="paneType"
@@ -122,8 +134,26 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="locale.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(logEntry.node, logEntry.workflow)" />
+				<span
+					v-n8n-html="
+						waitingNodeTooltip(logEntry.node, logEntry.workflow, logEntry.runData?.metadata)
+					"
+				/>
 			</NDVEmptyState>
+		</template>
+
+		<template v-if="showRedactedOverlay" #data-redacted>
+			<RedactedDataState
+				:title="
+					locale.baseText(
+						paneType === 'output' ? 'ndv.output.redacted.title' : 'ndv.input.redacted.title',
+					)
+				"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
+				@reveal="revealData"
+			/>
 		</template>
 
 		<template v-if="isMultipleInput" #content>

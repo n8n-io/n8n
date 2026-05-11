@@ -8,12 +8,12 @@
 			"name": "When chat message received",
 			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
 			"typeVersion": 1.1,
-			"position": [360, 20],
+			"position": [340, 20],
 			"webhookId": "a889d2ae-2159-402f-b326-5f61e90f602e"
 		},
 		{
 			"parameters": {
-				"content": "## Start by saying 'hi'\n![Button](https://i.imgur.com/PrIBJI6.png)",
+				"content": "## Start by saying 'hi'\n![Button](/static/openChat.png)",
 				"height": 149,
 				"width": 150
 			},

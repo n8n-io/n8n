@@ -1,8 +1,8 @@
-import { TEMPLATES_URLS } from '@/constants';
+import { TEMPLATES_URLS } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { getTemplatePathByRole } from '@/utils/experiments';
-import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { getTemplatePathByRole } from '@/experiments/utils';
+import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
@@ -17,9 +17,9 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 export interface ITemplateState {
 	categories: ITemplatesCategory[];
@@ -84,7 +84,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 
 	const allCategories = computed(() => {
 		return categories.value.sort((a: ITemplatesCategory, b: ITemplatesCategory) =>
@@ -180,7 +180,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			...TEMPLATES_URLS.UTM_QUERY,
 			utm_instance: currentN8nPath.value,
 			utm_n8n_version: rootStore.versionCli,
-			utm_awc: String(workflowsStore.activeWorkflows.length),
+			utm_awc: String(workflowsListStore.activeWorkflows.length),
 		};
 		if (userRole.value) {
 			defaultParameters.utm_user_role = userRole.value;

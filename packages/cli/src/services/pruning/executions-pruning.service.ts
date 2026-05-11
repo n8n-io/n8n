@@ -4,9 +4,11 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, DbConnection } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { BinaryDataService, InstanceSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
+
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 /**
  * Responsible for deleting old executions from the database and deleting their
@@ -44,7 +46,7 @@ export class ExecutionsPruningService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbConnection: DbConnection,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly binaryDataService: BinaryDataService,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('pruning');
@@ -77,12 +79,12 @@ export class ExecutionsPruningService {
 
 	@OnLeaderStepdown()
 	stopPruning() {
-		if (!this.isEnabled) return;
+		const hadTimers = this.softDeletionInterval ?? this.hardDeletionTimeout;
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
 
-		this.logger.debug('Stopped pruning timers');
+		if (hadTimers) this.logger.debug('Stopped pruning timers');
 	}
 
 	private scheduleRollingSoftDeletions(rateMs = this.rates.softDeletion) {
@@ -131,20 +133,18 @@ export class ExecutionsPruningService {
 	 * @returns Delay in milliseconds until next hard-deletion
 	 */
 	private async hardDelete(): Promise<number> {
-		const ids = await this.executionRepository.findSoftDeletedExecutions();
+		const refs = await this.executionRepository.findSoftDeletedExecutions();
 
-		const executionIds = ids.map((o) => o.executionId);
-
-		if (executionIds.length === 0) {
+		if (refs.length === 0) {
 			this.logger.debug('Found no executions to hard-delete');
 
 			return this.rates.hardDeletion;
 		}
 
-		try {
-			await this.binaryDataService.deleteMany(ids);
+		const executionIds = refs.map((r) => r.executionId);
 
-			await this.executionRepository.deleteByIds(executionIds);
+		try {
+			await this.executionPersistence.hardDelete(refs);
 
 			this.logger.debug('Hard-deleted executions', { executionIds });
 		} catch (error) {
@@ -155,7 +155,7 @@ export class ExecutionsPruningService {
 		}
 
 		// if high volume, speed up next hard-deletion
-		if (executionIds.length >= this.batchSize) return 1 * Time.seconds.toMilliseconds;
+		if (refs.length >= this.batchSize) return 1 * Time.seconds.toMilliseconds;
 
 		return this.rates.hardDeletion;
 	}

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ExternalSecretsProvider } from '../externalSecrets.types';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';

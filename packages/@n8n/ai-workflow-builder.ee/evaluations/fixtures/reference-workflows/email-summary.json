@@ -1,0 +1,287 @@
+{
+	"nodes": [
+		{
+			"id": "ef6602fb-3b80-46b2-9d5c-fbdb80100d2d",
+			"name": "Monday Morning Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "weeks",
+							"weeksInterval": 1,
+							"triggerAtDay": [1],
+							"triggerAtHour": 8,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "fec9e0a5-4a72-4cbe-b7ac-9b834c9da6f6",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"includeOtherFields": true,
+				"include": "all",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "daysToLookBack",
+							"value": 3,
+							"type": "number"
+						},
+						{
+							"id": "id-2",
+							"name": "recipientEmail",
+							"value": "<__PLACEHOLDER_VALUE__Your email address__>",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "76fa23a1-423b-4643-8671-607b3da57fd4",
+			"name": "Get Weekend Emails",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 100,
+				"simple": true,
+				"filters": {
+					"receivedAfter": "={{ $now.minus({ days: $('Workflow Configuration').first().json.daysToLookBack }).toISO() }}",
+					"labelIds": ["INBOX"]
+				}
+			},
+			"webhookId": "23a1ea9d-c292-4228-a3dc-48f3997aa603"
+		},
+		{
+			"id": "51d24840-8ed3-4dbe-a20a-bd9a3b9d843a",
+			"name": "Prepare Email Data",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "emailSummary",
+							"value": "={{ $json.snippet }}",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "subject",
+							"value": "={{ $json.subject }}",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "from",
+							"value": "={{ $json.from }}",
+							"type": "string"
+						},
+						{
+							"id": "id-4",
+							"name": "date",
+							"value": "={{ $json.date }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "f5d1fbbb-4651-4282-92a7-2051937f41d6",
+			"name": "Analyze Emails for Action Items",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [250, 300],
+			"parameters": {
+				"hasOutputParser": true,
+				"promptType": "define",
+				"text": "={{ JSON.stringify($input.all()) }}",
+				"options": {
+					"systemMessage": "You are an email analysis assistant that helps identify action items and priorities from emails.\n\nYour task is to:\n1. Review all the provided emails from the weekend\n2. Extract specific action items that require follow-up or response\n3. Identify high-priority items that need immediate attention\n4. Create a brief summary of the overall email content\n\nFor action items, include:\n- What needs to be done\n- Who it involves (sender/recipient)\n- Any relevant context or deadlines\n\nFor priorities, focus on:\n- Urgent requests\n- Time-sensitive matters\n- Important stakeholder communications\n\nReturn your analysis in the structured format defined by the output parser."
+				}
+			}
+		},
+		{
+			"id": "77811583-ffcb-481d-b088-8e7d91a4383a",
+			"name": "OpenAI GPT-4.1-mini",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "75760530-6de0-4dd3-83ca-8507ebaee1fd",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"actionItems\": {\n      \"type\": \"array\",\n      \"description\": \"List of action items extracted from emails\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"priorities\": {\n      \"type\": \"array\",\n      \"description\": \"List of high priority items that need immediate attention\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"Brief summary of the weekend emails\"\n    }\n  }\n}",
+				"autoFix": false
+			}
+		},
+		{
+			"id": "e57d3d5d-97fe-435e-b1aa-8d89f2e580bb",
+			"name": "Format Email Summary",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "emailBody",
+							"value": "=<html>\n<body>\n<h2>Monday Morning Email Summary</h2>\n<h3>Summary</h3>\n<p>{{ $json.summary }}</p>\n<h3>Action Items</h3>\n<ul>\n{{ $json.actionItems.map(item => '<li>' + item + '</li>').join('\\n') }}\n</ul>\n<h3>Priorities</h3>\n<ul>\n{{ $json.priorities.map(priority => '<li>' + priority + '</li>').join('\\n') }}\n</ul>\n</body>\n</html>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "emailSubject",
+							"value": "Monday Morning Email Summary - Action Items & Priorities",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "60f8b4e6-41cd-43dc-b75f-644eb14fdcc1",
+			"name": "Send Summary Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Workflow Configuration').first().json.recipientEmail }}",
+				"subject": "={{ $json.emailSubject }}",
+				"emailType": "html",
+				"message": "={{ $json.emailBody }}"
+			},
+			"webhookId": "995125b2-82e5-44c1-840d-c3c95ed4975b"
+		}
+	],
+	"connections": {
+		"Monday Morning Trigger": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Get Weekend Emails",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Weekend Emails": {
+			"main": [
+				[
+					{
+						"node": "Prepare Email Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare Email Data": {
+			"main": [
+				[
+					{
+						"node": "Analyze Emails for Action Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI GPT-4.1-mini": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Analyze Emails for Action Items",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Analyze Emails for Action Items",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze Emails for Action Items": {
+			"main": [
+				[
+					{
+						"node": "Format Email Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Email Summary": {
+			"main": [
+				[
+					{
+						"node": "Send Summary Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Monday Morning Email Action Items and Priorities Summary"
+}

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import TemplateDetailsBlock from './TemplateDetailsBlock.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
-import { abbreviateNumber } from '@/utils/typesUtils';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { filterTemplateNodes } from '@/app/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/app/utils/typesUtils';
 import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -11,7 +11,7 @@ import type {
 } from '@n8n/rest-api-client/api/templates';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { useTemplatesStore } from '../templates.store';
-import TimeAgo from '@/components/TimeAgo.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '../utils/typeGuards';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';

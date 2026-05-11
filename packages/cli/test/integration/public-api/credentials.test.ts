@@ -1,9 +1,18 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { randomString } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	affixRoleToSaveCredential,
@@ -38,6 +47,19 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 });
+
+/**
+ * Helper function to fetch and decrypt credential data
+ */
+async function getDecryptedCredentialData(
+	credentialId: string,
+): Promise<ICredentialDataDecryptedObject> {
+	const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+		id: credentialId,
+	});
+	const credentialsService = Container.get(CredentialsService);
+	return await credentialsService.decrypt(credential, true);
+}
 
 describe('POST /credentials', () => {
 	test('should create credentials', async () => {
@@ -87,6 +109,347 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
+	});
+
+	test('should create credential in a team project when projectId is provided', async () => {
+		const teamProject = await createTeamProject('project', member);
+		const payload = {
+			name: 'test credential in project',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name } = response.body;
+		expect(name).toBe(payload.name);
+
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
+			relations: { credentials: true },
+			where: {
+				credentialsId: id,
+				projectId: teamProject.id,
+			},
+		});
+
+		expect(sharedCredential.role).toEqual('credential:owner');
+		expect(sharedCredential.credentials.name).toBe(payload.name);
+	});
+
+	test('should return 404 when projectId does not exist', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: 'non-existing-id',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user has no access to the project', async () => {
+		const teamProject = await createTeamProject('project', owner);
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should create credential with isResolvable set to true', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: true,
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(true);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should create credential with isResolvable set to false', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: false,
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(false);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should default isResolvable to false when not provided', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			// isResolvable not provided
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(false);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should return 400 for external secret reference without projectId when permissions are missing', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: '={{ $secrets.myApiKey }}',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'Lacking permissions to reference external secrets in credentials',
+		);
+	});
+});
+
+describe('GET /credentials', () => {
+	test('should return all credentials for owner with pagination', async () => {
+		const saved1 = await saveCredential(dbCredential(), { user: owner });
+		const saved2 = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('data');
+		expect(response.body).toHaveProperty('nextCursor');
+		expect(Array.isArray(response.body.data)).toBe(true);
+		expect(response.body.data.length).toBe(2);
+
+		const allowedListItemKeys = ['createdAt', 'id', 'name', 'shared', 'type', 'updatedAt'];
+		response.body.data.forEach((item: Record<string, unknown>) => {
+			expect(Object.keys(item).sort()).toEqual(allowedListItemKeys);
+			expect(item).toHaveProperty('id');
+			expect(item).toHaveProperty('name');
+			expect(item).toHaveProperty('type');
+			expect(item).toHaveProperty('createdAt');
+			expect(item).toHaveProperty('updatedAt');
+			expect(item).toHaveProperty('shared');
+			expect(Array.isArray((item as { shared: unknown }).shared)).toBe(true);
+			(
+				item as {
+					shared: Array<{
+						id: string;
+						name: string;
+						role: string;
+						createdAt: string;
+						updatedAt: string;
+					}>;
+				}
+			).shared.forEach((entry) => {
+				expect(entry).toHaveProperty('id');
+				expect(entry).toHaveProperty('name');
+				expect(entry).toHaveProperty('role');
+				expect(entry).toHaveProperty('createdAt');
+				expect(entry).toHaveProperty('updatedAt');
+			});
+		});
+		expect(response.body.data).toContainEqual(
+			expect.objectContaining({ id: saved1.id, name: saved1.name }),
+		);
+		expect(response.body.data).toContainEqual(
+			expect.objectContaining({ id: saved2.id, name: saved2.name }),
+		);
+	});
+
+	test('should return empty list when no credentials exist', async () => {
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([]);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
+	test('should reject for member (missing credential:list scope)', async () => {
+		const response = await authMemberAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
+	});
+
+	test('should respect limit and return nextCursor when more results exist', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials').query({ limit: 2 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should paginate with cursor', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const first = await authOwnerAgent.get('/credentials').query({ limit: 2 });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.length).toBe(2);
+		expect(first.body.nextCursor).not.toBeNull();
+
+		const second = await authOwnerAgent
+			.get('/credentials')
+			.query({ cursor: first.body.nextCursor });
+		expect(second.statusCode).toBe(200);
+		expect(second.body.data.length).toBe(1);
+	});
+});
+
+describe('GET /credentials/:id', () => {
+	test('should return owned credential for owner without credential data', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should return owned credential for member', async () => {
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+		const savedCredential = await saveCredential(dbCredential(), { user: memberWithReadScope });
+
+		const response = await authMemberWithReadScopeAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should not return non-owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('POST /credentials/:id/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test credential with stored data when body is empty', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+
+		const credential = dbCredential();
+		const savedCredential = await saveCredential(credential, { user: owner });
+
+		const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalledWith(
+			owner.id,
+			savedCredential.type,
+			expect.objectContaining({
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			}),
+		);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.post('/credentials/123/test');
+
+		expect(response.statusCode).toBe(404);
 	});
 });
 
@@ -228,6 +591,602 @@ describe('DELETE /credentials/:id', () => {
 		const response = await authOwnerAgent.delete('/credentials/123');
 
 		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('PATCH /credentials/:id', () => {
+	test('should update owned credential for owner', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			name: 'Updated Credential Name',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body;
+
+		expect(id).toBe(savedCredential.id);
+		expect(name).toBe(updatePayload.name);
+		expect(type).toBe(savedCredential.type);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+		expect(updatedCredential.type).toBe(savedCredential.type);
+	});
+
+	test('should update credential data for owner', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			data: {
+				accessToken: 'newAccessToken123456',
+				user: 'updatedUser',
+				server: 'updatedServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		// Data should be encrypted, so it shouldn't match the plain payload
+		expect(updatedCredential.data).not.toBe(updatePayload.data);
+		expect(updatedCredential.data).toBeDefined();
+	});
+
+	test('should update multiple fields at once', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			name: 'Completely Updated Credential',
+			data: {
+				accessToken: 'brandNewToken',
+				user: 'newUser',
+				server: 'newServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body;
+
+		expect(id).toBe(savedCredential.id);
+		expect(name).toBe(updatePayload.name);
+		expect(type).toBe(savedCredential.type);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+	});
+
+	test('should update owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		const updatePayload = {
+			name: 'Member Updated Credential',
+		};
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { name } = response.body;
+
+		expect(name).toBe(updatePayload.name);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+	});
+
+	test('should allow owner to update credential owned by member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		const updatePayload = {
+			name: 'Owner Updated Member Credential',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+	});
+
+	test('should not allow member to update non-owned credential', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			name: 'Unauthorized Update',
+		};
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(unchangedCredential.name).toBe(savedCredential.name);
+	});
+
+	test('should fail if credential not found', async () => {
+		const response = await authOwnerAgent.patch('/credentials/123').send({
+			name: 'Does not matter',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should fail with invalid credential type', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			type: 'invalidCredentialType',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('not a known type');
+
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(unchangedCredential.type).toBe(savedCredential.type);
+	});
+
+	test('should fail when data does not match credential type schema', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Send data that doesn't match the slackApi credential schema
+		const updatePayload = {
+			data: {
+				invalidField: 'someValue',
+				anotherInvalidField: 123,
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('request.body.data');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(unchangedCredential.data).toBe(savedCredential.data);
+	});
+
+	test('should update credential type to another valid type', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			type: 'ftp',
+			data: {
+				host: 'localhost',
+				port: 21,
+				username: 'testuser',
+				password: 'testpass',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { type } = response.body;
+		expect(type).toBe('ftp');
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.type).toBe('ftp');
+	});
+
+	test('should preserve unchanged fields when updating', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const originalName = savedCredential.name;
+		const originalType = savedCredential.type;
+
+		const updatePayload = {
+			data: {
+				accessToken: 'onlyUpdatingData',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { name, type } = response.body;
+
+		expect(name).toBe(originalName);
+		expect(type).toBe(originalType);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(originalName);
+		expect(updatedCredential.type).toBe(originalType);
+	});
+
+	test('should update isResolvable field', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			isResolvable: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.isResolvable).toBe(true);
+	});
+
+	test('should fail to update isGlobal when sharing is not licensed', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Mock the license state to return false for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			isGlobal: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain('not licensed for sharing credentials');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(unchangedCredential.isGlobal).toBeFalsy();
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should fail to update isGlobal when user does not have credential:shareGlobally permission', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		// Mock the license state to return true for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(true);
+
+		const updatePayload = {
+			isGlobal: true,
+		};
+
+		// Member does not have credential:shareGlobally permission
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain(
+			'do not have permission to change global sharing for credentials',
+		);
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(unchangedCredential.isGlobal).toBeFalsy();
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should successfully update isGlobal when licensed and user has permission', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Mock the license state to return true for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(true);
+
+		const updatePayload = {
+			isGlobal: true,
+		};
+
+		// Owner has credential:shareGlobally permission
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify credential was updated
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(updatedCredential.isGlobal).toBe(true);
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should require license when setting isGlobal to false', async () => {
+		// First create a global credential
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Set it to global
+		await Container.get(CredentialsRepository).update(savedCredential.id, { isGlobal: true });
+
+		// Mock the license state to return false for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			isGlobal: false,
+		};
+
+		// Setting isGlobal to false should also require license
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain('not licensed for sharing credentials');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(unchangedCredential.isGlobal).toBe(true);
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should allow sending isGlobal with same value when sharing is not licensed', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Credential defaults to isGlobal=false, so sending isGlobal=false should succeed
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			name: 'Updated name',
+			isGlobal: false,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('Updated name');
+
+		// Verify credential was updated
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(updatedCredential.name).toBe('Updated name');
+		expect(updatedCredential.isGlobal).toBeFalsy();
+
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should fail to update managed credentials', async () => {
+		const managedCredential = await saveCredential(
+			{ ...dbCredential(), isManaged: true },
+			{ user: owner },
+		);
+
+		const updatePayload = {
+			name: 'Trying to update managed credential',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${managedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Managed credentials cannot be updated');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: managedCredential.id,
+		});
+
+		expect(unchangedCredential.name).toBe(managedCredential.name);
+	});
+
+	test('should replace entire data object when isPartialData is false', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data to verify it has all fields
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		expect(originalData.accessToken).toBeDefined();
+		expect(originalData.server).toBeDefined();
+		expect(originalData.user).toBeDefined();
+
+		// Update with only some fields - entire data should be replaced
+		const updatePayload = {
+			data: {
+				accessToken: 'onlyThisField',
+			},
+			isPartialData: false,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// When isPartialData is false, the entire data object is replaced
+		// So only the fields provided in the update will exist
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe('onlyThisField');
+		expect(updatedData.server).toBeUndefined();
+		expect(updatedData.user).toBeUndefined();
+	});
+
+	test('should replace entire data object when isPartialData is not provided (defaults to false)', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data to verify it has all fields
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		expect(originalData.accessToken).toBeDefined();
+		expect(originalData.server).toBeDefined();
+		expect(originalData.user).toBeDefined();
+
+		// Update without isPartialData (defaults to false)
+		const updatePayload = {
+			data: {
+				accessToken: 'onlyThisField',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Without isPartialData, it defaults to false and replaces entire data object
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe('onlyThisField');
+		expect(updatedData.server).toBeUndefined();
+		expect(updatedData.user).toBeUndefined();
+	});
+
+	test('should merge data when isPartialData is true', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data to verify it has all fields
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		expect(originalData.accessToken).toBeDefined();
+		expect(originalData.server).toBeDefined();
+		expect(originalData.user).toBeDefined();
+
+		const originalServer = originalData.server as string;
+		const originalUser = originalData.user as string;
+
+		// Update with partial data that should be merged
+		const updatePayload = {
+			data: {
+				accessToken: 'updatedAccessToken',
+				// user and server fields should be preserved from existing credential
+			},
+			isPartialData: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// When isPartialData is true, the data is unredacted and merged
+		// so existing fields (user, server) should be preserved
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe('updatedAccessToken');
+		expect(updatedData.server).toBe(originalServer);
+		expect(updatedData.user).toBe(originalUser);
+	});
+
+	test('should unredact values when isPartialData is true', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		const originalAccessToken = originalData.accessToken as string;
+		const originalServer = originalData.server as string;
+
+		// Update with redacted accessToken (should keep original) and new user
+		const updatePayload = {
+			data: {
+				accessToken: CREDENTIAL_BLANKING_VALUE, // Redacted value - should keep original
+				user: 'newUserValue',
+				// server is not provided - should be preserved
+			},
+			isPartialData: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify redacted value was unredacted (kept original)
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe(originalAccessToken); // Should keep original, not blanking value
+		expect(updatedData.user).toBe('newUserValue'); // Should be updated
+		expect(updatedData.server).toBe(originalServer); // Should be preserved
 	});
 });
 

@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useStyles } from '@/composables/useStyles';
+import { useStyles } from '@/app/composables/useStyles';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from '../../builder.store';
 import { useChatPanelStore } from '../../chatPanel.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -28,8 +30,13 @@ const lastUnread = computed(() => {
 	return '';
 });
 
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
+);
+
 const onClick = async () => {
-	if (builderStore.isAIBuilderEnabled) {
+	// Only start builder mode if it's enabled and parameter values can be sent
+	if (builderStore.isAIBuilderEnabled && allowSendingParameterValues.value) {
 		// Toggle with appropriate mode based on current state
 		if (chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive) {
 			chatPanelStore.close();
@@ -74,8 +81,8 @@ const onClick = async () => {
 .container {
 	position: absolute;
 	right: var(--spacing--sm);
-	bottom: var(--ask-assistant-floating-button-bottom-offset, --spacing--2xl);
-	z-index: var(--z-index-ask-assistant-floating-button);
+	bottom: var(--ask-assistant--floating-button--margin-bottom, --spacing--2xl);
+	z-index: var(--ask-assistant-floating-button--z);
 }
 
 .tooltip {

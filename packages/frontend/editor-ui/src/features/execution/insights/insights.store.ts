@@ -5,7 +5,7 @@ import type { ListInsightsWorkflowQueryDto, InsightsDateFilterDto } from '@n8n/a
 import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { transformInsightsSummary } from '@/features/execution/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
 

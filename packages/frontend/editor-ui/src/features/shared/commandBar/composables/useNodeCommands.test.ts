@@ -1,32 +1,25 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { createTestNode } from '@/__tests__/mocks';
 
-const mockEditableWorkflow = {
-	value: {
-		nodes: [] as Array<{
-			id: string;
-			name: string;
-			type: string;
-			typeVersion: number;
-		}>,
-	},
-};
-
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
-		editableWorkflow: mockEditableWorkflow,
 	}),
 }));
 
@@ -38,7 +31,7 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 
 const mockGenerateMergedNodesAndActionsFn = vi.fn().mockReturnValue({ mergedNodes: [] });
 
-vi.mock('@/components/Node/NodeCreator/composables/useActionsGeneration', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: () => ({
 		generateMergedNodesAndActions: mockGenerateMergedNodesAndActionsFn,
 	}),
@@ -76,7 +69,9 @@ describe('useNodeCommands', () => {
 	});
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		vi.clearAllMocks();
+
+		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
 		const canvasOps = useCanvasOperations();
@@ -104,18 +99,24 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflow', {
-			value: { isArchived: false, scopes: [] },
+			value: { isArchived: false, scopes: [], nodes: [] },
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
 			value: false,
 		});
 
+		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
+			value: '123',
+			writable: true,
+		});
+
+		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+			value: { '123': true },
+			writable: true,
+		});
+
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
-
-		mockEditableWorkflow.value.nodes = [];
-
-		vi.clearAllMocks();
 	});
 
 	describe('add node command', () => {
@@ -125,7 +126,6 @@ describe('useNodeCommands', () => {
 				activeNodeId: ref(null),
 			});
 
-			console.log('commands', commands.value);
 			const addCommand = commands.value.find((cmd) => cmd.id === 'add-node');
 			expect(addCommand).toBeDefined();
 		});
@@ -159,9 +159,8 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not include add node command when workflow is archived', () => {
-			Object.defineProperty(mockWorkflowsStore, 'workflow', {
-				value: { isArchived: true, scopes: [] },
-			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			workflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -177,8 +176,9 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: false },
 			});
 
-			Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
-				value: true,
+			Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+				value: {},
+				writable: true,
 			});
 
 			const { commands } = useNodeCommands({
@@ -227,15 +227,21 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should populate open node children with workflow nodes', () => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
-				{
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+				createTestNode({
 					id: 'node-2',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 1,
-				},
-			];
+				}),
+			]);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -244,6 +250,7 @@ describe('useNodeCommands', () => {
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-node');
 			expect(openCommand?.children).toHaveLength(2);
+			expect(openCommand?.children?.[0].title).toEqual('Start');
 		});
 	});
 
@@ -297,22 +304,19 @@ describe('useNodeCommands', () => {
 				expect(commands.value.length).toBeLessThanOrEqual(3);
 			}
 		});
-
-		it('should show root add node items when query is longer than 2 characters', () => {
-			const { commands } = useNodeCommands({
-				lastQuery: ref('htt'),
-				activeNodeId: ref(null),
-			});
-
-			expect(commands.value).toBeDefined();
-		});
 	});
 
 	describe('root open node items', () => {
 		beforeEach(() => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
-			];
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+			]);
 		});
 
 		it('should not show root open node items when query is too short', () => {
@@ -333,6 +337,7 @@ describe('useNodeCommands', () => {
 
 			const rootOpenNodes = commands.value.filter((cmd) => cmd.id === 'node-1');
 			expect(rootOpenNodes).toHaveLength(1);
+			expect(rootOpenNodes[0].title).toEqual('generic.openResource');
 		});
 	});
 });

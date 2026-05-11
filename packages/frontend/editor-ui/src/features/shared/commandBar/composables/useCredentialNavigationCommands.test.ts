@@ -4,13 +4,13 @@ import * as permissionsModule from '@n8n/permissions';
 import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -222,6 +222,14 @@ describe('useCredentialNavigationCommands', () => {
 			await vi.waitFor(() => {
 				const openCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
 				expect(openCommand?.children).toHaveLength(1);
+				expect(openCommand?.children?.[0].section).toBe('commandBar.credentials.open');
+				expect(openCommand?.children?.[0].title).toEqual(
+					expect.objectContaining({
+						props: expect.objectContaining({
+							title: 'My API Key',
+						}),
+					}),
+				);
 			});
 		});
 	});
@@ -344,6 +352,14 @@ describe('useCredentialNavigationCommands', () => {
 			await vi.waitFor(() => {
 				const rootCredentials = commands.value.filter((cmd) => cmd.id === 'cred-1');
 				expect(rootCredentials).toHaveLength(1);
+				expect(rootCredentials[0].section).toBe('commandBar.sections.credentials');
+				expect(rootCredentials[0].title).toEqual(
+					expect.objectContaining({
+						props: expect.objectContaining({
+							title: 'generic.openResource',
+						}),
+					}),
+				);
 			});
 		});
 	});
@@ -487,6 +503,20 @@ describe('useCredentialNavigationCommands', () => {
 			expect(isLoading.value).toBe(true);
 		});
 
+		it('should reset loading state when navigating back to root', () => {
+			const { isLoading, handlers } = useCredentialNavigationCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+				currentProjectName: ref('Team Project'),
+			});
+
+			handlers.onCommandBarNavigateTo('open-credential');
+			expect(isLoading.value).toBe(true);
+
+			handlers.onCommandBarNavigateTo(null);
+			expect(isLoading.value).toBe(false);
+		});
+
 		it('should clear credential results when navigating back to root', async () => {
 			(mockCredentialsStore.allCredentials as unknown) = [
 				createMockCredential('cred-1', 'Gmail Account', 'gmailOAuth2', 'project-1', 'Team Project'),
@@ -558,7 +588,7 @@ describe('useCredentialNavigationCommands', () => {
 
 			handlers.onCommandBarChange('gma');
 
-			expect(isLoading.value).toBe(false); // Not in parent node, so shouldn't be loading
+			expect(isLoading.value).toBe(true); // Should show loading during fetch
 		});
 	});
 
