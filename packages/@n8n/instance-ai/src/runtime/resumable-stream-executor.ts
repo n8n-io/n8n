@@ -1955,8 +1955,7 @@ export async function executeResumableStream(
 						event.payload.text = emit;
 					}
 				} else if (event.type === 'reasoning-delta') {
-					lastBufferedReasoningResponseId =
-						event.responseId ?? lastBufferedReasoningResponseId;
+					lastBufferedReasoningResponseId = event.responseId ?? lastBufferedReasoningResponseId;
 					const { emit, hits } = reasoningRedactor.feed(event.payload.text);
 					redactionHits.push(...hits);
 					if (!emit) {
@@ -2125,10 +2124,7 @@ export async function executeResumableStream(
  * Cross-chunk streaming redaction for `text-delta` / `reasoning-delta` is
  * handled separately by `StreamingRedactor` — those types are excluded here.
  */
-function redactOneShotEventInPlace(
-	event: InstanceAiEvent,
-	hits: StreamingRedactorHit[],
-): void {
+function redactOneShotEventInPlace(event: InstanceAiEvent, hits: StreamingRedactorHit[]): void {
 	const redactStringField = (value: string): string => {
 		const { output, hits: slugs } = redactStringDetailed(value);
 		for (const slug of slugs) hits.push({ slug });

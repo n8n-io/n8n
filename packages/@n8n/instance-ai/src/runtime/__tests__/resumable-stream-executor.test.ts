@@ -1915,7 +1915,10 @@ describe('executeResumableStream', () => {
 			const events = getPublishedEvents(eventBus);
 			const toolResult = events.find((e) => e.type === 'tool-result') as {
 				type: 'tool-result';
-				payload: { toolCallId: string; result: { snapshot: string; meta: Record<string, unknown> } };
+				payload: {
+					toolCallId: string;
+					result: { snapshot: string; meta: Record<string, unknown> };
+				};
 			};
 			expect(toolResult).toBeDefined();
 			expect(toolResult.payload.result.snapshot).toContain('[REDACTED:anthropic_api_key]');
@@ -1954,7 +1957,9 @@ describe('executeResumableStream', () => {
 				type: 'tool-error';
 				payload: { toolCallId: string; error: string };
 			};
-			expect(toolError.payload.error).toBe('401 Unauthorized — token [REDACTED:github_pat] expired');
+			expect(toolError.payload.error).toBe(
+				'401 Unauthorized — token [REDACTED:github_pat] expired',
+			);
 		});
 
 		it('passes a realistic get-execution-shaped payload through unchanged (no false positives)', async () => {

@@ -11,8 +11,7 @@ const ALPHANUM_36 = 'd'.repeat(36);
 const ALPHANUM_82 = 'e'.repeat(82);
 const ALPHANUM_70 = 'f'.repeat(70);
 
-export const PEM_BODY =
-	'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ\nfakebase64bytes==';
+export const PEM_BODY = 'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ\nfakebase64bytes==';
 export const OPENSSH_BODY = 'b3BlbnNzaC1rZXktdjEAAAAA\nfakebase64bytes==';
 
 export const SECRET_FIXTURES: ReadonlyArray<{ slug: string; secret: string }> = [

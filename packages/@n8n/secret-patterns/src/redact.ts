@@ -92,9 +92,7 @@ export function redactValueDetailed(
 		return { output, hits: collected };
 	}
 	if (Array.isArray(value)) {
-		const out = value.map(
-			(entry) => redactValueDetailed(entry, depth + 1, collected).output,
-		);
+		const out = value.map((entry) => redactValueDetailed(entry, depth + 1, collected).output);
 		return { output: out, hits: collected };
 	}
 	if (isPlainObject(value)) {
