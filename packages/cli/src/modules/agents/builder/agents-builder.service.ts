@@ -190,7 +190,7 @@ export class AgentsBuilderService {
 			projectId,
 			userId: user.id,
 			threadId: builderThreadId(agentId),
-			model: BUILDER_MODEL,
+			model: modelConfig,
 		});
 		if (telemetry) builder.telemetry(telemetry);
 

@@ -1,6 +1,10 @@
 import { LangSmithTelemetry } from '@n8n/agents';
 
-import { buildBuilderTelemetry, isLangSmithEnabled } from '../builder-telemetry';
+import {
+	buildBuilderTelemetry,
+	isLangSmithEnabled,
+	resolveModelIdForTelemetry,
+} from '../builder-telemetry';
 
 const baseOptions = {
 	agentId: 'agent-1',
@@ -59,5 +63,40 @@ describe('buildBuilderTelemetry', () => {
 			thread_id: 'thread-1',
 			model_id: 'anthropic/claude-sonnet-4-5',
 		});
+	});
+
+	it('records the resolved model id when given a typed config object', () => {
+		const telemetry = buildBuilderTelemetry(
+			{ ...baseOptions, model: { id: 'openai/gpt-4o', apiKey: 'redacted' } },
+			{ LANGSMITH_API_KEY: 'ls-key' },
+		);
+		const internal = telemetry as unknown as { metadataValue?: Record<string, unknown> };
+		expect(internal.metadataValue?.model_id).toBe('openai/gpt-4o');
+	});
+});
+
+describe('resolveModelIdForTelemetry', () => {
+	it('returns the string id as-is', () => {
+		expect(resolveModelIdForTelemetry('anthropic/claude-sonnet-4-5')).toBe(
+			'anthropic/claude-sonnet-4-5',
+		);
+	});
+
+	it('extracts `id` from a typed model config', () => {
+		expect(resolveModelIdForTelemetry({ id: 'openai/gpt-4o', apiKey: 'k' })).toBe('openai/gpt-4o');
+	});
+
+	it('combines AI SDK LanguageModel provider + modelId', () => {
+		const languageModel = { provider: 'anthropic', modelId: 'claude-3-5-sonnet' } as never;
+		expect(resolveModelIdForTelemetry(languageModel)).toBe('anthropic/claude-3-5-sonnet');
+	});
+
+	it('falls back to modelId alone when provider is missing', () => {
+		const languageModel = { modelId: 'claude-3-5-sonnet' } as never;
+		expect(resolveModelIdForTelemetry(languageModel)).toBe('claude-3-5-sonnet');
+	});
+
+	it('returns "unknown" when neither id nor modelId is present', () => {
+		expect(resolveModelIdForTelemetry({} as never)).toBe('unknown');
 	});
 });
