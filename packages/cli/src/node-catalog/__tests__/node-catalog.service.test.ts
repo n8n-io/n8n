@@ -8,14 +8,13 @@ import { NodeCatalogService } from '../node-catalog.service';
 
 const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
-const mockSearchInvoke = jest.fn().mockResolvedValue('search-result');
+const mockSearchCodeBuilderNodes = jest.fn();
 const mockGetInvoke = jest.fn().mockResolvedValue('get-result');
 const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
-const mockCreateSearchTool = jest.fn((..._args: unknown[]) => ({ invoke: mockSearchInvoke }));
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	NodeTypeParser: MockNodeTypeParser,
-	createCodeBuilderSearchTool: (...args: unknown[]) => mockCreateSearchTool(...args),
+	searchCodeBuilderNodes: (...args: unknown[]) => mockSearchCodeBuilderNodes(...args),
 	createCodeBuilderGetTool: jest.fn(() => ({ invoke: mockGetInvoke })),
 	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
 }));
@@ -38,6 +37,10 @@ describe('NodeCatalogService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockSearchCodeBuilderNodes.mockReturnValue({
+			results: 'search-result',
+			queriesWithNoResults: [],
+		});
 		postProcessorCallback = undefined;
 
 		loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
@@ -153,9 +156,24 @@ describe('NodeCatalogService', () => {
 			const result1 = await service.searchNodes(['gmail', 'slack']);
 			const result2 = await service.searchNodes(['gmail', 'slack']);
 
-			expect(result1).toBe('search-result');
-			expect(result2).toBe('search-result');
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(1);
+			expect(result1.results).toBe('search-result');
+			expect(result2.results).toBe('search-result');
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(1);
+		});
+
+		test('returns queriesWithNoResults metadata', async () => {
+			mockSearchCodeBuilderNodes.mockReturnValueOnce({
+				results: 'search-result',
+				queriesWithNoResults: ['missing-node'],
+			});
+			await service.initialize();
+
+			const result = await service.searchNodes(['missing-node']);
+
+			expect(result).toEqual({
+				results: 'search-result',
+				queriesWithNoResults: ['missing-node'],
+			});
 		});
 
 		test('returns cached result regardless of query order', async () => {
@@ -164,19 +182,19 @@ describe('NodeCatalogService', () => {
 			await service.searchNodes(['gmail', 'slack']);
 			await service.searchNodes(['slack', 'gmail']);
 
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(1);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(1);
 		});
 
-		test('calls tool for different queries', async () => {
+		test('calls search for different queries', async () => {
 			await service.initialize();
 
 			await service.searchNodes(['gmail']);
 			await service.searchNodes(['slack']);
 
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
 		});
 
-		test('creates a separate tool instance per nodeFilter reference', async () => {
+		test('uses separate search state per nodeFilter reference', async () => {
 			await service.initialize();
 
 			const filterA = () => true;
@@ -185,15 +203,17 @@ describe('NodeCatalogService', () => {
 			await service.searchNodes(['gmail'], { nodeFilter: filterA });
 			await service.searchNodes(['gmail'], { nodeFilter: filterB });
 
-			expect(mockCreateSearchTool).toHaveBeenCalledTimes(2);
-			expect(mockCreateSearchTool).toHaveBeenNthCalledWith(
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenNthCalledWith(
 				1,
 				expect.anything(),
+				['gmail'],
 				expect.objectContaining({ nodeFilter: filterA }),
 			);
-			expect(mockCreateSearchTool).toHaveBeenNthCalledWith(
+			expect(mockSearchCodeBuilderNodes).toHaveBeenNthCalledWith(
 				2,
 				expect.anything(),
+				['gmail'],
 				expect.objectContaining({ nodeFilter: filterB }),
 			);
 		});
@@ -207,8 +227,8 @@ describe('NodeCatalogService', () => {
 			await service.searchNodes(['gmail']);
 			await service.searchNodes(['gmail'], { nodeFilter: filter });
 
-			// Two distinct tool instances, each invoked once.
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+			// Two distinct search states, each invoked once.
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -266,7 +286,7 @@ describe('NodeCatalogService', () => {
 			await service.getNodeTypes(['n8n-nodes-base.set']);
 			await service.getSuggestedNodes(['chatbot']);
 
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
 			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
 			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
 
@@ -278,7 +298,7 @@ describe('NodeCatalogService', () => {
 			await service.getNodeTypes(['n8n-nodes-base.set']);
 			await service.getSuggestedNodes(['chatbot']);
 
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(4);
+			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(4);
 			expect(mockGetInvoke).toHaveBeenCalledTimes(2);
 			expect(mockSuggestInvoke).toHaveBeenCalledTimes(2);
 		});

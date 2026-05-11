@@ -161,7 +161,7 @@ test.describe(
 					'After verification reports the mocked credential setup state, open the workflow setup card with workflows(action="setup") and stop editing.',
 			);
 
-			await expect(n8n.instanceAi.getWorkflowSetupCard()).toBeVisible({ timeout: 540_000 });
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 
 			const events = await getTraceEvents(api, testInfo);
 			const summary = summarizeRemediationTrace(events);

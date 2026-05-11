@@ -211,7 +211,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			throw new Error(
 				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(new SqliteMemory(path)).lastMessages(N) for persistent storage. ' +
+					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
