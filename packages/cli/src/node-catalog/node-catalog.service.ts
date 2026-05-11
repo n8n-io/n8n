@@ -1,4 +1,8 @@
-import type { NodeRequest, NodeTypeParser } from '@n8n/ai-workflow-builder';
+import type {
+	CodeBuilderSearchResult,
+	NodeRequest,
+	NodeTypeParser,
+} from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
@@ -11,7 +15,7 @@ export type NodeFilter = (nodeId: string) => boolean;
 export interface SearchNodesOptions {
 	/**
 	 * Optional predicate restricting which node IDs are included in search results.
-	 * Each unique filter reference gets its own tool instance and result cache;
+	 * Each unique filter reference gets its own search state and result cache;
 	 * callers should use module-level function references to avoid unbounded growth.
 	 */
 	nodeFilter?: NodeFilter;
@@ -19,6 +23,11 @@ export interface SearchNodesOptions {
 
 interface InvokableTool<TInput> {
 	invoke(input: TInput): Promise<string>;
+}
+
+interface SearchState {
+	search?: (queries: string[]) => CodeBuilderSearchResult;
+	cache: Map<string, CodeBuilderSearchResult>;
 }
 
 const UNFILTERED: unique symbol = Symbol('unfiltered');
@@ -39,8 +48,11 @@ export class NodeCatalogService {
 
 	private initPromise: Promise<void> | undefined;
 
-	/** Result cache per unique `nodeFilter` reference (plus one unfiltered slot). */
-	private readonly searchCaches = new Map<NodeFilter | typeof UNFILTERED, Map<string, string>>();
+	/**
+	 * Search function + full result cache per unique `nodeFilter` reference (plus one unfiltered slot).
+	 * The cache stores the complete `CodeBuilderSearchResult`, so callers can consume only the fields they need.
+	 */
+	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
 	private suggestTool: InvokableTool<{ categories: string[] }> | undefined;
 
@@ -75,33 +87,40 @@ export class NodeCatalogService {
 	 * Search the node catalog for node IDs matching `queries`.
 	 * Results are cached per `(filter, queries)` pair and invalidated on node-type refresh.
 	 *
-	 * Calls the plain `searchNodes` helper from `@n8n/ai-workflow-builder` rather
-	 * than its LangChain `tool(...)` wrapper. When `LANGCHAIN_TRACING_V2` is on
-	 * (the agents SDK enables it for the OTel exporter), the wrapper would
-	 * register a separate LangSmith root run for every invocation — fragmenting
-	 * traces. The plain helper runs entirely inside the caller's OTel span.
+	 * Calls the plain `searchCodeBuilderNodes` helper from `@n8n/ai-workflow-builder`
+	 * rather than its LangChain `tool(...)` wrapper. When `LANGCHAIN_TRACING_V2` is on
+	 * (the agents SDK enables it for the OTel exporter), the wrapper would register a
+	 * separate LangSmith root run for every invocation — fragmenting traces. The plain
+	 * helper runs entirely inside the caller's OTel span.
 	 */
-	async searchNodes(queries: string[], options: SearchNodesOptions = {}): Promise<string> {
+	async searchNodes(
+		queries: string[],
+		options: SearchNodesOptions = {},
+	): Promise<CodeBuilderSearchResult> {
 		const { nodeFilter } = options;
 		const stateKey: NodeFilter | typeof UNFILTERED = nodeFilter ?? UNFILTERED;
 
-		let cache = this.searchCaches.get(stateKey);
-		if (!cache) {
-			cache = new Map();
-			this.searchCaches.set(stateKey, cache);
+		let state = this.searchStates.get(stateKey);
+		if (!state) {
+			state = { cache: new Map() };
+			this.searchStates.set(stateKey, state);
 		}
 
 		const cacheKey = JSON.stringify([...queries].sort());
-		const cached = cache.get(cacheKey);
+		const cached = state.cache.get(cacheKey);
 		if (cached) return cached;
 
-		const { searchNodes } = await import('@n8n/ai-workflow-builder');
-		const result = searchNodes(
-			this.getNodeTypeParser(),
-			queries,
-			nodeFilter ? { nodeFilter } : undefined,
-		);
-		cache.set(cacheKey, result);
+		if (!state.search) {
+			const { searchCodeBuilderNodes } = await import('@n8n/ai-workflow-builder');
+			const nodeTypeParser = this.getNodeTypeParser();
+			state.search = (searchQueries: string[]) =>
+				nodeFilter
+					? searchCodeBuilderNodes(nodeTypeParser, searchQueries, { nodeFilter })
+					: searchCodeBuilderNodes(nodeTypeParser, searchQueries);
+		}
+
+		const result = state.search(queries);
+		state.cache.set(cacheKey, result);
 		return result;
 	}
 
@@ -159,7 +178,7 @@ export class NodeCatalogService {
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
 
-		this.searchCaches.clear();
+		this.searchStates.clear();
 		this.suggestTool = undefined;
 
 		this.getCache.clear();
