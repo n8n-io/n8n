@@ -3,6 +3,13 @@ import { test, expect, instanceAiTestConfig } from './fixtures';
 test.use(instanceAiTestConfig);
 
 test.describe('Instance AI timeouts', () => {
+	test.beforeEach(({}, testInfo) => {
+		test.skip(
+			testInfo.project.name.includes('multi-main'),
+			'Instance AI background-task state is per-main-process; the seed endpoint and the browser may land on different mains.',
+		);
+	});
+
 	test('should show a timeout message when a stuck background task times out', async ({
 		api,
 		n8n,

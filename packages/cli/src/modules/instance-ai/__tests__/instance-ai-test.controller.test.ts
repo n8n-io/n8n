@@ -140,16 +140,6 @@ describe('InstanceAiTestController', () => {
 			};
 			userRepo.findOneByOrFail.mockResolvedValue(user);
 			instanceAiService.startStuckBackgroundTaskForTest.mockResolvedValue(simulation);
-			threadRepo.findOneBy.mockResolvedValue({
-				id: 'thread-1',
-				resourceId: 'user-1',
-			} as never);
-			memoryService.listThreads.mockResolvedValue({
-				threads: [{ id: 'thread-1' } as never],
-				total: 1,
-				page: 0,
-				hasMore: false,
-			});
 
 			const result = await controller.startBackgroundTimeoutSimulation({
 				userId: 'user-1',
@@ -161,7 +151,7 @@ describe('InstanceAiTestController', () => {
 				user,
 				'thread-1',
 			);
-			expect(result).toMatchObject(simulation);
+			expect(result).toEqual(simulation);
 		});
 
 		it('should run the liveness sweep at a simulated time', async () => {
