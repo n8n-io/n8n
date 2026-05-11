@@ -125,35 +125,83 @@ const testAction = z.object({
 	credentialId: credentialIdField,
 });
 
-const fullInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		deleteAction,
-		searchTypesAction,
-		setupAction,
-		testAction,
-	]),
-);
-
-const builderInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [listAction, getAction, searchTypesAction, testAction]),
-);
-
 type CredentialsToolSurface = 'full' | 'builder';
 
-type Input = z.infer<typeof fullInputSchema>;
+const CREDENTIAL_ACTION_SCHEMAS = {
+	list: listAction,
+	get: getAction,
+	delete: deleteAction,
+	'search-types': searchTypesAction,
+	setup: setupAction,
+	test: testAction,
+} as const;
+
+type CredentialAction = keyof typeof CREDENTIAL_ACTION_SCHEMAS;
+type CredentialActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
+
+const CREDENTIAL_ACTION_ORDER = [
+	'list',
+	'get',
+	'delete',
+	'search-types',
+	'setup',
+	'test',
+] as const satisfies readonly CredentialAction[];
+
+const BUILDER_CREDENTIAL_ACTION_BLOCKLIST = new Set<CredentialAction>(['delete', 'setup']);
+
+const CREDENTIAL_ACTION_LABELS = {
+	list: 'list',
+	get: 'get',
+	delete: 'delete',
+	'search-types': 'search available types',
+	setup: 'set up new credentials',
+	test: 'test connections',
+} satisfies Record<CredentialAction, string>;
+
+function getCredentialActions(surface: CredentialsToolSurface): CredentialAction[] {
+	const blockedActions = surface === 'builder' ? BUILDER_CREDENTIAL_ACTION_BLOCKLIST : undefined;
+	return CREDENTIAL_ACTION_ORDER.filter((action) => !blockedActions?.has(action));
+}
+
+function createCredentialInputSchema(actions: readonly CredentialAction[]) {
+	const actionSchemas = actions.map((action) => CREDENTIAL_ACTION_SCHEMAS[action]) as unknown as [
+		CredentialActionSchema,
+		CredentialActionSchema,
+		...CredentialActionSchema[],
+	];
+
+	return sanitizeInputSchema(z.discriminatedUnion('action', actionSchemas));
+}
+
+type Input =
+	| z.infer<typeof listAction>
+	| z.infer<typeof getAction>
+	| z.infer<typeof deleteAction>
+	| z.infer<typeof searchTypesAction>
+	| z.infer<typeof setupAction>
+	| z.infer<typeof testAction>;
 
 function buildInputSchema(surface: CredentialsToolSurface) {
-	return surface === 'builder' ? builderInputSchema : fullInputSchema;
+	return createCredentialInputSchema(getCredentialActions(surface));
+}
+
+function formatActionList(actions: readonly CredentialAction[]): string {
+	const labels = actions.map((action) => CREDENTIAL_ACTION_LABELS[action]);
+	if (labels.length <= 2) return labels.join(' and ');
+
+	const lastLabel = labels[labels.length - 1];
+	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
 }
 
 function getToolDescription(surface: CredentialsToolSurface): string {
+	const actionList = formatActionList(getCredentialActions(surface));
+
 	if (surface === 'builder') {
-		return 'Inspect credentials during build — list, get, search available types, and test connections. Setup is handled after workflow verification.';
+		return `Inspect credentials during build — ${actionList}. Setup is handled after workflow verification.`;
 	}
 
-	return 'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.';
+	return `Manage credentials — ${actionList}.`;
 }
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────

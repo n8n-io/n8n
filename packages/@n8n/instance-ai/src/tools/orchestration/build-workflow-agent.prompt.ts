@@ -60,12 +60,11 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
 - If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
-// The AI Agent subnode example below differs by mode:
-//   tool mode  → `newCredential('OpenAI')`
-//   sandbox    → raw `{ id, name }` object (newCredential() serializes to undefined)
-function buildBuilderSpecificPatterns(mode: 'tool' | 'sandbox'): string {
-	const openAiCredExample =
-		mode === 'sandbox' ? "{ id: 'credId', name: 'OpenAI account' }" : "newCredential('OpenAI')";
+// The AI Agent subnode example uses `newCredential()` in both modes. In sandbox
+// mode the submit runner preserves unresolved credential slots for
+// `submit-workflow`, so the same outlet works there too.
+function buildBuilderSpecificPatterns(): string {
+	const openAiCredExample = "newCredential('OpenAI')";
 	return `## Critical Patterns (Common Mistakes)
 
 **Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
@@ -273,23 +272,21 @@ ${CONNECTION_CHANGING_PARAMETERS}
 ${BASELINE_FLOW_CONTROL}`;
 }
 
-const BUILDER_SPECIFIC_PATTERNS_TOOL = buildBuilderSpecificPatterns('tool');
-const BUILDER_SPECIFIC_PATTERNS_SANDBOX = buildBuilderSpecificPatterns('sandbox');
+const BUILDER_SPECIFIC_PATTERNS = buildBuilderSpecificPatterns();
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
-// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) uses explicit
-// raw {id, name} objects because `submit-workflow` runs the code natively via
-// tsx and expects that form. Rules 2 and 3 are mode-agnostic and mirror the
-// shared WORKFLOW_RULES.
+// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) keeps the SDK's
+// `newCredential()` outlet so unresolved credentials are explicit in code and
+// can be mocked by `submit-workflow`. Rules 2 and 3 are mode-agnostic and
+// mirror the shared WORKFLOW_RULES.
 const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
-1. **Only use explicitly selected raw credential objects**
-   - Wire credentials as \`{ id, name }\` objects only when the user selected that credential, named an unambiguous credential, or you are preserving a credential already present on an existing workflow
-   - If a credential is absent, ambiguous, fake, null, or not explicitly selected, omit it and let \`submit-workflow\` mock it for verification
-   - Do NOT call credential setup or workflow setup during build; setup happens after verification
-   - NEVER use placeholder strings, fake API keys, or hardcoded auth values
-   - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
+1. **Use \`newCredential()\` for authentication**
+   - If the user selected a specific credential or an existing workflow already has one, wire it as \`newCredential('Credential Name', 'credential-id')\` using the exact ID from \`credentials(action="list")\` or the pre-loaded workflow
+   - If no exact credential was selected, more than one credential matches, or the service needs a new credential, wire \`newCredential('Suggested Credential Name')\`; \`submit-workflow\` will mock it for verification and the orchestrator will route setup after the build
+   - NEVER invent credential IDs, placeholder strings, fake API keys, or hardcoded auth values
+   - Example: \`credentials: { slackApi: newCredential('Slack Bot') }\`
    - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
 
 2. **Trust empty item lists — don't synthesize fake items**
@@ -312,27 +309,14 @@ const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating work
    - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.`;
 
 function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
-	// Shared WORKFLOW_SDK_PATTERNS uses `newCredential('X')` throughout. That
-	// form is correct for tool mode but serializes to undefined in sandbox mode
-	// (see submit-workflow.tool.ts — `NewCredentialImpl.toJSON() === undefined`).
-	// Prepend an override note when composing for sandbox so the LLM substitutes
-	// raw `{id, name}` objects in the shared examples below.
-	const sandboxOverride =
-		mode === 'sandbox'
-			? "> **Sandbox credential override**: The SDK pattern examples below use `newCredential('X')`. " +
-				"In sandbox mode, replace `newCredential('X')` with a raw `{ id, name }` object only when the " +
-				'user explicitly selected that credential or you are preserving an existing workflow credential. ' +
-				'Otherwise omit the credential and let `submit-workflow` mock it for verification.'
-			: null;
 	return [
 		SDK_CODE_RULES,
 		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
-		...(sandboxOverride ? [sandboxOverride] : []),
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
 		NODE_CONFIGURATION_SAFETY_RULES,
-		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
+		BUILDER_SPECIFIC_PATTERNS,
 	].join('\n\n');
 }
 
@@ -363,10 +347,10 @@ ${PLACEHOLDERS_RULE}
 Do NOT produce visible output until step 5. All reasoning happens internally.
 
 ## Credential Rules (tool mode)
-- Use \`newCredential('Credential Name')\` only when the user selected or named that credential unambiguously; otherwise omit credentials and let the build tools mock them for verification.
-- NEVER use raw credential objects like \`{ id: '...', name: '...' }\` — that form is for sandbox mode only.
+- Use \`newCredential('Credential Name', 'credential-id')\` only when the user selected a specific existing credential or the workflow already has one.
+- If no exact credential was selected, more than one credential matches, or the service needs a new credential, use \`newCredential('Suggested Credential Name')\`; the build tools mock unresolved credentials for verification.
+- NEVER use raw credential objects like \`{ id: '...', name: '...' }\` in tool mode.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
-- Do NOT call credential setup or workflow setup during build; setup happens after verification.
 - Unresolved credentials (where the user chose mock data, no credential is available, or no explicit selection was made) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
 ${SDK_RULES_AND_PATTERNS_TOOL}
@@ -481,7 +465,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 ### Step 2: Submit and test the chunk
 
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
-   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. Do not publish during build; publishing remains the user's decision after testing. For production executions, supporting sub-workflows must be published by the user before the parent workflow can call them.
+   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. Publishing is handled outside the builder after the user decides the workflow should go live.
 2. Run the chunk: \`executions(action="run")\` with \`inputData\` matching the trigger schema.
    - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
    - **Event-based triggers** (e.g. Linear Trigger, GitHub Trigger, Slack Trigger): pass \`inputData\` matching what the trigger would normally emit. The system injects it as the trigger node's output — e.g. \`inputData: { action: "create", data: { id: "123", title: "Test issue" } }\` for a Linear Trigger. No need to rebuild the workflow with a Manual Trigger.
@@ -534,14 +518,13 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 
 ${PLACEHOLDERS_RULE}
 
-## Setup Workflows (Create Missing Resources)
+## Missing Resources
 
 When \`nodes(action="explore-resources")\` returns no results for a required resource:
 
-1. Use \`nodes(action="search")\` and \`nodes(action="type-definition")\` to find the "create" operation for that resource type
-2. Build a one-shot setup workflow in \`chunks/setup-<resource>.ts\` using a manual trigger + the create node
-3. Submit and run it — extract the created resource ID from the execution result
-4. Use that real resource ID in the main workflow
+1. If the resource can be represented as a user choice, use \`placeholder('Select <resource>')\` and let the setup flow collect it after the build
+2. If the user explicitly asked you to create the resource and the node type definition has a safe create operation, build and verify that resource-creation workflow as part of the requested work
+3. Otherwise, leave the main workflow as a saved draft and mention the missing resource in the one-line completion summary
 
 **For resources that can't be created via n8n** (e.g., Slack channels, external API resources), explain clearly in your summary what the user needs to create manually and what ID to put where.
 
@@ -569,17 +552,25 @@ ${ASK_USER_FALLBACK}
 
 ## Credentials (sandbox mode)
 
-Sandbox mode uses **raw credential objects** (not \`newCredential()\`). Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
+Sandbox mode uses \`newCredential()\` for authentication. Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire selected existing credentials into nodes like this:
 
 \`\`\`typescript
 credentials: {
-  openWeatherMapApi: { id: 'yXYBqho73obh58ZS', name: 'OpenWeatherMap account' }
+  openWeatherMapApi: newCredential('OpenWeatherMap account', 'yXYBqho73obh58ZS')
 }
 \`\`\`
 
-The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
+For credentials that are not selected yet, keep the credential type key and omit the ID:
 
-Only wire a credential when the user selected it, named an unambiguous credential, or you are preserving a credential already present on an existing workflow. If the credential is absent, ambiguous, fake, null, or not explicitly selected, omit it and rely on \`submit-workflow\` to mock it for verification. Do not call credential setup or workflow setup during build; setup is shown after verification by the orchestrator.
+\`\`\`typescript
+credentials: {
+  openWeatherMapApi: newCredential('OpenWeatherMap account')
+}
+\`\`\`
+
+The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. Exact IDs and names come from \`credentials(action="list")\`.
+
+Use the two-argument form only when the user selected the credential, there is exactly one matching credential, or you are preserving a credential already present on an existing workflow. If no exact credential was selected, more than one credential matches, or the service needs a new credential, use \`newCredential('Suggested Credential Name')\`; \`submit-workflow\` mocks it for verification and the orchestrator handles setup after the build.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
@@ -595,13 +586,13 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
 - **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/run/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
-- **Do NOT call \`workflows(action="publish")\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
+- **Do NOT call \`workflows(action="publish")\`.** Publishing is outside the builder's scope. Your job ends at a successful submit and the required verification step.
 
 ## Mandatory Process
 
 ### For simple workflows (< 5 nodes, single integration):
 
-1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. Wire a credential only when it was explicitly selected by the user, named unambiguously, or already present on the workflow you are updating. If a required credential is missing or ambiguous, omit it; \`submit-workflow\` records the mocked credential and the orchestrator routes to setup after verification.
+1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. Use \`newCredential('Name', 'id')\` only for an explicitly selected, exactly matched, or existing workflow credential. For unresolved credentials, use \`newCredential('Suggested Name')\`; \`submit-workflow\` records the mocked credential and the orchestrator routes to setup after verification.
 
 2. **Discover nodes**:
    a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`nodes(action="suggested")\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
@@ -621,7 +612,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
    - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
-   - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
+   - **Never use fake IDs for discoverable resources.** Use \`placeholder()\` when the user needs to choose or create the resource after the build. For user-provided values, follow the placeholder rules in "SDK Code Rules".
    - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
@@ -646,7 +637,7 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 
 1. **Discover credentials** (same as above).
 2. **Discover nodes and get schemas** (same as above).
-3. **Resolve real resource IDs** (same as above — call \`nodes(action="explore-resources")\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, build a setup workflow to create it.
+3. **Resolve real resource IDs** (same as above — call \`nodes(action="explore-resources")\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, use a placeholder unless the user explicitly asked you to create that resource.
 4. **Decompose** the workflow into logical chunks. Each chunk is a standalone sub-workflow with 2-4 nodes covering one capability (e.g., "fetch and format weather data", "generate AI recommendation", "store to data table").
 5. **For each chunk**:
    a. Write the chunk to \`${workspaceRoot}/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
@@ -655,7 +646,7 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish — the user will decide when to publish after testing. If you created supporting sub-workflows, mention that they must be published before the parent workflow can run in production.
+8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish and do not make publishing a blocker; the orchestrator or user handles go-live decisions outside the builder.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

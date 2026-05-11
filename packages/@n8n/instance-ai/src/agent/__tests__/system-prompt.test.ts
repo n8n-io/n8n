@@ -170,6 +170,20 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('Always run your own verification');
 		});
 
+		it('routes verified checkpoint workflows with setup needs through workflow setup before completion', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('workflows(action="setup")');
+			expect(prompt).toContain('outcome.mockedCredentialsByNode');
+			expect(prompt).toContain('outcome.mockedCredentialTypes');
+			expect(prompt).toContain('outcome.hasUnresolvedPlaceholders');
+			expect(prompt).toContain('before `complete-checkpoint`');
+			expect(prompt).toContain('deferred: true');
+			expect(prompt).toContain(
+				'Do not call `credentials(action="setup")` or `apply-workflow-credentials`',
+			);
+		});
+
 		it('tells the orchestrator it may patch during a checkpoint and will re-enter the same checkpoint', () => {
 			const prompt = getSystemPrompt({});
 

@@ -346,8 +346,8 @@ Before writing code that uses external services, **resolve real resource IDs**:
 
 ### Publishing
 
-Do NOT call \`workflows(action="publish")\`. Publishing is the user's decision after testing. Your job ends at a successful submit and verification.
-If you created supporting sub-workflows, mention that they must be published before the parent workflow can run in production.
+Do NOT call \`workflows(action="publish")\`. Publishing is outside the builder's scope. Your job ends at a successful submit and verification.
+Do not make publishing a blocker in the builder result; the orchestrator or user handles go-live decisions outside this build task.
 `;
 
 function hashContent(content: string | null): string {
@@ -811,14 +811,7 @@ export async function startBuildWorkflowAgentTask(
 							if (!reusedBuilderSession && workflowId && domainContext) {
 								try {
 									const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
-									let rawCode = generateWorkflowCode(json);
-									// Preserve the original id so credentials stay bound across saves.
-									// Stripping the id makes the credential unresolved, so the build
-									// path mocks it until the user completes setup.
-									rawCode = rawCode.replace(
-										/newCredential\('([^']*)',\s*'([^']*)'\)/g,
-										"{ id: '$2', name: '$1' }",
-									);
+									const rawCode = generateWorkflowCode(json);
 									const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
 									if (workspace.filesystem) {
 										await workspace.filesystem.writeFile(`${root}/src/workflow.ts`, code, {

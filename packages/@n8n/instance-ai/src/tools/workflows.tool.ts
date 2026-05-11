@@ -146,45 +146,127 @@ type PublishInput = z.infer<typeof publishExtendedAction>;
 
 type WorkflowsToolSurface = 'full' | 'orchestrator' | 'builder';
 
-const builderInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [listAction, getAction, getAsCodeAction]),
-);
+type WorkflowAction =
+	| 'list'
+	| 'get'
+	| 'get-as-code'
+	| 'delete'
+	| 'unarchive'
+	| 'setup'
+	| 'publish'
+	| 'unpublish'
+	| 'list-versions'
+	| 'get-version'
+	| 'restore-version'
+	| 'update-version';
 
-function buildInputSchema(context: InstanceAiContext, surface: WorkflowsToolSurface) {
-	if (surface === 'builder') {
-		return builderInputSchema;
-	}
+type WorkflowActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
 
+const WORKFLOW_ACTION_ORDER = [
+	'list',
+	'get',
+	'get-as-code',
+	'delete',
+	'unarchive',
+	'setup',
+	'publish',
+	'unpublish',
+	'list-versions',
+	'get-version',
+	'restore-version',
+	'update-version',
+] as const satisfies readonly WorkflowAction[];
+
+const BUILDER_WORKFLOW_ACTION_BLOCKLIST = new Set<WorkflowAction>([
+	'delete',
+	'unarchive',
+	'setup',
+	'publish',
+	'unpublish',
+	'list-versions',
+	'get-version',
+	'restore-version',
+	'update-version',
+]);
+
+const ORCHESTRATOR_WORKFLOW_ACTION_BLOCKLIST = new Set<WorkflowAction>(['get-as-code']);
+const EMPTY_WORKFLOW_ACTION_BLOCKLIST = new Set<WorkflowAction>();
+
+const WORKFLOW_ACTION_LABELS = {
+	list: 'list',
+	get: 'inspect',
+	'get-as-code': 'convert existing workflows to TypeScript SDK code',
+	delete: 'archive',
+	unarchive: 'restore archived workflows',
+	setup: 'set up credentials and parameters',
+	publish: 'publish',
+	unpublish: 'unpublish',
+	'list-versions': 'list versions',
+	'get-version': 'inspect versions',
+	'restore-version': 'restore versions',
+	'update-version': 'update version metadata',
+} satisfies Record<WorkflowAction, string>;
+
+function getSupportedWorkflowActionSchemas(
+	context: InstanceAiContext,
+): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
 
-	const actions: Array<z.ZodObject<z.ZodRawShape>> = [
-		listAction,
-		getAction,
-		deleteAction,
-		unarchiveAction,
-		setupAction,
-		hasNamedVersions ? publishExtendedAction : publishBaseAction,
-		unpublishAction,
-	];
+	return {
+		list: listAction,
+		get: getAction,
+		'get-as-code': getAsCodeAction,
+		delete: deleteAction,
+		unarchive: unarchiveAction,
+		setup: setupAction,
+		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
+		unpublish: unpublishAction,
+		...(hasVersions
+			? {
+					'list-versions': listVersionsAction,
+					'get-version': getVersionAction,
+					'restore-version': restoreVersionAction,
+				}
+			: {}),
+		...(hasNamedVersions ? { 'update-version': updateVersionAction } : {}),
+	};
+}
 
-	// get-as-code excluded from orchestrator surface
-	if (surface !== 'orchestrator') {
-		actions.push(getAsCodeAction);
+function getWorkflowActionBlocklist(surface: WorkflowsToolSurface): ReadonlySet<WorkflowAction> {
+	if (surface === 'builder') return BUILDER_WORKFLOW_ACTION_BLOCKLIST;
+	if (surface === 'orchestrator') return ORCHESTRATOR_WORKFLOW_ACTION_BLOCKLIST;
+	return EMPTY_WORKFLOW_ACTION_BLOCKLIST;
+}
+
+function getWorkflowActions(
+	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
+	surface: WorkflowsToolSurface,
+): WorkflowAction[] {
+	const blockedActions = getWorkflowActionBlocklist(surface);
+	return WORKFLOW_ACTION_ORDER.filter(
+		(action) => supportedSchemas[action] !== undefined && !blockedActions.has(action),
+	);
+}
+
+function buildInputSchema(context: InstanceAiContext, surface: WorkflowsToolSurface) {
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const actionSchemas: WorkflowActionSchema[] = [];
+	for (const action of getWorkflowActions(supportedSchemas, surface)) {
+		const schema = supportedSchemas[action];
+		if (schema) actionSchemas.push(schema);
 	}
 
-	// Version-related actions only when the context supports them
-	if (hasVersions) {
-		actions.push(listVersionsAction);
-		actions.push(getVersionAction);
-		actions.push(restoreVersionAction);
-	}
-	if (hasNamedVersions) {
-		actions.push(updateVersionAction);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return sanitizeInputSchema(z.discriminatedUnion('action', actions as any));
+	return sanitizeInputSchema(
+		z.discriminatedUnion(
+			'action',
+			actionSchemas as unknown as [
+				WorkflowActionSchema,
+				WorkflowActionSchema,
+				...WorkflowActionSchema[],
+			],
+		),
+	);
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -711,12 +793,23 @@ function formatFieldValue(value: string | null): string {
 	return `"${value}"`;
 }
 
-function getToolDescription(surface: WorkflowsToolSurface): string {
+function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
+	const labels = actions.map((action) => WORKFLOW_ACTION_LABELS[action]);
+	if (labels.length <= 2) return labels.join(' and ');
+
+	const lastLabel = labels[labels.length - 1];
+	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
+}
+
+function getToolDescription(context: InstanceAiContext, surface: WorkflowsToolSurface): string {
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, surface));
+
 	if (surface === 'builder') {
-		return 'Inspect workflows during build — list workflows, get workflow details, and convert existing workflows to TypeScript SDK code.';
+		return `Inspect workflows during build — ${actionList}.`;
 	}
 
-	return 'Manage workflows — list, inspect, archive, restore, set up, publish, unpublish, and manage versions. Workflow results use activeVersionId: null for unpublished workflows.';
+	return `Manage workflows — ${actionList}. Workflow results use activeVersionId: null for unpublished workflows.`;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
@@ -735,7 +828,7 @@ export function createWorkflowsTool(
 
 	return createTool({
 		id: 'workflows',
-		description: getToolDescription(surface),
+		description: getToolDescription(context, surface),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

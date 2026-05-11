@@ -286,8 +286,7 @@ export function createSubmitWorkflowTool(
 	return createTool({
 		id: 'submit-workflow',
 		description:
-			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. Publishing is a separate user-controlled workflow action.',
+			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, and saves it to n8n as a draft.',
 		inputSchema: submitWorkflowInputSchema,
 		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
