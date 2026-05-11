@@ -168,3 +168,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Renovate security update: langsmith@0.5.19
+  - langsmith@0.5.19
