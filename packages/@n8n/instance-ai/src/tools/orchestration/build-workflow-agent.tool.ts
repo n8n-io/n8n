@@ -360,7 +360,7 @@ async function buildOutcomeWithLatestVerification(
 	return await finalBuildOutcome(context, workItemId, outcome);
 }
 
-const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
+export const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
 You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
 
@@ -1044,6 +1044,7 @@ export async function startBuildWorkflowAgentTask(
 										waitForConfirmation: context.waitForConfirmation,
 										drainCorrections,
 										waitForCorrection,
+										onActivity: () => context.touchBackgroundTask?.(taskId),
 										llmStepTraceHooks,
 										maxSteps: MAX_STEPS.BUILDER,
 										resumeOptions,
@@ -1321,6 +1322,7 @@ export async function startBuildWorkflowAgentTask(
 								waitForConfirmation: context.waitForConfirmation,
 								drainCorrections,
 								waitForCorrection,
+								onActivity: () => context.touchBackgroundTask?.(taskId),
 								llmStepTraceHooks,
 								maxSteps: MAX_STEPS.BUILDER,
 								resumeOptions,

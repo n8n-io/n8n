@@ -6,23 +6,30 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import { useInstanceAiStore } from '../instanceAi.store';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { InstanceAiEmptyStateSuggestion } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
+type AmendContext = { agentId: string; role: string } | null;
+
 const props = defineProps<{
 	isStreaming: boolean;
+	isSendingMessage: boolean;
+	isAwaitingConfirmation: boolean;
+	currentThreadId: string;
+	amendContext: AmendContext;
+	contextualSuggestion: string | null;
+	researchMode: boolean;
 	suggestions?: readonly InstanceAiEmptyStateSuggestion[];
 }>();
 
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
+	'toggle-research-mode': [];
 }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
@@ -33,12 +40,12 @@ defineExpose({
 	focus: () => chatInputRef.value?.focus(),
 });
 
-const isBusy = computed(() => props.isStreaming || store.isSendingMessage);
+const isBusy = computed(() => props.isStreaming || props.isSendingMessage);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => store.isAwaitingConfirmation);
+const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() =>
@@ -48,7 +55,7 @@ const canShowSuggestions = computed(
 		!isGatedBySetup.value,
 );
 const visibleSuggestionThreadId = computed(() =>
-	canShowSuggestions.value ? store.currentThreadId : null,
+	canShowSuggestions.value ? props.currentThreadId : null,
 );
 
 const placeholder = computed(() => {
@@ -58,13 +65,13 @@ const placeholder = computed(() => {
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);
 	}
-	if (store.amendContext) {
+	if (props.amendContext) {
 		return i18n.baseText('instanceAi.input.amendPlaceholder', {
-			interpolate: { role: store.amendContext.role },
+			interpolate: { role: props.amendContext.role },
 		});
 	}
-	if (store.contextualSuggestion) {
-		return store.contextualSuggestion;
+	if (props.contextualSuggestion) {
+		return props.contextualSuggestion;
 	}
 	return i18n.baseText('instanceAi.input.placeholder');
 });
@@ -75,7 +82,7 @@ watch(
 		if (threadId) {
 			promptSuggestionsTelemetry.trackSuggestionsShown({
 				threadId,
-				researchMode: store.researchMode,
+				researchMode: props.researchMode,
 			});
 			return;
 		}
@@ -132,8 +139,8 @@ function handleStop() {
 }
 
 function handleTabAutocomplete() {
-	if (!inputText.value && store.contextualSuggestion) {
-		inputText.value = store.contextualSuggestion;
+	if (!inputText.value && props.contextualSuggestion) {
+		inputText.value = props.contextualSuggestion;
 	}
 }
 
@@ -150,8 +157,8 @@ function handleFileRemove(file: File) {
 
 function getTelemetryContext() {
 	return {
-		threadId: store.currentThreadId,
-		researchMode: store.researchMode,
+		threadId: props.currentThreadId,
+		researchMode: props.researchMode,
 	};
 }
 
@@ -225,9 +232,9 @@ const resizable = computed(() => {
 					:show-after="300"
 				>
 					<button
-						:class="[$style.researchToggle, { [$style.active]: store.researchMode }]"
+						:class="[$style.researchToggle, { [$style.active]: props.researchMode }]"
 						data-test-id="instance-ai-research-toggle"
-						@click="store.toggleResearchMode()"
+						@click="emit('toggle-research-mode')"
 					>
 						<svg
 							:class="$style.researchIcon"

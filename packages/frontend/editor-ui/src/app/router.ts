@@ -25,6 +25,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -165,7 +167,21 @@ const allowResourceCenterRoute = (
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
-		redirect: '/home/workflows',
+		// Stub component — beforeEnter always navigates away, so it is never rendered.
+		// Required because vue-router resolves `redirect` before guards run, and we need
+		// stores populated by `initializeCore` to decide where to send the user.
+		component: { render: () => null },
+		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (
+				settingsStore.isModuleActive('instance-ai') &&
+				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				canMessageInstanceAi()
+			) {
+				return next({ name: INSTANCE_AI_VIEW });
+			}
+			next('/home/workflows');
+		},
 		meta: {
 			middleware: ['authenticated'],
 		},
