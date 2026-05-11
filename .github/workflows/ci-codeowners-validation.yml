@@ -1,5 +1,5 @@
 # .github/workflows/ci-codeowners-validation.yml
-name: Validate CODEOWNERS
+name: "CI: Validate CODEOWNERS"
 
 # Only run when CODEOWNERS or packages change
 on:

@@ -4,56 +4,102 @@ import type { AgentDbMessage, Message } from '../types/sdk/message';
 describe('InMemoryMemory working memory', () => {
 	it('returns null for unknown key', async () => {
 		const mem = new InMemoryMemory();
-		expect(await mem.getWorkingMemory({ threadId: 'thread-x', resourceId: 'unknown' })).toBeNull();
+		expect(
+			await mem.getWorkingMemory({
+				threadId: 'thread-x',
+				resourceId: 'unknown',
+				scope: 'resource',
+			}),
+		).toBeNull();
 	});
 
 	it('saves and retrieves working memory keyed by resourceId', async () => {
 		const mem = new InMemoryMemory();
 		await mem.saveWorkingMemory(
-			{ threadId: 'thread-1', resourceId: 'user-1' },
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' },
 			'# Context\n- Name: Alice',
 		);
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' })).toBe(
-			'# Context\n- Name: Alice',
-		);
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' }),
+		).toBe('# Context\n- Name: Alice');
 	});
 
 	it('overwrites on subsequent save', async () => {
 		const mem = new InMemoryMemory();
-		await mem.saveWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' }, 'v1');
-		await mem.saveWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' }, 'v2');
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' })).toBe('v2');
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' },
+			'v1',
+		);
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' },
+			'v2',
+		);
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' }),
+		).toBe('v2');
 	});
 
 	it('isolates by resourceId (resource scope)', async () => {
 		const mem = new InMemoryMemory();
-		await mem.saveWorkingMemory({ threadId: 'thread-a', resourceId: 'user-1' }, 'Alice data');
-		await mem.saveWorkingMemory({ threadId: 'thread-b', resourceId: 'user-2' }, 'Bob data');
-		expect(await mem.getWorkingMemory({ threadId: 'thread-a', resourceId: 'user-1' })).toBe(
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-a', resourceId: 'user-1', scope: 'resource' },
 			'Alice data',
 		);
-		expect(await mem.getWorkingMemory({ threadId: 'thread-b', resourceId: 'user-2' })).toBe(
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-b', resourceId: 'user-2', scope: 'resource' },
 			'Bob data',
 		);
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-a', resourceId: 'user-1', scope: 'resource' }),
+		).toBe('Alice data');
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-b', resourceId: 'user-2', scope: 'resource' }),
+		).toBe('Bob data');
 	});
 
 	it('returns null for unknown threadId (thread scope)', async () => {
 		const mem = new InMemoryMemory();
-		expect(await mem.getWorkingMemory({ threadId: 'unknown' })).toBeNull();
+		expect(await mem.getWorkingMemory({ threadId: 'unknown', scope: 'thread' })).toBeNull();
 	});
 
 	it('saves and retrieves working memory keyed by threadId', async () => {
 		const mem = new InMemoryMemory();
-		await mem.saveWorkingMemory({ threadId: 'thread-1' }, '# Thread Notes');
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1' })).toBe('# Thread Notes');
+		await mem.saveWorkingMemory({ threadId: 'thread-1', scope: 'thread' }, '# Thread Notes');
+		expect(await mem.getWorkingMemory({ threadId: 'thread-1', scope: 'thread' })).toBe(
+			'# Thread Notes',
+		);
 	});
 
 	it('isolates by threadId (thread scope)', async () => {
 		const mem = new InMemoryMemory();
-		await mem.saveWorkingMemory({ threadId: 'thread-1' }, 'data for thread 1');
-		await mem.saveWorkingMemory({ threadId: 'thread-2' }, 'data for thread 2');
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1' })).toBe('data for thread 1');
-		expect(await mem.getWorkingMemory({ threadId: 'thread-2' })).toBe('data for thread 2');
+		await mem.saveWorkingMemory({ threadId: 'thread-1', scope: 'thread' }, 'data for thread 1');
+		await mem.saveWorkingMemory({ threadId: 'thread-2', scope: 'thread' }, 'data for thread 2');
+		expect(await mem.getWorkingMemory({ threadId: 'thread-1', scope: 'thread' })).toBe(
+			'data for thread 1',
+		);
+		expect(await mem.getWorkingMemory({ threadId: 'thread-2', scope: 'thread' })).toBe(
+			'data for thread 2',
+		);
+	});
+
+	it('isolates entries by scope when threadId and resourceId match', async () => {
+		const mem = new InMemoryMemory();
+		await mem.saveWorkingMemory({ threadId: 'shared-id', scope: 'thread' }, 'thread memory');
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'shared-id', scope: 'resource' },
+			'resource memory',
+		);
+
+		expect(await mem.getWorkingMemory({ threadId: 'shared-id', scope: 'thread' })).toBe(
+			'thread memory',
+		);
+		expect(
+			await mem.getWorkingMemory({
+				threadId: 'thread-1',
+				resourceId: 'shared-id',
+				scope: 'resource',
+			}),
+		).toBe('resource memory');
 	});
 });
 

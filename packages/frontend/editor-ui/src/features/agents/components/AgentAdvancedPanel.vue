@@ -55,7 +55,6 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
-const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
 
 watch(
 	() => props.config,
@@ -66,7 +65,6 @@ watch(
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
-		requireToolApproval.value = cfg.config?.requireToolApproval ?? false;
 	},
 	{ deep: true },
 );
@@ -116,13 +114,6 @@ function onConcurrencyInput(value: string) {
 	if (!Number.isFinite(n) || n < 1) return;
 	toolCallConcurrency.value = n;
 	void emitConcurrency();
-}
-
-function onApprovalToggle(value: boolean) {
-	requireToolApproval.value = value;
-	emit('update:config', {
-		config: { ...props.config?.config, requireToolApproval: value },
-	});
 }
 
 const thinkingDisabledReason = computed(() =>
@@ -221,23 +212,6 @@ const thinkingDisabledReason = computed(() =>
 					:class="$style.shortInput"
 					data-testid="agent-concurrency-input"
 					@update:model-value="onConcurrencyInput"
-				/>
-			</div>
-
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.advanced.approval.label')
-					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
-					</N8nText>
-				</div>
-				<N8nSwitch2
-					:model-value="requireToolApproval"
-					:disabled="props.disabled"
-					data-testid="agent-require-approval-toggle"
-					@update:model-value="(v) => onApprovalToggle(Boolean(v))"
 				/>
 			</div>
 		</div>

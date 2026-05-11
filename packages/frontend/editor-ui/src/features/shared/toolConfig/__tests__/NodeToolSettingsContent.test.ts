@@ -150,10 +150,12 @@ describe('NodeToolSettingsContent', () => {
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
 		environmentsStore.variablesAsObject = {};
 		credentialsStore.allCredentials = [];
+		credentialsStore.setCredentials = vi.fn();
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue(undefined);
 		projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
 		projectsStore.setCurrentProject = vi.fn();
+		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
 	it('should hide settings tab when there are no settings', () => {
@@ -269,6 +271,56 @@ describe('NodeToolSettingsContent', () => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('reloads personal project credentials when the shared store is already populated', async () => {
+		credentialsStore.allCredentials = [
+			{
+				id: 'team-cred',
+				name: 'Team credential',
+				type: 'testApi',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				isManaged: false,
+				data: '',
+			},
+		];
+
+		renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
+		credentialsStore.allCredentials = [
+			{
+				id: 'personal-cred',
+				name: 'Personal credential',
+				type: 'testApi',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				isManaged: false,
+				data: '',
+			},
+		];
+
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: 'team-project' },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'team-project',
 			});
 		});
 	});
