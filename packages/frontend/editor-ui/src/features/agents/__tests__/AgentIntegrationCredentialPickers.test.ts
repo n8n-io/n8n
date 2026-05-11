@@ -186,6 +186,7 @@ describe('agent integration credential picker usage', () => {
 			'project-1',
 			undefined,
 			undefined,
+			undefined,
 			{ hideAskAssistant: true },
 		);
 	});
@@ -215,6 +216,7 @@ describe('agent integration credential picker usage', () => {
 			false,
 			false,
 			'project-1',
+			undefined,
 			undefined,
 			undefined,
 			{ hideAskAssistant: true },

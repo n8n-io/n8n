@@ -18,7 +18,6 @@ import {
 import { SettingsStore } from './settings-store';
 import {
 	editPermissions,
-	ensureSettingsFile,
 	isAllDeny,
 	printPermissionsTable,
 	promptFilesystemDir,
@@ -173,7 +172,7 @@ async function main(
 		process.exit(1);
 	}
 
-	await ensureSettingsFile(config);
+	await SettingsStore.ensureInitialized(config);
 
 	const settingsStore = await SettingsStore.create();
 	const defaults = settingsStore.getDefaults(parsed.config);
