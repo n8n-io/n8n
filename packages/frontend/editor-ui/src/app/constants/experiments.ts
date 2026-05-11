@@ -100,7 +100,7 @@ export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hu
 
 export const FLOATING_CHAT_HUB_PANEL_EXPERIMENT = createExperiment('078_floating_chat_hub_panel');
 export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
-	'080_surface_mcp_to_new_cloud_users',
+	'081_surface_mcp_to_new_cloud_users',
 	{
 		control: 'control',
 		variant1: 'variant-1',
