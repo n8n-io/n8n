@@ -315,11 +315,11 @@ export class FrontendService {
 				builtIn:
 					process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',')
 						?.map((p) => p.trim())
-						.filter(Boolean) ?? undefined,
+						?.filter(Boolean) ?? undefined,
 				external:
 					process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',')
 						?.map((p) => p.trim())
-						.filter(Boolean) ?? undefined,
+						?.filter(Boolean) ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
