@@ -543,11 +543,18 @@ describe('workflows tool', () => {
 
 	describe('setup action', () => {
 		it('should analyze workflow and suspend for user setup', async () => {
+			const actionableSetupRequest = {
+				node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+				credentialType: 'slackApi',
+				needsAction: true,
+			};
 			const setupRequests = [
+				actionableSetupRequest,
 				{
-					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
-					credentialType: 'slackApi',
-					needsAction: true,
+					node: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					isTrigger: true,
+					isTestable: true,
+					needsAction: false,
 				},
 			];
 			(analyzeWorkflow as jest.Mock).mockResolvedValue(setupRequests);
@@ -565,9 +572,31 @@ describe('workflows tool', () => {
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Configure credentials for your workflow',
 				severity: 'info',
-				setupRequests,
+				setupRequests: [actionableSetupRequest],
 				workflowId: 'wf1',
 			});
+		});
+
+		it('should return success when setup analysis only has non-actionable requests', async () => {
+			(analyzeWorkflow as jest.Mock).mockResolvedValue([
+				{
+					node: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					isTrigger: true,
+					isTestable: true,
+					needsAction: false,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
+			expect(suspend).not.toHaveBeenCalled();
 		});
 
 		it('should return success when no nodes need setup', async () => {

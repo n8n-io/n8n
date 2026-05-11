@@ -347,6 +347,7 @@ async function handleLater() {
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
+							hide-ask-assistant
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
 						<N8nButton

@@ -259,12 +259,17 @@ async function handleSetup(
 	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
 	const isFinalize = input.credentialFlow?.stage === 'finalize';
 
-	// State 1: First call — look up existing credentials per type and suspend
+	// State 1: First call — look up existing credentials per type and suspend.
+	// Scope the lookup to `projectId` when provided so the candidates match what
+	// the workflow being built can actually use.
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
 				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
-					const existing = await context.credentialService.list({ type: req.credentialType });
+					const existing = await context.credentialService.list({
+						type: req.credentialType,
+						...(input.projectId ? { projectId: input.projectId } : {}),
+					});
 					return {
 						credentialType: req.credentialType,
 						reason: req.reason ?? `Required for ${req.credentialType}`,
