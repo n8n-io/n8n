@@ -693,13 +693,7 @@ export class HttpRequestV1 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			let url = this.getNodeParameter('url', itemIndex) as string;
-
-			url = url.trim();
-
-			if (!url) {
-				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
-			const url = this.getNodeParameter('url', itemIndex);
+			let url = this.getNodeParameter('url', itemIndex);
 
 			if (typeof url !== 'string') {
 				const actualType = url === null ? 'null' : typeof url;
@@ -707,6 +701,12 @@ export class HttpRequestV1 implements INodeType {
 					this.getNode(),
 					`URL parameter must be a string, got ${actualType}`,
 				);
+			}
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
 			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
