@@ -128,8 +128,3 @@ export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'update_workflow',
 	displayTitle: 'Updating workflow',
 };
-
-export const MCP_UPDATE_PARTIAL_WORKFLOW_TOOL: BuilderToolBase = {
-	toolName: 'update_partial_workflow',
-	displayTitle: 'Updating workflow',
-};
