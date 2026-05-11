@@ -2,16 +2,15 @@
 
 Stateful real-model evals for the n8n agent memory stack.
 
-These evals are intentionally not a CI gate. They measure whether the current SDK memory behavior helps across realistic support-style conversations:
+These evals are intentionally not a CI gate. They measure whether the current SDK memory behavior helps across realistic multi-domain conversations:
 
-- `<agent-profile>`: durable persona, role, and operating style for this agent.
-- `<user-profile>`: stable user/resource preferences and context.
+- `<user-profile>`: stable user/resource preferences and context for this agent.
 - `<session-memory>`: current-thread objective, state, decisions, and follow-ups.
-- `<memory>`: source-backed episodic Case memory entries retrieved for the turn.
+- `<memory>`: source-backed episodic memory entries retrieved for the turn.
 
 The runner uses the production SDK paths: `Memory.profiles(...)`, `Memory.episodicMemory(...)`, `InMemoryMemory`, real profile updates, real episodic extraction, auto-injection, and the built-in `recall_memory` tool.
 
-The full suite contains 50 scenarios. The smoke suite keeps the first five scenarios stable so local checks stay cheap.
+The full suite contains 100 scenarios covering user-profile quality, session memory, episodic extraction, retrieval, scope isolation, dedupe, prompt injection, and abstention. The smoke suite keeps a small stable subset so local checks stay cheap.
 
 ## Requirements
 
@@ -25,11 +24,16 @@ Optional:
 ```bash
 N8N_MEMORY_EVAL_AGENT_MODEL=anthropic/claude-haiku-4-5
 N8N_MEMORY_EVAL_LIMIT=5
-N8N_MEMORY_EVAL_CATEGORY=case-extraction
+N8N_MEMORY_EVAL_CATEGORY=episodic-extraction
 N8N_MEMORY_EVAL_REPEATS=3
+N8N_MEMORY_EVAL_CONCURRENCY=2
 N8N_MEMORY_EVAL_JUDGE=1
 N8N_MEMORY_EVAL_JUDGE_MODEL=anthropic/claude-haiku-4-5
 ```
+
+`--concurrency` / `N8N_MEMORY_EVAL_CONCURRENCY` runs scenario-repeat jobs in parallel.
+The default is `1` to preserve deterministic local behavior and avoid accidental rate-limit pressure.
+For judged full runs, start with `--concurrency 2` and increase only if the provider limits tolerate it.
 
 ## Commands
 
@@ -81,7 +85,7 @@ Full run with LLM judge:
   set +a
 
   cd packages/@n8n/agents
-  pnpm exec tsx evals/memory/run.ts --suite full --repeats 3 --judge
+  pnpm exec tsx evals/memory/run.ts --suite full --repeats 3 --judge --concurrency 2
 )
 ```
 
@@ -102,8 +106,9 @@ packages/@n8n/agents/evals/memory/results/run-<timestamp>/
 The directory is gitignored and contains:
 
 - `raw-results.json`: every scenario turn, answer, profiles, session memory, entries, retrieval output, tool usage, deterministic scoring checks, optional judge score, latency, and available token usage.
-- `summary.json`: aggregate metrics, repeat summaries, and optional judge rates.
+- `summary.json`: aggregate metrics, repeat summaries, per-category repeat stats, model config, and optional judge rates.
 - `summary.md`: compact human-readable report.
+- `summary.html`: local self-contained report with inline CSS, n8n-style colors, repeat-averaged metrics, category breakdowns, strengths, weaknesses, follow-ups, and failure examples.
 
 ## Scoring
 

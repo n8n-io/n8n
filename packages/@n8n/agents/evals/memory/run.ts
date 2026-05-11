@@ -35,6 +35,8 @@ const DEFAULT_AGENT_MODEL = 'anthropic/claude-haiku-4-5';
 const DEFAULT_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 const DEFAULT_AUTO_INJECT_TOP_K = 12;
 const DEFAULT_RECALL_TOP_K = 12;
+const DEFAULT_TURN_TIMEOUT_MS = 180_000;
+const DEFAULT_JUDGE_TIMEOUT_MS = 120_000;
 
 const SESSION_MEMORY_TEMPLATE = [
 	'# Objective',
@@ -55,6 +57,7 @@ interface CliOptions {
 	limit?: number;
 	category?: MemoryEvalCategory;
 	repeats: number;
+	concurrency: number;
 	enforceThresholds: boolean;
 	validateOnly: boolean;
 	judge: boolean;
@@ -112,7 +115,6 @@ interface ScenarioRunResult {
 	retrieval: RetrievalRecord;
 	injectedMemory: string[];
 	userProfile: string;
-	agentProfile: string;
 	sessionMemory: string;
 	backgroundErrors: Array<{ message: string; source?: string }>;
 	judgeScore?: JudgeScore;
@@ -144,16 +146,34 @@ interface RepeatStats {
 	judgeMemoryPassRate: RateStats;
 }
 
+interface EvalModelConfig {
+	agentModel: string;
+	judgeModel: string;
+	embeddingModel: string;
+	autoInjectTopK: number;
+	recallTopK: number;
+}
+
 interface MemoryEvalCategorySummary extends CategorySummary {
 	judgeScenarios: number;
 	judgePassed: number;
 	judgePassRate: number | null;
 }
 
+interface CategoryRepeatStats {
+	category: MemoryEvalCategory;
+	scenarios: number;
+	runs: number;
+	passRate: RateStats;
+	answerPassRate: RateStats;
+	judgePassRate: RateStats;
+}
+
 interface Summary {
 	suite: MemoryEvalSuite;
 	generatedAt: string;
 	commit: string;
+	modelConfig: EvalModelConfig;
 	scenarios: number;
 	repeats: number;
 	totalRuns: number;
@@ -180,18 +200,27 @@ interface Summary {
 	totalTokens: number;
 	totalKnownCostUsd: number;
 	categorySummaries: MemoryEvalCategorySummary[];
+	categoryRepeatStats: CategoryRepeatStats[];
 	repeatSummaries: RepeatSummary[];
 	repeatStats: RepeatStats;
+}
+
+interface EvalJob {
+	order: number;
+	repeat: number;
+	scenario: MemoryEvalScenario;
 }
 
 function parseArgs(argv: string[]): CliOptions {
 	const opts: CliOptions = {
 		suite: 'smoke',
 		repeats: 1,
+		concurrency: 1,
 		enforceThresholds: false,
 		validateOnly: false,
 		judge: false,
 	};
+	let concurrencyFromCli = false;
 
 	for (let index = 0; index < argv.length; index++) {
 		const arg = argv[index];
@@ -207,6 +236,9 @@ function parseArgs(argv: string[]): CliOptions {
 			opts.category = parseCategory(argv[++index]);
 		} else if (arg === '--repeats') {
 			opts.repeats = parsePositiveInteger(argv[++index], '--repeats');
+		} else if (arg === '--concurrency') {
+			opts.concurrency = parsePositiveInteger(argv[++index], '--concurrency');
+			concurrencyFromCli = true;
 		} else if (arg === '--enforce-thresholds') {
 			opts.enforceThresholds = true;
 		} else if (arg === '--validate-only') {
@@ -228,6 +260,11 @@ function parseArgs(argv: string[]): CliOptions {
 	const envRepeats = process.env.N8N_MEMORY_EVAL_REPEATS;
 	if (envRepeats) {
 		opts.repeats = parsePositiveInteger(envRepeats, 'N8N_MEMORY_EVAL_REPEATS');
+	}
+
+	const envConcurrency = process.env.N8N_MEMORY_EVAL_CONCURRENCY;
+	if (!concurrencyFromCli && envConcurrency) {
+		opts.concurrency = parsePositiveInteger(envConcurrency, 'N8N_MEMORY_EVAL_CONCURRENCY');
 	}
 
 	const envCategory = process.env.N8N_MEMORY_EVAL_CATEGORY;
@@ -294,6 +331,14 @@ function validateScenarios(): string[] {
 		if (!scenario.recall.prompt.trim()) {
 			errors.push(`${scenario.id}: recall prompt is empty`);
 		}
+		if (hasThreadScopedAnswerExpectation(scenario)) {
+			const seedThreadIds = new Set(scenario.seedThreads.map((thread) => thread.id));
+			if (!seedThreadIds.has(scenario.recall.threadId)) {
+				errors.push(
+					`${scenario.id}: session-memory answer expectations must recall within a seed thread`,
+				);
+			}
+		}
 		for (const thread of scenario.seedThreads) {
 			if (thread.turns.length === 0) {
 				errors.push(`${scenario.id}/${thread.id}: expected at least one turn`);
@@ -301,6 +346,12 @@ function validateScenarios(): string[] {
 		}
 	}
 	return errors;
+}
+
+function hasThreadScopedAnswerExpectation(scenario: MemoryEvalScenario): boolean {
+	return (
+		scenario.category === 'session-memory' && (scenario.expect.answer?.contains?.length ?? 0) > 0
+	);
 }
 
 function selectScenarios(opts: CliOptions): MemoryEvalScenario[] {
@@ -318,6 +369,82 @@ function selectScenarios(opts: CliOptions): MemoryEvalScenario[] {
 	}
 
 	return scenarios;
+}
+
+function createEvalJobs(scenarios: MemoryEvalScenario[], repeats: number): EvalJob[] {
+	const jobs: EvalJob[] = [];
+	for (let repeat = 1; repeat <= repeats; repeat++) {
+		for (const scenario of scenarios) {
+			jobs.push({ order: jobs.length, repeat, scenario });
+		}
+	}
+	return jobs;
+}
+
+async function runEvalJobs(
+	jobs: EvalJob[],
+	opts: CliOptions,
+	config: EvalConfig,
+): Promise<ScenarioRunResult[]> {
+	const results = Array.from(
+		{ length: jobs.length },
+		(): ScenarioRunResult | undefined => undefined,
+	);
+	const workerCount = Math.min(opts.concurrency, jobs.length);
+	let nextJobIndex = 0;
+	let completed = 0;
+
+	async function runWorker(): Promise<void> {
+		while (true) {
+			const jobIndex = nextJobIndex;
+			nextJobIndex += 1;
+			if (jobIndex >= jobs.length) return;
+
+			const job = jobs[jobIndex];
+			if (job === undefined) {
+				throw new Error(`Missing eval job at index ${jobIndex}`);
+			}
+
+			const result = await runScenario(job.scenario, job.repeat, config);
+			if (opts.judge) {
+				result.judgeScore = await judgeScenario(result, config);
+			}
+
+			results[job.order] = result;
+			completed += 1;
+			printProgress(job, result, completed, jobs.length, opts.repeats);
+		}
+	}
+
+	const workers: Array<Promise<void>> = [];
+	for (let workerIndex = 0; workerIndex < workerCount; workerIndex++) {
+		workers.push(runWorker());
+	}
+	await Promise.all(workers);
+
+	return results.map((result, index) => {
+		if (result === undefined) {
+			throw new Error(`Missing eval result at index ${index}`);
+		}
+		return result;
+	});
+}
+
+function printProgress(
+	job: EvalJob,
+	result: ScenarioRunResult,
+	completed: number,
+	total: number,
+	repeats: number,
+): void {
+	const status = result.passed ? 'pass' : 'miss';
+	const toolUsed = result.recallTurn.toolCalls.includes(RECALL_MEMORY_TOOL_NAME);
+	const judgeStatus = result.judgeScore
+		? `; judge=${result.judgeScore.pass ? 'pass' : 'miss'}`
+		: '';
+	console.log(
+		`[${completed}/${total}] [${job.repeat}/${repeats}] ${job.scenario.id}: ${status}; recall_memory=${toolUsed ? 'yes' : 'no'}${judgeStatus}`,
+	);
 }
 
 function requireEvalConfig(opts: CliOptions): EvalConfig {
@@ -359,7 +486,7 @@ function createAgentForScenario(
 		.lastMessages(4)
 		.scope('thread')
 		.freeform(SESSION_MEMORY_TEMPLATE)
-		.profiles({ agentDescription: scenario.agentDescription })
+		.profiles()
 		.observationalMemory({ sync: true, compactionThreshold: 1 })
 		.episodicMemory({
 			sync: true,
@@ -378,7 +505,7 @@ function createAgentForScenario(
 function buildInstructions(scenario: MemoryEvalScenario): string {
 	return [
 		'You are a customer support engineering assistant.',
-		'Use <agent-profile>, <user-profile>, <memory>, and <session-memory> when they are present.',
+		'Use <user-profile>, <memory>, and <session-memory> when they are present.',
 		'Use source-backed case memory when it is relevant, but do not invent missing details.',
 		'If memory does not contain the answer, say that you do not know from memory.',
 		'Preserve exact identifiers, field names, dates, and causal directionality.',
@@ -436,11 +563,13 @@ async function runScenario(
 		const storedEntries = await getStoredEntries(memory, defaultScope);
 		const retrieval = await retrieveEntries(memory, scenario, recallScope, config);
 		const userProfile =
-			(await memory.getMemoryProfile({ scopeKind: 'resource', scopeId: defaultScope.resourceId }))
-				?.content ?? '';
-		const agentProfile =
-			(await memory.getMemoryProfile({ scopeKind: 'agent', scopeId: defaultScope.agentId }))
-				?.content ?? '';
+			(
+				await memory.getMemoryProfile({
+					scopeKind: 'user-profile',
+					agentId: defaultScope.agentId,
+					resourceId: defaultScope.resourceId,
+				})
+			)?.content ?? '';
 		const sessionMemory = await getSessionMemory(memory, scenario, defaultScope.resourceId);
 
 		const score = scoreScenario({
@@ -449,7 +578,6 @@ async function runScenario(
 			retrievedEntries: retrieval.entries.map((entry) => entry.content),
 			answer: recallTurn.answer,
 			userProfile,
-			agentProfile,
 			sessionMemory,
 			backgroundErrors: backgroundErrors.length,
 		});
@@ -465,7 +593,6 @@ async function runScenario(
 			retrieval,
 			injectedMemory: state.messageList.episodicMemory?.entries ?? [],
 			userProfile,
-			agentProfile,
 			sessionMemory,
 			backgroundErrors,
 		};
@@ -487,7 +614,6 @@ async function runScenario(
 			retrievedEntries: [],
 			answer: '',
 			userProfile: '',
-			agentProfile: '',
 			sessionMemory: '',
 			backgroundErrors: backgroundErrors.length + 1,
 		});
@@ -502,7 +628,6 @@ async function runScenario(
 			retrieval: { latencyMs: 0, entries: [] },
 			injectedMemory: [],
 			userProfile: '',
-			agentProfile: '',
 			sessionMemory: '',
 			backgroundErrors,
 			error: message,
@@ -515,6 +640,7 @@ async function judgeScenario(result: ScenarioRunResult, config: EvalConfig): Pro
 	try {
 		const { text } = await generateText({
 			model: createModel({ id: config.judgeModel, apiKey: config.anthropicApiKey }),
+			abortSignal: AbortSignal.timeout(DEFAULT_JUDGE_TIMEOUT_MS),
 			system: [
 				'You are an evaluation judge for a stateful AI memory system.',
 				'Judge semantic success, not literal keyword matching.',
@@ -553,15 +679,17 @@ function buildJudgePrompt(result: ScenarioRunResult): string {
 		'Scoring guidance:',
 		'- pass: the memory behavior satisfies the scenario intent overall.',
 		'- answerPass: the final answer uses memory appropriately and avoids harmful fabrication or leakage.',
-		'- profilePass: <agent-profile> and <user-profile> contain appropriate durable content and avoid obvious cross-contamination.',
+		'- profilePass: <user-profile> contains appropriate durable user/resource content and avoids task-local or cross-scope leakage.',
 		'- memoryPass: episodic entries, retrieval, and <session-memory> capture useful state without serious leakage.',
 		'- If deterministic checks are too literal, you may still pass semantically correct behavior.',
 		'- Deterministic "contains" expectations are keyword anchors, not positive semantic claims. For example, expected keyword "emojis" can be satisfied by "do not use emojis".',
-		'- scenario.expect.forbiddenEntries applies only to stored episodic entries. Do not apply it to <agent-profile>, <user-profile>, <session-memory>, or the final answer unless those sections have their own excludes.',
+		'- scenario.expect.forbiddenEntries applies only to stored episodic entries. Do not apply it to <user-profile>, <session-memory>, or the final answer unless those sections have their own excludes.',
 		'- Judge profile direction against the seed conversation, not the polarity you infer from keyword anchors.',
 		'- When there are no deterministic failed profile checks, do not invent a profile failure unless the stored profile clearly contradicts the seed conversation.',
 		'- If a profile expectation only has exclusions, an empty profile can be acceptable.',
-		'- <agent-profile> captures the agent persona, role, operating mode, and durable agent-specific rules.',
+		'- <session-memory> is thread-scoped in this eval harness.',
+		'- For session-memory scenarios where recallThreadId differs from all seed thread ids, do not fail the final answer for not using seed-thread <session-memory>; judge whether seed-thread <session-memory> captured state and whether the profile/answer avoided treating task-local state as durable.',
+		'- For session-memory scenarios where recallThreadId matches a seed thread id, the final answer should use that thread-local <session-memory> when the prompt asks for current thread state.',
 		'- <user-profile> captures stable facts and preferences about the user/resource, including communication style, workflow preferences, and priorities.',
 		'- If the answer or memory exposes another scope, fabricates remembered details, or misses the core requested memory behavior, fail.',
 		'',
@@ -578,6 +706,7 @@ function buildJudgePrompt(result: ScenarioRunResult): string {
 				deterministicChecks: result.score.checks,
 				seedThreads: result.scenario.seedThreads,
 				recallPrompt: result.scenario.recall.prompt,
+				recallThreadId: result.scenario.recall.threadId,
 				recallScope: result.scenario.recall.scope ?? null,
 			},
 			null,
@@ -588,10 +717,6 @@ function buildJudgePrompt(result: ScenarioRunResult): string {
 		'<deterministic-failed-checks>',
 		failedChecks.length ? JSON.stringify(failedChecks, null, 2) : '[]',
 		'</deterministic-failed-checks>',
-		'',
-		'<agent-profile>',
-		truncateForJudge(result.agentProfile),
-		'</agent-profile>',
 		'',
 		'<user-profile>',
 		truncateForJudge(result.userProfile),
@@ -686,7 +811,11 @@ async function generateTurn(
 	persistence: { threadId: string; agentId: string; resourceId: string },
 ): Promise<TurnRecord> {
 	const start = performance.now();
-	const result = await agent.generate(user, { persistence, maxIterations: 6 });
+	const result = await agent.generate(user, {
+		persistence,
+		maxIterations: 6,
+		abortSignal: AbortSignal.timeout(DEFAULT_TURN_TIMEOUT_MS),
+	});
 	const latencyMs = Math.round(performance.now() - start);
 	return {
 		...persistence,
@@ -753,6 +882,7 @@ async function getSessionMemory(
 function buildSummary(
 	opts: CliOptions,
 	results: ScenarioRunResult[],
+	config: EvalConfig,
 	commit: string,
 	generatedAt: string,
 ): Summary {
@@ -794,6 +924,13 @@ function buildSummary(
 		suite: opts.suite,
 		generatedAt,
 		commit,
+		modelConfig: {
+			agentModel: config.agentModel,
+			judgeModel: config.judgeModel,
+			embeddingModel: DEFAULT_EMBEDDING_MODEL,
+			autoInjectTopK: DEFAULT_AUTO_INJECT_TOP_K,
+			recallTopK: DEFAULT_RECALL_TOP_K,
+		},
 		scenarios: new Set(results.map((result) => result.scenario.id)).size,
 		repeats: opts.repeats,
 		totalRuns: results.length,
@@ -834,6 +971,7 @@ function buildSummary(
 		totalTokens: usages.reduce((total, usage) => total + usage.totalTokens, 0),
 		totalKnownCostUsd,
 		categorySummaries: summarizeCategoriesWithJudge(results),
+		categoryRepeatStats: summarizeCategoryRepeatStats(results),
 		repeatSummaries,
 		repeatStats: summarizeRepeatStats(repeatSummaries),
 	};
@@ -873,6 +1011,41 @@ function summarizeCategoriesWithJudge(results: ScenarioRunResult[]): MemoryEvalC
 			judgeScenarios: judged.length,
 			judgePassed,
 			judgePassRate: judged.length > 0 ? ratio(judgePassed, judged.length) : null,
+		};
+	});
+}
+
+function summarizeCategoryRepeatStats(results: ScenarioRunResult[]): CategoryRepeatStats[] {
+	const categories = [...new Set(results.map((result) => result.scenario.category))].sort();
+	return categories.map((category) => {
+		const rows = results.filter((result) => result.scenario.category === category);
+		const repeats = [...new Set(rows.map((result) => result.repeat))].sort((a, b) => a - b);
+		const perRepeat = repeats.map((repeat) => {
+			const repeatRows = rows.filter((result) => result.repeat === repeat);
+			const answered = repeatRows.filter((result) => result.score.answerPassed !== null);
+			const judged = repeatRows.filter(hasJudgeScore);
+			return {
+				passRate: ratio(
+					repeatRows.filter((result) => result.score.passed).length,
+					repeatRows.length,
+				),
+				answerPassRate: answered.length
+					? ratio(
+							answered.filter((result) => result.score.answerPassed === true).length,
+							answered.length,
+						)
+					: null,
+				judgePassRate: judgeRateFor(judged, 'pass'),
+			};
+		});
+
+		return {
+			category,
+			scenarios: new Set(rows.map((result) => result.scenario.id)).size,
+			runs: rows.length,
+			passRate: rateStats(perRepeat.map((repeat) => repeat.passRate)),
+			answerPassRate: rateStats(perRepeat.map((repeat) => repeat.answerPassRate)),
+			judgePassRate: rateStats(perRepeat.map((repeat) => repeat.judgePassRate)),
 		};
 	});
 }
@@ -948,6 +1121,7 @@ async function writeResults(
 	await writeFile(path.join(dir, 'raw-results.json'), JSON.stringify(results, null, 2));
 	await writeFile(path.join(dir, 'summary.json'), JSON.stringify(summary, null, 2));
 	await writeFile(path.join(dir, 'summary.md'), renderMarkdownSummary(summary, results));
+	await writeFile(path.join(dir, 'summary.html'), renderHtmlSummary(summary, results));
 	return dir;
 }
 
@@ -1038,11 +1212,597 @@ function formatMs(value: number | null): string {
 	return value === null ? 'n/a' : `${Math.round(value)} ms`;
 }
 
+function formatInteger(value: number): string {
+	return new Intl.NumberFormat('en-US').format(value);
+}
+
+function formatCost(value: number): string {
+	return `$${value.toFixed(4)}`;
+}
+
+function formatTimestamp(value: string): string {
+	const parsed = new Date(value);
+	if (Number.isNaN(parsed.getTime())) return value;
+	return value.replace(/\.\d{3}Z$/, 'Z').replace('T', ' ');
+}
+
 function blockquote(value: string): string {
 	return value
 		.split('\n')
 		.map((line) => `> ${line}`)
 		.join('\n');
+}
+
+function renderHtmlSummary(summary: Summary, results: ScenarioRunResult[]): string {
+	return [
+		'<!doctype html>',
+		'<html lang="en">',
+		'<head>',
+		'<meta charset="utf-8">',
+		'<meta name="viewport" content="width=device-width, initial-scale=1">',
+		'<title>n8n Memory Eval Report</title>',
+		'<style>',
+		renderHtmlStyles(),
+		'</style>',
+		'</head>',
+		'<body>',
+		'<main>',
+		renderHtmlHeader(summary),
+		renderHtmlMetricCards(summary),
+		renderHtmlCategoryBreakdown(summary),
+		renderHtmlOutcomeSections(summary, results),
+		renderHtmlFailureExamples(results),
+		'</main>',
+		'</body>',
+		'</html>',
+	].join('\n');
+}
+
+function renderHtmlStyles(): string {
+	return `
+:root {
+	color-scheme: light;
+	--bg: #f7f8fb;
+	--panel: #ffffff;
+	--text: #1f2430;
+	--muted: #667085;
+	--border: #d9dee8;
+	--accent: #ff6d5a;
+	--accent-dark: #c43f2f;
+	--ok: #0f7b5f;
+	--warn: #9a5b00;
+	--bad: #b42318;
+	--code: #f1f3f7;
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main { max-width: 1240px; margin: 0 auto; padding: 32px 24px 56px; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h1 { font-size: 30px; letter-spacing: 0; }
+h2 { margin-top: 28px; font-size: 20px; }
+h3 { font-size: 15px; }
+p { margin: 8px 0 0; }
+.hero {
+	border: 1px solid var(--border);
+	border-top: 4px solid var(--accent);
+	background: var(--panel);
+	padding: 24px;
+	border-radius: 8px;
+}
+.meta {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 10px;
+	margin-top: 18px;
+}
+.meta-item, .card, .callout, .example {
+	border: 1px solid var(--border);
+	background: var(--panel);
+	border-radius: 8px;
+}
+.meta-item {
+	padding: 10px 12px;
+	background: #fbfcfe;
+	min-width: 0;
+}
+.label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.value { margin-top: 3px; font-weight: 650; overflow-wrap: anywhere; }
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	gap: 12px;
+	margin-top: 14px;
+}
+.card { padding: 14px; min-height: 112px; }
+.metric { margin-top: 8px; font-size: 25px; font-weight: 720; }
+.sub { color: var(--muted); margin-top: 4px; font-size: 13px; }
+.section-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 14px;
+	margin-top: 14px;
+}
+.callout { padding: 16px; }
+.callout ul { margin: 10px 0 0; padding-left: 18px; }
+.callout li { margin: 6px 0; }
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+.bad { color: var(--bad); }
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 14px;
+	border: 1px solid var(--border);
+	background: var(--panel);
+	border-radius: 8px;
+	overflow: hidden;
+}
+.table-wrap {
+	overflow-x: auto;
+	margin-top: 14px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--panel);
+}
+.table-wrap table {
+	min-width: 760px;
+	margin-top: 0;
+	border: 0;
+}
+th, td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; background: #fbfcfe; }
+td.number, th.number { text-align: right; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+.pill {
+	display: inline-block;
+	padding: 2px 7px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: #fbfcfe;
+	font-size: 12px;
+	color: var(--muted);
+}
+.examples { display: grid; gap: 14px; margin-top: 14px; }
+.example { padding: 16px; }
+.example-header {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+details {
+	border-top: 1px solid var(--border);
+	padding-top: 10px;
+	margin-top: 10px;
+}
+summary { cursor: pointer; font-weight: 650; }
+pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	background: var(--code);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 10px;
+	max-height: 360px;
+	overflow: auto;
+	font-size: 12px;
+}
+code { background: var(--code); padding: 1px 4px; border-radius: 4px; }
+@media (max-width: 700px) {
+	main { padding: 24px 14px 44px; }
+	.hero { padding: 20px; }
+	h1 { font-size: 28px; }
+	.meta { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+	.grid { grid-template-columns: 1fr; }
+	.meta-item, .card, .callout, .example { padding: 12px; }
+	.metric { font-size: 22px; }
+}
+@media print {
+	body { background: #fff; }
+	main { max-width: none; padding: 0; }
+	.card, .callout, .example, .hero, table { break-inside: avoid; }
+}
+`;
+}
+
+function renderHtmlHeader(summary: Summary): string {
+	const modelConfig = summary.modelConfig;
+	return [
+		'<section class="hero">',
+		'<h1>n8n Memory Eval Report</h1>',
+		'<p class="sub">Deterministic scoring and LLM judge scoring averaged across repeats.</p>',
+		'<div class="meta">',
+		renderMetaItem('Suite', summary.suite),
+		renderMetaItem('Commit', summary.commit),
+		renderMetaItem('Generated', formatTimestamp(summary.generatedAt)),
+		renderMetaItem('Repeats', String(summary.repeats)),
+		renderMetaItem('Scenarios', String(summary.scenarios)),
+		renderMetaItem('Total runs', String(summary.totalRuns)),
+		renderMetaItem('Agent model', modelConfig.agentModel),
+		renderMetaItem('Judge model', modelConfig.judgeModel),
+		renderMetaItem('Embedding model', modelConfig.embeddingModel),
+		renderMetaItem(
+			'Retrieval config',
+			`autoInjectTopK=${modelConfig.autoInjectTopK}; recallTopK=${modelConfig.recallTopK}`,
+		),
+		'</div>',
+		'</section>',
+	].join('\n');
+}
+
+function renderMetaItem(label: string, value: string): string {
+	return `<div class="meta-item"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`;
+}
+
+function renderHtmlMetricCards(summary: Summary): string {
+	return [
+		'<section>',
+		'<h2>TL;DR</h2>',
+		'<div class="grid">',
+		renderMetricCard(
+			'Deterministic pass',
+			formatStats(summary.repeatStats.passRate),
+			`${summary.passed}/${summary.totalRuns} pooled`,
+		),
+		renderMetricCard(
+			'Judge pass',
+			formatStats(summary.repeatStats.judgePassRate),
+			`${formatNullablePercent(summary.judgePassRate)} pooled`,
+		),
+		renderMetricCard(
+			'Answer pass',
+			formatStats(summary.repeatStats.answerPassRate),
+			`${formatNullablePercent(summary.answerPassRate)} pooled`,
+		),
+		renderMetricCard(
+			'Judge answer',
+			formatStats(summary.repeatStats.judgeAnswerPassRate),
+			`${formatNullablePercent(summary.judgeAnswerPassRate)} pooled`,
+		),
+		renderMetricCard(
+			'Judge profile',
+			formatStats(summary.repeatStats.judgeProfilePassRate),
+			`${formatNullablePercent(summary.judgeProfilePassRate)} pooled`,
+		),
+		renderMetricCard(
+			'Judge memory',
+			formatStats(summary.repeatStats.judgeMemoryPassRate),
+			`${formatNullablePercent(summary.judgeMemoryPassRate)} pooled`,
+		),
+		renderMetricCard(
+			'Retrieval top-k',
+			`${formatNullablePercent(summary.retrievalTop1Rate)} / ${formatNullablePercent(summary.retrievalTop3Rate)} / ${formatNullablePercent(summary.retrievalTop12Rate)}`,
+			'top-1 / top-3 / top-12',
+		),
+		renderMetricCard(
+			'Errors',
+			`${summary.scopeLeakCount} / ${summary.backgroundErrorCount} / ${summary.harnessErrorCount}`,
+			'scope leaks / background / harness',
+		),
+		renderMetricCard(
+			'Tokens and cost',
+			formatInteger(summary.totalTokens),
+			`${formatInteger(summary.totalPromptTokens)} prompt; ${formatInteger(summary.totalCompletionTokens)} completion; ${formatCost(summary.totalKnownCostUsd)}`,
+		),
+		renderMetricCard(
+			'Retrieval latency',
+			`${formatMs(summary.retrievalLatencyMeanMs)} / ${formatMs(summary.retrievalLatencyP95Ms)}`,
+			'mean / p95',
+		),
+		'</div>',
+		'</section>',
+	].join('\n');
+}
+
+function renderMetricCard(title: string, metric: string, sub: string): string {
+	return [
+		'<article class="card">',
+		`<div class="label">${escapeHtml(title)}</div>`,
+		`<div class="metric">${escapeHtml(metric)}</div>`,
+		`<div class="sub">${escapeHtml(sub)}</div>`,
+		'</article>',
+	].join('\n');
+}
+
+function renderHtmlCategoryBreakdown(summary: Summary): string {
+	return [
+		'<section>',
+		'<h2>Category Breakdown</h2>',
+		'<div class="table-wrap">',
+		'<table>',
+		'<thead><tr><th>Category</th><th class="number">Scenarios</th><th class="number">Runs</th><th class="number">Deterministic mean/std-dev</th><th class="number">Judge mean/std-dev</th><th class="number">Answer mean/std-dev</th></tr></thead>',
+		'<tbody>',
+		...summary.categoryRepeatStats.map(
+			(row) =>
+				`<tr><td>${escapeHtml(row.category)}</td><td class="number">${row.scenarios}</td><td class="number">${row.runs}</td><td class="number">${escapeHtml(formatStats(row.passRate))}</td><td class="number">${escapeHtml(formatStats(row.judgePassRate))}</td><td class="number">${escapeHtml(formatStats(row.answerPassRate))}</td></tr>`,
+		),
+		'</tbody>',
+		'</table>',
+		'</div>',
+		'</section>',
+	].join('\n');
+}
+
+function renderHtmlOutcomeSections(summary: Summary, results: ScenarioRunResult[]): string {
+	return [
+		'<section>',
+		'<div class="section-grid">',
+		renderCallout('What went well', renderWentWellItems(summary)),
+		renderCallout('Weaknesses', renderWeaknessItems(summary, results)),
+		renderCallout('Recommended follow-ups', renderFollowUpItems(summary, results)),
+		'</div>',
+		'</section>',
+	].join('\n');
+}
+
+function renderCallout(title: string, items: string[]): string {
+	const body =
+		items.length > 0
+			? `<ul>${items.map((item) => `<li>${item}</li>`).join('\n')}</ul>`
+			: '<p class="sub">No callouts.</p>';
+	return `<article class="callout"><h2>${escapeHtml(title)}</h2>${body}</article>`;
+}
+
+function renderWentWellItems(summary: Summary): string[] {
+	const items: string[] = [];
+	const judgeStrong = summary.categoryRepeatStats.filter(
+		(row) => row.judgePassRate.mean !== null && row.judgePassRate.mean >= 0.8,
+	);
+	const deterministicStrong = summary.categoryRepeatStats.filter(
+		(row) => row.passRate.mean !== null && row.passRate.mean >= 0.8,
+	);
+	if (judgeStrong.length > 0) {
+		items.push(
+			`<span class="ok">Judge pass above 80%</span>: ${escapeHtml(formatCategoryStats(judgeStrong, 'judgePassRate'))}`,
+		);
+	}
+	if (deterministicStrong.length > 0) {
+		items.push(
+			`<span class="ok">Deterministic pass above 80%</span>: ${escapeHtml(formatCategoryStats(deterministicStrong, 'passRate'))}`,
+		);
+	}
+	if (summary.scopeLeakCount === 0) {
+		items.push('<span class="ok">Zero scope leaks</span> across the run.');
+	}
+	if (summary.harnessErrorCount === 0) {
+		items.push(
+			'<span class="ok">No harness errors</span>; failures are eval/runtime behavior, not runner crashes.',
+		);
+	} else if (summary.harnessErrorCount / summary.totalRuns <= 0.01) {
+		items.push(
+			`<span class="warn">Low harness error rate</span>: ${summary.harnessErrorCount}/${summary.totalRuns} runs.`,
+		);
+	}
+	return items;
+}
+
+function renderWeaknessItems(summary: Summary, results: ScenarioRunResult[]): string[] {
+	const items: string[] = [];
+	const weakJudge = summary.categoryRepeatStats.filter(
+		(row) => row.judgePassRate.mean !== null && row.judgePassRate.mean < 0.7,
+	);
+	const weakDeterministic = summary.categoryRepeatStats.filter(
+		(row) => row.passRate.mean !== null && row.passRate.mean < 0.7,
+	);
+	if (weakJudge.length > 0) {
+		items.push(
+			`<span class="bad">Judge pass below 70%</span>: ${escapeHtml(formatCategoryStats(weakJudge, 'judgePassRate'))}`,
+		);
+	}
+	if (weakDeterministic.length > 0) {
+		items.push(
+			`<span class="bad">Deterministic pass below 70%</span>: ${escapeHtml(formatCategoryStats(weakDeterministic, 'passRate'))}`,
+		);
+	}
+
+	const failureModes = countJudgeFailureModes(results).filter((row) => row.count > 1);
+	if (failureModes.length > 0) {
+		items.push(
+			`Repeated judge failure modes: ${escapeHtml(failureModes.map((row) => `${row.name} (${row.count})`).join(', '))}.`,
+		);
+	}
+
+	const failedChecks = countFailedChecks(results).slice(0, 5);
+	if (failedChecks.length > 0) {
+		items.push(
+			`Top failed deterministic checks: ${escapeHtml(failedChecks.map((row) => `${row.name} (${row.count})`).join(', '))}.`,
+		);
+	}
+	return items;
+}
+
+function renderFollowUpItems(summary: Summary, results: ScenarioRunResult[]): string[] {
+	const items: string[] = [];
+	const weakCategories = summary.categoryRepeatStats.filter(
+		(row) =>
+			(row.judgePassRate.mean !== null && row.judgePassRate.mean < 0.7) ||
+			(row.passRate.mean !== null && row.passRate.mean < 0.7),
+	);
+	if (weakCategories.length > 0) {
+		items.push(
+			`Start with low-scoring categories: ${escapeHtml(weakCategories.map((row) => row.category).join(', '))}.`,
+		);
+	}
+
+	const topFailureMode = countJudgeFailureModes(results)[0];
+	if (topFailureMode) {
+		items.push(
+			`Review examples with failure mode <code>${escapeHtml(topFailureMode.name)}</code> before changing prompts or thresholds.`,
+		);
+	}
+
+	const topCheck = countFailedChecks(results)[0];
+	if (topCheck) {
+		items.push(
+			`Audit deterministic expectation <code>${escapeHtml(topCheck.name)}</code> against judge reasoning to separate real misses from brittle anchors.`,
+		);
+	}
+
+	if (
+		summary.scopeLeakCount > 0 ||
+		summary.harnessErrorCount > 0 ||
+		summary.backgroundErrorCount > 0
+	) {
+		items.push('Resolve leakage and runner/runtime errors before comparing model-quality changes.');
+	}
+	return items;
+}
+
+function formatCategoryStats(
+	rows: CategoryRepeatStats[],
+	key: 'passRate' | 'judgePassRate',
+): string {
+	return rows.map((row) => `${row.category} ${formatStats(row[key])}`).join(', ');
+}
+
+function countJudgeFailureModes(
+	results: ScenarioRunResult[],
+): Array<{ name: string; count: number }> {
+	const counts = new Map<string, number>();
+	for (const result of results) {
+		if (!result.judgeScore || result.judgeScore.pass) continue;
+		counts.set(result.judgeScore.failureMode, (counts.get(result.judgeScore.failureMode) ?? 0) + 1);
+	}
+	return sortCounts(counts);
+}
+
+function countFailedChecks(results: ScenarioRunResult[]): Array<{ name: string; count: number }> {
+	const counts = new Map<string, number>();
+	for (const result of results) {
+		for (const check of result.score.checks) {
+			if (check.passed) continue;
+			counts.set(check.name, (counts.get(check.name) ?? 0) + 1);
+		}
+	}
+	return sortCounts(counts);
+}
+
+function sortCounts(counts: Map<string, number>): Array<{ name: string; count: number }> {
+	return [...counts.entries()]
+		.map(([name, count]) => ({ name, count }))
+		.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+function renderHtmlFailureExamples(results: ScenarioRunResult[]): string {
+	const examples = selectFailureExamples(results);
+	if (examples.length === 0) {
+		return [
+			'<section>',
+			'<h2>Failure Examples</h2>',
+			'<article class="callout"><p>No failures.</p></article>',
+			'</section>',
+		].join('\n');
+	}
+
+	const grouped = groupByCategory(examples);
+	return [
+		'<section>',
+		'<h2>Failure Examples</h2>',
+		'<p class="sub">The 10 highest-signal failed runs, grouped by category.</p>',
+		...grouped.map(([category, rows]) =>
+			[
+				`<h3>${escapeHtml(category)}</h3>`,
+				'<div class="examples">',
+				...rows.map(renderFailureExample),
+				'</div>',
+			].join('\n'),
+		),
+		'</section>',
+	].join('\n');
+}
+
+function selectFailureExamples(results: ScenarioRunResult[]): ScenarioRunResult[] {
+	return results
+		.filter(
+			(result) =>
+				result.error !== undefined || !result.score.passed || result.judgeScore?.pass === false,
+		)
+		.sort((a, b) => failureUsefulnessScore(b) - failureUsefulnessScore(a))
+		.slice(0, 10);
+}
+
+function failureUsefulnessScore(result: ScenarioRunResult): number {
+	const failedChecks = result.score.checks.filter((check) => !check.passed).length;
+	return (
+		(result.error ? 100 : 0) +
+		(result.judgeScore?.pass === false ? 50 : 0) +
+		(!result.score.passed ? 20 : 0) +
+		failedChecks
+	);
+}
+
+function groupByCategory(
+	results: ScenarioRunResult[],
+): Array<[MemoryEvalCategory, ScenarioRunResult[]]> {
+	const grouped = new Map<MemoryEvalCategory, ScenarioRunResult[]>();
+	for (const result of results) {
+		const category = result.scenario.category;
+		const rows = grouped.get(category) ?? [];
+		rows.push(result);
+		grouped.set(category, rows);
+	}
+	return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
+function renderFailureExample(result: ScenarioRunResult): string {
+	const failedChecks = result.score.checks.filter((check) => !check.passed);
+	const judge = result.judgeScore;
+	const retrieved = result.retrieval.entries.map(
+		(entry, index) => `${index + 1}. score=${entry.finalScore.toFixed(4)}\n${entry.content}`,
+	);
+	const stored = result.storedEntries.map((entry, index) => `${index + 1}. ${entry}`);
+	return [
+		'<article class="example">',
+		'<div class="example-header">',
+		`<div><h3>${escapeHtml(result.scenario.id)}: ${escapeHtml(result.scenario.title)}</h3><div class="sub">repeat ${result.repeat}; category ${escapeHtml(result.scenario.category)}</div></div>`,
+		`<span class="pill">${escapeHtml(result.passed ? 'deterministic pass' : 'deterministic miss')}</span>`,
+		'</div>',
+		result.error
+			? `<p class="bad"><strong>Harness error:</strong> ${escapeHtml(result.error)}</p>`
+			: '',
+		'<details>',
+		'<summary>Deterministic misses</summary>',
+		failedChecks.length > 0
+			? `<ul>${failedChecks.map((check) => `<li><strong>${escapeHtml(check.name)}</strong>: ${escapeHtml(check.detail)}</li>`).join('\n')}</ul>`
+			: '<p class="sub">No deterministic misses.</p>',
+		'</details>',
+		'<details>',
+		'<summary>Judge verdict</summary>',
+		judge
+			? `<p><strong>${judge.pass ? '<span class="ok">pass</span>' : '<span class="bad">fail</span>'}</strong> <span class="pill">${escapeHtml(judge.failureMode)}</span></p><p>${escapeHtml(judge.reasoning)}</p>`
+			: '<p class="sub">No judge score.</p>',
+		'</details>',
+		renderPreDetails('Final answer', result.recallTurn.answer || '(empty)'),
+		renderPreDetails('Retrieved entries', retrieved.length > 0 ? retrieved.join('\n\n') : '(none)'),
+		renderPreDetails('Stored episodic entries', stored.length > 0 ? stored.join('\n\n') : '(none)'),
+		'</article>',
+	]
+		.filter((line) => line !== '')
+		.join('\n');
+}
+
+function renderPreDetails(title: string, value: string): string {
+	return [
+		'<details>',
+		`<summary>${escapeHtml(title)}</summary>`,
+		`<pre>${escapeHtml(value)}</pre>`,
+		'</details>',
+	].join('\n');
+}
+
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
 }
 
 async function getCommit(): Promise<string> {
@@ -1115,26 +1875,10 @@ async function main(): Promise<void> {
 	const config = requireEvalConfig(opts);
 	const generatedAt = new Date().toISOString();
 	const commit = await getCommit();
-	const results: ScenarioRunResult[] = [];
+	const jobs = createEvalJobs(scenarios, opts.repeats);
+	const results = await runEvalJobs(jobs, opts, config);
 
-	for (let repeat = 1; repeat <= opts.repeats; repeat++) {
-		for (const scenario of scenarios) {
-			console.log(`[${repeat}/${opts.repeats}] ${scenario.id}: ${scenario.title}`);
-			const result = await runScenario(scenario, repeat, config);
-			if (opts.judge) {
-				result.judgeScore = await judgeScenario(result, config);
-			}
-			results.push(result);
-			const status = result.passed ? 'pass' : 'miss';
-			const toolUsed = result.recallTurn.toolCalls.includes(RECALL_MEMORY_TOOL_NAME);
-			const judgeStatus = result.judgeScore
-				? `; judge=${result.judgeScore.pass ? 'pass' : 'miss'}`
-				: '';
-			console.log(`  ${status}; recall_memory=${toolUsed ? 'yes' : 'no'}${judgeStatus}`);
-		}
-	}
-
-	const summary = buildSummary(opts, results, commit, generatedAt);
+	const summary = buildSummary(opts, results, config, commit, generatedAt);
 	const resultDir = await writeResults(results, summary, generatedAt);
 	printSummary(summary);
 	console.log(`results=${resultDir}`);

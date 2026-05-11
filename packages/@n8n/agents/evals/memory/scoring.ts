@@ -148,7 +148,6 @@ export function scoreScenario(input: {
 	retrievedEntries: string[];
 	answer: string;
 	userProfile: string;
-	agentProfile: string;
 	sessionMemory: string;
 	backgroundErrors: number;
 }): MemoryEvalScore {
@@ -160,7 +159,6 @@ export function scoreScenario(input: {
 		...scoreEntryExpectations('retrieval', input.retrievedEntries, scenario.expect.retrieval),
 		...scoreKeywordExpectation('answer', input.answer, scenario.expect.answer),
 		...scoreKeywordExpectation('user profile', input.userProfile, scenario.expect.userProfile),
-		...scoreKeywordExpectation('agent profile', input.agentProfile, scenario.expect.agentProfile),
 		...scoreKeywordExpectation(
 			'session memory',
 			input.sessionMemory,
