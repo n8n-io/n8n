@@ -121,9 +121,8 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 export interface InstanceAiHarness {
 	// Reactive state from composables (for assertions)
-	activeTabId: Ref<string | null>;
+	activeTabId: Ref<string | undefined>;
 	activeWorkflowId: ReturnType<typeof useCanvasPreview>['activeWorkflowId'];
-	activeExecutionId: Ref<string | null>;
 	activeDataTableId: ReturnType<typeof useCanvasPreview>['activeDataTableId'];
 	isPreviewVisible: ReturnType<typeof useCanvasPreview>['isPreviewVisible'];
 	allArtifactTabs: ReturnType<typeof useCanvasPreview>['allArtifactTabs'];
@@ -140,6 +139,7 @@ export interface InstanceAiHarness {
 	removeResource: (key: string) => void;
 	simulatePushEvent: (event: PushMessage) => void;
 	simulateIframeReady: () => Promise<void>;
+	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
 	markUserSentMessage: () => void;
@@ -163,14 +163,16 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Mock store ---
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
-	const resourceRegistry = ref(new Map<string, ResourceEntry>());
+	const producedArtifacts = ref(new Map<string, ResourceEntry>());
+	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	const store = reactive({
 		messages,
 		isStreaming,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		currentThreadId: 'thread-1',
 		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
 		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
@@ -197,7 +199,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const preview = useCanvasPreview({
 		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
 		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
-		workflowExecutions: executionTracking.workflowExecutions,
 	});
 
 	const relayedEvents: PushMessage[] = [];
@@ -213,21 +214,34 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Convenience actions ---
 
 	function registerWorkflow(id: string, name = `Workflow ${id}`) {
-		const next = new Map(store.resourceRegistry);
-		next.set(name.toLowerCase(), { type: 'workflow', id, name });
-		store.resourceRegistry = next;
+		const entry: ResourceEntry = { type: 'workflow', id, name };
+		const nextProduced = new Map(store.producedArtifacts);
+		nextProduced.set(id, entry);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		nextByName.set(name.toLowerCase(), entry);
+		store.resourceNameIndex = nextByName;
 	}
 
 	function registerDataTable(id: string, name = `Table ${id}`, projectId?: string) {
-		const next = new Map(store.resourceRegistry);
-		next.set(name.toLowerCase(), { type: 'data-table', id, name, projectId });
-		store.resourceRegistry = next;
+		const entry: ResourceEntry = { type: 'data-table', id, name, projectId };
+		const nextProduced = new Map(store.producedArtifacts);
+		nextProduced.set(id, entry);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		nextByName.set(name.toLowerCase(), entry);
+		store.resourceNameIndex = nextByName;
 	}
 
-	function removeResource(key: string) {
-		const next = new Map(store.resourceRegistry);
-		next.delete(key);
-		store.resourceRegistry = next;
+	function removeResource(idOrName: string) {
+		const nextProduced = new Map(store.producedArtifacts);
+		const removed = nextProduced.get(idOrName);
+		nextProduced.delete(idOrName);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		if (removed) nextByName.delete(removed.name.toLowerCase());
+		nextByName.delete(idOrName.toLowerCase());
+		store.resourceNameIndex = nextByName;
 	}
 
 	function simulatePushEvent(event: PushMessage) {
@@ -237,6 +251,11 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 
 	async function simulateIframeReady() {
 		eventRelay.handleIframeReady();
+		await nextTick();
+	}
+
+	async function simulateWorkflowLoaded(wfId: string) {
+		eventRelay.handleWorkflowLoaded(wfId);
 		await nextTick();
 	}
 
@@ -360,7 +379,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		// State
 		activeTabId: preview.activeTabId,
 		activeWorkflowId: preview.activeWorkflowId,
-		activeExecutionId: preview.activeExecutionId,
 		activeDataTableId: preview.activeDataTableId,
 		isPreviewVisible: preview.isPreviewVisible,
 		allArtifactTabs: preview.allArtifactTabs,
@@ -375,6 +393,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		removeResource,
 		simulatePushEvent,
 		simulateIframeReady,
+		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
 		markUserSentMessage: preview.markUserSentMessage,

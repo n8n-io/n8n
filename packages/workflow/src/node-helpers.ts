@@ -374,16 +374,21 @@ export const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.includes(targetValue as string);
 				}
 				if (key === 'startsWith') {
-					return (propertyValue as string).startsWith(targetValue);
+					return (
+						typeof propertyValue === 'string' && propertyValue.startsWith(targetValue as string)
+					);
 				}
 				if (key === 'endsWith') {
-					return (propertyValue as string).endsWith(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.endsWith(targetValue as string);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					return (
+						typeof propertyValue === 'string' &&
+						new RegExp(targetValue as string).test(propertyValue)
+					);
 				}
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
@@ -1796,6 +1801,28 @@ export function makeDescription(
 	}
 
 	return nodeTypeDescription.description;
+}
+
+/**
+ * Trigger node types that don't have "trigger" in their name
+ * but still function as workflow entry points
+ */
+const TRIGGER_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.cron', // Legacy schedule trigger
+	'n8n-nodes-base.emailReadImap', // Email polling trigger
+	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
+	'n8n-nodes-base.start', // Legacy trigger
+]);
+
+/**
+ * Check if a node type is a trigger
+ */
+export function isTriggerNodeType(type: string): boolean {
+	if (TRIGGER_NODE_TYPES.has(type)) {
+		return true;
+	}
+	return type.toLowerCase().includes('trigger');
 }
 
 export function isToolType(

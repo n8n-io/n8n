@@ -101,10 +101,10 @@ export const getExpressionErrorMessage = (error: Error, nodeHasRunData = false):
 	if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {
 		const nodeCause = error.context.nodeCause as string;
 		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const isPinned = !!workflowDocumentStore?.pinData?.[nodeCause];
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const isPinned = !!workflowDocumentStore.pinData?.[nodeCause];
 
 		if (isPinned) {
 			return i18n.baseText('expressionModalInput.pairedItemInvalidPinnedError', {

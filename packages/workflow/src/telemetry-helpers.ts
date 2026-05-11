@@ -658,6 +658,10 @@ export function generateNodesGraph(
 			}
 		}
 
+		if (Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true)) {
+			nodeItem.ai_gateway_credentials = true;
+		}
+
 		if (options?.isCloudDeployment === true) {
 			if (node.type === OPENAI_LANGCHAIN_NODE_TYPE) {
 				nodeItem.prompts =

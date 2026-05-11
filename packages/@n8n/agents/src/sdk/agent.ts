@@ -2,14 +2,12 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { z } from 'zod';
 
 import type { Eval } from './eval';
-import { fromSchema, type FromSchemaOptions } from './from-schema';
 import type { McpClient } from './mcp-client';
 import { Memory } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
-import { InMemoryMemory } from '../runtime/memory-store';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -37,19 +35,7 @@ import type {
 	ResumeOptions,
 } from '../types';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
-import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { AgentMessage } from '../types/sdk/message';
-import type {
-	AgentSchema,
-	EvalSchema,
-	GuardrailSchema,
-	McpServerSchema,
-	MemorySchema,
-	ProviderToolSchema,
-	ThinkingSchema,
-	ToolSchema,
-} from '../types/sdk/schema';
-import { zodToJsonSchema } from '../utils/zod';
 import type { Workspace } from '../workspace/workspace';
 
 const DEFAULT_LAST_MESSAGES = 10;
@@ -57,13 +43,35 @@ const DEFAULT_LAST_MESSAGES = 10;
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
 /**
+ * Lightweight read-only view of an agent's configured state.
+ * Returned by `Agent.snapshot` for testing and debugging purposes.
+ */
+export interface AgentSnapshot {
+	/** Agent name. */
+	name: string;
+	/** Parsed model identifier. Both fields are null if no model has been set. */
+	model: { provider: string | null; name: string | null };
+	/** Instruction text passed to `.instructions()`, or null if not set. */
+	instructions: string | null;
+	/** Minimal description of each registered tool. */
+	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
+	/** True when `.memory()` has been configured. */
+	hasMemory: boolean;
+	/** The thinking config if set, otherwise null. */
+	thinking: ThinkingConfig | null;
+	/** Tool-call concurrency limit if set, otherwise null. */
+	toolCallConcurrency: number | null;
+	/** Whether `.requireToolApproval()` was called. */
+	requireToolApproval: boolean;
+}
+
+/**
  * Builder for creating AI agents with a fluent API.
  *
  * Usage:
  * ```typescript
  * const agent = new Agent('assistant')
- *   .model('anthropic', 'claude-sonnet-4')   // typed: Agent<'anthropic'>
- *   .credential('anthropic')
+ *   .model('anthropic', 'claude-sonnet-4')
  *   .instructions('You are a helpful assistant.')
  *   .tool(searchTool);
  *
@@ -74,9 +82,7 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
 export class Agent implements BuiltAgent, AgentBuilder {
 	readonly name: string;
 
-	private modelId?: string;
-
-	private modelConfigObj?: ModelConfig;
+	private modelConfig?: ModelConfig;
 
 	private instructionProviderOpts?: ProviderOptions;
 
@@ -102,12 +108,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private thinkingConfig?: ThinkingConfig;
 
-	private credentialName?: string;
-
-	private credProvider?: CredentialProvider;
-
-	private resolvedKey?: string;
-
 	private runtime?: AgentRuntime;
 
 	private concurrencyValue?: number;
@@ -132,22 +132,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		this.name = name;
 	}
 
-	/**
-	 * Reconstruct a live Agent from an AgentSchema JSON.
-	 * Custom tool handlers are proxied through the injected HandlerExecutor.
-	 *
-	 * This is the inverse of `Agent.describe()`.
-	 */
-	static async fromSchema(
-		schema: AgentSchema,
-		name: string,
-		options: FromSchemaOptions,
-	): Promise<Agent> {
-		const agent = new Agent(name);
-		await fromSchema(agent, schema, options);
-		return agent;
-	}
-
 	hasCheckpointStorage(): boolean {
 		return this.checkpointStore !== undefined;
 	}
@@ -170,11 +154,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this {
 		if (typeof providerOrIdOrConfig === 'string') {
-			this.modelId = modelName ? `${providerOrIdOrConfig}/${modelName}` : providerOrIdOrConfig;
-			this.modelConfigObj = undefined;
+			this.modelConfig = modelName ? `${providerOrIdOrConfig}/${modelName}` : providerOrIdOrConfig;
 		} else {
-			this.modelConfigObj = providerOrIdOrConfig;
-			this.modelId = undefined;
+			this.modelConfig = providerOrIdOrConfig;
 		}
 		return this;
 	}
@@ -205,7 +187,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** @internal Read the declared tools (used by the compile step to detect workflow tool markers). */
+	/** Read the declared tools. Lists only tools added via tool() */
 	get declaredTools(): BuiltTool[] {
 		return this.tools;
 	}
@@ -281,54 +263,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	checkpoint(storage: 'memory' | CheckpointStore): this {
 		this.checkpointStore = storage;
 		return this;
-	}
-
-	/**
-	 * Declare a credential this agent requires. The execution engine resolves
-	 * the credential name to an API key at build time and injects it into the
-	 * model configuration — user code never handles raw keys.
-	 *
-	 * @example
-	 * ```typescript
-	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .credential('anthropic')
-	 *   .instructions('You are helpful.');
-	 * ```
-	 */
-	credential(name: string): this {
-		this.credentialName = name;
-		return this;
-	}
-
-	/**
-	 * Attach a credential provider that resolves credential identifiers to
-	 * decrypted API keys at build time. When both `.credential()` and
-	 * `.credentialProvider()` are set, the provider resolves the credential
-	 * before model creation — no subclassing required.
-	 *
-	 * @example
-	 * ```typescript
-	 * const agent = new Agent('assistant')
-	 *   .model('anthropic', 'claude-sonnet-4')
-	 *   .credential('credential-id-123')
-	 *   .credentialProvider(myProvider)
-	 *   .instructions('You are helpful.');
-	 * ```
-	 */
-	credentialProvider(provider: CredentialProvider): this {
-		this.credProvider = provider;
-		return this;
-	}
-
-	/** @internal Read the declared credential name (used by the execution engine). */
-	protected get declaredCredential(): string | undefined {
-		return this.credentialName;
-	}
-
-	/** @internal Set the resolved API key (called by the execution engine before super.build()). */
-	protected set resolvedApiKey(key: string) {
-		this.resolvedKey = key;
 	}
 
 	/**
@@ -525,204 +459,41 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Return a schema object describing the agent's declared configuration.
-	 * This is a synchronous introspection method — it does not build the agent
-	 * or connect to any external services.
+	 * Return a lightweight read-only snapshot of the agent's configured state.
+	 * Useful for testing and debugging — does not trigger a build.
 	 */
-	describe(): AgentSchema {
-		// --- Model ---
-		let model: AgentSchema['model'];
-		if (this.modelConfigObj) {
-			model = { provider: null, name: null, raw: 'object' };
-		} else if (this.modelId) {
-			const slashIdx = this.modelId.indexOf('/');
+	get snapshot(): AgentSnapshot {
+		let model: AgentSnapshot['model'];
+		const rawModelId =
+			typeof this.modelConfig === 'string'
+				? this.modelConfig
+				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
+					? this.modelConfig.id
+					: undefined;
+
+		if (rawModelId) {
+			const slashIdx = rawModelId.indexOf('/');
 			if (slashIdx === -1) {
-				model = { provider: null, name: this.modelId };
+				model = { provider: null, name: rawModelId };
 			} else {
 				model = {
-					provider: this.modelId.slice(0, slashIdx),
-					name: this.modelId.slice(slashIdx + 1),
+					provider: rawModelId.slice(0, slashIdx),
+					name: rawModelId.slice(slashIdx + 1),
 				};
 			}
 		} else {
 			model = { provider: null, name: null };
 		}
 
-		// --- Tools (custom / workflow) ---
-		const toolSchemas: ToolSchema[] = this.tools.map((tool) => {
-			const isWorkflow = '__workflowTool' in tool && Boolean(tool.__workflowTool);
-			return {
-				name: tool.name,
-				description: tool.description,
-				type: isWorkflow ? ('workflow' as const) : ('custom' as const),
-				editable: !isWorkflow,
-				// Source strings — null, CLI patches with original TypeScript
-				inputSchemaSource: null,
-				outputSchemaSource: null,
-				handlerSource: tool.handler?.toString() ?? null,
-				suspendSchemaSource: null,
-				resumeSchemaSource: null,
-				toMessageSource: null,
-				requireApproval: tool.withDefaultApproval ?? false,
-				needsApprovalFnSource: null,
-				providerOptions: tool.providerOptions ?? null,
-				// Display fields — JSON Schema for UI rendering
-				inputSchema: zodToJsonSchema(tool.inputSchema),
-				outputSchema: zodToJsonSchema(tool.outputSchema),
-				// UI badge indicators — for approval-wrapped tools, hasSuspend/hasResume
-				// reflect the approval mechanism, not user-declared suspend/resume
-				hasSuspend: Boolean(tool.suspendSchema),
-				hasResume: Boolean(tool.resumeSchema),
-				hasToMessage: Boolean(tool.toMessage),
-			};
-		});
-
-		// --- Provider tools ---
-		const providerToolSchemas: ProviderToolSchema[] = this.providerTools.map((pt) => ({
-			name: pt.name,
-			source: '',
-		}));
-
-		// --- Guardrails ---
-		const guardrails: GuardrailSchema[] = [
-			...this.inputGuardrails.map((g) => ({
-				name: g.name,
-				guardType: g.guardType,
-				strategy: g.strategy,
-				position: 'input' as const,
-				config: g._config,
-				source: '',
-			})),
-			...this.outputGuardrails.map((g) => ({
-				name: g.name,
-				guardType: g.guardType,
-				strategy: g.strategy,
-				position: 'output' as const,
-				config: g._config,
-				source: '',
-			})),
-		];
-
-		// --- MCP servers ---
-		let mcp: McpServerSchema[] | null = null;
-		if (this.mcpClients.length > 0) {
-			mcp = [];
-			for (const client of this.mcpClients) {
-				for (const serverName of client.serverNames) {
-					mcp.push({
-						name: serverName,
-						configSource: '',
-					});
-				}
-			}
-		}
-
-		// --- Telemetry ---
-		const telemetry = this.telemetryBuilder || this.telemetryConfig ? { source: '' } : null;
-
-		// --- Checkpoint ---
-		const checkpoint = this.checkpointStore === 'memory' ? 'memory' : null;
-
-		// --- Memory ---
-		let memory: MemorySchema | null = null;
-		if (this.memoryConfig) {
-			const mc = this.memoryConfig;
-			let semanticRecall: MemorySchema['semanticRecall'] = null;
-			if (mc.semanticRecall) {
-				semanticRecall = {
-					topK: mc.semanticRecall.topK,
-					messageRange: mc.semanticRecall.messageRange
-						? {
-								before: mc.semanticRecall.messageRange.before,
-								after: mc.semanticRecall.messageRange.after,
-							}
-						: null,
-					embedder: mc.semanticRecall.embedder ?? null,
-				};
-			}
-
-			let workingMemory: MemorySchema['workingMemory'] = null;
-			if (mc.workingMemory) {
-				workingMemory = {
-					type: mc.workingMemory.structured ? 'structured' : 'freeform',
-					...(mc.workingMemory.schema
-						? { schema: zodToJsonSchema(mc.workingMemory.schema) ?? undefined }
-						: {}),
-					...(mc.workingMemory.template ? { template: mc.workingMemory.template } : {}),
-				};
-			}
-
-			memory = {
-				// TODO: each BuiltMemory should have describe() method to return a config showing connection params and other metadata
-				// this config must have enough information to rebuild the memory instance
-				source: null,
-				storage: mc.memory instanceof InMemoryMemory ? 'memory' : 'custom',
-				lastMessages: mc.lastMessages ?? null,
-				semanticRecall,
-				workingMemory,
-			};
-		}
-
-		// --- Evaluations ---
-		const evaluations: EvalSchema[] = this.agentEvals.map((e) => ({
-			name: e.name,
-			description: e.description ?? null,
-			type: e.evalType,
-			modelId: e.modelId ?? null,
-			hasCredential: e.credentialName !== null,
-			credentialName: e.credentialName,
-			handlerSource: null,
-		}));
-
-		// --- Structured output ---
-		// TODO: define structured output schema handling better
-		const structuredOutput = {
-			enabled: Boolean(this.outputSchema),
-			schemaSource: null as string | null,
-		};
-
-		// --- Thinking ---
-		let thinking: ThinkingSchema | null = null;
-		if (this.thinkingConfig) {
-			const provider = this.modelId?.split('/')[0];
-			if (provider === 'anthropic') {
-				thinking = {
-					provider: 'anthropic',
-					budgetTokens:
-						'budgetTokens' in this.thinkingConfig
-							? (this.thinkingConfig as { budgetTokens?: number }).budgetTokens
-							: undefined,
-				};
-			} else if (provider === 'openai') {
-				thinking = {
-					provider: 'openai',
-					reasoningEffort:
-						'reasoningEffort' in this.thinkingConfig
-							? String((this.thinkingConfig as { reasoningEffort?: string }).reasoningEffort)
-							: undefined,
-				};
-			}
-		}
-
 		return {
+			name: this.name,
 			model,
-			credential: this.credentialName ?? null,
 			instructions: this.instructionsText ?? null,
-			description: null,
-			tools: toolSchemas,
-			providerTools: providerToolSchemas,
-			memory,
-			evaluations,
-			guardrails,
-			mcp,
-			telemetry,
-			checkpoint,
-			config: {
-				structuredOutput,
-				thinking,
-				toolCallConcurrency: this.concurrencyValue ?? null,
-				requireToolApproval: this.requireToolApprovalValue,
-			},
+			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
+			hasMemory: this.memoryConfig !== undefined,
+			thinking: this.thinkingConfig ?? null,
+			toolCallConcurrency: this.concurrencyValue ?? null,
+			requireToolApproval: this.requireToolApprovalValue,
 		};
 	}
 
@@ -835,8 +606,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
 	protected async build(): Promise<AgentRuntime> {
-		const hasModel = this.modelId ?? this.modelConfigObj;
-		if (!hasModel) {
+		if (!this.modelConfig) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
 		if (!this.instructionsText) {
@@ -905,28 +675,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		// Resolve credential via provider before building the model config.
-		if (this.credProvider && this.credentialName) {
-			const resolved = await this.credProvider.resolve(this.credentialName);
-			this.resolvedKey = resolved.apiKey;
-		}
-
-		let modelConfig: ModelConfig;
-		if (this.modelConfigObj) {
-			if (
-				this.resolvedKey &&
-				typeof this.modelConfigObj === 'object' &&
-				'id' in this.modelConfigObj
-			) {
-				modelConfig = { ...this.modelConfigObj, apiKey: this.resolvedKey };
-			} else {
-				modelConfig = this.modelConfigObj;
-			}
-		} else if (this.resolvedKey) {
-			modelConfig = { id: this.modelId!, apiKey: this.resolvedKey };
-		} else {
-			modelConfig = this.modelId!;
-		}
+		const modelConfig: ModelConfig = this.modelConfig;
 
 		let instructions = this.instructionsText;
 		if (this.workspaceInstance) {

@@ -40,6 +40,8 @@ export const EXCLUDE_PATTERNS = [
 	'packages/testing/**',
 	// Lock file (can produce massive diffs on dependency changes)
 	'pnpm-lock.yaml',
+	'**/*.md',
+	'**/*.mdx'
 ];
 
 const BOT_MARKER = '<!-- pr-size-check -->';

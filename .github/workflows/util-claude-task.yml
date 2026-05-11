@@ -131,6 +131,8 @@ jobs:
           prompt: ${{ env.CLAUDE_PROMPT }}
           show_full_output: ${{ inputs.suppress_output != true }}
           display_report: false
+          plugin_marketplaces: "./.claude/plugins/n8n"
+          plugins: "n8n@n8n"
           settings: |
             {
               "permissions": {
@@ -167,8 +169,10 @@ jobs:
 
       - name: Push branch
         if: always()
+        env:
+          REF: ${{ inputs.ref }}
         run: |
-          if ! git diff --quiet "${{ inputs.ref }}" 2>/dev/null; then
+          if ! git diff --quiet "$REF" 2>/dev/null; then
             git push -u origin "$BRANCH_NAME"
             echo "::notice::Changes pushed to branch $BRANCH_NAME"
           else

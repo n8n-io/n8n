@@ -184,18 +184,43 @@ describe('EmbedAuthController', () => {
 	});
 
 	describe('error propagation', () => {
-		it('should not emit audit event or issue cookie on failure', async () => {
-			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789' });
+		it('should emit embed-login-failed with typed reason and rethrow on TokenExchangeAuthError', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789', ip: '10.0.0.1' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'bad-token' });
-			tokenExchangeService.embedLogin.mockRejectedValue(new Error('Token verification failed'));
+			const { TokenExchangeAuthError } = await import('../../token-exchange.errors');
+			const { TokenExchangeFailureReason } = await import('../../token-exchange.types');
+			tokenExchangeService.embedLogin.mockRejectedValue(
+				new TokenExchangeAuthError(
+					TokenExchangeFailureReason.InvalidSignature,
+					'Token verification failed',
+				),
+			);
 
 			await expect(controller.getLogin(req, res, query)).rejects.toThrow(
 				'Token verification failed',
 			);
 			expect(authService.issueCookie).not.toHaveBeenCalled();
-			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(res.redirect).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith('embed-login', expect.anything());
+			expect(eventService.emit).toHaveBeenCalledWith('embed-login-failed', {
+				failureReason: TokenExchangeFailureReason.InvalidSignature,
+				clientIp: '10.0.0.1',
+			});
+		});
+
+		it('should emit embed-login-failed with internal_error and rethrow on unknown error', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789', ip: '10.0.0.1' });
+			const res = mock<Response>();
+			const query = new EmbedLoginQueryDto({ token: 'bad-token' });
+			const { TokenExchangeFailureReason } = await import('../../token-exchange.types');
+			tokenExchangeService.embedLogin.mockRejectedValue(new Error('Some unexpected error'));
+
+			await expect(controller.getLogin(req, res, query)).rejects.toThrow('Some unexpected error');
+			expect(eventService.emit).toHaveBeenCalledWith('embed-login-failed', {
+				failureReason: TokenExchangeFailureReason.InternalError,
+				clientIp: '10.0.0.1',
+			});
 		});
 	});
 });

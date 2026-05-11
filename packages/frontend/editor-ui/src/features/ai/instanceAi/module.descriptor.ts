@@ -1,23 +1,30 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import {
+	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
+	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
+} from '@/app/constants/modals';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const InstanceAiOptinModal = async () => await import('./components/InstanceAiOptinModal.vue');
+const ComputerUseSetupModal = async () =>
+	await import('./components/modals/ComputerUseSetupModal.vue');
+const BrowserUseSetupModal = async () =>
+	await import('./components/modals/BrowserUseSetupModal.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
-	name: 'Instance AI',
-	description: 'Chat with the n8n Instance AI agent.',
+	name: 'AI Assistant',
+	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [
 		{
 			name: INSTANCE_AI_VIEW,
 			path: '/instance-ai',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -27,6 +34,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			name: INSTANCE_AI_THREAD_VIEW,
 			path: '/instance-ai/:threadId',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -55,7 +63,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		project: [],
 	},
 	resources: [],
-	modals: [{ key: INSTANCE_AI_OPTIN_MODAL_KEY, component: InstanceAiOptinModal }],
+	modals: [
+		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
+		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
+	],
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',

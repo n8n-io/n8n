@@ -11,16 +11,29 @@ import { Daytona } from '@daytonaio/sdk';
 import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
 import { DaytonaSandbox } from '@mastra/daytona';
 import assert from 'node:assert/strict';
+import { join as posixJoin } from 'node:path/posix';
 
+import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
-import { N8nSandboxImageManager } from './n8n-sandbox-image-manager';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
-import { writeFileViaSandbox } from './sandbox-fs';
+import {
+	isLinkWorkspaceSdkEnabled,
+	packWorkspaceSdk,
+	type WorkspaceSdkTarball,
+} from './pack-workspace-sdk';
+import { runInSandbox, writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
 import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
+
+const NOOP_LOGGER: Logger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+};
 
 export interface BuilderWorkspace {
 	workspace: Workspace;
@@ -56,12 +69,59 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 export class BuilderSandboxFactory {
 	private daytona: Daytona | null = null;
 
-	private n8nSandboxImageManager: N8nSandboxImageManager | null = null;
-
 	constructor(
 		private readonly config: SandboxConfig,
 		private readonly imageManager?: SnapshotManager,
+		private readonly logger: Logger = NOOP_LOGGER,
+		private readonly errorReporter?: ErrorReporter,
 	) {}
+
+	/** Cached workspace-SDK tarball promise (one pack per process). */
+	private sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
+
+	/**
+	 * Pack and install the host's workspace `@n8n/workflow-sdk` into the remote
+	 * sandbox. In linked-SDK mode the baked image omits the registry SDK so
+	 * unpublished workspace versions can still create a sandbox.
+	 * No-op unless `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1` is set.
+	 */
+	private async linkWorkspaceSdkIfEnabled(workspace: Workspace, root: string): Promise<void> {
+		this.sdkTarballPromise ??= packWorkspaceSdk(this.logger);
+		const packed = await this.sdkTarballPromise;
+		if (!packed) {
+			if (isLinkWorkspaceSdkEnabled()) {
+				throw new Error(
+					'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+				);
+			}
+			return;
+		}
+
+		const remotePath = posixJoin(root, packed.filename);
+		if (workspace.filesystem) {
+			await workspace.filesystem.writeFile(remotePath, packed.tarball);
+		} else {
+			await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+		}
+
+		const install = await runInSandbox(
+			workspace,
+			`npm install ${remotePath} --no-save --ignore-scripts --force`,
+			root,
+		);
+		if (install.exitCode !== 0) {
+			this.logger.error('Failed to link workspace SDK into sandbox', {
+				exitCode: install.exitCode,
+				stderr: install.stderr,
+			});
+			throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
+		}
+
+		this.logger.info('Linked workspace SDK into sandbox', {
+			version: packed.version,
+			sdkPath: packed.sdkPath,
+		});
+	}
 
 	async create(builderId: string, context: InstanceAiContext): Promise<BuilderWorkspace> {
 		if (this.config.provider === 'local') {
@@ -88,11 +148,6 @@ export class BuilderSandboxFactory {
 		return this.daytona;
 	}
 
-	private getN8nSandboxImageManager(): N8nSandboxImageManager {
-		this.n8nSandboxImageManager ??= new N8nSandboxImageManager();
-		return this.n8nSandboxImageManager;
-	}
-
 	/** Cached node-types catalog string — generated once, reused across builders. */
 	private catalogCache: string | null = null;
 
@@ -109,22 +164,64 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsDaytona();
 		assert(this.imageManager, 'Daytona snapshot manager required');
+		const snapshotManager = this.imageManager;
 
-		// Get pre-warmed image (config + deps, no catalog — catalog is too large for API body)
-		const image = this.imageManager.ensureImage();
+		const mode: 'direct' | 'proxy' = config.getAuthToken ? 'proxy' : 'direct';
 
-		// Start sandbox creation AND catalog generation in parallel
+		// Resolve sandbox source — versioned named snapshot when available,
+		// fallback to declarative image otherwise. Every Daytona create
+		// failure is reported with a `strategy` tag so missing-snapshot bugs
+		// are loud and trackable in Sentry, regardless of which path
+		// ultimately succeeds.
+		const createTimeoutSeconds = config.createTimeoutSeconds ?? 300;
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
-			return await daytona.create(
-				{
-					image,
-					language: 'typescript',
-					ephemeral: true,
-					labels: { 'n8n-builder': builderId },
-				},
-				{ timeout: 300 },
-			);
+			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);
+			const baseParams = {
+				language: 'typescript',
+				ephemeral: true,
+				labels: { 'n8n-builder': builderId },
+			} as const;
+
+			if (snapshotName) {
+				try {
+					return await daytona.create(
+						{ ...baseParams, snapshot: snapshotName },
+						{ timeout: createTimeoutSeconds },
+					);
+				} catch (error) {
+					this.errorReporter?.error(error, {
+						tags: {
+							component: 'builder-sandbox-factory',
+							strategy: 'snapshot',
+							mode,
+						},
+						extra: { snapshotName, builderId },
+					});
+					this.logger.warn('Sandbox create from snapshot failed; falling back to image', {
+						snapshotName,
+						mode,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
+			try {
+				return await daytona.create(
+					{ ...baseParams, image: snapshotManager.ensureImage() },
+					{ timeout: createTimeoutSeconds },
+				);
+			} catch (error) {
+				this.errorReporter?.error(error, {
+					tags: {
+						component: 'builder-sandbox-factory',
+						strategy: 'image',
+						mode,
+					},
+					extra: { builderId },
+				});
+				throw error;
+			}
 		};
 
 		const [sandbox, catalog] = await Promise.all([createSandboxFn(), this.getNodeCatalog(context)]);
@@ -166,6 +263,8 @@ export class BuilderSandboxFactory {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
 
+			await this.linkWorkspaceSdkIfEnabled(workspace, root);
+
 			return {
 				workspace,
 				cleanup: async () => {
@@ -185,41 +284,52 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsN8nSandbox();
 
-		const dockerfile = this.getN8nSandboxImageManager().getDockerfile();
 		const catalog = await this.getNodeCatalog(context);
 
 		const sandbox = new N8nSandboxServiceSandbox({
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,
 			timeout: config.timeout ?? 300_000,
-			dockerfile,
 		});
 
-		const workspace = new Workspace({
-			sandbox,
-			filesystem: new N8nSandboxFilesystem(sandbox),
-		});
-
-		await workspace.init();
-
-		const root = await getWorkspaceRoot(workspace);
-		if (workspace.filesystem) {
-			await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
-		} else {
-			await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
-		}
-
-		return {
-			workspace,
-			cleanup: async () => {
-				await cleanupTrackedSandboxProcesses(workspace);
-				try {
-					await sandbox.destroy();
-				} catch {
-					// Best-effort cleanup
-				}
-			},
+		const destroySandbox = async (): Promise<void> => {
+			try {
+				await sandbox.destroy();
+			} catch {
+				// Best-effort cleanup
+			}
 		};
+
+		try {
+			const workspace = new Workspace({
+				sandbox,
+				filesystem: new N8nSandboxFilesystem(sandbox),
+			});
+
+			await workspace.init();
+
+			const root = await getWorkspaceRoot(workspace);
+			if (workspace.filesystem) {
+				await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
+			} else {
+				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
+			}
+
+			await this.linkWorkspaceSdkIfEnabled(workspace, root);
+
+			return {
+				workspace,
+				cleanup: async () => {
+					await cleanupTrackedSandboxProcesses(workspace);
+					await destroySandbox();
+				},
+			};
+		} catch (error) {
+			// If any step after sandbox creation throws (workspace init, catalog
+			// write, SDK link), destroy the remote sandbox so it isn't orphaned.
+			await destroySandbox();
+			throw error;
+		}
 	}
 
 	private assertIsDaytona(): Extract<SandboxConfig, { enabled: true; provider: 'daytona' }> {

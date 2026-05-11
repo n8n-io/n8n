@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { ServiceIdentifier } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
@@ -135,7 +136,10 @@ export class TaskRunnerModule {
 
 		const failureReason = await PyTaskRunnerProcess.checkRequirements();
 		if (failureReason) {
-			Container.get(TaskRequester).setRunnerUnavailable('python', failureReason);
+			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).setRunnerUnavailable(
+				'python',
+				failureReason,
+			);
 			const error = new MissingRequirementsError(failureReason);
 			this.logger.warn(error.message);
 			return; // allow bootup, will fail at execution time

@@ -18,6 +18,7 @@ export {
 	ParseValidateHandler,
 	WorkflowCodeParseError,
 	createCodeBuilderSearchTool,
+	type CodeBuilderSearchToolOptions,
 	createCodeBuilderGetTool,
 	createGetSuggestedNodesTool,
 	stripImportStatements,

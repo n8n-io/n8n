@@ -19,7 +19,7 @@ test.use({
 });
 
 test.describe(
-	'Dynamic Credentials: resolver deletion cleanup @capability:dynamic-credentials',
+	'Dynamic Credentials: resolver deletion cleanup @capability:dynamic-credentials @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
