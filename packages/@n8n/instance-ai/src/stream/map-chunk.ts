@@ -1,3 +1,4 @@
+import type { StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -13,7 +14,6 @@ import type {
 	TaskList,
 	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
-import type { StreamChunk } from '@n8n/agents';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({

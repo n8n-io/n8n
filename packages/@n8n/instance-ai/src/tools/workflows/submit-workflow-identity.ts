@@ -27,7 +27,6 @@ import {
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
-import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 import {
 	MAX_PRE_SAVE_SUBMIT_FAILURES,
 	createRemediation,
@@ -37,6 +36,7 @@ import type {
 	RemediationMetadata,
 	WorkflowLoopState,
 } from '../../workflow-loop/workflow-loop-state';
+import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 
 export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>;
 

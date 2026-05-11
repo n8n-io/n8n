@@ -4,9 +4,7 @@ import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
 
 jest.mock('../resumable-stream-executor', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof ResumableStreamExecutor>('../resumable-stream-executor');
+	const actual = jest.requireActual<typeof ResumableStreamExecutor>('../resumable-stream-executor');
 
 	return {
 		...actual,
