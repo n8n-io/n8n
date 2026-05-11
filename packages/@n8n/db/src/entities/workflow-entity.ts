@@ -71,7 +71,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	meta?: WorkflowFEMeta;
 
 	@JsonColumn({ nullable: true })
-	groups: IWorkflowGroup[] | null;
+	nodeGroups: IWorkflowGroup[] | null;
 
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({

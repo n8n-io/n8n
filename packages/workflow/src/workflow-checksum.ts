@@ -23,7 +23,7 @@ export interface WorkflowSnapshot {
 	pinData?: IPinData;
 	isArchived?: boolean;
 	activeVersionId?: string | null;
-	groups?: IWorkflowGroup[] | null;
+	nodeGroups?: IWorkflowGroup[] | null;
 }
 
 export const WORKFLOW_CHECKSUM_FIELDS = [
@@ -36,7 +36,7 @@ export const WORKFLOW_CHECKSUM_FIELDS = [
 	'pinData',
 	'isArchived',
 	'activeVersionId',
-	'groups',
+	'nodeGroups',
 ] as const satisfies ReadonlyArray<keyof WorkflowSnapshot>;
 
 /**

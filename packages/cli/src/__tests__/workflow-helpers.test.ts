@@ -13,7 +13,7 @@ import {
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
 	validatePinDataSize,
-	validateWorkflowGroups,
+	validateWorkflowNodeGroups,
 } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
@@ -381,47 +381,51 @@ describe('removeDefaultValues', () => {
 	});
 });
 
-describe('validateWorkflowGroups', () => {
+describe('validateWorkflowNodeGroups', () => {
 	const makeNode = (id: string) =>
 		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
 
-	it('should pass when groups is undefined', () => {
+	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
-			validateWorkflowGroups({ nodes: [makeNode('n1')], groups: undefined }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
 		).not.toThrow();
 	});
 
-	it('should pass when groups is null', () => {
-		expect(() => validateWorkflowGroups({ nodes: [makeNode('n1')], groups: null })).not.toThrow();
+	it('should pass when nodeGroups is null', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: null }),
+		).not.toThrow();
 	});
 
-	it('should pass when groups is empty', () => {
-		expect(() => validateWorkflowGroups({ nodes: [makeNode('n1')], groups: [] })).not.toThrow();
+	it('should pass when nodeGroups is empty', () => {
+		expect(() =>
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+		).not.toThrow();
 	});
 
 	it('should pass when all nodeIds reference existing nodes', () => {
 		expect(() =>
-			validateWorkflowGroups({
+			validateWorkflowNodeGroups({
 				nodes: [makeNode('n1'), makeNode('n2')],
-				groups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
 			}),
 		).not.toThrow();
 	});
 
 	it('should throw when a nodeId does not reference an existing node', () => {
 		expect(() =>
-			validateWorkflowGroups({
+			validateWorkflowNodeGroups({
 				nodes: [makeNode('n1')],
-				groups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
 			}),
 		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
 	});
 
 	it('should throw for the first invalid nodeId found', () => {
 		expect(() =>
-			validateWorkflowGroups({
+			validateWorkflowNodeGroups({
 				nodes: [],
-				groups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
 			}),
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});

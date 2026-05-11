@@ -76,7 +76,7 @@ const workflowGroupSchema = z.object({
 	nodeIds: z.array(z.string().min(1)),
 });
 
-export const workflowGroupsSchema = z.array(workflowGroupSchema).nullable();
+export const workflowNodeGroupsSchema = z.array(workflowGroupSchema).nullable();
 
 /**
  * Base workflow shape containing fields shared between Create and Update DTOs.
@@ -93,7 +93,7 @@ export const baseWorkflowShape = {
 	staticData: workflowStaticDataSchema.optional(),
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
-	groups: workflowGroupsSchema.optional(),
+	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
 	// Folder organization

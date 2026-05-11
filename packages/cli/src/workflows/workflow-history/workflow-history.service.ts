@@ -108,7 +108,7 @@ export class WorkflowHistoryService {
 			versionId: string;
 			nodes: IWorkflowBase['nodes'];
 			connections: IWorkflowBase['connections'];
-			groups?: IWorkflowBase['groups'];
+			nodeGroups?: IWorkflowBase['nodeGroups'];
 		},
 		workflowId: string,
 		autosaved = false,
@@ -131,7 +131,7 @@ export class WorkflowHistoryService {
 				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
-				groups: workflow.groups,
+				nodeGroups: workflow.nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,

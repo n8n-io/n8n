@@ -144,15 +144,15 @@ describe('calculateWorkflowChecksum', () => {
 		expect(checksum1).not.toBe(checksum2);
 	});
 
-	it('should generate different checksums when groups change', async () => {
+	it('should generate different checksums when nodeGroups change', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
-			groups: [{ id: 'group1', name: 'Group A', nodeIds: ['node1'] }],
+			nodeGroups: [{ id: 'group1', name: 'Group A', nodeIds: ['node1'] }],
 		};
 
 		const workflow2: WorkflowSnapshot = {
 			...baseWorkflow,
-			groups: [{ id: 'group1', name: 'Group B', nodeIds: ['node1'] }],
+			nodeGroups: [{ id: 'group1', name: 'Group B', nodeIds: ['node1'] }],
 		};
 
 		const checksum1 = await calculateWorkflowChecksum(workflow1);
@@ -161,15 +161,15 @@ describe('calculateWorkflowChecksum', () => {
 		expect(checksum1).not.toBe(checksum2);
 	});
 
-	it('should generate different checksums when groups are added', async () => {
+	it('should generate different checksums when nodeGroups are added', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
-			groups: null,
+			nodeGroups: null,
 		};
 
 		const workflow2: WorkflowSnapshot = {
 			...baseWorkflow,
-			groups: [{ id: 'group1', name: 'Group A', nodeIds: ['node1'] }],
+			nodeGroups: [{ id: 'group1', name: 'Group A', nodeIds: ['node1'] }],
 		};
 
 		const checksum1 = await calculateWorkflowChecksum(workflow1);

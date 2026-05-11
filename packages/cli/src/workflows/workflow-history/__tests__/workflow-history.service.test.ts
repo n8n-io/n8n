@@ -66,24 +66,24 @@ describe('WorkflowHistoryService', () => {
 			});
 		});
 
-		it('should save a new version with groups when provided', async () => {
+		it('should save a new version with nodeGroups when provided', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};
 			workflow.id = workflowId;
 			workflow.versionId = '456';
-			const groups = [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }];
+			const nodeGroups = [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }];
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, { ...workflow, groups }, workflowId);
+			await workflowHistoryService.saveVersion(testUser, { ...workflow, nodeGroups }, workflowId);
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
 				authors: 'John Doe',
 				connections: {},
 				nodes: workflow.nodes,
-				groups,
+				nodeGroups,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
