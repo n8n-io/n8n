@@ -28,8 +28,8 @@ export type {
 	CodeBuilderSearchResult,
 	CodeBuilderSearchToolOptions,
 } from './tools/code-builder-search.tool';
-export { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
-export type { CodeBuilderGetToolOptions } from './tools/code-builder-get.tool';
+export { createCodeBuilderGetTool, getNodeTypes } from './tools/code-builder-get.tool';
+export type { CodeBuilderGetToolOptions, NodeRequest } from './tools/code-builder-get.tool';
 export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
 export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-code';
 
