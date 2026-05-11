@@ -1,0 +1,4 @@
+{"kind":"header","version":1,"testName":"recording","recordedAt":"2026-05-05T09:47:46.281Z"}
+{"kind":"tool-call","stepId":1,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"list","query":"B3 Workflow Setup Defer Credentials"},"output":{"workflows":[{"id":"TXSVCxTExNA9UskZ","name":"B3 Workflow Setup Defer Credentials","versionId":"5b012327-ac57-4188-885e-238d30843694","activeVersionId":null,"createdAt":"2026-05-05T09:47:42.087Z","updatedAt":"2026-05-05T09:47:42.087Z"}]}}
+{"kind":"tool-call","stepId":2,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"setup","workflowId":"TXSVCxTExNA9UskZ"},"output":{"success":false}}
+{"kind":"tool-resume","stepId":3,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"setup","workflowId":"TXSVCxTExNA9UskZ"},"output":{"success":true,"deferred":true,"reason":"User skipped workflow setup for now."},"resumeData":{"approved":false}}

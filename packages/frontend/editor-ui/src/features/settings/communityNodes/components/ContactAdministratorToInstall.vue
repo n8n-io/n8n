@@ -2,7 +2,7 @@
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, useCssModule } from 'vue';
+import { computed, onMounted, useCssModule } from 'vue';
 
 interface Props {
 	box?: boolean;
@@ -11,18 +11,22 @@ interface Props {
 const props = defineProps<Props>();
 
 const $style = useCssModule();
+const usersStore = useUsersStore();
 
 const i18n = useI18n();
 const ownerEmailList = computed(() =>
-	useUsersStore()
-		.allUsers.filter((user) => user.role?.includes('owner'))
-		.map((user) => user.email),
+	usersStore.allUsers.filter((user) => user.role?.includes('owner')).map((user) => user.email),
 );
 
 const classes = computed(() => ({
 	[$style.contactOwnerHint]: true,
 	[$style.border]: props.box,
 }));
+
+onMounted(async () => {
+	// just to ensure styles are applied
+	await usersStore.fetchUsers({ filter: { isOwner: true } });
+});
 </script>
 
 <template>

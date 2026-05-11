@@ -1,4 +1,6 @@
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
+import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -36,6 +38,7 @@ export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
+export const CHAT_HITL_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatHitlTool';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const AGENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const OPEN_AI_CHAT_MODEL_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
@@ -103,6 +106,7 @@ export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadA
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 export const TIME_SAVED_NODE_TYPE = 'n8n-nodes-base.timeSaved';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
@@ -130,6 +134,7 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 ];
 export const MODULE_ENABLED_NODES = [
 	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
+	{ nodeType: MESSAGE_AN_AGENT_NODE_TYPE, module: AGENTS_MODULE_NAME },
 ];
 
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
@@ -141,11 +146,15 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 ];
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
-export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
+export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [
+	CHAT_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+];
 
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	HTTP_REQUEST_NODE_TYPE,

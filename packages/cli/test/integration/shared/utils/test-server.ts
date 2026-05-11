@@ -9,6 +9,7 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
@@ -16,7 +17,11 @@ import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { Telemetry } from '@/telemetry';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -137,11 +142,21 @@ export const setupTestServer = ({
 				features: enabledFeatures,
 				quotas,
 			});
+			// Apply defaults before ModuleRegistry.initModules so licensed modules register routes.
+			testServer.license.reset();
 		}
 
 		if (!endpointGroups) return;
 
 		app.use(bodyParser);
+
+		// Register auth strategies in priority order. The registry evaluates them
+		// sequentially — the first strategy that returns a non-null result wins.
+		// API key auth is registered first so existing behavior is preserved.
+		// Additional strategies (e.g. scoped JWT from the token-exchange module)
+		// can be appended later during their own module initialization.
+		const registry = Container.get(AuthStrategyRegistry);
+		registry.register(Container.get(ApiKeyAuthStrategy));
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
@@ -151,7 +166,11 @@ export const setupTestServer = ({
 		}
 
 		if (endpointGroups?.includes('health')) {
-			app.get('/healthz/readiness', async (_req, res) => {
+			const globalConfig = Container.get(GlobalConfig);
+			const healthPath = resolveBackendHealthEndpointPath(globalConfig);
+			const readinessPath = `${healthPath}/readiness`;
+
+			app.get(readinessPath, async (_req, res) => {
 				testDb.isReady()
 					? res.status(200).send({ status: 'ok' })
 					: res.status(503).send({ status: 'error' });
@@ -170,6 +189,10 @@ export const setupTestServer = ({
 
 					case 'workflows':
 						await import('@/workflows/workflows.controller');
+						break;
+
+					case 'workflowDependencies':
+						await import('@/modules/workflow-index/workflow-dependency.controller');
 						break;
 
 					case 'executions':
@@ -277,6 +300,10 @@ export const setupTestServer = ({
 						await import('@/controllers/role.controller');
 						break;
 
+					case 'roleMappingRule':
+						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee');
+						break;
+
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
@@ -316,14 +343,24 @@ export const setupTestServer = ({
 						await import('@/controllers/module-settings.controller');
 						break;
 
+					case 'security-settings':
+						await import('@/controllers/security-settings.controller');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller');
+						break;
+
+					case 'encryption-keys':
+						await import('@/modules/encryption-key-manager/encryption-key.controller');
 						break;
 				}
 			}
 
 			await Container.get(ModuleRegistry).initModules('main');
 			Container.get(ControllerRegistry).activate(app);
+
+			await Container.get(AuthHandlerRegistry).init();
 		}
 	});
 

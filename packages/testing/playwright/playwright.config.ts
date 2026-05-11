@@ -46,7 +46,12 @@ const EXPECT_TIMEOUT = IS_DEV ? 20000 : 10000;
 
 const webServer: PlaywrightTestConfig['webServer'] = [];
 
-if (BACKEND_URL) {
+// Escape hatch for wrapper scripts (e.g. `pnpm test:local:isolated`) that
+// manage the n8n process themselves with custom env vars and a more reliable
+// readiness check. Stops Playwright from racing to launch a second n8n.
+const SKIP_WEB_SERVER = process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true';
+
+if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	webServer.push({
 		command: 'cd .. && pnpm start',
 		url: `${BACKEND_URL}/favicon.ico`,
@@ -116,6 +121,12 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				['json', { outputFile: 'test-results.json' }],
 				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
+				['./reporters/benchmark-summary-reporter.ts'],
 			]
-		: [['html'], ['./reporters/metrics-reporter.ts'], ['list']],
+		: [
+				['html'],
+				['./reporters/metrics-reporter.ts'],
+				['./reporters/benchmark-summary-reporter.ts'],
+				['list'],
+			],
 });

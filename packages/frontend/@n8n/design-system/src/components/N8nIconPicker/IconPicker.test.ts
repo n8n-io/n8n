@@ -185,4 +185,100 @@ describe('IconPicker', () => {
 			value: '😀',
 		});
 	});
+
+	it('shows combined results with both icons and emojis during search', async () => {
+		const { getByTestId, findAllByTestId, queryAllByTestId, queryByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		const searchInput = getByTestId('icon-picker-search');
+
+		// Search for "smile" which matches both icon name and emoji labels
+		await fireEvent.update(searchInput, 'smile');
+
+		// Wait for emoji metadata to load and emojis to appear
+		await findAllByTestId('icon-picker-emoji');
+
+		// Tabs should be hidden during search
+		expect(queryByTestId('icon-picker-tabs')).not.toBeInTheDocument();
+
+		// Verify specific icons matching "smile"
+		const icons = queryAllByTestId('icon-picker-icon');
+		const iconNames = icons.map((icon) => icon.getAttribute('icon'));
+		expect(iconNames).toMatchInlineSnapshot(`
+				[
+				  "smile",
+				]
+			`);
+
+		// Verify emojis with "smile" in their label/tags are present
+		const emojis = queryAllByTestId('icon-picker-emoji');
+		const emojiTexts = emojis.map((e) => e.textContent);
+		expect(emojiTexts).toMatchInlineSnapshot(`
+			[
+			  "😀",
+			  "😁",
+			  "😃",
+			  "😄",
+			  "😅",
+			  "😆",
+			  "😇",
+			  "😈",
+			  "😊",
+			  "😋",
+			  "😍",
+			  "😎",
+			  "😙",
+			  "😬",
+			  "😸",
+			  "😺",
+			  "😻",
+			  "😼",
+			  "🙂",
+			  "🙃",
+			  "🤩",
+			  "🥰",
+			  "🥲",
+			]
+		`);
+	});
+
+	it('selects random icon from search results when random button is clicked', async () => {
+		const { getByTestId, getByRole, emitted, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		const searchInput = getByTestId('icon-picker-search');
+
+		// Search for "smile" which matches both icon name and emoji labels
+		await fireEvent.update(searchInput, 'donut');
+
+		// Wait for emoji metadata to load and emojis to appear
+		await findAllByTestId('icon-picker-emoji');
+
+		const randomButton = getByRole('button', { name: 'Random' });
+		await fireEvent.click(randomButton);
+
+		expect(emitted('update:modelValue')).toHaveLength(1);
+		expect(emitted('update:modelValue')[0]).toEqual([{ type: 'emoji', value: '🍩' }]);
+	});
 });

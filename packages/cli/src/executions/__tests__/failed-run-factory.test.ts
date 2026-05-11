@@ -1,11 +1,13 @@
 import { mock } from 'jest-mock-extended';
+import type { StorageConfig } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { FailedRunFactory } from '../failed-run-factory';
 
 describe('FailedRunFactory', () => {
-	const service = new FailedRunFactory();
+	const storageConfig = mock<StorageConfig>({ mode: 'database' });
+	const service = new FailedRunFactory(storageConfig);
 
 	describe('generateFailedExecutionFromError', () => {
 		const mode: WorkflowExecuteMode = 'manual';

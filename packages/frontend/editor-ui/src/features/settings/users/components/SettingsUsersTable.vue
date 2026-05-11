@@ -29,6 +29,7 @@ const props = defineProps<{
 	actions: Array<UserAction<IUser>>;
 	loading?: boolean;
 	canEditRole: boolean;
+	updatingRoleUserId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -183,6 +184,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 					:data="item"
 					:roles="roles"
 					:actions="roleActions"
+					:loading="props.updatingRoleUserId === item.id"
 					@update:role="onRoleChange"
 				/>
 				<N8nText v-else color="text-dark">{{ roles[item.role ?? ROLE.Default]?.label }}</N8nText>

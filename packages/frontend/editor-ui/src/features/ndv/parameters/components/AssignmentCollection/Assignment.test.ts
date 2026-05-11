@@ -1,14 +1,12 @@
 import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
-import * as useResolvedExpression from '@/app/composables/useResolvedExpression';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/vue';
+import { cleanup, screen, waitFor, within } from '@testing-library/vue';
 import merge from 'lodash/merge';
-import { computed, nextTick, ref } from 'vue';
 import Assignment from './Assignment.vue';
 import { flushPromises } from '@vue/test-utils';
 
@@ -78,24 +76,6 @@ describe('Assignment.vue', () => {
 
 		// Check if the parameter input hint is not displayed
 		expect(() => getByTestId('parameter-input-hint')).toThrow();
-	});
-
-	it('should shorten the expression preview hint if options are on the bottom', async () => {
-		vi.spyOn(useResolvedExpression, 'useResolvedExpression').mockReturnValueOnce({
-			resolvedExpressionString: ref('foo'),
-			resolvedExpression: ref(null),
-			isExpression: computed(() => true),
-		});
-		const { getByTestId } = renderComponent();
-
-		const previewValue = getByTestId('parameter-expression-preview-value');
-
-		expect(previewValue).not.toHaveClass('optionsPadding');
-
-		await fireEvent.mouseEnter(getByTestId('assignment-value'));
-		await nextTick();
-
-		expect(previewValue).toHaveClass('optionsPadding');
 	});
 
 	it('should show binary data tooltip when assignment type is binary', async () => {

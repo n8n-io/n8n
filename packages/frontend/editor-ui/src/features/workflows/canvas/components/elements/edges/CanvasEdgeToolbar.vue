@@ -58,23 +58,25 @@ function onDelete() {
 			"
 		>
 			<N8nIconButton
+				variant="subtle"
 				class="canvas-edge-toolbar-button"
 				data-test-id="add-connection-button"
-				type="tertiary"
 				size="small"
 				icon-size="medium"
 				icon="plus"
+				:aria-label="i18n.baseText('node.addNode')"
 				@click="onAdd"
 			/>
 		</CanvasEdgeTooltip>
 		<CanvasEdgeTooltip :content="i18n.baseText('node.delete')">
 			<N8nIconButton
+				variant="subtle"
 				data-test-id="delete-connection-button"
 				class="canvas-edge-toolbar-button"
-				type="tertiary"
 				size="small"
 				icon-size="medium"
 				icon="trash-2"
+				:aria-label="i18n.baseText('node.deleteConnection')"
 				@click="onDelete"
 			/>
 		</CanvasEdgeTooltip>

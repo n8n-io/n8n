@@ -11,6 +11,7 @@ import '@n8n/design-system/css/index.scss';
 // import '@n8n/design-system/css/tailwind/index.css';
 
 import '@/main.scss';
+import '@/features/ai/assistant/aiBuilderDiff.scss';
 // Ensure i18n HMR owner is evaluated as early as possible in dev
 import '@/app/dev/i18nHmr';
 
@@ -57,6 +58,10 @@ if (import.meta.env.VUE_SCAN) {
 }
 
 app.mount('#app');
+
+if (import.meta.env.DEV) {
+	void import('@/app/dev/dev-panel').then((m) => m.mountDevPanel());
+}
 
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed

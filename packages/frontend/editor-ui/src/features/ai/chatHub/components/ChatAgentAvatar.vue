@@ -14,7 +14,7 @@ import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	agent: ChatModelDto | null;
-	size: 'sm' | 'md' | 'lg';
+	size: 'sm' | 'md' | 'lg' | 'xl';
 	tooltip?: boolean;
 }>();
 
@@ -41,13 +41,15 @@ const i18n = useI18n();
 						(agent?.model.provider === 'n8n' ? workflowAgentDefaultIcon : personalAgentDefaultIcon)
 							.value) as IconName
 				"
-				:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
+				:size="
+					size === 'xl' ? 'xxlarge' : size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'
+				"
 			/>
 			<CredentialIcon
 				v-else
 				:class="[$style.credentialsIcon, { [$style.isReady]: isCredentialsIconReady }]"
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[agent.model.provider]"
-				:size="size === 'sm' ? 16 : size === 'lg' ? 40 : 20"
+				:size="size === 'xl' ? 40 : size === 'sm' ? 16 : size === 'lg' ? 40 : 20"
 			/>
 		</div>
 	</N8nTooltip>
@@ -73,6 +75,11 @@ const i18n = useI18n();
 			stroke-width: 1.25;
 		}
 	}
+
+	&.xl {
+		width: 40px;
+		height: 40px;
+	}
 }
 
 .emoji {
@@ -95,6 +102,12 @@ const i18n = useI18n();
 		width: 24px;
 		height: 24px;
 		font-size: 24px;
+	}
+
+	&.xl {
+		width: 40px;
+		height: 40px;
+		font-size: 40px;
 	}
 }
 

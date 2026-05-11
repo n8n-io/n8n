@@ -79,7 +79,7 @@ function handleConfirm() {
 				{{ t('aiAssistant.versionCard.restoreModal.showVersion') }}
 				<N8nIcon icon="arrow-up-right" size="xlarge" />
 			</button>
-			<N8nButton type="primary" size="large" @click="handleConfirm">
+			<N8nButton variant="solid" size="large" @click="handleConfirm">
 				{{ t('aiAssistant.versionCard.restoreModal.restore') }}
 			</N8nButton>
 		</div>

@@ -3,14 +3,13 @@ import type { QueryRunner, ObjectLiteral } from '@n8n/typeorm';
 
 import type { createSchemaBuilder } from './dsl';
 
-export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
+export type DatabaseType = 'postgresdb' | 'sqlite';
 
 export interface MigrationContext {
 	logger: Logger;
 	queryRunner: QueryRunner;
 	tablePrefix: string;
 	dbType: DatabaseType;
-	isMysql: boolean;
 	isSqlite: boolean;
 	isPostgres: boolean;
 	dbName: string;
@@ -45,7 +44,12 @@ export interface BaseMigration {
 	up: MigrationFn;
 	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 	down?: MigrationFn | never;
-	transaction?: false;
+	/**
+	 * Run the migration on SQLite with foreign keys disabled. This should be
+	 * used for migrations that need to recreate tables that have FKs from
+	 * other tables. Otherwise it can cause data loss due CASCADE behaviour.
+	 */
+	withFKsDisabled?: true;
 }
 
 export interface ReversibleMigration extends BaseMigration {

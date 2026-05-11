@@ -73,7 +73,7 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_TIMEOUT')
 	timeout: number = -1;
 
-	/** How long (seconds) a workflow execution may run for at most. */
+	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
 	maxTimeout: number = 3600; // 1h
 
@@ -127,4 +127,8 @@ export class ExecutionsConfig {
 	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
+
+	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
+	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
+	scheduledExecutionDeduplicationEnabled: boolean = false;
 }

@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
+import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -40,7 +40,6 @@ import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 import type {
 	WorkflowMetadata,
-	WorkflowData,
 	WorkflowDataCreate,
 	WorkflowDataUpdate,
 } from '@n8n/rest-api-client/api/workflows';
@@ -59,7 +58,6 @@ import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentia
 import type { BulkCommand, Undoable } from '@/app/models/history';
 
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -160,6 +158,7 @@ export interface INodeUi extends INode {
 	name: string;
 	pinData?: IDataObject;
 	draggable?: boolean;
+	placeholder?: boolean;
 }
 
 export interface INodeTypesMaxCount {
@@ -186,7 +185,7 @@ export interface IAiDataContent {
 }
 
 export interface IStartRunData {
-	workflowData: WorkflowData;
+	workflowId: string;
 	startNodes?: StartNodeData[];
 	destinationNode?: IDestinationNode;
 	runData?: IRunData;
@@ -195,6 +194,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
 		query: AgentRequestQuery;
 		tool: {
@@ -257,10 +257,7 @@ export interface IWorkflowDb {
 	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: {
-		id: string;
-		name: string;
-		parentFolderId: string | null;
+	parentFolder?: ResourceParentFolder & {
 		createdAt?: string;
 		updatedAt?: string;
 	};
@@ -347,7 +344,7 @@ export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
-	resource: 'workflow';
+	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
 };
@@ -467,6 +464,7 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -642,6 +640,12 @@ export type ModalState = {
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
+	forceManualMode?: boolean;
+	projectId?: string;
+	suggestedName?: string;
+	nodeName?: string;
+	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -678,7 +682,7 @@ export type NodeCreatorOpenSource =
 	| 'plus_endpoint'
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
-	| 'tab'
+	| 'node_shortcut'
 	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
@@ -690,7 +694,6 @@ export type NodeCreatorOpenSource =
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showScrim: boolean;
 	rootViewHistory: NodeFilterType[];
 	selectedView: NodeFilterType;
 	openSource: NodeCreatorOpenSource;
@@ -871,8 +874,13 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
+	| 'custom-roles-selector'
+	| 'custom-roles-list'
 	| 'main-sidebar'
-	| 'chat-hub';
+	| 'chat-hub'
+	| 'empty-state-builder-prompt'
+	| 'instance-ai'
+	| 'workflow-settings';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -900,7 +908,9 @@ export type UTMCampaign =
 	| 'upgrade-builder'
 	| 'upgrade-custom-roles'
 	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar';
+	| 'upgrade-main-sidebar'
+	| 'upgrade-instance-ai'
+	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;
@@ -945,9 +955,12 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes'
 	| 'EnforceMFA'
-	| 'Provisioning';
+	| 'NamedVersions'
+	| 'Provisioning'
+	| 'PersonalSpacePolicy'
+	| 'CustomRoles'
+	| 'DataRedaction';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

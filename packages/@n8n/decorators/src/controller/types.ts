@@ -30,8 +30,11 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
+	/** Whether to allow requests from bot user agents (e.g. Slackbot) */
+	allowBots: boolean;
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
+	allowUnauthenticated: boolean;
 	apiKeyAuth: boolean;
 	cors?: Partial<CorsOptions> | true;
 	/** Whether to apply IP-based rate limiting to the route */

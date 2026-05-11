@@ -6,11 +6,13 @@ type Props = {
 	toggleDisabled?: boolean;
 	loading?: boolean;
 	accessEnabled: boolean;
+	managedByEnv?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	toggleDisabled: false,
 	loading: false,
+	managedByEnv: false,
 });
 
 const emit = defineEmits<{
@@ -24,6 +26,7 @@ const emit = defineEmits<{
 			:model-value="accessEnabled"
 			:disabled="props.toggleDisabled"
 			:loading="props.loading"
+			:managed-by-env="props.managedByEnv"
 			:class="$style['mcp-access-toggle']"
 			@disable-mcp-access="emit('disableMcpAccess')"
 		/>

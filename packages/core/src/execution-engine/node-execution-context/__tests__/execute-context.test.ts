@@ -9,12 +9,16 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExpressionError,
+	NodeConnectionTypes,
+	type WorkflowExpression,
+} from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
@@ -41,7 +45,7 @@ describe('ExecuteContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node: INode = {
 		id: 'test-node-id',
@@ -62,7 +66,11 @@ describe('ExecuteContext', () => {
 		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];

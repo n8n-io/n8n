@@ -40,7 +40,8 @@ describe('CanvasHandlePlus', () => {
 			const { container } = renderComponent({
 				props: { position },
 			});
-			expect(container.firstChild).toHaveClass(position);
+			const wrapper = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"]');
+			expect(wrapper).toHaveClass(position);
 		});
 	});
 
@@ -49,15 +50,19 @@ describe('CanvasHandlePlus', () => {
 			props: { type: 'success' },
 		});
 
-		expect(container.firstChild).toHaveClass('success');
+		const svg = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"] svg');
+
+		expect(svg).toHaveClass('success');
 	});
 
 	it('should render SVG elements correctly', () => {
 		const { container } = renderComponent();
 
-		const svg = container.querySelector('svg');
+		const svg = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"] svg');
+
 		expect(svg).toBeTruthy();
 		expect(svg?.getAttribute('viewBox')).toBe('0 0 70 24');
+		expect(svg?.parentElement?.tagName).toBe('DIV');
 
 		const lineSvg = container.querySelector('line');
 		expect(lineSvg).toBeTruthy();

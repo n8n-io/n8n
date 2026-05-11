@@ -12,7 +12,6 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import type { CacheService } from '../cache/cache.service';
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
@@ -22,7 +21,6 @@ describe('ProjectService', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
-	const cacheService = mock<CacheService>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const projectService = new ProjectService(
 		mock(),
@@ -30,10 +28,50 @@ describe('ProjectService', () => {
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
-		cacheService,
 		mock(),
 		moduleRegistry,
 	);
+
+	describe('getAccessibleProjectsAndCount', () => {
+		const options = { skip: 0, take: 10, search: 'test' };
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should call findAllProjectsAndCount for admin users', async () => {
+			const adminUser = {
+				id: 'admin-user',
+				role: { scopes: [{ slug: 'project:read' }] },
+			} as any;
+
+			const expected: [Project[], number] = [[mock<Project>({ id: 'p1', name: 'Project 1' })], 1];
+			projectRepository.findAllProjectsAndCount.mockResolvedValueOnce(expected);
+
+			const result = await projectService.getAccessibleProjectsAndCount(adminUser, options);
+
+			expect(projectRepository.findAllProjectsAndCount).toHaveBeenCalledWith(options);
+			expect(result).toEqual(expected);
+		});
+
+		it('should call getAccessibleProjectsAndCount for non-admin users', async () => {
+			const memberUser = {
+				id: 'member-user',
+				role: { scopes: [] },
+			} as any;
+
+			const expected: [Project[], number] = [[mock<Project>({ id: 'p2', name: 'Project 2' })], 1];
+			projectRepository.getAccessibleProjectsAndCount.mockResolvedValueOnce(expected);
+
+			const result = await projectService.getAccessibleProjectsAndCount(memberUser, options);
+
+			expect(projectRepository.getAccessibleProjectsAndCount).toHaveBeenCalledWith(
+				'member-user',
+				options,
+			);
+			expect(result).toEqual(expected);
+		});
+	});
 
 	describe('addUsersToProject', () => {
 		it('throws if called with a personal project', async () => {
@@ -108,10 +146,6 @@ describe('ProjectService', () => {
 
 			expect(manager.delete).toHaveBeenCalled();
 			expect(manager.insert).toHaveBeenCalled();
-			expect(cacheService.deleteMany).toHaveBeenCalledWith([
-				'credential-can-use-secrets:cred1',
-				'credential-can-use-secrets:cred2',
-			]);
 		});
 
 		it('should throw error if project not found', async () => {

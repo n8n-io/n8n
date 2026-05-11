@@ -122,7 +122,7 @@ export function extractSetNodeFields(
  * Extract data table information from workflow nodes.
  * Used to inform users about data tables they need to create manually.
  *
- * For row write operations (insert, update, upsert), the configurator agent
+ * For row write operations (insert, update, upsert), the builder agent
  * is instructed to place a Set node before Data Table nodes. This function
  * infers column definitions from the preceding Set node.
  *

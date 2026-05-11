@@ -109,8 +109,9 @@ describe('Credential Resolvers API', () => {
 			});
 		});
 
-		it('should reject access for members', async () => {
-			await memberAgent.get('/credential-resolvers').expect(403);
+		it('should allow access for members', async () => {
+			const response = await memberAgent.get('/credential-resolvers').expect(200);
+			expect(response.body.data).toBeInstanceOf(Array);
 		});
 	});
 
@@ -131,8 +132,9 @@ describe('Credential Resolvers API', () => {
 			});
 		});
 
-		it('should reject access for members', async () => {
-			await memberAgent.get('/credential-resolvers/types').expect(403);
+		it('should allow access for members', async () => {
+			const response = await memberAgent.get('/credential-resolvers/types').expect(200);
+			expect(response.body.data).toBeInstanceOf(Array);
 		});
 	});
 

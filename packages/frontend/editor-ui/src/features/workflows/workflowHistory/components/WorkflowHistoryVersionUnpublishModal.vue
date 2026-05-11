@@ -69,10 +69,10 @@ onBeforeUnmount(() => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton size="medium" type="tertiary" :disabled="unpublishing" @click="onCancel">
+				<N8nButton variant="subtle" size="medium" :disabled="unpublishing" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton size="medium" type="primary" :loading="unpublishing" @click="onUnpublish">
+				<N8nButton variant="solid" size="medium" :loading="unpublishing" @click="onUnpublish">
 					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish') }}
 				</N8nButton>
 			</div>

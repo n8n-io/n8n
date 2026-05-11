@@ -35,6 +35,7 @@ import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
+import '@/controllers/dynamic-templates.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -52,18 +53,24 @@ import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
+import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
+import '@/node-execution/ephemeral-node-executor';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
+import '@/evaluation.ee/evaluation-config.controller';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
+import '@/modules/workflow-index/workflow-dependency.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
+import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 
 @Service()
 export class Server extends AbstractServer {
@@ -103,6 +110,8 @@ export class Server extends AbstractServer {
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
+
+		this.markAsReady();
 
 		this.eventService.emit('server-started');
 	}
@@ -159,6 +168,14 @@ export class Server extends AbstractServer {
 		await this.postHogClient.init();
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
+
+		// Register auth strategies in priority order. The registry evaluates them
+		// sequentially — the first strategy that returns a non-null result wins.
+		// API key auth is registered first so existing behavior is preserved.
+		// Additional strategies (e.g. scoped JWT from the token-exchange module)
+		// can be appended later during their own module initialization.
+		const registry = Container.get(AuthStrategyRegistry);
+		registry.register(Container.get(ApiKeyAuthStrategy));
 
 		// ----------------------------------------
 		// Public API
@@ -249,27 +266,43 @@ export class Server extends AbstractServer {
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
-					// If authentication is enforced we can allow multiple overwrites
-					if (!this.presetCredentialsLoaded || authenticationEnforced) {
-						const body = req.body as ICredentialsOverwrite;
+					try {
+						// If authentication is enforced we can allow multiple overwrites
+						if (!this.presetCredentialsLoaded || authenticationEnforced) {
+							const body = req.body as ICredentialsOverwrite;
 
-						if (req.contentType !== 'application/json') {
+							if (req.contentType !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							await Container.get(CredentialsOverwrites).setData(body, true, true);
+
+							this.presetCredentialsLoaded = true;
+
+							// Send push event to notify frontend to refetch types
+							Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
 							ResponseHelper.sendErrorResponse(
 								res,
-								new Error(
-									'Body must be a valid JSON, make sure the content-type is application/json',
-								),
+								new Error('Preset credentials can be set once'),
 							);
-							return;
 						}
-
-						await Container.get(CredentialsOverwrites).setData(body, true, true);
-
-						this.presetCredentialsLoaded = true;
-
-						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-					} else {
-						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
+					} catch (error) {
+						this.logger.error('Error handling credentials overwrite', { error });
+						ResponseHelper.sendErrorResponse(
+							res,
+							new Error(
+								'An error occurred while handling credentials overwrite, please check the logs for more details',
+							),
+						);
 					}
 				},
 			);
@@ -348,6 +381,7 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
 			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
@@ -375,6 +409,9 @@ export class Server extends AbstractServer {
 							preload: false,
 						}
 					: false,
+				crossOriginOpenerPolicy: {
+					policy: crossOriginOpenerPolicy,
+				},
 			});
 
 			// Route all UI urls to index.html to support history-api
@@ -383,7 +420,7 @@ export class Server extends AbstractServer {
 				'assets',
 				'static',
 				'types',
-				'healthz',
+				this.endpointHealth,
 				'metrics',
 				'e2e',
 				this.restEndpoint,

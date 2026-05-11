@@ -45,6 +45,7 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -67,6 +68,7 @@ const { registerKeyHook } = useKeyboardNavigation();
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
@@ -74,7 +76,11 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
+		{
+			isAiSubcategory: isAiSubcategoryView(activeViewStack.value),
+			isHitlSubcategory: isHitlSubcategoryView(activeViewStack.value),
+			aiConnectionType: activeViewStack.value.connectionType,
+		},
 	);
 });
 
@@ -122,6 +128,7 @@ function onSelected(item: INodeCreateElement) {
 			nodeIcon,
 			...extendedInfo,
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
+			...(item.properties.connectionType ? { connectionType: item.properties.connectionType } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
@@ -138,16 +145,27 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
+		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
+		const notInstalledCommunityNode =
+			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
+		const nodeIcon = getNodeIconSource(
+			item.properties,
+			null,
+			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
+		);
 
-		if (shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value)) {
+		if (
+			shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value) ||
+			notInstalledCommunityNode
+		) {
 			if (!nodeActions.length) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
 
 			const viewStack = prepareCommunityNodeDetailsViewStack(
 				item,
-				getNodeIconSource(item.properties),
+				nodeIcon,
 				activeViewStack.value.rootView,
 				nodeActions,
 			);
@@ -155,8 +173,6 @@ function onSelected(item: INodeCreateElement) {
 			pushViewStack(viewStack);
 			return;
 		}
-
-		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
@@ -182,7 +198,7 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
-			nodeIcon: getNodeIconSource(item.properties),
+			nodeIcon,
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',

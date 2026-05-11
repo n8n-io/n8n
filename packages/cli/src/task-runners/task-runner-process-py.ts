@@ -40,7 +40,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 			env: {
 				// system environment
 				PATH: process.env.PATH,
-				HOME: process.env.HOME,
+				HOME: process.env.HOME ?? process.env.USERPROFILE,
 
 				// runner
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
@@ -65,7 +65,16 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 	 */
 	static async checkRequirements(): Promise<'python' | 'venv' | null> {
 		try {
-			await asyncExec('python3 --version', { timeout: 5000 });
+			if (process.platform === 'win32') {
+				const { stdout, stderr } = await asyncExec('python --version', { timeout: 5000 });
+				// Python 2 prints version to stderr, Python 3 to stdout
+				const output = (stdout + stderr).trim();
+				if (!output.startsWith('Python 3')) {
+					return 'python';
+				}
+			} else {
+				await asyncExec('python3 --version', { timeout: 5000 });
+			}
 		} catch {
 			return 'python';
 		}
@@ -81,6 +90,9 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 
 	private static getVenvPath() {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
-		return path.join(pythonDir, '.venv/bin/python');
+		const isWindows = process.platform === 'win32';
+		const venvBin = isWindows ? 'Scripts' : 'bin';
+		const pythonExe = isWindows ? 'python.exe' : 'python';
+		return path.join(pythonDir, '.venv', venvBin, pythonExe);
 	}
 }

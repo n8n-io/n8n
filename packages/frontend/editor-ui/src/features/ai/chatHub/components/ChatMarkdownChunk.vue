@@ -1,22 +1,36 @@
 <script setup lang="ts">
 import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
-import { computed, ref, useCssModule } from 'vue';
+import { ref, useCssModule } from 'vue';
+import type { ChatMessageContentChunk } from '@n8n/api-types';
+import ChatButtons from './ChatButtons.vue';
 
-const { source, containerWidth } = defineProps<{
-	source: string;
-	containerWidth: number;
+const {
+	source,
+	singlePre = false,
+	isButtonsDisabled = false,
+	footnoteStyle = 'pill',
+} = defineProps<{
+	source: ChatMessageContentChunk;
+	singlePre?: boolean;
+	isButtonsDisabled?: boolean;
+	footnoteStyle?: 'pill' | 'normal';
 }>();
 
+const emit = defineEmits<{ openArtifact: [title: string] }>();
+
 const styles = useCssModule();
-const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
+const markdown = useChatHubMarkdownOptions(
+	styles.codeBlockActions,
+	styles.tableContainer,
+	footnoteStyle === 'pill' ? styles.footnoteRef : null,
+);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 
-const hoveredCodeBlockContent = computed(() => {
+function getHoveredCodeBlockContent() {
 	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
 	return idx ? markdown.codeBlockContents.value?.get(idx) : undefined;
-});
+}
 
 function handleMouseMove(e: MouseEvent | FocusEvent) {
 	const container =
@@ -30,172 +44,122 @@ function handleMouseMove(e: MouseEvent | FocusEvent) {
 function handleMouseLeave() {
 	hoveredCodeBlockActions.value = null;
 }
+
+defineExpose({
+	hoveredCodeBlockActions,
+	getHoveredCodeBlockContent,
+});
 </script>
 
 <template>
-	<div
-		:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-		:style="{
-			'--container--width': `${containerWidth}px`,
-		}"
+	<VueMarkdown
+		v-if="source.type === 'text'"
+		:key="markdown.forceReRenderKey.value"
+		:source="source.content"
+		:class="[$style.chatMessageMarkdown, { [$style.singlePre]: singlePre }]"
+		:options="markdown.options"
+		:plugins="markdown.plugins.value"
 		@mousemove="handleMouseMove"
 		@mouseleave="handleMouseLeave"
-	>
+	/>
+	<div v-else-if="source.type === 'with-buttons'" :class="$style.container">
 		<VueMarkdown
 			:key="markdown.forceReRenderKey.value"
-			:source="source"
+			:source="source.content"
+			:class="$style.chatMessageMarkdown"
 			:options="markdown.options"
 			:plugins="markdown.plugins.value"
+			@mousemove="handleMouseMove"
+			@mouseleave="handleMouseLeave"
 		/>
-		<Teleport
-			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
-			:to="hoveredCodeBlockActions"
-		>
-			<CopyButton :content="hoveredCodeBlockContent" />
-		</Teleport>
+		<ChatButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
 	</div>
+	<div v-else-if="source.type === 'hidden'" />
+	<button
+		v-else-if="source.type === 'artifact-edit' && !source.isIncomplete"
+		:class="$style.command"
+		@click="emit('openArtifact', source.command.title)"
+	>
+		Updated <b>{{ source.command.title }}</b>
+	</button>
+	<button
+		v-else-if="source.type === 'artifact-create' && !source.isIncomplete"
+		:class="$style.command"
+		@click="emit('openArtifact', source.command.title)"
+	>
+		Created <b>{{ source.command.title }}</b>
+	</button>
 </template>
 
 <style lang="scss" module>
-.chatMessageMarkdown {
-	& * {
-		font-size: var(--font-size--sm);
-		line-height: 1.5;
-	}
+@use '@n8n/design-system/css/mixins' as ds-mixins;
 
-	& > div {
-		display: block;
-		box-sizing: border-box;
-	}
+.container {
+	display: flex;
+	flex-direction: column;
 
-	&:first-child > div > *:first-child {
+	> *:first-child > *:first-child {
 		margin-top: 0;
 	}
+}
 
-	& > div > *:last-child {
-		margin-bottom: 0;
-	}
-
-	p {
-		margin: var(--spacing--xs) 0;
-	}
-
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
-		margin: 1em 0 0.8em;
-		line-height: var(--line-height--md);
-	}
-
-	// Override heading sizes to be smaller
-	h1 {
-		font-size: var(--font-size--xl);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h2 {
-		font-size: var(--font-size--lg);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h3 {
-		font-size: var(--font-size--md);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h4 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h5 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h6 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
+.chatMessageMarkdown {
+	@include ds-mixins.markdown-content;
 
 	pre {
-		display: block;
-		font-family: inherit;
-		font-size: inherit;
-		margin: 0;
-		white-space: pre-wrap;
-		box-sizing: border-box;
-		padding: var(--chat--spacing);
-		background: var(--chat--message--pre--background);
-		border-radius: var(--chat--border-radius);
-		position: relative;
-
-		code:last-of-type {
-			padding-bottom: 0;
-		}
-
 		& .codeBlockActions {
 			position: sticky;
-			top: var(--spacing--sm);
+			top: var(--markdown--spacing);
+			right: var(--markdown--spacing);
+			height: 0;
 			display: flex;
 			justify-content: flex-end;
-			height: 32px;
 			pointer-events: none;
+			z-index: 1;
 
 			& > * {
 				pointer-events: auto;
 			}
 		}
-
-		& .codeBlockActions ~ code {
-			margin-top: -32px;
-		}
-
-		& ~ pre {
-			margin-bottom: 1em;
-		}
 	}
 
+	&.singlePre pre {
+		background: transparent;
+		margin: 0;
+		border-radius: 0;
+	}
+	// Footnote pill
+	.footnoteRef {
+		display: inline-block;
+		font-size: var(--font-size--3xs);
+		line-height: 1;
+		color: var(--color--text);
+		background: var(--color--foreground--tint-1);
+		border-radius: var(--radius--xl);
+		padding: var(--spacing--4xs) var(--spacing--2xs);
+		margin-inline: var(--spacing--5xs);
+		vertical-align: middle;
+		white-space: nowrap;
+		font-weight: var(--font-weight--regular);
+	}
+
+	// Tables
 	.tableContainer {
-		width: var(--container--width);
-		padding-bottom: 1em;
-		padding-left: calc((var(--container--width) - 100%) / 2);
-		padding-right: var(--spacing--lg);
-		margin-left: calc(-1 * (var(--container--width) - 100%) / 2);
+		width: 100%;
 		overflow-x: auto;
-
-		&:first-child {
-			padding-top: 1em;
-		}
 	}
+}
 
-	table {
-		width: fit-content;
-		border-bottom: var(--border);
-		border-top: var(--border);
-		border-width: 2px;
-		border-color: var(--color--text--shade-1);
-	}
-
-	th,
-	td {
-		padding: 0.25em 1em 0.25em 0;
-		min-width: 12em;
-	}
-
-	th {
-		border-bottom: var(--border);
-		border-color: var(--color--text--shade-1);
-	}
-
-	ul,
-	ol {
-		li {
-			margin-bottom: 0.125rem;
-		}
-	}
+.command {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
+	background-color: transparent;
+	display: block;
+	width: 100%;
+	text-align: left;
+	font-weight: var(--font-weight--regular);
+	cursor: pointer;
 }
 </style>

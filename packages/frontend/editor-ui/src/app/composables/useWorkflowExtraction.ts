@@ -1,4 +1,5 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -11,7 +12,6 @@ import type {
 	ExtractableErrorResult,
 	IConnections,
 	INode,
-	Workflow,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import { useToast } from './useToast';
@@ -38,6 +38,7 @@ const CANVAS_HISTORY_OPTIONS = {
 export function useWorkflowExtraction() {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const router = useRouter();
@@ -46,9 +47,9 @@ export function useWorkflowExtraction() {
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
-
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const adjacencyList = computed(() =>
+		buildAdjacencyList(workflowDocumentStore.value.connectionsBySourceNode),
+	);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -254,8 +255,8 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowsStore.workflow.homeProject?.id,
-			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
+			projectId: workflowDocumentStore.value.homeProject?.id,
+			parentFolderId: workflowDocumentStore.value.parentFolder?.id ?? undefined,
 		};
 	}
 
@@ -282,7 +283,7 @@ export function useWorkflowExtraction() {
 			const { href } = router.resolve({
 				name: VIEWS.WORKFLOW,
 				params: {
-					name: createdWorkflow.id,
+					workflowId: createdWorkflow.id,
 				},
 			});
 
@@ -325,12 +326,13 @@ export function useWorkflowExtraction() {
 				...x: Parameters<typeof NodeHelpers.getNodeInputs>
 			) => ReturnType<typeof NodeHelpers.getNodeInputs>,
 		) => {
-			const node = workflowsStore.getNodeByName(nodeName);
+			const node = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (!node) return true; // invariant broken -> abort onto error path
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
+			const expression = workflowDocumentStore.value.getExpressionHandler();
 
-			const ios = getIOs(workflowObject.value, node, nodeType);
+			const ios = getIOs({ expression }, node, nodeType);
 			return (
 				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
 			);
@@ -396,7 +398,7 @@ export function useWorkflowExtraction() {
 		);
 
 		for (const node of selectionChildNodes) {
-			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			const currentNode = workflowDocumentStore.value.allNodes.find((x) => x.id === node.id);
 
 			if (isEqual(node, currentNode)) continue;
 
@@ -413,7 +415,9 @@ export function useWorkflowExtraction() {
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
-		const subGraph = nodeIds.map(workflowsStore.getNodeById).filter((x) => x !== undefined);
+		const subGraph = nodeIds
+			.map((id) => workflowDocumentStore.value.getNodeById(id))
+			.filter((x) => x !== undefined);
 
 		const triggers = subGraph.filter((x) =>
 			useNodeTypesStore().getNodeType(x.type, x.typeVersion)?.group.includes('trigger'),
@@ -448,7 +452,7 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const allNodeNames = workflowDocumentStore.value.allNodes.map((x) => x.name) ?? [];
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);
@@ -458,17 +462,17 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? workflowObject.value
+			? (workflowDocumentStore.value
 					.getChildNodes(end, 'main', 1)
-					.map((x) => workflowObject.value.getNode(x)?.name)
-					.filter((x) => x !== undefined)
+					.map((x) => workflowDocumentStore.value.getNodeByName(x)?.name)
+					.filter((x) => x !== undefined) ?? [])
 			: [];
 
 		const allAfterEndNodes = end
-			? workflowObject.value
+			? (workflowDocumentStore.value
 					.getChildNodes(end, 'ALL')
-					.map((x) => workflowObject.value.getNode(x))
-					.filter((x) => x !== null)
+					.map((x) => workflowDocumentStore.value.getNodeByName(x) ?? null)
+					.filter((x) => x !== null) ?? [])
 			: [];
 
 		const { nodes, variables } = extractReferencesInNodeExpressions(
@@ -494,7 +498,7 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			workflowsStore.workflow.connections,
+			workflowDocumentStore.value?.connectionsBySourceNode,
 			variables,
 			afterVariables,
 			startNodeName,
