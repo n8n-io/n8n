@@ -43,9 +43,12 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.string()
 			.min(2)
 			.describe(
-				'JSON Pointer (RFC 6901) path to the parameter to set, e.g. "/jsonSchema" or "/options/systemMessage". Must start with "/". Intermediate objects are created on demand. Use this instead of `updateNodeParameters` when you only need to set one nested key — the payload stays small regardless of the rest of the parameters object.',
+				'JSON Pointer (RFC 6901) path to the parameter to set, e.g. "/jsonSchema" or "/options/systemMessage". Must start with "/". Intermediate objects are created on demand. Array indices are NOT supported — to change a value inside an array, set the whole array. Use this instead of `updateNodeParameters` when you only need to set one nested key — the payload stays small regardless of the rest of the parameters object.',
 			),
-		value: z.unknown().describe('Value to set at the path. Any JSON value.'),
+		value: z
+			.unknown()
+			.refine((v) => v !== undefined, { message: 'value is required' })
+			.describe('Value to set at the path. Any defined JSON value.'),
 	}),
 	z.object({
 		type: z.literal('addNode'),
@@ -175,8 +178,10 @@ const sanitizeUnsafeKeys = (value: unknown): unknown => {
 
 /**
  * Decode a JSON Pointer path (RFC 6901) into safe property segments.
- * Returns null if the path is malformed, empty, or contains an unsafe segment.
- * The leading "/" is required.
+ * Returns null if the path is malformed, empty, contains an empty segment,
+ * or contains an unsafe segment. The leading "/" is required.
+ * Array indices are not supported: numeric segments are treated as object keys,
+ * and descent into an array (or any non-object) fails at apply time.
  */
 const parseJsonPointer = (path: string): string[] | null => {
 	if (!path.startsWith('/')) return null;
@@ -184,7 +189,7 @@ const parseJsonPointer = (path: string): string[] | null => {
 	if (tail.length === 0) return null;
 	const segments = tail.split('/').map((seg) => seg.replace(/~1/g, '/').replace(/~0/g, '~'));
 	for (const seg of segments) {
-		if (!isSafeObjectProperty(seg)) return null;
+		if (seg.length === 0 || !isSafeObjectProperty(seg)) return null;
 	}
 	return segments;
 };
@@ -356,8 +361,8 @@ export function applyOperations(
 					return fail(i, `path '${op.path}' is invalid or contains unsafe segments`);
 				}
 				const params = (node.parameters ?? {}) as Record<string, unknown>;
-				const err = setAtPointer(params, segments, op.value);
-				if (err) return fail(i, err);
+				const setError = setAtPointer(params, segments, op.value);
+				if (setError) return fail(i, setError);
 				node.parameters = params as INodeParameters;
 				break;
 			}

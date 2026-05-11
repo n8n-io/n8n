@@ -2,6 +2,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 
 import {
 	applyOperations,
+	partialUpdateOperationSchema,
 	type PartialUpdateOperation,
 } from '../tools/workflow-builder/workflow-operations';
 
@@ -255,6 +256,37 @@ describe('applyOperations', () => {
 				{ type: 'setNodeParameter', nodeName: 'B', path: '/url', value: 'https://new' },
 			]);
 			expect(JSON.stringify(wf)).toBe(before);
+		});
+
+		test('schema rejects an omitted (undefined) value', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeParameter',
+				nodeName: 'B',
+				path: '/url',
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		test('rejects paths with empty segments', () => {
+			for (const path of ['/foo//bar', '/foo/', '//bar']) {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 1 },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) continue;
+				expect(result.error).toContain('invalid');
+			}
+		});
+
+		test('fails clearly when descending through an array (indices not supported)', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { values: [{ name: 'Content-Type', value: 'application/json' }] };
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/0/value', value: 'text/plain' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain('cannot descend');
 		});
 	});
 
