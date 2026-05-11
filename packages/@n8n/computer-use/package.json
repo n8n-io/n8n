@@ -25,10 +25,11 @@
   "main": "dist/cli.js",
   "exports": {
     ".": "./dist/cli.js",
-    "./daemon": "./dist/daemon.js",
     "./config": "./dist/config.js",
+    "./gateway-client": "./dist/gateway-client.js",
     "./logger": "./dist/logger.js",
-    "./gateway-session": "./dist/gateway-session.js"
+    "./gateway-session": "./dist/gateway-session.js",
+    "./settings-store": "./dist/settings-store.js"
   },
   "module": "src/cli.ts",
   "types": "dist/cli.d.ts",

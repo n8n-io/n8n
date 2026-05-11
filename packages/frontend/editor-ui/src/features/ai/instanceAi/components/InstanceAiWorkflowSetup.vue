@@ -2,10 +2,10 @@
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
@@ -22,7 +22,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, defineComponent, onMounted, onUnmounted, provide, ref, toRef, watch } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import {
 	credGroupKey,
 	isTriggerOnly as isTriggerOnlyUtil,
@@ -52,14 +52,11 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const credentialsStore = useCredentialsStore();
-const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 // ---------------------------------------------------------------------------
 // Composable wiring — order matters for dependencies
@@ -174,7 +171,7 @@ const {
 	onCredentialSelected,
 } = useSetupActions({
 	requestId: toRef(props, 'requestId'),
-	store,
+	thread,
 	cards,
 	currentDisplayCard,
 	displayCards,

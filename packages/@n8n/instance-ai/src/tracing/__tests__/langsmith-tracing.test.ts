@@ -502,6 +502,44 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
+	it('includes n8n and workflow SDK versions in trace metadata when provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			n8nVersion: '1.123.4',
+			workflowSdkVersion: '0.13.0',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).toEqual(
+			expect.objectContaining({
+				n8n_version: '1.123.4',
+				workflow_sdk_version: '0.13.0',
+			}),
+		);
+		expect(tracing?.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({
+				n8n_version: '1.123.4',
+				workflow_sdk_version: '0.13.0',
+			}),
+		);
+	});
+
+	it('omits version metadata when not provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).not.toHaveProperty('n8n_version');
+		expect(tracing?.messageRun.metadata).not.toHaveProperty('workflow_sdk_version');
+	});
+
 	it('redacts model secrets from trace metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
