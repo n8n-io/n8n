@@ -10,7 +10,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { isChatInstance } from '@n8n/ai-utilities';
 import { getTracingConfig } from '@utils/tracing';
 
-import { createPromptTemplate, getAgentStepsParser } from './promptUtils';
+import { createPromptTemplate } from './promptUtils';
 import type { ChainExecutionParams } from './types';
 
 export class NaiveJsonOutputParser<
@@ -146,7 +146,6 @@ export async function executeChain({
 	messages,
 	fallbackLlm,
 }: ChainExecutionParams): Promise<unknown[]> {
-	const version = context.getNode().typeVersion;
 	const model = prepareLlm(llm, fallbackLlm) as BaseChatModel | BaseLanguageModel;
 	// If no output parsers provided, use a simple chain with basic prompt template
 	if (!outputParser) {
@@ -178,19 +177,10 @@ export async function executeChain({
 		query,
 	});
 
-	let chain: Runnable<{ query: string }>;
-	if (version >= 1.9) {
-		// Use outputParser directly
-		chain = promptWithInstructions
-			.pipe(model)
-			.pipe(outputParser)
-			.withConfig(getTracingConfig(context));
-	} else {
-		chain = promptWithInstructions
-			.pipe(model)
-			.pipe(outputParser)
-			.withConfig(getTracingConfig(context));
-	}
+	const chain: Runnable<{ query: string }> = promptWithInstructions
+		.pipe(model)
+		.pipe(outputParser)
+		.withConfig(getTracingConfig(context));
 
 	const response = await chain.invoke({ query }, { signal: context.getExecutionCancelSignal() });
 
