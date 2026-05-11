@@ -312,9 +312,14 @@ export class FrontendService {
 				type: this.globalConfig.deployment.type,
 			},
 			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',')?.filter(Boolean) ?? undefined,
+				builtIn:
+					process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',')
+						?.map((p) => p.trim())
+						.filter(Boolean) ?? undefined,
 				external:
-					process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',')?.filter(Boolean) ?? undefined,
+					process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',')
+						?.map((p) => p.trim())
+						.filter(Boolean) ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
