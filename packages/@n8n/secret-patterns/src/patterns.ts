@@ -1,20 +1,19 @@
 // ---------------------------------------------------------------------------
-// Built-in secret-shape patterns redacted from browser tool responses before
-// they reach the LLM.
+// Built-in secret-shape patterns used by every redactor in the codebase.
 //
 // Curation rule: deterministic prefix or fixed shape only. Length/entropy
 // patterns (e.g. "any 40-char hex string") are deliberately excluded — they
 // hit on commit SHAs, base64 data URLs, tracking params, and session IDs in
-// normal browsing traces, violating the zero-false-positives bar required at
-// this chokepoint. Heuristic / structural detection can come in a separate
-// redaction layer.
+// normal traces, violating the zero-false-positives bar required at the
+// chokepoints that use this table. Heuristic / structural detection can come
+// in a separate redaction layer.
 //
 // Sources: gitleaks v8 default config and GitHub's supported-secret-scanning
 // patterns documentation.
 //
 // Patterns are stored without the /g flag so the same table is reusable by
-// callers that want a single match. The redactor in ./redact.ts compiles a
-// global-flagged copy on demand.
+// callers that want a single match. Redactors compile a global-flagged copy
+// on demand.
 // ---------------------------------------------------------------------------
 
 export interface SecretPattern {

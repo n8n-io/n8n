@@ -1813,4 +1813,242 @@ describe('executeResumableStream', () => {
 			},
 		});
 	});
+
+	describe('secret redaction on outbound events', () => {
+		const ANTHROPIC_KEY = `sk-ant-api03-${'X'.repeat(93)}AA`;
+		const GH_PAT = `ghp_${'d'.repeat(36)}`;
+
+		const baseContext = (eventBus: ReturnType<typeof createEventBus>) => ({
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			eventBus,
+			signal: new AbortController().signal,
+			logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+		});
+
+		const getPublishedEvents = (eventBus: ReturnType<typeof createEventBus>) =>
+			eventBus.publish.mock.calls.map(([, event]) => event as Record<string, unknown>);
+
+		it('redacts an Anthropic key arriving in a single text-delta chunk', async () => {
+			const eventBus = createEventBus();
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{ type: 'text-delta', payload: { text: `Here it is: ${ANTHROPIC_KEY} — save it.` } },
+					]),
+				},
+				context: baseContext(eventBus),
+				control: { mode: 'manual' },
+			});
+
+			const events = getPublishedEvents(eventBus);
+			const textEvents = events.filter((e) => e.type === 'text-delta') as Array<{
+				type: 'text-delta';
+				payload: { text: string };
+			}>;
+			const combined = textEvents.map((e) => e.payload.text).join('');
+			expect(combined).toBe('Here it is: [REDACTED:anthropic_api_key] — save it.');
+			for (const event of textEvents) {
+				expect(event.payload.text).not.toContain('sk-ant-');
+			}
+		});
+
+		it('redacts an Anthropic key split across three text-delta chunks', async () => {
+			const eventBus = createEventBus();
+			const a = `tail prefix sk-ant-api03-${'X'.repeat(30)}`;
+			const b = `${'X'.repeat(40)}`;
+			const c = `${'X'.repeat(23)}AA tail suffix`;
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{ type: 'text-delta', payload: { text: a } },
+						{ type: 'text-delta', payload: { text: b } },
+						{ type: 'text-delta', payload: { text: c } },
+					]),
+				},
+				context: baseContext(eventBus),
+				control: { mode: 'manual' },
+			});
+
+			const events = getPublishedEvents(eventBus);
+			const textEvents = events.filter((e) => e.type === 'text-delta') as Array<{
+				type: 'text-delta';
+				payload: { text: string };
+			}>;
+			const combined = textEvents.map((e) => e.payload.text).join('');
+			expect(combined).toBe('tail prefix [REDACTED:anthropic_api_key] tail suffix');
+			for (const event of textEvents) {
+				expect(event.payload.text).not.toContain('sk-ant-');
+				expect(event.payload.text).not.toContain('X'.repeat(20));
+			}
+		});
+
+		it('redacts secrets inside tool-result payload via one-shot tree walk', async () => {
+			const eventBus = createEventBus();
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{
+							type: 'tool-result',
+							payload: {
+								toolCallId: 'tc-1',
+								toolName: 'browser_snapshot',
+								result: {
+									snapshot:
+										'button "Copy"\n  text "Your new key is sk-ant-api03-' +
+										'X'.repeat(93) +
+										'AA"\n  link "Done"',
+									meta: { workflowId: 'wf-42', ghPat: GH_PAT },
+								},
+							},
+						},
+					]),
+				},
+				context: baseContext(eventBus),
+				control: { mode: 'manual' },
+			});
+
+			const events = getPublishedEvents(eventBus);
+			const toolResult = events.find((e) => e.type === 'tool-result') as {
+				type: 'tool-result';
+				payload: { toolCallId: string; result: { snapshot: string; meta: Record<string, unknown> } };
+			};
+			expect(toolResult).toBeDefined();
+			expect(toolResult.payload.result.snapshot).toContain('[REDACTED:anthropic_api_key]');
+			expect(toolResult.payload.result.snapshot).not.toContain('sk-ant-');
+			expect(toolResult.payload.result.meta).toEqual({
+				workflowId: 'wf-42',
+				ghPat: '[REDACTED:github_pat]',
+			});
+		});
+
+		it('redacts secrets inside tool-error payload', async () => {
+			const eventBus = createEventBus();
+			// Mastra signals tool errors via `isError: true` on tool-result chunks;
+			// the chunk mapper translates that to a `tool-error` event.
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{
+							type: 'tool-result',
+							payload: {
+								toolCallId: 'tc-1',
+								toolName: 'http_request',
+								isError: true,
+								result: `401 Unauthorized — token ${GH_PAT} expired`,
+							},
+						},
+					]),
+				},
+				context: baseContext(eventBus),
+				control: { mode: 'manual' },
+			});
+
+			const events = getPublishedEvents(eventBus);
+			const toolError = events.find((e) => e.type === 'tool-error') as {
+				type: 'tool-error';
+				payload: { toolCallId: string; error: string };
+			};
+			expect(toolError.payload.error).toBe('401 Unauthorized — token [REDACTED:github_pat] expired');
+		});
+
+		it('passes a realistic get-execution-shaped payload through unchanged (no false positives)', async () => {
+			const eventBus = createEventBus();
+			// A nested JSON payload structurally similar to a real execution
+			// summary, containing every common type of identifier or URL that
+			// must NOT trigger redaction.
+			const cleanResult = {
+				executionId: '12345',
+				workflowId: 'Wf1zM3yKlAbCdEfG',
+				traceId: '550e8400-e29b-41d4-a716-446655440000',
+				commitSha: 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678',
+				startedAt: '2026-05-11T10:30:00.000Z',
+				finishedAt: '2026-05-11T10:30:14.250Z',
+				nodes: [
+					{
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						url: 'https://example.com/api/v1/users?id=42',
+						bearer: 'Authorization: Bearer eyAiZm9vIjogImJhciIgfQ==',
+					},
+				],
+				meta: {
+					etag: '5d41402abc4b2a76b9719d911017c592',
+					credentialPath: '/Users/alice/.n8n/credentials/abc-def.json',
+					ownerEmail: 'bernhard.wittmann@n8n.io',
+					schedule: '0 8 * * 1-5',
+				},
+			};
+			const inputClone = structuredClone(cleanResult);
+
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{
+							type: 'tool-result',
+							payload: { toolCallId: 'tc-1', toolName: 'get_execution', result: cleanResult },
+						},
+					]),
+				},
+				context: baseContext(eventBus),
+				control: { mode: 'manual' },
+			});
+
+			const events = getPublishedEvents(eventBus);
+			const toolResult = events.find((e) => e.type === 'tool-result') as {
+				type: 'tool-result';
+				payload: { result: unknown };
+			};
+			expect(toolResult.payload.result).toEqual(inputClone);
+		});
+
+		it('logs a single redactor warning when hits occur', async () => {
+			const eventBus = createEventBus();
+			const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{ type: 'text-delta', payload: { text: `here: ${ANTHROPIC_KEY}` } },
+					]),
+				},
+				context: { ...baseContext(eventBus), logger },
+				control: { mode: 'manual' },
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Instance AI secret redactor fired',
+				expect.objectContaining({
+					hitCount: 1,
+					slugs: ['anthropic_api_key'],
+				}),
+			);
+		});
+
+		it('does not log when no hits occur', async () => {
+			const eventBus = createEventBus();
+			const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					fullStream: fromChunks([
+						{ type: 'text-delta', payload: { text: 'clean text, no secrets here.' } },
+					]),
+				},
+				context: { ...baseContext(eventBus), logger },
+				control: { mode: 'manual' },
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				'Instance AI secret redactor fired',
+				expect.anything(),
+			);
+		});
+	});
 });

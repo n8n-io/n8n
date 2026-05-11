@@ -1,4 +1,10 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import {
+	redactStringDetailed,
+	redactValueDetailed,
+	StreamingRedactor,
+	type StreamingRedactorHit,
+} from '@n8n/secret-patterns';
 import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
@@ -1822,6 +1828,15 @@ export async function executeResumableStream(
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
 
+	// Separate streaming redactors for the two text channels — the model may
+	// produce both reasoning and assistant text in the same run, but each is
+	// its own sequential delta stream.
+	const textRedactor = new StreamingRedactor();
+	const reasoningRedactor = new StreamingRedactor();
+	let lastBufferedTextResponseId: string | undefined;
+	let lastBufferedReasoningResponseId: string | undefined;
+	const redactionHits: StreamingRedactorHit[] = [];
+
 	let currentResponseId: string | undefined;
 
 	while (true) {
@@ -1924,8 +1939,38 @@ export async function executeResumableStream(
 				currentResponseId,
 			);
 			if (event) {
-				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
+
+				// Streaming secret redaction. Text and reasoning deltas can
+				// individually be partial fragments of a larger secret; route
+				// them through per-channel streaming redactors that hold back
+				// the trailing edge until the boundary is provably safe.
+				if (event.type === 'text-delta') {
+					lastBufferedTextResponseId = event.responseId ?? lastBufferedTextResponseId;
+					const { emit, hits } = textRedactor.feed(event.payload.text);
+					redactionHits.push(...hits);
+					if (!emit) {
+						shouldPublishEvent = false;
+					} else {
+						event.payload.text = emit;
+					}
+				} else if (event.type === 'reasoning-delta') {
+					lastBufferedReasoningResponseId =
+						event.responseId ?? lastBufferedReasoningResponseId;
+					const { emit, hits } = reasoningRedactor.feed(event.payload.text);
+					redactionHits.push(...hits);
+					if (!emit) {
+						shouldPublishEvent = false;
+					} else {
+						event.payload.text = emit;
+					}
+				} else {
+					redactOneShotEventInPlace(event, redactionHits);
+				}
+
+				if (shouldPublishEvent) {
+					workSummaryAccumulator.observe(event);
+				}
 
 				if (event.type === 'confirmation-request') {
 					const isPrimarySuspension =
@@ -1979,6 +2024,51 @@ export async function executeResumableStream(
 			};
 		}
 
+		// Drain any text buffered behind the streaming redactor's safety
+		// tail. Done before BOTH the completed return AND the manual-mode
+		// suspension return — manual mode is a function exit (the next user
+		// turn starts a fresh executor invocation with new redactors), so
+		// buffered text would otherwise be lost. Auto mode keeps the same
+		// redactor instance across the resume loop iteration, so we skip the
+		// flush there.
+		const isFunctionExit = !suspension || options.control.mode === 'manual';
+		if (isFunctionExit) {
+			const textFlush = textRedactor.flush();
+			redactionHits.push(...textFlush.hits);
+			if (textFlush.emit) {
+				options.context.eventBus.publish(options.context.threadId, {
+					type: 'text-delta',
+					runId: options.context.runId,
+					agentId: options.context.agentId,
+					...(lastBufferedTextResponseId ? { responseId: lastBufferedTextResponseId } : {}),
+					payload: { text: textFlush.emit },
+				});
+			}
+			const reasoningFlush = reasoningRedactor.flush();
+			redactionHits.push(...reasoningFlush.hits);
+			if (reasoningFlush.emit) {
+				options.context.eventBus.publish(options.context.threadId, {
+					type: 'reasoning-delta',
+					runId: options.context.runId,
+					agentId: options.context.agentId,
+					...(lastBufferedReasoningResponseId
+						? { responseId: lastBufferedReasoningResponseId }
+						: {}),
+					payload: { text: reasoningFlush.emit },
+				});
+			}
+
+			if (redactionHits.length > 0) {
+				options.context.logger.warn('Instance AI secret redactor fired', {
+					threadId: options.context.threadId,
+					runId: options.context.runId,
+					agentId: options.context.agentId,
+					hitCount: redactionHits.length,
+					slugs: [...new Set(redactionHits.map((h) => h.slug))],
+				});
+			}
+		}
+
 		if (!suspension) {
 			return {
 				status: hasError ? 'errored' : 'completed',
@@ -2024,6 +2114,54 @@ export async function executeResumableStream(
 		activeSource = resumed;
 		activeStream = resumed.fullStream;
 		text = resumed.text;
+	}
+}
+
+/**
+ * Apply one-shot secret redaction to events whose payload may contain text
+ * the model produced. Mutates the event in place and appends any pattern
+ * hits to `hits`.
+ *
+ * Cross-chunk streaming redaction for `text-delta` / `reasoning-delta` is
+ * handled separately by `StreamingRedactor` — those types are excluded here.
+ */
+function redactOneShotEventInPlace(
+	event: InstanceAiEvent,
+	hits: StreamingRedactorHit[],
+): void {
+	const redactStringField = (value: string): string => {
+		const { output, hits: slugs } = redactStringDetailed(value);
+		for (const slug of slugs) hits.push({ slug });
+		return output;
+	};
+
+	switch (event.type) {
+		case 'tool-result': {
+			const { output, hits: slugs } = redactValueDetailed(event.payload.result);
+			event.payload.result = output;
+			for (const slug of slugs) hits.push({ slug });
+			return;
+		}
+		case 'tool-error': {
+			event.payload.error = redactStringField(event.payload.error);
+			return;
+		}
+		case 'agent-completed': {
+			event.payload.result = redactStringField(event.payload.result);
+			if (event.payload.error !== undefined) {
+				event.payload.error = redactStringField(event.payload.error);
+			}
+			return;
+		}
+		case 'error': {
+			event.payload.content = redactStringField(event.payload.content);
+			if (event.payload.technicalDetails !== undefined) {
+				event.payload.technicalDetails = redactStringField(event.payload.technicalDetails);
+			}
+			return;
+		}
+		default:
+			return;
 	}
 }
 
