@@ -22,6 +22,7 @@ import {
 	AI_X_SPACING,
 	AI_Y_SPACING,
 	STICKY_BOTTOM_PADDING,
+	STICKY_PADDING,
 	STICKY_NODE_TYPE,
 	NODE_SPACING_X,
 	DEFAULT_Y,
@@ -665,4 +666,94 @@ export function calculateNodePositionsDagre(
 	}
 
 	return positions;
+}
+
+// ===========================================================================
+// Sticky-note wrapping resolver
+// ===========================================================================
+
+/**
+ * Sticky note wrapping a set of named nodes — final position and dimensions.
+ */
+export interface StickyWrappingBox {
+	position: [number, number];
+	width: number;
+	height: number;
+}
+
+/**
+ * Type guard for the `wrappedNodeNames` field that `StickyNoteInstance` exposes.
+ *
+ * The field is declared on a concrete class rather than the public `NodeInstance`
+ * interface, so this guard avoids `as` casts at call sites.
+ */
+function readWrappedNodeNames(graphNode: GraphNode): string[] | undefined {
+	const instance = graphNode.instance as { wrappedNodeNames?: unknown };
+	const value = instance.wrappedNodeNames;
+	if (!Array.isArray(value)) return undefined;
+	return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
+}
+
+/**
+ * Resolve final position + dimensions for sticky notes that were created with
+ * `sticky(content, [nodes], …)` and no explicit position.
+ *
+ * The SDK constructor for such a sticky takes a snapshot of the wrapped nodes'
+ * positions at the moment the sticky is created — but those positions are
+ * usually `[0, 0]` if the wrapped nodes haven't been laid out yet. This helper
+ * recomputes the bounding box from the wrapped nodes' final positions
+ * (post-layout) so the sticky actually wraps them on the canvas instead of
+ * stacking at the origin alongside every other auto-wrapping sticky.
+ *
+ * Returns one entry per resolvable sticky. Stickies whose wrapped nodes are
+ * not in the graph are skipped — the caller falls back to whatever the sticky
+ * already had.
+ */
+export function resolveStickyWrappingBoxes(
+	nodes: ReadonlyMap<string, GraphNode>,
+	finalPositions: ReadonlyMap<string, [number, number]>,
+): Map<string, StickyWrappingBox> {
+	const result = new Map<string, StickyWrappingBox>();
+
+	const aiParentNames = getAiParentNames(nodes);
+	const aiConfigNames = getAiConfigNames(nodes);
+
+	const positionFor = (name: string): [number, number] | undefined => {
+		const explicit = nodes.get(name)?.instance.config?.position;
+		if (explicit) return [explicit[0], explicit[1]];
+		return finalPositions.get(name);
+	};
+
+	for (const [stickyName, graphNode] of nodes) {
+		if (graphNode.instance.type !== STICKY_NODE_TYPE) continue;
+		const wrappedNames = readWrappedNodeNames(graphNode);
+		if (!wrappedNames || wrappedNames.length === 0) continue;
+
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+		let resolved = 0;
+
+		for (const wrappedName of wrappedNames) {
+			const pos = positionFor(wrappedName);
+			if (!pos) continue;
+			const { width, height } = getNodeDimensions(wrappedName, aiParentNames, aiConfigNames, nodes);
+			minX = Math.min(minX, pos[0]);
+			minY = Math.min(minY, pos[1]);
+			maxX = Math.max(maxX, pos[0] + width);
+			maxY = Math.max(maxY, pos[1] + height);
+			resolved++;
+		}
+
+		if (resolved === 0) continue;
+
+		result.set(stickyName, {
+			position: [minX - STICKY_PADDING, minY - STICKY_PADDING],
+			width: maxX - minX + STICKY_PADDING * 2,
+			height: maxY - minY + STICKY_PADDING * 2,
+		});
+	}
+
+	return result;
 }

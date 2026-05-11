@@ -142,6 +142,49 @@ describe('Workflow Builder', () => {
 			expect(contents).toContain('## Editing Agent Note');
 		});
 
+		it('should not stack auto-wrapping stickies that wrap unpositioned nodes', () => {
+			// Reproduces the stacked-stickies regression: when the AI generates
+			// `sticky(content, [a, b])` without explicit positions on a/b, every
+			// sticky used to compute its bbox from the same `[0, 0]` defaults and
+			// land on top of every other sticky.
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const httpA = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP A' },
+			});
+			const httpB = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP B' },
+			});
+
+			const sectionOne = sticky('## Section 1', [t, httpA], { name: 'Note 1' });
+			const sectionTwo = sticky('## Section 2', [httpB], { name: 'Note 2' });
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(httpA)
+				.to(httpB)
+				.add(sectionOne)
+				.add(sectionTwo);
+
+			const json = wf.toJSON({ tidyUp: true });
+
+			const note1 = json.nodes.find((n) => n.name === 'Note 1')!;
+			const note2 = json.nodes.find((n) => n.name === 'Note 2')!;
+
+			// Each sticky should sit over its own wrapped section, not on top of each other.
+			expect(note1.position).not.toEqual(note2.position);
+			// And each should pick up real (non-default) dimensions from its wrapped nodes.
+			expect((note1.parameters?.width as number) ?? 0).toBeGreaterThan(0);
+			expect((note2.parameters?.width as number) ?? 0).toBeGreaterThan(0);
+		});
+
 		it('should add SwitchCaseBuilder directly', () => {
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
