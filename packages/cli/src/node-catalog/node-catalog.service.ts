@@ -1,4 +1,4 @@
-import type { NodeTypeParser } from '@n8n/ai-workflow-builder';
+import type { CodeBuilderSearchResult, NodeTypeParser } from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
@@ -21,7 +21,7 @@ export type NodeFilter = (nodeId: string) => boolean;
 export interface SearchNodesOptions {
 	/**
 	 * Optional predicate restricting which node IDs are included in search results.
-	 * Each unique filter reference gets its own tool instance and result cache;
+	 * Each unique filter reference gets its own search state and result cache;
 	 * callers should use module-level function references to avoid unbounded growth.
 	 */
 	nodeFilter?: NodeFilter;
@@ -32,8 +32,8 @@ interface InvokableTool<TInput> {
 }
 
 interface SearchState {
-	tool?: InvokableTool<{ queries: string[] }>;
-	cache: Map<string, string>;
+	search?: (queries: string[]) => CodeBuilderSearchResult;
+	cache: Map<string, CodeBuilderSearchResult>;
 }
 
 const UNFILTERED: unique symbol = Symbol('unfiltered');
@@ -54,7 +54,10 @@ export class NodeCatalogService {
 
 	private initPromise: Promise<void> | undefined;
 
-	/** Tool + cache per unique `nodeFilter` reference (plus one unfiltered slot). */
+	/**
+	 * Search function + full result cache per unique `nodeFilter` reference (plus one unfiltered slot).
+	 * The cache stores the complete `CodeBuilderSearchResult`, so callers can consume only the fields they need.
+	 */
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
 	private getTool: InvokableTool<{ nodeIds: NodeRequest[] }> | undefined;
@@ -92,7 +95,10 @@ export class NodeCatalogService {
 	 * Search the node catalog for node IDs matching `queries`.
 	 * Results are cached per `(filter, queries)` pair and invalidated on node-type refresh.
 	 */
-	async searchNodes(queries: string[], options: SearchNodesOptions = {}): Promise<string> {
+	async searchNodes(
+		queries: string[],
+		options: SearchNodesOptions = {},
+	): Promise<CodeBuilderSearchResult> {
 		const { nodeFilter } = options;
 		const stateKey: NodeFilter | typeof UNFILTERED = nodeFilter ?? UNFILTERED;
 
@@ -106,14 +112,16 @@ export class NodeCatalogService {
 		const cached = state.cache.get(cacheKey);
 		if (cached) return cached;
 
-		if (!state.tool) {
-			const { createCodeBuilderSearchTool } = await import('@n8n/ai-workflow-builder');
-			state.tool = nodeFilter
-				? createCodeBuilderSearchTool(this.getNodeTypeParser(), { nodeFilter })
-				: createCodeBuilderSearchTool(this.getNodeTypeParser());
+		if (!state.search) {
+			const { searchCodeBuilderNodes } = await import('@n8n/ai-workflow-builder');
+			const nodeTypeParser = this.getNodeTypeParser();
+			state.search = (searchQueries: string[]) =>
+				nodeFilter
+					? searchCodeBuilderNodes(nodeTypeParser, searchQueries, { nodeFilter })
+					: searchCodeBuilderNodes(nodeTypeParser, searchQueries);
 		}
 
-		const result = await state.tool.invoke({ queries });
+		const result = state.search(queries);
 		state.cache.set(cacheKey, result);
 		return result;
 	}

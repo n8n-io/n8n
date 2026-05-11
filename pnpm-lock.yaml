@@ -1764,6 +1764,9 @@ importers:
       pdf-parse:
         specifier: 2.4.5
         version: 2.4.5
+      psl:
+        specifier: 1.9.0
+        version: 1.9.0
       turndown:
         specifier: ^7.2.0
         version: 7.2.2
@@ -1795,6 +1798,9 @@ importers:
       '@types/luxon':
         specifier: 3.2.0
         version: 3.2.0
+      '@types/psl':
+        specifier: 1.1.3
+        version: 1.1.3
       '@types/turndown':
         specifier: ^5.0.5
         version: 5.0.6
@@ -11815,6 +11821,9 @@ packages:
 
   '@types/psl@1.1.0':
     resolution: {integrity: sha512-HhZnoLAvI2koev3czVPzBNRYvdrzJGLjQbWZhqFmS9Q6a0yumc5qtfSahBGb5g+6qWvA8iiQktqGkwoIXa/BNQ==}
+
+  '@types/psl@1.1.3':
+    resolution: {integrity: sha512-Iu174JHfLd7i/XkXY6VDrqSlPvTDQOtQI7wNAXKKOAADJ9TduRLkNdMgjGiMxSttUIZnomv81JAbAbC0DhggxA==}
 
   '@types/qs@6.9.15':
     resolution: {integrity: sha512-uXHQKES6DQKKCLh441Xv/dwxOq1TVS3JPUMlEqoEglvlhR6Mxnlew/Xq/LRVHpLyk7iK3zODe1qYHIMltO7XGg==}
@@ -32302,6 +32311,8 @@ snapshots:
       '@types/node': 20.19.21
 
   '@types/psl@1.1.0': {}
+
+  '@types/psl@1.1.3': {}
 
   '@types/qs@6.9.15': {}
 
