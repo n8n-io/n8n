@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import type Parser from 'rss-parser';
+
 import { parseFeedUrl } from './GenericFunctions';
 
 interface PollData {
@@ -55,7 +57,7 @@ export class RssFeedReadTrigger implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 		}
 
-		let feed: Awaited<ReturnType<typeof parseFeedUrl>>;
+		let feed: Parser.Output<IDataObject>;
 		try {
 			feed = await parseFeedUrl(this.helpers, feedUrl);
 		} catch (error) {

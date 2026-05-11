@@ -8,6 +8,8 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { URL } from 'url';
 
+import type Parser from 'rss-parser';
+
 import { generatePairedItemData } from '../../utils/utilities';
 import { parseFeedUrl } from './GenericFunctions';
 
@@ -105,7 +107,7 @@ export class RssFeedRead implements INodeType {
 					});
 				}
 
-				let feed: Awaited<ReturnType<typeof parseFeedUrl>>;
+				let feed: Parser.Output<IDataObject>;
 				try {
 					feed = await parseFeedUrl(this.helpers, url, {
 						customFields: options.customFields as string | undefined,
