@@ -364,7 +364,10 @@ export async function setupSandboxWorkspace(
 	const exampleDuration = Date.now() - exampleStart;
 	if (exampleFiles.length > 0) {
 		// Visible in sandbox-init traces; revisit if p95 regresses materially.
-		console.log(`[sandbox-setup] prepared ${exampleFiles.length} examples in ${exampleDuration}ms`);
+		context.logger?.debug('[sandbox-setup] prepared curated examples', {
+			count: exampleFiles.length,
+			durationMs: exampleDuration,
+		});
 	}
 
 	// Existing workflows as JSON (fetch in parallel)

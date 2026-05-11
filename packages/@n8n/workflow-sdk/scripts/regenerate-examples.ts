@@ -415,6 +415,12 @@ async function main() {
 			const detail = await fetchDetail(entry.id);
 			if (!detail) continue;
 			if (!mechanicalGateDetail(detail).ok) continue;
+			// Catalog `entry.nodes` is a sparse list that can drift from the
+			// real workflow JSON; re-verify against the detail before accepting.
+			const detailHasType = (detail.data.attributes.workflow.nodes ?? []).some(
+				(n) => String(n.type ?? '') === mustType,
+			);
+			if (!detailHasType) continue;
 			const valid = validateRoundtrip(detail);
 			if (!valid.ok) {
 				logFailure(entry.id, entry.name, `coverage-patch fallback validation: ${valid.reason}`);

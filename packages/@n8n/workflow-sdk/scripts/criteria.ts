@@ -182,6 +182,7 @@ export function densityScore(detail: DetailResponse): number {
 /** Catalog-stage score. Does not include coverage, clarity, density (need detail). */
 export function scoreCatalogEntry(entry: CatalogEntry): ScoreResult {
 	const traction = tractionScore(entry.totalViews ?? 0, 0); // recentViews unavailable here
+	// List endpoint only returns createdAt; detail stage rescores with updatedAt.
 	const recency = recencyScore(entry.createdAt);
 	const breakdown: RubricBreakdown = {
 		traction,

@@ -29,6 +29,7 @@ const DETAIL_URL = 'https://api.n8n.io/api/workflows';
 const ROWS_PER_PAGE = 200;
 const RATE_LIMIT_MS = 200; // ~5 req/s
 const MAX_RETRIES = 3;
+const FETCH_TIMEOUT_MS = 30_000;
 
 export interface CatalogEntry {
 	id: number;
@@ -83,7 +84,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 
 async function politeFetch<T>(url: string, attempt = 1): Promise<T | null> {
 	try {
-		const response = await fetch(url);
+		const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
 		if (response.status === 429 || response.status >= 500) {
 			if (attempt > MAX_RETRIES) {
 				console.error(`  Giving up on ${url} after ${MAX_RETRIES} retries (${response.status})`);
@@ -142,8 +143,9 @@ export async function fetchCatalog(opts: { rebuild?: boolean } = {}): Promise<Ca
 			const url = `${LIST_URL}?page=${page}&rows=${ROWS_PER_PAGE}`;
 			response = await politeFetch<ListResponse>(url);
 			if (response === null) {
-				console.error(`  Page ${page}: fetch failed, stopping`);
-				break;
+				// Fail fast: writing a partial catalog would look valid on disk
+				// but silently drop later pages, masking the failure.
+				throw new Error(`Catalog walk failed at page ${page}; refusing to write partial catalog`);
 			}
 			fs.writeFileSync(cachePath, JSON.stringify(response, null, 2));
 			console.log(

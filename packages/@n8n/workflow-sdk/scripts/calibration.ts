@@ -29,7 +29,8 @@ const VERDICT_TO_RANK: Record<string, number> = {
 
 interface CalibrationEntry {
 	id: number;
-	verdict: 'helpful' | 'borderline' | 'not-helpful';
+	// 'TBD' is a placeholder for unlabelled entries; scoring skips them.
+	verdict: 'helpful' | 'borderline' | 'not-helpful' | 'TBD' | string;
 	rationale?: string;
 }
 
@@ -99,6 +100,10 @@ async function scoreCalibration(
 	const byId = new Map(catalog.map((c) => [c.id, c]));
 	const out: ScoredCalibrationEntry[] = [];
 	for (const entry of calib.expert_tagged) {
+		if (!(entry.verdict in VERDICT_TO_RANK)) {
+			console.warn(`  skipping ${entry.id}: verdict not yet labelled (got "${entry.verdict}")`);
+			continue;
+		}
 		const cat = byId.get(entry.id);
 		if (!cat) {
 			console.warn(`  skipping ${entry.id}: not in cached catalog`);

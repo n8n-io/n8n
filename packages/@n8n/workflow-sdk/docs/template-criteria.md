@@ -20,10 +20,11 @@ of other signals.
 | Filter | Rule | Stage |
 |---|---|---|
 | Published | `status == 'published'` | detail |
-| Free | `price == null` AND `purchaseUrl == null` | catalog |
-| Reasonable size | `nodeCount` in `[3, 40]` | catalog (list count) + detail (real count) |
+| Free | `purchaseUrl == null` AND (`price` is null/undefined OR `price <= 0`) | catalog |
+| Size upper bound | `nodes.length <= 40` (list count is sparse) | catalog |
+| Size full range | `workflow.nodes.length` in `[3, 40]` | detail |
 | Verified author | `user.verified == true` | catalog |
-| Has trigger | At least one node with `group` containing `'trigger'` | detail |
+| Has trigger | At least one node whose type identifies as a trigger | detail |
 
 Verified-author and node-count filters drop ~30% of the catalog combined; the
 trade-off is quality density over breadth.
@@ -72,8 +73,10 @@ the long tail into a usable range. Adding recent views (last 30d) catches
 - `hasAI` ∈ `{true, false}` — any `@n8n/n8n-nodes-langchain.*` node OR any `openAi`/`anthropic` chat model
 - `controlFlowKind` ∈ `{linear, branching, loop, parallel}` — derived from connections: branching = ifElse/switch present, loop = splitInBatches present, parallel = ≥1 node with multiple downstream connections, else linear
 
-The selection algorithm picks greedily from the bucket with the fewest accepted
-templates so far, breaking ties by raw score.
+Selection is a rescoring loop: each round picks the candidate with the highest
+total after recomputing scores against the running set. The coverage term
+(`1 / (1 + countInBucket)`) biases toward underrepresented buckets without
+enforcing strict round-robin.
 
 ## Calibration
 
