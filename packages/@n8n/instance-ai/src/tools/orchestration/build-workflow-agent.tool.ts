@@ -52,7 +52,11 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
+import {
+	buildCredentialSnapshot,
+	type CredentialEntry,
+	type CredentialMap,
+} from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import {
 	type SubmitWorkflowAttempt,
@@ -612,9 +616,12 @@ export async function startBuildWorkflowAgentTask(
 	let builderTools: ToolsInput;
 	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
+	let availableCredentials: CredentialEntry[] | undefined;
 
 	if (useSandbox) {
-		credMap = await buildCredentialMap(domainContext.credentialService);
+		const credentialSnapshot = await buildCredentialSnapshot(domainContext.credentialService);
+		credMap = credentialSnapshot.map;
+		availableCredentials = credentialSnapshot.list;
 
 		const toolNames = [
 			'nodes',
@@ -824,6 +831,7 @@ export async function startBuildWorkflowAgentTask(
 								context: domainContext,
 								workspace,
 								credentialMap: credMap,
+								availableCredentials,
 								root,
 								currentRunId: context.runId,
 								getWorkflowLoopState: async () =>

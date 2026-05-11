@@ -2,7 +2,7 @@ import { createAllTools, createOrchestratorDomainTools } from '..';
 import type { InstanceAiContext } from '../../types';
 
 jest.mock('../../parsers/structured-file-parser', () => ({
-	isStructuredAttachment: jest.fn(() => false),
+	isParseableAttachment: jest.fn(() => false),
 }));
 
 jest.mock('../attachments/parse-file.tool', () => ({
@@ -91,10 +91,18 @@ jest.mock('../workspace.tool', () => ({
 	createWorkspaceTool: jest.fn(() => ({ id: 'workspace' })),
 }));
 
-function makeContext(): InstanceAiContext {
+jest.mock('../filesystem/create-tools-from-mcp-server', () => ({
+	createToolsFromLocalMcpServer: jest.fn(() => ({
+		browser_connect: { id: 'browser_connect' },
+		browser_navigate: { id: 'browser_navigate' },
+	})),
+}));
+
+function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
 		userId: 'user-a',
 		logger: { warn: jest.fn() },
+		...overrides,
 	} as unknown as InstanceAiContext;
 }
 
@@ -135,6 +143,19 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes-orchestrator' },
 			'ask-user': { id: 'ask-user' },
+		});
+	});
+
+	it('includes local MCP server tools in orchestrator domain tools', () => {
+		const context = makeContext({
+			localMcpServer: {} as InstanceAiContext['localMcpServer'],
+		});
+
+		const orchestratorTools = createOrchestratorDomainTools(context);
+
+		expect(orchestratorTools).toMatchObject({
+			browser_connect: { id: 'browser_connect' },
+			browser_navigate: { id: 'browser_navigate' },
 		});
 	});
 });

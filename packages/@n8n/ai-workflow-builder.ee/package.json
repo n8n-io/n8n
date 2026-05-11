@@ -67,7 +67,7 @@
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
-    "csv-parse": "5.5.0",
+    "csv-parse": "6.2.1",
     "jsdom": "23.0.1",
     "langchain": "catalog:",
     "langsmith": "^0.4.6",

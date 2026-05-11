@@ -549,6 +549,8 @@ function commit() {
 	gap: var(--spacing--sm);
 	max-height: 60vh;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding-right: var(--spacing--lg);
 	padding-top: var(--spacing--sm);

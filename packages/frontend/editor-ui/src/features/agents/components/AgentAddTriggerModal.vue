@@ -780,6 +780,8 @@ onMounted(async () => {
 	overflow-x: auto;
 	max-height: 240px;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	white-space: pre;
 	font-family: monospace;
 	color: var(--color--text);
