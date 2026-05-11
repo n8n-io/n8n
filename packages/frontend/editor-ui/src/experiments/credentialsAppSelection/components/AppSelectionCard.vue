@@ -161,6 +161,8 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .card {
 	position: relative;
 	display: flex;
@@ -241,30 +243,28 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 	}
 }
 
-@keyframes skeleton-pulse {
-	0%,
-	100% {
-		opacity: 0.6;
-	}
-	50% {
-		opacity: 0.3;
-	}
-}
-
 .skeletonIcon {
+	--animation--skeleton-pulse--duration: 1.5s;
+	--animation--skeleton-pulse--opacity-start: 0.6;
+	--animation--skeleton-pulse--opacity-end: 0.3;
+
 	width: 32px;
 	height: 32px;
 	border-radius: var(--radius);
 	background: var(--color--foreground);
-	animation: skeleton-pulse 1.5s ease-in-out infinite;
+	@include motion.skeleton-pulse;
 }
 
 .skeletonText {
+	--animation--skeleton-pulse--duration: 1.5s;
+	--animation--skeleton-pulse--opacity-start: 0.6;
+	--animation--skeleton-pulse--opacity-end: 0.3;
+
 	width: 80px;
 	height: 14px;
 	border-radius: var(--radius--sm);
 	background: var(--color--foreground);
-	animation: skeleton-pulse 1.5s ease-in-out infinite;
+	@include motion.skeleton-pulse;
 }
 
 .iconContainer {

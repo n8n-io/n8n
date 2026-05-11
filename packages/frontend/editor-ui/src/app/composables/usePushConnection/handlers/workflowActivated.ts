@@ -10,14 +10,14 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const documentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
 
 	const { workflowId, activeVersionId } = data;
 
 	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
-	const activeVersionChanged = documentStore?.value?.activeVersionId !== activeVersionId;
+	const activeVersionChanged = workflowDocumentStore?.value?.activeVersionId !== activeVersionId;
 	if (workflowIsBeingViewed && activeVersionChanged) {
 		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {

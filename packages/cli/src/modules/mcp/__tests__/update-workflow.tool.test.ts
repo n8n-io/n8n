@@ -1,9 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
@@ -16,6 +18,7 @@ const mockAutoPopulateNodeCredentials = jest.fn();
 jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
+	stripNullCredentialStubs: jest.fn(),
 }));
 
 // Mock dynamic imports
@@ -86,10 +89,12 @@ describe('update-workflow MCP tool', () => {
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let collaborationService: CollaborationService;
 
 	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf-1',
 		name: 'Existing Workflow',
+		nodes: [] as INode[],
 		settings: { availableInMCP: true },
 	});
 
@@ -119,8 +124,14 @@ describe('update-workflow MCP tool', () => {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		collaborationService = mockInstance(CollaborationService, {
+			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
+		});
 
-		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
+		mockParseAndValidate.mockImplementation(async () => ({
+			workflow: { ...mockWorkflowJson, nodes: mockNodes.map((n) => ({ ...n })) },
+		}));
 		mockStripImportStatements.mockImplementation((code: string) => code);
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 	});
@@ -135,6 +146,7 @@ describe('update-workflow MCP tool', () => {
 			nodeTypes,
 			credentialsService,
 			sharedWorkflowRepository,
+			collaborationService,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -178,6 +190,19 @@ describe('update-workflow MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
+		test('returns error when workflow has active write lock', async () => {
+			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('being edited by a user');
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
 		test('successfully updates workflow and returns expected response', async () => {
 			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
 
@@ -188,6 +213,8 @@ describe('update-workflow MCP tool', () => {
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-1');
 			expect(response.autoAssignedCredentials).toEqual([]);
 			expect(result.isError).toBeUndefined();
+
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 		});
 
 		test('sets correct workflow entity defaults', async () => {
@@ -244,7 +271,7 @@ describe('update-workflow MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				'custom-wf-id',
-				{ aiBuilderAssisted: true },
+				{ aiBuilderAssisted: true, source: 'n8n-mcp' },
 			);
 		});
 
@@ -266,6 +293,26 @@ describe('update-workflow MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe('Invalid syntax at line 5');
+		});
+
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toContain('sdk_ref');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Service unavailable'));
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {
@@ -355,6 +402,36 @@ describe('update-workflow MCP tool', () => {
 			expect(response.note).toBeUndefined();
 		});
 
+		test('structuredContent conforms to declared outputSchema under strict validation', async () => {
+			// Regression for #28274: MCP publishes outputSchema with additionalProperties: false,
+			// so any field returned by the handler but missing from the schema breaks strict clients.
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [
+					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+				],
+				skippedHttpNodes: [],
+			});
+
+			const tool = createTool();
+			const result = (await tool.handler(
+				{ workflowId: 'wf-1', code: 'const wf = ...' } as never,
+				{} as never,
+			)) as { structuredContent: unknown };
+
+			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
+			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
+				z.ZodObject<z.ZodRawShape>
+			>;
+			const strictSchema = z
+				.object({
+					...envelopeShape,
+					autoAssignedCredentials: z.array(itemsField.element.strict()),
+				})
+				.strict();
+
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+
 		test('includes note about skipped HTTP nodes', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [],
@@ -367,6 +444,108 @@ describe('update-workflow MCP tool', () => {
 			expect(response.note).toBe(
 				'HTTP Request nodes (HTTP Request, HTTP Request1) were skipped during credential auto-assignment. Their credentials must be configured manually.',
 			);
+		});
+
+		describe('credential preservation from existing workflow', () => {
+			test('copies credentials from existing node when name and type match and updated node has none', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing Workflow',
+						settings: { availableInMCP: true },
+						nodes: [
+							{
+								id: 'node-2',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0] as [number, number],
+								parameters: {},
+								credentials: { setApi: { id: 'cred-1', name: 'My Set Cred' } },
+							},
+						] as INode[],
+					}),
+				);
+
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const setNode = savedWorkflow.nodes.find((n: INode) => n.name === 'Set');
+				expect(setNode!.credentials).toEqual({ setApi: { id: 'cred-1', name: 'My Set Cred' } });
+			});
+
+			test('does not copy credentials when node type differs', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing Workflow',
+						settings: { availableInMCP: true },
+						nodes: [
+							{
+								id: 'node-2',
+								name: 'Set',
+								type: 'n8n-nodes-base.differentType',
+								typeVersion: 1,
+								position: [200, 0] as [number, number],
+								parameters: {},
+								credentials: { setApi: { id: 'cred-1', name: 'My Set Cred' } },
+							},
+						] as INode[],
+					}),
+				);
+
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const setNode = savedWorkflow.nodes.find((n: INode) => n.name === 'Set');
+				expect(setNode!.credentials).toBeUndefined();
+			});
+
+			test('does not overwrite credentials already set on the updated node', async () => {
+				const newNodeCredentials = { setApi: { id: 'cred-new', name: 'New Cred' } };
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: mockNodes.map((n) =>
+							n.name === 'Set' ? { ...n, credentials: newNodeCredentials } : n,
+						),
+					},
+				});
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing Workflow',
+						settings: { availableInMCP: true },
+						nodes: [
+							{
+								id: 'node-2',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0] as [number, number],
+								parameters: {},
+								credentials: { setApi: { id: 'cred-old', name: 'Old Cred' } },
+							},
+						] as INode[],
+					}),
+				);
+
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const setNode = savedWorkflow.nodes.find((n: INode) => n.name === 'Set');
+				expect(setNode!.credentials).toEqual(newNodeCredentials);
+			});
+
+			test('handles existing workflow with no nodes without error', async () => {
+				// mockExistingWorkflow already has nodes: [] — verify no crash and no credentials copied
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				for (const node of savedWorkflow.nodes) {
+					expect(node.credentials).toBeUndefined();
+				}
+			});
 		});
 	});
 });

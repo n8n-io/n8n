@@ -1,6 +1,12 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE, Project } from '@n8n/db';
+import {
+	type User,
+	type ExecutionEntity,
+	GLOBAL_OWNER_ROLE,
+	Project,
+	ExecutionRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -10,6 +16,7 @@ import {
 	type IExecuteData,
 	type INode,
 	type IRun,
+	type IRunExecutionData,
 	type ITaskData,
 	type IWaitingForExecution,
 	type IWaitingForExecutionSource,
@@ -17,9 +24,11 @@ import {
 	type IWorkflowExecutionDataProcess,
 	type StartNodeData,
 	type IWorkflowExecuteAdditionalData,
+	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
 	TimeoutExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -60,6 +69,7 @@ afterAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	jest.clearAllMocks();
+	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
 
 describe('processError', () => {
@@ -572,16 +582,265 @@ describe('workflow timeout with startedAt', () => {
 	});
 });
 
+describe('needsFullExecutionData', () => {
+	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+	afterEach(() => {
+		if (originalEnv === undefined) {
+			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+		} else {
+			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
+		}
+	});
+
+	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
+		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when env var is set and mode is integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
+
+		expect(result).toBe(true);
+	});
+});
+
+describe('pre-persist context establishment', () => {
+	const callOrder: string[] = [];
+	let establishSpy: jest.SpyInstance;
+	let addSpy: jest.SpyInstance;
+	let capturedAddData: IWorkflowExecutionDataProcess | undefined;
+
+	const buildRunData = (
+		executionData: IRunExecutionData | undefined,
+		executionMode: WorkflowExecuteMode = 'webhook',
+	): IWorkflowExecutionDataProcess =>
+		mock<IWorkflowExecutionDataProcess>({
+			executionMode,
+			workflowData: {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [],
+				connections: {},
+				settings: undefined,
+			},
+			executionData,
+			userId: 'u1',
+		});
+
+	const buildExecutionDataWithHeader = (): IRunExecutionData =>
+		createRunExecutionData({
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [
+					{
+						node: {
+							id: 'n1',
+							name: 'Webhook',
+							type: 'n8n-nodes-base.webhook',
+							typeVersion: 2,
+							position: [0, 0],
+							parameters: {},
+						},
+						data: {
+							main: [[{ json: { headers: { authorization: 'Bearer eyJtest' } } }]],
+						},
+						source: null,
+					},
+				],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		});
+
+	beforeEach(() => {
+		callOrder.length = 0;
+		capturedAddData = undefined;
+
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValue();
+
+		establishSpy = jest
+			.spyOn(core, 'establishExecutionContext')
+			.mockImplementation(async (_workflow, runExecutionData) => {
+				callOrder.push('establishExecutionContext');
+				// Simulate real behaviour: mask header, set runtimeData.
+				const stack = runExecutionData.executionData?.nodeExecutionStack;
+				const item = stack?.[0]?.data?.main?.[0]?.[0];
+				const headers = item && (item.json as { headers?: Record<string, string> }).headers;
+				if (headers && typeof headers.authorization === 'string') {
+					headers.authorization = '**********';
+				}
+				if (runExecutionData.executionData) {
+					(runExecutionData.executionData as { runtimeData?: unknown }).runtimeData = {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'webhook',
+					};
+				}
+			});
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		addSpy = jest
+			.spyOn(activeExecutions, 'add')
+			.mockImplementation(async (data: IWorkflowExecutionDataProcess) => {
+				capturedAddData = data;
+				callOrder.push('activeExecutions.add');
+				throw new Error('short-circuit for test');
+			});
+	});
+
+	afterEach(() => {
+		establishSpy.mockRestore();
+		addSpy.mockRestore();
+	});
+
+	it('calls establishExecutionContext before activeExecutions.add', async () => {
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(callOrder).toEqual(['establishExecutionContext', 'activeExecutions.add']);
+	});
+
+	it('passes masked executionData to activeExecutions.add', async () => {
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(capturedAddData).toBeDefined();
+		const stack = capturedAddData!.executionData!.executionData!.nodeExecutionStack;
+		expect(stack[0].data.main[0]![0].json).toMatchObject({
+			headers: { authorization: '**********' },
+		});
+		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
+	});
+
+	it('skips establishExecutionContext when data.executionData is undefined', async () => {
+		const data = buildRunData(undefined);
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).not.toHaveBeenCalled();
+		expect(callOrder).toEqual(['activeExecutions.add']);
+	});
+
+	it('skips establishExecutionContext when nodeExecutionStack has not been populated yet', async () => {
+		// Queue mode with OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true creates
+		// the outer IRunExecutionData with `executionData: null`, which
+		// `createRunExecutionData` normalises to an object whose inner
+		// `.executionData` is undefined. The worker establishes context
+		// later, once it populates the trigger-item stack.
+		const data = buildRunData(createRunExecutionData({ executionData: null }), 'manual');
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).not.toHaveBeenCalled();
+		expect(callOrder).toEqual(['activeExecutions.add']);
+	});
+
+	describe('when establishExecutionContext throws', () => {
+		const lifecycleRunHook = jest.fn().mockResolvedValue(undefined);
+		const responseReject = jest.fn();
+
+		beforeEach(() => {
+			establishSpy.mockReset();
+			establishSpy.mockImplementation(async () => {
+				callOrder.push('establishExecutionContext');
+				throw new Error('hook augmentation failed');
+			});
+
+			addSpy.mockReset();
+			addSpy.mockImplementation(async (data: IWorkflowExecutionDataProcess) => {
+				capturedAddData = data;
+				callOrder.push('activeExecutions.add');
+				return 'exec-1';
+			});
+
+			lifecycleRunHook.mockClear();
+			responseReject.mockClear();
+			jest
+				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+				.mockReturnValue(mock<core.ExecutionLifecycleHooks>({ runHook: lifecycleRunHook }));
+			jest.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+		});
+
+		it('clears the trigger-item stack so raw headers do not get persisted', async () => {
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			await runner.run(data, undefined, undefined, undefined, {
+				reject: responseReject,
+				resolve: jest.fn(),
+				promise: Promise.resolve() as never,
+			} as never);
+
+			expect(capturedAddData).toBeDefined();
+			expect(capturedAddData!.executionData!.executionData!.nodeExecutionStack).toEqual([]);
+		});
+
+		it('creates a failed-execution record and rejects the responsePromise', async () => {
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			const executionId = await runner.run(data, undefined, undefined, undefined, {
+				reject: responseReject,
+				resolve: jest.fn(),
+				promise: Promise.resolve() as never,
+			} as never);
+
+			expect(executionId).toBe('exec-1');
+			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
+			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteAfter', [expect.any(Object)]);
+			expect(responseReject).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'hook augmentation failed' }),
+			);
+		});
+	});
+});
+
 describe('streaming functionality', () => {
-	it('should setup sendChunk handler when streaming is enabled and execution mode is not manual', async () => {
+	it('should setup heartbeat interval and sendChunk handler when streaming is enabled', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		jest.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockResponse = mock<Response>();
+		const mockResponse = mock<Response>({ writableEnded: false });
+		const mockSetInterval = jest.spyOn(global, 'setInterval');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -610,46 +869,11 @@ describe('streaming functionality', () => {
 		await runner.run(data);
 
 		// ASSERT
+		// Heartbeat interval is set up in run() before queue/local decision
+		expect(mockSetInterval).toHaveBeenCalledWith(expect.any(Function), 30_000);
+		// sendChunk handler is still registered on lifecycle hooks
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
-	});
 
-	it('should setup sendChunk handler when streaming is enabled and execution mode is manual', async () => {
-		// ARRANGE
-		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
-
-		const mockResponse = mock<Response>();
-
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
-			executionData: undefined,
-			executionMode: 'manual',
-			streamingEnabled: true,
-			httpResponse: mockResponse,
-		});
-
-		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
-
-		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
-
-		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
-			new PCancelable(() => {
-				return mock<IRun>();
-			}),
-		);
-
-		// ACT
-		await runner.run(data);
-
-		// ASSERT
-		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+		mockSetInterval.mockRestore();
 	});
 });

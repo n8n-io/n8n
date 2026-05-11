@@ -49,11 +49,29 @@ jobs:
       version: ${{ inputs.new_stable_version }}
       release-channel: stable
 
+  promote-previous-minor-github-release-to-latest:
+    name: Promote previous minor Github Release to latest
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
+    uses: ./.github/workflows/release-promote-github-release.yml
+    secrets: inherit
+    with:
+      version-tag: 'n8n@${{ inputs.new_stable_version }}'
+
   ensure-release-candidate-branches:
     name: 'Ensure release candidate branches'
     if: |
       inputs.release_type != 'rc'
     uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
+    secrets: inherit
+
+  ensure-correct-latest-version-on-npm:
+    name: Ensure correct latest version on npm
+    if: |
+      inputs.bump == 'minor' ||
+      inputs.track == 'stable'
+    uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 
   populate-cloud-with-releases:

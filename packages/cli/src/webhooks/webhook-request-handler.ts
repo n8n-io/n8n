@@ -1,13 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
+import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
+import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';
 import type {
 	WebhookStaticResponse,
 	WebhookResponse,
@@ -29,7 +30,10 @@ import type {
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
-	constructor(private readonly webhookManager: IWebhookManager) {}
+	constructor(
+		private readonly webhookManager: IWebhookManager,
+		private readonly expectedNodeType?: ExpectedWebhookNodeType,
+	) {}
 
 	/**
 	 * Handles an incoming webhook request. Handles CORS and delegates the
@@ -58,7 +62,7 @@ class WebhookRequestHandler {
 		}
 
 		try {
-			const response = await this.webhookManager.executeWebhook(req, res);
+			const response = await this.webhookManager.executeWebhook(req, res, this.expectedNodeType);
 
 			// Modern way of responding to webhooks
 			if (isWebhookResponse(response)) {
@@ -139,7 +143,7 @@ class WebhookRequestHandler {
 		headers?.applyToResponse(res);
 
 		if (!isWebhookHtmlSandboxingDisabled()) {
-			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 		}
 	}
 
@@ -231,14 +235,19 @@ class WebhookRequestHandler {
 	}
 }
 
-export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
-	const handler = new WebhookRequestHandler(webhookManager);
+export function createWebhookHandlerFor(
+	webhookManager: IWebhookManager,
+	expectedNodeType?: ExpectedWebhookNodeType,
+): express.RequestHandler {
+	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
 
-	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
-		const { params } = req;
+	return async (req, res) => {
+		const webhookRequest = req as WebhookRequest | WebhookOptionsRequest;
+
+		const { params } = webhookRequest;
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
-		await handler.handleRequest(req, res);
+		await handler.handleRequest(webhookRequest, res);
 	};
 }

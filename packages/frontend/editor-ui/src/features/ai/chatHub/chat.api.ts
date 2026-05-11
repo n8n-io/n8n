@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	ChatHubManualSendMessageRequest,
 	ChatHubSendMessageRequest,
 	ChatModelsRequest,
 	ChatModelsResponse,
@@ -8,6 +9,8 @@ import type {
 	ChatHubConversationResponse,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
+	ChatHubManualEditMessageRequest,
+	ChatHubManualRegenerateMessageRequest,
 	ChatSessionId,
 	ChatMessageId,
 	ChatHubAgentDto,
@@ -22,6 +25,7 @@ import type {
 	ChatHubUpdateToolRequest,
 	ChatHubToolDto,
 	ChatHubSemanticSearchSettings,
+	ChatHubSessionType,
 } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
@@ -50,6 +54,25 @@ export async function sendMessageApi(
 }
 
 /**
+ * Send a message using the draft workflow version (manual execution from canvas).
+ * The push-ref header is sent automatically via context.pushRef, enabling canvas
+ * execution events (nodeExecuteBefore/After).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function sendMessageManualApi(
+	ctx: IRestApiContext,
+	workflowId: string,
+	payload: ChatHubManualSendMessageRequest,
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/manual/${workflowId}/send`,
+		payload,
+	);
+}
+
+/**
  * Edit a message and stream the AI response.
  * Returns immediately; actual content comes via Push events.
  */
@@ -70,6 +93,27 @@ export async function editMessageApi(
 }
 
 /**
+ * Edit a message using the draft workflow version (manual execution from canvas).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function editMessageManualApi(
+	ctx: IRestApiContext,
+	request: {
+		workflowId: string;
+		sessionId: ChatSessionId;
+		editId: ChatMessageId;
+		payload: ChatHubManualEditMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/manual/${request.workflowId}/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
+	);
+}
+
+/**
  * Regenerate a message and stream the AI response.
  * Returns immediately; actual content comes via Push events.
  */
@@ -85,6 +129,27 @@ export async function regenerateMessageApi(
 		ctx,
 		'POST',
 		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
+	);
+}
+
+/**
+ * Regenerate a message using the draft workflow version (manual execution from canvas).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function regenerateMessageManualApi(
+	ctx: IRestApiContext,
+	request: {
+		workflowId: string;
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubManualRegenerateMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/manual/${request.workflowId}/${request.sessionId}/messages/${request.retryId}/regenerate`,
 		request.payload,
 	);
 }
@@ -119,11 +184,15 @@ export const fetchConversationsApi = async (
 	context: IRestApiContext,
 	limit: number,
 	cursor?: string,
+	type?: ChatHubSessionType,
 ): Promise<ChatHubConversationsResponse> => {
 	const queryParams = new URLSearchParams();
 	queryParams.append('limit', limit.toString());
 	if (cursor) {
 		queryParams.append('cursor', cursor);
+	}
+	if (type) {
+		queryParams.append('type', type);
 	}
 
 	const apiEndpoint = `/chat/conversations?${queryParams.toString()}`;

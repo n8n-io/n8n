@@ -1,0 +1,20 @@
+{
+	"prompt": "Every day at 8am, check the weather in Berlin using the OpenMeteo API and send me an email to david@thedavid.co.uk using the gmail node if it's going to rain",
+	"complexity": "simple",
+	"tags": ["build", "schedule", "http-request", "gmail", "conditional"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "Email is sent warning of rain",
+			"dataSetup": "Weather API call returns precipitation value of 0.5mm",
+			"successCriteria": "The workflow executes without errors. An email is sent to the email specified mentioning that it will rain today."
+		},
+		{
+			"name": "rain-not-expected",
+			"description": "No email is sent",
+			"dataSetup": "Weather API call returns precipitation value of 0mm",
+			"successCriteria": "The workflow executes without errors. No email is sent mentioning that it will rain today, and no email sending node is executed."
+		}
+	]
+}
