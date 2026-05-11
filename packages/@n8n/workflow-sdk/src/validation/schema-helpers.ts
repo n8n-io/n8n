@@ -70,33 +70,14 @@ const resourceMapperCommonSchema = z
 	.passthrough();
 
 /**
- * Resource Mapper Value schema for manual mapping.
- * Manual mapping requires `schema`; otherwise n8n nodes can fail at runtime
- * when resolving `columns.schema` / equivalent resource mapper metadata.
- */
-const resourceMapperDefineBelowSchema = resourceMapperCommonSchema.extend({
-	mappingMode: z.literal('defineBelow'),
-	value: z.record(z.string(), z.unknown()),
-	schema: z.array(resourceMapperFieldSchema),
-});
-
-/**
- * Resource Mapper Value schema for auto-mapping input data.
- */
-const resourceMapperAutoMapInputDataSchema = resourceMapperCommonSchema.extend({
-	mappingMode: z.literal('autoMapInputData'),
-	value: z.union([z.null(), z.record(z.string(), z.unknown())]).optional(),
-	schema: z.array(resourceMapperFieldSchema).optional(),
-});
-
-/**
  * Resource Mapper Value schema (object format).
  * Used for mapping input data to columns/fields
  */
-const resourceMapperObjectSchema = z.discriminatedUnion('mappingMode', [
-	resourceMapperDefineBelowSchema,
-	resourceMapperAutoMapInputDataSchema,
-]);
+const resourceMapperObjectSchema = resourceMapperCommonSchema.extend({
+	mappingMode: z.string(),
+	value: z.union([z.null(), z.record(z.string(), z.unknown())]).optional(),
+	schema: z.array(resourceMapperFieldSchema).optional(),
+});
 
 /**
  * Resource Mapper Value schema - accepts object format OR expression

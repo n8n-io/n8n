@@ -109,9 +109,7 @@ function generateResourceMapperTypeDeclaration(exported: boolean): string {
 	const prefix = exported ? 'export type' : 'type';
 	return `${prefix} ResourceMapperField = { id?: string; displayName?: string; required?: boolean; defaultMatch?: boolean; display?: boolean; type?: string; canBeUsedToMatch?: boolean; [key: string]: unknown };
 ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?: string; [key: string]: unknown };
-${prefix} ResourceMapperValue =
-  | (ResourceMapperCommon & { mappingMode: 'defineBelow'; value: Record<string, unknown>; schema: ResourceMapperField[] })
-  | (ResourceMapperCommon & { mappingMode: 'autoMapInputData'; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] });`;
+${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
 }
 
 function isCustomApiCall(operation: string): boolean {

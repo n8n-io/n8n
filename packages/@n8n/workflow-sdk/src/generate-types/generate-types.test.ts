@@ -2052,8 +2052,9 @@ describe('generate-types', () => {
 			const result = generateTypes.generateNodeTypeFile(sheetsLikeNode);
 
 			expect(result).toContain('type ResourceMapperField = {');
-			expect(result).toContain("mappingMode: 'defineBelow';");
-			expect(result).toContain('schema: ResourceMapperField[]');
+			expect(result).toContain('mappingMode: string;');
+			expect(result).toContain('value?: null | Record<string, unknown>;');
+			expect(result).toContain('schema?: ResourceMapperField[]');
 			expect(result).toContain('columns?: ResourceMapperValue;');
 			expect(result).not.toContain('columns?: string;');
 		});
