@@ -547,6 +547,33 @@ describe('FormTrigger, formWebhook', () => {
 		});
 	});
 
+	it('should resolve expressions inside html field content', async () => {
+		const mockRender = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Custom HTML',
+				fieldType: 'html',
+				html: '<div>{{ $json.test }}</div>',
+				requiredField: false,
+			},
+		];
+
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.evaluateExpression
+			.calledWith('{{ $json.test }}')
+			.mockReturnValue('TEST VALUE' as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		const renderArgs = mockRender.mock.calls[0][1];
+		expect(renderArgs.formFields[0].html).toBe('<div>TEST VALUE</div>');
+	});
+
 	it('should sanitize form descriptions', async () => {
 		const mockRender = jest.fn();
 

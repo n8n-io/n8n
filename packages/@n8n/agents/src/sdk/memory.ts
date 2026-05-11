@@ -52,7 +52,7 @@ export class Memory {
 	 * Set the storage backend for conversation history.
 	 *
 	 * - `'memory'` — in-process memory (default, lost on restart)
-	 * - A `BuiltMemory` instance — for persistent storage (e.g. SqliteMemory)
+	 * - A `BuiltMemory` instance — for a persistent backend (e.g. cli's `N8nMemory`)
 	 */
 	storage(backend: 'memory' | BuiltMemory): this {
 		if (backend === 'memory') {

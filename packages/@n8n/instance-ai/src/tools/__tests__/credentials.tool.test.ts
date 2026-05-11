@@ -562,6 +562,42 @@ describe('credentials tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(expect.objectContaining({ projectId: 'proj-1' }));
 		});
 
+		it('should scope credential lookup to projectId when provided', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const tool = createCredentialsTool(context);
+			await tool.execute!(
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+					projectId: 'proj-1',
+				},
+				suspendCtx(jest.fn()),
+			);
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({
+				type: 'slackApi',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('should omit projectId from credential lookup when not provided', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const tool = createCredentialsTool(context);
+			await tool.execute!(
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				suspendCtx(jest.fn()),
+			);
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
+		});
+
 		it('should include credentialFlow in suspend payload for finalize stage', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as jest.Mock).mockResolvedValue([]);

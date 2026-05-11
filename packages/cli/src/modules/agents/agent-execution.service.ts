@@ -178,6 +178,7 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
+		await this.n8nMemory.deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}
