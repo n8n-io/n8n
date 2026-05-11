@@ -112,4 +112,92 @@ describe('CredentialPicker', () => {
 			screen.queryByTestId(`node-credentials-select-item-${GLOBAL_OPENAI_CREDENTIAL.id}`),
 		).toBeInTheDocument();
 	});
+
+	// IAM-630 / N8N-9888: Credentials don't refresh when added externally
+	describe('credential refresh behavior', () => {
+		it('should show credentials added by another user after refreshing the store', async () => {
+			// IAM-630: This test demonstrates that when another user adds a credential,
+			// the current user's browser doesn't see it until the store is refreshed.
+			// The bug is that there's no automatic mechanism to refresh credentials
+			// when reopening nodes.
+
+			const TEST_APP_NAME = 'OpenAI';
+			const TEST_CREDENTIAL_TYPE = 'openAiApi';
+
+			// Render component with initial credentials (should show 3 OpenAI creds)
+			const { getByTestId } = renderComponent({
+				props: {
+					appName: TEST_APP_NAME,
+					credentialType: TEST_CREDENTIAL_TYPE,
+					selectedCredentialId: null,
+				},
+			});
+
+			// Open dropdown and count initial credentials
+			await userEvent.click(getByTestId('credential-dropdown'));
+			const initialCredentialNames = [
+				PERSONAL_OPENAI_CREDENTIAL.name,
+				PROJECT_OPENAI_CREDENTIAL.name,
+				GLOBAL_OPENAI_CREDENTIAL.name,
+			];
+
+			// Verify all 3 are present
+			for (const name of initialCredentialNames) {
+				expect(screen.getByText(name)).toBeInTheDocument();
+			}
+
+			// Close dropdown
+			await userEvent.click(getByTestId('credential-dropdown'));
+
+			// Simulate: Another user adds a credential to the backend database
+			// In reality, this would be done via API call by another user/tab
+			// The credential exists in the database but NOT in the current browser's store
+			const externalCredential = {
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				id: '999-external',
+				name: 'Externally Added Credential',
+				data: 'test999',
+				type: 'openAiApi',
+				isManaged: false,
+				homeProject: {
+					id: '3',
+					type: 'team' as const,
+					name: 'Another Users Project',
+					icon: null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+				sharedWithProjects: [],
+				scopes: [
+					'credential:create',
+					'credential:delete',
+					'credential:list',
+					'credential:move',
+					'credential:read',
+					'credential:share',
+					'credential:update',
+				],
+			};
+
+			// Reopen the dropdown WITHOUT refreshing the store
+			// BUG: User won't see the externally added credential
+			await userEvent.click(getByTestId('credential-dropdown'));
+
+			// The external credential should NOT be visible yet (demonstrating the bug)
+			expect(screen.queryByText(externalCredential.name)).not.toBeInTheDocument();
+
+			// Close and simulate a store refresh (e.g., via fetchAllCredentials)
+			// This is what SHOULD happen automatically when reopening nodes
+			await userEvent.click(getByTestId('credential-dropdown'));
+			credentialsStore.state.credentials['999-external'] = externalCredential;
+
+			// Reopen after store refresh
+			await userEvent.click(getByTestId('credential-dropdown'));
+
+			// NOW the credential should be visible (after manual refresh)
+			// This shows that the component IS reactive, but lacks automatic refresh
+			expect(screen.getByText(externalCredential.name)).toBeInTheDocument();
+		});
+	});
 });
