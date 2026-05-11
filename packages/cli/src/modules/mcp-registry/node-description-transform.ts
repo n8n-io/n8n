@@ -1,11 +1,80 @@
 import { camelCase } from 'change-case';
-import type { INodeProperties, INodeTypeDescription, Themed } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INodeCredentialDescription,
+	INodeProperties,
+	INodeTypeDescription,
+	Themed,
+} from 'n8n-workflow';
 
 import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
+export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+
+/**
+ * Get node type name based on server's slug
+ */
+function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
+	return camelCase(server.slug);
+}
+
+/**
+ * Get credentials type name based on server's slug and auth type
+ */
+function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
+	// for now we support only OAuth2, so the suffix is always `McpOAuth2Api`
+	return `${camelCase(server.slug)}McpOAuth2Api`;
+}
+
+/**
+ * Registry MCP server → service-specific credential type for OAuth2 auth type
+ */
+function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	const remote = pickRemote(server);
+	if (!remote) return null;
+
+	return {
+		name: getMcpRegistryCredentialTypeName(server),
+		extends: [MCP_BASE_OAUTH2_CREDENTIAL_NAME],
+		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
+		displayName: `${server.title} MCP OAuth2`,
+		properties: [
+			{
+				displayName: 'Use Dynamic Client Registration',
+				name: 'useDynamicClientRegistration',
+				type: 'hidden',
+				default: true,
+			},
+			{
+				displayName: 'Server URL',
+				name: 'serverUrl',
+				type: 'hidden',
+				default: remote.endpointUrl,
+			},
+			{
+				displayName: 'Allowed HTTP Request Domains',
+				name: 'allowedHttpRequestDomains',
+				type: 'hidden',
+				default: 'none',
+			},
+		],
+	};
+}
+
+/**
+ * Get the `credentials` property for node description based on the server's auth type
+ */
+function getNodeDescriptionCredentials(server: McpRegistryServer): INodeCredentialDescription[] {
+	switch (server.authType) {
+		case 'oauth2':
+			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
+		default:
+			return [];
+	}
+}
 
 /**
  * Pick the connection details from a registry server. Only `streamable-http`
@@ -72,6 +141,18 @@ function withRemoteDefaults(
 }
 
 /**
+ * Registry MCP server → service-specific credential type depending on auth type for the server
+ */
+export function serverToCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	switch (server.authType) {
+		case 'oauth2':
+			return serverToOAuth2CredentialDescription(server);
+		default:
+			return null;
+	}
+}
+
+/**
  * Registry MCP server + runtime base description → synthetic node type
  */
 export function serverToNodeDescription(
@@ -96,6 +177,7 @@ export function serverToNodeDescription(
 	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.description;
 	description.defaults = { name: displayName };
+	description.credentials = getNodeDescriptionCredentials(server);
 	if (description.codex) {
 		description.codex.alias?.push(server.title, displayName);
 		if (server.websiteUrl) {

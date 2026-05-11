@@ -69,6 +69,9 @@ const { createToolsFromLocalMcpServer } =
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
 		createToolsFromLocalMcpServer: jest.Mock;
 	};
+const { createOrchestratorDomainTools } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
 
 function createMcpManagerStub(regularTools: ToolsInput = {}, browserTools: ToolsInput = {}) {
 	return {
@@ -152,6 +155,46 @@ describe('createInstanceAgent', () => {
 		const firstCall = calls[0];
 		expect(firstCall).toBeDefined();
 		expect(firstCall[0]).not.toHaveProperty('workspace');
+	});
+
+	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
+		createOrchestratorDomainTools.mockReturnValueOnce({
+			workflows: { id: 'workflows' },
+			browser_connect: { id: 'browser_connect' },
+			browser_navigate: { id: 'browser_navigate' },
+		});
+		createToolsFromLocalMcpServer.mockReturnValue({
+			browser_connect: { id: 'browser_connect' },
+			browser_navigate: { id: 'browser_navigate' },
+		});
+
+		const memoryConfig = { storage: { id: 'memory-store' } } as never;
+		const localMcpServer = {
+			getToolsByCategory: jest
+				.fn()
+				.mockReturnValue([{ name: 'browser_connect' }, { name: 'browser_navigate' }]),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'browser-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer,
+			},
+			orchestrationContext: { runId: 'browser-test', browserMcpConfig: undefined },
+			memoryConfig,
+			mcpManager: createMcpManagerStub(),
+			disableDeferredTools: true,
+		} as never);
+
+		const calls = Agent.mock.calls as Array<[{ tools: Record<string, { id: string }> }]>;
+		const agentTools = calls[0]?.[0].tools;
+		expect(agentTools).toMatchObject({
+			browser_connect: { id: 'browser_connect' },
+			browser_navigate: { id: 'browser_navigate' },
+		});
 	});
 
 	it('prefers local gateway tools over external MCP tools when names collide', async () => {
