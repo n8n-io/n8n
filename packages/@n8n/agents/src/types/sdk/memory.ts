@@ -116,16 +116,18 @@ export interface AgentResourceScope {
 	resourceId: string;
 }
 
-export type MemoryProfileScopeKind = 'agent' | 'resource';
+export type MemoryProfileScopeKind = 'user-profile';
 
 export interface MemoryProfileScope {
 	scopeKind: MemoryProfileScopeKind;
-	scopeId: string;
+	agentId: string;
+	resourceId: string;
 }
 
 export interface MemoryProfile {
 	scopeKind: MemoryProfileScopeKind;
-	scopeId: string;
+	agentId: string;
+	resourceId: string;
 	content: string;
 	metadata?: JSONObject | null;
 	createdAt: Date;
@@ -152,11 +154,6 @@ export interface MemoryProfilesConfig {
 	 * enables profile loading and profile updates by default.
 	 */
 	enabled?: boolean;
-	/**
-	 * Non-secret context about the agent used only by profile-update prompts to
-	 * decide what belongs in the agent-scoped agent profile.
-	 */
-	agentDescription?: string;
 	/** Override the default prompt templates. */
 	prompts?: MemoryProfilePrompts;
 }

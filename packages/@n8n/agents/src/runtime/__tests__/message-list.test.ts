@@ -166,10 +166,9 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).not.toContain('Current template');
 	});
 
-	it('renders agent profile, user profile, and session memory inside memory_blocks', () => {
+	it('renders user profile and session memory inside memory_blocks', () => {
 		const list = new AgentMessageList();
 		list.memoryProfile = {
-			agentProfile: 'This agent specializes in n8n memory work.',
 			userProfile: 'The user prefers concise answers.',
 		};
 		list.workingMemory = {
@@ -183,16 +182,6 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).toContain('<memory_blocks>');
 		expect(prompt).toContain(
 			[
-				'<agent-profile>',
-				'<description>Durable persona, role, and operating style for this agent.</description>',
-				'<value>',
-				'This agent specializes in n8n memory work.',
-				'</value>',
-				'</agent-profile>',
-			].join('\n'),
-		);
-		expect(prompt).toContain(
-			[
 				'<user-profile>',
 				'<description>Stable facts and preferences about the user or resource.</description>',
 				'<value>',
@@ -203,8 +192,8 @@ describe('AgentMessageList — forLlm working memory', () => {
 		);
 		expect(prompt).toContain('<session-memory>');
 		expect(prompt).toContain('Current objective: verify prompt sections.');
-		expect(prompt.indexOf('<agent-profile>')).toBeLessThan(prompt.indexOf('<user-profile>'));
 		expect(prompt.indexOf('<user-profile>')).toBeLessThan(prompt.indexOf('<session-memory>'));
+		expect(prompt).not.toContain('<agent-profile>');
 		expect(prompt).not.toContain('<memory>');
 	});
 
@@ -306,12 +295,11 @@ describe('AgentMessageList — deserialize', () => {
 
 	it('preserves injected profile context across serialization', () => {
 		const list = new AgentMessageList();
-		list.memoryProfile = { agentProfile: 'Agent profile.', userProfile: 'Resource profile.' };
+		list.memoryProfile = { userProfile: 'Resource profile.' };
 
 		const restored = AgentMessageList.deserialize(list.serialize());
 
 		expect(restored.memoryProfile).toEqual({
-			agentProfile: 'Agent profile.',
 			userProfile: 'Resource profile.',
 		});
 	});

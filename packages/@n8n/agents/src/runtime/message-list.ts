@@ -24,7 +24,6 @@ export interface WorkingMemoryContext {
 }
 
 export interface MemoryProfileContext {
-	agentProfile?: string | null;
 	userProfile?: string | null;
 }
 
@@ -222,20 +221,6 @@ export class AgentMessageList {
 	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
 		let systemPrompt = baseInstructions;
 		const memoryBlocks: string[] = [];
-
-		const agentProfile = this.memoryProfile?.agentProfile?.trim();
-		if (agentProfile) {
-			memoryBlocks.push(
-				[
-					'<agent-profile>',
-					'<description>Durable persona, role, and operating style for this agent.</description>',
-					'<value>',
-					agentProfile,
-					'</value>',
-					'</agent-profile>',
-				].join('\n'),
-			);
-		}
 
 		const userProfile = this.memoryProfile?.userProfile?.trim();
 		if (userProfile) {

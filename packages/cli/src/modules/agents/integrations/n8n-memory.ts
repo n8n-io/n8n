@@ -22,8 +22,8 @@ import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
-import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentMemoryProfileRepository } from '../repositories/agent-memory-profile.repository';
+import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
@@ -34,8 +34,9 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const WORKING_MEMORY_KEY = 'workingMemory';
 
 type MemoryProfileScope = {
-	scopeKind: 'agent' | 'resource';
-	scopeId: string;
+	scopeKind: 'user-profile';
+	agentId: string;
+	resourceId: string;
 };
 
 type MemoryProfile = MemoryProfileScope & {
@@ -205,7 +206,8 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 
 		const entity = this.memoryProfileRepository.create();
 		entity.scopeKind = scope.scopeKind;
-		entity.scopeId = scope.scopeId;
+		entity.agentId = scope.agentId;
+		entity.resourceId = scope.resourceId;
 		entity.content = content;
 		entity.metadata = metadata ?? null;
 		const saved = await this.memoryProfileRepository.save(entity);
@@ -276,7 +278,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 				schemaVersion: LessThanOrEqual(opts.schemaVersionAtMost),
 			}),
 		};
-		const where: FindOptionsWhere<AgentObservationEntity>[] = opts.since
+		const where: Array<FindOptionsWhere<AgentObservationEntity>> = opts.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
 					{
@@ -306,7 +308,7 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 		}
 
 		const baseWhere: FindOptionsWhere<AgentMessageEntity> = { threadId: scopeId };
-		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
+		const where: Array<FindOptionsWhere<AgentMessageEntity>> = opts?.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
 					{
@@ -437,7 +439,8 @@ export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	private toMemoryProfile(entity: AgentMemoryProfileEntity): MemoryProfile {
 		return {
 			scopeKind: entity.scopeKind,
-			scopeId: entity.scopeId,
+			agentId: entity.agentId,
+			resourceId: entity.resourceId,
 			content: entity.content,
 			metadata: entity.metadata,
 			createdAt: entity.createdAt,

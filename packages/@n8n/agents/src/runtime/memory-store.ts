@@ -26,7 +26,7 @@ function scopeKey(scopeKind: ScopeKind, scopeId: string): string {
 }
 
 function memoryProfileKey(scope: MemoryProfileScope): string {
-	return `${scope.scopeKind}:${scope.scopeId}`;
+	return `${scope.scopeKind}:${scope.agentId}:${scope.resourceId}`;
 }
 
 function cloneMemoryProfile(profile: MemoryProfile): MemoryProfile {

@@ -1,6 +1,7 @@
 import type {
 	AgentBuilderMessagesResponse,
 	AgentIntegrationStatusResponse,
+	AgentMemoryProfilesResponse,
 	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
@@ -272,6 +273,18 @@ export const getAgentConfig = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
+	);
+};
+
+export const getAgentMemoryProfiles = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentMemoryProfilesResponse> => {
+	return await makeRestApiRequest<AgentMemoryProfilesResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/memory/profiles`,
 	);
 };
 

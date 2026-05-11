@@ -126,12 +126,7 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(
-			agent,
-			config.memory,
-			options.memoryFactory,
-			config.description ?? config.instructions,
-		);
+		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory);
 	}
 
 	// Config options
@@ -311,7 +306,6 @@ async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
-	agentDescription: string,
 ) {
 	const memory = new Memory();
 
@@ -330,7 +324,7 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
-	memory.profiles({ enabled: true, agentDescription });
+	memory.profiles({ enabled: true });
 
 	if (memoryConfig.observationalMemory?.enabled !== false) {
 		const observationalMemory = memoryConfig.observationalMemory;

@@ -52,6 +52,11 @@ function mountColumn() {
 				AgentIdentityHeader: true,
 				AgentInfoPanel: true,
 				AgentPanelHeader: true,
+				AgentMemoryPanel: {
+					props: ['projectId', 'agentId'],
+					template:
+						'<div data-testid="agent-memory-panel" :data-project-id="projectId" :data-agent-id="agentId"><button data-testid="agent-memory-toggle" /></div>',
+				},
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
@@ -64,5 +69,9 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = mountColumn();
 
 		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-memory-panel"]').attributes()).toMatchObject({
+			'data-project-id': 'project-1',
+			'data-agent-id': 'agent-1',
+		});
 	});
 });

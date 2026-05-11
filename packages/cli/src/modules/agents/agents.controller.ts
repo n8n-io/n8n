@@ -2,6 +2,7 @@ import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
+	type AgentMemoryProfilesResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
 	type AgentScheduleConfig,
@@ -51,6 +52,7 @@ import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentMemoryProfileRepository } from './repositories/agent-memory-profile.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 /**
@@ -99,6 +101,7 @@ export class AgentsController {
 		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly agentMemoryProfileRepository: AgentMemoryProfileRepository,
 	) {}
 
 	@Post('/')
@@ -278,6 +281,28 @@ export class AgentsController {
 			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
 		}
 		return result;
+	}
+
+	@Get('/:agentId/memory/profiles')
+	@ProjectScope('agent:read')
+	async getMemoryProfiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentMemoryProfilesResponse> {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const userProfile = await this.agentMemoryProfileRepository.findOneBy({
+			scopeKind: 'user-profile',
+			agentId,
+			resourceId: req.user.id,
+		});
+
+		return {
+			userProfile: userProfile?.content ?? null,
+		};
 	}
 
 	@Delete('/threads/:threadId')

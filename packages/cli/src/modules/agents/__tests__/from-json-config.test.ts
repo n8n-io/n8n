@@ -65,7 +65,6 @@ describe('buildFromJson()', () => {
 					};
 					profiles?: {
 						enabled?: boolean;
-						agentDescription?: string;
 						prompts?: {
 							profileUpdate?: string;
 						};
@@ -581,7 +580,6 @@ describe('buildFromJson()', () => {
 
 		expect(getMemoryConfig(agent)?.profiles).toMatchObject({
 			enabled: true,
-			agentDescription: 'You are a test agent.',
 		});
 	});
 

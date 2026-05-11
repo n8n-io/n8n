@@ -8,8 +8,8 @@ import type { AgentObservationCursorEntity } from '../../entities/agent-observat
 import type { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
 import type { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import type { AgentThreadEntity } from '../../entities/agent-thread.entity';
-import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentMemoryProfileRepository } from '../../repositories/agent-memory-profile.repository';
+import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
@@ -325,8 +325,9 @@ describe('N8nMemory', () => {
 		): AgentMemoryProfileEntity {
 			return {
 				id: 'profile-1',
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				scopeKind: 'user-profile',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
 				content: 'The user prefers concise answers.',
 				metadata: { source: 'memory' },
 				createdAt,
@@ -335,26 +336,29 @@ describe('N8nMemory', () => {
 			} as AgentMemoryProfileEntity;
 		}
 
-		it('loads profiles by scope kind and scope id', async () => {
+		it('loads profiles by agent and resource', async () => {
 			memoryProfileRepository.findOneBy.mockResolvedValue(makeProfile());
 
 			const result = await memory.getMemoryProfile({
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				scopeKind: 'user-profile',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
 			});
 
 			expect(memoryProfileRepository.findOneBy).toHaveBeenCalledWith({
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				scopeKind: 'user-profile',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
 			});
 			expect(result).toMatchObject({
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				scopeKind: 'user-profile',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
 				content: 'The user prefers concise answers.',
 			});
 		});
 
-		it('upserts an existing profile without touching another scope', async () => {
+		it('upserts an existing profile without touching another agent or resource', async () => {
 			const existing = makeProfile({ id: 'existing-profile' });
 			memoryProfileRepository.findOneBy.mockResolvedValue(existing);
 			memoryProfileRepository.save.mockImplementation(
@@ -362,51 +366,25 @@ describe('N8nMemory', () => {
 			);
 
 			await memory.saveMemoryProfile(
-				{ scopeKind: 'resource', scopeId: 'user-1' },
+				{ scopeKind: 'user-profile', agentId: 'agent-1', resourceId: 'user-1' },
 				'The user prefers terse answers.',
 			);
 
 			expect(memoryProfileRepository.findOneBy).toHaveBeenCalledWith({
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				scopeKind: 'user-profile',
+				agentId: 'agent-1',
+				resourceId: 'user-1',
 			});
 			expect(memoryProfileRepository.create).not.toHaveBeenCalled();
 			expect(memoryProfileRepository.save).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: 'existing-profile',
-					scopeKind: 'resource',
-					scopeId: 'user-1',
+					scopeKind: 'user-profile',
+					agentId: 'agent-1',
+					resourceId: 'user-1',
 					content: 'The user prefers terse answers.',
 				}),
 			);
-		});
-
-		it('creates persona profiles in an agent scope independently from resource profiles', async () => {
-			memoryProfileRepository.findOneBy.mockResolvedValue(null);
-			memoryProfileRepository.create.mockReturnValue(makeProfile({ id: 'new-profile' }));
-			memoryProfileRepository.save.mockImplementation(
-				async (entity) => entity as AgentMemoryProfileEntity,
-			);
-
-			const result = await memory.saveMemoryProfile(
-				{ scopeKind: 'agent', scopeId: 'agent-1' },
-				'This agent handles memory debugging.',
-			);
-
-			expect(memoryProfileRepository.create).toHaveBeenCalledWith();
-			expect(memoryProfileRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					scopeKind: 'agent',
-					scopeId: 'agent-1',
-					content: 'This agent handles memory debugging.',
-					metadata: null,
-				}),
-			);
-			expect(result).toMatchObject({
-				scopeKind: 'agent',
-				scopeId: 'agent-1',
-				content: 'This agent handles memory debugging.',
-			});
 		});
 	});
 
