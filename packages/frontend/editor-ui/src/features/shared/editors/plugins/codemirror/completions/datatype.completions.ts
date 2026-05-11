@@ -433,7 +433,7 @@ const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Com
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
-	if (isSplitInBatchesAbsent()) SKIP.add('context');
+	if (isSplitInBatchesAbsent(workflowDocumentStore)) SKIP.add('context');
 
 	let rawKeys = Object.keys(resolved);
 

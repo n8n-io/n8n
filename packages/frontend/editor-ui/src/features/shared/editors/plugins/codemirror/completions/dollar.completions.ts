@@ -122,26 +122,27 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 
-	if (!hasActiveNode(targetNodeParameterContext)) {
+	if (!hasActiveNode(workflowDocumentStore, targetNodeParameterContext)) {
 		return [];
 	}
 
 	if (await receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
 
-	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
-		(nodeName) => {
-			const label = `$('${escapeMappingString(nodeName)}')`;
-			return {
-				label,
-				info: createInfoBoxRenderer({
-					name: label,
-					returnType: 'Object',
-					description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-				}),
-				section: PREVIOUS_NODES_SECTION,
-			};
-		},
-	);
+	const previousNodesCompletions = autocompletableNodeNames(
+		workflowDocumentStore,
+		targetNodeParameterContext,
+	).map((nodeName) => {
+		const label = `$('${escapeMappingString(nodeName)}')`;
+		return {
+			label,
+			info: createInfoBoxRenderer({
+				name: label,
+				returnType: 'Object',
+				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+			}),
+			section: PREVIOUS_NODES_SECTION,
+		};
+	});
 
 	return recommendedCompletions
 		.concat(ROOT_DOLLAR_COMPLETIONS)

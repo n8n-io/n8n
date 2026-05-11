@@ -1,6 +1,5 @@
 import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -17,10 +16,7 @@ import type { SyntaxNode, Tree } from '@lezer/common';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { type WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -231,7 +227,10 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
-export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+export const hasActiveNode = (
+	workflowDocumentStore: WorkflowDocumentStore,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) => {
 	if (useNDVStore().activeNode?.name !== undefined) {
 		return true;
 	}
@@ -240,28 +239,17 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 		return false;
 	}
 
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-
 	return workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null;
 };
 
-export const isSplitInBatchesAbsent = () => {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
-
+export const isSplitInBatchesAbsent = (workflowDocumentStore: WorkflowDocumentStore) => {
 	return !workflowDocumentStore.allNodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 };
 
-export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+export function autocompletableNodeNames(
+	workflowDocumentStore: WorkflowDocumentStore,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) {
 	const activeNode =
 		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
@@ -275,17 +263,13 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
-		return nonMainChildren.map(getPreviousNodes).flat();
+		return nonMainChildren.map((child) => getPreviousNodes(workflowDocumentStore, child)).flat();
 	}
 
-	return getPreviousNodes(activeNodeName);
+	return getPreviousNodes(workflowDocumentStore, activeNodeName);
 }
 
-export function getPreviousNodes(nodeName: string) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+export function getPreviousNodes(workflowDocumentStore: WorkflowDocumentStore, nodeName: string) {
 	return workflowDocumentStore
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
