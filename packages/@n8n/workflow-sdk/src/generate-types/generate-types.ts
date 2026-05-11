@@ -1908,7 +1908,7 @@ export function generatePropertyJSDoc(
 	// Placeholder support flag — signals to the builder agent (and the runtime
 	// guard) that placeholder() is rejected for this parameter.
 	if (prop.builderHint?.placeholderSupported === false) {
-		lines.push(` * @placeholderSupported false`);
+		lines.push(' * @placeholderSupported false');
 	}
 
 	// Search/load method annotations — signals to the builder agent that

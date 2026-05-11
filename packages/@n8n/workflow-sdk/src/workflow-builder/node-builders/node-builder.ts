@@ -20,13 +20,13 @@ import {
 	type IfElseTarget,
 	type SwitchCaseTarget,
 } from '../../types/base';
+import { extractHint, isPlaceholderValue } from '../string-utils';
 import {
 	isSwitchCaseComposite,
 	isIfElseComposite,
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
-import { extractHint, isPlaceholderValue } from '../string-utils';
 import { assertPlainObject } from '../validation-helpers';
 
 /**

@@ -4,9 +4,9 @@
  * Functions for determining which nodes should have pin data generated.
  */
 
+import { isPlaceholderValue } from './string-utils';
 import { isHttpRequestType, isWebhookType, isDataTableType } from '../constants/node-types';
 import type { NodeInstance } from '../types/base';
-import { isPlaceholderValue } from './string-utils';
 
 /**
  * Check if a node or any of its subnodes have a newCredential() marker.

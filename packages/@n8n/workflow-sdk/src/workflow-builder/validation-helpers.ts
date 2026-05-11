@@ -3,8 +3,8 @@
  * Pure functions extracted from WorkflowBuilderImpl
  */
 
-import { isTriggerNodeType } from '../utils/trigger-detection';
 import { isPlaceholderValue } from './string-utils';
+import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
  * Assert that input is a plain (non-null, non-array) object.
