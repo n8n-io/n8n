@@ -187,7 +187,20 @@ watch(
 );
 
 // --- Side panels ---
-const showArtifactsPanel = ref(true);
+// Artifacts panel: defaults to hidden when the proactive-agent experiment is
+// enabled (cleaner first-message moment), otherwise visible. The user toggle
+// stores an explicit override that takes precedence over the default and
+// remains stable even if the experiment flag changes mid-session.
+const artifactsPanelOverride = ref<boolean | null>(null);
+const showArtifactsPanel = computed<boolean>({
+	get() {
+		if (artifactsPanelOverride.value !== null) return artifactsPanelOverride.value;
+		return !isProactiveAgentExperimentEnabled.value;
+	},
+	set(value) {
+		artifactsPanelOverride.value = value;
+	},
+});
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
