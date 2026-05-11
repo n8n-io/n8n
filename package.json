@@ -150,12 +150,14 @@
       "yaml@<=2.8.3": "2.8.3",
       "undici@<=7.24.1": "7.24.1",
       "picomatch@<=4.0.4": "4.0.4",
-      "hono@<=4.12.16": "4.12.16",
       "brace-expansion@<=2.1.0": "2.1.0",
       "axios": "1.16.0",
       "zod": "3.25.67",
       "fast-xml-parser": "5.7.2",
-      "openai": "6.21.0"
+      "openai": "6.21.0",
+      "hono@<=4.12.18": "4.12.18",
+      "langsmith@<=0.5.19": "0.5.19",
+      "uuid@<=11.1.1": "11.1.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
