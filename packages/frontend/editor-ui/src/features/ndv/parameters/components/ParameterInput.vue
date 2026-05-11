@@ -236,9 +236,9 @@ const isFocused = ref(false);
 const isSwitchingMode = ref(false);
 
 const node = computed(() => {
-	const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-		expressionLocalResolveCtx.value.nodeName,
-	);
+	const contextNode =
+		expressionLocalResolveCtx?.value &&
+		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
 	return contextNode ?? ndvStore.activeNode ?? undefined;
 });
 const nodeType = computed(
@@ -1431,7 +1431,7 @@ onUpdated(async () => {
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
-			:workflow="expressionLocalResolveCtx.workflow"
+			:workflow="workflowDocumentStore.getWorkflowObjectAccessorSnapshot()"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="wrapper"

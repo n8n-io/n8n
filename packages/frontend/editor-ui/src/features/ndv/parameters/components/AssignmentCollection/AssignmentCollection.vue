@@ -181,7 +181,6 @@ function optionSelected(action: string) {
 				node &&
 				expressionLocalResolveCtx?.inputNode
 			"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="dropAreaContainer?.$el"

@@ -759,7 +759,6 @@ onBeforeUnmount(() => {
 						/>
 						<InputPanel
 							v-else-if="!isTriggerNode && workflowObject"
-							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
