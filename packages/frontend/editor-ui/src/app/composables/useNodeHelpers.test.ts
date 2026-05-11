@@ -20,7 +20,6 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
