@@ -37,6 +37,10 @@
     "./prompts/node-selection": {
       "types": "./dist/prompts/node-selection/index.d.ts",
       "default": "./dist/prompts/node-selection/index.js"
+    },
+    "./examples-loader": {
+      "types": "./dist/examples-loader.d.ts",
+      "default": "./dist/examples-loader.js"
     }
   },
   "scripts": {
@@ -84,6 +88,9 @@
       ],
       "prompts/node-selection": [
         "./dist/prompts/node-selection/index.d.ts"
+      ],
+      "examples-loader": [
+        "./dist/examples-loader.d.ts"
       ]
     }
   },

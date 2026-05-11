@@ -22,7 +22,7 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
-import { getExampleFiles } from '@n8n/workflow-sdk';
+import { getExampleFiles } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';

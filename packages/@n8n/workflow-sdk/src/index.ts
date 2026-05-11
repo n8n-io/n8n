@@ -164,12 +164,6 @@ export {
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
 export { emitInstanceAi, type EmitInstanceAiOptions } from './codegen/index';
-export {
-	getExampleFiles,
-	resetExampleFilesCache,
-	type ExampleFile,
-	type ExampleFilesBundle,
-} from './examples-loader';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
 // Type generation utilities (for runtime type generation in CLI)
