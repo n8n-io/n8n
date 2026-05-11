@@ -76,7 +76,7 @@ describe('SsoInstanceSettingsLoader', () => {
 	});
 
 	describe('ordering', () => {
-		it('should call provisioning, saml, oidc, then sync when SAML is enabled', async () => {
+		it('should call saml, oidc, provisioning, then sync when SAML is enabled', async () => {
 			const callOrder: string[] = [];
 			samlLoader.apply.mockImplementation(async () => {
 				callOrder.push('saml');
@@ -95,10 +95,10 @@ describe('SsoInstanceSettingsLoader', () => {
 
 			await loader.run();
 
-			expect(callOrder).toEqual(['provisioning', 'saml', 'oidc', 'sync']);
+			expect(callOrder).toEqual(['saml', 'oidc', 'provisioning', 'sync']);
 		});
 
-		it('should call provisioning, saml, oidc, then sync when OIDC is enabled', async () => {
+		it('should call saml, oidc, provisioning, then sync when OIDC is enabled', async () => {
 			const callOrder: string[] = [];
 			samlLoader.apply.mockImplementation(async () => {
 				callOrder.push('saml');
@@ -117,7 +117,7 @@ describe('SsoInstanceSettingsLoader', () => {
 
 			await loader.run();
 
-			expect(callOrder).toEqual(['provisioning', 'saml', 'oidc', 'sync']);
+			expect(callOrder).toEqual(['saml', 'oidc', 'provisioning', 'sync']);
 		});
 
 		it('should not call provisioning when neither SAML nor OIDC is enabled', async () => {
