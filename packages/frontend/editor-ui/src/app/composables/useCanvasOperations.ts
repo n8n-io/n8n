@@ -2415,6 +2415,7 @@ export function useCanvasOperations() {
 		const nodeNameTable: {
 			[key: string]: string | undefined;
 		} = {};
+		const canvasNodeNames = workflowDocumentStore.value.allNodes.map((node) => node.name);
 		const newNodeNames = new Set<string>((data.nodes ?? []).map((node) => node.name));
 
 		if (!data.nodes) {
@@ -2429,6 +2430,7 @@ export function useCanvasOperations() {
 		let oldName: string;
 		let newName: string;
 		const createNodes: INode[] = [];
+		const nodeNewNames: string[] = [];
 
 		await nodeHelpers.loadNodesProperties(
 			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
@@ -2456,10 +2458,11 @@ export function useCanvasOperations() {
 			const localized = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 			newNodeNames.delete(oldName);
-			newName = uniqueNodeName(localized, Array.from(newNodeNames));
+			newName = uniqueNodeName(localized, [...canvasNodeNames, ...Array.from(newNodeNames)]);
 			newNodeNames.add(newName);
 
 			nodeNameTable[oldName] = newName;
+			nodeNewNames.push(newName);
 
 			createNodes.push(node);
 		});
@@ -2509,11 +2512,27 @@ export function useCanvasOperations() {
 			newConnections[sourceNode] = connection;
 		}
 
+		// Pre-apply name changes so duplicate-named pasted nodes don't collapse in the
+		// Workflow object (which stores nodes by name as a dictionary key).
+		const preRenamedNodes = createNodes.map((node, i) => ({ ...node, name: nodeNewNames[i] }));
+		const preRenamedConnections: IConnections = {};
+		for (const [src, connsByType] of Object.entries(newConnections)) {
+			const newSrc = nodeNameTable[src] ?? src;
+			preRenamedConnections[newSrc] = {};
+			for (const [type, connsByIndex] of Object.entries(connsByType)) {
+				preRenamedConnections[newSrc][type] = connsByIndex.map((connsArr) =>
+					(connsArr ?? []).map((conn) =>
+						conn ? { ...conn, node: nodeNameTable[conn.node] ?? conn.node } : conn,
+					),
+				);
+			}
+		}
+
 		// Create a workflow with the new nodes and connections that we can use
 		// the rename method
 		const tempWorkflow: Workflow = workflowDocumentStore.value.createWorkflowObject(
-			createNodes,
-			newConnections,
+			preRenamedNodes,
+			preRenamedConnections,
 			true,
 		);
 
@@ -2522,18 +2541,20 @@ export function useCanvasOperations() {
 			const node = tempWorkflow.nodes[nodeName];
 			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
 			if (!isInstalledNode) {
-				const originalParameters = createNodes.find((n) => n.name === nodeName)?.parameters;
+				const originalParameters = preRenamedNodes.find((n) => n.name === nodeName)?.parameters;
 				node.parameters = originalParameters ?? node.parameters;
 			}
 		}
-		// Rename all the nodes of which the name changed
+		// Nodes are already renamed in preRenamedNodes; guard in case any old-named node survived
 		for (oldName in nodeNameTable) {
 			const nameToChangeTo = nodeNameTable[oldName];
 			if (!nameToChangeTo || oldName === nameToChangeTo) {
 				// Name did not change so skip
 				continue;
 			}
-			tempWorkflow.renameNode(oldName, nameToChangeTo);
+			if (tempWorkflow.nodes[oldName]) {
+				tempWorkflow.renameNode(oldName, nameToChangeTo);
+			}
 		}
 
 		if (data.pinData) {
