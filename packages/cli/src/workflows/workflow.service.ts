@@ -342,13 +342,16 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
-		// Update the workflow's version when changing nodes or connections
+		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const hasNodeGroupsKey = 'nodeGroups' in workflowUpdateData;
 		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
 		const connectionsChanged =
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
-		const saveNewVersion = nodesChanged || connectionsChanged;
+		const nodeGroupsChanged =
+			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
+		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();

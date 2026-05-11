@@ -237,6 +237,65 @@ describe('WorkflowService', () => {
 			return { settings } as unknown as WorkflowEntity;
 		}
 
+		test('should save new version when nodeGroups change', async () => {
+			setupExistingWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [] }],
+				} as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					versionId: expect.not.stringMatching('v1'),
+				}),
+			);
+		});
+
+		test('should not save new version when nodeGroups are unchanged', async () => {
+			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: [] }];
+			const existingWorkflow = {
+				id: 'workflow-1',
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				nodeGroups,
+				settings: {},
+				activeVersionId: undefined,
+				tags: [],
+			} as unknown as WorkflowEntity;
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [] }],
+				} as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					versionId: 'v1',
+				}),
+			);
+		});
+
 		test('should validate nodeGroups against existing workflow when not in payload', async () => {
 			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
 			const existingWorkflow = setupExistingWorkflow();
