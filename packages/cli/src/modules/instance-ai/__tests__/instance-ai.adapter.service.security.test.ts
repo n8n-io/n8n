@@ -376,3 +376,42 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Credential adapter — IDOR boundary for confirmation payload credential IDs
+//
+// `setupWorkflowApply` and `credentialSelection` confirmation payloads carry
+// client-supplied credential IDs. The credential adapter resolves them
+// through `credentialsService.getOne(user, ...)`, which the underlying
+// service binds to the requesting user — IDs the user can't access throw
+// rather than leaking the credential.
+// ---------------------------------------------------------------------------
+
+describe('credentialService.get — credential ownership revalidation', () => {
+	it('forwards the credential ID to credentialsService.getOne with the bound user', async () => {
+		credentialsService.getOne.mockResolvedValue({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+		} as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.get('cred-mine');
+
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-mine', false);
+		expect(result).toEqual({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+	});
+
+	it('propagates the NotFoundError when the user cannot access the credential', async () => {
+		credentialsService.getOne.mockRejectedValue(
+			new Error('Credential with ID "cred-other" could not be found.'),
+		);
+
+		const ctx = service.createContext(user);
+
+		await expect(ctx.credentialService.get('cred-other')).rejects.toThrow(
+			'Credential with ID "cred-other" could not be found.',
+		);
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
+	});
+});

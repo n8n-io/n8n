@@ -1,6 +1,10 @@
-import { describe, it } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchGlob, parseFilters, evaluateFilter, runValidate } from '../ci-filter.mjs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { matchGlob, parseFilters, evaluateFilter, runValidate, getChangedFiles, getMergeBase } from '../ci-filter.mjs';
 
 // --- matchGlob ---
 
@@ -169,6 +173,70 @@ describe('evaluateFilter', () => {
 		const files = ['packages/@n8n/task-runner-python/src/main.py'];
 		const patterns = ['**', '!packages/@n8n/task-runner-python/**', 'packages/@n8n/task-runner-python/**'];
 		assert.equal(evaluateFilter(files, patterns), true);
+	});
+});
+
+// --- getChangedFiles + getMergeBase (integration, exercises real git) ---
+
+describe('getChangedFiles', () => {
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-'));
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-'));
+	const originalCwd = process.cwd();
+	const git = (args: string[], cwd: string = repoDir) =>
+		execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+	before(() => {
+		// Bare remote so the action's `git fetch origin <ref>` works
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main'], repoDir);
+		git(['config', 'user.email', 'test@test.local']);
+		git(['config', 'user.name', 'test']);
+		git(['remote', 'add', 'origin', remoteDir]);
+
+		// Common ancestor commit
+		writeFileSync(join(repoDir, 'shared.ts'), 'shared\n');
+		git(['add', '.']);
+		git(['commit', '-m', 'root']);
+		git(['push', 'origin', 'main']);
+
+		// PR branches off main, adds a file
+		git(['checkout', '-b', 'pr-branch']);
+		writeFileSync(join(repoDir, 'pr-only.ts'), 'pr\n');
+		git(['add', '.']);
+		git(['commit', '-m', 'PR change']);
+
+		// Master drifts forward, modifying shared.ts (the pre-fix bug surface)
+		git(['checkout', 'main']);
+		writeFileSync(join(repoDir, 'shared.ts'), 'shared\ndrift-from-master\n');
+		git(['commit', '-am', 'master moves']);
+		git(['push', 'origin', 'main']);
+
+		// Sit on the PR branch as if running CI
+		git(['checkout', 'pr-branch']);
+		process.chdir(repoDir);
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		rmSync(repoDir, { recursive: true, force: true });
+		rmSync(remoteDir, { recursive: true, force: true });
+	});
+
+	it('returns only PR-introduced files (master drift does not pollute)', () => {
+		const changed = getChangedFiles('main');
+		assert.deepEqual(changed, ['pr-only.ts']);
+	});
+
+	it('getMergeBase returns the common ancestor commit', () => {
+		const mergeBase = getMergeBase();
+		assert.match(mergeBase, /^[a-f0-9]{40}$/);
+		const expected = git(['merge-base', 'FETCH_HEAD', 'HEAD']);
+		assert.equal(mergeBase, expected);
+	});
+
+	it('rejects unsafe base refs', () => {
+		assert.throws(() => getChangedFiles('main; rm -rf /'), /Unsafe/);
+		assert.throws(() => getChangedFiles('main$evil'), /Unsafe/);
 	});
 });
 
