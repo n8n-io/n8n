@@ -1,17 +1,16 @@
+import type { WorkflowLoopState, AttemptRecord } from '../../workflow-loop/workflow-loop-state';
+import { patchThread, type PatchableThreadMemory } from '../thread-patch';
+import type * as ThreadPatchModule from '../thread-patch';
+import { WorkflowLoopStorage } from '../workflow-loop-storage';
+
 jest.mock('../thread-patch', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof import('../thread-patch')>('../thread-patch');
+	const actual = jest.requireActual<typeof ThreadPatchModule>('../thread-patch');
 
 	return {
 		...actual,
 		patchThread: jest.fn(),
 	};
 });
-
-import type { WorkflowLoopState, AttemptRecord } from '../../workflow-loop/workflow-loop-state';
-import { patchThread, type PatchableThreadMemory } from '../thread-patch';
-import { WorkflowLoopStorage } from '../workflow-loop-storage';
 
 const mockedPatchThread = jest.mocked(patchThread);
 type TestMemory = PatchableThreadMemory & { getThreadById: jest.Mock };

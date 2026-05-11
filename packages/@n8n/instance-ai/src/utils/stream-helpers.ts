@@ -45,6 +45,18 @@ export interface Resumable {
 	) => Promise<unknown>;
 }
 
+function hasResumeStream(agent: Record<string, unknown>): agent is {
+	resumeStream: NonNullable<Resumable['resumeStream']>;
+} {
+	return typeof agent.resumeStream === 'function';
+}
+
+function hasResume(agent: Record<string, unknown>): agent is {
+	resume: NonNullable<Resumable['resume']>;
+} {
+	return typeof agent.resume === 'function';
+}
+
 /** Cast an agent to Resumable for suspend/resume operations. */
 export function asResumable(agent: unknown): Resumable {
 	return agent as Resumable;
@@ -59,11 +71,11 @@ export async function resumeStream(
 		throw new Error('Agent does not support stream resume');
 	}
 
-	if (typeof agent.resumeStream === 'function') {
+	if (hasResumeStream(agent)) {
 		return await agent.resumeStream(data, options);
 	}
 
-	if (typeof agent.resume === 'function') {
+	if (hasResume(agent)) {
 		return await agent.resume('stream', data, options);
 	}
 
