@@ -51,9 +51,7 @@ export default async function updatePRComment({ github, context }) {
 	} else {
 		const lines = [MARKER, '## CLA signatures required', ''];
 		lines.push(`Thank you for your submission! We really appreciate it.
-Like many open source projects, we ask that you sign our [Contributor License Agreement](${process.env.CLA_SIGN_URL}) before we can accept your contribution.
-
-After signing, please comment \`\`\`/cla-check\`\`\` to re-check signature status.`);
+Like many open source projects, we ask that you sign our [Contributor License Agreement](${process.env.CLA_SIGN_URL}) before we can accept your contribution.`);
 		lines.push('');
 
 		if (unsigned.length > 0) {
