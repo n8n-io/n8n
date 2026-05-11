@@ -15,7 +15,7 @@ export function buildAskLlmTool(): BuiltTool {
 				'selects a provider, model and credential. Use only when resolve_llm returns an ' +
 				'ambiguous result, when credentials are missing and the user must choose/configure one, ' +
 				'or when the user explicitly asks to pick/change the model. ' +
-				'After resume: set model = "{provider}/{model}" and credential = credentialName ' +
+				'After resume: set model = "{provider}/{model}" and credential = credentialId ' +
 				'via write_config or patch_config.',
 		)
 		.systemInstruction(
