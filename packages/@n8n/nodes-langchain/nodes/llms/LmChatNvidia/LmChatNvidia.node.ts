@@ -32,7 +32,7 @@ export class LmChatNvidia implements INodeType {
 		icon: { light: 'file:nvidia.svg', dark: 'file:nvidia.dark.svg' },
 		group: ['transform'],
 		version: [1],
-		description: 'For advanced usage with an AI chain',
+		description: 'NVIDIA Nemotron models from build.nvidia.com or self-hosted NIM',
 		defaults: {
 			name: 'NVIDIA Nemotron Chat Model',
 		},
