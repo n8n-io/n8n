@@ -1,7 +1,7 @@
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { useInstanceAiStore } from '../../instanceAi.store';
+import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection, WorkflowSetupStep } from '../workflowSetup.types';
 import { getStepSections } from '../workflowSetup.helpers';
 
@@ -47,7 +47,7 @@ export function useWorkflowSetupTelemetry(deps: {
 	currentStepIndex: Ref<number>;
 	isReady: Ref<boolean>;
 	inputs: WorkflowSetupTelemetryInputAccessors;
-	store: ReturnType<typeof useInstanceAiStore>;
+	thread: ThreadRuntime;
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
@@ -56,9 +56,9 @@ export function useWorkflowSetupTelemetry(deps: {
 	const handledStepKeys = new Set<string>();
 
 	function getSetupTelemetryContext(): SetupTelemetryContext {
-		const tc = deps.store.findToolCallByRequestId(deps.requestId.value);
+		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		return {
-			thread_id: deps.store.currentThreadId,
+			thread_id: deps.thread.currentThreadId,
 			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',

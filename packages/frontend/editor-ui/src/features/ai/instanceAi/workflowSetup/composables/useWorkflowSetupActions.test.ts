@@ -32,7 +32,7 @@ interface Harness {
 	defer: ReturnType<typeof vi.fn>;
 	markSectionSkipped: ReturnType<typeof vi.fn>;
 	buildCompletedSetupPayload: ReturnType<typeof vi.fn>;
-	store: { currentThreadId: string; findToolCallByRequestId: ReturnType<typeof vi.fn> };
+	thread: { currentThreadId: string; findToolCallByRequestId: ReturnType<typeof vi.fn> };
 	actions: ReturnType<typeof useWorkflowSetupActions>;
 }
 
@@ -85,7 +85,7 @@ function setupHarness(): Harness {
 		return { nodeCredentials: out };
 	});
 
-	const store = {
+	const thread = {
 		currentThreadId: 'thread-1',
 		findToolCallByRequestId: vi.fn(() => ({
 			confirmation: { inputThreadId: 'input-thread-1' },
@@ -109,7 +109,7 @@ function setupHarness(): Harness {
 		},
 		applyMachine: { apply, defer },
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		store: store as any,
+		thread: thread as any,
 	});
 
 	return {
@@ -129,7 +129,7 @@ function setupHarness(): Harness {
 		defer,
 		markSectionSkipped,
 		buildCompletedSetupPayload,
-		store,
+		thread,
 		actions,
 	};
 }
@@ -401,7 +401,7 @@ describe('useWorkflowSetupActions', () => {
 				nodeCredentials: { Sub1: { credA: 'cred-a' } },
 			}));
 
-			const store = {
+			const thread = {
 				currentThreadId: 'thread-1',
 				findToolCallByRequestId: vi.fn(() => ({
 					confirmation: { inputThreadId: 'input-thread-1' },
@@ -425,7 +425,7 @@ describe('useWorkflowSetupActions', () => {
 				},
 				applyMachine: { apply, defer },
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				store: store as any,
+				thread: thread as any,
 			});
 
 			await actions.skipCurrentStep();
@@ -501,7 +501,7 @@ describe('useWorkflowSetupActions', () => {
 				},
 				applyMachine: { apply: vi.fn(), defer: vi.fn() },
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				store: { currentThreadId: 't', findToolCallByRequestId: vi.fn() } as any,
+				thread: { currentThreadId: 't', findToolCallByRequestId: vi.fn() } as any,
 			});
 
 			expect(actions.isStepHandled(steps.value[0])).toBe(true);

@@ -1,5 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
-import type { useInstanceAiStore } from '../../instanceAi.store';
+import type { ThreadRuntime } from '../../instanceAi.store';
 import type {
 	WorkflowSetupApplyPayload,
 	WorkflowSetupSection,
@@ -43,7 +43,7 @@ export function useWorkflowSetupActions(deps: {
 	goToStep: (index: number) => void;
 	inputs: WorkflowSetupInputAccessors;
 	applyMachine: ApplyMachine;
-	store: ReturnType<typeof useInstanceAiStore>;
+	thread: ThreadRuntime;
 }): WorkflowSetupActions {
 	const isActionPending = ref(false);
 	const workflowSetupTelemetry = useWorkflowSetupTelemetry({
@@ -57,7 +57,7 @@ export function useWorkflowSetupActions(deps: {
 			isSectionComplete: deps.inputs.isSectionComplete,
 			isSectionSkipped: deps.inputs.isSectionSkipped,
 		},
-		store: deps.store,
+		thread: deps.thread,
 	});
 
 	function isStepHandled(step: WorkflowSetupStep): boolean {

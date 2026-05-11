@@ -1,7 +1,7 @@
 import { ref, watch, onUnmounted, type Ref } from 'vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
-import type { useInstanceAiStore } from '../../instanceAi.store';
+import type { ThreadRuntime } from '../../instanceAi.store';
 import type { TerminalState, WorkflowSetupApplyPayload } from '../workflowSetup.types';
 
 const APPLY_TIMEOUT_MS = 60_000;
@@ -11,7 +11,7 @@ type WaitForToolResult = Record<string, unknown> | null | typeof WAIT_CANCELLED;
 
 export function useWorkflowSetupApply(deps: {
 	requestId: Ref<string>;
-	store: ReturnType<typeof useInstanceAiStore>;
+	thread: ThreadRuntime;
 }): {
 	terminalState: Ref<TerminalState | null>;
 	apply: (payload: WorkflowSetupApplyPayload) => Promise<void>;
@@ -58,7 +58,7 @@ export function useWorkflowSetupApply(deps: {
 
 		const promise = new Promise<WaitForToolResult>((resolve) => {
 			resolveWait = resolve;
-			const existing = deps.store.findToolCallByRequestId(requestId);
+			const existing = deps.thread.findToolCallByRequestId(requestId);
 			if (existing?.result !== undefined) {
 				finish(isToolResult(existing.result) ? existing.result : null);
 				return;
@@ -67,7 +67,7 @@ export function useWorkflowSetupApply(deps: {
 			stopWatch = watch(
 				() => {
 					const tc: InstanceAiToolCallState | undefined =
-						deps.store.findToolCallByRequestId(requestId);
+						deps.thread.findToolCallByRequestId(requestId);
 					return tc?.result;
 				},
 				(result) => {
@@ -89,7 +89,7 @@ export function useWorkflowSetupApply(deps: {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
-		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+		const postSuccess = await deps.thread.confirmAction(deps.requestId.value, {
 			kind: 'setupWorkflowApply',
 			...payload,
 		});
@@ -119,7 +119,7 @@ export function useWorkflowSetupApply(deps: {
 
 		if (result.success === true) {
 			terminalState.value = result.partial === true ? 'partial' : 'applied';
-			deps.store.resolveConfirmation(deps.requestId.value, 'approved');
+			deps.thread.resolveConfirmation(deps.requestId.value, 'approved');
 			return;
 		}
 
@@ -132,13 +132,13 @@ export function useWorkflowSetupApply(deps: {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
-		const success = await deps.store.confirmAction(deps.requestId.value, {
+		const success = await deps.thread.confirmAction(deps.requestId.value, {
 			kind: 'approval',
 			approved: false,
 		});
 		if (success) {
 			terminalState.value = 'deferred';
-			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');
+			deps.thread.resolveConfirmation(deps.requestId.value, 'deferred');
 			return;
 		}
 		// confirmAction already toasted. Reset so the wizard re-renders.

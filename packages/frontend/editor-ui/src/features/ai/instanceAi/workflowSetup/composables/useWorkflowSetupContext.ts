@@ -12,7 +12,7 @@ import {
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import type { INodeUi } from '@/Interface';
-import { useInstanceAiStore } from '../../instanceAi.store';
+import { useThread } from '../../instanceAi.store';
 import type {
 	TerminalState,
 	WorkflowSetupSection,
@@ -67,7 +67,7 @@ interface ProvideOptions {
 }
 
 export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetupContext {
-	const store = useInstanceAiStore();
+	const thread = useThread();
 	const { hydrateCredentialTestResults } = useCredentialTestInBackground();
 
 	hydrateCredentialTestResults(
@@ -84,7 +84,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
 	const applyMachine = useWorkflowSetupApply({
 		requestId: opts.requestId,
-		store,
+		thread,
 	});
 
 	const currentStepIndex = ref(0);
@@ -132,7 +132,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 			apply: applyMachine.apply,
 			defer: applyMachine.defer,
 		},
-		store,
+		thread,
 	});
 
 	function isStepComplete(step: WorkflowSetupStep): boolean {
