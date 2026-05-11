@@ -6,15 +6,6 @@ import type {
 
 export type WithObservationLockResult<T> = { status: 'ran'; value: T } | { status: 'skipped' };
 
-/**
- * Run `fn` while holding the per-scope observation lock. Returns
- * `{ status: 'skipped' }` when the lock is already held by a different
- * live holder; the caller should treat that as a no-op (another writer is
- * already on the case). The lock is released in a `finally` block; release
- * errors are swallowed because by that point the work is done — it doesn't
- * matter whether a TTL reaper or an external displace already cleared the
- * row.
- */
 export async function withObservationLock<T>(
 	store: BuiltObservationStore,
 	scopeKind: ScopeKind,
@@ -34,8 +25,6 @@ export async function withObservationLock<T>(
 	} finally {
 		try {
 			await store.releaseObservationLock(handle);
-		} catch {
-			// Tolerate the lock having been displaced or already released.
-		}
+		} catch {}
 	}
 }

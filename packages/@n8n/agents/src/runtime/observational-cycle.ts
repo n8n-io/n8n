@@ -104,15 +104,6 @@ export type RunObservationalCycleResult =
 	| { status: 'skipped'; reason: 'lock-held' | 'no-delta' }
 	| { status: 'ran'; observationsWritten: number; compacted: boolean };
 
-/**
- * Run one observation cycle for a thread: acquire the lock, read the message
- * delta since the cursor, invoke the observer, append observation rows,
- * advance the cursor, and compact queued observations into thread working
- * memory once the threshold is reached.
- *
- * Errors from observer/compactor calls are caught and emitted through
- * `AgentEvent.Error`; the cycle itself does not throw.
- */
 export async function runObservationalCycle(
 	opts: RunObservationalCycleOpts,
 ): Promise<RunObservationalCycleResult> {
@@ -333,9 +324,7 @@ function parseObservationJsonLines(text: string, threadId: string): NewObservati
 				schemaVersion: OBSERVATION_SCHEMA_VERSION,
 				createdAt: now,
 			});
-		} catch {
-			// Ignore malformed observer lines; prompt iteration can tighten this later.
-		}
+		} catch {}
 	}
 	return rows;
 }

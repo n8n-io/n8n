@@ -152,14 +152,6 @@ export class Memory {
 		return this;
 	}
 
-	/**
-	 * Enable observational memory: an out-of-band observer + compactor that
-	 * maintains thread-scoped working memory after turns.
-	 *
-	 * The configured storage backend must implement
-	 * {@link BuiltObservationStore} (e.g. SqliteMemory or n8n's N8nMemory);
-	 * `.build()` throws otherwise.
-	 */
 	observationalMemory(config: ObservationalMemoryConfig = {}): this {
 		this.observationalMemoryConfig = config;
 		return this;
