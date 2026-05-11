@@ -3,475 +3,402 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Agent Memory Stack</title>
+	<title>Agent memory stack</title>
 	<style>
 		:root {
 			color-scheme: light;
-			--paper: #f3efe4;
-			--paper-2: #fffaf0;
-			--ink: #171512;
-			--muted: #625d51;
-			--line: #262016;
-			--grid: rgba(23, 21, 18, 0.08);
-			--persona: #8d5a09;
-			--persona-soft: #f3e2bd;
-			--user: #1b74b7;
-			--user-soft: #dcecf7;
-			--session: #178f61;
-			--session-soft: #d9f4e4;
-			--neutral: #e8dfcb;
-			--shadow: 0 16px 40px rgba(35, 27, 15, 0.14);
+			--color-primary: #ff6d5a;
+			--color-primary-soft: #fff1ef;
+			--color-text: #1f2937;
+			--color-text-light: #6b7280;
+			--color-text-xlight: #9ca3af;
+			--color-border: #d9dee8;
+			--color-border-light: #edf0f5;
+			--color-background: #f6f7fb;
+			--color-surface: #ffffff;
+			--color-code: #f3f5f8;
+			--shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
+			--radius: 8px;
 			--mono: "SFMono-Regular", "Cascadia Mono", "Liberation Mono", Menlo, monospace;
-			--sans: Optima, Candara, "Avenir Next", "Segoe UI", sans-serif;
+			--sans: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 		}
 
 		* { box-sizing: border-box; }
 		html { scroll-behavior: smooth; }
 		body {
 			margin: 0;
-			min-width: 320px;
-			background:
-				linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-				linear-gradient(0deg, var(--grid) 1px, transparent 1px),
-				radial-gradient(circle at 16% 12%, rgba(255, 196, 81, 0.24), transparent 28rem),
-				radial-gradient(circle at 84% 18%, rgba(23, 143, 97, 0.14), transparent 28rem),
-				var(--paper);
-			background-size: 28px 28px, 28px 28px, auto, auto, auto;
-			color: var(--ink);
+			background: var(--color-background);
+			color: var(--color-text);
 			font-family: var(--sans);
-			line-height: 1.45;
+			font-size: 14px;
+			line-height: 1.55;
 		}
 
+		a { color: var(--color-primary); text-decoration: none; }
+		a:hover { text-decoration: underline; }
 		code, pre { font-family: var(--mono); }
-		code { font-size: 0.92em; }
+		code {
+			padding: 2px 5px;
+			border: 1px solid var(--color-border-light);
+			border-radius: 4px;
+			background: var(--color-code);
+			font-size: 0.9em;
+		}
 		pre {
 			margin: 0;
 			overflow: auto;
 			white-space: pre-wrap;
+			padding: 14px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: var(--color-code);
 			font-size: 12px;
-			line-height: 1.5;
+			line-height: 1.55;
 		}
 
 		.shell {
-			width: min(1520px, calc(100vw - 32px));
-			margin: 0 auto;
-			padding: 28px 0 44px;
-		}
-
-		.header {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-columns: 248px minmax(0, 1fr);
 			gap: 24px;
-			align-items: end;
-			padding: 24px 0 20px;
-			border-bottom: 3px solid var(--line);
+			width: min(1180px, calc(100vw - 32px));
+			margin: 0 auto;
+			padding: 32px 0 56px;
 		}
 
-		.kicker {
-			display: inline-flex;
-			width: fit-content;
-			margin-bottom: 10px;
-			padding: 4px 8px;
-			border: 1px solid var(--line);
-			background: var(--persona-soft);
-			font-family: var(--mono);
-			font-size: 12px;
+		.sidebar {
+			position: sticky;
+			top: 24px;
+			align-self: start;
+			padding: 16px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: var(--color-surface);
+			box-shadow: var(--shadow);
+		}
+
+		.logo {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 18px;
 			font-weight: 700;
-			text-transform: uppercase;
 		}
-
-		h1 {
-			margin: 0;
-			font-family: Didot, "Bodoni 72", Georgia, serif;
-			font-size: clamp(44px, 7vw, 108px);
-			font-weight: 700;
-			line-height: 0.9;
-		}
-
-		.header p {
-			max-width: 860px;
-			margin: 14px 0 0;
-			color: var(--muted);
-			font-size: 18px;
+		.logo-mark {
+			width: 20px;
+			height: 20px;
+			border-radius: 5px;
+			background: var(--color-primary);
 		}
 
 		.nav {
 			display: grid;
-			gap: 8px;
-			min-width: 300px;
-			padding: 12px;
-			border: 2px solid var(--line);
-			background: var(--paper-2);
-			box-shadow: var(--shadow);
+			gap: 4px;
 		}
-
 		.nav a {
-			color: var(--ink);
-			font-family: var(--mono);
-			font-size: 12px;
-			font-weight: 700;
+			padding: 7px 8px;
+			border-radius: 6px;
+			color: var(--color-text-light);
+			font-size: 13px;
+		}
+		.nav a:hover {
+			background: var(--color-primary-soft);
+			color: var(--color-text);
 			text-decoration: none;
 		}
 
-		.nav a:hover { text-decoration: underline; }
-
-		.main-grid {
+		main {
 			display: grid;
-			grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
 			gap: 18px;
-			margin-top: 18px;
-			align-items: start;
+			min-width: 0;
 		}
 
-		.panel {
-			border: 2px solid var(--line);
-			background: rgba(255, 250, 240, 0.9);
+		.hero,
+		.card {
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: var(--color-surface);
 			box-shadow: var(--shadow);
 		}
 
-		.panel-header {
-			display: flex;
-			justify-content: space-between;
-			gap: 12px;
-			align-items: center;
-			padding: 12px 14px;
-			border-bottom: 2px solid var(--line);
-			background: var(--neutral);
+		.hero {
+			padding: 28px;
 		}
-
-		.panel-header h2,
-		.card h3 {
-			margin: 0;
-			font-family: var(--mono);
-			font-size: 13px;
-			text-transform: uppercase;
-		}
-
-		.panel-body { padding: 14px; }
-
-		.memory-blocks {
-			display: grid;
-			gap: 12px;
-		}
-
-		.block {
-			border: 2px solid var(--line);
-			background: var(--paper-2);
-		}
-
-		.block.persona { background: var(--persona-soft); }
-		.block.user { background: var(--user-soft); }
-		.block.session { background: var(--session-soft); }
-
-		.block-head {
-			display: flex;
-			justify-content: space-between;
-			gap: 10px;
-			padding: 10px 12px;
-			border-bottom: 2px solid var(--line);
-			font-family: var(--mono);
+		.kicker {
+			margin: 0 0 10px;
+			color: var(--color-primary);
 			font-size: 12px;
 			font-weight: 700;
+			letter-spacing: 0.02em;
 			text-transform: uppercase;
 		}
-
-		.block-body {
-			display: grid;
-			grid-template-columns: minmax(0, 0.48fr) minmax(0, 1fr);
-			gap: 12px;
-			padding: 12px;
+		h1 {
+			margin: 0;
+			font-size: clamp(32px, 5vw, 56px);
+			line-height: 1;
+			letter-spacing: 0;
 		}
-
-		.block-body p { margin: 0; color: var(--muted); }
-
-		.diagram {
-			position: relative;
-			display: grid;
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-			gap: 24px;
-			min-height: 420px;
-		}
-
-		.node {
-			position: relative;
-			z-index: 2;
-			min-height: 116px;
-			padding: 12px;
-			border: 2px solid var(--line);
-			background: var(--paper-2);
-		}
-		.node.persona { background: var(--persona-soft); }
-		.node.user { background: var(--user-soft); }
-		.node.session { background: var(--session-soft); }
-		.node h3 {
-			margin: 0 0 8px;
-			font-family: var(--mono);
-			font-size: 12px;
-			text-transform: uppercase;
-		}
-		.node p { margin: 0; color: var(--muted); font-size: 14px; }
-
-		.connector {
-			position: absolute;
-			inset: 0;
-			width: 100%;
-			height: 100%;
-			pointer-events: none;
-			z-index: 1;
-		}
-		.connector path {
-			fill: none;
-			stroke: var(--line);
-			stroke-width: 2;
-			stroke-linecap: round;
-		}
-		.connector text {
-			display: none;
-		}
-
-		.cards {
-			display: grid;
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-			gap: 12px;
-			margin-top: 18px;
+		.lede {
+			max-width: 760px;
+			margin: 16px 0 0;
+			color: var(--color-text-light);
+			font-size: 16px;
 		}
 
 		.card {
-			border: 2px solid var(--line);
-			background: var(--paper-2);
+			padding: 22px;
 		}
-		.card h3 {
-			padding: 10px 12px;
-			border-bottom: 2px solid var(--line);
-			background: var(--neutral);
+		h2 {
+			margin: 0 0 12px;
+			font-size: 20px;
+			line-height: 1.25;
 		}
-		.card .content { padding: 12px; }
-		.card p { margin: 0; color: var(--muted); }
+		h3 {
+			margin: 0 0 8px;
+			font-size: 14px;
+			line-height: 1.35;
+		}
+		p { margin: 0 0 12px; color: var(--color-text-light); }
+		p:last-child { margin-bottom: 0; }
+		ul, ol { margin: 0; padding-left: 18px; color: var(--color-text-light); }
+		li + li { margin-top: 6px; }
 
-		.list {
+		.summary-grid,
+		.detail-grid {
 			display: grid;
-			gap: 8px;
-			margin: 0;
-			padding: 0;
-			list-style: none;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 14px;
 		}
-		.list li {
+		.stat,
+		.block {
+			padding: 14px;
+			border: 1px solid var(--color-border-light);
+			border-radius: var(--radius);
+			background: #fbfcfe;
+		}
+		.stat strong,
+		.block strong {
+			display: block;
+			margin-bottom: 4px;
+			color: var(--color-text);
+		}
+		.stat span,
+		.block span {
+			color: var(--color-text-light);
+		}
+
+		.flow {
 			display: grid;
-			grid-template-columns: minmax(115px, 0.34fr) minmax(0, 1fr);
-			gap: 10px;
-			padding: 8px 0;
-			border-bottom: 1px solid rgba(38, 32, 22, 0.18);
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 12px;
+			margin-top: 8px;
 		}
-		.list li:last-child { border-bottom: 0; }
-		.list strong { font-family: var(--mono); font-size: 12px; }
-		.list span { color: var(--muted); }
+		.step {
+			position: relative;
+			padding: 14px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: #fbfcfe;
+		}
+		.step::after {
+			content: "";
+			position: absolute;
+			top: 50%;
+			right: -9px;
+			width: 6px;
+			height: 6px;
+			border-top: 1.5px solid var(--color-text-xlight);
+			border-right: 1.5px solid var(--color-text-xlight);
+			transform: translateY(-50%) rotate(45deg);
+		}
+		.step:last-child::after { display: none; }
+		.step-number {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 22px;
+			height: 22px;
+			margin-bottom: 10px;
+			border-radius: 50%;
+			background: var(--color-primary-soft);
+			color: var(--color-primary);
+			font-size: 12px;
+			font-weight: 700;
+		}
 
-		.code-panel {
-			border: 2px solid var(--line);
-			background: #15130f;
-			color: #fff7e6;
+		.memory-example {
+			display: grid;
+			gap: 12px;
 		}
-		.code-panel h3 {
-			padding: 10px 12px;
-			border-bottom: 1px solid rgba(255, 247, 230, 0.25);
-			background: #211d16;
-			color: #fff7e6;
-		}
-		.code-panel pre { padding: 12px; }
 
-		@media (max-width: 1100px) {
-			.header,
-			.main-grid,
-			.cards {
+		.callout {
+			padding: 14px;
+			border: 1px solid #ffd5ce;
+			border-radius: var(--radius);
+			background: var(--color-primary-soft);
+			color: var(--color-text);
+		}
+		.callout p { color: var(--color-text); }
+
+		@media (max-width: 900px) {
+			.shell {
 				grid-template-columns: 1fr;
 			}
-			.nav { min-width: 0; }
-		}
-
-		@media (max-width: 760px) {
-			.shell { width: min(100vw - 20px, 1520px); }
-			.diagram,
-			.block-body,
-			.list li {
+			.sidebar {
+				position: static;
+			}
+			.flow,
+			.summary-grid,
+			.detail-grid {
 				grid-template-columns: 1fr;
 			}
-			.connector { display: none; }
+			.step::after { display: none; }
 		}
 	</style>
 </head>
 <body>
-	<!-- Required memory block terms: <memory_blocks> <persona> <user> <session-memory> -->
 	<div class="shell">
-		<header class="header">
-			<div>
-				<div class="kicker">Base Memory Stack</div>
-				<h1>Agent Memory Stack</h1>
-				<p>
-					The base Memory toggle enables mutable profile memory plus session working memory.
-					These sections are injected as <code>&lt;memory_blocks&gt;</code> and stay separate so
-					agent behavior, user context, and current-thread state do not collapse into one blob.
-				</p>
-			</div>
-			<nav class="nav" aria-label="Memory docs">
-				<a href="#blocks">Jump to memory blocks</a>
-				<a href="#storage">Jump to profile storage</a>
-				<a href="#config">Jump to config sketch</a>
+		<aside class="sidebar" aria-label="Document navigation">
+			<div class="logo"><span class="logo-mark"></span> n8n agents</div>
+			<nav class="nav">
+				<a href="#overview">Overview</a>
+				<a href="#blocks">Prompt blocks</a>
+				<a href="#profile">User profile</a>
+				<a href="#session">Session memory</a>
+				<a href="#storage">Storage</a>
 			</nav>
-		</header>
+		</aside>
 
-		<main class="main-grid">
-			<section class="panel" id="blocks">
-				<div class="panel-header">
-					<h2>Prompt Sections</h2>
-					<code>&lt;memory_blocks&gt;</code>
-				</div>
-				<div class="panel-body">
-					<div class="memory-blocks">
-						<article class="block persona">
-							<div class="block-head"><span>&lt;persona&gt;</span><span>agent scoped</span></div>
-							<div class="block-body">
-								<p>Durable behavior rules this agent should follow with this user.</p>
-								<pre><code>&lt;description&gt;Durable behavior rules this agent should follow with this user.&lt;/description&gt;
-&lt;value&gt;
-Never use emojis. Keep responses brief and direct.
-&lt;/value&gt;</code></pre>
-							</div>
-						</article>
+		<main>
+			<header class="hero" id="overview">
+				<p class="kicker">Base memory</p>
+				<h1>Agent memory stack</h1>
+				<p class="lede">
+					Base Memory gives an agent two model-facing memory sources: a user profile for durable preferences and context, and session memory for the current thread objective.
+				</p>
+			</header>
 
-						<article class="block user">
-							<div class="block-head"><span>&lt;user&gt;</span><span>resource scoped</span></div>
-							<div class="block-body">
-								<p>Stable user preferences and context shared across agents for the same resource.</p>
-								<pre><code>&lt;description&gt;Stable user preferences and context shared across agents.&lt;/description&gt;
-&lt;value&gt;
-Prefers brief, direct responses.
-&lt;/value&gt;</code></pre>
-							</div>
-						</article>
-
-						<article class="block session">
-							<div class="block-head"><span>&lt;session-memory&gt;</span><span>thread scoped</span></div>
-							<div class="block-body">
-								<p>Current-thread objective, state, decisions, active items, and open follow-ups.</p>
-								<pre><code>&lt;description&gt;Current-thread objective, state, decisions, and open follow-ups.&lt;/description&gt;
-&lt;value&gt;
-Current objective: diagnose the active support case.
-Open follow-ups: confirm deployment status.
-&lt;/value&gt;</code></pre>
-							</div>
-						</article>
+			<section class="card">
+				<div class="summary-grid">
+					<div class="stat">
+						<strong>Enabled by</strong>
+						<span><code>memory.enabled: true</code> in n8n agent config.</span>
+					</div>
+					<div class="stat">
+						<strong>Includes</strong>
+						<span><code>&lt;user-profile&gt;</code> and <code>&lt;session-memory&gt;</code>.</span>
+					</div>
+					<div class="stat">
+						<strong>Does not include</strong>
+						<span>Case memory, embeddings, or <code>recall_memory</code>.</span>
+					</div>
+					<div class="stat">
+						<strong>Profile scope</strong>
+						<span><code>scopeKind + agentId + resourceId</code>.</span>
 					</div>
 				</div>
 			</section>
 
-			<section class="panel">
-				<div class="panel-header">
-					<h2>Runtime Flow</h2>
-					<code>Memory toggle</code>
-				</div>
-				<div class="panel-body">
-					<div class="diagram">
-						<svg class="connector" viewBox="0 0 900 420" preserveAspectRatio="none" aria-hidden="true">
-							<defs>
-								<marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-									<path d="M0,0 L8,4 L0,8 Z" fill="#262016"></path>
-								</marker>
-							</defs>
-							<path d="M284 75 L308 75" marker-end="url(#arrow)"></path>
-							<path d="M592 75 L616 75" marker-end="url(#arrow)"></path>
-							<path d="M284 235 L308 235" marker-end="url(#arrow)"></path>
-							<path d="M592 235 L616 235" marker-end="url(#arrow)"></path>
-						</svg>
+			<section class="card" id="blocks">
+				<h2>Prompt blocks</h2>
+				<p>The runtime injects memory as explicit XML-like blocks before the LLM call. Empty blocks are omitted.</p>
+				<div class="memory-example">
+					<pre>&lt;memory_blocks&gt;
+&lt;user-profile&gt;
+- Prefers concise support-debugging answers.
+- Uses n8n for customer-support automation.
+&lt;/user-profile&gt;
 
-						<article class="node persona">
-							<h3>Profile Store</h3>
-							<p><code>agents_memory_profiles</code> stores agent persona and resource user profile rows.</p>
-						</article>
-						<article class="node persona">
-							<h3>Profile Updater</h3>
-							<p>Uses latest role-labeled user/assistant pair and agent description.</p>
-						</article>
-						<article class="node persona">
-							<h3>Persona + User</h3>
-							<p>Loaded before the LLM call and wrapped inside <code>&lt;memory_blocks&gt;</code>.</p>
-						</article>
-						<article class="node session">
-							<h3>Thread Messages</h3>
-							<p>Completed turns are persisted and then observed out of band.</p>
-						</article>
-						<article class="node session">
-							<h3>Observer + Compactor</h3>
-							<p>Maintains objective-driven thread state and prunes broad durable preferences.</p>
-						</article>
-						<article class="node session">
-							<h3>Session Memory</h3>
-							<p>Injected as private read-only state for the same thread.</p>
-						</article>
-						<article class="node">
-							<h3>Agent Runtime</h3>
-							<p>Builds the final system prompt with all available memory blocks before calling the model.</p>
-						</article>
-						<article class="node">
-							<h3>Answer</h3>
-							<p>The model uses memory silently and should not dump raw memory documents to the user.</p>
-						</article>
+&lt;session-memory&gt;
+# Thread memory
+
+## Current objective
+Debug the Priority Escalation workflow.
+&lt;/session-memory&gt;
+&lt;/memory_blocks&gt;</pre>
+					<div class="callout">
+						<p><code>&lt;memory&gt;</code> is reserved for Case memory. It appears only when episodic memory is enabled in the downstream Case memory PR.</p>
 					</div>
 				</div>
+			</section>
+
+			<section class="card" id="profile">
+				<h2>User profile</h2>
+				<p>The user profile is a concise markdown bullet list of durable information this agent should remember about this user or resource.</p>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>What belongs here</strong>
+						<ul>
+							<li>Stable user preferences and communication style.</li>
+							<li>Durable environment, tooling, or domain context.</li>
+							<li>Guidance that should personalize future answers for this agent.</li>
+						</ul>
+					</div>
+					<div class="block">
+						<strong>What stays out</strong>
+						<ul>
+							<li>Current task state, debugging steps, and next actions.</li>
+							<li>Temporary workflow names or throwaway scenarios.</li>
+							<li>Agent instructions or a summary of the agent description.</li>
+						</ul>
+					</div>
+				</div>
+				<div class="flow" aria-label="Profile update flow">
+					<div class="step">
+						<span class="step-number">1</span>
+						<h3>Load</h3>
+						<p>Read the current profile for <code>user-profile + agentId + resourceId</code>.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">2</span>
+						<h3>Observe</h3>
+						<p>Use the latest user and assistant turn pair as evidence.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">3</span>
+						<h3>Rewrite</h3>
+						<p>The profile updater returns <code>{"userProfile":"..."}</code>.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">4</span>
+						<h3>Save</h3>
+						<p>Persist the new bullet list only when it changes.</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="card" id="session">
+				<h2>Session memory</h2>
+				<p>Session memory is thread-scoped working memory. It tracks the active objective and current progress, not durable user profile facts.</p>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>Captured by default</strong>
+						<ul>
+							<li>Current objective and task state.</li>
+							<li>Objective-specific decisions and constraints.</li>
+							<li>Open follow-ups and uncertainties for the active thread.</li>
+						</ul>
+					</div>
+					<div class="block">
+						<strong>Updated by</strong>
+						<ul>
+							<li>The observer path after successful turns.</li>
+							<li>The compactor path when enough observations have accumulated.</li>
+							<li>The configured memory backend through thread metadata.</li>
+						</ul>
+					</div>
+				</div>
+			</section>
+
+			<section class="card" id="storage">
+				<h2>Storage and UI</h2>
+				<ul>
+					<li><code>agents_memory_profiles</code> stores user profiles by <code>scopeKind</code>, <code>agentId</code>, and <code>resourceId</code>.</li>
+					<li>The Agents Memory panel shows a read-only User profile section using the same compact editor style as session memory.</li>
+					<li>n8n JSON config does not expose profile settings; profiles are implicit when base Memory is enabled.</li>
+					<li>The SDK still exposes <code>Memory.profiles(...)</code> explicitly for SDK consumers.</li>
+				</ul>
 			</section>
 		</main>
-
-		<section class="cards" id="storage">
-			<article class="card">
-				<h3>agents_memory_profiles</h3>
-				<div class="content">
-					<ul class="list">
-						<li><strong>scopeKind = agent</strong><span>Persona profile keyed by agent id.</span></li>
-						<li><strong>scopeKind = resource</strong><span>User/resource profile keyed by resource id.</span></li>
-						<li><strong>content</strong><span>Mutable profile document rewritten conservatively.</span></li>
-						<li><strong>metadata</strong><span>Reserved JSON metadata. No embeddings here.</span></li>
-					</ul>
-				</div>
-			</article>
-
-			<article class="card">
-				<h3>Session Working Memory</h3>
-				<div class="content">
-					<p>
-						Thread memory captures objective, objective-specific state, accepted decisions,
-						active items, and open questions. It should not become the durable user profile.
-					</p>
-				</div>
-			</article>
-
-			<article class="card">
-				<h3>Base Memory Toggle</h3>
-				<div class="content">
-					<p>
-						In n8n, <code>memory.enabled: true</code> enables session memory and profiles by
-						default. The base Memory toggle does not require embedding credentials.
-					</p>
-				</div>
-			</article>
-		</section>
-
-		<section class="panel" id="config" style="margin-top: 18px">
-				<div class="panel-header">
-					<h2>Config Sketch</h2>
-					<code>memory.enabled</code>
-				</div>
-			<div class="panel-body">
-				<div class="code-panel">
-					<h3>JSON config</h3>
-					<pre><code>{
-	  "memory": {
-	    "enabled": true,
-	    "storage": "n8n",
-	    "lastMessages": 50
-	  }
-}</code></pre>
-				</div>
-			</div>
-		</section>
 	</div>
 </body>
 </html>
