@@ -1,14 +1,12 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
-import { flushPromises, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
-import { getAgentMemoryProfiles } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
-const { openModalWithDataMock, restApiContext } = vi.hoisted(() => ({
+const { openModalWithDataMock } = vi.hoisted(() => ({
 	openModalWithDataMock: vi.fn(),
-	restApiContext: {},
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -17,27 +15,15 @@ vi.mock('@n8n/i18n', () => ({
 			({
 				'agents.builder.memory.title': 'Memory',
 				'agents.builder.memory.description':
-					'Keeps session context and learned behavior available.',
-				'agents.builder.memory.profiles.title': 'User profile',
-				'agents.builder.memory.profiles.userProfile.description':
-					'What the agent remembers about you.',
-				'agents.builder.memory.profiles.userProfile.empty': 'No user profile has been saved yet.',
-				'agents.builder.memory.profiles.loading': 'Loading user profile...',
-				'agents.builder.memory.profiles.error': "Couldn't load user profile.",
+					'Stores useful context from conversations so the agent can respond with more continuity.',
 				'agents.builder.memory.episodicMemory.label': 'Episodic memory',
 				'agents.builder.memory.episodicMemory.hint':
-					'Remember source-backed details from previous sessions so this agent can recognize similar issues later.',
+					'Keep useful details from past conversations so they can help later.',
 			})[key] ?? key,
 	}),
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nCollapsiblePanel: {
-		props: ['modelValue', 'title', 'disabled'],
-		emits: ['update:modelValue'],
-		template:
-			'<section v-bind="$attrs"><button data-testid="agent-memory-profiles-toggle" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)">{{ title }}</button><div v-if="modelValue"><slot /></div></section>',
-	},
 	N8nSwitch: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
@@ -47,24 +33,9 @@ vi.mock('@n8n/design-system', () => ({
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext }),
-}));
-
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: openModalWithDataMock }),
 }));
-
-vi.mock('../composables/useAgentApi', () => ({
-	getAgentMemoryProfiles: vi.fn(),
-}));
-
-const globalStubs = {
-	AgentMiniEditor: {
-		props: ['modelValue', 'language', 'readonly', 'minHeight', 'maxHeight'],
-		template: '<pre v-bind="$attrs">{{ modelValue }}</pre>',
-	},
-};
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
@@ -76,43 +47,34 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	} as AgentJsonConfig;
 }
 
-const getAgentMemoryProfilesMock = vi.mocked(getAgentMemoryProfiles);
-
 function mountPanel(
 	props: Partial<{
 		config: AgentJsonConfig | null;
-		projectId: string;
-		agentId: string;
 		disabled: boolean;
 	}> = {},
 ) {
 	return mount(AgentMemoryPanel, {
 		props: {
 			config: makeConfig(),
-			projectId: 'project-1',
-			agentId: 'agent-1',
 			...props,
 		},
-		global: { stubs: globalStubs },
 	});
 }
 
 describe('AgentMemoryPanel', () => {
 	beforeEach(() => {
-		getAgentMemoryProfilesMock.mockReset();
 		openModalWithDataMock.mockClear();
 	});
 
-	it('renders memory, user profile, and episodic memory controls', () => {
+	it('renders memory and episodic memory controls', () => {
 		const wrapper = mountPanel();
 
 		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-memory-profiles-panel"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('Memory');
-		expect(wrapper.text()).toContain('User profile');
 		expect(wrapper.text()).toContain('Episodic memory');
-		expect(getAgentMemoryProfilesMock).not.toHaveBeenCalled();
+		expect(wrapper.text()).not.toContain('User profile');
+		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').exists()).toBe(false);
 	});
 
 	it('enables base memory without opening credential selection', async () => {
@@ -132,40 +94,6 @@ describe('AgentMemoryPanel', () => {
 				},
 			],
 		]);
-	});
-
-	it('expands the user profile section and displays loaded profile content', async () => {
-		getAgentMemoryProfilesMock.mockResolvedValue({
-			userProfile: 'The user works on self-hosted n8n.',
-		});
-		const wrapper = mountPanel();
-
-		await wrapper.find('[data-testid="agent-memory-profiles-toggle"]').trigger('click');
-		await flushPromises();
-
-		expect(getAgentMemoryProfilesMock).toHaveBeenCalledWith(restApiContext, 'project-1', 'agent-1');
-		expect(wrapper.text()).toContain('What the agent remembers about you.');
-		expect(wrapper.find('[data-testid="agent-memory-user-profile"]').text()).toContain(
-			'The user works on self-hosted n8n.',
-		);
-	});
-
-	it('shows empty and error profile states', async () => {
-		getAgentMemoryProfilesMock.mockResolvedValueOnce({ userProfile: null });
-		const emptyWrapper = mountPanel();
-
-		await emptyWrapper.find('[data-testid="agent-memory-profiles-toggle"]').trigger('click');
-		await flushPromises();
-
-		expect(emptyWrapper.text()).toContain('No user profile has been saved yet.');
-
-		getAgentMemoryProfilesMock.mockRejectedValueOnce(new Error('failed'));
-		const errorWrapper = mountPanel();
-
-		await errorWrapper.find('[data-testid="agent-memory-profiles-toggle"]').trigger('click');
-		await flushPromises();
-
-		expect(errorWrapper.text()).toContain("Couldn't load user profile.");
 	});
 
 	it('opens the credential modal without updating config when episodic memory is toggled on', async () => {
@@ -282,9 +210,6 @@ describe('AgentMemoryPanel', () => {
 
 		expect(
 			wrapper.find('[data-testid="agent-memory-toggle"]').attributes('disabled'),
-		).toBeDefined();
-		expect(
-			wrapper.find('[data-testid="agent-memory-profiles-toggle"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
 			wrapper.find('[data-testid="agent-episodic-memory-toggle"]').attributes('disabled'),

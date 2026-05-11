@@ -10,10 +10,10 @@ vi.mock('@n8n/i18n', () => ({
 			({
 				'agents.builder.memory.title': 'Memory',
 				'agents.builder.memory.description':
-					'Keeps session context and learned behavior available.',
+					'Stores useful context from conversations so the agent can respond with more continuity.',
 				'agents.builder.memory.episodicMemory.label': 'Episodic memory',
 				'agents.builder.memory.episodicMemory.hint':
-					'Remember source-backed details from previous sessions so this agent can recognize similar issues later.',
+					'Keep useful details from past conversations so they can help later.',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
 	}),
@@ -60,11 +60,15 @@ function mountColumn() {
 				AgentInfoPanel: true,
 				AgentPanelHeader: true,
 				AgentMemoryPanel: {
+					props: [],
+					template:
+						'<div data-testid="agent-memory-panel"><button data-testid="agent-memory-toggle" /><button data-testid="agent-episodic-memory-toggle" /></div>',
+				},
+				AgentAdvancedPanel: {
 					props: ['projectId', 'agentId'],
 					template:
-						'<div data-testid="agent-memory-panel" :data-project-id="projectId" :data-agent-id="agentId"><button data-testid="agent-memory-toggle" /><button data-testid="agent-episodic-memory-toggle" /></div>',
+						'<div data-testid="agent-advanced-panel" :data-project-id="projectId" :data-agent-id="agentId" />',
 				},
-				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
 		},
@@ -77,7 +81,7 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-memory-panel"]').attributes()).toMatchObject({
+		expect(wrapper.find('[data-testid="agent-advanced-panel"]').attributes()).toMatchObject({
 			'data-project-id': 'project-1',
 			'data-agent-id': 'agent-1',
 		});

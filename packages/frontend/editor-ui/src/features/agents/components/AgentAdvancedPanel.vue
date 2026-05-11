@@ -9,7 +9,8 @@
  * provider: Anthropic takes a `budgetTokens` number, OpenAI takes a
  * `reasoningEffort` low/medium/high select.
  */
-import { ref, computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { AgentMemoryProfilesResponse } from '@n8n/api-types';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCollapsiblePanel,
@@ -21,7 +22,9 @@ import {
 } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { getAgentMemoryProfiles } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
@@ -29,14 +32,25 @@ import {
 	type ReasoningEffort,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
+import AgentMiniEditor from './AgentMiniEditor.vue';
 
+const PROFILE_POLL_INTERVAL_MS = 5000;
 const i18n = useI18n();
+const rootStore = useRootStore();
 
 const props = withDefaults(
-	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	defineProps<{
+		config: AgentJsonConfig | null;
+		projectId?: string;
+		agentId?: string;
+		disabled?: boolean;
+		collapsible?: boolean;
+	}>(),
 	{
+		agentId: undefined,
 		disabled: false,
 		collapsible: false,
+		projectId: undefined,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -55,6 +69,14 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
+const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
+const profileLoaded = ref(false);
+const profileLoading = ref(false);
+const profileError = ref(false);
+const profile = ref<AgentMemoryProfilesResponse | null>(null);
+let profilePollInterval: ReturnType<typeof setInterval> | null = null;
+
+const canLoadProfile = computed(() => !props.disabled && Boolean(props.projectId && props.agentId));
 
 watch(
 	() => props.config,
@@ -65,6 +87,7 @@ watch(
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
+		requireToolApproval.value = cfg.config?.requireToolApproval ?? false;
 	},
 	{ deep: true },
 );
@@ -116,6 +139,90 @@ function onConcurrencyInput(value: string) {
 	void emitConcurrency();
 }
 
+function onApprovalToggle(value: boolean) {
+	requireToolApproval.value = value;
+	emit('update:config', {
+		config: { ...props.config?.config, requireToolApproval: value },
+	});
+}
+
+async function loadProfile() {
+	if (!canLoadProfile.value || !props.projectId || !props.agentId) return;
+
+	profileLoading.value = !profileLoaded.value;
+	profileError.value = false;
+
+	try {
+		profile.value = await getAgentMemoryProfiles(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		profileLoaded.value = true;
+	} catch {
+		profileError.value = true;
+	} finally {
+		profileLoading.value = false;
+	}
+}
+
+function stopProfilePolling() {
+	if (profilePollInterval === null) return;
+	clearInterval(profilePollInterval);
+	profilePollInterval = null;
+}
+
+function startProfilePolling() {
+	stopProfilePolling();
+	if (!isExpanded.value || !canLoadProfile.value) return;
+
+	profilePollInterval = setInterval(() => {
+		void loadProfile();
+	}, PROFILE_POLL_INTERVAL_MS);
+}
+
+watch(isExpanded, (expanded) => {
+	if (!expanded) {
+		stopProfilePolling();
+		return;
+	}
+
+	void loadProfile();
+	startProfilePolling();
+});
+
+watch(
+	() => [props.projectId, props.agentId],
+	() => {
+		profile.value = null;
+		profileLoaded.value = false;
+		if (isExpanded.value) {
+			void loadProfile();
+			startProfilePolling();
+		}
+	},
+);
+
+watch(canLoadProfile, (canLoad) => {
+	if (!canLoad) {
+		stopProfilePolling();
+		return;
+	}
+
+	if (isExpanded.value) {
+		void loadProfile();
+		startProfilePolling();
+	}
+});
+
+onMounted(() => {
+	if (!isExpanded.value || !canLoadProfile.value) return;
+	void loadProfile();
+	startProfilePolling();
+});
+
+onBeforeUnmount(stopProfilePolling);
+
 const thinkingDisabledReason = computed(() =>
 	capabilities.value.thinking
 		? ''
@@ -139,7 +246,7 @@ const thinkingDisabledReason = computed(() =>
 		<template #title>
 			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
 		</template>
-		<div :class="$style.content">
+		<div :class="$style.content" data-testid="agent-advanced-content">
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText size="small" :bold="true">{{
@@ -214,6 +321,58 @@ const thinkingDisabledReason = computed(() =>
 					@update:model-value="onConcurrencyInput"
 				/>
 			</div>
+
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.advanced.approval.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
+					</N8nText>
+				</div>
+				<N8nSwitch2
+					:model-value="requireToolApproval"
+					:disabled="props.disabled"
+					data-testid="agent-require-approval-toggle"
+					@update:model-value="(v) => onApprovalToggle(Boolean(v))"
+				/>
+			</div>
+
+			<div :class="$style.profileDivider" data-testid="agent-user-profile-divider" />
+
+			<section :class="$style.profileSection" data-testid="agent-user-profile-section">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">
+						{{ i18n.baseText('agents.builder.memory.profiles.title') }}
+					</N8nText>
+					<N8nText v-if="profileLoading" size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.memory.profiles.loading') }}
+					</N8nText>
+					<N8nText v-else-if="profileError" size="xsmall" color="danger">
+						{{ i18n.baseText('agents.builder.memory.profiles.error') }}
+					</N8nText>
+					<template v-else>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText('agents.builder.memory.profiles.userProfile.description') }}
+						</N8nText>
+					</template>
+				</div>
+				<div v-if="!profileLoading && !profileError" :class="$style.profileContent">
+					<AgentMiniEditor
+						:class="$style.profileEditor"
+						:model-value="
+							profile?.userProfile ??
+							i18n.baseText('agents.builder.memory.profiles.userProfile.empty')
+						"
+						language="markdown"
+						readonly
+						min-height="240px"
+						max-height="240px"
+						data-testid="agent-memory-user-profile"
+					/>
+				</div>
+			</section>
 		</div>
 	</N8nCollapsiblePanel>
 </template>
@@ -269,5 +428,33 @@ const thinkingDisabledReason = computed(() =>
 .shortInput {
 	width: 140px;
 	flex-shrink: 0;
+}
+
+.profileDivider {
+	border-top: var(--border);
+	margin: var(--spacing--xs) 0 0;
+}
+
+.profileSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.profileContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.profileEditor {
+	height: 240px;
+	min-height: 0;
+	display: flex;
+}
+
+.profileEditor > :global(.cm-editor) {
+	flex: 1;
+	min-height: 0;
 }
 </style>

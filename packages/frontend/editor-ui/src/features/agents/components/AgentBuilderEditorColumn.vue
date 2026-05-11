@@ -126,8 +126,6 @@ const i18n = useI18n();
 						<AgentMemoryPanel
 							:config="localConfig"
 							:disabled="isBuildChatStreaming"
-							:project-id="projectId"
-							:agent-id="agentId"
 							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
 						/>
@@ -137,6 +135,8 @@ const i18n = useI18n();
 						<AgentAdvancedPanel
 							:config="localConfig"
 							:disabled="isBuildChatStreaming"
+							:project-id="projectId"
+							:agent-id="agentId"
 							collapsible
 							@update:config="emit('update:config', $event)"
 						/>
