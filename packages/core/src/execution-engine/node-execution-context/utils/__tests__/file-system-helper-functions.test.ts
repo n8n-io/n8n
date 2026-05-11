@@ -135,8 +135,7 @@ describe('isFilePathBlocked', () => {
 
 	it('should not treat cwd as restricted when CONFIG_FILES has trailing comma', async () => {
 		process.env[CONFIG_FILES] = '/path/to/config1,';
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		const cwdFile = require('node:path').join(process.cwd(), 'package.json');
+		const cwdFile = join(process.cwd(), 'package.json');
 		expect(isFilePathBlocked(await resolvePath(cwdFile))).toBe(false);
 	});
 
