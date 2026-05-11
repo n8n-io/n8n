@@ -14,6 +14,10 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: vi.fn(() => ({ workflowId: '' })),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

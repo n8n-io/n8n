@@ -200,13 +200,17 @@ export const getConnectedTools = async (
 		0,
 	)) as SupplyDataToolResponse[];
 
-	// Get parent nodes to map toolkits to their source nodes
+	// Get parent nodes to map toolkits to their source nodes.
+	// getInputConnectionData filters out disabled nodes, so parents must be filtered
+	// the same way to keep the index alignment between toolkitConnections and parentNodes.
 	const parentNodes =
 		'getParentNodes' in ctx
-			? ctx.getParentNodes(ctx.getNode().name, {
-					connectionType: NodeConnectionTypes.AiTool,
-					depth: 1,
-				})
+			? ctx
+					.getParentNodes(ctx.getNode().name, {
+						connectionType: NodeConnectionTypes.AiTool,
+						depth: 1,
+					})
+					.filter((node) => !node.disabled)
 			: [];
 
 	const connectedTools = (toolkitConnections ?? [])

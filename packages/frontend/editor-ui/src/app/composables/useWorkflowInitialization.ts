@@ -1,6 +1,7 @@
 import { ref, computed, shallowRef } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -154,6 +155,20 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				return true;
 			}
 
+			const templateValidation = safeParseWorkflowStructure({
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+			});
+
+			if (!templateValidation.success) {
+				toast.showError(
+					new WorkflowStructureValidationError(templateValidation.issues),
+					i18n.baseText('nodeView.showError.openWorkflow.title'),
+					{ message: i18n.baseText('openWorkflow.workflowDataInvalidError') },
+				);
+				return true;
+			}
+
 			await openWorkflowTemplateFromJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
@@ -228,6 +243,19 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function openWorkflow(data: IWorkflowDb) {
+		const validationResult = safeParseWorkflowStructure({
+			nodes: data.nodes,
+			connections: data.connections,
+		});
+
+		if (!validationResult.success) {
+			toast.showError(
+				new WorkflowStructureValidationError(validationResult.issues),
+				i18n.baseText('nodeView.showError.openWorkflow.title'),
+				{ message: i18n.baseText('openWorkflow.workflowDataInvalidError') },
+			);
+		}
+
 		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 
@@ -237,14 +265,33 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			documentTitle.setDocumentTitle(data.name, 'IDLE');
 		}
 
-		const { workflowDocumentStore } = await initializeWorkspace(data);
-		currentWorkflowDocumentStore.value = workflowDocumentStore;
-		currentNDVStore.value = useNDVStore(
-			createWorkflowDocumentId(
-				workflowDocumentStore.workflowId,
-				workflowDocumentStore.workflowVersion,
-			),
-		);
+		try {
+			const { workflowDocumentStore } = await initializeWorkspace(data);
+			currentWorkflowDocumentStore.value = workflowDocumentStore;
+			currentNDVStore.value = useNDVStore(
+				createWorkflowDocumentId(
+					workflowDocumentStore.workflowId,
+					workflowDocumentStore.workflowVersion,
+				),
+			);
+		} catch (error) {
+			// Using error instead of warn so that unexpected errors are captured by Sentry
+			console.error('Failed to initialize workspace for workflow', {
+				workflowId: data.id,
+				error,
+			});
+			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+
+			// Set up a minimal document store so the UI stays functional
+			workflowsStore.setWorkflowId(data.id);
+			const workflowDocumentId = createWorkflowDocumentId(data.id);
+			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowDocumentStore.value.setName(data.name);
+			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
+			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
+			currentNDVStore.value = useNDVStore(workflowDocumentId);
+			return;
+		}
 
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,

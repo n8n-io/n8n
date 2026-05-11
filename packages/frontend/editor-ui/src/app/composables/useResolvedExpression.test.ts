@@ -124,7 +124,7 @@ describe('useResolvedExpression', () => {
 
 	it('should re-resolve when workflow name changes', async () => {
 		const workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.id = 'test-workflow';
+		workflowsStore.setWorkflowId('test-workflow');
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId('test-workflow'),
 		);

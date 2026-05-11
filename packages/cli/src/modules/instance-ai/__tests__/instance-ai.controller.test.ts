@@ -17,6 +17,10 @@ jest.mock('@n8n/instance-ai', () => ({
 	})),
 }));
 
+// The controller imports validation helpers via the parsers subpath so they
+// don't pull in Mastra. Re-export the real implementation for the test.
+jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
+
 jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
@@ -192,6 +196,40 @@ describe('InstanceAiController', () => {
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
 		});
+
+		it('should reject unsupported attachment types before starting a run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			const badPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, badPayload)).rejects.toMatchObject({
+				message: expect.stringContaining('archive.zip'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
+		});
+
+		it('should accept supported attachment types and start the run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [
+					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+				],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, goodPayload)).resolves.toEqual({
+				runId: 'run-3',
+			});
+			expect(instanceAiService.startRun).toHaveBeenCalled();
+		});
 	});
 
 	describe('events', () => {
@@ -269,6 +307,10 @@ describe('InstanceAiController', () => {
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID, {
+				delivery: 'event',
+			});
 
 			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
 				.map(([frame]) => String(frame))
@@ -758,6 +800,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
 
 			expect(result).toMatchObject({ nextEventId: 42 });
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
 				page: 0,
@@ -850,8 +893,14 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should return token and command', async () => {
+		it('should return token, command, and token expiry', async () => {
+			const nowSpy = jest
+				.spyOn(Date, 'now')
+				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
 			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+			instanceAiService.getGatewayApiKeyExpiresAt.mockReturnValue(
+				new Date('2026-01-01T00:05:00.000Z'),
+			);
 			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
@@ -859,8 +908,15 @@ describe('InstanceAiController', () => {
 			expect(result).toEqual({
 				token: 'pairing-token',
 				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
+				expiresAt: '2026-01-01T00:05:00.000Z',
+				ttlSeconds: 300,
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
+				USER_ID,
+				'pairing-token',
+			);
+			nowSpy.mockRestore();
 		});
 	});
 

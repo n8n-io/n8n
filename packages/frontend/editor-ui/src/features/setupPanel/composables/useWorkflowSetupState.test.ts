@@ -47,6 +47,7 @@ const mockWorkflowDocumentStore: Writable<Partial<ReturnType<typeof useWorkflowD
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
 	connectionsBySourceNode: {},
 	connectionsByDestinationNode: {},
+	workflowTriggerNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {

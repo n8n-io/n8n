@@ -42,7 +42,11 @@ const emit = defineEmits<{
 }>();
 
 const workflowId = useWorkflowId();
-const iconSourceFromNodeType = useNodeIconSource(workflowId, props.nodeType, props.node ?? null);
+const iconSourceFromNodeType = useNodeIconSource(
+	workflowId,
+	() => props.nodeType,
+	() => props.node ?? null,
+);
 
 const iconSource = computed(() => props.iconSource ?? iconSourceFromNodeType.value);
 

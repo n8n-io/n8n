@@ -3,6 +3,7 @@ import type { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
 import type { UserService } from '@/services/user.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -39,6 +40,7 @@ describe('InstanceAiSettingsService', () => {
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const eventService = mock<EventService>();
 
 	let service: InstanceAiSettingsService;
 
@@ -52,6 +54,7 @@ describe('InstanceAiSettingsService', () => {
 			aiService,
 			credentialsService,
 			credentialsFinderService,
+			eventService,
 		);
 	});
 
@@ -90,6 +93,58 @@ describe('InstanceAiSettingsService', () => {
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+	});
+
+	describe('instance-ai-settings-updated event', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			globalConfig.instanceAi.mcpServers = '';
+			globalConfig.instanceAi.browserMcp = false;
+		});
+
+		it('emits on every successful update', async () => {
+			await service.updateAdminSettings({ lastMessages: 50 });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.any(Object),
+			);
+		});
+
+		it('flags mcpSettingsChanged when mcpServers changes', async () => {
+			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
+				mcpSettingsChanged: true,
+			});
+		});
+
+		it('flags mcpSettingsChanged when browserMcp toggles', async () => {
+			await service.updateAdminSettings({ browserMcp: true });
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
+				mcpSettingsChanged: true,
+			});
+		});
+
+		it('does not flag mcpSettingsChanged for unrelated field changes', async () => {
+			await service.updateAdminSettings({ lastMessages: 50 });
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
+				mcpSettingsChanged: false,
+			});
+		});
+
+		it('does not flag mcpSettingsChanged when mcpServers is set to the same value', async () => {
+			globalConfig.instanceAi.mcpServers = '[{"name":"a","url":"https://a/"}]';
+
+			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
+				mcpSettingsChanged: false,
+			});
 		});
 	});
 
