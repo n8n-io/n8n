@@ -63,6 +63,9 @@ export namespace PubSub {
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
+		export type CancelTestRun = ToCommand<'cancel-test-run'>;
+		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
+		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -89,7 +92,10 @@ export namespace PubSub {
 		| Commands.ReloadSamlConfiguration
 		| Commands.ReloadCredentialsOverwrites
 		| Commands.ReloadSsoProvisioningConfiguration
-		| Commands.ReloadSourceControlConfiguration;
+		| Commands.ReloadSourceControlConfiguration
+		| Commands.CancelTestRun
+		| Commands.AgentChatIntegrationChanged
+		| Commands.AgentConfigChanged;
 
 	// ----------------------------------
 	//         worker responses

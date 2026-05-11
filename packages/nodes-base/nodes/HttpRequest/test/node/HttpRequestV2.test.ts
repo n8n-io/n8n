@@ -160,4 +160,36 @@ describe('HttpRequestV2', () => {
 			},
 		);
 	});
+
+	describe('URL Parameter Validation', () => {
+		it.each([
+			{ url: undefined, expectedType: 'undefined' },
+			{ url: null, expectedType: 'null' },
+			{ url: 42, expectedType: 'number' },
+		])('should throw error when URL is $expectedType', async ({ url, expectedType }) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
+						return 'GET';
+					case 'url':
+						return url;
+					case 'authentication':
+						return 'none';
+					case 'jsonParameters':
+						return false;
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				`URL parameter must be a string, got ${expectedType}`,
+			);
+		});
+	});
 });

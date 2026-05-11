@@ -28,6 +28,7 @@ export class AwsSes implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to AWS SES',
+		schemaPath: 'Aws/SES',
 		defaults: {
 			name: 'AWS SES',
 		},

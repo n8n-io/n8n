@@ -11,7 +11,7 @@ import {
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 
 /**
  * Constants for the name of the credentials and Node parameters.

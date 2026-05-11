@@ -191,6 +191,10 @@ watch(
 
 .ioSearch {
 	transition: max-width 0.3s $ease-out-expo;
+	--input--border-color: transparent;
+	--input--border-color--hover: transparent;
+	--input--border-color--focus: transparent;
+	--input--color--background: transparent;
 
 	.ioSearchIcon {
 		color: var(--color--foreground--shade-2);
@@ -199,22 +203,21 @@ watch(
 	}
 
 	input {
-		border: 0;
 		opacity: 0;
-		background: transparent;
 		cursor: pointer;
 	}
 }
 
 .ioSearchOpened {
+	--input--border-color: var(--border-color);
+	--input--border-color--focus: var(--color--secondary);
+	--input--color--background: var(--color--foreground--tint-2);
+
 	.ioSearchIcon {
 		cursor: default;
 	}
 
 	input {
-		border: var(--input--border-color, var(--border-color))
-			var(--input--border-style, var(--border-style)) var(--border-width);
-		background: var(--input--color--background, var(--color--foreground--tint-2));
 		opacity: 1;
 		cursor: text;
 	}

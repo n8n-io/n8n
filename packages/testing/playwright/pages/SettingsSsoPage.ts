@@ -16,11 +16,6 @@ export class SettingsSsoPage extends BasePage {
 		await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'OIDC' }).click();
 	}
 
-	async selectSamlProtocol(): Promise<void> {
-		await this.getProtocolSelect().locator('.el-select').click();
-		await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'SAML' }).click();
-	}
-
 	getOidcDiscoveryEndpointInput(): Locator {
 		return this.page.getByTestId('oidc-discovery-endpoint');
 	}
@@ -33,10 +28,6 @@ export class SettingsSsoPage extends BasePage {
 		return this.page.getByTestId('oidc-client-secret');
 	}
 
-	getOidcPromptSelect(): Locator {
-		return this.page.getByTestId('oidc-prompt');
-	}
-
 	getOidcLoginToggle(): Locator {
 		return this.page.getByTestId('sso-oidc-toggle');
 	}
@@ -46,20 +37,15 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	async isOidcLoginEnabled(): Promise<boolean> {
-		return await this.getOidcLoginToggle().isChecked();
+		const inputValue = await this.getOidcLoginToggle().locator('input').inputValue();
+		return inputValue === 'Enabled';
 	}
 
 	async enableOidcLogin(): Promise<void> {
 		const isEnabled = await this.isOidcLoginEnabled();
 		if (!isEnabled) {
-			await this.getOidcLoginToggle().click();
-		}
-	}
-
-	async disableOidcLogin(): Promise<void> {
-		const isEnabled = await this.isOidcLoginEnabled();
-		if (isEnabled) {
-			await this.getOidcLoginToggle().click();
+			await this.getOidcLoginToggle().locator('.el-select').click();
+			await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'Enabled' }).click();
 		}
 	}
 
@@ -94,21 +80,5 @@ export class SettingsSsoPage extends BasePage {
 			const body = await response.text();
 			throw new Error(`OIDC config save failed: ${response.status()} - ${body}`);
 		}
-	}
-
-	getSamlSaveButton(): Locator {
-		return this.page.getByTestId('sso-save');
-	}
-
-	getSamlLoginToggle(): Locator {
-		return this.page.getByTestId('sso-toggle');
-	}
-
-	getSsoContentLicensed(): Locator {
-		return this.page.getByTestId('sso-content-licensed');
-	}
-
-	getSsoContentUnlicensed(): Locator {
-		return this.page.getByTestId('sso-content-unlicensed');
 	}
 }

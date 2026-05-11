@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { FIELDS_SECTION } from '../../plugins/codemirror/completions/constants';
 import { datatypeCompletions } from '../../plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '../../plugins/codemirror/completions/utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { type Completion, CompletionContext } from '@codemirror/autocomplete';
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
 import { watchDebounced } from '@vueuse/core';
@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);

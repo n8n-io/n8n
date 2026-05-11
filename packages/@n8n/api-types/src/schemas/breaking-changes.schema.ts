@@ -9,6 +9,18 @@ export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error'
 const breakingChangeVersionSchema = z.enum(['v2']);
 export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
 
+/**
+ * The target n8n major version for the migration/breaking-changes report.
+ *
+ * Set this to a version (e.g. 'v2') to enable the migration report on both
+ * frontend (settings sidebar + page) and backend (controller + service).
+ * Set to `null` to disable it entirely on both sides.
+ *
+ * When a new major version is released, update this value and add the
+ * corresponding breaking-change rules on the backend.
+ */
+export const MIGRATION_REPORT_TARGET_VERSION: BreakingChangeVersion | null = null;
+
 // Common schemas
 const recommendationSchema = z.object({
 	action: z.string(),

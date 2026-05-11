@@ -5,7 +5,7 @@ import type {
 	SpanAttributes as SentrySpanAttributes,
 } from '@sentry/core';
 import type Sentry from '@sentry/node';
-import type { INode, Workflow } from 'n8n-workflow';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { NoopTracing } from './noop-tracing';
 
@@ -69,13 +69,16 @@ export class Tracing {
 		this.tracer = tracing;
 	}
 
-	/** Start a span and execute the callback with the span */
+	/**
+	 * Start a span and execute the callback with the span. If the `spanCb` throws,
+	 * the span will be marked automatically as errored.
+	 */
 	async startSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T> {
 		return await this.tracer.startSpan(options, spanCb);
 	}
 
 	/** Pick common attributes for a workflow */
-	pickWorkflowAttributes(workflow: Workflow): SpanAttributes {
+	pickWorkflowAttributes(workflow: Partial<Pick<IWorkflowBase, 'id' | 'name'>>): SpanAttributes {
 		return {
 			[this.commonAttrs.workflow.id]: workflow.id,
 			[this.commonAttrs.workflow.name]: workflow.name,
@@ -83,7 +86,9 @@ export class Tracing {
 	}
 
 	/** Pick common attributes for a node */
-	pickNodeAttributes(node: INode): SpanAttributes {
+	pickNodeAttributes(
+		node: Partial<Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>>,
+	): SpanAttributes {
 		return {
 			[this.commonAttrs.node.id]: node.id,
 			[this.commonAttrs.node.name]: node.name,

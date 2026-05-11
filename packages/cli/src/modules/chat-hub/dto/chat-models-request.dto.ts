@@ -1,4 +1,3 @@
-import { chatModelsRequestSchema } from '@n8n/api-types';
-import { Z } from 'zod-class';
+import { chatModelsRequestSchema, Z } from '@n8n/api-types';
 
 export class ChatModelsRequestDto extends Z.class(chatModelsRequestSchema.shape) {}

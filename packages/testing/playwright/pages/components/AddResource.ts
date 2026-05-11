@@ -18,10 +18,6 @@ export class AddResource {
 		return this.page.getByTestId('add-resource-workflow');
 	}
 
-	getAction(actionType: string): Locator {
-		return this.page.getByTestId(`action-${actionType}`);
-	}
-
 	async workflow(): Promise<void> {
 		await this.getWorkflowButton().click();
 	}

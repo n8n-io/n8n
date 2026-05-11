@@ -509,6 +509,36 @@ describe('useWorkflowsListStore', () => {
 			expect(workflowsListStore.activeWorkflows).not.toContain('123');
 		});
 
+		it('should pass expectedChecksum to the API when provided', async () => {
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+			const expectedChecksum = 'test-checksum-123';
+
+			workflowsListStore.addWorkflow(
+				createTestWorkflow({
+					id: '123',
+					active: true,
+					isArchived: false,
+					versionId,
+				}),
+			);
+			workflowsListStore.activeWorkflows = ['123'];
+
+			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue({
+				versionId: updatedVersionId,
+				checksum: 'checksum',
+			});
+
+			await workflowsListStore.archiveWorkflowInList('123', expectedChecksum);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				'POST',
+				'/workflows/123/archive',
+				{ expectedChecksum },
+			);
+		});
+
 		it('should throw error if checksum is missing', async () => {
 			workflowsListStore.addWorkflow(createTestWorkflow({ id: '123' }));
 

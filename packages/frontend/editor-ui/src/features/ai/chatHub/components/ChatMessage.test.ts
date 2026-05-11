@@ -33,7 +33,12 @@ describe('ChatMessage', () => {
 	it('should render syntax highlighting for code blocks', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
+			content: [
+				{
+					type: 'text',
+					content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
+				},
+			],
 		});
 
 		const { container } = renderComponent({
@@ -59,7 +64,12 @@ describe('ChatMessage', () => {
 	it('should render KaTeX inline math expressions', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: 'The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$',
+			content: [
+				{
+					type: 'text',
+					content: 'The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$',
+				},
+			],
 		});
 
 		const { container } = renderComponent({
@@ -83,7 +93,7 @@ describe('ChatMessage', () => {
 	it('should render KaTeX block math expressions', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: '$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$',
+			content: [{ type: 'text', content: '$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$' }],
 		});
 
 		const { container } = renderComponent({
@@ -108,7 +118,7 @@ describe('ChatMessage', () => {
 		const codeContent = 'const foo = "bar";\nfunction test() {\n  return true;\n}';
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: `\`\`\`javascript\n${codeContent}\n\`\`\``,
+			content: [{ type: 'text', content: `\`\`\`javascript\n${codeContent}\n\`\`\`` }],
 		});
 
 		const rendered = renderComponent({
@@ -130,5 +140,71 @@ describe('ChatMessage', () => {
 		(await within(preElement).findByRole('button', { name: /copy/i })).click();
 
 		expect(mockCopy).toHaveBeenCalledWith(codeContent);
+	});
+
+	it('should render footnote references as pill spans and hide the definition block', async () => {
+		const footnoteContent = 'Akhenaten - Wikipedia.pdf, page 3';
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [
+				{
+					type: 'text',
+					content: `Akhenaten ruled Egypt[^1].\n\n[^1]: ${footnoteContent}`,
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				isEditSubmitting: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+				acceptedMimeTypes: '',
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			const footnoteSpan = container.querySelector(`span[title="${footnoteContent}"]`);
+			expect(footnoteSpan).not.toBeNull();
+			// Text is truncated: short last word ('3') falls through to fixed-suffix,
+			// preserving the file extension and page context
+			expect(footnoteSpan?.textContent).toBe('Akhenaten - W…pdf, page 3');
+			expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull();
+		});
+	});
+
+	it('should strip orphaned footnote references that have no matching definition', async () => {
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [
+				{
+					type: 'text',
+					content: 'Text with orphaned[^missing] reference.',
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				isEditSubmitting: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+				acceptedMimeTypes: '',
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			expect(container.textContent).not.toContain('[^missing]');
+		});
 	});
 });

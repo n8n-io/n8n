@@ -8,9 +8,11 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
+			outputFile: { junit: './junit.xml' },
 			coverage: {
 				enabled: false,
-				all: false,
+				include: ['src/**'],
 				provider: 'v8',
 				reporter: ['text-summary', 'lcov', 'html-spa'],
 			},
@@ -27,7 +29,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 		const { coverage } = vitestConfig.test;
 		coverage.enabled = true;
 		if (process.env.CI === 'true' && coverage.provider === 'v8') {
-			coverage.all = true;
+			coverage.include = ['src/**'];
 			coverage.reporter = ['cobertura'];
 		}
 	}

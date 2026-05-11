@@ -7,7 +7,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { N8nLoading, N8nSpinner } from '@n8n/design-system';
+import { N8nLoading, N8nIcon } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
@@ -21,6 +21,9 @@ const props = withDefaults(
 		hideNodeIssues?: boolean;
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
+		suppressNotifications?: boolean;
+		allowErrorNotifications?: boolean;
+		canExecute?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -34,6 +37,9 @@ const props = withDefaults(
 		hideNodeIssues: false,
 		focusOnLoad: true,
 		hideControls: false,
+		suppressNotifications: false,
+		allowErrorNotifications: false,
+		canExecute: false,
 	},
 );
 
@@ -56,10 +62,15 @@ const scrollY = ref(0);
 
 const iframeSrc = computed(() => {
 	const basePath = `${window.BASE_PATH ?? '/'}workflows/demo`;
+	const params = new URLSearchParams();
 	if (props.hideControls) {
-		return `${basePath}?hideControls=true`;
+		params.set('hideControls', 'true');
 	}
-	return basePath;
+	if (props.canExecute) {
+		params.set('canExecute', 'true');
+	}
+	const qs = params.toString();
+	return qs ? `${basePath}?${qs}` : basePath;
 });
 
 const showPreview = computed(() => {
@@ -71,6 +82,13 @@ const showPreview = computed(() => {
 	);
 });
 
+let lastSentWorkflow: typeof props.workflow | undefined;
+let lastSentExecutionId: string | undefined;
+
+const sendResetWorkflow = () => {
+	iframeRef.value?.contentWindow?.postMessage?.(JSON.stringify({ command: 'resetWorkflow' }), '*');
+};
+
 const loadWorkflow = () => {
 	try {
 		if (!props.workflow) {
@@ -79,22 +97,26 @@ const loadWorkflow = () => {
 		if (!props.workflow.nodes || !Array.isArray(props.workflow.nodes)) {
 			throw new Error(i18n.baseText('workflowPreview.showError.arrayEmpty'));
 		}
+		if (props.workflow === lastSentWorkflow) {
+			return;
+		}
+		lastSentWorkflow = props.workflow;
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openWorkflow',
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				suppressNotifications: props.suppressNotifications,
+				allowErrorNotifications: props.allowErrorNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.showError.previewError.message'),
+		});
 	}
 };
 
@@ -103,6 +125,10 @@ const loadExecution = () => {
 		if (!props.executionId) {
 			throw new Error(i18n.baseText('workflowPreview.showError.missingExecution'));
 		}
+		if (props.executionId === lastSentExecutionId) {
+			return;
+		}
+		lastSentExecutionId = props.executionId;
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openExecution',
@@ -125,11 +151,9 @@ const loadExecution = () => {
 			);
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
+		});
 	}
 };
 
@@ -217,9 +241,32 @@ watch(
 );
 
 watch(
+	() => props.mode,
+	() => {
+		// Mode change swaps what the iframe is rendering, so neither dedup
+		// cache is accurate anymore — clear both so the load* call below
+		// fires its postMessage even when the workflow / executionId ref
+		// hasn't changed.
+		lastSentWorkflow = undefined;
+		lastSentExecutionId = undefined;
+		if (showPreview.value) {
+			if (props.mode === 'workflow') {
+				loadWorkflow();
+			} else if (props.mode === 'execution') {
+				loadExecution();
+			}
+		}
+	},
+);
+
+// Gate on `ready.value`: if we send before the iframe signals n8nReady the
+// postMessage is silently lost but `lastSent*` gets updated, and the dedup then
+// blocks the showPreview-triggered retry. The showPreview watcher above
+// handles the not-yet-ready case once n8nReady arrives.
+watch(
 	() => props.executionId,
 	() => {
-		if (props.mode === 'execution' && props.executionId) {
+		if (props.mode === 'execution' && props.executionId && ready.value) {
 			loadExecution();
 		}
 	},
@@ -227,12 +274,23 @@ watch(
 
 watch(
 	() => props.workflow,
-	() => {
+	(newWorkflow, oldWorkflow) => {
+		if (!ready.value) return;
+		if (oldWorkflow && oldWorkflow !== newWorkflow) {
+			sendResetWorkflow();
+		}
 		if (props.mode === 'workflow' && props.workflow) {
 			loadWorkflow();
 		}
 	},
 );
+
+const reloadExecution = () => {
+	lastSentExecutionId = undefined;
+	loadExecution();
+};
+
+defineExpose({ iframeRef, reloadExecution });
 </script>
 
 <template>
@@ -241,7 +299,7 @@ watch(
 			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<N8nSpinner type="dots" />
+			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
 		</div>
 		<iframe
 			ref="iframeRef"
@@ -252,6 +310,7 @@ watch(
 				[$style.show]: showPreview,
 			}"
 			:src="iframeSrc"
+			:data-ndv-open="nodeViewDetailsOpened || undefined"
 			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"

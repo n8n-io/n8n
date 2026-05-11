@@ -1,6 +1,8 @@
+import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
+import { kent, createKentHelper } from './kent';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
 import { localstack, createLocalStackHelper } from './localstack';
@@ -8,8 +10,9 @@ import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
-import { postgres } from './postgres';
-import { proxy } from './proxy';
+import { postgres, createPostgresHelper } from './postgres';
+import { postgresExporter } from './postgres-exporter';
+import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
@@ -37,14 +40,20 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	kafka,
 	mysql: mysqlService,
 	localstack,
+	kent,
+	postgresExporter,
+	cadvisor,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
+	postgres: createPostgresHelper,
 	mailpit: createMailpitHelper,
 	gitea: createGiteaHelper,
 	keycloak: createKeycloakHelper,
 	observability: createObservabilityHelper,
 	tracing: createTracingHelper,
+	proxy: createProxyHelper,
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
+	kent: createKentHelper,
 };

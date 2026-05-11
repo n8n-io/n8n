@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 let isConnected = true;
+let isConnecting = false;
 let isConnectionRequested = true;
 let isOnline = true;
 
@@ -12,6 +13,7 @@ vi.mock('@/app/stores/pushConnection.store', () => {
 	return {
 		usePushConnectionStore: vi.fn(() => ({
 			isConnected,
+			isConnecting,
 			isConnectionRequested,
 		})),
 	};
@@ -32,6 +34,7 @@ describe('ConnectionTracker', () => {
 			initialState: {
 				[STORES.PUSH]: {
 					isConnected,
+					isConnecting,
 					isConnectionRequested,
 				},
 			},
@@ -46,6 +49,7 @@ describe('ConnectionTracker', () => {
 	beforeEach(() => {
 		// Reset to default values
 		isConnected = true;
+		isConnecting = false;
 		isConnectionRequested = true;
 		isOnline = true;
 	});
@@ -71,12 +75,23 @@ describe('ConnectionTracker', () => {
 
 	it('should render push error when push disconnected and online', () => {
 		isConnected = false;
+		isConnecting = false;
 		isConnectionRequested = true;
 		isOnline = true;
 		const { container } = render();
 
 		expect(container).toMatchSnapshot();
 		expect(container.textContent).toContain('Connection lost');
+	});
+
+	it('should not render error when push is connecting', () => {
+		isConnected = false;
+		isConnecting = true;
+		isConnectionRequested = true;
+		isOnline = true;
+		const { container } = render();
+
+		expect(container).toMatchSnapshot();
 	});
 
 	it('should not render error when push connected and connection not requested', () => {

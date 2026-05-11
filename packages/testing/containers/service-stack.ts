@@ -26,5 +26,6 @@ export async function createServiceStack(options: ServiceStackOptions): Promise<
 		postgres: services.includes('postgres'),
 		services,
 		projectName,
+		external: true,
 	});
 }

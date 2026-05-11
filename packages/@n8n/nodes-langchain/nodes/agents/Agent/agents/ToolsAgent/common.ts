@@ -11,7 +11,8 @@ import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance, getConnectedTools } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 /* -----------------------------------------------------------

@@ -36,6 +36,16 @@ export class SentryConfig {
 	profilesSampleRate: number = 0;
 
 	/**
+	 * Threshold in milliseconds for event loop block detection.
+	 * When the event loop is blocked for longer than this threshold,
+	 * Sentry will report it.
+	 *
+	 * @default 500
+	 */
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
+	eventLoopBlockThreshold: number = 500;
+
+	/**
 	 * Environment of the n8n instance.
 	 *
 	 * @example 'production'

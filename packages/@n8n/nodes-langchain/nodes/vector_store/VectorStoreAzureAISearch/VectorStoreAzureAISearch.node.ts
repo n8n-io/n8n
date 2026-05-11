@@ -14,7 +14,7 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 
 // User agent for usage tracking
 const USER_AGENT_PREFIX = 'n8n-azure-ai-search';

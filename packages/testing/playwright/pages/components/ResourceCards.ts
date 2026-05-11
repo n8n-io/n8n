@@ -7,10 +7,6 @@ import type { Locator, Page } from '@playwright/test';
 export class ResourceCards {
 	constructor(private page: Page) {}
 
-	getResourcesListWrapper(): Locator {
-		return this.page.getByTestId('resources-list-wrapper');
-	}
-
 	getFolders(): Locator {
 		return this.page.getByTestId('folder-card');
 	}

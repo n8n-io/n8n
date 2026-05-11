@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import {
 	credentialResolverNameSchema,
 	credentialResolverConfigSchema,
 	credentialResolverTypeNameSchema,
 } from '../../schemas/credential-resolver.schema';
+import { Z } from '../../zod-class';
 
 export class UpdateCredentialResolverDto extends Z.class({
 	type: credentialResolverTypeNameSchema.optional(),

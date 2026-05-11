@@ -1,5 +1,11 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,13 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatVercelAiGateway implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,6 +115,10 @@ export class LmChatVercelAiGateway implements INodeType {
 					},
 				},
 				default: 'openai/gpt-4o',
+				builderHint: {
+					propertyHint:
+						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro). Avoid the openai/gpt-4o default and other pre-2026 models.',
+				},
 			},
 			{
 				displayName: 'Options',

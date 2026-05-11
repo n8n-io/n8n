@@ -25,10 +25,9 @@ async function handleCopy() {
 <template>
 	<N8nTooltip placement="bottom" :show-after="300">
 		<N8nIconButton
+			variant="ghost"
 			:icon="justCopied ? 'check' : 'copy'"
-			type="tertiary"
 			size="medium"
-			text
 			:class="$style.button"
 			tabindex="0"
 			:aria-label="copyTooltip"

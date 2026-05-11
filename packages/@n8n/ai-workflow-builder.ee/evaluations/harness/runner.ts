@@ -1,28 +1,31 @@
-import type { Callbacks } from '@langchain/core/callbacks/manager';
-import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
+import type { IPinData } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { getTracingCallbacks, runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
+import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
 import { toLangsmithEvaluationResult } from './feedback';
-import type {
-	Evaluator,
-	TestCase,
-	EvaluationContext,
-	GlobalRunContext,
-	TestCaseContext,
-	Feedback,
-	RunConfig,
-	LocalRunConfig,
-	LangsmithRunConfig,
-	ExampleResult,
-	RunSummary,
-	EvaluationLifecycle,
-	LangsmithExampleFilters,
-	LlmCallLimiter,
-} from './harness-types.js';
+import {
+	isGenerationResult,
+	type DatasetInputContext,
+	type Evaluator,
+	type TestCase,
+	type EvaluationContext,
+	type GlobalRunContext,
+	type TestCaseContext,
+	type Feedback,
+	type RunConfig,
+	type LocalRunConfig,
+	type LangsmithRunConfig,
+	type ExampleResult,
+	type RunSummary,
+	type EvaluationLifecycle,
+	type LangsmithExampleFilters,
+	type LlmCallLimiter,
+	type GenerationResult,
+} from './harness-types';
 import type { EvalLogger } from './logger';
 import { createArtifactSaver, type ArtifactSaver } from './output';
 import {
@@ -30,10 +33,44 @@ import {
 	selectScoringItems,
 	calculateFiniteAverage,
 } from './score-calculator';
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
+import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
 import { extractMessageContent } from '../langsmith/types';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
+
+/**
+ * Callback to collect token usage from generation.
+ * Called after each workflow generation with the token counts.
+ */
+export type TokenUsageCollector = (usage: { inputTokens: number; outputTokens: number }) => void;
+
+/**
+ * Callback to collect subgraph metrics from generation.
+ * Called after each workflow generation with timing and node count data.
+ */
+export type SubgraphMetricsCollector = (metrics: {
+	discoveryDurationMs?: number;
+	builderDurationMs?: number;
+	responderDurationMs?: number;
+	nodeCount?: number;
+}) => void;
+
+/**
+ * Callback to collect introspection events from generation.
+ * Called after each workflow generation with the events array.
+ */
+export type IntrospectionEventsCollector = (events: IntrospectionEvent[]) => void;
+
+/**
+ * Combined collectors for workflow generation metrics.
+ */
+export interface GenerationCollectors {
+	tokenUsage?: TokenUsageCollector;
+	subgraphMetrics?: SubgraphMetricsCollector;
+	introspectionEvents?: IntrospectionEventsCollector;
+}
 
 /**
  * Run evaluators in parallel for a single workflow.
@@ -94,6 +131,69 @@ function hasErrorFeedback(feedback: Feedback[]): boolean {
 }
 
 /**
+ * Convert milliseconds to seconds for LangSmith metrics.
+ * LangSmith scores must be within [-99999.9999, 99999.9999], so we store
+ * latencies in seconds (supporting up to ~27 hours) instead of milliseconds.
+ */
+function msToSeconds(ms: number): number {
+	return ms / 1000;
+}
+
+/**
+ * Create feedback items for subgraph metrics.
+ * These are reported to LangSmith as 'metrics' evaluator feedback.
+ *
+ * Note: Latencies are converted from milliseconds to seconds to stay within
+ * LangSmith's score limits while preserving precision for long-running operations.
+ */
+function createMetricsFeedback(args: {
+	discoveryDurationMs?: number;
+	builderDurationMs?: number;
+	responderDurationMs?: number;
+	nodeCount?: number;
+}): Feedback[] {
+	const feedback: Feedback[] = [];
+
+	if (args.discoveryDurationMs !== undefined) {
+		feedback.push({
+			evaluator: 'metrics',
+			metric: 'discovery_latency_s',
+			score: msToSeconds(args.discoveryDurationMs),
+			kind: 'metric',
+		});
+	}
+
+	if (args.builderDurationMs !== undefined) {
+		feedback.push({
+			evaluator: 'metrics',
+			metric: 'builder_latency_s',
+			score: msToSeconds(args.builderDurationMs),
+			kind: 'metric',
+		});
+	}
+
+	if (args.responderDurationMs !== undefined) {
+		feedback.push({
+			evaluator: 'metrics',
+			metric: 'responder_latency_s',
+			score: msToSeconds(args.responderDurationMs),
+			kind: 'metric',
+		});
+	}
+
+	if (args.nodeCount !== undefined) {
+		feedback.push({
+			evaluator: 'metrics',
+			metric: 'node_count',
+			score: args.nodeCount,
+			kind: 'metric',
+		});
+	}
+
+	return feedback;
+}
+
+/**
  * Build a typed evaluation context for evaluators.
  */
 function buildContext(args: {
@@ -101,14 +201,31 @@ function buildContext(args: {
 	globalContext?: GlobalRunContext;
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
+	generatedCode?: string;
+	agentTextResponse?: string;
+	pinData?: IPinData;
+	datasetInputContext?: DatasetInputContext;
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows } = args;
+	const {
+		prompt,
+		globalContext,
+		testCaseContext,
+		referenceWorkflows,
+		generatedCode,
+		agentTextResponse,
+		pinData,
+		datasetInputContext,
+	} = args;
 
 	return {
 		prompt,
 		...(globalContext ?? {}),
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
+		...(generatedCode ? { generatedCode } : {}),
+		...(agentTextResponse ? { agentTextResponse } : {}),
+		...(pinData ? { pinData } : {}),
+		...(datasetInputContext ? { datasetInputContext } : {}),
 	};
 }
 
@@ -345,20 +462,214 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 		context.referenceWorkflows = [record.referenceWorkflow];
 	}
 
+	// Extract annotations for binary-checks evaluator
+	if (
+		record.annotations &&
+		typeof record.annotations === 'object' &&
+		!Array.isArray(record.annotations)
+	) {
+		context.annotations = record.annotations as Record<string, unknown>;
+	}
+
 	return context;
+}
+
+/**
+ * Collected metrics from workflow generation.
+ */
+interface CollectedMetrics {
+	genInputTokens?: number;
+	genOutputTokens?: number;
+	discoveryDurationMs?: number;
+	builderDurationMs?: number;
+	responderDurationMs?: number;
+	nodeCount?: number;
+	introspectionEvents?: IntrospectionEvent[];
+}
+
+/**
+ * Create collectors for workflow generation metrics.
+ * Returns collectors and a function to get the collected values.
+ */
+function createMetricsCollectors(): {
+	collectors: GenerationCollectors;
+	getMetrics: () => CollectedMetrics;
+} {
+	const metrics: CollectedMetrics = {};
+
+	const collectors: GenerationCollectors = {
+		tokenUsage: (usage) => {
+			metrics.genInputTokens = usage.inputTokens;
+			metrics.genOutputTokens = usage.outputTokens;
+		},
+		subgraphMetrics: (m) => {
+			metrics.discoveryDurationMs = m.discoveryDurationMs;
+			metrics.builderDurationMs = m.builderDurationMs;
+			metrics.responderDurationMs = m.responderDurationMs;
+			metrics.nodeCount = m.nodeCount;
+		},
+		introspectionEvents: (events) => {
+			metrics.introspectionEvents = events;
+		},
+	};
+
+	return { collectors, getMetrics: () => metrics };
+}
+
+/**
+ * Build SubgraphMetrics object if any metrics are present, otherwise undefined.
+ */
+function buildSubgraphMetrics(metrics: CollectedMetrics): ExampleResult['subgraphMetrics'] {
+	const { discoveryDurationMs, builderDurationMs, responderDurationMs, nodeCount } = metrics;
+	const hasMetrics =
+		discoveryDurationMs !== undefined ||
+		builderDurationMs !== undefined ||
+		responderDurationMs !== undefined ||
+		nodeCount !== undefined;
+
+	return hasMetrics
+		? { discoveryDurationMs, builderDurationMs, responderDurationMs, nodeCount }
+		: undefined;
+}
+
+/**
+ * Create error feedback array.
+ */
+function createErrorFeedback(errorMessage: string): Feedback[] {
+	return [
+		{
+			evaluator: 'runner',
+			metric: 'error',
+			score: 0,
+			kind: 'score',
+			comment: errorMessage,
+		},
+	];
+}
+
+/**
+ * Execute the success path for a local example (generation + evaluation).
+ * Extracted to reduce complexity of runLocalExample.
+ */
+async function runLocalExampleSuccess(args: {
+	index: number;
+	startTime: number;
+	testCase: TestCase;
+	generateWorkflow: (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	) => Promise<SimpleWorkflow | GenerationResult>;
+	evaluators: Array<Evaluator<EvaluationContext>>;
+	globalContext?: GlobalRunContext;
+	passThreshold: number;
+	timeoutMs: number | undefined;
+	lifecycle?: Partial<EvaluationLifecycle>;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
+}): Promise<ExampleResult> {
+	const {
+		index,
+		startTime,
+		testCase,
+		generateWorkflow,
+		evaluators,
+		globalContext,
+		passThreshold,
+		timeoutMs,
+		lifecycle,
+		pinDataGenerator,
+	} = args;
+
+	// Generate workflow with metrics collection
+	const genStartTime = Date.now();
+	const { collectors, getMetrics } = createMetricsCollectors();
+
+	const genResult = await runWithOptionalLimiter(async () => {
+		return await withTimeout({
+			promise: generateWorkflow(testCase.prompt, testCase.context?.datasetInputContext, collectors),
+			timeoutMs,
+			label: 'workflow_generation',
+		});
+	}, globalContext?.llmCallLimiter);
+	const genDurationMs = Date.now() - genStartTime;
+
+	// Extract workflow and optional generated code
+	const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
+	const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
+	const agentTextResponse = isGenerationResult(genResult) ? genResult.agentTextResponse : undefined;
+
+	lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
+
+	// Generate pin data for service nodes (best-effort)
+	let pinData: IPinData | undefined;
+	if (pinDataGenerator) {
+		try {
+			pinData = await pinDataGenerator(workflow);
+		} catch {
+			// Pin data generation is best-effort — don't fail the evaluation
+		}
+	}
+
+	const context = buildContext({
+		prompt: testCase.prompt,
+		globalContext: {
+			...(globalContext ?? {}),
+			timeoutMs,
+		},
+		testCaseContext: testCase.context,
+		referenceWorkflows: testCase.referenceWorkflows,
+		generatedCode,
+		agentTextResponse,
+		pinData,
+		datasetInputContext: testCase.context?.datasetInputContext,
+	});
+
+	// Run evaluators in parallel
+	const evalStartTime = Date.now();
+	const feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
+	const evalDurationMs = Date.now() - evalStartTime;
+
+	// Calculate result
+	const score = calculateExampleScore(feedback);
+	const status = hasErrorFeedback(feedback) ? 'error' : determineStatus({ score, passThreshold });
+	const durationMs = Date.now() - startTime;
+	const metrics = getMetrics();
+
+	return {
+		index,
+		prompt: testCase.prompt,
+		status,
+		score,
+		feedback,
+		durationMs,
+		generationDurationMs: genDurationMs,
+		evaluationDurationMs: evalDurationMs,
+		generationInputTokens: metrics.genInputTokens,
+		generationOutputTokens: metrics.genOutputTokens,
+		subgraphMetrics: buildSubgraphMetrics(metrics),
+		introspectionEvents: metrics.introspectionEvents,
+		workflow,
+		generatedCode,
+		agentTextResponse,
+	};
 }
 
 async function runLocalExample(args: {
 	index: number;
 	total: number;
 	testCase: TestCase;
-	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	generateWorkflow: (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
 	passThreshold: number;
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver?: ArtifactSaver | null;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult> {
 	const {
 		index,
@@ -371,55 +682,25 @@ async function runLocalExample(args: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		pinDataGenerator,
 	} = args;
 
 	const startTime = Date.now();
 	lifecycle?.onExampleStart?.(index, total, testCase.prompt);
 
 	try {
-		// Generate workflow
-		const genStartTime = Date.now();
-		const workflow = await runWithOptionalLimiter(async () => {
-			return await withTimeout({
-				promise: generateWorkflow(testCase.prompt),
-				timeoutMs,
-				label: 'workflow_generation',
-			});
-		}, globalContext?.llmCallLimiter);
-		const genDurationMs = Date.now() - genStartTime;
-		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
-
-		const context = buildContext({
-			prompt: testCase.prompt,
-			globalContext: {
-				...(globalContext ?? {}),
-				timeoutMs,
-			},
-			testCaseContext: testCase.context,
-			referenceWorkflows: testCase.referenceWorkflows,
-		});
-
-		// Run evaluators in parallel
-		const evalStartTime = Date.now();
-		const feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
-		const evalDurationMs = Date.now() - evalStartTime;
-
-		// Calculate result
-		const score = calculateExampleScore(feedback);
-		const status = hasErrorFeedback(feedback) ? 'error' : determineStatus({ score, passThreshold });
-		const durationMs = Date.now() - startTime;
-
-		const result: ExampleResult = {
+		const result = await runLocalExampleSuccess({
 			index,
-			prompt: testCase.prompt,
-			status,
-			score,
-			feedback,
-			durationMs,
-			generationDurationMs: genDurationMs,
-			evaluationDurationMs: evalDurationMs,
-			workflow,
-		};
+			startTime,
+			testCase,
+			generateWorkflow,
+			evaluators,
+			globalContext,
+			passThreshold,
+			timeoutMs,
+			lifecycle,
+			pinDataGenerator,
+		});
 
 		artifactSaver?.saveExample(result);
 		lifecycle?.onExampleComplete?.(index, result);
@@ -432,15 +713,7 @@ async function runLocalExample(args: {
 			prompt: testCase.prompt,
 			status: 'error',
 			score: 0,
-			feedback: [
-				{
-					evaluator: 'runner',
-					metric: 'error',
-					score: 0,
-					kind: 'score',
-					comment: errorMessage,
-				},
-			],
+			feedback: createErrorFeedback(errorMessage),
 			durationMs,
 			error: errorMessage,
 		};
@@ -465,13 +738,19 @@ function createArtifactSaverIfRequested(args: {
 
 async function runLocalDataset(params: {
 	testCases: TestCase[];
-	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	generateWorkflow: (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
 	passThreshold: number;
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
+	concurrency?: number;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult[]> {
 	const {
 		testCases,
@@ -482,27 +761,34 @@ async function runLocalDataset(params: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency = 1,
+		pinDataGenerator,
 	} = params;
 
-	const results: ExampleResult[] = [];
-	for (let i = 0; i < testCases.length; i++) {
-		const testCase = testCases[i];
+	// Use pLimit to control concurrency of example execution
+	const exampleLimiter = pLimit(concurrency);
+
+	const resultPromises = testCases.map(async (testCase, i) => {
 		const index = i + 1;
-		const result = await runLocalExample({
-			index,
-			total: testCases.length,
-			testCase,
-			generateWorkflow,
-			evaluators,
-			globalContext,
-			passThreshold,
-			timeoutMs,
-			lifecycle,
-			artifactSaver,
-		});
-		results.push(result);
-	}
-	return results;
+		return await exampleLimiter(
+			async () =>
+				await runLocalExample({
+					index,
+					total: testCases.length,
+					testCase,
+					generateWorkflow,
+					evaluators,
+					globalContext,
+					passThreshold,
+					timeoutMs,
+					lifecycle,
+					artifactSaver,
+					pinDataGenerator,
+				}),
+		);
+	});
+
+	return await Promise.all(resultPromises);
 }
 
 function buildRunSummary(results: ExampleResult[]): RunSummary {
@@ -615,7 +901,11 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		timeoutMs,
 		lifecycle,
 		outputDir,
+		outputCsv,
+		suite,
 		logger,
+		concurrency = 1,
+		pinDataGenerator,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
@@ -643,13 +933,27 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency,
+		pinDataGenerator,
 	});
 	const summary = buildRunSummary(results);
 
 	// Save summary to disk if outputDir is provided
 	artifactSaver?.saveSummary(summary, results);
 
-	lifecycle?.onEnd?.(summary);
+	// Write CSV if requested
+	if (outputCsv) {
+		const { writeResultsCsv } = await import('./csv-writer.js');
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
+		writeResultsCsv(results, outputCsv, { suite: csvSuite });
+		logger.info(`Results written to: ${outputCsv}`);
+	}
+
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }
@@ -671,6 +975,12 @@ interface LangsmithDatasetInput {
 	prompt?: string;
 	messages?: BaseMessage[];
 	evals?: Record<string, unknown>;
+	workflowJSON?: unknown;
+	workflowContext?: unknown;
+	workflowOperations?: unknown[];
+	mode?: string;
+	/** Injected by enrichExamplesWithHistory - historical messages from outputs */
+	_historicalMessages?: unknown[];
 	[key: string]: unknown;
 }
 
@@ -690,6 +1000,116 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
 	}
 
 	throw new Error('No prompt found in inputs - expected "prompt" string or "messages" array');
+}
+
+/**
+ * Pre-process LangSmith examples to extract conversation history from outputs
+ * and inject it into inputs for the target function.
+ *
+ * The dataset format has:
+ * - inputs.messages[0]: The latest user turn
+ * - outputs.messages: The FULL conversation (all prior turns + latest + AI response)
+ *
+ * We find the latest turn in outputs and extract everything before it as historical.
+ */
+function enrichExamplesWithHistory(examples: Example[]): Example[] {
+	return examples.map((example) => {
+		const outputMessages = (example.outputs as Record<string, unknown> | undefined)?.messages;
+		if (!Array.isArray(outputMessages) || outputMessages.length <= 1) {
+			return example; // No history to extract
+		}
+
+		const inputMessages = (example.inputs as Record<string, unknown> | undefined)?.messages;
+		if (!Array.isArray(inputMessages) || inputMessages.length === 0) {
+			return example;
+		}
+
+		// Get the content of the latest turn from inputs
+		const inputMsg = inputMessages[0] as Record<string, unknown> | undefined;
+		const inputContent = (inputMsg?.kwargs as Record<string, unknown> | undefined)?.content;
+		if (typeof inputContent !== 'string') return example;
+
+		// Find the index of the latest turn in output messages by matching content
+		const latestTurnIndex = outputMessages.findIndex((msg: unknown) => {
+			if (!isUnknownRecord(msg)) return false;
+			const kwargs = msg.kwargs;
+			if (!isUnknownRecord(kwargs)) return false;
+			return kwargs.content === inputContent;
+		});
+
+		if (latestTurnIndex <= 0) return example; // No history before the latest turn
+
+		// Extract all messages before the latest turn as historical
+		const historicalMessages = outputMessages.slice(0, latestTurnIndex);
+
+		return {
+			...example,
+			inputs: {
+				...example.inputs,
+				_historicalMessages: historicalMessages,
+			},
+		};
+	});
+}
+
+/**
+ * Deserialize raw LangChain `lc` serialization format messages into BaseMessage instances.
+ * Dataset messages use the format: {id, lc: 1, type: "constructor", kwargs: {content, ...}}
+ * with the class ID in `id` array (e.g. ["langchain_core", "messages", "HumanMessage"]).
+ *
+ * Only keeps HumanMessage and AIMessage — tool calls/results are stripped
+ * to simplify the context passed to the code builder.
+ */
+function deserializeLcMessages(rawMessages: unknown[]): BaseMessage[] {
+	return rawMessages
+		.filter((msg): msg is Record<string, unknown> => {
+			if (!isUnknownRecord(msg)) return false;
+			const id = Array.isArray(msg.id) ? (msg.id as unknown[]) : [];
+			const last: unknown = id[id.length - 1];
+			return last === 'HumanMessage' || last === 'AIMessage';
+		})
+		.map((msg) => {
+			const kwargs = isUnknownRecord(msg.kwargs) ? msg.kwargs : {};
+			const content = typeof kwargs.content === 'string' ? kwargs.content : '';
+			const id = Array.isArray(msg.id) ? (msg.id as unknown[]) : [];
+
+			return id[id.length - 1] === 'HumanMessage'
+				? new HumanMessage(content)
+				: new AIMessage(content);
+		});
+}
+
+/**
+ * Extract DatasetInputContext from LangSmith dataset inputs.
+ * Captures the full agent context (workflowContext, existing workflow, mode)
+ * needed to replay the generation realistically.
+ */
+function extractDatasetInputContext(
+	inputs: LangsmithDatasetInput,
+): DatasetInputContext | undefined {
+	const hasContext =
+		inputs.workflowContext ?? inputs.workflowJSON ?? inputs.mode ?? inputs._historicalMessages;
+	if (!hasContext) return undefined;
+
+	const context: DatasetInputContext = {};
+
+	if (isUnknownRecord(inputs.workflowContext)) {
+		context.workflowContext = inputs.workflowContext as ChatPayload['workflowContext'];
+	}
+
+	if (isSimpleWorkflow(inputs.workflowJSON)) {
+		context.existingWorkflow = inputs.workflowJSON;
+	}
+
+	if (inputs.mode === 'build' || inputs.mode === 'plan') {
+		context.mode = inputs.mode;
+	}
+
+	if (Array.isArray(inputs._historicalMessages) && inputs._historicalMessages.length > 0) {
+		context.historicalMessages = deserializeLcMessages(inputs._historicalMessages);
+	}
+
+	return Object.keys(context).length > 0 ? context : undefined;
 }
 
 function createLangsmithFeedbackExtractor(): (
@@ -859,6 +1279,65 @@ async function runLangsmithEvaluateAndFlush(params: {
 }
 
 /**
+ * Stats tracker for LangSmith evaluation.
+ */
+interface LangsmithStats {
+	total: number;
+	passed: number;
+	failed: number;
+	errors: number;
+	scoreSum: number;
+	durationSumMs: number;
+}
+
+/**
+ * Update stats based on example result status.
+ */
+function updateStats(
+	stats: LangsmithStats,
+	status: 'pass' | 'fail' | 'error',
+	score: number,
+	durationMs: number,
+): void {
+	stats.total++;
+	stats.scoreSum += score;
+	stats.durationSumMs += durationMs;
+
+	if (status === 'pass') stats.passed++;
+	else if (status === 'fail') stats.failed++;
+	else stats.errors++;
+}
+
+/**
+ * Resolve LangSmith dataset examples and enrich them with conversation history.
+ * Handles fallback preloading when filters/maxExamples are requested on a string dataset.
+ */
+async function resolveAndEnrichLangsmithData(params: {
+	dataset: string;
+	langsmithOptions: LangsmithRunConfig['langsmithOptions'];
+	lsClient: LangsmithRunConfig['langsmithClient'];
+	logger: EvalLogger;
+}): Promise<string | Example[]> {
+	const { dataset, langsmithOptions, lsClient, logger } = params;
+	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
+	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
+	// fall back to preloading so we can honor limits instead of streaming everything.
+	if (
+		typeof data === 'string' &&
+		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
+	) {
+		data = await loadExamplesFromDataset({
+			lsClient,
+			datasetName: data,
+			maxExamples: langsmithOptions.maxExamples,
+			filters: langsmithOptions.filters,
+		});
+	}
+	// Enrich pre-loaded examples with conversation history from outputs
+	return Array.isArray(data) ? enrichExamplesWithHistory(data) : data;
+}
+
+/**
  * Run evaluation in LangSmith mode.
  */
 async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
@@ -868,12 +1347,15 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		evaluators,
 		context: globalContext,
 		outputDir,
+		outputCsv,
+		suite,
 		passThreshold = DEFAULT_PASS_THRESHOLD,
 		timeoutMs,
 		langsmithOptions,
 		langsmithClient: lsClient,
 		lifecycle,
 		logger,
+		pinDataGenerator,
 	} = config;
 
 	// Enable tracing (required in langsmith 0.4.x)
@@ -890,24 +1372,26 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
 	const capturedResults: ExampleResult[] = [];
 
-	// Create traceable wrapper ONCE outside target function to avoid context leaking
+	// Create traceable wrappers ONCE outside target function to avoid context leaking
 	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
 	// IMPORTANT: Get callbacks INSIDE the traceable wrapper where AsyncLocalStorage context
 	// is correctly set, then pass them explicitly to genFn to avoid race conditions.
 	const traceableGenerateWorkflow = traceable(
 		async (args: {
 			prompt: string;
-			genFn: (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow>;
+			genFn: (
+				prompt: string,
+				datasetInputContext?: DatasetInputContext,
+				collectors?: GenerationCollectors,
+			) => Promise<SimpleWorkflow | GenerationResult>;
+			collectors?: GenerationCollectors;
 			limiter?: LlmCallLimiter;
 			genTimeoutMs?: number;
-		}): Promise<SimpleWorkflow> => {
-			// Get callbacks inside traceable where context is correct
-			// Returns undefined if not in a traceable context (e.g., unit tests)
-			const callbacks = await getTracingCallbacks();
-
+			datasetInputContext?: DatasetInputContext;
+		}): Promise<SimpleWorkflow | GenerationResult> => {
 			return await runWithOptionalLimiter(async () => {
 				return await withTimeout({
-					promise: args.genFn(args.prompt, callbacks),
+					promise: args.genFn(args.prompt, args.datasetInputContext, args.collectors),
 					timeoutMs: args.genTimeoutMs,
 					label: 'workflow_generation',
 				});
@@ -920,11 +1404,36 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		},
 	);
 
+	// Separate traceable wrapper for evaluation so it appears as a sibling to
+	// workflow_generation in LangSmith traces (not nested under it).
+	const traceableEvaluateWorkflow = traceable(
+		async (args: {
+			workflow: SimpleWorkflow;
+			evaluators: Array<Evaluator<EvaluationContext>>;
+			context: EvaluationContext;
+			evalTimeoutMs?: number;
+			evalLifecycle?: Partial<EvaluationLifecycle>;
+		}): Promise<Feedback[]> => {
+			return await evaluateWithPlugins(
+				args.workflow,
+				args.evaluators,
+				args.context,
+				args.evalTimeoutMs,
+				args.evalLifecycle,
+			);
+		},
+		{
+			name: 'workflow_evaluation',
+			run_type: 'chain',
+			client: lsClient,
+		},
+	);
+
 	// Create target function that does ALL work (generation + evaluation)
 	// NOTE: Do NOT wrap target with traceable() - evaluate() handles tracing automatically.
 	let targetCallCount = 0;
 	let totalExamples = 0;
-	const stats = {
+	const stats: LangsmithStats = {
 		total: 0,
 		passed: 0,
 		failed: 0,
@@ -937,21 +1446,43 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const index = targetCallCount;
 		// Extract prompt from inputs (supports both direct prompt and messages array)
 		const prompt = extractPrompt(inputs);
+		const datasetInputContext = extractDatasetInputContext(inputs);
 		const { evals: datasetContext, ...rest } = inputs;
 
 		lifecycle?.onExampleStart?.(index, totalExamples, prompt);
 		const startTime = Date.now();
 		const genStart = Date.now();
+		const { collectors, getMetrics } = createMetricsCollectors();
 
 		try {
-			const workflow = await traceableGenerateWorkflow({
+			const genResult = await traceableGenerateWorkflow({
 				prompt,
 				genFn: generateWorkflow,
+				collectors,
 				limiter: effectiveGlobalContext.llmCallLimiter,
 				genTimeoutMs: timeoutMs,
+				datasetInputContext,
 			});
 			const genDurationMs = Date.now() - genStart;
+
+			// Extract workflow and optional generated code
+			const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
+			const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
+			const agentTextResponse = isGenerationResult(genResult)
+				? genResult.agentTextResponse
+				: undefined;
+
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
+
+			// Generate pin data for service nodes (best-effort)
+			let pinData: IPinData | undefined;
+			if (pinDataGenerator) {
+				try {
+					pinData = await pinDataGenerator(workflow);
+				} catch {
+					// Pin data generation is best-effort — don't fail the evaluation
+				}
+			}
 
 			const extracted = extractContextFromLangsmithInputs({
 				...asRecord(datasetContext),
@@ -961,17 +1492,28 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				prompt,
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
+				generatedCode,
+				agentTextResponse,
+				pinData,
+				datasetInputContext,
 			});
 
-			// Run all evaluators in parallel
+			// Run all evaluators in parallel (wrapped in traceable so it appears
+			// as a sibling to workflow_generation in LangSmith traces).
+			// Fall back to direct call if traceable wrapper fails.
 			const evalStart = Date.now();
-			const feedback = await evaluateWithPlugins(
-				workflow,
-				evaluators,
-				context,
-				timeoutMs,
-				lifecycle,
-			);
+			let feedback: Feedback[];
+			try {
+				feedback = await traceableEvaluateWorkflow({
+					workflow,
+					evaluators,
+					context,
+					evalTimeoutMs: timeoutMs,
+					evalLifecycle: lifecycle,
+				});
+			} catch {
+				feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
+			}
 			const evalDurationMs = Date.now() - evalStart;
 			const totalDurationMs = Date.now() - startTime;
 
@@ -980,13 +1522,8 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				? 'error'
 				: determineStatus({ score, passThreshold });
 
-			stats.total++;
-			stats.scoreSum += score;
-			stats.durationSumMs += totalDurationMs;
-
-			if (status === 'pass') stats.passed++;
-			else if (status === 'fail') stats.failed++;
-			else stats.errors++;
+			updateStats(stats, status, score, totalDurationMs);
+			const metrics = getMetrics();
 
 			const result: ExampleResult = {
 				index,
@@ -997,36 +1534,37 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				durationMs: totalDurationMs,
 				generationDurationMs: genDurationMs,
 				evaluationDurationMs: evalDurationMs,
+				generationInputTokens: metrics.genInputTokens,
+				generationOutputTokens: metrics.genOutputTokens,
+				subgraphMetrics: buildSubgraphMetrics(metrics),
+				introspectionEvents: metrics.introspectionEvents,
 				workflow,
+				generatedCode,
+				agentTextResponse,
 			};
 
 			artifactSaver?.saveExample(result);
 			capturedResults.push(result);
 			lifecycle?.onExampleComplete?.(index, result);
 
+			// Create metrics feedback for LangSmith (subgraph timing + node count)
+			const metricsFeedback = createMetricsFeedback(metrics);
+
 			return {
 				workflow,
 				prompt,
-				feedback,
+				// Include metrics feedback in the array sent to LangSmith
+				feedback: [...feedback, ...metricsFeedback],
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			const workflow: SimpleWorkflow = { name: 'Evaluation Error', nodes: [], connections: {} };
-			const feedback: Feedback[] = [
-				{
-					evaluator: 'runner',
-					metric: 'error',
-					score: 0,
-					kind: 'score',
-					comment: errorMessage,
-				},
-			];
+			const feedback = createErrorFeedback(errorMessage);
 
 			const totalDurationMs = Date.now() - startTime;
 			const genDurationMs = Date.now() - genStart;
-			stats.total++;
-			stats.errors++;
-			stats.durationSumMs += totalDurationMs;
+			updateStats(stats, 'error', 0, totalDurationMs);
+
 			const result: ExampleResult = {
 				index,
 				prompt,
@@ -1049,25 +1587,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	const feedbackExtractor = createLangsmithFeedbackExtractor();
 
-	// Load examples if maxExamples is set
 	if (typeof dataset !== 'string') {
 		throw new Error('LangSmith mode requires dataset to be a dataset name string');
 	}
 
-	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
-	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
-	// fall back to preloading so we can honor limits instead of streaming everything.
-	if (
-		typeof data === 'string' &&
-		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
-	) {
-		data = await loadExamplesFromDataset({
-			lsClient,
-			datasetName: data,
-			maxExamples: langsmithOptions.maxExamples,
-			filters: langsmithOptions.filters,
-		});
-	}
+	const data = await resolveAndEnrichLangsmithData({ dataset, langsmithOptions, lsClient, logger });
 
 	const effectiveData = applyRepetitions(data, langsmithOptions.repetitions);
 
@@ -1098,7 +1622,19 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		artifactSaver.saveSummary(summary, capturedResults);
 	}
 
-	lifecycle?.onEnd?.(summary);
+	// Write CSV if requested
+	if (outputCsv) {
+		const { writeResultsCsv } = await import('./csv-writer.js');
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
+		writeResultsCsv(capturedResults, outputCsv, { suite: csvSuite });
+		logger.info(`Results written to: ${outputCsv}`);
+	}
+
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }

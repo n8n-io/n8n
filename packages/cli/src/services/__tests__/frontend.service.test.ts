@@ -3,7 +3,7 @@ import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -28,7 +28,7 @@ describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
 	const globalConfig = mock<GlobalConfig>({
 		database: { type: 'sqlite' },
-		endpoints: { rest: 'rest' },
+		endpoints: { rest: 'rest', health: '/healthz' },
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
@@ -54,11 +54,17 @@ describe('FrontendService', () => {
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
 		workflowHistory: { pruneTime: 24 },
-		path: '',
+		path: '/',
 		sso: {
 			ldap: { loginEnabled: false },
 			saml: { loginEnabled: false },
 			oidc: { loginEnabled: false },
+		},
+		credentials: {
+			overwrite: { skipTypes: [] },
+		},
+		userManagement: {
+			password: { minLength: 8 },
 		},
 	});
 
@@ -74,6 +80,10 @@ describe('FrontendService', () => {
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		addPostProcessor: jest.fn(),
+		collectTypes: jest.fn().mockResolvedValue({
+			credentials: [],
+			nodes: [],
+		}),
 		types: {
 			credentials: [],
 			nodes: [],
@@ -109,7 +119,7 @@ describe('FrontendService', () => {
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
-		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),
+
 		getVariablesLimit: jest.fn().mockReturnValue(0),
 		getTeamProjectLimit: jest.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: jest.fn().mockReturnValue(false),
@@ -211,6 +221,50 @@ describe('FrontendService', () => {
 				}),
 			);
 		});
+
+		it('should surface logStreaming.managedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: true });
+		});
+
+		it('should default logStreaming.managedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: false });
+		});
+
+		it('should surface communityNodesManagedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(true);
+		});
+
+		it('should default communityNodesManagedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(false);
+		});
 	});
 
 	describe('getPublicSettings', () => {
@@ -222,6 +276,7 @@ describe('FrontendService', () => {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
+					passwordMinLength: 8,
 				},
 				sso: {
 					saml: { loginEnabled: false },
@@ -232,6 +287,7 @@ describe('FrontendService', () => {
 					},
 				},
 				authCookie: { secure: false },
+				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 			};
@@ -250,6 +306,7 @@ describe('FrontendService', () => {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
+					passwordMinLength: 8,
 				},
 				sso: {
 					saml: { loginEnabled: false },
@@ -260,6 +317,7 @@ describe('FrontendService', () => {
 					},
 				},
 				authCookie: { secure: false },
+				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 				mfa: {
@@ -274,12 +332,31 @@ describe('FrontendService', () => {
 			expect(settings).toEqual(expectedPublicSettings);
 		});
 
+		it('should expose configured passwordMinLength in settings', async () => {
+			(globalConfig as any).userManagement = { password: { minLength: 12 } };
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.userManagement.passwordMinLength).toBe(12);
+
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.userManagement.passwordMinLength).toBe(12);
+
+			// Restore default
+			(globalConfig as any).userManagement = { password: { minLength: 8 } };
+		});
+
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings(false);
+			const publicSettings = await service.getPublicSettings(false);
 
+			expect(publicSettings.previewMode).toBe(true);
+			expect(publicSettings.userManagement.showSetupOnFirstLoad).toBe(false);
+
+			const settings = await service.getSettings();
 			expect(settings.previewMode).toBe(true);
 			expect(settings.userManagement.showSetupOnFirstLoad).toBe(false);
 		});
@@ -475,15 +552,179 @@ describe('FrontendService', () => {
 		});
 	});
 
+	describe('overwriteCredentialsProperties', () => {
+		afterEach(() => {
+			// Restore globalConfig.credentials to the default so other tests are unaffected
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should set __skipManagedCreation for types in the skip list', () => {
+			const skipCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const normalCredential = {
+				name: 'slackOAuth2Api',
+				displayName: 'Slack OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [skipCredential, normalCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['googleSheetsOAuth2Api'] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(skipCredential.__skipManagedCreation).toBe(true);
+			expect(normalCredential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not set __skipManagedCreation when skip list is empty', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should clear stale __skipManagedCreation when type is removed from skip list', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+				__skipManagedCreation: true, // Previously set
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		describe('JWKS URI injection', () => {
+			const expectedJwksUri = 'http://localhost:5678/rest/.well-known/jwks.json';
+
+			const makeJwksUriProperty = () => ({
+				displayName: 'JWKS URI',
+				name: 'jwksUri',
+				type: 'string' as const,
+				default: '',
+			});
+
+			it('should inject the instance JWKS URI on oAuth2Api', () => {
+				const credential = {
+					name: 'oAuth2Api',
+					displayName: 'OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
+			});
+
+			it('should not touch standard OAuth2-extending credentials (jwksUri not inherited)', () => {
+				// Both `jweEnabled` and `jwksUri` carry `doNotInherit: true` so
+				// provider-specific OAuth2 credentials (Google, Slack, GitHub, ...)
+				// don't inherit them. Without a `jwksUri` property in scope, the
+				// injection has nothing to mutate.
+				const credential = {
+					name: 'slackOAuth2Api',
+					displayName: 'Slack OAuth2 API',
+					properties: [],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				expect(credential.properties).toEqual([]);
+			});
+
+			it('should inject the JWKS URI on JWE-aware OAuth2 extensions that re-declare jwksUri', () => {
+				// Custom credentials extending oAuth2Api can opt into the JWE flow
+				// by re-declaring both `jweEnabled` and `jwksUri`. The runtime URL
+				// injection must reach those credentials so the user sees the
+				// instance JWKS endpoint without the credential class hardcoding
+				// it (which would be impossible per-instance).
+				const credential = {
+					name: 'metaOAuth2Api',
+					displayName: 'Meta OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue(['oAuth2Api']);
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
+			});
+
+			it('should leave non-OAuth2 credentials untouched', () => {
+				const credential = {
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					properties: [
+						{
+							displayName: 'User',
+							name: 'user',
+							type: 'string' as const,
+							default: '',
+						},
+					],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				expect(credential.properties).toEqual([
+					{ displayName: 'User', name: 'user', type: 'string', default: '' },
+				]);
+			});
+		});
+	});
+
 	describe('generateTypes', () => {
 		it('should write node versions file with generated identifiers', async () => {
-			const { service } = createMockService();
-
-			const originalNodes = (loadNodesAndCredentials.types as any).nodes;
-			(loadNodesAndCredentials.types as any).nodes = [
+			const testNodes = [
 				{ name: 'n8n-nodes-base.single', version: 1 },
 				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
 			];
+
+			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValue({
+				nodes: testNodes,
+				credentials: [],
+			});
+
+			const { service } = createMockService();
 
 			const writeStaticJSONSpy = jest
 				.spyOn(service as any, 'writeStaticJSON')
@@ -510,7 +751,6 @@ describe('FrontendService', () => {
 				expect(identifiers).toHaveLength(3);
 			} finally {
 				writeStaticJSONSpy.mockRestore();
-				(loadNodesAndCredentials.types as any).nodes = originalNodes;
 			}
 		});
 	});

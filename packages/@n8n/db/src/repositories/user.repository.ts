@@ -242,7 +242,7 @@ export class UserRepository extends Repository<User> {
 			}
 		}
 
-		if (filter?.ids !== undefined) {
+		if (filter?.ids !== undefined && filter.ids.length > 0) {
 			queryBuilder.andWhere('user.id IN (:...ids)', {
 				ids: filter.ids,
 			});
@@ -272,6 +272,15 @@ export class UserRepository extends Repository<User> {
 							email: fullTextFilter,
 						});
 				}),
+			);
+		}
+
+		if (filter?.projectId !== undefined) {
+			queryBuilder.innerJoin(
+				'user.projectRelations',
+				'userListProjectFilter',
+				'userListProjectFilter.projectId = :userListProjectId',
+				{ userListProjectId: filter.projectId },
 			);
 		}
 

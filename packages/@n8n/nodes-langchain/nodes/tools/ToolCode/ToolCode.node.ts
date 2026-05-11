@@ -1,11 +1,7 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { TaskRunnersConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
 import { PythonTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonTaskRunnerSandbox';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
 	ExecutionError,
 	IDataObject,
@@ -30,7 +26,7 @@ import {
 	schemaTypeField,
 } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
 
@@ -55,9 +51,6 @@ function getTool(
 	const node = ctx.getNode();
 	const workflowMode = ctx.getMode();
 
-	const runnersConfig = Container.get(TaskRunnersConfig);
-	const isJsRunnerEnabled = runnersConfig.enabled;
-
 	const { typeVersion } = node;
 	const name =
 		typeVersion <= 1.1
@@ -78,24 +71,10 @@ function getTool(
 
 	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
 		if (language === 'javaScript') {
-			if (isJsRunnerEnabled) {
-				const sandbox = new JsTaskRunnerSandbox(workflowMode, ctx, /*chunkSize=*/ undefined, {
-					query,
-				});
-				return await sandbox.runCodeForTool(code);
-			} else {
-				const context = getSandboxContext.call(ctx, itemIndex);
-				context.query = query;
-				const sandbox = new JavaScriptSandbox(context, code, ctx.helpers);
-				sandbox.on(
-					'output',
-					workflowMode === 'manual'
-						? ctx.sendMessageToUI.bind(ctx)
-						: (...args: unknown[]) =>
-								console.log(`[Workflow "${ctx.getWorkflow().id}"][Node "${node.name}"]`, ...args),
-				);
-				return await sandbox.runCode<string>();
-			}
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, ctx, /*chunkSize=*/ undefined, {
+				query,
+			});
+			return await sandbox.runCodeForTool(code);
 		} else {
 			const sandbox = new PythonTaskRunnerSandbox(
 				code,

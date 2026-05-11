@@ -377,7 +377,7 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i, {});
 						const filters = this.getNodeParameter('filters', i, {});
 						const qs: IDataObject = {};
-						Object.assign(qs, prepareQuery.call(this, filters, i), options, i);
+						Object.assign(qs, prepareQuery.call(this, filters, i));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(

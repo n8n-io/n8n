@@ -1,6 +1,6 @@
 import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -50,15 +50,6 @@ export interface StartExecutionParams {
 	userId: string;
 }
 
-/** Maximum number of chunks to buffer for reconnection */
-const MAX_BUFFERED_CHUNKS = 1000;
-
-/** TTL for stream state in seconds */
-const STREAM_STATE_TTL = 5 * 60; // 5 minutes
-
-/** TTL for cleanup timers in single-main mode */
-const CLEANUP_DELAY_MS = STREAM_STATE_TTL * Time.seconds.toMilliseconds;
-
 /**
  * Service responsible for storing chat session state for reconnection support.
  * Uses in-memory storage for single-main mode and Redis for multi-main mode.
@@ -71,6 +62,7 @@ export class ChatStreamStateService {
 
 	private readonly useRedis: boolean;
 	private readonly redisPrefix: string;
+	private readonly cleanupDelayMs: number;
 	private redisClient: Redis | Cluster | null = null;
 
 	constructor(
@@ -78,11 +70,13 @@ export class ChatStreamStateService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly chatHubConfig: ChatHubConfig,
 		private readonly redisClientService: RedisClientService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 		this.useRedis = this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue';
-		this.redisPrefix = `${this.globalConfig.redis.prefix}:chat-stream:`;
+		this.redisPrefix = `${this.globalConfig.redis.prefix}:chat-hub:stream:`;
+		this.cleanupDelayMs = this.chatHubConfig.streamStateTtl * Time.seconds.toMilliseconds;
 
 		if (this.useRedis) {
 			this.redisClient = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
@@ -213,7 +207,7 @@ export class ChatStreamStateService {
 			const chunks = await this.getRedisChunks(sessionId);
 			chunks.push(chunk);
 
-			while (chunks.length > MAX_BUFFERED_CHUNKS) {
+			while (chunks.length > this.chatHubConfig.maxBufferedChunks) {
 				chunks.shift();
 			}
 
@@ -227,7 +221,7 @@ export class ChatStreamStateService {
 
 			chunks.push(chunk);
 
-			while (chunks.length > MAX_BUFFERED_CHUNKS) {
+			while (chunks.length > this.chatHubConfig.maxBufferedChunks) {
 				chunks.shift();
 			}
 		}
@@ -302,7 +296,7 @@ export class ChatStreamStateService {
 			if (!data) return null;
 			return JSON.parse(data) as StreamState;
 		} catch (error) {
-			this.logger.error(`Failed to get Redis state for session ${sessionId}`, { error });
+			this.logger.warn(`Failed to get Redis state for session ${sessionId}`, { error });
 			return null;
 		}
 	}
@@ -311,10 +305,11 @@ export class ChatStreamStateService {
 		if (!this.redisClient) return;
 
 		try {
-			await this.redisClient.setex(
+			await this.redisClient.set(
 				this.getStateKey(sessionId),
-				STREAM_STATE_TTL,
 				JSON.stringify(state),
+				'EX',
+				this.chatHubConfig.streamStateTtl,
 			);
 		} catch (error) {
 			this.logger.error(`Failed to set Redis state for session ${sessionId}`, { error });
@@ -348,10 +343,11 @@ export class ChatStreamStateService {
 		if (!this.redisClient) return;
 
 		try {
-			await this.redisClient.setex(
+			await this.redisClient.set(
 				this.getChunksKey(sessionId),
-				STREAM_STATE_TTL,
 				JSON.stringify(chunks),
+				'EX',
+				this.chatHubConfig.streamStateTtl,
 			);
 		} catch (error) {
 			this.logger.error(`Failed to set Redis chunks for session ${sessionId}`, { error });
@@ -376,7 +372,7 @@ export class ChatStreamStateService {
 			this.chunkBuffer.delete(sessionId);
 			this.cleanupTimers.delete(sessionId);
 			this.logger.debug(`Cleaned up expired stream for session ${sessionId}`);
-		}, CLEANUP_DELAY_MS);
+		}, this.cleanupDelayMs);
 
 		this.cleanupTimers.set(sessionId, timer);
 	}

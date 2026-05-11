@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import type { StatusExportableCredential } from './exportable-credential';
+import type { ExportableDataTable, StatusExportableDataTable } from './exportable-data-table';
 import type { ExportableFolder } from './exportable-folders';
 import type { ExportableProjectWithFileName } from './exportable-project';
 import type { ExportableTagEntity, ExportableWorkflowTagMapping } from './exportable-tags';
@@ -20,6 +21,9 @@ export interface SourceControlGetStatusVerboseResult {
 	varMissingInLocal: ExportableVariable[];
 	varMissingInRemote: ExportableVariable[];
 	varModifiedInEither: ExportableVariable[];
+	dtMissingInLocal: ExportableDataTable[];
+	dtMissingInRemote: StatusExportableDataTable[];
+	dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable>;
 	tagsMissingInLocal: ExportableTagEntity[];
 	tagsMissingInRemote: ExportableTagEntity[];
 	tagsModifiedInEither: ExportableTagEntity[];

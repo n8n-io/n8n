@@ -173,6 +173,34 @@ describe('TaskRunnerSentry', () => {
 			expect(sentry.filterOutUserCodeErrors(event)).toBe(true);
 		});
 
+		it('should filter out EvalError from disallowed code generation', () => {
+			const event: ErrorEvent = {
+				type: undefined,
+				exception: {
+					values: [
+						{
+							type: 'EvalError',
+							value: 'Code generation from strings disallowed for this context',
+							stacktrace: {
+								frames: [
+									{
+										filename: 'app:///dist/js-task-runner/js-task-runner.js',
+										module: 'js-task-runner:js-task-runner',
+										function: 'JsTaskRunner.executeTask',
+									},
+								],
+							},
+							mechanism: { type: 'generic', handled: true },
+						},
+					],
+				},
+				event_id: '18bb78bb3d9d44c4acf3d774c2cfbfdd',
+				platform: 'node',
+			};
+
+			expect(sentry.filterOutUserCodeErrors(event)).toBe(true);
+		});
+
 		it('should not filter out task runner errors', () => {
 			const event: ErrorEvent = {
 				type: undefined,

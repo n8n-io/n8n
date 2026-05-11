@@ -36,8 +36,12 @@ export async function processItem(
 		itemIndex,
 		SYSTEM_PROMPT_TEMPLATE,
 	) as string;
+	const escapedTemplate = (systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE)
+		.replace(/[{}]/g, (match) => match + match)
+		.replaceAll('{{categories}}', '{categories}');
+
 	const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-		`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
+		`${escapedTemplate}
 	{format_instructions}
 	${multiClassPrompt}
 	${fallbackPrompt}`,

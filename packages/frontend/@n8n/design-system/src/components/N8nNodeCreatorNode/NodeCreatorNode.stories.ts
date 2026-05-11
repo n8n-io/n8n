@@ -3,8 +3,16 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nNodeCreatorNode from './NodeCreatorNode.vue';
 
 export default {
-	title: 'Modules/Node Creator Node',
+	title: 'Core/Node Creator Node',
 	component: N8nNodeCreatorNode,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A node list item for the node creator with icon, title, and metadata.',
+			},
+		},
+	},
 };
 
 const DefaultTemplate: StoryFn = (args, { argTypes }) => ({

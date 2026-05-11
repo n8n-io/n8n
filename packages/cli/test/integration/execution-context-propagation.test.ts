@@ -161,8 +161,8 @@ describe('Execution Context Propagation Integration Tests', () => {
 			// EXECUTE: Run Parent Workflow
 			// ============================================================
 			const result = await workflowExecutionService.executeManually(
+				parentWorkflow,
 				{
-					workflowData: parentWorkflow,
 					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
@@ -250,8 +250,8 @@ describe('Execution Context Propagation Integration Tests', () => {
 			// EXECUTE: Run Grandparent Workflow
 			// ============================================================
 			const result = await workflowExecutionService.executeManually(
+				grandparentWorkflow,
 				{
-					workflowData: grandparentWorkflow,
 					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
@@ -342,8 +342,8 @@ describe('Execution Context Propagation Integration Tests', () => {
 			// EXECUTE: Run Both Workflows Independently
 			// ============================================================
 			const result1 = await workflowExecutionService.executeManually(
+				workflow1,
 				{
-					workflowData: workflow1,
 					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
@@ -357,8 +357,8 @@ describe('Execution Context Propagation Integration Tests', () => {
 			await waitForExecution(result1.executionId);
 
 			const result2 = await workflowExecutionService.executeManually(
+				workflow2,
 				{
-					workflowData: workflow2,
 					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
