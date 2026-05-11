@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue';
-import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCard,
+	N8nCheckbox,
+	N8nIcon,
+	N8nInput,
+	N8nInputLabel,
+	N8nText,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type { AskQuestionResume } from '@n8n/api-types';
 
 interface Option {
@@ -22,7 +31,9 @@ const emit = defineEmits<{
 }>();
 
 const SINGLE_CHOICE_SUBMIT_DELAY_MS = 250;
+const i18n = useI18n();
 const selected = ref<string[]>([]);
+const otherText = ref('');
 let singleChoiceSubmitTimer: number | undefined;
 
 /** Labels of the persisted selected values, for the resolved state. */
@@ -31,6 +42,13 @@ const resolvedLabels = computed(() => {
 	return props.resolvedValue.values.map(
 		(v) => props.options.find((o) => o.value === v)?.label ?? v,
 	);
+});
+
+const trimmedOtherText = computed(() => otherText.value.trim());
+const selectedValuesWithOther = computed(() => {
+	const values = [...selected.value];
+	if (trimmedOtherText.value) values.push(trimmedOtherText.value);
+	return values;
 });
 
 function selectSingle(value: string) {
@@ -61,8 +79,25 @@ function toggleMultiple(value: string, checked: boolean) {
 }
 
 function onSubmit() {
-	if (selected.value.length === 0 || props.disabled) return;
-	emit('submit', { values: [...selected.value] });
+	const values = selectedValuesWithOther.value;
+	if (values.length === 0 || props.disabled) return;
+	emit('submit', { values });
+}
+
+function submitOther() {
+	if (!trimmedOtherText.value || props.disabled) return;
+	clearSingleChoiceSubmitTimer();
+	emit('submit', { values: [trimmedOtherText.value] });
+}
+
+function onOtherKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+	event.preventDefault();
+	if (props.allowMultiple) {
+		onSubmit();
+		return;
+	}
+	submitOther();
 }
 
 onBeforeUnmount(clearSingleChoiceSubmitTimer);
@@ -129,14 +164,43 @@ onBeforeUnmount(clearSingleChoiceSubmitTimer);
 					</template>
 				</div>
 
+				<N8nInputLabel
+					input-name="ask-question-other-input"
+					:label="i18n.baseText('agents.chat.askQuestion.otherLabel')"
+					:bold="false"
+					size="small"
+					:class="$style.other"
+				>
+					<div :class="$style.otherInputRow">
+						<N8nInput
+							id="ask-question-other-input"
+							v-model="otherText"
+							size="small"
+							:disabled="disabled"
+							:placeholder="i18n.baseText('agents.chat.askQuestion.otherPlaceholder')"
+							data-testid="ask-question-other-input"
+							@keydown="onOtherKeydown"
+						/>
+						<N8nButton
+							v-if="!allowMultiple"
+							:disabled="!trimmedOtherText || disabled"
+							size="small"
+							data-testid="ask-question-other-submit"
+							@click="submitOther"
+						>
+							{{ i18n.baseText('agents.chat.askQuestion.submit') }}
+						</N8nButton>
+					</div>
+				</N8nInputLabel>
+
 				<div v-if="allowMultiple" :class="$style.actions">
 					<N8nButton
-						:disabled="selected.length === 0 || disabled"
+						:disabled="selectedValuesWithOther.length === 0 || disabled"
 						size="medium"
 						data-testid="ask-question-submit"
 						@click="onSubmit"
 					>
-						Submit
+						{{ i18n.baseText('agents.chat.askQuestion.submit') }}
 					</N8nButton>
 				</div>
 			</template>
@@ -181,6 +245,24 @@ onBeforeUnmount(clearSingleChoiceSubmitTimer);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+
+.other {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding-top: var(--spacing--2xs);
+}
+
+.otherInputRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+
+	:global(.n8n-input) {
+		flex: 1;
+		min-width: 0;
+	}
 }
 
 .option {
