@@ -8,6 +8,7 @@ export const ATTR = {
 	INSTANCE_ROLE: 'n8n.instance.role',
 
 	WORKFLOW_ID: 'n8n.workflow.id',
+	WORKFLOW_VERSION_ID: 'n8n.workflow.version_id',
 	WORKFLOW_NAME: 'n8n.workflow.name',
 	WORKFLOW_NODE_COUNT: 'n8n.workflow.node_count',
 
@@ -17,4 +18,14 @@ export const ATTR = {
 	EXECUTION_IS_RETRY: 'n8n.execution.is_retry',
 	EXECUTION_RETRY_OF: 'n8n.execution.retry_of',
 	EXECUTION_ERROR_TYPE: 'n8n.execution.error_type',
+
+	NODE_ID: 'n8n.node.id',
+	NODE_NAME: 'n8n.node.name',
+	NODE_TYPE: 'n8n.node.type',
+	NODE_TYPE_VERSION: 'n8n.node.type_version',
+	NODE_ITEMS_INPUT: 'n8n.node.items.input',
+	NODE_ITEMS_OUTPUT: 'n8n.node.items.output',
+	NODE_TERMINATION_REASON: 'n8n.node.termination_reason',
+
+	CONTINUATION_REASON: 'n8n.continuation.reason',
 } as const;

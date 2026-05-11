@@ -9,7 +9,6 @@ export type {
 	ContentReasoning,
 	ContentFile,
 	ContentToolCall,
-	ContentToolResult,
 	ContentInvalidToolCall,
 	ContentProvider,
 	Message,
@@ -61,11 +60,26 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	ObservationCapableMemory,
+	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
+
+export type {
+	BuiltObservationStore,
+	CompactFn,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObserveFn,
+	ScopeKind,
+} from './sdk/observation';
+export { OBSERVATION_SCHEMA_VERSION } from './sdk/observation';
 
 export type {
 	EvalInput,
@@ -101,3 +115,11 @@ export type {
 } from './runtime/event';
 
 export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+
+export type { AgentBuilder } from './sdk/agent-builder';
+
+export type {
+	CredentialProvider,
+	ResolvedCredential,
+	CredentialListItem,
+} from './sdk/credential-provider';

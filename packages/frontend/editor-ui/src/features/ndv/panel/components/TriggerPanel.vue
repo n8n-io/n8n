@@ -16,7 +16,7 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
@@ -56,7 +56,7 @@ const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers();
@@ -94,12 +94,9 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
-			node.value,
-			hideContent,
-			'internal',
-			{},
-		);
+		const hideContentValue = workflowDocumentStore?.value
+			?.getExpressionHandler()
+			.getSimpleParameterValue(node.value, hideContent, 'internal', {});
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -181,7 +178,7 @@ const isListeningForEvents = computed(() => {
 	const executedNode = workflowsStore.executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
-		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
 		: false;
 
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;

@@ -33,17 +33,13 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
-	// This returns personal projects of ALL users OR shared projects of the user
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
-			where: [
-				{ type: 'personal' },
-				{
-					projectRelations: {
-						userId,
-					},
+			where: {
+				projectRelations: {
+					userId,
 				},
-			],
+			},
 		});
 	}
 
@@ -57,13 +53,34 @@ export class ProjectRepository extends Repository<Project> {
 		return await query.getManyAndCount();
 	}
 
+	// Strict semantics: returns only projects the user has a relation to
+	// (their personal project + projects they are explicitly a member of).
+	// Do not broaden — peer-personal-project discovery for the share modal lives
+	// in `getShareableProjectsAndCount` below; conflating the two has regressed
+	// the share dropdown before (see IAM-591).
 	async getAccessibleProjectsAndCount(
 		userId: string,
 		options: ProjectListOptions,
 	): Promise<[Project[], number]> {
-		// Build a subquery that finds the IDs of accessible projects, avoiding
-		// duplicate rows from the LEFT JOIN on projectRelations which would
-		// produce incorrect counts with getManyAndCount().
+		const idsQuery = this.createQueryBuilder('p')
+			.select('p.id', 'id')
+			.innerJoin('p.projectRelations', 'pr')
+			.where('pr.userId = :userId', { userId });
+
+		this.applyIdsQueryFilters(idsQuery, options);
+		return await this.runProjectListByIdsQuery(idsQuery, options);
+	}
+
+	// Wide semantics: returns peer personal projects in addition to projects
+	// the user has a relation to. Used only by the sharing-discovery endpoint
+	// (`GET /rest/projects/sharing-candidates`) so the workflow / credential
+	// share dropdowns can list other users as share targets.
+	async getShareableProjectsAndCount(
+		userId: string,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		// DISTINCT + LEFT JOIN avoids duplicate rows from the relation join
+		// while still allowing personal projects with no caller relation to match.
 		const idsQuery = this.createQueryBuilder('p')
 			.select('DISTINCT p.id', 'id')
 			.leftJoin('p.projectRelations', 'pr')
@@ -76,6 +93,14 @@ export class ProjectRepository extends Repository<Project> {
 				}),
 			);
 
+		this.applyIdsQueryFilters(idsQuery, options);
+		return await this.runProjectListByIdsQuery(idsQuery, options);
+	}
+
+	private applyIdsQueryFilters(
+		idsQuery: SelectQueryBuilder<Project>,
+		options: ProjectListOptions,
+	): void {
 		if (options.search) {
 			idsQuery.andWhere('LOWER(p.name) LIKE LOWER(:search)', {
 				search: `%${options.search}%`,
@@ -95,7 +120,12 @@ export class ProjectRepository extends Repository<Project> {
 				}),
 			);
 		}
+	}
 
+	private async runProjectListByIdsQuery(
+		idsQuery: SelectQueryBuilder<Project>,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
 		const query = this.createQueryBuilder('project')
 			.leftJoin('project.creator', 'creator')
 			.where(`project.id IN (${idsQuery.getQuery()})`);

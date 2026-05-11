@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
+import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
+import { ChatTriggerConfig } from './configs/chat-trigger.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -13,11 +15,16 @@ import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
+import { EvaluationConfig } from './configs/evaluation.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
+import { HttpRequestConfig } from './configs/http-request.config';
+import { InstanceAiConfig } from './configs/instance-ai.config';
+import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -45,6 +52,7 @@ export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
@@ -53,6 +61,7 @@ export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
+export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -61,12 +70,18 @@ export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
+export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ChatTriggerConfig } from './configs/chat-trigger.config';
+export { InstanceAiConfig } from './configs/instance-ai.config';
+export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
+export { AgentsConfig } from './configs/agents.config';
+export { RedisConfig } from './configs/redis.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -152,6 +167,9 @@ export class GlobalConfig {
 	multiMainSetup: MultiMainSetupConfig;
 
 	@Nested
+	evaluation: EvaluationConfig;
+
+	@Nested
 	generic: GenericConfig;
 
 	@Nested
@@ -195,6 +213,9 @@ export class GlobalConfig {
 
 	@Nested
 	ssrfProtection: SsrfProtectionConfig;
+
+	@Nested
+	httpRequest: HttpRequestConfig;
 
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
@@ -242,4 +263,19 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	chatTrigger: ChatTriggerConfig;
+
+	@Nested
+	instanceAi: InstanceAiConfig;
+
+	@Nested
+	agents: AgentsConfig;
+
+	@Nested
+	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	instanceSettingsLoader: InstanceSettingsLoaderConfig;
 }

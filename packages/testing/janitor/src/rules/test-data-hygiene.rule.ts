@@ -4,6 +4,7 @@ import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
+import { isEditFix } from '../types.js';
 import type { Violation, FixResult } from '../types.js';
 import { getRootDir, getRelativePath, getTestDataFiles } from '../utils/paths.js';
 
@@ -228,8 +229,7 @@ export class TestDataHygieneRule extends BaseRule {
 		for (const violation of violations) {
 			if (!violation.fixable || !violation.fixData) continue;
 
-			// Parse the fixData
-			if (violation.fixData.type !== 'edit') continue;
+			if (!isEditFix(violation.fixData)) continue;
 
 			try {
 				const data = JSON.parse(violation.fixData.replacement) as { filePath: string };

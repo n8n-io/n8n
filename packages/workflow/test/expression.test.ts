@@ -10,6 +10,7 @@ import { ExpressionReservedVariableError } from '../src/errors/expression-reserv
 import { ExpressionError } from '../src/errors/expression.error';
 import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
+import { createRunExecutionData } from '../src';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
@@ -34,6 +35,13 @@ describe('Expression', () => {
 			nodeTypes,
 		});
 		const expression = workflow.expression;
+
+		beforeAll(async () => {
+			await expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await expression.releaseIsolate();
+		});
 
 		const evaluate = (value: string) =>
 			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
@@ -769,6 +777,49 @@ describe('Expression', () => {
 				);
 			});
 		});
+
+		describe('additionalKeys', () => {
+			const node = workflow.nodes.node;
+
+			it('should resolve $credentials in expressions', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'={{$credentials.serviceRole}}',
+					'internal',
+					{ $credentials: { serviceRole: 'test-api-key' } },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe('test-api-key');
+			});
+
+			it('should resolve $credentials in template strings', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'=Bearer {{$credentials.serviceRole}}',
+					'internal',
+					{ $credentials: { serviceRole: 'test-api-key' } },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe('Bearer test-api-key');
+			});
+
+			it('should resolve primitive additionalKeys', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'={{$pageCount}}',
+					'internal',
+					{ $pageCount: 42 },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe(42);
+			});
+		});
 	});
 
 	describe('Test all expression value fixtures', () => {
@@ -828,7 +879,7 @@ describe('Expression', () => {
 	});
 
 	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
-		it('should evaluate expression with provided IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
 				id: 'test',
@@ -865,7 +916,9 @@ describe('Expression', () => {
 			// Test Expression with new API
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
 			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+			await expression.releaseIsolate();
 
 			expect(result).toBe(84);
 		});
@@ -915,8 +968,111 @@ describe('Expression', () => {
 		});
 	});
 
+	describe('$() node reference through expression engine', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		function createTestWorkflow(connected: boolean) {
+			return new Workflow({
+				id: 'test-dollar-ref',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'source-id',
+						name: 'source',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'consumer-id',
+						name: 'consumer',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: connected
+					? { source: { main: [[{ node: 'consumer', type: 'main', index: 0 }]] } }
+					: {},
+				active: false,
+				nodeTypes,
+			});
+		}
+
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					source: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }]],
+							},
+						},
+					],
+				},
+			},
+		});
+
+		it("should resolve $('source').item.json.city", async () => {
+			const testWorkflow = createTestWorkflow(true);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				const result = testWorkflow.expression.getParameterValue(
+					"={{ $('source').item.json.city }}",
+					runExecutionData,
+					0,
+					0,
+					'consumer',
+					[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+					'manual',
+					{},
+					{
+						node: testWorkflow.getNode('consumer')!,
+						data: {},
+						source: {
+							main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+						},
+					},
+				);
+
+				expect(result).toBe('Prague');
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+
+		it('should throw ExpressionError when nodes are not connected', async () => {
+			const testWorkflow = createTestWorkflow(false);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				expect(() =>
+					testWorkflow.expression.getParameterValue(
+						"={{ $('source').item.json.city }}",
+						runExecutionData,
+						0,
+						0,
+						'consumer',
+						[{ json: {} }],
+						'manual',
+						{},
+					),
+				).toThrow(ExpressionError);
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+	});
+
 	describe('getParameterValue with IWorkflowDataProxyData', () => {
-		it('should evaluate simple expression with provided IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
 				id: 'test',
@@ -951,11 +1107,13 @@ describe('Expression', () => {
 
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
 			const result = expression.resolveSimpleParameterValue(
 				'={{ $json.text.toUpperCase() }}',
 				data,
 				false,
 			);
+			await expression.releaseIsolate();
 
 			expect(result).toBe('HELLO');
 		});

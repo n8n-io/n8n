@@ -6,7 +6,7 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -52,7 +52,7 @@ const assistantHelpers = useAIAssistantHelpers();
 
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
@@ -417,7 +417,7 @@ const onOpenErrorNodeDetailClick = () => {
 		const link = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
-				name: props.error.workflowId,
+				workflowId: props.error.workflowId,
 				executionId: props.error.executionId,
 				nodeId: props.error.node.id,
 			},

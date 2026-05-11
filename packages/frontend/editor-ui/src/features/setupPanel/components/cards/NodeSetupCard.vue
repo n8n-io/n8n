@@ -97,7 +97,7 @@ const telemetryPayload = computed(() => {
 	return {
 		type: types,
 		template_id: workflowDocumentStore?.value?.meta?.templateId,
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_types: (props.state.allNodesUsingCredential ?? [props.state.node]).map((n) => n.type),
 		credential_type: props.state.credentialType,
 		has_parameters: hasParameters.value,

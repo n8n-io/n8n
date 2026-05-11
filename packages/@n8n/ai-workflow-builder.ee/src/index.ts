@@ -16,7 +16,10 @@ export type {
 export {
 	NodeTypeParser,
 	ParseValidateHandler,
+	WorkflowCodeParseError,
 	createCodeBuilderSearchTool,
+	searchCodeBuilderNodes,
+	type CodeBuilderSearchToolOptions,
 	createCodeBuilderGetTool,
 	createGetSuggestedNodesTool,
 	stripImportStatements,
@@ -35,6 +38,7 @@ export {
 	MCP_UPDATE_WORKFLOW_TOOL,
 } from './code-builder';
 export type {
+	CodeBuilderSearchResult,
 	CodeBuilderGetToolOptions,
 	ParseAndValidateResult,
 	ValidationWarning,

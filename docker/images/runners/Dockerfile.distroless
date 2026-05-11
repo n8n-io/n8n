@@ -12,7 +12,7 @@
 # - Uses distroless nonroot user (UID 65532)
 # ==============================================================================
 
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=24.14.1
 ARG PYTHON_VERSION=3.13
 
 
@@ -106,7 +106,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM debian:bookworm-slim AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.3
+ARG LAUNCHER_VERSION=1.4.5
 
 RUN set -e; \
     apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \

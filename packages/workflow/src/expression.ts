@@ -1,5 +1,5 @@
 import { ApplicationError } from '@n8n/errors';
-import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
@@ -15,6 +15,7 @@ import {
 	sanitizerName,
 } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
@@ -224,18 +225,7 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
-	// Feature gate for expression engine selection
-	private static expressionEngine: 'current' | 'vm' = (() => {
-		if (typeof process === 'undefined') return 'current';
-		const env = process.env.N8N_EXPRESSION_ENGINE;
-		if (env === 'vm' || env === 'current') return env;
-		if (env) {
-			console.warn(
-				`Unknown N8N_EXPRESSION_ENGINE="${env}", falling back to "current". Valid values: current, vm`,
-			);
-		}
-		return 'current';
-	})();
+	private static expressionEngine: 'legacy' | 'vm' = 'legacy';
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
@@ -254,33 +244,55 @@ export class Expression {
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
 	 */
-	static async initializeVmEvaluator(options?: { timeout?: number }): Promise<void> {
-		if (this.expressionEngine !== 'vm' || IS_FRONTEND) return;
+	static async initExpressionEngine(options: {
+		engine: 'legacy' | 'vm';
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
+		poolSize: number;
+		maxCodeCacheSize: number;
+		observability?: ObservabilityProvider;
+		idleTimeoutMs?: number;
+	}): Promise<void> {
+		if (options.engine !== 'vm' || IS_FRONTEND) return;
+		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			const bridge = new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 });
-			const DEFAULT_MAX_CODE_CACHE_SIZE = 1024;
-			const parsed = parseInt(process.env.N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE ?? '', 10);
-			const maxCodeCacheSize = parsed || DEFAULT_MAX_CODE_CACHE_SIZE;
 			this.vmEvaluator = new ExpressionEvaluator({
-				bridge,
-				maxCodeCacheSize,
+				createBridge: () =>
+					new IsolatedVmBridge({
+						timeout: options.bridgeTimeout,
+						memoryLimit: options.bridgeMemoryLimit,
+						logger: LoggerProxy,
+					}),
+				maxCodeCacheSize: options.maxCodeCacheSize,
+				poolSize: options.poolSize,
+				idleTimeoutMs: options.idleTimeoutMs,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
 				},
+				logger: LoggerProxy,
+				observability: options.observability,
 			});
 			await this.vmEvaluator.initialize();
 		}
+	}
+
+	async acquireIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
+	}
+
+	async releaseIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
 	}
 
 	/**
 	 * Dispose the VM evaluator and release resources.
 	 * Should be called during application shutdown or test teardown.
 	 */
-	static async disposeVmEvaluator(): Promise<void> {
+	static async disposeExpressionEngine(): Promise<void> {
 		if (this.vmEvaluator) {
 			await this.vmEvaluator.dispose();
 			this.vmEvaluator = undefined;
@@ -291,9 +303,9 @@ export class Expression {
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
-	static getActiveImplementation(): 'current' | 'vm' {
+	static getActiveImplementation(): 'legacy' | 'vm' {
 		if (this.shouldUseVm()) return 'vm';
-		return 'current';
+		return 'legacy';
 	}
 
 	/**
@@ -304,7 +316,7 @@ export class Expression {
 	 * another. Only use this in benchmarks and tests, never in production code.
 	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
 	 */
-	static setExpressionEngine(engine: 'current' | 'vm'): void {
+	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
 		this.expressionEngine = engine;
 	}
 
@@ -535,9 +547,20 @@ export class Expression {
 
 		Expression.initializeGlobalContext(data);
 
-		// expression extensions
-		data.extend = extend;
-		data.extendOptional = extendOptional;
+		// Expression extensions — only attached for the legacy engine.
+		//
+		// In the VM engine, every host function reachable from `data` becomes
+		// a callable target the isolate can reach via `callFunctionAtPath`.
+		// To minimise that attack surface we keep the VM-path data object as
+		// small as possible and let the in-isolate runtime resolve helpers
+		// itself (see packages/@n8n/expression-runtime/src/runtime/context.ts,
+		// where Tournament's polyfill rewrites bare `extend(...)` calls to the
+		// in-isolate copy on `target.extend`). Setting them here in VM mode
+		// would be dead code AND an unnecessary host-callable.
+		if (!Expression.shouldUseVm()) {
+			data.extend = extend;
+			data.extendOptional = extendOptional;
+		}
 
 		Object.defineProperty(data, sanitizerName, {
 			value: sanitizer,
@@ -580,12 +603,12 @@ export class Expression {
 		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
-					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
+					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
 				);
 			}
 
 			try {
-				const result = Expression.vmEvaluator.evaluate(expression, data, {
+				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
 					timezone: this.timezone,
 				});
 				return result as string | null | (() => unknown);

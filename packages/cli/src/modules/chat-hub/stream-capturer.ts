@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
-type Write = ServerResponse['write'];
 type End = ServerResponse['end'];
 
 export type ChunkTransformer = (chunk: string) => Promise<string>;
@@ -15,7 +14,7 @@ export function interceptResponseWrites<T extends Response>(
 	res: T,
 	transform: ChunkTransformer,
 ): T {
-	const originalWrite = res.write.bind(res) as Write;
+	const originalWrite = res.write.bind(res);
 	const originalEnd = res.end.bind(res) as End;
 	const defaultEncoding = 'utf8';
 
@@ -152,6 +151,11 @@ export function createStructuredChunkAggregator(
 	const ingest = async (chunk: StructuredChunk): Promise<AggregatedMessage | null> => {
 		// After cancelAll(), ignore any further chunks
 		if (cancelled) {
+			return null;
+		}
+
+		// Skip keepalive heartbeat chunks used to prevent proxy timeouts
+		if ((chunk.type as string) === 'keepalive') {
 			return null;
 		}
 

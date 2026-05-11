@@ -10,11 +10,11 @@ export default defineConfig({
 	test: {
 		reporters,
 		outputFile,
-		workspace: [
+		projects: [
 			{
 				test: {
 					...sharedTestConfig,
-					name: 'current-engine',
+					name: 'legacy-engine',
 				},
 			},
 			{

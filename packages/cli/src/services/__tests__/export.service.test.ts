@@ -43,7 +43,9 @@ describe('ExportService', () => {
 		mockCipher = mock<Cipher>();
 
 		// Set up cipher mock
-		mockCipher.encrypt = jest.fn((data: string) => `encrypted:${data}`);
+		mockCipher.encryptV2 = jest.fn(
+			async (data: string) => `encrypted:${data}`,
+		) as Cipher['encryptV2'];
 
 		// Set up the required DataSource properties
 		// @ts-expect-error Accessing private property for testing
@@ -148,7 +150,10 @@ describe('ExportService', () => {
 
 			await exportService.exportEntities(outputDir, undefined, 'custom-encryption-key');
 
-			expect(mockCipher.encrypt).toHaveBeenCalledWith(expect.any(String), 'custom-encryption-key');
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(
+				expect.any(String),
+				'custom-encryption-key',
+			);
 			expect(appendFile).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'utf8');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});

@@ -28,6 +28,8 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	MemoryDescriptor,
+	ObservationCapableMemory,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -39,12 +41,22 @@ export type {
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
+	BuiltObservationStore,
+	CompactFn,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ObservationalMemoryConfig,
+	ObserveFn,
+	ScopeKind,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
+export { OBSERVATION_SCHEMA_VERSION } from './types';
 
-export { Tool } from './sdk/tool';
+export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
 export { Eval } from './sdk/eval';
@@ -55,6 +67,13 @@ export { Telemetry } from './sdk/telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type { AgentSnapshot } from './sdk/agent';
+export type {
+	AgentBuilder,
+	CredentialProvider,
+	ResolvedCredential,
+	CredentialListItem,
+} from './types';
 export { McpClient } from './sdk/mcp-client';
 export { Network } from './sdk/network';
 export { providerTools } from './sdk/provider-tools';
@@ -67,7 +86,6 @@ export type {
 	ContentReasoning,
 	ContentText,
 	ContentToolCall,
-	ContentToolResult,
 	Message,
 	MessageContent,
 	MessageRole,
@@ -75,12 +93,14 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
-	toDbMessage,
 	filterLlmMessages,
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
+export { providerCapabilities } from './sdk/provider-capabilities';
+export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,
@@ -88,10 +108,22 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory } from './storage/sqlite-memory';
+export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
+export {
+	UPDATE_WORKING_MEMORY_TOOL_NAME,
+	WORKING_MEMORY_DEFAULT_INSTRUCTION,
+} from './runtime/working-memory';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
-export type { PostgresMemoryConfig } from './storage/postgres-memory';
+export type {
+	PostgresConnectionOptions,
+	PostgresConstructorOptions,
+} from './storage/postgres-memory';
+export { BaseMemory } from './storage/base-memory';
+export type { ToolDescriptor } from './types/sdk/tool-descriptor';
+
+export { createModel } from './runtime/model-factory';
+export { generateTitleFromMessage } from './runtime/title-generation';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
@@ -127,3 +159,7 @@ export type {
 	SpawnProcessOptions,
 	ProcessInfo,
 } from './workspace';
+
+export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
+
+export { isZodSchema, zodToJsonSchema } from './utils/zod';

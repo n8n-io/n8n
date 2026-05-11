@@ -145,6 +145,14 @@ listenForModalChanges({
 		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
 			void router.replace({ params: { credentialId: '' }, query: route.query });
 		}
+		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
+			credentialsStore.pendingOAuthRefresh = false;
+			void credentialsStore.fetchAllCredentials({
+				projectId: route?.params?.projectId as string | undefined,
+				includeScopes: true,
+				externalSecretsStore: filters.value.externalSecretsStore,
+			});
+		}
 	},
 });
 

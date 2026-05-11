@@ -1,0 +1,217 @@
+/**
+ * Credential Resolution
+ *
+ * Shared helper that resolves undefined/null credentials in WorkflowJSON.
+ * Produces sidecar verification pin data instead of mutating the workflow's pinData.
+ */
+
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
+import type { InstanceAiContext } from '../../types';
+
+/** Flat credential entry — preserves duplicates of the same type. */
+export interface CredentialEntry {
+	id: string;
+	name: string;
+	type: string;
+}
+
+/**
+ * Paired credential snapshot produced from a single `credentialService.list()`
+ * call. The flat list validates raw credential ids without losing duplicates
+ * of the same type.
+ */
+export interface CredentialSnapshot {
+	list: CredentialEntry[];
+}
+
+/**
+ * Build a paired credential snapshot from all available credentials.
+ * Non-fatal — returns empty structures if listing fails.
+ */
+export async function buildCredentialSnapshot(
+	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
+): Promise<CredentialSnapshot> {
+	const list: CredentialEntry[] = [];
+	try {
+		const allCreds = await credentialService.list();
+		for (const cred of allCreds) {
+			list.push({ id: cred.id, name: cred.name, type: cred.type });
+		}
+	} catch {
+		// Non-fatal — credentials will be unresolved
+	}
+	return { list };
+}
+
+/** Result of credential resolution — includes mock metadata and sidecar verification data. */
+export interface CredentialResolutionResult {
+	/** Node names whose credentials were mocked. */
+	mockedNodeNames: string[];
+	/** Credential types that were mocked (deduplicated). */
+	mockedCredentialTypes: string[];
+	/** Map of node name → credential types that were mocked on that node. */
+	mockedCredentialsByNode: Record<string, string[]>;
+	/** Pin data for verification only — NEVER written to workflow JSON. */
+	verificationPinData: Record<string, Array<Record<string, unknown>>>;
+	/** True when mocked credential nodes can be skipped by existing workflow-level pin data. */
+	usesWorkflowPinDataForVerification: boolean;
+}
+
+/**
+ * Resolve undefined/null credentials in the workflow JSON.
+ *
+ * `newCredential()` produces `NewCredentialImpl` which serializes to `undefined`
+ * in `toJSON()`. Resolution strategy (in order):
+ * 1. Restore from the existing workflow (preserve the user's chosen credential on updates)
+ * 2. Preserve explicit valid raw credential ids
+ * 3. Mock: remove the credential key and produce sidecar verification pin data
+ *
+ * Mocked credentials produce verification-only pin data that is returned separately
+ * and NEVER written into json.pinData. The saved workflow stays clean.
+ */
+export async function resolveCredentials(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+	availableCredentials?: CredentialEntry[],
+): Promise<CredentialResolutionResult> {
+	const mockedNodeNames: string[] = [];
+	const mockedCredentialTypesSet = new Set<string>();
+	const mockedCredentialsByNode: Record<string, string[]> = {};
+	const verificationPinData: Record<string, Array<Record<string, unknown>>> = {};
+	let usesWorkflowPinDataForVerification = false;
+
+	// Build a map of existing credentials by node name (for updates)
+	const existingCredsByNode = new Map<string, Record<string, unknown>>();
+	if (workflowId) {
+		try {
+			const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+			for (const existingNode of existing.nodes ?? []) {
+				if (existingNode.credentials && existingNode.name) {
+					existingCredsByNode.set(
+						existingNode.name,
+						existingNode.credentials as Record<string, unknown>,
+					);
+				}
+			}
+		} catch {
+			// Can't fetch existing — will try other strategies
+		}
+	}
+
+	for (const node of json.nodes ?? []) {
+		if (!node.credentials) continue;
+		const creds = node.credentials as Record<string, unknown>;
+		let nodeMocked = false;
+
+		for (const [key, value] of Object.entries(creds)) {
+			// Try 1: restore from existing workflow (preserves the user's chosen credential
+			// when the LLM drops the id during an edit — e.g., emits newCredential('name')
+			// without the id, which serializes to undefined).
+			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
+			const restoreExistingCredential = () => {
+				if (!existingCreds?.[key]) return false;
+				creds[key] = existingCreds[key];
+				cleanupMockPinData(json, node.name);
+				return true;
+			};
+
+			const mockCredential = () => {
+				const nodeName = node.name ?? '';
+				delete creds[key];
+				mockedCredentialTypesSet.add(key);
+				nodeMocked = true;
+
+				if (nodeName) {
+					// Track which credential types were mocked on this node
+					mockedCredentialsByNode[nodeName] ??= [];
+					mockedCredentialsByNode[nodeName].push(key);
+
+					// Produce sidecar verification pin data (never saved to workflow).
+					// If the workflow already has real pinData for this node, skip — the
+					// existing pinData will suffice for execution skipping.
+					if (json.pinData && nodeName in json.pinData) {
+						usesWorkflowPinDataForVerification = true;
+					} else {
+						verificationPinData[nodeName] ??= [];
+						if (verificationPinData[nodeName].length === 0) {
+							verificationPinData[nodeName].push({ _mockedCredential: key });
+						}
+					}
+				}
+			};
+
+			if (value !== undefined && value !== null) {
+				if (isKnownCredentialForType(value, key, availableCredentials)) {
+					cleanupMockPinData(json, node.name);
+					continue;
+				}
+				if (restoreExistingCredential()) {
+					continue;
+				}
+				mockCredential();
+				continue;
+			}
+
+			if (restoreExistingCredential()) {
+				continue;
+			}
+
+			// Mock — remove the credential key and produce sidecar verification data.
+			// The credential key is deleted so the saved workflow doesn't reference a
+			// non-existent credential. Verification pin data is produced so the execution
+			// engine can skip this node during test runs.
+			mockCredential();
+		}
+
+		if (nodeMocked && node.name) {
+			mockedNodeNames.push(node.name);
+		}
+	}
+
+	return {
+		mockedNodeNames,
+		mockedCredentialTypes: [...mockedCredentialTypesSet],
+		mockedCredentialsByNode,
+		verificationPinData,
+		usesWorkflowPinDataForVerification,
+	};
+}
+
+function getCredentialId(value: unknown): string | undefined {
+	if (typeof value !== 'object' || value === null || !('id' in value)) return undefined;
+
+	const { id } = value;
+	if (typeof id !== 'string' || id.trim() === '') return undefined;
+
+	return id;
+}
+
+function isKnownCredentialForType(
+	value: unknown,
+	credentialType: string,
+	availableCredentials: CredentialEntry[] | undefined,
+): boolean {
+	if (!availableCredentials) return true;
+
+	const id = getCredentialId(value);
+	if (!id) return false;
+
+	return availableCredentials.some(
+		(credential) => credential.id === id && credential.type === credentialType,
+	);
+}
+
+/**
+ * Legacy cleanup: remove mock pinData markers from workflows saved before the
+ * sidecar verification data refactor. New builds never write `_mockedCredential`
+ * to `json.pinData`, but old workflows may still have them.
+ */
+function cleanupMockPinData(json: WorkflowJSON, nodeName: string | undefined): void {
+	if (!nodeName || !json.pinData?.[nodeName]) return;
+	const items = json.pinData[nodeName];
+	if (items.length === 1 && '_mockedCredential' in items[0]) {
+		delete json.pinData[nodeName];
+	}
+}

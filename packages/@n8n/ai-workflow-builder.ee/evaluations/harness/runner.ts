@@ -202,6 +202,7 @@ function buildContext(args: {
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
 	generatedCode?: string;
+	agentTextResponse?: string;
 	pinData?: IPinData;
 	datasetInputContext?: DatasetInputContext;
 }): EvaluationContext {
@@ -211,6 +212,7 @@ function buildContext(args: {
 		testCaseContext,
 		referenceWorkflows,
 		generatedCode,
+		agentTextResponse,
 		pinData,
 		datasetInputContext,
 	} = args;
@@ -221,6 +223,7 @@ function buildContext(args: {
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 		...(generatedCode ? { generatedCode } : {}),
+		...(agentTextResponse ? { agentTextResponse } : {}),
 		...(pinData ? { pinData } : {}),
 		...(datasetInputContext ? { datasetInputContext } : {}),
 	};
@@ -593,6 +596,7 @@ async function runLocalExampleSuccess(args: {
 	// Extract workflow and optional generated code
 	const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
 	const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
+	const agentTextResponse = isGenerationResult(genResult) ? genResult.agentTextResponse : undefined;
 
 	lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -615,6 +619,7 @@ async function runLocalExampleSuccess(args: {
 		testCaseContext: testCase.context,
 		referenceWorkflows: testCase.referenceWorkflows,
 		generatedCode,
+		agentTextResponse,
 		pinData,
 		datasetInputContext: testCase.context?.datasetInputContext,
 	});
@@ -645,6 +650,7 @@ async function runLocalExampleSuccess(args: {
 		introspectionEvents: metrics.introspectionEvents,
 		workflow,
 		generatedCode,
+		agentTextResponse,
 	};
 }
 
@@ -1462,6 +1468,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			// Extract workflow and optional generated code
 			const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
 			const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
+			const agentTextResponse = isGenerationResult(genResult)
+				? genResult.agentTextResponse
+				: undefined;
 
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -1484,6 +1493,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
 				generatedCode,
+				agentTextResponse,
 				pinData,
 				datasetInputContext,
 			});
@@ -1530,6 +1540,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				introspectionEvents: metrics.introspectionEvents,
 				workflow,
 				generatedCode,
+				agentTextResponse,
 			};
 
 			artifactSaver?.saveExample(result);

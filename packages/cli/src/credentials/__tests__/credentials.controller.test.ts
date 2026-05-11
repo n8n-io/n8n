@@ -26,6 +26,8 @@ import * as validation from '../validation';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 
+const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
+
 describe('CredentialsController', () => {
 	type ControllerEventService = ConstructorParameters<typeof CredentialsController>[9];
 	const eventService = mock<ControllerEventService>();
@@ -175,8 +177,8 @@ describe('CredentialsController', () => {
 		});
 
 		beforeEach(() => {
-			decryptSpy.mockReturnValue({ apiKey: 'test-key' });
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential());
+			decryptSpy.mockResolvedValue({ apiKey: 'test-key' });
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential());
 			getCredentialScopesSpy.mockResolvedValue([
 				'credential:read' as Scope,
 				'credential:update' as Scope,
@@ -247,6 +249,7 @@ describe('CredentialsController', () => {
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
 				isDynamic: false,
+				usesExternalSecrets: false,
 			});
 		});
 
@@ -393,7 +396,7 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
 			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
@@ -434,7 +437,7 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
 			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
@@ -465,15 +468,14 @@ describe('CredentialsController', () => {
 			const existingCredentialWithSecret = mock<CredentialsEntity>({
 				...existingCredential,
 			});
-			const validateExternalSecretsPermissionsSpy = jest.spyOn(
-				validation,
-				'validateExternalSecretsPermissions',
-			);
+			const validateExternalSecretsPermissionsSpy = jest
+				.spyOn(validation, 'validateExternalSecretsPermissions')
+				.mockImplementation(originalValidateExternalSecretsPermissions);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithSecret,
 			);
 			// Mock setup: existing credential already has a secret expression
-			decryptSpy.mockReturnValue({ apiKey: '$secrets.oldKey' });
+			decryptSpy.mockResolvedValue({ apiKey: '$secrets.oldKey' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
@@ -493,17 +495,16 @@ describe('CredentialsController', () => {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
 				body: {
-					data: { apiKey: '{{ $secrets.myKey }}' }, // Changed from regular key to external secret
+					data: { apiKey: '{{ $secrets.myVault.myKey }}' }, // Changed from regular key to external secret
 				},
 			} as unknown as CredentialRequest.Update;
-			const validateExternalSecretsPermissionsSpy = jest.spyOn(
-				validation,
-				'validateExternalSecretsPermissions',
-			);
+			const validateExternalSecretsPermissionsSpy = jest
+				.spyOn(validation, 'validateExternalSecretsPermissions')
+				.mockImplementation(originalValidateExternalSecretsPermissions);
 
 			// Mock setup: existing credential has no external secret yet
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			decryptSpy.mockReturnValue({ apiKey: 'regular-key' });
+			decryptSpy.mockResolvedValue({ apiKey: 'regular-key' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',

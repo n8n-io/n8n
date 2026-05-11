@@ -39,8 +39,7 @@ src/
     telemetry.ts        # Telemetry builder (OTel, redaction)
     tool.ts             # Tool builder
     verify.ts           # Verification utilities
-  evals/                # Built-in eval scorers; exported as namespace `evals` from index
-  runtime/              # Internal — never exported from index.ts
+  runtime/              # Internal — never exported
     agent-runtime.ts    # Core agent execution engine (AI SDK)
     tool-adapter.ts     # Tool execution, branded suspend detection
     stream.ts           # Streaming helpers
@@ -71,8 +70,7 @@ docs/
 ```
 
 The **`index.ts`** surface also exports `Workspace` / sandbox / filesystem types,
-`SqliteMemory` / `PostgresMemory`, `LangSmithTelemetry`, and `evals` alongside the
-core SDK builders.
+`InMemoryMemory`, `LangSmithTelemetry`, and `evals` alongside the core SDK builders.
 
 Optional **peer dependencies** (telemetry): `langsmith`, `@opentelemetry/sdk-trace-node`,
 `@opentelemetry/sdk-trace-base`, `@opentelemetry/exporter-trace-otlp-http` — all
@@ -112,7 +110,7 @@ class EngineAgent extends Agent {
 ## Testing
 
 - Unit tests live in `src/__tests__/`, integration tests in `src/__tests__/integration/`
-- Unit tests use Jest (`pnpm test` / `pnpm test:unit`)
+- Unit tests use Jest (`pnpm test`)
 - Integration tests use Vitest (`pnpm test:integration`) with real LLM calls
   - A `.env` file at the package root is loaded automatically by the vitest config.
     Always assume it exists when running integration tests. Never commit it.

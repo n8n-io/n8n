@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { NodeTypeParser } from '../../utils/node-type-parser';
-import { createCodeBuilderSearchTool } from '../code-builder-search.tool';
+import { createCodeBuilderSearchTool, searchCodeBuilderNodes } from '../code-builder-search.tool';
 
 // Mock node type with resource/operation pattern (like Freshservice)
 const mockFreshserviceNode: INodeTypeDescription = {
@@ -166,7 +166,7 @@ const mockFormTriggerNode: INodeTypeDescription = {
 	outputs: ['main'],
 	properties: [],
 	builderHint: {
-		message:
+		searchHint:
 			'Use with n8n-nodes-base.form to build a full form experience, with pages and final page',
 		relatedNodes: [{ nodeType: 'n8n-nodes-base.form', relationHint: 'Build full form experience' }],
 	},
@@ -183,7 +183,7 @@ const mockFormNode: INodeTypeDescription = {
 	outputs: ['main'],
 	properties: [],
 	builderHint: {
-		message:
+		searchHint:
 			'Use with n8n-nodes-base.formTrigger to build a full form experience. Form node creates additional pages/steps after the trigger',
 		relatedNodes: [
 			{ nodeType: 'n8n-nodes-base.formTrigger', relationHint: 'Creates additional form pages' },
@@ -202,7 +202,7 @@ const mockRespondToWebhookNode: INodeTypeDescription = {
 	outputs: ['main'],
 	properties: [],
 	builderHint: {
-		message:
+		searchHint:
 			'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
 		relatedNodes: [
 			{ nodeType: 'n8n-nodes-base.webhook', relationHint: 'Required webhook trigger' },
@@ -234,7 +234,7 @@ const mockAgentNode: INodeTypeDescription = {
 	outputs: ['main'],
 	properties: [],
 	builderHint: {
-		message:
+		searchHint:
 			'Use with @n8n/n8n-nodes-langchain.outputParserStructured to get structured JSON output from the agent',
 		relatedNodes: [
 			{
@@ -257,7 +257,7 @@ const mockAgentNodeWithRelationHints: INodeTypeDescription = {
 	outputs: ['main'],
 	properties: [],
 	builderHint: {
-		message: 'Always connect memory for conversation context',
+		searchHint: 'Always connect memory for conversation context',
 		relatedNodes: [
 			{
 				nodeType: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
@@ -378,7 +378,7 @@ const mockCodeRunnerNode: INodeTypeDescription = {
 	outputs: ['main'],
 	properties: [],
 	builderHint: {
-		message: 'Use with n8n-nodes-base.code for executing custom JavaScript',
+		searchHint: 'Use with n8n-nodes-base.code for executing custom JavaScript',
 		relatedNodes: [{ nodeType: 'n8n-nodes-base.code', relationHint: 'Execute custom JavaScript' }],
 	},
 };
@@ -491,7 +491,7 @@ describe('CodeBuilderSearchTool', () => {
 				outputs: ['main'],
 				properties: [],
 				builderHint: {
-					message: 'Related to Chain Node B',
+					searchHint: 'Related to Chain Node B',
 					relatedNodes: [{ nodeType: 'test.chainB', relationHint: 'Next in chain' }],
 				},
 			};
@@ -507,7 +507,7 @@ describe('CodeBuilderSearchTool', () => {
 				outputs: ['main'],
 				properties: [],
 				builderHint: {
-					message: 'Related to Chain Node C',
+					searchHint: 'Related to Chain Node C',
 					relatedNodes: [{ nodeType: 'test.chainC', relationHint: 'Next in chain' }],
 				},
 			};
@@ -551,7 +551,7 @@ describe('CodeBuilderSearchTool', () => {
 				outputs: ['main'],
 				properties: [],
 				builderHint: {
-					message: 'Related to Node B',
+					searchHint: 'Related to Node B',
 					relatedNodes: [{ nodeType: 'test.nodeB', relationHint: 'Related node' }],
 				},
 			};
@@ -567,7 +567,7 @@ describe('CodeBuilderSearchTool', () => {
 				outputs: ['main'],
 				properties: [],
 				builderHint: {
-					message: 'Related to Node A',
+					searchHint: 'Related to Node A',
 					relatedNodes: [{ nodeType: 'test.nodeA', relationHint: 'Related node' }],
 				},
 			};
@@ -828,6 +828,16 @@ describe('CodeBuilderSearchTool', () => {
 
 			expect(result).toContain('No nodes found');
 			expect(result).toContain('Try a different search term');
+		});
+
+		it('should return queries with no results in metadata', () => {
+			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNode]);
+
+			const result = searchCodeBuilderNodes(nodeTypeParser, ['http request', 'missing-node']);
+
+			expect(result.results).toContain('HTTP Request');
+			expect(result.results).toContain('No nodes found');
+			expect(result.queriesWithNoResults).toEqual(['missing-node']);
 		});
 	});
 

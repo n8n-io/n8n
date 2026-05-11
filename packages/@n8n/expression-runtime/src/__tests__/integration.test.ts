@@ -6,14 +6,19 @@ import { TimeoutError, MemoryLimitError } from '../types';
 
 describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	let evaluator: ExpressionEvaluator;
+	const caller = {};
 
 	beforeAll(async () => {
-		const bridge = new IsolatedVmBridge({ timeout: 5000 });
-		evaluator = new ExpressionEvaluator({ bridge, maxCodeCacheSize: 1024 });
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 1024,
+		});
 		await evaluator.initialize();
+		await evaluator.acquire(caller);
 	});
 
 	afterAll(async () => {
+		await evaluator.release(caller);
 		await evaluator.dispose();
 	});
 
@@ -22,7 +27,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { email: 'test@example.com' },
 		};
 
-		const result = evaluator.evaluate('{{ $json.email }}', data);
+		const result = evaluator.evaluate('{{ $json.email }}', data, caller);
 
 		expect(result).toBe('test@example.com');
 	});
@@ -38,7 +43,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $json.user.profile.name }}', data);
+		const result = evaluator.evaluate('{{ $json.user.profile.name }}', data, caller);
 
 		expect(result).toBe('John Doe');
 	});
@@ -50,7 +55,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $json.items[1].id }}', data);
+		const result = evaluator.evaluate('{{ $json.items[1].id }}', data, caller);
 
 		expect(result).toBe(2);
 	});
@@ -63,7 +68,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $json.price * $json.quantity }}', data);
+		const result = evaluator.evaluate('{{ $json.price * $json.quantity }}', data, caller);
 
 		expect(result).toBe(300);
 	});
@@ -78,7 +83,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const result = evaluator.evaluate(
 			'{{ DateTime.fromISO($json.date).toFormat("MMMM dd, yyyy") }}',
 			data,
-			{},
+			caller,
 		);
 
 		expect(result).toBe('January 15, 2024');
@@ -91,7 +96,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $items() }}', data);
+		const result = evaluator.evaluate('{{ $items() }}', data, caller);
 
 		expect(result).toBe('items-result');
 	});
@@ -101,7 +106,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { zero: 0 },
 		};
 
-		const result = evaluator.evaluate('{{ $json.zero }}', data);
+		const result = evaluator.evaluate('{{ $json.zero }}', data, caller);
 
 		expect(result).toBe(0);
 	});
@@ -111,7 +116,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { empty: '' },
 		};
 
-		const result = evaluator.evaluate('{{ $json.empty }}', data);
+		const result = evaluator.evaluate('{{ $json.empty }}', data, caller);
 
 		expect(result).toBe('');
 	});
@@ -121,7 +126,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { items: ['first', 'second'] },
 		};
 
-		const result = evaluator.evaluate('{{ $json.items[0] }}', data);
+		const result = evaluator.evaluate('{{ $json.items[0] }}', data, caller);
 
 		expect(result).toBe('first');
 	});
@@ -131,7 +136,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { numbers: [42, 99] },
 		};
 
-		const result = evaluator.evaluate('{{ $json.numbers[0] }}', data);
+		const result = evaluator.evaluate('{{ $json.numbers[0] }}', data, caller);
 
 		expect(result).toBe(42);
 	});
@@ -141,7 +146,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { items: [1, 2, 3] },
 		};
 
-		const result = evaluator.evaluate('{{ $json.items.length }}', data);
+		const result = evaluator.evaluate('{{ $json.items.length }}', data, caller);
 
 		expect(result).toBe(3);
 	});
@@ -151,7 +156,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { field: null },
 		};
 
-		const result = evaluator.evaluate('{{ $json.field }}', data);
+		const result = evaluator.evaluate('{{ $json.field }}', data, caller);
 
 		expect(result).toBeNull();
 	});
@@ -161,7 +166,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { active: true },
 		};
 
-		const result = evaluator.evaluate('{{ $json.active }}', data);
+		const result = evaluator.evaluate('{{ $json.active }}', data, caller);
 
 		expect(result).toBe(true);
 	});
@@ -175,7 +180,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		};
 
 		// Access element deep in the array via lazy proxy
-		const result = evaluator.evaluate('{{ $json.items[150].id }}', data);
+		const result = evaluator.evaluate('{{ $json.items[150].id }}', data, caller);
 
 		expect(result).toBe(150);
 	});
@@ -188,6 +193,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const result = evaluator.evaluate(
 			'{{ DateTime.fromMillis($json.ts).toFormat("HH:mm ZZ") }}',
 			data,
+			caller,
 			{ timezone: 'America/New_York' },
 		);
 
@@ -203,6 +209,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const result = evaluator.evaluate(
 			'{{ DateTime.fromMillis($json.ts).toFormat("HH:mm ZZ") }}',
 			data,
+			caller,
 			{ timezone: 'Asia/Tokyo' },
 		);
 
@@ -213,7 +220,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	describe('Luxon type serialization at boundary', () => {
 		it('should return DateTime as ISO string', () => {
 			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ DateTime.now() }}', data);
+			const result = evaluator.evaluate('{{ DateTime.now() }}', data, caller);
 			expect(typeof result).toBe('string');
 			const dt = DateTime.fromISO(result as string);
 			expect(dt.isValid).toBe(true);
@@ -221,7 +228,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		it('should return Duration as ISO string', () => {
 			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data);
+			const result = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data, caller);
 			expect(typeof result).toBe('string');
 			const duration = Duration.fromISO(result as string);
 			expect(duration.isValid).toBe(true);
@@ -233,6 +240,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			const result = evaluator.evaluate(
 				'{{ Interval.after(DateTime.fromISO("2024-01-01"), 86400000) }}',
 				data,
+				caller,
 			);
 			expect(typeof result).toBe('string');
 			const interval = Interval.fromISO(result as string);
@@ -245,6 +253,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			const result = evaluator.evaluate(
 				'{{ ({ date: DateTime.fromISO("2024-01-15") }) }}',
 				data,
+				caller,
 			) as Record<string, unknown>;
 			expect(typeof result.date).toBe('string');
 			const dt = DateTime.fromISO(result.date as string);
@@ -254,20 +263,20 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
-			expect(evaluator.evaluate('{{ $json.count }}', data)).toBe(42);
-			expect(evaluator.evaluate('{{ $json.count > 10 }}', data)).toBe(true);
-			expect(evaluator.evaluate('{{ "hello" }}', data)).toBe('hello');
+			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);
+			expect(evaluator.evaluate('{{ $json.count > 10 }}', data, caller)).toBe(true);
+			expect(evaluator.evaluate('{{ "hello" }}', data, caller)).toBe('hello');
 		});
 
 		it('should return null for invalid DateTime', () => {
 			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ DateTime.invalid("test") }}', data);
+			const result = evaluator.evaluate('{{ DateTime.invalid("test") }}', data, caller);
 			expect(result).toBeNull();
 		});
 
 		it('should preserve Date objects (structured-cloneable)', () => {
 			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data);
+			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data, caller);
 			expect(result).toBeInstanceOf(Date);
 			expect((result as Date).getFullYear()).toBe(2024);
 			expect((result as Date).getMonth()).toBe(0);
@@ -278,15 +287,15 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
-		expect(() => evaluator.evaluate('{{ $json.x }}', data, { timezone: 'Not/A/Timezone' })).toThrow(
-			'Invalid timezone: "Not/A/Timezone"',
-		);
+		expect(() =>
+			evaluator.evaluate('{{ $json.x }}', data, caller, { timezone: 'Not/A/Timezone' }),
+		).toThrow('Invalid timezone: "Not/A/Timezone"');
 	});
 
 	it('should create $now with the provided timezone', async () => {
 		const data = { $json: {} };
 
-		const zone = evaluator.evaluate('{{ $now.zoneName }}', data, {
+		const zone = evaluator.evaluate('{{ $now.zoneName }}', data, caller, {
 			timezone: 'America/New_York',
 		});
 
@@ -296,7 +305,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	it('should create $today with the provided timezone', async () => {
 		const data = { $json: {} };
 
-		const zone = evaluator.evaluate('{{ $today.zoneName }}', data, {
+		const zone = evaluator.evaluate('{{ $today.zoneName }}', data, caller, {
 			timezone: 'Asia/Tokyo',
 		});
 
@@ -312,15 +321,20 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const systemOffset = evaluator.evaluate(
 			'{{ DateTime.fromMillis($json.ts).toFormat("ZZ") }}',
 			data,
+			caller,
 		);
 
 		// Evaluate with explicit timezone (changes Settings.defaultZone)
-		evaluator.evaluate('{{ DateTime.fromMillis($json.ts).toFormat("HH:mm ZZ") }}', data, {
+		evaluator.evaluate('{{ DateTime.fromMillis($json.ts).toFormat("HH:mm ZZ") }}', data, caller, {
 			timezone: 'Asia/Tokyo',
 		});
 
 		// Evaluate WITHOUT timezone — should reset to system default, not keep Tokyo
-		const result = evaluator.evaluate('{{ DateTime.fromMillis($json.ts).toFormat("ZZ") }}', data);
+		const result = evaluator.evaluate(
+			'{{ DateTime.fromMillis($json.ts).toFormat("ZZ") }}',
+			data,
+			caller,
+		);
 
 		expect(result).toBe(systemOffset);
 	});
@@ -330,7 +344,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { name: 'Alice', age: 30, city: 'Berlin' },
 		};
 
-		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data);
+		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data, caller);
 
 		expect(result).toBe('name,age,city');
 	});
@@ -351,7 +365,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			'  throw e;' +
 			'})() }}';
 
-		expect(() => evaluator.evaluate(expression, data)).toThrow(
+		expect(() => evaluator.evaluate(expression, data, caller)).toThrow(
 			expect.objectContaining({
 				name: 'ExpressionExtensionError',
 				message: 'test error',
@@ -363,53 +377,34 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 	it('should handle throw null without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
-			evaluator.evaluate('{{ (() => { throw null })() }}', data);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('Cannot read properties');
+		expect(evaluator.evaluate('{{ (() => { throw null })() }}', data, caller)).toBeUndefined();
 	});
 
 	it('should handle throw undefined without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
-			evaluator.evaluate('{{ (() => { throw undefined })() }}', data);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('Cannot read properties');
+		expect(evaluator.evaluate('{{ (() => { throw undefined })() }}', data, caller)).toBeUndefined();
 	});
 
 	it('should handle throw of null-prototype object with properties without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
+		expect(
 			evaluator.evaluate(
 				'{{ (() => { var e = Object.create(null); e.foo = "bar"; throw e; })() }}',
 				data,
-			);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+				caller,
+			),
+		).toBeUndefined();
 	});
 
 	it('should handle throw of object with hasOwnProperty shadowed by null without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
-			evaluator.evaluate('{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}', data);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+		expect(
+			evaluator.evaluate(
+				'{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}',
+				data,
+				caller,
+			),
+		).toBeUndefined();
 	});
 
 	it('should swallow TypeError and return undefined', () => {
@@ -417,24 +412,57 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		// E() inside the isolate swallows TypeErrors (failed attack attempts).
 		// The expression should return undefined, not throw.
-		const result = evaluator.evaluate('{{ (() => { throw new TypeError("test") })() }}', data);
+		const result = evaluator.evaluate(
+			'{{ (() => { throw new TypeError("test") })() }}',
+			data,
+			caller,
+		);
 
 		expect(result).toBeUndefined();
 	});
 
-	it('should propagate errors thrown when reading a property across the isolate boundary', () => {
+	it('should re-throw ExpressionError from host-side callbacks', () => {
+		const json = {
+			get brokenProp() {
+				const err = new Error('paired item failed');
+				err.name = 'ExpressionError';
+				throw err;
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
+			expect.objectContaining({ name: 'ExpressionError', message: 'paired item failed' }),
+		);
+	});
+
+	it('should re-throw ExpressionExtensionError from host-side callbacks', () => {
+		const json = {
+			get brokenProp() {
+				const err = new Error('extension failed');
+				err.name = 'ExpressionExtensionError';
+				throw err;
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
+			expect.objectContaining({
+				name: 'ExpressionExtensionError',
+				message: 'extension failed',
+			}),
+		);
+	});
+
+	it('should swallow generic errors thrown when reading a property across the isolate boundary', () => {
 		const json = {
 			get brokenProp() {
 				throw new Error('property access failed');
 			},
 		};
 
-		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json })).toThrow(
-			'property access failed',
-		);
+		expect(evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors thrown by functions accessed via the lazy proxy', () => {
+	it('should swallow generic errors thrown by functions accessed via the lazy proxy', () => {
 		const data = {
 			$json: {
 				myFn() {
@@ -443,22 +471,20 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data)).toThrow('function threw');
+		expect(evaluator.evaluate('{{ $json.myFn() }}', data, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors from $items() when result properties are accessed', () => {
+	it('should swallow generic errors from $items() when result properties are accessed', () => {
 		const data = {
 			$items() {
 				throw new Error('items failed');
 			},
 		};
 
-		// Without throwIfErrorSentinel in the $items wrapper, the sentinel is
-		// returned as a value and .length reads undefined on it — silently swallowed
-		expect(() => evaluator.evaluate('{{ $items().length }}', data)).toThrow('items failed');
+		expect(evaluator.evaluate('{{ $items().length }}', data, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors thrown during array element access across the isolate boundary', () => {
+	it('should swallow generic errors thrown during array element access across the isolate boundary', () => {
 		const items = [1, 2, 3];
 		Object.defineProperty(items, '0', {
 			get() {
@@ -470,10 +496,10 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		const data = { $json: { items } };
 
-		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data)).toThrow('element access failed');
+		expect(evaluator.evaluate('{{ $json.items[0] }}', data, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors thrown during an "in" operator check across the isolate boundary', () => {
+	it('should swallow generic errors thrown during an "in" operator check across the isolate boundary', () => {
 		const json = {
 			get brokenProp() {
 				throw new Error('in-check access failed');
@@ -482,11 +508,24 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		// The 'in' operator triggers the has trap on $json proxy.
 		// The bridge calls __getValueAtPath(['$json', 'brokenProp']) which throws.
-		// Without throwIfErrorSentinel in the has trap, the sentinel is returned
-		// as a non-undefined value so 'brokenProp' in $json incorrectly returns true.
-		expect(() => evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json })).toThrow(
-			'in-check access failed',
-		);
+		expect(
+			evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json }, caller),
+		).toBeUndefined();
+	});
+
+	it('should handle re-entrant execute() calls via closure-scoped contexts', () => {
+		const data = {
+			$json: {
+				get nested() {
+					// Trigger a nested evaluate() through the same bridge.
+					// With closure-scoped contexts, this should succeed —
+					// each evaluation gets its own closure with independent callbacks.
+					return evaluator.evaluate('{{ "inner" }}', { $json: { val: 1 } }, caller);
+				},
+			},
+		};
+
+		expect(evaluator.evaluate('{{ $json.nested }}', data, caller)).toBe('inner');
 	});
 });
 
@@ -511,5 +550,90 @@ describe('Integration: IsolatedVmBridge error handling', () => {
 		} finally {
 			await bridge.dispose();
 		}
+	});
+});
+
+describe('Integration: Concurrent execution pooling', () => {
+	let evaluator: ExpressionEvaluator;
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 1024,
+			poolSize: 2,
+		});
+		await evaluator.initialize();
+	});
+
+	afterAll(async () => {
+		await evaluator.dispose();
+	});
+
+	beforeEach(async () => {
+		await evaluator.waitForReplenishment();
+	});
+
+	it('should hold separate bridges for separate callers', async () => {
+		const caller1 = {};
+		const caller2 = {};
+		await evaluator.acquire(caller1);
+		await evaluator.acquire(caller2);
+
+		const data1 = { $json: { value: 'from-ctx-1' } };
+		const data2 = { $json: { value: 'from-ctx-2' } };
+
+		const result1 = evaluator.evaluate('{{ $json.value }}', data1, caller1);
+		const result2 = evaluator.evaluate('{{ $json.value }}', data2, caller2);
+
+		expect(result1).toBe('from-ctx-1');
+		expect(result2).toBe('from-ctx-2');
+
+		await evaluator.release(caller1);
+		await evaluator.release(caller2);
+	});
+
+	it('should reuse the same bridge for the same caller', async () => {
+		const caller = {};
+		await evaluator.acquire(caller);
+
+		const result1 = evaluator.evaluate('{{ $json.a }}', { $json: { a: 'first' } }, caller);
+		const result2 = evaluator.evaluate('{{ $json.b }}', { $json: { b: 'second' } }, caller);
+
+		expect(result1).toBe('first');
+		expect(result2).toBe('second');
+
+		await evaluator.release(caller);
+	});
+
+	it('should replenish after acquire', async () => {
+		const caller1 = {};
+		await evaluator.acquire(caller1);
+
+		await evaluator.waitForReplenishment();
+
+		// Pool should have a fresh bridge available for a second caller
+		const caller2 = {};
+		await evaluator.acquire(caller2);
+		const result = evaluator.evaluate('{{ $json.y }}', { $json: { y: 'replenished' } }, caller2);
+		expect(result).toBe('replenished');
+
+		await evaluator.release(caller1);
+		await evaluator.release(caller2);
+	});
+
+	it('should replenish after release', async () => {
+		const caller1 = {};
+		await evaluator.acquire(caller1);
+		await evaluator.release(caller1);
+
+		await evaluator.waitForReplenishment();
+
+		// Pool should have a fresh bridge available
+		const caller2 = {};
+		await evaluator.acquire(caller2);
+		const result = evaluator.evaluate('{{ $json.y }}', { $json: { y: 'replenished' } }, caller2);
+		expect(result).toBe('replenished');
+
+		await evaluator.release(caller2);
 	});
 });
