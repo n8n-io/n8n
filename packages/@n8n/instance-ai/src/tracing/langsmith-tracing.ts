@@ -526,9 +526,17 @@ export function appendRootRunMetadata(
 	root: InstanceAiTraceRun,
 	patch: Record<string, unknown>,
 ): void {
-	const merged = mergeRunTreeMetadata(root.metadata, patch);
+	const currentRun = getTraceParentRun();
+	const baseMetadata =
+		currentRun?.id === root.id
+			? mergeRunTreeMetadata(currentRun.metadata, root.metadata)
+			: root.metadata;
+	const merged = mergeRunTreeMetadata(baseMetadata, patch);
 	if (merged) {
 		root.metadata = merged;
+		if (currentRun?.id === root.id) {
+			currentRun.metadata = merged;
+		}
 	}
 }
 
@@ -536,10 +544,14 @@ export function appendGeneratedWorkflowIdToRootMetadata(
 	root: InstanceAiTraceRun,
 	workflowId: string,
 ): void {
-	const existing = Array.isArray(root.metadata?.generated_workflow_ids)
-		? (root.metadata.generated_workflow_ids as unknown[]).filter(
-				(value): value is string => typeof value === 'string',
-			)
+	const currentRun = getTraceParentRun();
+	const metadata =
+		currentRun?.id === root.id
+			? mergeRunTreeMetadata(currentRun.metadata, root.metadata)
+			: root.metadata;
+	const generatedWorkflowIds = metadata?.generated_workflow_ids;
+	const existing = Array.isArray(generatedWorkflowIds)
+		? generatedWorkflowIds.filter((value): value is string => typeof value === 'string')
 		: [];
 	if (existing.includes(workflowId)) {
 		return;

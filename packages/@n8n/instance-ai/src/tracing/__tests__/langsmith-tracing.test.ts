@@ -981,6 +981,61 @@ describe('appendGeneratedWorkflowIdToRootMetadata', () => {
 			generated_workflow_ids: ['wf-1'],
 		});
 	});
+
+	it('preserves ids appended while the root run tree is active', async () => {
+		const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
+		const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
+		const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+
+		langsmithMock.reset();
+		process.env.LANGSMITH_API_KEY = 'test-key';
+		delete process.env.LANGSMITH_TRACING;
+		delete process.env.LANGCHAIN_TRACING_V2;
+
+		try {
+			const tracing = await createDetachedSubAgentTraceContext({
+				threadId: 'thread-1',
+				conversationId: 'thread-1',
+				messageGroupId: 'group-1',
+				messageId: 'message-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				agentId: 'agent-builder-1',
+				role: 'workflow-builder',
+				kind: 'builder',
+				taskId: 'build-1',
+				input: { task: 'Build a workflow' },
+			});
+
+			if (!tracing) {
+				throw new Error('Expected tracing context');
+			}
+
+			await tracing.withRunTree(tracing.actorRun, async () => {
+				await Promise.resolve();
+				appendGeneratedWorkflowIdToRootMetadata(tracing.rootRun, 'wf-1');
+				expect(tracing.rootRun.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+			});
+
+			expect(tracing.rootRun.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+		} finally {
+			if (originalLangSmithApiKey === undefined) {
+				delete process.env.LANGSMITH_API_KEY;
+			} else {
+				process.env.LANGSMITH_API_KEY = originalLangSmithApiKey;
+			}
+			if (originalLangSmithTracing === undefined) {
+				delete process.env.LANGSMITH_TRACING;
+			} else {
+				process.env.LANGSMITH_TRACING = originalLangSmithTracing;
+			}
+			if (originalLangChainTracingV2 === undefined) {
+				delete process.env.LANGCHAIN_TRACING_V2;
+			} else {
+				process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+			}
+		}
+	});
 });
 
 describe('appendRootRunMetadata', () => {
