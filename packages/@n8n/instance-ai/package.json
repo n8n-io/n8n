@@ -30,7 +30,17 @@
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
     },
+    "./parsers": {
+      "require": "./dist/parsers/index.js",
+      "import": "./dist/parsers/index.js",
+      "types": "./dist/parsers/index.d.ts"
+    },
     "./evaluations": "./evaluations/index.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "parsers": ["dist/parsers/index.d.ts"]
+    }
   },
   "dependencies": {
     "@daytonaio/sdk": "0.149.0",
@@ -47,10 +57,12 @@
     "@n8n/workflow-sdk": "workspace:*",
     "linkedom": "^0.18.9",
     "luxon": "catalog:",
-    "csv-parse": "5.5.0",
+    "csv-parse": "6.2.1",
+    "mammoth": "1.12.0",
     "nanoid": "catalog:",
     "p-limit": "^3.1.0",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "2.4.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "turndown": "^7.2.0",
     "zod": "catalog:",
     "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",

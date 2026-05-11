@@ -94,6 +94,16 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
+const hasOpenInteractiveQuestion = computed(() =>
+	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
+);
+
+const chatPlaceholder = computed(() =>
+	hasOpenInteractiveQuestion.value
+		? locale.baseText('agents.chat.answerQuestionPlaceholder')
+		: locale.baseText('agents.chat.input.placeholder'),
+);
+
 function onOpenBuild() {
 	dismissFatalError();
 	emit('open-build');
@@ -103,7 +113,9 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value) return;
+	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenInteractiveQuestion.value) {
+		return;
+	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -135,6 +147,7 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
+	if (hasOpenInteractiveQuestion.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -244,10 +257,19 @@ onBeforeUnmount(() => {
 			<slot name="above-input" />
 			<ChatInputBase
 				v-model="inputText"
-				placeholder="Type a message..."
+				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
-				:can-submit="!isStreaming && !isPreparingToSend && inputText.trim().length > 0"
-				:disabled="isPreparingToSend || (isStreaming && messagingState !== 'receiving')"
+				:can-submit="
+					!hasOpenInteractiveQuestion &&
+					!isStreaming &&
+					!isPreparingToSend &&
+					inputText.trim().length > 0
+				"
+				:disabled="
+					hasOpenInteractiveQuestion ||
+					isPreparingToSend ||
+					(isStreaming && messagingState !== 'receiving')
+				"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

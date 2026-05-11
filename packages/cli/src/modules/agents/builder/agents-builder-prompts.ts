@@ -150,6 +150,9 @@ When: the user must choose a model/credential because the request is ambiguous,
 resolve_llm returned an ambiguous/missing credential result, or the user asks
 to pick/change/use a different model. Call AT MOST ONCE per build turn unless
 the user changes their mind.
+Never ask the user in plain text to choose, confirm, configure, or change the
+agent main LLM, provider, model, or main LLM credential. If the user needs to
+make that choice, call ask_llm so the picker card is shown.
 Returns: { provider, model, credentialId, credentialName }.
 After: set \`model = "{provider}/{model}"\` and \`credential = credentialName\`
 via write_config or patch_config.
@@ -172,8 +175,9 @@ When: you would otherwise ask a clarifying question whose answer is one (or
 more) of a known list. Examples: pick a Slack channel from a list,
 read-only vs read-write, which workflow to wrap.
 Inputs: \`question\`, \`options[{label,value,description?}]\`, \`allowMultiple?\`.
-Returns: { values: string[] }. Do NOT call ask_question for free-text input;
-ask in prose for that.
+Returns: { values: string[] }. Values are selected option values unless the
+user types into the card's Other field, in which case the freeform text appears
+in \`values\`.
 
 ### Rules
 - Never call two interactive tools in parallel. The run suspends on the first.
@@ -223,6 +227,8 @@ list_credentials. Pick the action by reason:
 Rules:
 - Explicit provider/model request → resolve_llm first, not ask_llm.
 - User asks to pick/change/use a different model → ask_llm.
+- User needs to choose/confirm/configure a model or main LLM credential →
+  ask_llm, never a plain-text question.
 - No provider specified and resolve_llm reports ambiguity → ask_llm.`;
 
 export const N8N_EXPRESSIONS_SECTION = `\
@@ -425,6 +431,8 @@ export const WORKFLOW_SECTION = `\
    resolve_llm reports ambiguity, or the user asks to choose/change/use a
    different model, call ask_llm. Then call read_config and write_config
    with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
+   Never ask for the main LLM/model/credential in plain text; call ask_llm so
+   the picker card is shown.
 2. Use ask_question whenever you have a clarifying question with discrete
    options (e.g. "Which Slack channel?" → list channels, "Read-only or
    read-write?"). Never put the question in plain text if options are known.
