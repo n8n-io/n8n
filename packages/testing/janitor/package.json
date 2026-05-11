@@ -5,9 +5,6 @@
 	"description": "Static analysis and architecture enforcement for Playwright test suites",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"bin": {
-		"playwright-janitor": "dist/cli.js"
-	},
 	"files": [
 		"dist"
 	],

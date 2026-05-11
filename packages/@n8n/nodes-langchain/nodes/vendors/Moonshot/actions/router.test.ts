@@ -1,5 +1,6 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as image from './image';
 import { router } from './router';
@@ -7,15 +8,15 @@ import * as text from './text';
 
 describe('Moonshot router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const mockImage = jest.spyOn(image.analyze, 'execute');
-	const mockText = jest.spyOn(text.message, 'execute');
+	const mockImage = vi.spyOn(image.analyze, 'execute');
+	const mockText = vi.spyOn(text.message, 'execute');
 	const operationMocks = [
 		[mockImage, 'image', 'analyze'],
 		[mockText, 'text', 'message'],
 	];
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it.each(operationMocks)('should call the correct method', async (mock, resource, operation) => {
@@ -23,7 +24,7 @@ describe('Moonshot router', () => {
 			parameter === 'resource' ? resource : operation,
 		);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		(mock as jest.Mock).mockResolvedValue([{ json: { foo: 'bar' } }]);
+		(mock as Mock).mockResolvedValue([{ json: { foo: 'bar' } }]);
 
 		const result = await router.call(mockExecuteFunctions);
 

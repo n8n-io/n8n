@@ -1,6 +1,7 @@
 import type { Mock, MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { jsonParse, type ExecutionSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -406,6 +407,164 @@ describe('WorkflowPreview', () => {
 
 			await waitFor(() => {
 				expect(emitted().ready).toBeDefined();
+			});
+		});
+	});
+
+	describe('postMessage dedup and tab-switch reset', () => {
+		const countCommand = (command: string) =>
+			postMessageSpy.mock.calls.filter(([payload, target]) => {
+				if (typeof payload !== 'string' || target !== '*') return false;
+				try {
+					return jsonParse<{ command?: string }>(payload).command === command;
+				} catch {
+					return false;
+				}
+			}).length;
+
+		it('should send openWorkflow only once when multiple watches converge on the same change', async () => {
+			const nodes = [{ name: 'Start' }] as INodeUi[];
+			const workflow = { nodes } as IWorkflowDb;
+
+			renderComponent({ pinia, props: { workflow } });
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should send resetWorkflow then openWorkflow when switching to a different workflow', async () => {
+			const workflowA = { nodes: [{ name: 'A' }] } as unknown as IWorkflowDb;
+			const workflowB = { nodes: [{ name: 'B' }] } as unknown as IWorkflowDb;
+
+			const { rerender } = renderComponent({ pinia, props: { workflow: workflowA } });
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+
+			postMessageSpy.mockClear();
+			await rerender({ workflow: workflowB });
+
+			await waitFor(() => {
+				expect(countCommand('resetWorkflow')).toBe(1);
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should not send resetWorkflow on the initial workflow mount', async () => {
+			const nodes = [{ name: 'Start' }] as INodeUi[];
+			const workflow = { nodes } as IWorkflowDb;
+
+			renderComponent({ pinia, props: { workflow } });
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+			expect(countCommand('resetWorkflow')).toBe(0);
+		});
+
+		it('should send openWorkflow when the workflow is set before the iframe is ready', async () => {
+			const workflowA = { nodes: [{ name: 'A' }] } as unknown as IWorkflowDb;
+			const workflowB = { nodes: [{ name: 'B' }] } as unknown as IWorkflowDb;
+
+			// Workflow arrives BEFORE n8nReady — the message would be silently lost
+			// if the dedup cache were updated eagerly.
+			const { rerender } = renderComponent({ pinia, props: { workflow: workflowA } });
+
+			// Switching to a different workflow while still not ready must not
+			// poison the cache either.
+			await rerender({ workflow: workflowB });
+			expect(countCommand('openWorkflow')).toBe(0);
+
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should resend openWorkflow when toggling back to workflow mode for the same workflow', async () => {
+			const workflow = { nodes: [{ name: 'Start' }] } as unknown as IWorkflowDb;
+			const executionId = 'exec-1';
+
+			const { rerender } = renderComponent({
+				pinia,
+				props: { mode: 'workflow' as const, workflow },
+			});
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+
+			// Switch to execution view — iframe now renders execution content.
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'execution' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+
+			// Switch back to workflow with the SAME workflow reference. Without
+			// invalidating the dedup cache, the workflow ref-equality check
+			// would skip the openWorkflow postMessage and leave the iframe
+			// stuck in execution mode.
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'workflow' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should resend openExecution when toggling back to execution mode for the same id', async () => {
+			const workflow = { nodes: [{ name: 'Start' }] } as unknown as IWorkflowDb;
+			const executionId = 'exec-1';
+
+			const { rerender } = renderComponent({
+				pinia,
+				props: { mode: 'execution' as const, workflow, executionId },
+			});
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'workflow' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+
+			// Same executionId — must still resend after the mode round-trip.
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'execution' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+		});
+
+		it('reloadExecution bypasses the executionId dedup so the same id is re-sent', async () => {
+			const wrapper = mount(WorkflowPreview, {
+				global: { plugins: [pinia] },
+				props: { mode: 'execution' as const, executionId: 'exec-1' },
+			});
+
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+
+			postMessageSpy.mockClear();
+
+			(wrapper.vm as unknown as { reloadExecution: () => void }).reloadExecution();
+
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
 			});
 		});
 	});

@@ -5,7 +5,12 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { EXCLUDED_DIRS, buildFilesystemResource, resolveSafePath } from './fs-utils';
+import {
+	buildFilesystemResource,
+	isExcludedDirName,
+	isLikelyBinaryContent,
+	resolveReadablePath,
+} from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory to search in'),
@@ -26,7 +31,7 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 		];
 	},
 	async execute({ dirPath, query, filePattern, ignoreCase, maxResults }, { dir }) {
-		const resolvedDir = await resolveSafePath(dir, dirPath);
+		const resolvedDir = await resolveReadablePath(dir, dirPath);
 		const limit = maxResults ?? 50;
 		const flags = ignoreCase ? 'gi' : 'g';
 		const regex = new RegExp(escapeRegex(query), flags);
@@ -44,7 +49,10 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 				const stat = await fs.stat(fullPath);
 				if (stat.size > MAX_FILE_SIZE) continue;
 
-				const content = await fs.readFile(fullPath, 'utf-8');
+				const fileContent = await fs.readFile(fullPath);
+				const buffer = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
+				if (isLikelyBinaryContent(buffer)) continue;
+				const content = buffer.toString('utf-8');
 				const lines = content.split('\n');
 
 				for (let i = 0; i < lines.length; i++) {
@@ -77,7 +85,7 @@ async function collectFiles(
 	const entries = await fs.readdir(dir, { withFileTypes: true });
 
 	for (const entry of entries) {
-		if (EXCLUDED_DIRS.has(entry.name) && entry.isDirectory()) continue;
+		if (isExcludedDirName(entry.name) && entry.isDirectory()) continue;
 
 		const fullPath = path.join(dir, entry.name);
 		const relativePath = path.relative(basePath, fullPath);

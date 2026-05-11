@@ -22,6 +22,17 @@ describe('credential guardrail prompts', () => {
 		expect(prompt).not.toContain('copied and ready to paste into n8n');
 	});
 
+	it('keeps inbound trigger authentication disabled unless explicitly requested', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
+
+		expect(prompt).toContain(
+			'The credential-selection guidance above applies to outbound service calls.',
+		);
+		expect(prompt).toContain(
+			'keep authentication at its default `none` unless the user explicitly asks to authenticate inbound traffic',
+		);
+	});
+
 	it('tells the planner to ask when a required service has more than one credential of the same type', () => {
 		expect(PLANNER_AGENT_PROMPT).toContain(
 			'Do ask when a required service has more than one credential of the same type',
@@ -41,5 +52,18 @@ describe('credential guardrail prompts', () => {
 		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).toContain(
 			"If `explore-resources` returns more than one match and the user did not name a specific one, use `placeholder('Select <resource>')`",
 		);
+	});
+
+	it('does not inline bulky static node guides in builder prompts', () => {
+		for (const prompt of [
+			BUILDER_AGENT_PROMPT,
+			createSandboxBuilderAgentPrompt('/tmp/workspace'),
+		]) {
+			expect(prompt).toContain('## Node Configuration Safety Rules');
+			expect(prompt).not.toContain('nodes(action="guide")');
+			expect(prompt).not.toContain('### Set Node Updates - Comprehensive Type Handling Guide');
+			expect(prompt).not.toContain('#### Complete Operator Reference');
+			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
+		}
 	});
 });

@@ -29,13 +29,6 @@ export class IfV2 implements INodeType {
 			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 			outputNames: ['true', 'false'],
 			parameterPane: 'wide',
-			builderHint: {
-				message: `parameters.conditions must always contain these three sibling keys:
-- "combinator": "and" or "or", default to "and"
-- "conditions": [ {a list of condition objects } ]
-- "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 }
-e.g.: { "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 }, "conditions": [{ "leftValue": "={{ $json.field }}", "rightValue": "value", "operator": { "type": "string", "operation": "equals" } }] } }`,
-			},
 			properties: [
 				{
 					displayName: 'Conditions',
@@ -49,6 +42,13 @@ e.g.: { "conditions": { "combinator": "and", "options": { "caseSensitive": true,
 							typeValidation: getTypeValidationStrictness(2.1),
 							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
+					},
+					builderHint: {
+						propertyHint: `Must always contain these three sibling keys:
+- combinator: 'and' or 'or', default to 'and'
+- conditions: [ a list of condition objects ]
+- options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 1 }
+e.g.: { combinator: 'and', options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 }, conditions: [{ leftValue: expr('{{ $json.field }}'), rightValue: 'value', operator: { type: 'string', operation: 'equals' } }] }`,
 					},
 				},
 				{

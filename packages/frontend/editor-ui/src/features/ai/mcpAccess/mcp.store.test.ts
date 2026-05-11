@@ -9,6 +9,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [],
+		workflowTriggerNodes: [],
 		name: '',
 		settings: {},
 		mergeSettings: vi.fn(),
@@ -84,7 +85,7 @@ describe('mcp.store', () => {
 		});
 
 		it('merges settings into the active workflow document when toggling its own id', async () => {
-			workflowsStore.workflow.id = 'wf-current';
+			workflowsStore.workflowId = 'wf-current';
 
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,

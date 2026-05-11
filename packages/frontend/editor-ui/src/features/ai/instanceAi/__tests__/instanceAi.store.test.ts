@@ -744,40 +744,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.messages[0].agentTree?.textContent).toBe('');
 	});
 
-	test('sendMessage syncs a new thread before the first post and reuses the persisted thread afterwards', async () => {
-		mockEnsureThread.mockResolvedValueOnce({
-			thread: {
-				id: store.currentThreadId,
-				title: '',
-				resourceId: 'user-1',
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-			},
-			created: true,
-		});
-		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
-
-		await store.sendMessage('first');
-		await store.sendMessage('second');
-
-		expect(mockEnsureThread).toHaveBeenCalledTimes(1);
-		expect(mockEnsureThread).toHaveBeenCalledWith(
-			expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
-			store.currentThreadId,
-		);
-		expect(mockPostMessage).toHaveBeenCalledTimes(2);
-	});
-
-	test('sendMessage enqueues the optimistic user message before a new thread finishes syncing', async () => {
-		let resolveEnsureThread:
-			| ((value: Awaited<ReturnType<typeof ensureThread>>) => void)
-			| undefined;
-
-		mockEnsureThread.mockReturnValueOnce(
-			new Promise((resolve) => {
-				resolveEnsureThread = resolve;
-			}),
-		);
+	test('sendMessage pushes the optimistic user message synchronously and posts without syncing the thread', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
 		const sendPromise = store.sendMessage('first');
@@ -788,35 +755,14 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 			content: 'first',
 			isStreaming: false,
 		});
-		expect(mockPostMessage).not.toHaveBeenCalled();
-
-		resolveEnsureThread?.({
-			thread: {
-				id: store.currentThreadId,
-				title: '',
-				resourceId: 'user-1',
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-			},
-			created: true,
-		});
 
 		await sendPromise;
 
+		expect(mockEnsureThread).not.toHaveBeenCalled();
 		expect(mockPostMessage).toHaveBeenCalledTimes(1);
 	});
 
 	test('sendMessage forwards pushRef to postMessage', async () => {
-		mockEnsureThread.mockResolvedValueOnce({
-			thread: {
-				id: store.currentThreadId,
-				title: '',
-				resourceId: 'user-1',
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-			},
-			created: true,
-		});
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
 		await store.sendMessage('hello', undefined, 'iframe-push-ref-123');
@@ -833,16 +779,6 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 	});
 
 	test('sendMessage omits pushRef when not provided', async () => {
-		mockEnsureThread.mockResolvedValueOnce({
-			thread: {
-				id: store.currentThreadId,
-				title: '',
-				resourceId: 'user-1',
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-			},
-			created: true,
-		});
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
 		await store.sendMessage('hello');
@@ -876,14 +812,8 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(mockPostMessage).toHaveBeenCalled();
 	});
 
-	test('sendMessage rolls back optimistic message when thread sync fails and resets sending state', async () => {
-		let rejectEnsureThread: ((reason?: unknown) => void) | undefined;
-
-		mockEnsureThread.mockReturnValueOnce(
-			new Promise((_resolve, reject) => {
-				rejectEnsureThread = reject;
-			}),
-		);
+	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {
+		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
 
 		const sendPromise = store.sendMessage('first');
 
@@ -894,12 +824,9 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 			content: 'first',
 			isStreaming: false,
 		});
-		expect(mockPostMessage).not.toHaveBeenCalled();
 
-		rejectEnsureThread?.(new Error('sync failed'));
 		await sendPromise;
 
-		expect(mockPostMessage).not.toHaveBeenCalled();
 		expect(store.messages).toHaveLength(0);
 		expect(store.isSendingMessage).toBe(false);
 	});
@@ -1040,53 +967,27 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('confirmAction passes resourceDecision to postConfirmation', async () => {
-		await store.confirmAction(
-			'req-1',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			'allowOnce',
-		);
+	it('confirmAction passes resourceDecision payload through to postConfirmation', async () => {
+		await store.confirmAction('req-1', {
+			kind: 'resourceDecision',
+			resourceDecision: 'allowOnce',
+		});
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
-		expect(mockPostConfirmation).toHaveBeenCalledWith(
-			expect.anything(),
-			'req-1',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			'allowOnce',
-		);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-1', {
+			kind: 'resourceDecision',
+			resourceDecision: 'allowOnce',
+		});
 	});
 
-	it('confirmResourceDecision calls postConfirmation with approved=true and the decision', async () => {
+	it('confirmResourceDecision calls postConfirmation with the decision token', async () => {
 		await store.confirmResourceDecision('req-2', 'allowForSession');
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
-		expect(mockPostConfirmation).toHaveBeenCalledWith(
-			expect.anything(),
-			'req-2',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			'allowForSession',
-		);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-2', {
+			kind: 'resourceDecision',
+			resourceDecision: 'allowForSession',
+		});
 	});
 
 	it('confirmResourceDecision does not call postConfirmation when confirmAction throws', async () => {

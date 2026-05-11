@@ -4,19 +4,11 @@ import type { NodeConnectionType, INodeInputConfiguration } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionTypes, isHitlToolType } from 'n8n-workflow';
 import type { NodeCreatorFilter } from './useViewStacks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { computed } from 'vue';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useGetNodeCreatorFilter() {
-	const workflowStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	function getNodeCreatorFilter(
 		nodeName: string,

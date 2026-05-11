@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
@@ -87,6 +88,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStore,
+	injectWorkflowDocumentStore: () => shallowRef(mockDocumentStore),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
@@ -100,23 +102,22 @@ vi.mock('@/app/stores/workflows.store', () => {
 		activeExecutionId: undefined,
 		previousExecutionId: undefined,
 		executionWaitingForWebhook: false,
-		workflow: {
-			nodes: [],
-			id: '',
-			name: '',
-			active: false,
-			isArchived: false,
-			createdAt: '',
-			updatedAt: '',
-			connections: {},
-			versionId: '',
-			activeVersionId: null,
-		},
+		chatPartialExecutionDestinationNode: null,
 		workflowId: '123',
 		isWorkflowSaved: {
 			'123': true,
 		},
 		getExecution: vi.fn(),
+		setWorkflowExecutionData: vi.fn((execution) => {
+			storeState.workflowExecutionData = execution;
+		}),
+		setExecutionWaitingForWebhook: vi.fn((value) => {
+			storeState.executionWaitingForWebhook = value;
+		}),
+		setChatPartialExecutionDestinationNode: vi.fn((value) => {
+			storeState.chatPartialExecutionDestinationNode = value;
+		}),
+		clearExecutionStartedData: vi.fn(),
 		private: {
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
 				storeState.activeExecutionId = id;
@@ -1231,7 +1232,7 @@ describe('useRunWorkflow({ router })', () => {
 				'test-wf-id',
 			);
 			workflowState.setActiveExecutionId('test-exec-id');
-			workflowsStore.executionWaitingForWebhook = false;
+			workflowsStore.setExecutionWaitingForWebhook(false);
 
 			getExecutionSpy.mockResolvedValue(executionData);
 
