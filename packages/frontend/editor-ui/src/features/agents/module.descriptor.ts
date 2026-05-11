@@ -1,4 +1,5 @@
 import { i18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
@@ -164,6 +165,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				label: 'Agents',
 				value: AGENTS_LIST_VIEW,
 				preview: true,
+				insertAfter: VIEWS.WORKFLOWS,
 				to: {
 					name: AGENTS_LIST_VIEW,
 				},
@@ -174,6 +176,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				label: 'Agents',
 				value: PROJECT_AGENTS,
 				preview: true,
+				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: {
 					name: PROJECT_AGENTS,
 					includeProjectId: true,
