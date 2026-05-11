@@ -1,3 +1,4 @@
+import type { MemoryDescriptor } from '@n8n/agents';
 import type { AgentDbMessage, AgentMessage, BuiltMemory, Thread } from '@n8n/instance-ai';
 import { Service } from '@n8n/di';
 import { In, LessThan } from '@n8n/typeorm';
@@ -100,6 +101,14 @@ export class TypeORMAgentMemory implements BuiltMemory {
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.threadRepo.delete({ id: threadId });
+	}
+
+	describe(): MemoryDescriptor {
+		return {
+			name: 'n8n-instance-ai',
+			constructorName: this.constructor.name,
+			connectionParams: {},
+		};
 	}
 
 	async getMessages(
