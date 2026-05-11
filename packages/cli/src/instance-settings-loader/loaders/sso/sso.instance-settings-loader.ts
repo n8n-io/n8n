@@ -38,12 +38,13 @@ export class SsoInstanceSettingsLoader {
 			);
 		}
 
+		await this.samlLoader.apply();
+		await this.oidcLoader.apply();
+
 		if (samlLoginEnabled || oidcLoginEnabled) {
 			await this.provisioningLoader.apply();
 		}
 
-		await this.samlLoader.apply();
-		await this.oidcLoader.apply();
 		await this.syncAuthMethod();
 
 		return 'created';
