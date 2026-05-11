@@ -830,6 +830,71 @@ describe('OAuth2CredentialController', () => {
 					['csrfSecret'],
 				);
 			});
+
+			it('routes the decrypted response to saveDynamicCredential when origin is dynamic-credential', async () => {
+				const dynamicState = {
+					token: 'token',
+					cid: '1',
+					userId: '123',
+					origin: 'dynamic-credential' as const,
+					credentialResolverId: 'resolver-1',
+					authorizationHeader: 'Bearer caller-token',
+					authMetadata: { tenant: 'acme' },
+					createdAt: timestamp,
+					data: 'encrypted-data',
+				};
+
+				const mockGetToken = jest
+					.fn()
+					.mockResolvedValue({ data: { access_token: 'jwe-blob', refresh_token: 'r' } });
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				jest
+					.mocked(ClientOAuth2)
+					.mockImplementation(() => ({ code: { getToken: mockGetToken } }) as any);
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{ csrfSecret: 'csrf-secret' },
+					{
+						clientId: 'client_id',
+						clientSecret: 'client_secret',
+						authUrl: 'https://example.domain/oauth2/auth',
+						accessTokenUrl: 'https://example.domain/oauth2/token',
+						scope: 'openid',
+						grantType: 'authorizationCode',
+						authentication: 'header',
+						jweEnabled: true,
+					} as any,
+					dynamicState,
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+				externalHooks.run.mockResolvedValue(undefined);
+				oauthJweServiceProxy.decryptOAuth2TokenData.mockResolvedValue({
+					access_token: 'decrypted',
+					refresh_token: 'r',
+				});
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: { code: 'auth_code', state: validState },
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				expect(oauthJweServiceProxy.decryptOAuth2TokenData).toHaveBeenCalledWith(
+					expect.objectContaining({ access_token: 'jwe-blob' }),
+				);
+				expect(oauthService.saveDynamicCredential).toHaveBeenCalledWith(
+					mockResolvedCredential,
+					expect.objectContaining({
+						oauthTokenData: expect.objectContaining({ access_token: 'decrypted' }),
+					}),
+					'caller-token',
+					'resolver-1',
+					{ tenant: 'acme' },
+				);
+				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should handle errors and render error page', async () => {

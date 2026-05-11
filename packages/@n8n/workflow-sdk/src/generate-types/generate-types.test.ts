@@ -19,7 +19,7 @@ import type * as GenerateTypesModule from '../generate-types/generate-types';
 // =============================================================================
 
 interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -365,7 +365,7 @@ describe('generate-types', () => {
 		it('should map string type with Expression wrapper', () => {
 			const prop: NodeProperty = { name: 'url', displayName: 'URL', type: 'string', default: '' };
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should map number type with Expression wrapper', () => {
@@ -543,6 +543,36 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map resourceMapper type to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue | Expression<string>');
+		});
+
+		it('should map resourceMapper with loadOptionsDependsOn and noDataExpression to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: { mappingMode: 'defineBelow', value: null },
+				typeOptions: {
+					loadOptionsDependsOn: ['sheetName.value'],
+				},
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue');
+		});
+
 		it('should map string type with multipleValues to an array type', () => {
 			const prop: NodeProperty = {
 				name: 'attendees',
@@ -554,7 +584,7 @@ describe('generate-types', () => {
 				},
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('Array<string | Expression<string> | PlaceholderValue>');
+			expect(result).toBe('Array<string | Expression<string>>');
 		});
 
 		it('should map fixedCollection type to proper nested interface', () => {
@@ -606,7 +636,7 @@ describe('generate-types', () => {
 				],
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toContain('attendees?: Array<string | Expression<string> | PlaceholderValue>');
+			expect(result).toContain('attendees?: Array<string | Expression<string>>');
 		});
 
 		it('should map fixedCollection with multipleValues to array type', () => {
@@ -759,7 +789,7 @@ describe('generate-types', () => {
 			const result = generateTypes.mapPropertyType(prop);
 			// Should generate nested structure with proper types
 			expect(result).toContain('systemMessage?:');
-			expect(result).toContain('string | Expression<string> | PlaceholderValue');
+			expect(result).toContain('string | Expression<string>');
 			expect(result).toContain('maxIterations?:');
 			expect(result).toContain('number | Expression<number>');
 			expect(result).toContain('returnIntermediateSteps?:');
@@ -797,7 +827,7 @@ describe('generate-types', () => {
 								type: 'options',
 								description: 'Select the interval type',
 								builderHint: {
-									message: 'You can add multiple intervals to trigger at different times.',
+									propertyHint: 'You can add multiple intervals to trigger at different times.',
 								},
 								options: [
 									{ name: 'Seconds', value: 'seconds' },
@@ -827,7 +857,7 @@ describe('generate-types', () => {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message: 'You can add multiple intervals to trigger at different times.',
+							propertyHint: 'You can add multiple intervals to trigger at different times.',
 						},
 						values: [
 							{
@@ -845,7 +875,7 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint You can add multiple intervals');
 		});
 
-		// PlaceholderValue tests - string type should include PlaceholderValue, other types should not
+		// PlaceholderValue is no longer emitted by codegen — these tests guard against regressions.
 		it('should NOT include PlaceholderValue in options type', () => {
 			const prop: NodeProperty = {
 				name: 'method',
@@ -1719,7 +1749,7 @@ describe('generate-types', () => {
 				type: 'fixedCollection',
 				description: 'Configure when the workflow triggers',
 				builderHint: {
-					message:
+					propertyHint:
 						'You can add multiple intervals to trigger at different times. Use Custom (Cron) for more specific scheduling patterns.',
 				},
 				default: {},
@@ -1737,7 +1767,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Custom code to execute',
 				builderHint: {
-					message: 'See <a href="https://docs.example.com">documentation</a> for examples',
+					propertyHint: 'See <a href="https://docs.example.com">documentation</a> for examples',
 				},
 				default: '',
 			};
@@ -1994,6 +2024,39 @@ describe('generate-types', () => {
 
 			// Should indicate it's a trigger
 			expect(result).toContain('isTrigger: true');
+		});
+
+		it('should emit helper type for resourceMapper properties', () => {
+			const sheetsLikeNode: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleSheets',
+				displayName: 'Google Sheets',
+				description: 'Read and write rows',
+				group: ['transform'],
+				version: 4.7,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'columns',
+						displayName: 'Columns',
+						type: 'resourceMapper',
+						noDataExpression: true,
+						default: { mappingMode: 'defineBelow', value: null },
+						typeOptions: {
+							loadOptionsDependsOn: ['sheetName.value'],
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(sheetsLikeNode);
+
+			expect(result).toContain('type ResourceMapperField = {');
+			expect(result).toContain('mappingMode: string;');
+			expect(result).toContain('value?: null | Record<string, unknown>;');
+			expect(result).toContain('schema?: ResourceMapperField[]');
+			expect(result).toContain('columns?: ResourceMapperValue;');
+			expect(result).not.toContain('columns?: string;');
 		});
 
 		// Regression: required string with default: '' used to emit
@@ -2586,7 +2649,7 @@ describe('generate-types', () => {
 				default: null,
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should handle options with numeric values', () => {

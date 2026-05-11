@@ -112,7 +112,7 @@ export class GmailTrigger implements INodeType {
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
 				builderHint: {
-					message:
+					propertyHint:
 						'Set to false when the email body is needed for AI analysis, summarization, or content processing. When true, only returns snippet (preview text). When false, returns full email with {id, threadId, labelIds, headers, html, text, textAsHtml, subject, date, to, from, messageId, replyTo}.',
 				},
 			},
@@ -172,7 +172,7 @@ export class GmailTrigger implements INodeType {
 						default: '',
 						placeholder: 'has:attachment',
 						builderHint: {
-							message:
+							propertyHint:
 								'Always set a search query to filter emails. Uses Gmail search syntax, e.g. "from:example@gmail.com", "subject:invoice", "has:attachment", "label:important", "newer_than:1d". Combine with spaces for AND: "from:shop@example.com subject:delivery". Without this filter, ALL incoming emails will trigger the workflow.',
 						},
 						hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',

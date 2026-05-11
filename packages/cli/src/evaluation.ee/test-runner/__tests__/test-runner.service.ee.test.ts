@@ -2049,6 +2049,14 @@ describe('TestRunnerService', () => {
 			testRunRepository.isCancellationRequested.mockResolvedValue(false);
 			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
 			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
+			// Path C pre-seeds N pending rows up front; runner then claims them
+			// via tryMarkCaseAsRunning. Mocks return synthetic ids so the runner
+			// has something to update in place of inline create.
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, count) =>
+				Array.from({ length: count }, (_, i) => ({ id: `seeded-case-${i}` }) as never),
+			);
+			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
+			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
 			// `manager` is a TypeORM EntityManager not auto-deep-mocked by mock<T>().
 			// Provide a transaction stub that just invokes the callback so cancel
 			// paths run end-to-end.
@@ -2161,10 +2169,11 @@ describe('TestRunnerService', () => {
 
 			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
 
-			// 4 test-case executions attempted; 1 errored, 3 succeeded.
-			const createCalls = testCaseExecutionRepository.createTestCaseExecution.mock.calls;
-			const errorRows = createCalls.filter(([row]) => row.status === 'error');
-			const successRows = createCalls.filter(([row]) => row.status === 'success');
+			// 4 test-case executions attempted; 1 errored, 3 succeeded. Path C
+			// updates pre-seeded rows in place rather than creating new rows.
+			const updateCalls = testCaseExecutionRepository.update.mock.calls;
+			const errorRows = updateCalls.filter(([, row]) => row.status === 'error');
+			const successRows = updateCalls.filter(([, row]) => row.status === 'success');
 			expect(errorRows).toHaveLength(1);
 			expect(successRows).toHaveLength(3);
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
@@ -2359,11 +2368,11 @@ describe('TestRunnerService', () => {
 				executionId: expect.stringContaining('test-run-id-case-'),
 			});
 
-			// And no test-case row should have been written for the evicted
-			// cases — they short-circuit before touching the DB. The legacy
-			// path would have produced UNKNOWN_ERROR rows here.
-			const errorRows = testCaseExecutionRepository.createTestCaseExecution.mock.calls.filter(
-				([row]) => row.errorCode === 'UNKNOWN_ERROR',
+			// And no test-case row should have been updated to an error state
+			// for the evicted cases — they short-circuit before touching the
+			// DB. The legacy path would have produced UNKNOWN_ERROR rows here.
+			const errorRows = testCaseExecutionRepository.update.mock.calls.filter(
+				([, row]) => row.errorCode === 'UNKNOWN_ERROR',
 			);
 			expect(errorRows).toHaveLength(0);
 

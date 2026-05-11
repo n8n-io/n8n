@@ -2,9 +2,11 @@ import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
 import { generateTitleFromMessage } from '../runtime/title-generation';
+import type { BuiltTelemetry } from '../types';
 
 type GenerateTextCall = {
 	messages: Array<{ role: string; content: string }>;
+	experimental_telemetry?: Record<string, unknown>;
 };
 
 const mockGenerateText = jest.fn<Promise<{ text: string }>, [GenerateTextCall]>();
@@ -119,6 +121,34 @@ describe('generateTitleFromMessage', () => {
 		});
 		const call = mockGenerateText.mock.calls[0][0];
 		expect(call.messages[0].content).toBe('Custom system prompt');
+	});
+
+	it('passes generic telemetry to the title LLM call', async () => {
+		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
+		const telemetry: BuiltTelemetry = {
+			enabled: true,
+			functionId: 'instance-ai.thread-title',
+			metadata: { thread_id: 'thread-1' },
+			recordInputs: true,
+			recordOutputs: false,
+			runtimeRootSpanEnabled: false,
+			integrations: [],
+		};
+
+		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow', {
+			telemetry,
+		});
+
+		const call = mockGenerateText.mock.calls[0][0];
+		expect(call.experimental_telemetry).toEqual({
+			isEnabled: true,
+			functionId: 'instance-ai.thread-title',
+			metadata: { thread_id: 'thread-1' },
+			recordInputs: true,
+			recordOutputs: false,
+			tracer: undefined,
+			integrations: undefined,
+		});
 	});
 
 	it('wraps the user message in a title-generation instruction so the model does not answer it', async () => {

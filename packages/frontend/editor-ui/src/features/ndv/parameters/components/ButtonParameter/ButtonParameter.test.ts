@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore, injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -65,6 +65,14 @@ describe('ButtonParameter', () => {
 			ndvInputData: [{}],
 			activeNode: { name: 'TestNode', parameters: {} },
 			isDraggableDragging: false,
+		} as any);
+
+		vi.mocked(injectNDVStore).mockReturnValue({
+			ndvInputData: [{}],
+			ndvInputDataWithPinnedData: [{}],
+			activeNode: { name: 'TestNode', parameters: {} },
+			isDraggableDragging: false,
+			pushRef: 'testPushRef',
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({

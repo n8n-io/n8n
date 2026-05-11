@@ -110,6 +110,16 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
+export {
+	createInstanceAiLivenessPolicyConfig,
+	INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+	InstanceAiLivenessPolicy,
+	type InstanceAiLivenessDecision,
+	type InstanceAiLivenessInput,
+	type InstanceAiLivenessPolicyConfig,
+	type InstanceAiLivenessSurface,
+	type InstanceAiLivenessTimeoutReason,
+} from './runtime/liveness-policy';
 export type {
 	StreamableAgent,
 	StreamRunOptions,
@@ -208,8 +218,20 @@ export {
 	classifyAttachments,
 	buildAttachmentManifest,
 	isStructuredAttachment,
+	isParseableAttachment,
 } from './parsers/structured-file-parser';
 export type {
 	ClassifiedAttachment,
 	ParseableFormat,
+	TabularFormat,
+	TextLikeFormat,
+	SupportedFormat,
 } from './parsers/structured-file-parser';
+export {
+	getParseableAttachmentMimeTypes,
+	getSupportedAttachmentMimeTypes,
+	isSupportedAttachmentMimeType,
+	validateAttachmentMimeTypes,
+	UnsupportedAttachmentError,
+} from './parsers/validate-attachments';
+export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';

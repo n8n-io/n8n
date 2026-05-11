@@ -78,7 +78,6 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
-	optinModalDismissed?: boolean;
 }
 
 @Service()
@@ -99,8 +98,6 @@ export class InstanceAiSettingsService {
 	private adminN8nSandboxCredentialId: string | null = null;
 
 	private adminSearchCredentialId: string | null = null;
-
-	private optinModalDismissed: boolean = false;
 
 	constructor(
 		globalConfig: GlobalConfig,
@@ -158,7 +155,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
-			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
 
@@ -203,8 +199,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.optinModalDismissed !== undefined)
-			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
@@ -567,8 +561,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
-		if (persisted.optinModalDismissed !== undefined)
-			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -594,7 +586,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
-			optinModalDismissed: this.optinModalDismissed,
 		};
 
 		await this.settingsRepository.upsert(
