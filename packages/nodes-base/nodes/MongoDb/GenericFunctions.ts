@@ -87,18 +87,35 @@ export function prepareItems({
 	useDotNotation = false,
 	dateFields = [],
 	isUpdate = false,
+	filterObj = {},
+	updateObj = {},
+	jsonMode = false,
 }: {
 	items: INodeExecutionData[];
-	fields: string[];
+	fields?: string[];
 	updateKey?: string;
 	useDotNotation?: boolean;
 	dateFields?: string[];
 	isUpdate?: boolean;
+	filterObj?: IDataObject;
+	updateObj?: IDataObject;
+	jsonMode?: boolean;
 }) {
 	let data = items;
 
+	if (jsonMode) {
+		return [
+			{
+				filter: filterObj || {},
+				update: updateObj || {},
+			},
+		] as IDataObject[];
+	}
+
+	fields = fields || [];
+
 	if (updateKey) {
-		if (!fields.includes(updateKey)) {
+		if (fields && !fields.includes(updateKey)) {
 			fields.push(updateKey);
 		}
 		data = items.filter((item) => item.json[updateKey] !== undefined);

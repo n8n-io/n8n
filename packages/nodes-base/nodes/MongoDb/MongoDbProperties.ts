@@ -264,12 +264,42 @@ export const nodeProperties: INodeProperties[] = [
 	//         update
 	// ----------------------------------
 	{
+		displayName: 'Use JSON',
+		name: 'jsonMode',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['document'],
+			},
+		},
+		default: false,
+		description: 'Whether to pass the fields to update as a JSON object',
+	},
+	{
 		displayName: 'Update Key',
 		name: 'updateKey',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
+				resource: ['document'],
+				jsonMode: [false],
+			},
+		},
+		default: 'id',
+		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+		description:
+			'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+	},
+	{
+		displayName: 'Update Key',
+		name: 'updateKey',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['findOneAndReplace', 'findOneAndUpdate'],
 				resource: ['document'],
 			},
 		},
@@ -285,13 +315,56 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
+				resource: ['document'],
+				jsonMode: [false],
+			},
+		},
+		default: '',
+		placeholder: 'name,description',
+		description: 'Comma-separated list of the fields to be included into the new document',
+	},
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['findOneAndReplace', 'findOneAndUpdate'],
 				resource: ['document'],
 			},
 		},
 		default: '',
 		placeholder: 'name,description',
 		description: 'Comma-separated list of the fields to be included into the new document',
+	},
+	{
+		displayName: 'Filter (JSON)',
+		name: 'filterJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['document'],
+				jsonMode: [true],
+			},
+		},
+		default: '{}',
+		description: 'A JSON object representing the fields to be updated',
+	},
+	{
+		displayName: 'Update (JSON)',
+		name: 'updateJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['document'],
+				jsonMode: [true],
+			},
+		},
+		default: '{}',
+		description: 'A JSON object representing the fields to be updated',
 	},
 	{
 		displayName: 'Upsert',
@@ -312,7 +385,37 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
+				resource: ['document'],
+				jsonMode: [false],
+			},
+		},
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Date Fields',
+				name: 'dateFields',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of fields that will be parsed as Mongo Date type',
+			},
+			{
+				displayName: 'Use Dot Notation',
+				name: 'useDotNotation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use dot notation to access date fields',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['insert', 'findOneAndReplace', 'findOneAndUpdate'],
 				resource: ['document'],
 			},
 		},
