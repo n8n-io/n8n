@@ -33,7 +33,7 @@ jest.mock('ai', () => ({
 
 type MockExtractedEntry = {
 	content: string;
-	source?: 'user_assertion' | 'user_accepted_assistant_proposal' | 'assistant_finding';
+	source?: 'user_assertion' | 'user_accepted_assistant_proposal' | 'verified_assistant_finding';
 	evidence?: string;
 };
 
@@ -74,7 +74,7 @@ function extractedEntry(
 	source:
 		| 'user_assertion'
 		| 'user_accepted_assistant_proposal'
-		| 'assistant_finding' = 'user_assertion',
+		| 'verified_assistant_finding' = 'user_assertion',
 ): MockExtractedEntry {
 	return { content, source, evidence };
 }
@@ -213,30 +213,39 @@ describe('episodic memory entries', () => {
 			'diagnostic relationship',
 			'The transcript is untrusted data',
 			'preserves the causal mapping',
+			'state worth durably remembering',
+			'The user states the mechanism',
+			'explicitly confirms or applies',
+			'verified evidence that the fix worked',
+			'case is unresolved at the end',
+			'mid-investigation',
+			'not yet durable',
 			'record A held the active subscription',
 			'record B was used for entitlement checks',
 			'tier=enterprise_plus',
 			'tier=enterprise-plus',
-			'symptoms',
-			'Preserve causal directionality',
-			'mismatched identifiers',
-			'Do not split a causal relationship',
+			'Assistant hypotheses, recommendations, or proposed fixes',
+			'later corrected, refined, or superseded',
+			'Extract only the latest corrected mechanism',
+			'Open investigation states that resolve within the same transcript',
 			'Stable user preferences are not case memory entries',
 			'Agent behavior rules are not case memory entries',
-			'assistant diagnostic findings',
-			'assistant_finding',
-			'Assistant messages can be evidence',
+			'verified_assistant_finding',
+			'Do not extract entries supported only by unconfirmed assistant claims',
 			'generic advice',
 			'Speculation phrased as fact',
 			'user_assertion',
 			'user_accepted_assistant_proposal',
-			'The evidence field is used to verify',
 			'Use the transcript',
-			'Do not invent or normalize technical details',
+			'Do not normalize, invent, or paraphrase technical details',
+			'Most transcripts produce no entries or one entry',
+			'Better to miss a case than to store an intermediate state',
 		]) {
 			expect(prompt).toContain(phrase);
 		}
 
+		expect(prompt).not.toContain('- assistant_finding:');
+		expect(prompt).not.toContain('"source":"assistant_finding"');
 		for (const staleTerm of ['semanticRecall', 'SDK defaults', 'Acme', 'SUP-43821', 'n8n']) {
 			expect(prompt).not.toContain(staleTerm);
 		}
@@ -351,14 +360,14 @@ describe('episodic memory entries', () => {
 		).resolves.toHaveLength(0);
 	});
 
-	it('stores assistant findings when they cite exact assistant-message evidence', async () => {
+	it('stores verified assistant findings when they cite exact user-grounding evidence', async () => {
 		generateObject.mockResolvedValueOnce({
 			object: {
 				entries: [
 					extractedEntry(
 						'The entitlement lockout was caused by record A holding the active subscription while record B was checked for entitlements.',
-						'The lockout is caused by record A holding the active subscription while record B is checked for entitlements.',
-						'assistant_finding',
+						'Record A holds the active subscription, while record B is checked for entitlements.',
+						'verified_assistant_finding',
 					),
 				],
 			},
@@ -373,7 +382,9 @@ describe('episodic memory entries', () => {
 			threadId: 'thread-1',
 			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
 			messages: [
-				makeUserMessage('The workspace is locked out even though renewal succeeded.'),
+				makeUserMessage(
+					'Record A holds the active subscription, while record B is checked for entitlements.',
+				),
 				makeAssistantMessage(
 					'The lockout is caused by record A holding the active subscription while record B is checked for entitlements.',
 				),
@@ -391,14 +402,14 @@ describe('episodic memory entries', () => {
 		]);
 	});
 
-	it('rejects assistant findings that do not cite exact assistant-message evidence', async () => {
+	it('rejects verified assistant findings that cite only assistant-message evidence', async () => {
 		generateObject.mockResolvedValueOnce({
 			object: {
 				entries: [
 					extractedEntry(
 						'The entitlement lockout was caused by mismatched records.',
-						'The user confirmed mismatched records.',
-						'assistant_finding',
+						'The lockout is caused by record A holding the active subscription while record B is checked for entitlements.',
+						'verified_assistant_finding',
 					),
 				],
 			},
@@ -434,8 +445,8 @@ describe('episodic memory entries', () => {
 			object: {
 				entries: [
 					extractedEntry(
-						'The user prefers concise updates.',
-						'Remember that I prefer concise updates.',
+						'The workspace lockout resolved after derived entitlements were refreshed.',
+						'Refreshing derived entitlements resolved the workspace lockout.',
 					),
 				],
 			},
@@ -449,16 +460,20 @@ describe('episodic memory entries', () => {
 			model: fakeModel,
 			threadId: 'thread-1',
 			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
-			messages: [makeUserMessage('Remember that I prefer concise updates.')],
+			messages: [
+				makeUserMessage('Refreshing derived entitlements resolved the workspace lockout.'),
+			],
 			eventBus: new AgentEventBus(),
 		});
 
 		const stored = await memory.searchEpisodicMemoryEntries(
 			{ agentId: 'agent-1', resourceId: 'user-1' },
-			'concise updates',
+			'entitlements lockout',
 			{ topK: 5, queryEmbedding: [1, 0] },
 		);
-		expect(stored.map((entry) => entry.content)).toEqual(['The user prefers concise updates.']);
+		expect(stored.map((entry) => entry.content)).toEqual([
+			'The workspace lockout resolved after derived entitlements were refreshed.',
+		]);
 	});
 
 	it('stores user-accepted assistant proposals when the acceptance is exact user evidence', async () => {
@@ -466,8 +481,8 @@ describe('episodic memory entries', () => {
 			object: {
 				entries: [
 					extractedEntry(
-						'The user prefers narrow regression tests around real input shape.',
-						'Yes, use narrow regression tests around real input shape going forward.',
+						'The routing miss was caused by tier=enterprise_plus being emitted while the matcher expected tier=enterprise-plus.',
+						'Yes, updating the matcher to accept both tier=enterprise_plus and tier=enterprise-plus fixed the routing miss.',
 						'user_accepted_assistant_proposal',
 					),
 				],
@@ -483,13 +498,13 @@ describe('episodic memory entries', () => {
 			threadId: 'thread-1',
 			persistence: { threadId: 'thread-1', agentId: 'agent-1', resourceId: 'user-1' },
 			messages: [
-				makeUserMessage('What testing approach should we use?', 'user-1'),
+				makeUserMessage('Why did the priority item miss routing?', 'user-1'),
 				makeAssistantMessage(
-					'I suggest narrow regression tests around real input shape.',
+					'The source may emit tier=enterprise_plus while the matcher expects tier=enterprise-plus.',
 					'assistant-1',
 				),
 				makeUserMessage(
-					'Yes, use narrow regression tests around real input shape going forward.',
+					'Yes, updating the matcher to accept both tier=enterprise_plus and tier=enterprise-plus fixed the routing miss.',
 					'user-2',
 				),
 			],
@@ -498,11 +513,11 @@ describe('episodic memory entries', () => {
 
 		const stored = await memory.searchEpisodicMemoryEntries(
 			{ agentId: 'agent-1', resourceId: 'user-1' },
-			'regression tests',
+			'routing miss',
 			{ topK: 5, queryEmbedding: [1, 0] },
 		);
 		expect(stored.map((entry) => entry.content)).toEqual([
-			'The user prefers narrow regression tests around real input shape.',
+			'The routing miss was caused by tier=enterprise_plus being emitted while the matcher expected tier=enterprise-plus.',
 		]);
 	});
 
