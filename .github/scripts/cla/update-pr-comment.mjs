@@ -29,7 +29,12 @@ export default async function updatePRComment({ github, context }) {
 		issue_number,
 		per_page: 100,
 	});
-	const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+	// Only adopt the comment as ours if it's bot-authored — otherwise a user
+	// who copies our marker into their own comment would either hijack the
+	// thread or make updateComment 403 with insufficient permissions.
+	const existing = comments.find(
+		(c) => c.body && c.body.includes(MARKER) && c.user && c.user.type === 'Bot',
+	);
 
 	let body;
 	if (allSigned) {

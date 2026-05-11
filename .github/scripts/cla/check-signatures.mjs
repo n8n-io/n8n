@@ -37,7 +37,11 @@ export default async function checkSignatures ({ github, context, core }) {
 	 */
 	const collect = (commits) => {
 		for (const c of commits) {
-			if (c.author && c.author.login && c.author.type !== 'Bot') {
+			// Bot-authored commits don't need a CLA; skip before the linked/unlinked split
+			// so they don't fall through to `unlinkedCommits` and fail `all_signed`.
+			if (c.author && c.author.type === 'Bot') continue;
+
+			if (c.author && c.author.login) {
 				authors.add(c.author.login);
 			} else if (c.commit && c.commit.author) {
 				unlinkedCommits.push({
