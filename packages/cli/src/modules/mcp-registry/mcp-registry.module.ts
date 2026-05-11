@@ -7,6 +7,11 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @BackendModule({ name: 'mcp-registry' })
 export class McpRegistryModule implements ModuleInterface {
+	async init() {
+		const { McpRegistryService } = await import('./registry/mcp-registry.service');
+		await Container.get(McpRegistryService).init();
+	}
+
 	async nodeLoaders() {
 		const { McpRegistryService } = await import('./registry/mcp-registry.service');
 		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader');

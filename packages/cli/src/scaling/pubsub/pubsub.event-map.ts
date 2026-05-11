@@ -28,6 +28,8 @@ export type PubSubCommandMap = {
 
 	'reload-source-control-config': never;
 
+	'reload-mcp-registry': never;
+
 	// #region Community packages
 
 	'community-package-install': {

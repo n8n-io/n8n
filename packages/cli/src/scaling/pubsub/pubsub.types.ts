@@ -63,6 +63,7 @@ export namespace PubSub {
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
+		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
@@ -93,6 +94,7 @@ export namespace PubSub {
 		| Commands.ReloadCredentialsOverwrites
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
+		| Commands.ReloadMcpRegistry
 		| Commands.CancelTestRun
 		| Commands.AgentChatIntegrationChanged
 		| Commands.AgentConfigChanged;
