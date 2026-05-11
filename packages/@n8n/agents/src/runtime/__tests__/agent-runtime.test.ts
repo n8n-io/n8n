@@ -544,7 +544,7 @@ describe('AgentRuntime — memory profiles', () => {
 		streamText.mockReset();
 	});
 
-	it('loads persona and user profiles into the system prompt', async () => {
+	it('loads agent and user profiles into the system prompt', async () => {
 		const memory = new InMemoryMemory();
 		await memory.saveMemoryProfile(
 			{ scopeKind: 'agent', scopeId: 'agent-1' },
@@ -573,7 +573,7 @@ describe('AgentRuntime — memory profiles', () => {
 		expect(prompt).toContain('<memory_blocks>');
 		expect(prompt).toContain('When debugging, ask for the exact version before suggesting fixes.');
 		expect(prompt).toContain('The user prefers concise answers.');
-		expect(prompt.indexOf('<persona>')).toBeLessThan(prompt.indexOf('<user>'));
+		expect(prompt.indexOf('<agent-profile>')).toBeLessThan(prompt.indexOf('<user-profile>'));
 		expect(prompt).not.toContain('<memory>');
 	});
 });

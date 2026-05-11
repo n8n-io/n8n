@@ -136,7 +136,7 @@ export class Memory {
 		return this;
 	}
 
-	/** Enable mutable persona and user memory profiles. */
+	/** Enable mutable agent and user memory profiles. */
 	profiles(config: MemoryProfilesConfig = {}): this {
 		if (config.enabled === false) {
 			this.profilesConfig = undefined;

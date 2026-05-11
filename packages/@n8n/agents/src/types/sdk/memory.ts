@@ -154,7 +154,7 @@ export interface MemoryProfilesConfig {
 	enabled?: boolean;
 	/**
 	 * Non-secret context about the agent used only by profile-update prompts to
-	 * decide what belongs in the agent-scoped persona profile.
+	 * decide what belongs in the agent-scoped agent profile.
 	 */
 	agentDescription?: string;
 	/** Override the default prompt templates. */

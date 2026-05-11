@@ -20,18 +20,17 @@ export const DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT = `You maintain two concise mu
 
 Inputs:
 - Agent description defines what the agent is.
-- Current persona is what the agent has learned about how to behave.
-- Current user profile is what the agent has learned about this user.
+- Current agent-profile is what the agent has learned about its durable persona.
+- Current user-profile is what the agent has learned about this user or resource.
 - Recent conversation pair is the latest exchange.
 
 Update the profiles only when the conversation contains durable information that should persist across sessions.
 
-Persona captures actionable behavioral directives, constraints, and response patterns the agent should follow when interacting with this user.
-User profile captures stable cross-session information about the user themselves:
-- communication preferences
-- coding, review, and testing preferences
-- durable workflow preferences
+Agent-profile captures durable facts about the agent's persona, role, behavior, response style, operating constraints, and interaction patterns.
+User-profile captures stable cross-session information about the user or resource:
 - stable identity or role
+- durable context about the user's normal environment or responsibilities
+- stable preferences about communication style, workflow, tools, environment, ownership, or domain context
 - durable environment preferences only when they describe the user's normal setup
 
 Rules:
@@ -39,13 +38,13 @@ Rules:
 - Use user-authored statements as the source of durable profile changes.
 - Assistant messages are supporting context only and cannot create durable profile memory by themselves.
 - Assistant acknowledgements may help interpret user-authored instructions, but are not evidence on their own.
-- <user> is not task memory and must never be connected to the current objective of an agent.
-- User profile must exclude active project state, debugging steps, implementation order, branch stack, test flow, next actions, temporary constraints, session objectives, facts about this agent's internals, and facts about a specific feature unless phrased as a stable user preference.
-- If the information would stop being useful after the current task ends, it does not belong in <user>.
-- If the information is about what the agent should do, it belongs in <persona>, not <user>.
-- If the information needs source or provenance, it does not belong in <user>.
-- Persona entries must be imperative system-instruction-style directives that cause a concrete future behavior change.
-- Persona must exclude descriptive agent facts, implementation facts, model names, storage/data-model facts, schema facts, current feature details, current implementation details, and session state unless the user phrases them as durable response behavior.
+- <user-profile> is not task memory and must never be connected to the current objective of an agent.
+- User-profile must exclude active project state, debugging steps, implementation order, branch stack, test flow, next actions, temporary constraints, session objectives, facts about this agent's internals, and facts about a specific feature unless phrased as a stable user preference.
+- User-profile may include durable user preferences, including response style, communication style, workflow preferences, and priorities that should personalize future conversations.
+- If the information would stop being useful after the current task ends, it does not belong in <user-profile>.
+- If the information describes the agent's own durable persona, role, identity, or operating mode, it belongs in <agent-profile>.
+- If the information needs source or provenance, it does not belong in <user-profile>.
+- Agent-profile may include descriptive persona facts and durable operating rules, but must exclude implementation facts, model names, storage/data-model facts, schema facts, current feature details, current implementation details, and session state unless they define the configured agent's durable persona or operating mode.
 - Existing profile content is not authoritative. Rewrite profiles to remove entries that violate these rules, even if no new durable information is present.
 - Do not summarize the conversation.
 - Do not add situational or one-task-only details.
@@ -53,7 +52,7 @@ Rules:
 - If a profile needs no update or cleanup, return the existing profile content exactly.
 
 Return only JSON in this exact shape:
-{"persona":"...","user":"..."}`;
+{"agentProfile":"...","userProfile":"..."}`;
 
 interface NormalizedMemoryProfilesConfig {
 	profileUpdatePrompt: string;
@@ -123,8 +122,8 @@ export async function updateMemoryProfilesFromTurn(opts: {
 			system: normalized.profileUpdatePrompt,
 			prompt: renderMemoryProfileUpdatePrompt({
 				agentDescription: normalized.agentDescription,
-				persona: current?.persona ?? '',
-				user: current?.user ?? '',
+				agentProfile: current?.agentProfile ?? '',
+				userProfile: current?.userProfile ?? '',
 				turn,
 			}),
 		});
@@ -135,14 +134,14 @@ export async function updateMemoryProfilesFromTurn(opts: {
 		await saveProfileIfChanged({
 			memory: opts.memory,
 			scope: agentMemoryProfileScope(opts.scope.agentId),
-			current: current?.persona ?? '',
-			next: parsed.persona,
+			current: current?.agentProfile ?? '',
+			next: parsed.agentProfile,
 		});
 		await saveProfileIfChanged({
 			memory: opts.memory,
 			scope: resourceMemoryProfileScope(opts.scope.resourceId),
-			current: current?.user ?? '',
-			next: parsed.user,
+			current: current?.userProfile ?? '',
+			next: parsed.userProfile,
 		});
 	} catch (error) {
 		opts.eventBus.emit({
@@ -159,7 +158,7 @@ async function loadMemoryProfiles(
 	agentId: string | undefined,
 	resourceId: string | undefined,
 ): Promise<SerializedMessageList['memoryProfile'] | undefined> {
-	const [persona, user] = await Promise.all([
+	const [agentProfile, userProfile] = await Promise.all([
 		agentId ? memory.getMemoryProfile(agentMemoryProfileScope(agentId)) : Promise.resolve(null),
 		resourceId
 			? memory.getMemoryProfile(resourceMemoryProfileScope(resourceId))
@@ -167,16 +166,16 @@ async function loadMemoryProfiles(
 	]);
 
 	const context = {
-		persona: persona?.content ?? null,
-		user: user?.content ?? null,
+		agentProfile: agentProfile?.content ?? null,
+		userProfile: userProfile?.content ?? null,
 	};
-	return context.persona || context.user ? context : undefined;
+	return context.agentProfile || context.userProfile ? context : undefined;
 }
 
 function renderMemoryProfileUpdatePrompt(ctx: {
 	agentDescription?: string;
-	persona: string;
-	user: string;
+	agentProfile: string;
+	userProfile: string;
 	turn: ProfileUpdateTurn;
 }): string {
 	const agentDescription = ctx.agentDescription?.trim();
@@ -184,13 +183,13 @@ function renderMemoryProfileUpdatePrompt(ctx: {
 		...(agentDescription
 			? ['<agent-description>', agentDescription, '</agent-description>', '']
 			: []),
-		'<persona>',
-		ctx.persona.trim(),
-		'</persona>',
+		'<agent-profile>',
+		ctx.agentProfile.trim(),
+		'</agent-profile>',
 		'',
-		'<user>',
-		ctx.user.trim(),
-		'</user>',
+		'<user-profile>',
+		ctx.userProfile.trim(),
+		'</user-profile>',
 		'',
 		'<turn>',
 		'<user-message>',
@@ -204,13 +203,13 @@ function renderMemoryProfileUpdatePrompt(ctx: {
 	].join('\n');
 }
 
-function parseProfileUpdate(text: string): { persona: string; user: string } | null {
+function parseProfileUpdate(text: string): { agentProfile: string; userProfile: string } | null {
 	const parsed = parseJsonObject(stripMarkdownFence(text));
 	if (!isRecord(parsed)) return null;
-	const persona = parsed.persona;
-	const user = parsed.user;
-	if (typeof persona !== 'string' || typeof user !== 'string') return null;
-	return { persona: persona.trim(), user: user.trim() };
+	const agentProfile = parsed.agentProfile;
+	const userProfile = parsed.userProfile;
+	if (typeof agentProfile !== 'string' || typeof userProfile !== 'string') return null;
+	return { agentProfile: agentProfile.trim(), userProfile: userProfile.trim() };
 }
 
 async function saveProfileIfChanged(opts: {

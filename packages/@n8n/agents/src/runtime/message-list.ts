@@ -24,8 +24,8 @@ export interface WorkingMemoryContext {
 }
 
 export interface MemoryProfileContext {
-	persona?: string | null;
-	user?: string | null;
+	agentProfile?: string | null;
+	userProfile?: string | null;
 }
 
 /**
@@ -223,30 +223,30 @@ export class AgentMessageList {
 		let systemPrompt = baseInstructions;
 		const memoryBlocks: string[] = [];
 
-		const persona = this.memoryProfile?.persona?.trim();
-		if (persona) {
+		const agentProfile = this.memoryProfile?.agentProfile?.trim();
+		if (agentProfile) {
 			memoryBlocks.push(
 				[
-					'<persona>',
-					'<description>Durable behavior rules this agent should follow with this user.</description>',
+					'<agent-profile>',
+					'<description>Durable persona, role, and operating style for this agent.</description>',
 					'<value>',
-					persona,
+					agentProfile,
 					'</value>',
-					'</persona>',
+					'</agent-profile>',
 				].join('\n'),
 			);
 		}
 
-		const user = this.memoryProfile?.user?.trim();
-		if (user) {
+		const userProfile = this.memoryProfile?.userProfile?.trim();
+		if (userProfile) {
 			memoryBlocks.push(
 				[
-					'<user>',
-					'<description>Stable user preferences and context shared across agents.</description>',
+					'<user-profile>',
+					'<description>Stable facts and preferences about the user or resource.</description>',
 					'<value>',
-					user,
+					userProfile,
 					'</value>',
-					'</user>',
+					'</user-profile>',
 				].join('\n'),
 			);
 		}
