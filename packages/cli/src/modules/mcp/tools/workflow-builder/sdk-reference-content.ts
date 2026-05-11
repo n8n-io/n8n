@@ -41,6 +41,8 @@ const DESIGN_GUIDANCE = `Design guidance:
 - **Trace item counts**: For each connection A → B, if A returns N items, should B run N times or just once? If B doesn't need A's items (e.g., it fetches from an independent source), either set \`executeOnce: true\` on B or use parallel branches + Merge to combine results.
 - **Handling convergence after branches**: When a node receives data from multiple paths (after Switch, IF, Merge): use optional chaining \`expr('{{ $json.data?.approved ?? $json.status }}')\`, reference a node that ALWAYS runs \`expr("{{ $('Webhook').item.json.field }}")\`, or normalize data before convergence with Set nodes.
 - **Prefer dedicated integration nodes** over HTTP Request when search results show one is available.
+- **Normalize webhook payloads immediately**: Webhook data often appears under \`body\`, but clients and tests may provide fields directly on \`$json\`. Add a Set node after the webhook that uses optional chaining and defaults, e.g. \`expr('{{ $json.body?.name ?? $json.name ?? "there" }}')\`, \`expr('{{ $json.body?.email ?? $json.email ?? "" }}')\`, and \`expr('{{ $json.body?.message ?? $json.message ?? "" }}')\`.
+- **Fan out independent side effects**: For workflows that send email, notify chat, write to storage, and respond to a webhook, branch all side-effect nodes from normalized data instead of chaining them. Set \`onError: 'continueRegularOutput'\` on independent external action nodes when one failed action should not block the others.
 - **Pay attention to @builderHint annotations** in the type definitions — they provide critical guidance on how to correctly configure node parameters.`;
 
 /**
