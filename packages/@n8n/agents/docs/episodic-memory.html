@@ -3,526 +3,442 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Episodic Case Memory</title>
+	<title>Case memory</title>
 	<style>
 		:root {
 			color-scheme: light;
-			--paper: #f3efe4;
-			--paper-2: #fffaf0;
-			--ink: #171512;
-			--muted: #625d51;
-			--line: #262016;
-			--grid: rgba(23, 21, 18, 0.08);
-			--read: #1b74b7;
-			--read-soft: #dcecf7;
-			--write: #178f61;
-			--write-soft: #d9f4e4;
-			--scope: #8d5a09;
-			--scope-soft: #f3e2bd;
-			--fail: #c64234;
-			--fail-soft: #f6ddd8;
-			--neutral: #e8dfcb;
-			--shadow: 0 16px 40px rgba(35, 27, 15, 0.14);
+			--color-primary: #ff6d5a;
+			--color-primary-soft: #fff1ef;
+			--color-text: #1f2937;
+			--color-text-light: #6b7280;
+			--color-text-xlight: #9ca3af;
+			--color-border: #d9dee8;
+			--color-border-light: #edf0f5;
+			--color-background: #f6f7fb;
+			--color-surface: #ffffff;
+			--color-code: #f3f5f8;
+			--shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
 			--radius: 8px;
 			--mono: "SFMono-Regular", "Cascadia Mono", "Liberation Mono", Menlo, monospace;
-			--sans: Optima, Candara, "Avenir Next", "Segoe UI", sans-serif;
+			--sans: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 		}
 
 		* { box-sizing: border-box; }
 		html { scroll-behavior: smooth; }
 		body {
 			margin: 0;
-			min-width: 320px;
-			background:
-				linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-				linear-gradient(0deg, var(--grid) 1px, transparent 1px),
-				radial-gradient(circle at 18% 8%, rgba(255, 196, 81, 0.22), transparent 26rem),
-				radial-gradient(circle at 82% 18%, rgba(27, 116, 183, 0.16), transparent 28rem),
-				var(--paper);
-			background-size: 28px 28px, 28px 28px, auto, auto, auto;
-			color: var(--ink);
+			background: var(--color-background);
+			color: var(--color-text);
 			font-family: var(--sans);
-			line-height: 1.45;
+			font-size: 14px;
+			line-height: 1.55;
 		}
 
+		a { color: var(--color-primary); text-decoration: none; }
+		a:hover { text-decoration: underline; }
 		code, pre { font-family: var(--mono); }
-		code { font-size: 0.92em; }
+		code {
+			padding: 2px 5px;
+			border: 1px solid var(--color-border-light);
+			border-radius: 4px;
+			background: var(--color-code);
+			font-size: 0.9em;
+		}
 		pre {
 			margin: 0;
 			overflow: auto;
 			white-space: pre-wrap;
+			padding: 14px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: var(--color-code);
 			font-size: 12px;
-			line-height: 1.5;
+			line-height: 1.55;
 		}
 
 		.shell {
-			width: min(1520px, calc(100vw - 32px));
-			margin: 0 auto;
-			padding: 28px 0 44px;
-		}
-
-		.header {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-columns: 248px minmax(0, 1fr);
 			gap: 24px;
-			align-items: end;
-			padding: 24px 0 20px;
-			border-bottom: 3px solid var(--line);
+			width: min(1180px, calc(100vw - 32px));
+			margin: 0 auto;
+			padding: 32px 0 56px;
 		}
 
-		.kicker {
-			display: inline-flex;
-			width: fit-content;
-			margin-bottom: 10px;
-			padding: 4px 8px;
-			border: 1px solid var(--line);
-			background: var(--scope-soft);
-			font-family: var(--mono);
-			font-size: 12px;
+		.sidebar {
+			position: sticky;
+			top: 24px;
+			align-self: start;
+			padding: 16px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: var(--color-surface);
+			box-shadow: var(--shadow);
+		}
+
+		.logo {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 18px;
 			font-weight: 700;
-			text-transform: uppercase;
 		}
-
-		h1 {
-			margin: 0;
-			font-family: Didot, "Bodoni 72", Georgia, serif;
-			font-size: clamp(44px, 7vw, 108px);
-			font-weight: 700;
-			line-height: 0.9;
-		}
-
-		.header p {
-			max-width: 860px;
-			margin: 14px 0 0;
-			color: var(--muted);
-			font-size: 18px;
+		.logo-mark {
+			width: 20px;
+			height: 20px;
+			border-radius: 5px;
+			background: var(--color-primary);
 		}
 
 		.nav {
 			display: grid;
-			gap: 8px;
-			min-width: 300px;
-			padding: 12px;
-			border: 2px solid var(--line);
-			background: var(--paper-2);
-			box-shadow: var(--shadow);
+			gap: 4px;
 		}
-
 		.nav a {
-			color: var(--ink);
-			font-family: var(--mono);
-			font-size: 12px;
-			font-weight: 700;
+			padding: 7px 8px;
+			border-radius: 6px;
+			color: var(--color-text-light);
+			font-size: 13px;
+		}
+		.nav a:hover {
+			background: var(--color-primary-soft);
+			color: var(--color-text);
 			text-decoration: none;
 		}
 
-		.nav a:hover { text-decoration: underline; }
-
-		.controls {
-			position: sticky;
-			top: 0;
-			z-index: 5;
-			display: flex;
-			flex-wrap: wrap;
-			gap: 8px;
-			align-items: center;
-			margin: 16px 0;
-			padding: 10px;
-			border: 2px solid var(--line);
-			background: rgba(255, 250, 240, 0.94);
-		}
-
-		.controls strong {
-			margin-right: 6px;
-			font-family: var(--mono);
-			font-size: 12px;
-			text-transform: uppercase;
-		}
-
-		label.toggle {
-			display: inline-flex;
-			gap: 6px;
-			align-items: center;
-			padding: 6px 8px;
-			border: 1px solid var(--line);
-			background: var(--neutral);
-			font-family: var(--mono);
-			font-size: 12px;
-			font-weight: 700;
-			cursor: pointer;
-		}
-
-		.main-grid {
+		main {
 			display: grid;
-			grid-template-columns: minmax(0, 2fr) minmax(330px, 0.9fr);
 			gap: 18px;
-			align-items: start;
+			min-width: 0;
 		}
 
-		.panel {
-			border: 2px solid var(--line);
-			background: rgba(255, 250, 240, 0.9);
+		.hero,
+		.card {
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: var(--color-surface);
 			box-shadow: var(--shadow);
 		}
 
-		.panel-header {
-			display: flex;
-			justify-content: space-between;
-			gap: 12px;
-			align-items: center;
-			padding: 12px 14px;
-			border-bottom: 2px solid var(--line);
-			background: var(--neutral);
-		}
-
-		.panel-header h2,
-		.card h3 {
-			margin: 0;
-			font-family: var(--mono);
-			font-size: 13px;
-			text-transform: uppercase;
-		}
-
-		.panel-body { padding: 14px; }
-
-		.flow {
-			position: relative;
-			display: grid;
-			grid-template-columns: repeat(4, minmax(180px, 1fr));
-			gap: 20px;
-			min-height: 520px;
-		}
-
-		.node {
-			position: relative;
-			z-index: 2;
-			min-height: 118px;
-			padding: 12px;
-			border: 2px solid var(--line);
-			background: var(--paper-2);
-		}
-
-		.node.read { background: var(--read-soft); }
-		.node.write { background: var(--write-soft); }
-		.node.scope { background: var(--scope-soft); }
-		.node.fail { background: var(--fail-soft); }
-		.node h3 {
-			margin: 0 0 8px;
-			font-family: var(--mono);
+		.hero { padding: 28px; }
+		.kicker {
+			margin: 0 0 10px;
+			color: var(--color-primary);
 			font-size: 12px;
+			font-weight: 700;
+			letter-spacing: 0.02em;
 			text-transform: uppercase;
 		}
-		.node p { margin: 0; color: var(--muted); font-size: 14px; }
-
-		.connector {
-			position: absolute;
-			inset: 0;
-			width: 100%;
-			height: 100%;
-			pointer-events: none;
-			z-index: 1;
+		h1 {
+			margin: 0;
+			font-size: clamp(32px, 5vw, 56px);
+			line-height: 1;
+			letter-spacing: 0;
+		}
+		.lede {
+			max-width: 760px;
+			margin: 16px 0 0;
+			color: var(--color-text-light);
+			font-size: 16px;
 		}
 
-		.connector path {
-			fill: none;
-			stroke: var(--line);
-			stroke-width: 2;
-			stroke-dasharray: 0;
-			stroke-linecap: round;
+		.card { padding: 22px; }
+		h2 {
+			margin: 0 0 12px;
+			font-size: 20px;
+			line-height: 1.25;
 		}
-
-		.connector text {
-			display: none;
+		h3 {
+			margin: 0 0 8px;
+			font-size: 14px;
+			line-height: 1.35;
 		}
+		p { margin: 0 0 12px; color: var(--color-text-light); }
+		p:last-child { margin-bottom: 0; }
+		ul, ol { margin: 0; padding-left: 18px; color: var(--color-text-light); }
+		li + li { margin-top: 6px; }
 
-		body:not(.show-read) [data-path="read"],
-		body:not(.show-write) [data-path="write"],
-		body:not(.show-scope) [data-path="scope"],
-		body:not(.show-fail) [data-path="fail"] {
-			opacity: 0.18;
-		}
-
-		.stack {
+		.summary-grid,
+		.detail-grid {
 			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 			gap: 14px;
 		}
-
-		.card {
-			border: 2px solid var(--line);
-			background: var(--paper-2);
+		.stat,
+		.block {
+			padding: 14px;
+			border: 1px solid var(--color-border-light);
+			border-radius: var(--radius);
+			background: #fbfcfe;
 		}
-
-		.card h3 {
-			padding: 10px 12px;
-			border-bottom: 2px solid var(--line);
-			background: var(--neutral);
+		.stat strong,
+		.block strong {
+			display: block;
+			margin-bottom: 4px;
+			color: var(--color-text);
 		}
+		.stat span,
+		.block span { color: var(--color-text-light); }
 
-		.card .content { padding: 12px; }
-
-		.list {
+		.flow {
 			display: grid;
-			gap: 8px;
-			margin: 0;
-			padding: 0;
-			list-style: none;
-		}
-
-		.list li {
-			display: grid;
-			grid-template-columns: minmax(110px, 0.35fr) minmax(0, 1fr);
-			gap: 10px;
-			padding: 8px 0;
-			border-bottom: 1px solid rgba(38, 32, 22, 0.18);
-		}
-
-		.list li:last-child { border-bottom: 0; }
-		.list strong { font-family: var(--mono); font-size: 12px; }
-		.list span { color: var(--muted); }
-
-		.callouts {
-			display: grid;
-			grid-template-columns: repeat(4, minmax(0, 1fr));
+			grid-template-columns: repeat(5, minmax(0, 1fr));
 			gap: 12px;
-			margin-top: 18px;
+			margin-top: 8px;
+		}
+		.step {
+			position: relative;
+			padding: 14px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius);
+			background: #fbfcfe;
+		}
+		.step::after {
+			content: "";
+			position: absolute;
+			top: 50%;
+			right: -9px;
+			width: 6px;
+			height: 6px;
+			border-top: 1.5px solid var(--color-text-xlight);
+			border-right: 1.5px solid var(--color-text-xlight);
+			transform: translateY(-50%) rotate(45deg);
+		}
+		.step:last-child::after { display: none; }
+		.step-number {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 22px;
+			height: 22px;
+			margin-bottom: 10px;
+			border-radius: 50%;
+			background: var(--color-primary-soft);
+			color: var(--color-primary);
+			font-size: 12px;
+			font-weight: 700;
 		}
 
 		.callout {
-			padding: 12px;
-			border: 2px solid var(--line);
-			background: var(--paper-2);
+			padding: 14px;
+			border: 1px solid #ffd5ce;
+			border-radius: var(--radius);
+			background: var(--color-primary-soft);
+			color: var(--color-text);
+		}
+		.callout p { color: var(--color-text); }
+
+		@media (max-width: 1000px) {
+			.flow {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+			}
+			.step::after { display: none; }
 		}
 
-		.callout.read { background: var(--read-soft); }
-		.callout.write { background: var(--write-soft); }
-		.callout.scope { background: var(--scope-soft); }
-		.callout.fail { background: var(--fail-soft); }
-		.callout strong {
-			display: block;
-			margin-bottom: 6px;
-			font-family: var(--mono);
-			font-size: 12px;
-			text-transform: uppercase;
-		}
-		.callout p { margin: 0; color: var(--muted); font-size: 14px; }
-
-		.code-panel {
-			border: 2px solid var(--line);
-			background: #15130f;
-			color: #fff7e6;
-		}
-
-		.code-panel h3 {
-			padding: 10px 12px;
-			border-bottom: 1px solid rgba(255, 247, 230, 0.25);
-			background: #211d16;
-			color: #fff7e6;
-		}
-
-		.code-panel pre { padding: 12px; }
-
-		@media (max-width: 1100px) {
-			.header,
-			.main-grid,
-			.callouts {
+		@media (max-width: 900px) {
+			.shell {
 				grid-template-columns: 1fr;
 			}
-			.nav { min-width: 0; }
-			.flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-		}
-
-		@media (max-width: 680px) {
-			.shell { width: min(100vw - 20px, 1520px); }
-			.flow { grid-template-columns: 1fr; }
-			.connector { display: none; }
-			.list li { grid-template-columns: 1fr; }
+			.sidebar {
+				position: static;
+			}
+			.summary-grid,
+			.detail-grid,
+			.flow {
+				grid-template-columns: 1fr;
+			}
 		}
 	</style>
 </head>
-<body class="show-read show-write show-scope show-fail">
+<body>
 	<div class="shell">
-		<header class="header">
-			<div>
-				<div class="kicker">SDK episodic memory / product Case memory</div>
-				<h1>Episodic Case Memory</h1>
-				<p>
-					Embedding-backed source memory for previous cases. It stores case-shaped entries,
-					injects relevant entries into <code>&lt;memory&gt;</code>, and keeps <code>recall_memory</code>
-					available for deliberate lookup.
-				</p>
-			</div>
-			<nav class="nav" aria-label="Memory docs">
-				<a href="memory-stack.html">Open core memory stack doc</a>
-				<a href="#flow">Jump to runtime flow</a>
-				<a href="#schema">Jump to storage schema</a>
+		<aside class="sidebar" aria-label="Document navigation">
+			<div class="logo"><span class="logo-mark"></span> n8n agents</div>
+			<nav class="nav">
+				<a href="#overview">Overview</a>
+				<a href="#runtime">Runtime flow</a>
+				<a href="#entries">Entry shape</a>
+				<a href="#retrieval">Retrieval</a>
+				<a href="#config">Config</a>
+				<a href="#boundaries">Boundaries</a>
+				<a href="memory-stack.html">Memory stack doc</a>
 			</nav>
-		</header>
+		</aside>
 
-		<section class="controls" aria-label="Diagram filters">
-			<strong>Show</strong>
-			<label class="toggle"><input type="checkbox" data-toggle="read" checked /> read path</label>
-			<label class="toggle"><input type="checkbox" data-toggle="write" checked /> write path</label>
-			<label class="toggle"><input type="checkbox" data-toggle="scope" checked /> scope</label>
-			<label class="toggle"><input type="checkbox" data-toggle="fail" checked /> non-blocking failures</label>
-		</section>
+		<main>
+			<header class="hero" id="overview">
+				<p class="kicker">Case memory</p>
+				<h1>Episodic memory</h1>
+				<p class="lede">
+					Case memory is the embedding-backed memory layer for source-backed entries from previous threads. It helps an agent recognize similar cases without mixing case evidence into the user profile or session memory.
+				</p>
+			</header>
 
-		<main class="main-grid">
-			<section class="panel" id="flow">
-				<div class="panel-header">
-					<h2>Runtime Flow</h2>
-					<code>memory.episodicMemory</code>
-				</div>
-				<div class="panel-body">
-					<div class="flow">
-						<svg class="connector" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">
-							<defs>
-								<marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-									<path d="M0,0 L8,4 L0,8 Z" fill="#262016"></path>
-								</marker>
-							</defs>
-							<path data-path="read" d="M235 72 L255 72" marker-end="url(#arrow)"></path>
-							<path data-path="read" d="M490 72 L510 72" marker-end="url(#arrow)"></path>
-							<path data-path="read" d="M745 72 L765 72" marker-end="url(#arrow)"></path>
-							<path data-path="write" d="M235 222 L255 222" marker-end="url(#arrow)"></path>
-							<path data-path="write" d="M490 222 L510 222" marker-end="url(#arrow)"></path>
-							<path data-path="fail" d="M745 222 L765 222" marker-end="url(#arrow)"></path>
-						</svg>
-
-						<article class="node scope" data-path="scope">
-							<h3>Config + Credential</h3>
-							<p><code>memory.episodicMemory</code> enables Case memory. n8n resolves embedding credentials through stored n8n credentials, not environment variables.</p>
-						</article>
-						<article class="node read" data-path="read">
-							<h3>Pre-Turn Search</h3>
-							<p>The runtime embeds the current user message, searches scoped entries, and selects up to <code>autoInjectTopK</code> entries.</p>
-						</article>
-						<article class="node read" data-path="read">
-							<h3>&lt;memory&gt; Injection</h3>
-							<p>Relevant case entries are injected most-recent-first before the LLM call. <code>recall_memory</code> remains available for deeper lookup.</p>
-						</article>
-						<article class="node read" data-path="read">
-							<h3>Agent Turn</h3>
-							<p>The model answers using injected entries and may call <code>recall_memory(query)</code> when the injected context is insufficient.</p>
-						</article>
-						<article class="node write" data-path="write">
-							<h3>Case Extractor</h3>
-							<p>After a successful turn, extraction creates source-backed case entries from user evidence and accepted assistant proposals.</p>
-						</article>
-						<article class="node write" data-path="write">
-							<h3>Validate + Dedupe</h3>
-							<p>Evidence must cite user-authored text. Exact hash dedupe and <code>dedupeSimilarityThreshold</code> reduce repeated entries.</p>
-						</article>
-						<article class="node write" data-path="write">
-							<h3>Embed + Store</h3>
-							<p>Accepted entries are embedded and stored in <code>agents_memory_entries</code> with source thread/message metadata.</p>
-						</article>
-						<article class="node fail" data-path="fail">
-							<h3>Non-Blocking Errors</h3>
-							<p>Extraction, JSON, embedding, and storage errors emit <code>AgentEvent.Error</code> and do not fail the visible response.</p>
-						</article>
+			<section class="card">
+				<div class="summary-grid">
+					<div class="stat">
+						<strong>Product name</strong>
+						<span>Case memory in the Agents Memory panel.</span>
+					</div>
+					<div class="stat">
+						<strong>SDK/config name</strong>
+						<span><code>Memory.episodicMemory(...)</code> and <code>memory.episodicMemory</code>.</span>
+					</div>
+					<div class="stat">
+						<strong>Storage</strong>
+						<span><code>agents_memory_entries</code>, scoped by <code>agentId + resourceId</code>.</span>
+					</div>
+					<div class="stat">
+						<strong>Requires</strong>
+						<span>An OpenAI credential in n8n for <code>openai/text-embedding-3-small</code>.</span>
 					</div>
 				</div>
 			</section>
 
-			<aside class="stack">
-				<section class="card">
-					<h3>Purpose</h3>
-					<div class="content">
-						<ul class="list">
-							<li><strong>Stores</strong><span>Case-shaped notes: situation, diagnostic relationship, outcome or open state.</span></li>
-							<li><strong>Skips</strong><span>User preferences, persona rules, and current-thread objectives.</span></li>
-							<li><strong>Retrieves</strong><span>Lexical/vector ranked entries scoped to the current agent and user/resource.</span></li>
+			<section class="card" id="runtime">
+				<h2>Runtime flow</h2>
+				<p>Case memory has a read path before the model call and a write path after successful turns.</p>
+				<div class="flow" aria-label="Case memory runtime flow">
+					<div class="step">
+						<span class="step-number">1</span>
+						<h3>Configure</h3>
+						<p>Enable <code>memory.episodicMemory</code> with an OpenAI credential.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">2</span>
+						<h3>Retrieve</h3>
+						<p>Embed the current user message and search entries in the same <code>agentId + resourceId</code> scope.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">3</span>
+						<h3>Inject</h3>
+						<p>Surface top entries in the model prompt as <code>&lt;memory&gt;</code>.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">4</span>
+						<h3>Answer</h3>
+						<p>The model can use injected entries or call <code>recall_memory</code> for a deliberate lookup.</p>
+					</div>
+					<div class="step">
+						<span class="step-number">5</span>
+						<h3>Extract</h3>
+						<p>After the turn, extract, validate, dedupe, embed, and store new case entries.</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="card" id="entries">
+				<h2>Entry shape</h2>
+				<p>Case entries are compact notes about concrete situations. They should preserve the useful mechanism, not just an isolated statement.</p>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>What belongs here</strong>
+						<ul>
+							<li>Symptoms, environment details, and troubleshooting context.</li>
+							<li>Causal mappings and directionality, such as which record held state and which record was checked.</li>
+							<li>Mismatched identifiers or values, such as producer value versus matcher expectation.</li>
+							<li>Assistant diagnostic findings, confirmed resolutions, outcomes, and open case state.</li>
 						</ul>
 					</div>
-				</section>
-
-				<section class="card" id="schema">
-					<h3>agents_memory_entries</h3>
-					<div class="content">
-						<ul class="list">
-							<li><strong>agentId</strong><span>Agent scope for this case entry.</span></li>
-							<li><strong>resourceId</strong><span>User/resource scope. In n8n this maps to the current user/resource id.</span></li>
-							<li><strong>content</strong><span>Case memory entry text.</span></li>
-							<li><strong>contentHash</strong><span>Exact normalized dedupe key.</span></li>
-							<li><strong>sourceThreadId</strong><span>Thread where the entry was established.</span></li>
-							<li><strong>sourceMessageId</strong><span>User evidence message where possible.</span></li>
-							<li><strong>embedding</strong><span>Stored vector for scoped retrieval. Not exposed to the model.</span></li>
-							<li><strong>embeddingModel</strong><span>Non-secret model identifier for inspection.</span></li>
+					<div class="block">
+						<strong>What stays out</strong>
+						<ul>
+							<li>Stable user preferences and profile-shaped context.</li>
+							<li>Agent behavior rules or rewritten agent instructions.</li>
+							<li>Current-thread objectives that only belong in session memory.</li>
+							<li>Generic advice, recalled-memory restatements, or unsupported speculation.</li>
 						</ul>
 					</div>
-				</section>
+				</div>
+				<pre>{
+  "entries": [
+    {
+      "content": "A workspace stayed inactive after renewal because record A held the active subscription while record B was used for entitlement checks. Merging the records and refreshing derived entitlements resolved the lockout.",
+      "source": "assistant_finding",
+      "evidence": "The active subscription is on record A, but entitlement checks are reading record B."
+    }
+  ]
+}</pre>
+			</section>
 
-				<section class="code-panel">
-					<h3>Config Shape</h3>
-					<pre><code>{
+			<section class="card" id="retrieval">
+				<h2>Retrieval and injection</h2>
+				<p>The runtime retrieves broadly enough for the current turn, then injects entries most-recent-first so stale case context is less likely to dominate fresh context.</p>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>Default retrieval</strong>
+						<ul>
+							<li><code>autoInject</code> defaults to <code>true</code>.</li>
+							<li><code>autoInjectTopK</code> defaults to <code>12</code>.</li>
+							<li>The current user message is the retrieval query.</li>
+							<li><code>recall_memory(query)</code> remains available for more specific lookups.</li>
+						</ul>
+					</div>
+					<div class="block">
+						<strong>Ranking and dedupe</strong>
+						<ul>
+							<li>Ranking uses lexical and vector signals plus recency weighting.</li>
+							<li>Exact normalized hashes prevent duplicate inserts.</li>
+							<li>Similarity dedupe defaults to <code>dedupeSimilarityThreshold = 0.86</code>.</li>
+							<li>Embedding vectors are never exposed to the frontend.</li>
+						</ul>
+					</div>
+				</div>
+				<pre>&lt;memory&gt;
+&lt;description&gt;Source-backed case entries retrieved from previous threads for this turn.&lt;/description&gt;
+&lt;value&gt;
+- A priority item routed incorrectly because the source emitted tier=enterprise_plus while the matcher expected tier=enterprise-plus. Updating the matcher to accept both variants resolved the case. (2 days ago)
+&lt;/value&gt;
+&lt;/memory&gt;</pre>
+			</section>
+
+			<section class="card" id="config">
+				<h2>Config and storage</h2>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>n8n JSON config</strong>
+						<pre>{
   "memory": {
     "enabled": true,
     "storage": "n8n",
     "episodicMemory": {
       "enabled": true,
-      "credential": "openai-credential-id",
-      "autoInjectTopK": 12,
-      "dedupeSimilarityThreshold": 0.86
+      "credential": "openai-credential-id"
     }
   }
-}</code></pre>
-				</section>
-			</aside>
-		</main>
-
-		<section class="callouts">
-			<div class="callout read">
-				<strong>Case entry shape</strong>
-				<p>Situation + diagnostic mapping + outcome. Preserve directionality like record A holds state while record B is checked.</p>
-			</div>
-			<div class="callout scope">
-				<strong>Scope boundary</strong>
-				<p>Search and write paths are constrained by <code>agentId + resourceId</code>.</p>
-			</div>
-			<div class="callout write">
-				<strong>Not semanticRecall</strong>
-				<p><code>semanticRecall</code> is not a dependency, fallback, or configuration shortcut for Case memory.</p>
-			</div>
-			<div class="callout fail">
-				<strong>Background write</strong>
-				<p>Post-turn extraction runs in the background by default. <code>sync: true</code> is for deterministic tests.</p>
-			</div>
-		</section>
-
-		<section class="panel" style="margin-top: 18px">
-			<div class="panel-header">
-				<h2>Extraction Contract</h2>
-				<code>case-shaped, not atomic</code>
-			</div>
-			<div class="panel-body">
-				<div class="callouts">
-					<div class="callout">
-						<strong>Good entry</strong>
-						<p>A workspace stayed inactive after renewal because record A held the subscription while record B was used for entitlement checks. Merging records and refreshing entitlements resolved it.</p>
+}</pre>
 					</div>
-					<div class="callout">
-						<strong>Good entry</strong>
-						<p>A priority item was routed incorrectly because the source emitted <code>tier=enterprise_plus</code> while the matcher expected <code>tier=enterprise-plus</code>.</p>
-					</div>
-					<div class="callout">
-						<strong>Evidence</strong>
-						<p>Each entry cites exact user-message evidence. Assistant messages are context, not sources.</p>
-					</div>
-					<div class="callout">
-						<strong>Skip</strong>
-						<p>Stable preferences and behavior rules belong to profile memory, not Case memory.</p>
+					<div class="block">
+						<strong>SDK config</strong>
+						<pre>const memory = new Memory()
+  .storage(myMemoryBackend)
+  .profiles()
+  .episodicMemory({
+    embedder,
+    embeddingModel: "openai/text-embedding-3-small",
+  });</pre>
 					</div>
 				</div>
-			</div>
-		</section>
-	</div>
+				<ul>
+					<li><code>agents_memory_entries</code> stores content, content hash, provenance fields, embedding model name, embedding values, metadata, and timestamps.</li>
+					<li>n8n resolves embedding credentials through n8n credentials. Case memory does not read embedding credentials from environment variables.</li>
+					<li><code>semanticRecall</code> is a separate older recall path and is not part of Case memory.</li>
+				</ul>
+			</section>
 
-	<script>
-		for (const checkbox of document.querySelectorAll('[data-toggle]')) {
-			checkbox.addEventListener('change', () => {
-				document.body.classList.toggle(`show-${checkbox.dataset.toggle}`, checkbox.checked);
-			});
-		}
-	</script>
+			<section class="card" id="boundaries">
+				<h2>Boundaries</h2>
+				<div class="callout">
+					<p>Case memory is not the user profile and not session memory. Use <a href="memory-stack.html">the memory stack doc</a> for <code>&lt;user-profile&gt;</code> and <code>&lt;session-memory&gt;</code>.</p>
+				</div>
+				<ul>
+					<li>Read and write scope is fixed to <code>agentId + resourceId</code>.</li>
+					<li>Case memory stores source-backed entries that may be useful in later threads.</li>
+					<li>User-profile memory stores what this agent remembers about the user.</li>
+					<li>Session memory stores the current thread objective, decisions, state, and follow-ups.</li>
+				</ul>
+			</section>
+		</main>
+	</div>
 </body>
 </html>
