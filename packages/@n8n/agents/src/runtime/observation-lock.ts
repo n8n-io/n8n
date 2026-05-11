@@ -23,8 +23,6 @@ export async function withObservationLock<T>(
 		const value = await fn(handle);
 		return { status: 'ran', value };
 	} finally {
-		try {
-			await store.releaseObservationLock(handle);
-		} catch {}
+		await store.releaseObservationLock(handle).catch(() => {});
 	}
 }

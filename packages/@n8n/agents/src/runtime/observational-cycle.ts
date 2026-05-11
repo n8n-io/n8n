@@ -324,7 +324,9 @@ function parseObservationJsonLines(text: string, threadId: string): NewObservati
 				schemaVersion: OBSERVATION_SCHEMA_VERSION,
 				createdAt: now,
 			});
-		} catch {}
+		} catch {
+			continue;
+		}
 	}
 	return rows;
 }
