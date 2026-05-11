@@ -8,16 +8,20 @@ jest.mock('n8n-nodes-base/dist/nodes/Postgres/transport/index', () => ({
 	configurePostgres: jest.fn(),
 }));
 
-// Mock helpers
-jest.mock('@utils/helpers', () => ({
-	logAiEvent: jest.fn(),
+// Mock helpers (now in @n8n/ai-utilities)
+jest.mock('@n8n/ai-utilities/src/utils/helpers', () => ({
 	getMetadataFiltersValues: jest.fn().mockReturnValue(undefined),
+}));
+jest.mock('@n8n/ai-utilities/src/utils/log-ai-event', () => ({
+	logAiEvent: jest.fn(),
 }));
 
 // We only need handleInsertOperation for the insert test; others can be simple stubs.
-jest.mock('../../vector_store/shared/createVectorStoreNode/operations', () => {
+jest.mock('@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations', () => {
 	// Use the real module so we can call the actual implementation when needed
-	const actual = jest.requireActual('../../vector_store/shared/createVectorStoreNode/operations');
+	const actual = jest.requireActual(
+		'@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations',
+	);
 	return {
 		...actual,
 		handleInsertOperation: jest.fn(async (ctx: any, args: any, embeddings: any) => {
