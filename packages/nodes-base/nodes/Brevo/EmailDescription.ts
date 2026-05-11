@@ -127,7 +127,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Recipients',
-		name: 'recipients',
+		name: 'receipients',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -187,13 +187,13 @@ const sendHtmlEmailFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Recipients BCC',
-				name: 'recipientsBCC',
+				name: 'receipientsBCC',
 				placeholder: 'Add BCC',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						name: 'recipientBcc',
+						name: 'receipientBcc',
 						displayName: 'Recipient',
 						values: [
 							{
@@ -213,13 +213,13 @@ const sendHtmlEmailFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Recipients CC',
-				name: 'recipientsCC',
+				name: 'receipientsCC',
 				placeholder: 'Add CC',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						name: 'recipientCc',
+						name: 'receipientCc',
 						displayName: 'Recipient',
 						values: [
 							{
@@ -328,7 +328,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Recipients',
-		name: 'recipients',
+		name: 'receipients',
 		type: 'string',
 		displayOptions: {
 			show: {
