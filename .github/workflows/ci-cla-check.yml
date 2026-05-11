@@ -59,6 +59,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
       - name: Checkout CLA scripts
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -69,7 +76,7 @@ jobs:
         id: context
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const mod = await import('${{ github.workspace }}/.github/scripts/cla/resolve-context.mjs');
             await mod.default({ github, context, core });
@@ -80,7 +87,7 @@ jobs:
         env:
           HEAD_SHA: ${{ steps.context.outputs.head_sha }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
@@ -100,7 +107,7 @@ jobs:
           BASE_SHA: ${{ steps.context.outputs.base_sha }}
           IS_MERGE_GROUP: ${{ steps.context.outputs.is_merge_group }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const mod = await import('${{ github.workspace }}/.github/scripts/cla/check-signatures.mjs');
             await mod.default({ github, context, core });
@@ -116,7 +123,7 @@ jobs:
           ERRORED: ${{ steps.check.outputs.errored }}
           UNLINKED: ${{ steps.check.outputs.unlinked }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const mod = await import('${{ github.workspace }}/.github/scripts/cla/post-final-status.mjs');
             await mod.default({ github, context, core });
@@ -136,7 +143,7 @@ jobs:
           ERRORED: ${{ steps.check.outputs.errored }}
           UNLINKED: ${{ steps.check.outputs.unlinked }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const mod = await import('${{ github.workspace }}/.github/scripts/cla/update-pr-comment.mjs');
             await mod.default({ github, context, core });
@@ -147,7 +154,7 @@ jobs:
         env:
           ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             try {
               await github.rest.reactions.createForIssueComment({
