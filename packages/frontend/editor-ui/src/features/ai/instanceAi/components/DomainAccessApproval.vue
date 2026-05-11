@@ -48,34 +48,18 @@ const previewText = computed(() => (isWebSearch.value ? props.query : props.url)
 const persistentLabel = computed(() =>
 	isWebSearch.value
 		? i18n.baseText('instanceAi.webSearch.allowThread')
-		: i18n.baseText('instanceAi.domainAccess.allowDomain'),
+		: i18n.baseText('instanceAi.domainAccess.allowDomain', {
+				interpolate: { domain: props.host ?? '' },
+			}),
 );
 
-// Web search's persistent option approves every future search in the thread,
-// which is much broader than fetch-url's per-domain scope — default to
-// allow-once so users opt into thread-wide approval explicitly.
-const primaryIsAllowOnce = computed(() => isDestructive.value || isWebSearch.value);
+const primaryAction: DomainAction = 'allow_once';
 
-const primaryAction = computed<DomainAction>(() =>
-	primaryIsAllowOnce.value ? 'allow_once' : 'allow_domain',
-);
+const primaryLabel = computed(() => i18n.baseText('instanceAi.domainAccess.allowOnce'));
 
-const primaryLabel = computed(() =>
-	primaryIsAllowOnce.value
-		? i18n.baseText('instanceAi.domainAccess.allowOnce')
-		: persistentLabel.value,
-);
-
-const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
-	primaryIsAllowOnce.value
-		? [{ id: 'allow_domain' as const, label: persistentLabel.value }]
-		: [
-				{
-					id: 'allow_once' as const,
-					label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
-				},
-			],
-);
+const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() => [
+	{ id: 'allow_domain' as const, label: persistentLabel.value },
+]);
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
@@ -89,7 +73,7 @@ function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 }
 
 function onPrimaryClick() {
-	handleAction(true, primaryAction.value);
+	handleAction(true, primaryAction);
 }
 
 const DOMAIN_ACTIONS: readonly DomainAction[] = [

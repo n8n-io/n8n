@@ -19,7 +19,7 @@ import type * as GenerateTypesModule from '../generate-types/generate-types';
 // =============================================================================
 
 interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -797,7 +797,7 @@ describe('generate-types', () => {
 								type: 'options',
 								description: 'Select the interval type',
 								builderHint: {
-									message: 'You can add multiple intervals to trigger at different times.',
+									propertyHint: 'You can add multiple intervals to trigger at different times.',
 								},
 								options: [
 									{ name: 'Seconds', value: 'seconds' },
@@ -827,7 +827,7 @@ describe('generate-types', () => {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message: 'You can add multiple intervals to trigger at different times.',
+							propertyHint: 'You can add multiple intervals to trigger at different times.',
 						},
 						values: [
 							{
@@ -1719,7 +1719,7 @@ describe('generate-types', () => {
 				type: 'fixedCollection',
 				description: 'Configure when the workflow triggers',
 				builderHint: {
-					message:
+					propertyHint:
 						'You can add multiple intervals to trigger at different times. Use Custom (Cron) for more specific scheduling patterns.',
 				},
 				default: {},
@@ -1737,7 +1737,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Custom code to execute',
 				builderHint: {
-					message: 'See <a href="https://docs.example.com">documentation</a> for examples',
+					propertyHint: 'See <a href="https://docs.example.com">documentation</a> for examples',
 				},
 				default: '',
 			};
