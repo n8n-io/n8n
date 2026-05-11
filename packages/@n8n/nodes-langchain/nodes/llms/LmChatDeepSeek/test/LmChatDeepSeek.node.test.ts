@@ -102,6 +102,92 @@ describe('injectReasoningContent', () => {
 		});
 	});
 
+	describe('DeepSeek V4 models', () => {
+		it('should inject reasoning_content for deepseek-v4-pro', () => {
+			const body = JSON.stringify({
+				model: 'deepseek-v4-pro',
+				messages: [
+					{ role: 'user', content: 'Hello' },
+					{ role: 'assistant', content: 'Hi there' },
+				],
+			});
+
+			const result = injectReasoningContent('deepseek-v4-pro', body);
+
+			expect(result).toBeDefined();
+			const parsed = JSON.parse(result!);
+			expect(parsed.messages[1].reasoning_content).toBeNull();
+		});
+
+		it('should inject reasoning_content for deepseek-v4-flash', () => {
+			const body = JSON.stringify({
+				model: 'deepseek-v4-flash',
+				messages: [{ role: 'assistant', content: 'Response' }],
+			});
+
+			const result = injectReasoningContent('deepseek-v4-flash', body);
+
+			expect(result).toBeDefined();
+			const parsed = JSON.parse(result!);
+			expect(parsed.messages[0].reasoning_content).toBeNull();
+		});
+
+		it('should handle V4 model variant names', () => {
+			const body = JSON.stringify({
+				model: 'deepseek-v4-pro',
+				messages: [{ role: 'assistant', content: 'Test' }],
+			});
+
+			// V4 has thinking mode enabled by default
+			const v4Variants = ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v4-pro-2026-04'];
+
+			for (const modelName of v4Variants) {
+				const result = injectReasoningContent(modelName, body);
+				expect(result).toBeDefined();
+				const parsed = JSON.parse(result!);
+				expect(parsed.messages[0].reasoning_content).toBeNull();
+			}
+		});
+
+		it('should not modify V4 assistant message with existing reasoning_content', () => {
+			const body = JSON.stringify({
+				model: 'deepseek-v4-pro',
+				messages: [{ role: 'assistant', content: 'Hi', reasoning_content: 'Previous reasoning' }],
+			});
+
+			const result = injectReasoningContent('deepseek-v4-pro', body);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should inject reasoning_content in V4 tool call scenario', () => {
+			// Simulating a tool call loop where assistant message needs reasoning_content
+			const body = JSON.stringify({
+				model: 'deepseek-v4-pro',
+				messages: [
+					{ role: 'user', content: 'What is the weather?' },
+					{
+						role: 'assistant',
+						content: '',
+						tool_calls: [{ id: 'call_123', function: { name: 'get_weather' } }],
+					},
+					{ role: 'tool', content: 'Sunny, 25°C', tool_call_id: 'call_123' },
+					{ role: 'assistant', content: 'The weather is sunny and 25°C' },
+				],
+			});
+
+			const result = injectReasoningContent('deepseek-v4-pro', body);
+
+			expect(result).toBeDefined();
+			const parsed = JSON.parse(result!);
+			// Both assistant messages should get reasoning_content
+			expect(parsed.messages[1].reasoning_content).toBeNull();
+			expect(parsed.messages[3].reasoning_content).toBeNull();
+			// Tool message should not be modified
+			expect(parsed.messages[2]).not.toHaveProperty('reasoning_content');
+		});
+	});
+
 	describe('non-reasoner models', () => {
 		it('should return undefined for deepseek-chat model', () => {
 			const body = JSON.stringify({
