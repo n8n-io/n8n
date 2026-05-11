@@ -737,7 +737,11 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 					'Cannot send message',
 				);
 			} else if (status === 400) {
-				toast.showError(new Error('Message cannot be empty'), 'Invalid message');
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The request was rejected. Please try again.'),
+					'Could not send message',
+				);
 			} else {
 				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
 			}

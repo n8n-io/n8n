@@ -45,8 +45,8 @@ describe('executionStarted', () => {
 
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
 		workflowsStore.activeExecutionId = null;
+		workflowsStore.setWorkflowId('wf-123');
 		workflowsStore.setWorkflowExecutionData(null);
-		workflowsStore.workflow.id = 'wf-123';
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 

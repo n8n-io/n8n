@@ -14,9 +14,21 @@ jest.mock('@mastra/core/tools', () => ({
 	createTool: jest.fn((config: Record<string, unknown>) => config),
 }));
 
-jest.mock('@n8n/workflow-sdk', () => ({
-	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
-}));
+jest.mock(
+	'@n8n/utils',
+	() => ({
+		hasPlaceholderDeep: jest.fn(() => false),
+	}),
+	{ virtual: true },
+);
+
+jest.mock(
+	'@n8n/workflow-sdk',
+	() => ({
+		validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
+	}),
+	{ virtual: true },
+);
 
 // `require` (rather than `import`) is needed because `submit-workflow.tool`
 // transitively pulls in @mastra/core (ESM-only); the require call here runs
@@ -218,6 +230,34 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 });
 
 describe('classifySubmitFailure', () => {
+	it('routes credential access save failures to setup instead of code remediation', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: You do not have access to the credentials "mock-gmail-oauth2"'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('credential');
+	});
+
+	it('routes missing credential save failures to setup instead of code remediation', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Credentials not found for id WHATSAPP_CREDENTIAL_ID'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('credential');
+	});
+
 	it('treats workflow save failures as terminal blockers', () => {
 		const remediation = classifySubmitFailure(
 			['Workflow save failed: database unavailable'],

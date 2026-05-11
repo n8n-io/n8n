@@ -57,6 +57,7 @@ export class AgentBrowserAdapter implements Adapter {
 
 	private resolvedConfig: ResolvedConfig;
 	private relay?: CDPRelayServer;
+	private relayPort?: number;
 	private cdpEndpoint?: string;
 	private urlCache = new Map<string, string>();
 	private tabCache: TabData[] = [];
@@ -181,32 +182,39 @@ export class AgentBrowserAdapter implements Adapter {
 		if (!chromePath) throw new BrowserExecutableNotFoundError(config.browser);
 		log.debug('launch: browser executable:', chromePath);
 
-		this.relay = new CDPRelayServer();
-		log.debug('launch: starting relay');
-		const port = await this.relay.listen();
-		log.debug('launch: relay listening on port', port);
-		const extensionEndpoint = this.relay.extensionEndpoint(port);
+		if (!this.relay) {
+			this.relay = new CDPRelayServer();
+			this.relayPort = await this.relay.listen();
+			log.debug('launch: relay listening on port', this.relayPort);
+		} else {
+			log.debug('launch: reusing existing relay on port', this.relayPort);
+		}
 
-		const connectUrl =
-			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
-		log.debug('launch: opening browser at', connectUrl);
+		if (!this.relay.isExtensionConnected()) {
+			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort!);
+			const connectUrl =
+				`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
+				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
+			log.debug('launch: opening browser at', connectUrl);
 
-		await new Promise<void>((resolve, reject) => {
-			const child = execFile(chromePath, [connectUrl]);
-			const earlyFailTimer = setTimeout(() => resolve(), 2_000);
-			child.on('error', (error: Error) => {
-				clearTimeout(earlyFailTimer);
-				reject(new BrowserExecutableNotFoundError(`${config.browser} (${error.message})`));
+			await new Promise<void>((resolve, reject) => {
+				const child = execFile(chromePath, [connectUrl]);
+				const earlyFailTimer = setTimeout(() => resolve(), 2_000);
+				child.on('error', (error: Error) => {
+					clearTimeout(earlyFailTimer);
+					reject(new BrowserExecutableNotFoundError(`${config.browser} (${error.message})`));
+				});
 			});
-		});
-		log.debug('launch: browser launched (2 s early-fail window passed)');
+			log.debug('launch: browser launched (2 s early-fail window passed)');
 
-		log.debug('launch: waiting for extension to connect');
-		await this.relay.waitForExtension({ browserWasLaunched: true });
-		log.debug('launch: extension connected');
+			log.debug('launch: waiting for extension to connect');
+			await this.relay.waitForExtension({ browserWasLaunched: true });
+			log.debug('launch: extension connected');
+		} else {
+			log.debug('launch: extension already connected to existing relay');
+		}
 
-		this.cdpEndpoint = this.relay.cdpEndpoint(port);
+		this.cdpEndpoint = this.relay.cdpEndpoint(this.relayPort!);
 		log.debug('launch: cdp endpoint:', this.cdpEndpoint);
 
 		this.relay.onExtensionDisconnect = (reason) => {
@@ -224,6 +232,7 @@ export class AgentBrowserAdapter implements Adapter {
 			this.relay.stop();
 			this.relay = undefined;
 		}
+		this.relayPort = undefined;
 		this.cdpEndpoint = undefined;
 		try {
 			await this.killSession();

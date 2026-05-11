@@ -415,6 +415,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .output {
@@ -485,6 +487,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	padding-right: calc(var(--spacing--2xl) + var(--spacing--lg));
 	border-radius: var(--radius--3xs);
 	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 	color: var(--color--text--tint-1);
 	margin-top: var(--spacing--2xs);
 }

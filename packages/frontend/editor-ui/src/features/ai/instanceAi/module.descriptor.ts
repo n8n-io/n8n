@@ -3,14 +3,12 @@ import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.t
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_OPTIN_MODAL_KEY,
 } from '@/app/constants/modals';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const InstanceAiOptinModal = async () => await import('./components/InstanceAiOptinModal.vue');
 const ComputerUseSetupModal = async () =>
 	await import('./components/modals/ComputerUseSetupModal.vue');
 const BrowserUseSetupModal = async () =>
@@ -66,7 +64,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	},
 	resources: [],
 	modals: [
-		{ key: INSTANCE_AI_OPTIN_MODAL_KEY, component: InstanceAiOptinModal },
 		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
 		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
 	],
