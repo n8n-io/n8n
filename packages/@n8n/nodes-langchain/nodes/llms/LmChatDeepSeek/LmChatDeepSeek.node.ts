@@ -15,6 +15,38 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
+/**
+ * Injects `reasoning_content: null` into assistant messages for deepseek-reasoner models.
+ * DeepSeek's reasoner model requires this field in assistant messages, even if empty.
+ */
+export function injectReasoningContent(modelName: string, bodyString: string): string | undefined {
+	if (!modelName.startsWith('deepseek-reasoner')) {
+		return undefined;
+	}
+
+	try {
+		const body = JSON.parse(bodyString);
+		if (!body.messages || !Array.isArray(body.messages)) {
+			return undefined;
+		}
+
+		let modified = false;
+		for (const message of body.messages) {
+			if (message.role === 'assistant' && !('reasoning_content' in message)) {
+				message.reasoning_content = null;
+				modified = true;
+			}
+		}
+
+		if (modified) {
+			return JSON.stringify(body);
+		}
+		return undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DeepSeek Chat Model',
@@ -236,26 +268,13 @@ export class LmChatDeepSeek implements INodeType {
 				}),
 			},
 			fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
-					if (modelName.startsWith('deepseek-reasoner') && init?.body && typeof init.body === 'string') {
-							try {
-									const body = JSON.parse(init.body);
-									if (body.messages && Array.isArray(body.messages)) {
-											let modified = false;
-											for (const message of body.messages) {
-													if (message.role === 'assistant' && !('reasoning_content' in message)) {
-															message.reasoning_content = null;
-															modified = true;
-													}
-											}
-											if (modified) {
-													init.body = JSON.stringify(body);
-											}
-									}
-							} catch (e) {
-									// Ignore parse errors, just proceed
-							}
+				if (init?.body && typeof init.body === 'string') {
+					const modifiedBody = injectReasoningContent(modelName, init.body);
+					if (modifiedBody) {
+						init.body = modifiedBody;
 					}
-					return fetch(url, init);
+				}
+				return await fetch(url, init);
 			},
 		};
 
