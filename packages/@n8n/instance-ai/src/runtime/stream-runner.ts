@@ -9,7 +9,7 @@ import {
 	type ResumableStreamSource,
 	type TraceStatus,
 } from './resumable-stream-executor';
-import { traceWorkingMemoryContext } from './working-memory-tracing';
+import type { WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, withTraceParentContext } from '../tracing/langsmith-tracing';
 import { asResumable } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -25,12 +25,14 @@ export interface StreamRunOptions {
 	signal: AbortSignal;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	onActivity?: () => void;
 }
 
 export interface StreamRunResult {
 	status: TraceStatus;
 	mastraRunId: string;
 	text?: Promise<string>;
+	workSummary: WorkSummary;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -44,20 +46,10 @@ export async function streamAgentRun(
 	const traceParent = getTraceParentRun();
 	return await withTraceParentContext(traceParent, async () => {
 		const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-		const result = await traceWorkingMemoryContext(
-			{
-				phase: 'initial',
-				agentId: options.agentId,
-				threadId: options.threadId,
-				input,
-				memory: streamOptions.memory,
-			},
-			async () =>
-				await agent.stream(input, {
-					...streamOptions,
-					...(llmStepTraceHooks?.executionOptions ?? {}),
-				}),
-		);
+		const result = await agent.stream(input, {
+			...streamOptions,
+			...(llmStepTraceHooks?.executionOptions ?? {}),
+		});
 		const mastraRunId = typeof result.runId === 'string' ? result.runId : '';
 		return await consumeStream(agent, result, { ...options, mastraRunId, llmStepTraceHooks });
 	});
@@ -72,28 +64,10 @@ export async function resumeAgentRun(
 	const resumeTraceParent = getTraceParentRun();
 	return await withTraceParentContext(resumeTraceParent, async () => {
 		const llmStepTraceHooks = createLlmStepTraceHooks(resumeTraceParent);
-		const resumed = await traceWorkingMemoryContext(
-			{
-				phase: 'resume',
-				agentId: options.agentId,
-				threadId: options.threadId,
-				resumeData: {
-					...(typeof resumeOptions.runId === 'string' ? { runId: resumeOptions.runId } : {}),
-					...(typeof resumeOptions.toolCallId === 'string'
-						? { toolCallId: resumeOptions.toolCallId }
-						: {}),
-					...(typeof resumeOptions.requestId === 'string'
-						? { requestId: resumeOptions.requestId }
-						: {}),
-				},
-				enabled: true,
-			},
-			async () =>
-				await asResumable(agent).resumeStream(resumeData, {
-					...resumeOptions,
-					...(llmStepTraceHooks?.executionOptions ?? {}),
-				}),
-		);
+		const resumed = await asResumable(agent).resumeStream(resumeData, {
+			...resumeOptions,
+			...(llmStepTraceHooks?.executionOptions ?? {}),
+		});
 		const mastraRunId = (typeof resumed.runId === 'string' && resumed.runId) || options.mastraRunId;
 		return await consumeStream(agent, resumed, { ...options, mastraRunId, llmStepTraceHooks });
 	});
@@ -114,6 +88,7 @@ async function consumeStream(
 			eventBus: options.eventBus,
 			signal: options.signal,
 			logger: options.logger,
+			onActivity: options.onActivity,
 		},
 		control: { mode: 'manual' },
 		initialMastraRunId: options.mastraRunId,
@@ -125,6 +100,7 @@ async function consumeStream(
 			status: 'suspended',
 			mastraRunId: result.mastraRunId,
 			text: result.text,
+			workSummary: result.workSummary,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
@@ -139,5 +115,6 @@ async function consumeStream(
 					: 'completed',
 		mastraRunId: result.mastraRunId,
 		text: result.text,
+		workSummary: result.workSummary,
 	};
 }

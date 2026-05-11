@@ -108,6 +108,15 @@ describe('copyFileTool', () => {
 			).rejects.toThrow('escapes');
 		});
 
+		it('rejects excluded directories on source', async () => {
+			await expect(
+				copyFileTool.execute(
+					{ sourcePath: 'node_modules/pkg/index.js', destinationPath: 'dst.txt' },
+					CONTEXT,
+				),
+			).rejects.toThrow('excluded');
+		});
+
 		it('rejects path traversal on destination', async () => {
 			mockMkdir();
 

@@ -11,14 +11,13 @@ export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
-		icon: 'fa:sync',
+		icon: 'node:loop-over-items',
 		iconColor: 'dark-green',
 		group: ['organization'],
 		version: 3,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'Loop Over Items',
-			color: '#007755',
 		},
 		inputs: [NodeConnectionTypes.Main],
 

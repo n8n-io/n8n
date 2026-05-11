@@ -3,8 +3,8 @@ import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
-import { traceWorkingMemoryContext } from './working-memory-tracing';
 import { mapMastraChunkToEvent } from '../stream/map-chunk';
+import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
 import { asResumable, parseSuspension } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -30,6 +30,7 @@ export interface ResumableStreamContext {
 	eventBus: InstanceAiEventBus;
 	signal: AbortSignal;
 	logger: Logger;
+	onActivity?: () => void;
 }
 
 export interface ManualSuspensionControl {
@@ -40,6 +41,9 @@ export interface AutoResumeControl {
 	mode: 'auto';
 	waitForConfirmation: (requestId: string) => Promise<Record<string, unknown>>;
 	drainCorrections?: () => string[];
+	/** Returns a promise that resolves when a new user correction is queued. Used to unblock
+	 *  HITL suspensions so the builder can incorporate the correction instead of waiting forever. */
+	waitForCorrection?: () => Promise<void>;
 	onSuspension?: (suspension: SuspensionInfo) => void;
 	buildResumeOptions?: (input: {
 		mastraRunId: string;
@@ -56,7 +60,6 @@ export interface ExecuteResumableStreamOptions {
 	control: ResumableStreamControl;
 	initialMastraRunId?: string;
 	llmStepTraceHooks?: LlmStepTraceHooks;
-	workingMemoryEnabled?: boolean;
 }
 
 export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
@@ -67,6 +70,8 @@ export interface ExecuteResumableStreamResult {
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: ConfirmationRequestEvent;
+	/** Accumulated tool call outcomes observed during stream consumption. */
+	workSummary: WorkSummary;
 }
 
 export interface LlmStepTraceHooks {
@@ -148,7 +153,6 @@ interface StepStartLike {
 interface SyntheticToolTraceRecord {
 	toolCallId: string;
 	toolName: string;
-	groupRunTree?: RunTree;
 	runTree: RunTree;
 	finished: boolean;
 }
@@ -156,7 +160,7 @@ interface SyntheticToolTraceRecord {
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 20;
-const SYNTHETIC_TOOL_TRACE_NAMES = new Set(['updateWorkingMemory']);
+const SYNTHETIC_TOOL_TRACE_NAMES = new Set<string>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -1012,30 +1016,11 @@ function getChunkPayload(chunk: unknown): Record<string, unknown> | undefined {
 	return isRecord(chunk.payload) ? chunk.payload : chunk;
 }
 
-function isMemoryToolTrace(toolName: string): boolean {
-	return toolName === 'updateWorkingMemory';
-}
-
-function summarizeWorkingMemoryInput(memory: string): Record<string, unknown> {
-	return {
-		memory_chars: memory.length,
-		memory_lines: memory.length > 0 ? memory.split('\n').length : 0,
-		memory_preview: memory.length > 0 ? truncateTraceString(memory.slice(0, 400)) : '',
-	};
-}
-
 function buildSyntheticToolInputs(
 	toolCallId: string,
-	toolName: string,
+	_toolName: string,
 	args: unknown,
 ): Record<string, unknown> {
-	if (isMemoryToolTrace(toolName) && isRecord(args) && typeof args.memory === 'string') {
-		return sanitizeTracePayload({
-			toolCallId,
-			args: summarizeWorkingMemoryInput(args.memory),
-		});
-	}
-
 	return sanitizeTracePayload({
 		toolCallId,
 		args,
@@ -1050,47 +1035,6 @@ function shouldCreateSyntheticToolTrace(payload: Record<string, unknown>): boole
 		payload.providerExecuted === true ||
 		payload.dynamic === true
 	);
-}
-
-function resolveActorParentRun(parentRun: RunTree): RunTree {
-	let current: RunTree | undefined = parentRun;
-
-	while (current) {
-		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
-			return current;
-		}
-
-		const next: unknown = Reflect.get(current, 'parent_run');
-		current = next instanceof Object ? (next as RunTree) : undefined;
-	}
-
-	return parentRun;
-}
-
-async function startSyntheticToolGroupRun(
-	parentRun: RunTree,
-	toolName: string,
-): Promise<RunTree | undefined> {
-	if (!isMemoryToolTrace(toolName)) {
-		return undefined;
-	}
-
-	const actorParentRun = resolveActorParentRun(parentRun);
-	const groupRunTree = actorParentRun.createChild({
-		name: 'internal_state',
-		run_type: 'chain',
-		tags: dedupeTags([...(actorParentRun.tags ?? []), 'internal', 'memory']),
-		metadata: {
-			...(actorParentRun.metadata ?? {}),
-			internal_state: true,
-			tool_name: toolName,
-		},
-		inputs: sanitizeTracePayload({
-			tool_name: toolName,
-		}),
-	});
-	await groupRunTree.postRun();
-	return groupRunTree;
 }
 
 async function startSyntheticToolTrace(
@@ -1117,22 +1061,18 @@ async function startSyntheticToolTrace(
 		return;
 	}
 
-	const groupRunTree = await startSyntheticToolGroupRun(parentRun, toolName);
-	const toolParentRun = groupRunTree ?? parentRun;
-	const runTree = toolParentRun.createChild({
+	const runTree = parentRun.createChild({
 		name: `tool:${toolName}`,
 		run_type: 'tool',
 		tags: dedupeTags([
-			...(toolParentRun.tags ?? []),
+			...(parentRun.tags ?? []),
 			'tool',
 			...(toolName.startsWith('mastra_') ? ['native-tool'] : []),
-			...(isMemoryToolTrace(toolName) ? ['memory', 'internal'] : []),
 		]),
 		metadata: {
-			...(toolParentRun.metadata ?? {}),
+			...(parentRun.metadata ?? {}),
 			tool_name: toolName,
 			synthetic_tool_trace: true,
-			...(isMemoryToolTrace(toolName) ? { memory_tool: true } : {}),
 			...(payload.providerExecuted === true ? { provider_executed: true } : {}),
 			...(payload.dynamic === true ? { dynamic_tool: true } : {}),
 		},
@@ -1143,7 +1083,6 @@ async function startSyntheticToolTrace(
 	records.set(toolCallId, {
 		toolCallId,
 		toolName,
-		groupRunTree,
 		runTree,
 		finished: false,
 	});
@@ -1205,27 +1144,6 @@ async function finishSyntheticToolTrace(
 			final_status: payload.isError === true ? 'error' : 'completed',
 		},
 	});
-	if (record.groupRunTree) {
-		await finishRunTree(record.groupRunTree, {
-			outputs: sanitizeTracePayload({
-				tool_name: record.toolName,
-			}),
-			...(payload.isError === true
-				? {
-						error:
-							typeof payload.result === 'string'
-								? payload.result
-								: typeof payload.error === 'string'
-									? payload.error
-									: 'Tool execution failed',
-					}
-				: {}),
-			metadata: {
-				final_status: payload.isError === true ? 'error' : 'completed',
-				internal_state: true,
-			},
-		});
-	}
 }
 
 async function finalizeSyntheticToolTraces(
@@ -1247,19 +1165,6 @@ async function finalizeSyntheticToolTraces(
 				final_status: options?.status ?? 'completed',
 			},
 		});
-		if (record.groupRunTree) {
-			await finishRunTree(record.groupRunTree, {
-				outputs: sanitizeTracePayload({
-					tool_name: record.toolName,
-					status: options?.status ?? 'completed',
-				}),
-				...(options?.error ? { error: options.error } : {}),
-				metadata: {
-					final_status: options?.status ?? 'completed',
-					internal_state: true,
-				},
-			});
-		}
 	}
 }
 
@@ -1916,6 +1821,9 @@ export async function executeResumableStream(
 	let activeStream = options.stream.fullStream;
 	let activeMastraRunId = options.stream.runId ?? options.initialMastraRunId ?? '';
 	let text = options.stream.text;
+	const workSummaryAccumulator = new WorkSummaryAccumulator();
+
+	let currentResponseId: string | undefined;
 
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
@@ -1928,6 +1836,7 @@ export async function executeResumableStream(
 		options.llmStepTraceHooks?.startSegment();
 
 		for await (const chunk of activeStream) {
+			options.context.onActivity?.();
 			if (options.context.signal.aborted) {
 				if (options.llmStepTraceHooks) {
 					await options.llmStepTraceHooks.finalize(activeSource, {
@@ -1944,13 +1853,26 @@ export async function executeResumableStream(
 					status: 'cancelled',
 					error: 'Run cancelled while streaming',
 				});
-				return { status: 'cancelled', mastraRunId: activeMastraRunId, text };
+				return {
+					status: 'cancelled',
+					mastraRunId: activeMastraRunId,
+					text,
+					workSummary: workSummaryAccumulator.toSummary(),
+				};
 			}
 
 			await startSyntheticToolTrace(chunk, syntheticToolRecords);
 			await finishSyntheticToolTrace(chunk, syntheticToolRecords);
 
 			options.llmStepTraceHooks?.onStreamChunk(chunk);
+
+			// Always capture responseId from step-start, regardless of trace hook path.
+			if (isRecord(chunk) && chunk.type === 'step-start') {
+				const stepPayload = getChunkPayload(chunk);
+				const stepMessageId =
+					typeof stepPayload?.messageId === 'string' ? stepPayload.messageId : undefined;
+				currentResponseId = stepMessageId;
+			}
 
 			if (options.llmStepTraceHooks) {
 				// Step lifecycle is handled by prepareStep/onStepFinish callbacks.
@@ -1997,8 +1919,14 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
-			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
+			const event = mapMastraChunkToEvent(
+				options.context.runId,
+				options.context.agentId,
+				chunk,
+				currentResponseId,
+			);
 			if (event) {
+				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
 
 				if (event.type === 'confirmation-request') {
@@ -2045,11 +1973,21 @@ export async function executeResumableStream(
 		});
 
 		if (options.context.signal.aborted) {
-			return { status: 'cancelled', mastraRunId: activeMastraRunId, text };
+			return {
+				status: 'cancelled',
+				mastraRunId: activeMastraRunId,
+				text,
+				workSummary: workSummaryAccumulator.toSummary(),
+			};
 		}
 
 		if (!suspension) {
-			return { status: hasError ? 'errored' : 'completed', mastraRunId: activeMastraRunId, text };
+			return {
+				status: hasError ? 'errored' : 'completed',
+				mastraRunId: activeMastraRunId,
+				text,
+				workSummary: workSummaryAccumulator.toSummary(),
+			};
 		}
 
 		if (options.control.mode === 'manual') {
@@ -2058,13 +1996,18 @@ export async function executeResumableStream(
 				mastraRunId: activeMastraRunId,
 				text,
 				suspension,
+				workSummary: workSummaryAccumulator.toSummary(),
 				...(confirmationEvent ? { confirmationEvent } : {}),
 			};
 		}
 
-		const resumeData = await waitForConfirmation(
+		const confirmationPromise =
+			pendingConfirmation ?? options.control.waitForConfirmation(suspension.requestId);
+		const resumeData = await waitForConfirmationOrCorrection(
 			options.context.signal,
-			pendingConfirmation ?? options.control.waitForConfirmation(suspension.requestId),
+			confirmationPromise,
+			options.control,
+			options.context,
 		);
 		const resumeOptions = options.control.buildResumeOptions?.({
 			mastraRunId: activeMastraRunId,
@@ -2073,29 +2016,10 @@ export async function executeResumableStream(
 			runId: activeMastraRunId,
 			toolCallId: suspension.toolCallId,
 		};
-		const resumed = options.workingMemoryEnabled
-			? await traceWorkingMemoryContext(
-					{
-						phase: 'resume',
-						agentId: options.context.agentId,
-						threadId: options.context.threadId,
-						resumeData: {
-							requestId: suspension.requestId,
-							toolCallId: suspension.toolCallId,
-							...(typeof resumeOptions.runId === 'string' ? { runId: resumeOptions.runId } : {}),
-						},
-						enabled: true,
-					},
-					async () =>
-						await asResumable(options.agent).resumeStream(resumeData, {
-							...resumeOptions,
-							...(options.llmStepTraceHooks?.executionOptions ?? {}),
-						}),
-				)
-			: await asResumable(options.agent).resumeStream(resumeData, {
-					...resumeOptions,
-					...(options.llmStepTraceHooks?.executionOptions ?? {}),
-				});
+		const resumed = await asResumable(options.agent).resumeStream(resumeData, {
+			...resumeOptions,
+			...(options.llmStepTraceHooks?.executionOptions ?? {}),
+		});
 
 		activeMastraRunId =
 			(typeof resumed.runId === 'string' ? resumed.runId : '') || activeMastraRunId;
@@ -2147,6 +2071,44 @@ async function waitForConfirmation(
 			signal.removeEventListener('abort', abortHandler);
 		}
 	}
+}
+
+/**
+ * Race the HITL confirmation promise against an incoming user correction.
+ * When a correction arrives first, auto-confirm the suspended tool call with
+ * override data so the builder can resume and incorporate the correction.
+ */
+async function waitForConfirmationOrCorrection(
+	signal: AbortSignal,
+	confirmationPromise: Promise<Record<string, unknown>>,
+	control: AutoResumeControl,
+	context: ResumableStreamContext,
+): Promise<Record<string, unknown>> {
+	if (!control.waitForCorrection) {
+		return await waitForConfirmation(signal, confirmationPromise);
+	}
+
+	const correctionSentinel = Object.freeze({ __correctionOverride: true });
+	const raced = Promise.race([
+		confirmationPromise,
+		control.waitForCorrection().then(() => correctionSentinel as Record<string, unknown>),
+	]);
+
+	const result = await waitForConfirmation(signal, raced);
+
+	if (result === correctionSentinel) {
+		const corrections = control.drainCorrections?.() ?? [];
+		publishCorrections(context, corrections);
+		return {
+			__correctionOverride: true,
+			message:
+				'The user sent a correction while this tool was waiting for confirmation. ' +
+				'The confirmation has been skipped. Apply the correction and continue.',
+			corrections,
+		};
+	}
+
+	return result;
 }
 
 function isSameSuspension(left: SuspensionInfo, right: SuspensionInfo): boolean {

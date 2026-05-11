@@ -159,7 +159,7 @@ describe('braveSearch', () => {
 	describe('proxy mode', () => {
 		const proxyConfig = {
 			apiUrl: 'https://proxy.example.com/brave-search',
-			headers: { Authorization: 'Bearer proxy-token' },
+			getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 		};
 
 		it('uses proxy URL and auth headers when proxyConfig is provided', async () => {

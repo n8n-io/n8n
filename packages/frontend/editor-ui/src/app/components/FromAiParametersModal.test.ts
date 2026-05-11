@@ -7,22 +7,27 @@ import userEvent from '@testing-library/user-event';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRouter } from 'vue-router';
-import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { nextTick } from 'vue';
-import { mock } from 'vitest-mock-extended';
+import { nextTick, shallowRef } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		getNodeByName: vi.fn(),
+		getChildNodes: vi.fn().mockReturnValue([]),
+		allNodes: [] as Array<{ id: string; name: string; type: string }>,
+		workflowTriggerNodes: [] as Array<{ id: string; name: string; type: string }>,
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
 	},
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -86,11 +91,6 @@ const mockWorkflow = createTestWorkflow({
 	id: 'test-workflow',
 });
 
-const mockWorkflowObject = mock<Workflow>({
-	id: mockWorkflow.id,
-	getChildNodes: () => ['Parent Node'],
-});
-
 const mockTools = [
 	{
 		name: 'Test Tool',
@@ -129,7 +129,7 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
-					workflowObject: mockWorkflowObject,
+					workflowId: 'test-workflow',
 					workflowExecutionData: mockRunData,
 				},
 			},

@@ -19,7 +19,7 @@ import type * as GenerateTypesModule from '../generate-types/generate-types';
 // =============================================================================
 
 interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -365,7 +365,7 @@ describe('generate-types', () => {
 		it('should map string type with Expression wrapper', () => {
 			const prop: NodeProperty = { name: 'url', displayName: 'URL', type: 'string', default: '' };
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should map number type with Expression wrapper', () => {
@@ -543,6 +543,50 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map resourceMapper type to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue | Expression<string>');
+		});
+
+		it('should map resourceMapper with loadOptionsDependsOn and noDataExpression to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: { mappingMode: 'defineBelow', value: null },
+				typeOptions: {
+					loadOptionsDependsOn: ['sheetName.value'],
+				},
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue');
+		});
+
+		it('should map string type with multipleValues to an array type', () => {
+			const prop: NodeProperty = {
+				name: 'attendees',
+				displayName: 'Attendees',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('Array<string | Expression<string>>');
+		});
+
 		it('should map fixedCollection type to proper nested interface', () => {
 			const prop: NodeProperty = {
 				name: 'queryParameters',
@@ -565,6 +609,34 @@ describe('generate-types', () => {
 			expect(result).toContain('parameters?:');
 			expect(result).toContain('name?:');
 			expect(result).toContain('value?:');
+		});
+
+		it('should map nested string fields with multipleValues to array types', () => {
+			const prop: NodeProperty = {
+				name: 'attendeesUi',
+				displayName: 'Attendees',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Attendees',
+								name: 'attendees',
+								type: 'string',
+								default: '',
+								typeOptions: {
+									multipleValues: true,
+								},
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('attendees?: Array<string | Expression<string>>');
 		});
 
 		it('should map fixedCollection with multipleValues to array type', () => {
@@ -608,6 +680,69 @@ describe('generate-types', () => {
 			expect(result).toContain("'seconds'");
 			expect(result).toContain("'minutes'");
 			expect(result).toContain('secondsInterval?:');
+		});
+
+		it('should emit a tuple type and required group key when minRequiredFields is set', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, minRequiredFields: 1 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('conditions: [');
+			expect(result).not.toContain('conditions?:');
+			expect(result).toContain('...Array<');
+			expect(result).toContain('@minItems 1');
+		});
+
+		it('should emit @maxItems JSDoc when maxAllowedFields is set', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, maxAllowedFields: 3 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('@maxItems 3');
+			// maxAllowed alone does not force the key to be required
+			expect(result).toContain('conditions?:');
+		});
+
+		it('should not add tuple or required key when minRequiredFields is 0', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, minRequiredFields: 0 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('conditions?: Array<');
+			expect(result).not.toContain('@minItems');
 		});
 
 		it('should map collection type without options to Record<string, unknown>', () => {
@@ -654,7 +789,7 @@ describe('generate-types', () => {
 			const result = generateTypes.mapPropertyType(prop);
 			// Should generate nested structure with proper types
 			expect(result).toContain('systemMessage?:');
-			expect(result).toContain('string | Expression<string> | PlaceholderValue');
+			expect(result).toContain('string | Expression<string>');
 			expect(result).toContain('maxIterations?:');
 			expect(result).toContain('number | Expression<number>');
 			expect(result).toContain('returnIntermediateSteps?:');
@@ -692,7 +827,7 @@ describe('generate-types', () => {
 								type: 'options',
 								description: 'Select the interval type',
 								builderHint: {
-									message: 'You can add multiple intervals to trigger at different times.',
+									propertyHint: 'You can add multiple intervals to trigger at different times.',
 								},
 								options: [
 									{ name: 'Seconds', value: 'seconds' },
@@ -722,7 +857,7 @@ describe('generate-types', () => {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message: 'You can add multiple intervals to trigger at different times.',
+							propertyHint: 'You can add multiple intervals to trigger at different times.',
 						},
 						values: [
 							{
@@ -740,7 +875,7 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint You can add multiple intervals');
 		});
 
-		// PlaceholderValue tests - string type should include PlaceholderValue, other types should not
+		// PlaceholderValue is no longer emitted by codegen — these tests guard against regressions.
 		it('should NOT include PlaceholderValue in options type', () => {
 			const prop: NodeProperty = {
 				name: 'method',
@@ -1614,7 +1749,7 @@ describe('generate-types', () => {
 				type: 'fixedCollection',
 				description: 'Configure when the workflow triggers',
 				builderHint: {
-					message:
+					propertyHint:
 						'You can add multiple intervals to trigger at different times. Use Custom (Cron) for more specific scheduling patterns.',
 				},
 				default: {},
@@ -1632,7 +1767,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Custom code to execute',
 				builderHint: {
-					message: 'See <a href="https://docs.example.com">documentation</a> for examples',
+					propertyHint: 'See <a href="https://docs.example.com">documentation</a> for examples',
 				},
 				default: '',
 			};
@@ -1889,6 +2024,69 @@ describe('generate-types', () => {
 
 			// Should indicate it's a trigger
 			expect(result).toContain('isTrigger: true');
+		});
+
+		it('should emit helper type for resourceMapper properties', () => {
+			const sheetsLikeNode: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleSheets',
+				displayName: 'Google Sheets',
+				description: 'Read and write rows',
+				group: ['transform'],
+				version: 4.7,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'columns',
+						displayName: 'Columns',
+						type: 'resourceMapper',
+						noDataExpression: true,
+						default: { mappingMode: 'defineBelow', value: null },
+						typeOptions: {
+							loadOptionsDependsOn: ['sheetName.value'],
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(sheetsLikeNode);
+
+			expect(result).toContain('type ResourceMapperField = {');
+			expect(result).toContain('mappingMode: string;');
+			expect(result).toContain('value?: null | Record<string, unknown>;');
+			expect(result).toContain('schema?: ResourceMapperField[]');
+			expect(result).toContain('columns?: ResourceMapperValue;');
+			expect(result).not.toContain('columns?: string;');
+		});
+
+		// Regression: required string with default: '' used to emit
+		// `fieldToSplitOut?: ...` in the TS type, which dropped the required
+		// signal to LLMs consuming the type. Empty defaults don't satisfy
+		// required at runtime, so the type must not carry a `?` marker.
+		it('marks required string with empty default as non-optional (no "?" in type)', () => {
+			const splitOutLike: NodeTypeDescription = {
+				name: 'n8n-nodes-base.splitOut',
+				displayName: 'Split Out',
+				description: 'Turn a list inside item(s) into separate items',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'fieldToSplitOut',
+						displayName: 'Fields To Split Out',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(splitOutLike);
+
+			expect(result).toMatch(/fieldToSplitOut:\s*string\s*\|/);
+			expect(result).not.toMatch(/fieldToSplitOut\?:/);
 		});
 	});
 
@@ -2264,6 +2462,172 @@ describe('generate-types', () => {
 	});
 
 	// =========================================================================
+	// UX-fork variant collapse
+	// =========================================================================
+
+	describe('tryMergeUxForkVariants', () => {
+		it('collapses a clean partition (BigQuery sqlQuery shape) by dropping the constraint', () => {
+			// hide: useLegacySql=[true]  ⊕  show: useLegacySql=[true]  ⇒  always visible
+			const a = { hide: { useLegacySql: [true] } };
+			const b = { show: { useLegacySql: [true] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({});
+			expect(generateTypes.tryMergeUxForkVariants(b, a)).toEqual({});
+		});
+
+		it('reduces hide values to the set difference when show is a subset', () => {
+			// hide: K=[a,b,c]  ⊕  show: K=[a]  ⇒  hide: K=[b,c]
+			const a = { hide: { mode: ['a', 'b', 'c'] } };
+			const b = { show: { mode: ['a'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				hide: { mode: ['b', 'c'] },
+			});
+		});
+
+		it('preserves shared show/hide entries while collapsing the fork key', () => {
+			const a = {
+				show: { resource: ['data'] },
+				hide: { useLegacySql: [true] },
+			};
+			const b = {
+				show: { resource: ['data'], useLegacySql: [true] },
+			};
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				show: { resource: ['data'] },
+			});
+		});
+
+		it('returns null for a multi-key fork (Cortex-shape)', () => {
+			// Two keys differ — too complex to collapse safely.
+			const a = { show: { mode: ['a'], extra: ['x'] } };
+			const b = { show: { mode: ['b'], extra: ['y'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		it('returns null when one side is missing displayOptions', () => {
+			expect(generateTypes.tryMergeUxForkVariants(undefined, { show: { mode: ['a'] } })).toBeNull();
+			expect(generateTypes.tryMergeUxForkVariants({ show: { mode: ['a'] } }, undefined)).toBeNull();
+		});
+
+		it('returns null when the fork key appears in both show clauses (no clean partition)', () => {
+			const a = { show: { mode: ['a'] } };
+			const b = { show: { mode: ['b'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		// End-to-end: the simplifier must be wired into the JSDoc emitter.
+		// BigQuery's two `sqlQuery` declarations were the canonical bug — the
+		// agent kept reading `@displayOptions.hide { useLegacySql: [true] }`
+		// in the .d.ts and concluding the field was unsettable in legacy mode,
+		// even after the runtime validator started accepting both modes.
+		it('emits a single honest predicate for BigQuery-shape sqlQuery via generateNodeTypeFile', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleBigQuery',
+				displayName: 'Google BigQuery',
+				description: 'Run BigQuery queries',
+				group: ['transform'],
+				version: 2.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: { resource: ['database'], operation: ['executeQuery'] },
+							hide: { '/options.useLegacySql': [true] },
+						},
+					},
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								resource: ['database'],
+								operation: ['executeQuery'],
+								'/options.useLegacySql': [true],
+							},
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(node);
+
+			expect(result).toMatch(
+				/@displayOptions\.show \{ resource: \["database"\], operation: \["executeQuery"\] \}/,
+			);
+			expect(result).not.toMatch(/@displayOptions\.hide.*useLegacySql/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*useLegacySql/);
+		});
+
+		// End-to-end via the discriminator-split codegen path. Pushbullet's `value`
+		// declares variant A `hide: target=[default, device_iden]` and variant B
+		// `show: target=[device_iden]`. OR-semantics = target ≠ default; the JSDoc
+		// must drop `device_iden` from the hide.
+		it('emits Pushbullet-shape simplified hide via the discriminator-split path', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.pushbullet',
+				displayName: 'Pushbullet',
+				description: 'Send pushes',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'resource',
+						displayName: 'Resource',
+						type: 'options',
+						default: 'push',
+						options: [{ name: 'Push', value: 'push' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'operation',
+						displayName: 'Operation',
+						type: 'options',
+						default: 'create',
+						displayOptions: { show: { resource: ['push'] } },
+						options: [{ name: 'Create', value: 'create' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'value',
+						displayName: 'Value',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'] },
+							hide: { target: ['default', 'device_iden'] },
+						},
+					},
+					{
+						name: 'value',
+						displayName: 'Value Name or ID',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'], target: ['device_iden'] },
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(node);
+
+			expect(result).toMatch(/@displayOptions\.hide \{ target: \["default"\] \}/);
+			expect(result).not.toMatch(/@displayOptions\.hide \{[^}]*device_iden/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*target.*device_iden/);
+		});
+	});
+
+	// =========================================================================
 	// Edge Case Tests
 	// =========================================================================
 
@@ -2285,7 +2649,7 @@ describe('generate-types', () => {
 				default: null,
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should handle options with numeric values', () => {

@@ -41,31 +41,25 @@ describe('OwnerInstanceSettingsLoader', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('should skip and warn when ownerEmail is set', async () => {
+		it('should skip when ownerEmail is set', async () => {
 			const loader = createLoader({ ownerEmail: 'admin@example.com' });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(ownershipService.setupOwner).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled'),
-			);
 		});
 
-		it('should skip and warn when ownerPasswordHash is set', async () => {
+		it('should skip when ownerPasswordHash is set', async () => {
 			const loader = createLoader({ ownerPasswordHash: validBcryptHash });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(ownershipService.setupOwner).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled'),
-			);
 		});
 
-		it('should skip and warn when both email and password are set', async () => {
+		it('should skip when both email and password are set', async () => {
 			const loader = createLoader({
 				ownerEmail: 'admin@example.com',
 				ownerPasswordHash: validBcryptHash,
@@ -75,7 +69,6 @@ describe('OwnerInstanceSettingsLoader', () => {
 
 			expect(result).toBe('skipped');
 			expect(ownershipService.setupOwner).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalled();
 		});
 	});
 

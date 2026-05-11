@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { GatewayConfig } from './config';
+import type { GatewaySession } from './gateway-session';
 import {
 	logger,
 	printAuthFailure,
@@ -13,7 +14,6 @@ import {
 	printToolCall,
 	printToolResult,
 } from './logger';
-import type { SettingsStore } from './settings-store';
 import type { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
 import { ShellModule } from './tools/shell';
@@ -25,7 +25,7 @@ import {
 	type ResourceDecision,
 	type ToolDefinition,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
-	RESOURCE_DECISION_KEYS,
+	INSTANCE_RESOURCE_DECISION_KEYS,
 } from './tools/types';
 import { formatErrorResult } from './tools/utils';
 
@@ -43,11 +43,15 @@ function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[]
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
+	/** Non-permission config (browser, shell, logLevel, etc.) */
 	config: GatewayConfig;
-	settingsStore: SettingsStore;
+	/** Permissions + dir + session rules for this connection. */
+	session: GatewaySession;
 	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called when the client gives up reconnecting after persistent auth failures. */
 	onPersistentFailure?: () => void;
+	/** Called after disconnect() has finished tearing down the client. */
+	onDisconnected?: () => void;
 }
 
 interface FilesystemRequestEvent {
@@ -56,6 +60,10 @@ interface FilesystemRequestEvent {
 		requestId: string;
 		toolCall: { name: string; arguments: Record<string, unknown> };
 	};
+}
+
+interface GatewayDisconnectEvent {
+	type: 'gateway-disconnect';
 }
 
 /**
@@ -68,6 +76,8 @@ export class GatewayClient {
 	private reconnectDelay = 1000;
 
 	private shouldReconnect = true;
+
+	private disconnected = false;
 
 	/** Consecutive auth failures during reconnection attempts. */
 	private authRetryCount = 0;
@@ -91,13 +101,13 @@ export class GatewayClient {
 
 	constructor(private readonly options: GatewayClientOptions) {}
 
-	/** Return the active API key — session key if available, otherwise the original key. */
+	/** Session key when the server has upgraded the pairing token; otherwise the original token. */
 	private get apiKey(): string {
 		return this.sessionKey ?? this.options.apiKey;
 	}
 
 	private get dir(): string {
-		return this.options.config.filesystem.dir;
+		return this.options.session.dir;
 	}
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
@@ -116,52 +126,68 @@ export class GatewayClient {
 		if (this.browserModule) await this.browserModule.shutdown();
 	}
 
-	/** Notify the server we're disconnecting, then close the SSE connection. */
-	async disconnect(): Promise<void> {
+	/**
+	 * Tear down the client. Idempotent: safe to call multiple times.
+	 *
+	 * @param options.notifyServer Whether to POST the disconnect notification to
+	 *   the backend. Skip when the backend initiated the disconnect (e.g. via an
+	 *   SSE `gateway-disconnect` event) — no need to tell it what it told us.
+	 */
+	async disconnect(options: { notifyServer?: boolean } = {}): Promise<void> {
+		if (this.disconnected) return;
+		this.disconnected = true;
 		this.shouldReconnect = false;
-		this.options.settingsStore.clearSessionRules();
+		this.options.session.clearSessionRules();
 
-		// POST the disconnect notification BEFORE closing EventSource.
-		// The EventSource keeps the Node.js event loop alive — if we close it
-		// first, Node may exit before the fetch completes.
-		try {
-			const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
-			const headers = new Headers();
-			headers.set('Content-Type', 'application/json');
-			headers.set('X-Gateway-Key', this.apiKey);
-			const response = await fetch(url, {
-				method: 'POST',
-				headers,
-				body: '{}',
-				signal: AbortSignal.timeout(3000),
-			});
-			if (response.ok) {
-				printDisconnected();
-			} else {
-				logger.error('Gateway disconnect failed', { status: response.status });
+		const notifyServer = options.notifyServer ?? true;
+		if (notifyServer) {
+			// POST the disconnect notification BEFORE closing EventSource.
+			// The EventSource keeps the Node.js event loop alive — if we close it
+			// first, Node may exit before the fetch completes.
+			try {
+				const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
+				const headers = new Headers();
+				headers.set('Content-Type', 'application/json');
+				headers.set('X-Gateway-Key', this.apiKey);
+				const response = await fetch(url, {
+					method: 'POST',
+					headers,
+					body: '{}',
+					signal: AbortSignal.timeout(3000),
+				});
+				if (response.ok) {
+					printDisconnected();
+				} else {
+					logger.error('Gateway disconnect failed', { status: response.status });
+				}
+			} catch (error) {
+				logger.error('Gateway disconnect error', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
-		} catch (error) {
-			logger.error('Gateway disconnect error', {
-				error: error instanceof Error ? error.message : String(error),
-			});
+		} else {
+			printDisconnected();
 		}
+
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
 		}
 		if (this.browserModule) await this.browserModule.shutdown();
+
+		this.options.onDisconnected?.();
 	}
 
 	private async getAllDefinitions(): Promise<ToolDefinition[]> {
 		if (this.allDefinitions) return this.allDefinitions;
 
-		const { config, settingsStore } = this.options;
+		const { config, session } = this.options;
 		const defs: ToolDefinition[] = [];
 		const categories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> = [];
 
 		// Filesystem
-		const fsReadEnabled = settingsStore.getGroupMode('filesystemRead') !== 'deny';
-		const fsWriteEnabled = settingsStore.getGroupMode('filesystemWrite') !== 'deny';
+		const fsReadEnabled = session.getGroupMode('filesystemRead') !== 'deny';
+		const fsWriteEnabled = session.getGroupMode('filesystemWrite') !== 'deny';
 		if (fsReadEnabled) {
 			defs.push(...tagCategory(filesystemReadTools, 'filesystem'));
 		}
@@ -188,19 +214,19 @@ export class GatewayClient {
 			{
 				name: 'Shell',
 				category: 'shell',
-				enabled: settingsStore.getGroupMode('shell') !== 'deny',
+				enabled: session.getGroupMode('shell') !== 'deny',
 				module: ShellModule,
 			},
 			{
 				name: 'Screenshot',
 				category: 'screenshot',
-				enabled: settingsStore.getGroupMode('computer') !== 'deny',
+				enabled: session.getGroupMode('computer') !== 'deny',
 				module: ScreenshotModule,
 			},
 			{
 				name: 'MouseKeyboard',
 				category: 'mouse-keyboard',
-				enabled: settingsStore.getGroupMode('computer') !== 'deny',
+				enabled: session.getGroupMode('computer') !== 'deny',
 				module: MouseKeyboardModule,
 			},
 		];
@@ -221,7 +247,7 @@ export class GatewayClient {
 		}
 
 		// Browser
-		if (settingsStore.getGroupMode('browser') !== 'deny') {
+		if (session.getGroupMode('browser') !== 'deny') {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
 			this.browserModule = await BrowserModuleClass.create({
 				...config.browser,
@@ -371,6 +397,13 @@ export class GatewayClient {
 	private async handleMessage(event: MessageEvent): Promise<void> {
 		try {
 			const parsed: unknown = JSON.parse(String(event.data));
+
+			if (isGatewayDisconnectEvent(parsed)) {
+				// Server told us to disconnect — skip the POST-back, it would be circular.
+				await this.disconnect({ notifyServer: false });
+				return;
+			}
+
 			if (!isFilesystemRequestEvent(parsed)) return;
 
 			const { requestId, toolCall } = parsed.payload;
@@ -418,10 +451,10 @@ export class GatewayClient {
 		resources: AffectedResource[],
 		decision?: ResourceDecision,
 	): Promise<void> {
-		const { settingsStore, confirmResourceAccess, config } = this.options;
+		const { session, confirmResourceAccess, config } = this.options;
 
 		for (const resource of resources) {
-			const rule = settingsStore.check(resource.toolGroup, resource.resource);
+			const rule = session.check(resource.toolGroup, resource.resource);
 
 			if (rule === 'deny') {
 				throw new Error(
@@ -441,7 +474,7 @@ export class GatewayClient {
 						toolGroup: resource.toolGroup,
 						resource: resource.resource,
 						description: resource.description,
-						options: RESOURCE_DECISION_KEYS,
+						options: INSTANCE_RESOURCE_DECISION_KEYS,
 					})}`,
 				);
 			} else {
@@ -452,13 +485,13 @@ export class GatewayClient {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':
-					settingsStore.allowForSession(resource.toolGroup, resource.resource);
+					session.allowForSession(resource.toolGroup, resource.resource);
 					break;
 				case 'alwaysAllow':
-					settingsStore.alwaysAllow(resource.toolGroup, resource.resource);
+					session.alwaysAllow(resource.toolGroup, resource.resource);
 					break;
 				case 'alwaysDeny':
-					settingsStore.alwaysDeny(resource.toolGroup, resource.resource);
+					session.alwaysDeny(resource.toolGroup, resource.resource);
 					throw new Error(
 						`User permanently denied access to ${resource.toolGroup}: ${resource.resource}`,
 					);
@@ -494,6 +527,11 @@ export class GatewayClient {
 }
 
 // ── Type guard ──────────────────────────────────────────────────────────────
+
+function isGatewayDisconnectEvent(data: unknown): data is GatewayDisconnectEvent {
+	if (typeof data !== 'object' || data === null) return false;
+	return (data as Record<string, unknown>).type === 'gateway-disconnect';
+}
 
 function isFilesystemRequestEvent(data: unknown): data is FilesystemRequestEvent {
 	if (typeof data !== 'object' || data === null) return false;

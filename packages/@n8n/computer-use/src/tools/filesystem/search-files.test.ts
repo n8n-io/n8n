@@ -212,6 +212,31 @@ describe('searchFilesTool', () => {
 			).rejects.toThrow('escapes');
 		});
 
+		it.each(['node_modules', 'Node_Modules', '.git', 'dist'])(
+			'rejects direct search roots under excluded directory %s',
+			async (dirPath) => {
+				await expect(searchFilesTool.execute({ dirPath, query: 'foo' }, CONTEXT)).rejects.toThrow(
+					'excluded from filesystem reads',
+				);
+			},
+		);
+
+		it('skips likely binary files', async () => {
+			(fs.readdir as jest.Mock).mockResolvedValue([dirent('binary.dat', false)]);
+			mockStat();
+			(fs.readFile as jest.Mock).mockResolvedValue(Buffer.from([0xff, 0xfe, 0xfd, 0xfc]));
+
+			const result = await searchFilesTool.execute({ dirPath: '.', query: 'foo' }, CONTEXT);
+			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+			const data = JSON.parse(textOf(result)) as {
+				matches: unknown[];
+				totalMatches: number;
+			};
+
+			expect(data.matches).toHaveLength(0);
+			expect(data.totalMatches).toBe(0);
+		});
+
 		it.each([
 			{ query: 'foo', ignoreCase: undefined, label: 'case-sensitive' },
 			{ query: 'foo', ignoreCase: true, label: 'case-insensitive' },

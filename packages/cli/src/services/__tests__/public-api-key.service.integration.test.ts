@@ -1,25 +1,13 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest } from '@n8n/db';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
-import type { Response, NextFunction } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
-
-const mockReqWith = (apiKey: string, path: string, method: string) => {
-	return mock<AuthenticatedRequest>({
-		path,
-		method,
-		headers: {
-			'x-n8n-api-key': apiKey,
-		},
-	});
-};
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
@@ -80,115 +68,6 @@ describe('PublicApiKeyService', () => {
 			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
 				false,
 			);
-		});
-	});
-
-	describe('getApiKeyScopedMiddleware', () => {
-		it('should allow access when API key has required scope', async () => {
-			// Arrange
-			const owner = await createOwnerWithApiKey({
-				scopes: ['workflow:read', 'user:read'],
-			});
-			const [{ apiKey }] = owner.apiKeys;
-
-			const requiredScope = 'workflow:read' as ApiKeyScope;
-
-			const req = mockReqWith(apiKey, '/test', 'GET');
-
-			const res = mockDeep<Response>();
-
-			res.status.mockReturnThis();
-			res.json.mockReturnThis();
-
-			const next = jest.fn() as NextFunction;
-
-			// Act
-			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
-			await middleware(req, res, next);
-
-			// Assert
-			expect(next).toHaveBeenCalled();
-			expect(res.status).not.toHaveBeenCalled();
-			expect(res.json).not.toHaveBeenCalled();
-		});
-
-		it('should deny access when API key does not have required scope', async () => {
-			// Arrange
-			const owner = await createOwnerWithApiKey({
-				scopes: ['user:read'],
-			});
-			const [{ apiKey }] = owner.apiKeys;
-
-			const requiredScope = 'workflow:read' as ApiKeyScope;
-
-			const req = mockReqWith(apiKey, '/test', 'GET');
-
-			const res = mockDeep<Response>();
-
-			res.status.mockReturnThis();
-			res.json.mockReturnThis();
-
-			const next = jest.fn() as NextFunction;
-
-			// Act
-			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
-			await middleware(req, res, next);
-
-			// Assert
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(403);
-			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
-		});
-
-		it('should deny access when API key is invalid', async () => {
-			// Arrange
-			const invalidApiKey = 'invalid-api-key';
-			const requiredScope = 'workflow:read' as ApiKeyScope;
-
-			const req = mockReqWith(invalidApiKey, '/test', 'GET');
-
-			const res = mockDeep<Response>();
-
-			res.status.mockReturnThis();
-			res.json.mockReturnThis();
-
-			const next = jest.fn() as NextFunction;
-
-			// Act
-			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
-			await middleware(req, res, next);
-
-			// Assert
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(403);
-			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
-		});
-
-		it('should deny access when header x-n8n-api-key is not present', async () => {
-			// Arrange
-
-			const requiredScope = 'workflow:read' as ApiKeyScope;
-
-			const req = mock<AuthenticatedRequest>({
-				path: '/test',
-				method: 'GET',
-			});
-
-			const res = mockDeep<Response>();
-
-			res.status.mockReturnThis();
-			res.json.mockReturnThis();
-
-			const next = jest.fn() as NextFunction;
-
-			// Act
-			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
-			await middleware(req, res, next);
-
-			// Assert
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.json).toHaveBeenCalled();
 		});
 	});
 

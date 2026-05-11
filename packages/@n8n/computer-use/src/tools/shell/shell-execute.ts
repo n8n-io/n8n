@@ -3,6 +3,7 @@ import { rgPath } from '@vscode/ripgrep';
 import { spawn } from 'child_process';
 import { z } from 'zod';
 
+import { getSettingsDir } from '../../config';
 import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult, formatErrorResult } from '../utils';
 import { buildShellResource } from './build-shell-resource';
@@ -17,10 +18,10 @@ async function initializeSandbox({ dir }: { dir: string }) {
 			deniedDomains: [],
 		},
 		filesystem: {
-			denyRead: ['~/.ssh'],
+			denyRead: ['~/.ssh', getSettingsDir()],
 			allowRead: [],
 			allowWrite: [dir],
-			denyWrite: [],
+			denyWrite: [getSettingsDir()],
 		},
 	};
 	await SandboxManager.initialize(config);
@@ -92,7 +93,11 @@ async function runCommand(
 
 				child.on('close', (code) => {
 					clearTimeout(timer);
-					resolve(formatCallToolResult({ stdout, stderr, exitCode: code }));
+					const result = formatCallToolResult({ stdout, stderr, exitCode: code });
+					if (code !== 0) {
+						result.isError = true;
+					}
+					resolve(result);
 				});
 
 				child.on('error', (error) => {

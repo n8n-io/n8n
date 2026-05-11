@@ -2,10 +2,7 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -21,6 +18,7 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 interface UseLogsExecutionDataOptions {
 	/**
@@ -33,11 +31,8 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const nodeTypesStore = useNodeTypesStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
@@ -61,7 +56,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const latestNodeNameById = computed(() =>
 		Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>(
 			(acc, node) => {
-				const nodeInStore = workflowDocumentStore.value?.getNodeById(node.id) ?? null;
+				const nodeInStore = workflowDocumentStore.value.getNodeById(node.id) ?? null;
 
 				acc[node.id] = {
 					deleted: !nodeInStore,
@@ -78,16 +73,15 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		// When the floating chat panel experiment is enabled and the ChatTrigger has
 		// availableInChat enabled, the floating chat hub handles chat instead of the bottom panel
 		if (chatHubPanelStore.isFloatingChatEnabled) {
-			const isChatHubActive = (workflowDocumentStore.value?.allNodes ?? []).some(
+			const isChatHubActive = workflowDocumentStore.value.allNodes.some(
 				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters?.availableInChat === true,
 			);
 			if (isChatHubActive) return false;
 		}
 
-		return [
-			Object.values(workflow.value?.nodes ?? {}),
-			workflowDocumentStore.value?.allNodes ?? [],
-		].some((nodes) => nodes.some(isChatNode));
+		return [Object.values(workflow.value?.nodes ?? {}), workflowDocumentStore.value.allNodes].some(
+			(nodes) => nodes.some(isChatNode),
+		);
 	});
 
 	const entries = computed<LogEntry[]>(() => {
@@ -114,7 +108,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		workflowsStore.setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 
@@ -136,7 +130,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			subWorkflowExecData.value[locator.executionId] = data;
 			subWorkflows.value[locator.workflowId] = new Workflow({
 				...subExecution.workflowData,
-				nodeTypes: workflowsStore.getNodeTypes(),
+				nodeTypes: nodeTypesStore.getAllNodeTypes(),
 			});
 		} catch (e) {
 			toast.showError(e, 'Unable to load sub execution');
@@ -188,7 +182,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		throttledWorkflowData,
 		(data) => {
 			workflow.value = data
-				? new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })
+				? new Workflow({ ...data, nodeTypes: nodeTypesStore.getAllNodeTypes() })
 				: undefined;
 		},
 		{ immediate: true },

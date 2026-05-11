@@ -2,7 +2,6 @@ import flatted from 'flatted';
 
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
-import { retryUntil } from '../../../../utils/retry-utils';
 
 test.describe(
 	'Executions Filter',
@@ -270,7 +269,10 @@ test.describe('Workflow Executions', () => {
 
 			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-			const webhookResponse = await api.request.post(`/webhook/${webhookPath}`, { data: {} });
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+				method: 'POST',
+				data: {},
+			});
 			expect(webhookResponse.ok()).toBe(true);
 
 			const execution = await api.workflows.waitForExecution(workflowId, 10000);
@@ -286,7 +288,7 @@ test.describe('Workflow Executions', () => {
 
 			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-			const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 			expect(webhookResponse.ok()).toBe(true);
 
 			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
@@ -304,10 +306,10 @@ test.describe('Workflow Executions', () => {
 
 			await api.workflows.waitForExecution(workflowId, 15000);
 
-			await retryUntil(async () => {
+			await expect(async () => {
 				const completedExecution = await api.workflows.getExecution(execution.id);
 				expect(completedExecution.startedAt).toBe(originalStartedAt);
-			});
+			}).toPass();
 		});
 	});
 

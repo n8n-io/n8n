@@ -1,8 +1,9 @@
 import { createTool } from '@mastra/core/tools';
-import { generateWorkflowCode, layoutWorkflowJSON } from '@n8n/workflow-sdk';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import { buildCredentialSnapshot, resolveCredentials } from './resolve-credentials';
+import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
@@ -14,13 +15,25 @@ const patchSchema = z.object({
 	new_str: z.string().describe('Replacement string'),
 });
 
+// Coerce JSON-stringified arrays into arrays. The model sometimes sends `patches`
+// as a JSON string because the payload contains escaped code. Leave non-strings
+// untouched so Zod can validate them normally.
+function coercePatches(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+}
+
 export const buildWorkflowInputSchema = z.object({
 	code: z
 		.string()
 		.optional()
 		.describe('Full TypeScript workflow code using @n8n/workflow-sdk. Required for new workflows.'),
 	patches: z
-		.array(patchSchema)
+		.preprocess(coercePatches, z.array(patchSchema))
 		.optional()
 		.describe(
 			'Array of {old_str, new_str} replacements to apply to existing workflow code. ' +
@@ -54,6 +67,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			warnings: z.array(z.string()).optional(),
 		}),
 		execute: async (input: z.infer<typeof buildWorkflowInputSchema>) => {
+			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
+			if (context.permissions?.[permKey] === 'blocked') {
+				return { success: false, errors: ['Action blocked by admin'] };
+			}
+
 			const { code, patches, workflowId, projectId, name } = input;
 			let finalCode: string;
 
@@ -105,7 +123,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// Parse TypeScript to WorkflowJSON with two-stage validation
 			let result;
 			try {
-				result = parseAndValidate(finalCode);
+				result = parseAndValidate(finalCode, {
+					nodeTypesProvider: context.nodeTypesProvider,
+				});
 			} catch (error) {
 				return {
 					success: false,
@@ -129,9 +149,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Apply Dagre layout to produce positions matching the FE's tidy-up.
-			// Temporary: remove once the SDK is published with toJSON({ tidyUp: true }).
-			const json = layoutWorkflowJSON(result.workflow);
+			const json = result.workflow;
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {
@@ -145,19 +163,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
-			const credentialMap = await buildCredentialMap(context.credentialService);
-			await resolveCredentials(json, workflowId, context, credentialMap);
+			const credentialSnapshot = await buildCredentialSnapshot(context.credentialService);
+			await resolveCredentials(json, workflowId, context, credentialSnapshot.list);
+
+			// Strip credential entries that are no longer valid for the current
+			// parameters. Resolution above (and the LLM itself) can re-emit stale
+			// references between turns; without this, setup analysis would surface
+			// a credential request for a node that no longer needs one.
+			await stripStaleCredentialsFromWorkflow(context, json);
 
 			// Ensure webhook nodes have a webhookId so n8n registers clean paths
 			await ensureWebhookIds(json, workflowId, context);
 
 			try {
-				const opts = projectId ? { projectId } : undefined;
 				if (workflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						workflowId,
 						json,
-						opts,
+						projectId ? { projectId } : undefined,
 					);
 					return {
 						success: true,
@@ -168,7 +191,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: undefined,
 					};
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
+					const created = await context.workflowService.createFromWorkflowJSON(json, {
+						...(projectId ? { projectId } : {}),
+						markAsAiTemporary: true,
+					});
+					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
 					return {
 						success: true,
 						workflowId: created.id,

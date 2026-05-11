@@ -49,6 +49,8 @@ import {
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
@@ -64,6 +66,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 interface QueuedActivation {
@@ -97,6 +100,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly eventBus: MessageEventBus,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -361,20 +365,39 @@ export class ActiveWorkflowManager {
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
+				deduplicationKey?: string,
 			) => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
-				);
+				const executePromise = this.workflowExecutionService
+					.runWorkflow(
+						workflowData,
+						node,
+						data,
+						additionalData,
+						mode,
+						responsePromise,
+						deduplicationKey,
+					)
+					.catch((error: unknown) => {
+						if (error instanceof DuplicateExecutionError) {
+							const context = {
+								workflowId: workflowData.id,
+								nodeId: node.id,
+								deduplicationKey: error.deduplicationKey,
+							};
+							this.logger.warn('Scheduled execution skipped: duplicate deduplication key', context);
+							this.errorReporter.warn(error, { extra: context, shouldBeLogged: false });
+							return undefined;
+						}
+						throw error;
+					});
 
 				void executePromise.then((executionId) => {
+					// `executionId` is undefined when the catch above swallowed a
+					// duplicate scheduled execution; nothing ran, so nothing to emit.
+					if (executionId === undefined) return;
 					this.eventService.emit('workflow-executed', {
 						workflowId: workflowData.id,
 						workflowName: workflowData.name,
@@ -385,6 +408,12 @@ export class ActiveWorkflowManager {
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
+						// Same as above: a duplicate scheduled execution was skipped,
+						// so resolve with undefined and don't wait on a non-existent run.
+						if (executionId === undefined) {
+							donePromise.resolve(undefined);
+							return;
+						}
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
@@ -525,6 +554,16 @@ export class ActiveWorkflowManager {
 				this.logger.info(`Activated workflow ${formatWorkflow(dbWorkflow)}`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
+				});
+
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.activated',
+					payload: {
+						workflowId: dbWorkflow.id,
+						workflowName: dbWorkflow.name,
+						activeVersionId: dbWorkflow.activeVersionId,
+						activationMode,
+					},
 				});
 			}
 		} catch (error) {
@@ -745,13 +784,17 @@ export class ActiveWorkflowManager {
 	handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
+		errorDescription,
+		nodeId,
 	}: {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	}) {
 		this.push.broadcast({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, errorDescription, nodeId },
 		});
 	}
 
@@ -778,6 +821,8 @@ export class ActiveWorkflowManager {
 		} catch (e) {
 			const error = ensureError(e);
 			const { message } = error;
+			const nodeId = getErrorNodeId(e);
+			const errorDescription = getErrorDescription(e);
 
 			if (error instanceof IsolateError) {
 				this.logger.warn(
@@ -791,16 +836,31 @@ export class ActiveWorkflowManager {
 				return;
 			}
 
+			const dbWorkflow = await this.workflowRepository.findById(workflowId);
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
+
+			if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.deactivated',
+					payload: {
+						workflowId,
+						workflowName: dbWorkflow.name,
+						deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+						activationMode,
+						reason: error.name,
+					},
+				});
+			}
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
-				data: { workflowId, errorMessage: message },
+				data: { workflowId, errorMessage: message, nodeId, errorDescription },
 			});
 
 			await this.publisher.publishCommand({
 				command: 'display-workflow-activation-error',
-				payload: { workflowId, errorMessage: message },
+				payload: { workflowId, errorMessage: message, nodeId, errorDescription },
 			}); // instruct followers to show activation error in UI
 		}
 	}

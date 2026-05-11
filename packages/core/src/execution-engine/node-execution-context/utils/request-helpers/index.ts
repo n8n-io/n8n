@@ -4,6 +4,7 @@ export {
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	tryParseUrl,
