@@ -1,3 +1,5 @@
+import type { InstanceAiTraceRun } from '../../types';
+
 jest.mock('langsmith', () => {
 	let runCounter = 0;
 	const createdRunTrees: Array<{
@@ -256,6 +258,8 @@ function isExecutableTool(value: unknown): value is ExecutableTool {
 }
 
 const {
+	appendRootRunMetadata,
+	appendGeneratedWorkflowIdToRootMetadata,
 	buildAgentTraceInputs,
 	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
@@ -925,5 +929,92 @@ describe('submitLangsmithUserFeedback', () => {
 		expect(calls).toHaveLength(1);
 		expect(calls[0].clientApiUrl).toBe('https://proxy.example.com/langsmith');
 		expect(getAuthHeaders).toHaveBeenCalled();
+	});
+});
+
+describe('appendGeneratedWorkflowIdToRootMetadata', () => {
+	function makeRoot(metadata?: Record<string, unknown>): InstanceAiTraceRun {
+		return {
+			id: 'root-1',
+			name: 'message_turn',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+			...(metadata ? { metadata: { ...metadata } } : {}),
+		};
+	}
+
+	it('initialises generated_workflow_ids array on first append', () => {
+		const root = makeRoot();
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-1');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+	});
+
+	it('appends additional ids without losing existing entries', () => {
+		const root = makeRoot({ generated_workflow_ids: ['wf-1'] });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-2');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('dedupes repeated ids', () => {
+		const root = makeRoot({ generated_workflow_ids: ['wf-1'] });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-1');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1']);
+	});
+
+	it('ignores non-string entries when reading existing metadata', () => {
+		const root = makeRoot({ generated_workflow_ids: [42, null, 'wf-1'] as unknown[] });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-2');
+		expect(root.metadata?.generated_workflow_ids).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('preserves unrelated metadata', () => {
+		const root = makeRoot({ user_id: 'u-1', thread_id: 't-1' });
+		appendGeneratedWorkflowIdToRootMetadata(root, 'wf-1');
+		expect(root.metadata).toMatchObject({
+			user_id: 'u-1',
+			thread_id: 't-1',
+			generated_workflow_ids: ['wf-1'],
+		});
+	});
+});
+
+describe('appendRootRunMetadata', () => {
+	it('merges new fields into root metadata', () => {
+		const root: InstanceAiTraceRun = {
+			id: 'root-1',
+			name: 'message_turn',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+			metadata: { user_id: 'u-1' },
+		};
+		appendRootRunMetadata(root, { primary_workflow_id: 'wf-1' });
+		expect(root.metadata).toEqual({ user_id: 'u-1', primary_workflow_id: 'wf-1' });
+	});
+
+	it('overwrites existing values for the same key', () => {
+		const root: InstanceAiTraceRun = {
+			id: 'root-1',
+			name: 'message_turn',
+			runType: 'chain',
+			projectName: 'instance-ai',
+			startTime: 0,
+			traceId: 'trace-1',
+			dottedOrder: '',
+			executionOrder: 0,
+			childExecutionOrder: 0,
+			metadata: { final_status: 'pending' },
+		};
+		appendRootRunMetadata(root, { final_status: 'completed' });
+		expect(root.metadata?.final_status).toBe('completed');
 	});
 });
