@@ -710,6 +710,53 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('setup-manually-link')).toBeInTheDocument();
 		});
 
+		it('should hide "setup manually" link when credential has no manual fields', () => {
+			setupQuickConnectStores();
+
+			const mcpOAuth2ApiType: ICredentialType = {
+				name: 'mcpOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'hidden',
+						default: true,
+					},
+				],
+			};
+
+			const mcpNode: INodeUi = {
+				parameters: {},
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'mcp-node-id',
+				name: 'Notion MCP',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				mcpOAuth2Api: mcpOAuth2ApiType,
+			};
+
+			ndvStore.activeNode = mcpNode;
+
+			renderComponent(
+				{
+					props: {
+						node: mcpNode,
+						overrideCredType: 'mcpOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('setup-manually-link')).not.toBeInTheDocument();
+		});
+
 		it('should open credential modal when "setup manually" is clicked', async () => {
 			setupQuickConnectStores();
 
