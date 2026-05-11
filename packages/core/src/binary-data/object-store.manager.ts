@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import fs from 'node:fs/promises';
-import type { Readable } from 'node:stream';
+import { Transform, type Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
 import { ObjectStoreService } from './object-store/object-store.service.ee';
@@ -36,8 +36,28 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return await this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
-	async getAsStream(fileId: string) {
-		return await this.objectStoreService.get(fileId, { mode: 'stream' });
+	async getAsStream(fileId: string, chunkSize?: number) {
+		const streamObject = await this.objectStoreService.get(fileId, { mode: 'stream' });
+
+		if (!chunkSize) return streamObject;
+
+		let buffered = Buffer.alloc(0);
+		const rechunker = new Transform({
+			transform(chunk: Buffer, _encoding, callback) {
+				buffered = Buffer.concat([buffered, chunk]);
+				while (buffered.length >= chunkSize) {
+					this.push(buffered.subarray(0, chunkSize));
+					buffered = buffered.subarray(chunkSize);
+				}
+				callback();
+			},
+			flush(callback) {
+				if (buffered.length > 0) this.push(buffered);
+				callback();
+			},
+		});
+
+		return streamObject.pipe(rechunker);
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
