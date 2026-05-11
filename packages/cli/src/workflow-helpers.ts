@@ -125,6 +125,28 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 	}
 }
 
+/**
+ * Validates that all nodeIds in groups reference existing node IDs.
+ * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
+ * may not have IDs until that step assigns them.
+ */
+export function validateWorkflowGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'groups'>) {
+	const { groups, nodes } = workflow;
+	if (!groups || groups.length === 0) return;
+
+	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+
+	for (const group of groups) {
+		for (const nodeId of group.nodeIds) {
+			if (!nodeIds.has(nodeId)) {
+				throw new BadRequestError(
+					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
+				);
+			}
+		}
+	}
+}
+
 export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
 	const result = safeParseWorkflowStructure(workflow);
 
