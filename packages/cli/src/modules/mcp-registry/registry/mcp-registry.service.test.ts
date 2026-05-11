@@ -6,7 +6,13 @@ describe('McpRegistryService', () => {
 	let service: McpRegistryService;
 
 	beforeEach(() => {
-		service = new McpRegistryService();
+		service = new McpRegistryService(
+			{ scoped: jest.fn().mockReturnThis() } as never,
+			{} as never,
+			{} as never,
+			{ instanceType: 'main' } as never,
+			{} as never,
+		);
 	});
 
 	function seedDeprecated(slug: string): McpRegistryServer {
