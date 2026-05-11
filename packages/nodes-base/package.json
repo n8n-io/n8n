@@ -116,6 +116,7 @@
       "dist/credentials/FacebookGraphAppApi.credentials.js",
       "dist/credentials/FacebookLeadAdsOAuth2Api.credentials.js",
       "dist/credentials/FigmaApi.credentials.js",
+      "dist/credentials/FigmaOAuth2Api.credentials.js",
       "dist/credentials/FileMaker.credentials.js",
       "dist/credentials/FilescanApi.credentials.js",
       "dist/credentials/FlowApi.credentials.js",
