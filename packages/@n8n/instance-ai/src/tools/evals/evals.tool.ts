@@ -33,7 +33,7 @@ const offerAction = z.object({
 	action: z
 		.literal('offer')
 		.describe(
-			'Proactive eligibility precheck. If the workflow has AI nodes and is not already configured for evals, suspend with a strict approve/deny widget.',
+			'Eligibility precheck. Returns { eligible: false, reason } when the workflow has no AI nodes or already has evals configured, or { eligible: true, aiNodeNames, message } with a ready-to-send chat message you should output verbatim. No widget, no suspend — the user replies in natural chat on the next turn.',
 		),
 	workflowId: z.string(),
 	projectId: z.string().optional(),
@@ -136,9 +136,10 @@ function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): stri
 			? `This workflow uses AI node \`${aiNodeNames[0]}\`.`
 			: `This workflow uses ${aiNodeNames.length} AI nodes.`;
 	const baseMessage =
-		`${subject} Because AI outputs can vary between runs, an eval suite lets you ` +
-		`measure quality and catch regressions when you change prompts, models, or tools. ` +
-		`Want to set one up?`;
+		`${subject} AI answers can change unpredictably when you tweak prompts, models, or data — ` +
+		`even small edits can break behavior you weren't planning to change. ` +
+		`Test cases let you re-run your workflow against a fixed set of inputs and check the answers stay correct over time. ` +
+		`Want to add some?`;
 
 	if (namedRefs.length === 0) return baseMessage;
 
@@ -148,14 +149,13 @@ function composeOfferMessage(aiNodeNames: string[], namedRefs: NamedRef[]): stri
 		.join(', ');
 	const targetColumns = namedRefs.map((r) => `\`${r.column}\``).join(', ');
 
-	const noun = namedRefs.length === 1 ? 'expression' : 'expressions';
 	const sourceLabel = namedRefs.length === 1 ? 'node' : 'nodes';
 
 	return (
 		`${baseMessage}\n\n` +
-		`This will modify the agent's input ${noun} (currently reading from ${sourceLabel} ${sourceNodes}) ` +
-		`and insert a Set node in the production path that maps those references to dataset ${targetColumns}, ` +
-		`so the production behavior is preserved.`
+		`Setting this up will adjust your workflow slightly: the agent currently reads from ${sourceLabel} ${sourceNodes}, ` +
+		`and I'll route that data through the test inputs (columns ${targetColumns}) using a small Set node. ` +
+		`Your live behavior stays the same.`
 	);
 }
 
@@ -199,7 +199,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'evals',
 		description:
-			"Eval suite orchestration. action='offer' → proactive approve/deny widget after a fresh build. " +
+			"Eval suite orchestration. action='offer' → eligibility precheck after a fresh build; when eligible, returns a chat message you must output verbatim and then end the turn so the user can reply naturally. " +
 			"action='select-metrics' → multi-select widget for the user to choose canned metrics. " +
 			"action='propose' → build the task spec for the eval-setup sub-agent (creates an empty DataTable by default). " +
 			"action='offer-data-population' → approve/deny widget after eval setup, asking whether to auto-populate the empty DataTable.",
@@ -226,38 +226,24 @@ export function createEvalsTool(context: InstanceAiContext) {
 async function executeOffer(
 	context: InstanceAiContext,
 	input: z.infer<typeof offerAction>,
-	ctx: any,
+	_ctx: any,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ConfirmResume | undefined;
-	const suspend = ctx?.agent?.suspend;
-
 	const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
 	const detection = detectAiNodes(wf);
-
-	if (resumeData !== undefined && resumeData !== null) {
-		if (!resumeData.approved) return { eligible: true as const, approved: false as const };
-		return {
-			eligible: true as const,
-			approved: true as const,
-			aiNodeNames: detection.aiNodeNames,
-		};
-	}
 
 	if (!detection.isAiWorkflow) return { eligible: false as const, reason: 'no-ai-nodes' as const };
 	if (detection.alreadyConfigured) {
 		return { eligible: false as const, reason: 'already-configured' as const };
 	}
 
-	// Detect named refs to disclose before approval
 	const agentName = detection.aiNodeNames[0];
 	const namedRefs = detectAgentNamedRefs(wf, agentName);
 
-	await suspend?.({
-		requestId: nanoid(),
+	return {
+		eligible: true as const,
+		aiNodeNames: detection.aiNodeNames,
 		message: composeOfferMessage(detection.aiNodeNames, namedRefs),
-		severity: 'info' as const,
-	});
-	return { eligible: true as const, approved: false as const };
+	};
 }
 
 // ── action: select-metrics ─────────────────────────────────────────────────
@@ -298,13 +284,13 @@ async function executeSelectMetrics(
 	const questionId = nanoid();
 	await suspend?.({
 		requestId: nanoid(),
-		message: 'Choose evaluation metrics',
+		message: 'Pick what to measure',
 		severity: 'info' as const,
 		inputType: 'questions' as const,
 		questions: [
 			{
 				id: questionId,
-				question: `Choose evaluation metrics (defaults pre-selected: ${defaultLabels.join(', ')})`,
+				question: `Pick what you'd like to measure on each test case (defaults pre-selected: ${defaultLabels.join(', ')})`,
 				type: 'multi' as const,
 				options: allLabels,
 			},
@@ -468,7 +454,7 @@ async function executeOfferDataPopulation(
 
 	await suspend?.({
 		requestId: nanoid(),
-		message: 'Auto-populate the eval DataTable?',
+		message: 'Generate some sample test inputs to get you started?',
 		severity: 'info' as const,
 	});
 	return { approved: false as const };

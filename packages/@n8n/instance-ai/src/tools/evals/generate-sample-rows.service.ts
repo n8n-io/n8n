@@ -144,11 +144,11 @@ function buildAgentContextBlock(context: AgentContext | undefined): string {
 const FORMAT_INFERENCE =
 	"Inspect the agent's system prompt, prompt template, and connected tools to infer what kind of text this agent receives at runtime. It may be a user chat message, output from another tool, scraped web content, structured records (JSON/key-value), document chunks, log lines, code, etc. Generate inputs that look like what would arrive at the agent in production. Do not assume a human user when the agent suggests otherwise.";
 
-const BATCH_SYSTEM_INSTRUCTIONS = `You generate realistic test rows for an n8n workflow evaluation dataset.
+const BATCH_SYSTEM_INSTRUCTIONS = `You generate realistic test inputs for an n8n workflow evaluation dataset.
 
-Output: JSON array of objects. Keys = the provided column names. Values = short strings. No prose outside the JSON.
+Output: JSON array of objects. Keys = exactly the provided column names. Values = short strings. No prose outside the JSON.
 
-Every row's "expected_output" (or the equivalent output column) must be what a correctly-behaving agent SHOULD produce. For adversarial rows: a refusal or a safe fallback.
+Generate only INPUT data — the inputs the agent would receive in production. Do not invent expected outputs, answers, or labels. Those columns are filled in by the user, who decides what the correct answer is. Generating both inputs and expected outputs with the same model would measure self-consistency, not correctness.
 
 Return only the JSON array.`;
 

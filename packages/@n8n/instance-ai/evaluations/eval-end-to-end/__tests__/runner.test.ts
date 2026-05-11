@@ -68,7 +68,7 @@ describe('eval-end-to-end runner — pure helpers', () => {
 	});
 
 	describe('buildEvalPrompt', () => {
-		it('asks the agent to add evals AND populate the dataset for an eligible workflow', () => {
+		it('asks the agent to add test cases AND seed sample inputs for an eligible workflow', () => {
 			const prompt = buildEvalPrompt({
 				workflowId: 'wf-1',
 				workflowName: 'Demo',
@@ -76,8 +76,8 @@ describe('eval-end-to-end runner — pure helpers', () => {
 			});
 			expect(prompt).toContain('wf-1');
 			expect(prompt).toContain('Demo');
-			expect(prompt).toContain('EvaluationTrigger');
-			expect(prompt).toContain('eval-data');
+			expect(prompt).toContain('test cases');
+			expect(prompt).toContain('sample input rows');
 		});
 
 		it('tells the agent NOT to add new evals when the workflow is already configured', () => {
@@ -104,10 +104,12 @@ describe('eval-end-to-end runner — pure helpers', () => {
 	describe('filterToolSelectionForMode', () => {
 		const raw: EvalEndToEndToolSelectionResult = {
 			evalsToolCalled: false,
+			evalsActionsCalled: [],
 			evalSetupAgentCalled: false,
 			evalDataToolCalled: false,
 			findings: [
 				{ severity: 'error', code: 'evals_tool_not_called', message: 'x' },
+				{ severity: 'error', code: 'evals_propose_not_called', message: 'x2' },
 				{ severity: 'error', code: 'eval_setup_agent_not_called', message: 'y' },
 				{ severity: 'error', code: 'eval_data_tool_not_called', message: 'z' },
 			],
@@ -115,7 +117,7 @@ describe('eval-end-to-end runner — pure helpers', () => {
 
 		it('keeps tool-not-called findings as errors when mode is eligible', () => {
 			const filtered = filterToolSelectionForMode(raw, 'eligible');
-			expect(filtered.findings).toHaveLength(3);
+			expect(filtered.findings).toHaveLength(4);
 		});
 
 		it('drops tool-not-called findings when mode is already-configured', () => {
@@ -127,23 +129,61 @@ describe('eval-end-to-end runner — pure helpers', () => {
 			const filtered = filterToolSelectionForMode(raw, 'no-ai-nodes');
 			expect(filtered.findings).toHaveLength(0);
 		});
+
+		it('flags eval-setup-with-agent as unexpectedly called when mode is already-configured', () => {
+			const filtered = filterToolSelectionForMode(
+				{ ...raw, evalSetupAgentCalled: true, findings: [] },
+				'already-configured',
+			);
+			expect(filtered.findings).toEqual([
+				expect.objectContaining({ code: 'eval_setup_agent_unexpectedly_called' }),
+			]);
+		});
+
+		it('flags eval-data as unexpectedly called when mode is no-ai-nodes', () => {
+			const filtered = filterToolSelectionForMode(
+				{ ...raw, evalDataToolCalled: true, findings: [] },
+				'no-ai-nodes',
+			);
+			expect(filtered.findings).toEqual([
+				expect.objectContaining({ code: 'eval_data_tool_unexpectedly_called' }),
+			]);
+		});
 	});
 
 	describe('isApprovableConfirmation', () => {
-		it('approves any confirmation-request event', () => {
+		it('approves confirmations emitted by the evals tool', () => {
+			const event: CapturedEvent = {
+				timestamp: 0,
+				type: 'confirmation-request',
+				data: { payload: { requestId: 'r1', toolName: 'evals' } },
+			};
+			expect(isApprovableConfirmation(event)).toBe(true);
+		});
+
+		it('rejects confirmations emitted by any other tool', () => {
+			const event: CapturedEvent = {
+				timestamp: 0,
+				type: 'confirmation-request',
+				data: { payload: { requestId: 'r1', toolName: 'workflows' } },
+			};
+			expect(isApprovableConfirmation(event)).toBe(false);
+		});
+
+		it('rejects confirmations without a structured payload', () => {
 			const event: CapturedEvent = {
 				timestamp: 0,
 				type: 'confirmation-request',
 				data: { requestId: 'r1' },
 			};
-			expect(isApprovableConfirmation(event)).toBe(true);
+			expect(isApprovableConfirmation(event)).toBe(false);
 		});
 
 		it('skips non-confirmation events', () => {
 			const event: CapturedEvent = {
 				timestamp: 0,
 				type: 'tool-call',
-				data: { toolName: 'evals' },
+				data: { payload: { toolName: 'evals' } },
 			};
 			expect(isApprovableConfirmation(event)).toBe(false);
 		});

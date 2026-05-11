@@ -225,7 +225,7 @@ function makeCtx(
 
 // ── action: offer ──────────────────────────────────────────────────────────
 
-describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
+describe('evalsTool — action: offer (eligibility precheck + chat message)', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('returns eligible:false with reason no-ai-nodes and never suspends for a non-AI workflow', async () => {
@@ -268,61 +268,34 @@ describe('evalsTool — action: offer (proactive approve/deny widget)', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
-	it('suspends with the strict approve/deny widget on the first call when eligible', async () => {
+	it('returns eligible:true with aiNodeNames and a chat-ready message, never suspends', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
 		const suspend = jest.fn();
 
-		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
 			agent: { suspend, resumeData: undefined },
-		} as never);
+		} as never)) as Record<string, unknown>;
 
-		expect(suspend).toHaveBeenCalledTimes(1);
-		const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
-		expect(payload).toMatchObject({
-			severity: 'info',
-			message: expect.stringMatching(/AI outputs can vary between runs/i) as unknown,
+		expect(suspend).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			eligible: true,
+			aiNodeNames: ['Agent'],
 		});
-		expect(payload).toHaveProperty('requestId');
-		expect(payload).not.toHaveProperty('inputType');
-		expect(payload).not.toHaveProperty('questions');
+		expect(result.message).toEqual(expect.stringMatching(/test cases/i));
 	});
 
 	it('builds a singular message when there is exactly one AI node', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
-
-		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { suspend, resumeData: undefined },
-		} as never);
-
-		const message = suspend.mock.calls[0][0].message as string;
-		expect(message).toContain('This workflow uses AI node `Agent`.');
-		expect(message).toContain('AI outputs can vary between runs');
-		expect(message).toContain('Want to set one up?');
-	});
-
-	it('returns approved:true with aiNodeNames when the user approves', async () => {
-		const ctx = makeCtx(aiWf());
-		const tool = createEvalsTool(ctx);
 
 		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { resumeData: { approved: true } },
-		} as never)) as Record<string, unknown>;
+			agent: { resumeData: undefined },
+		} as never)) as { message: string };
 
-		expect(result).toEqual({ eligible: true, approved: true, aiNodeNames: ['Agent'] });
-	});
-
-	it('returns approved:false when the user denies', async () => {
-		const ctx = makeCtx(aiWf());
-		const tool = createEvalsTool(ctx);
-
-		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { resumeData: { approved: false } },
-		} as never)) as Record<string, unknown>;
-
-		expect(result).toEqual({ eligible: true, approved: false });
+		expect(result.message).toContain('This workflow uses AI node `Agent`.');
+		expect(result.message).toContain('Test cases let you');
+		expect(result.message).toContain('Want to add some?');
 	});
 });
 
@@ -700,7 +673,7 @@ describe('evals tool — offer-data-population action', () => {
 		const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
 		expect(payload).toMatchObject({
 			severity: 'info',
-			message: expect.stringMatching(/populate/i) as unknown,
+			message: expect.stringMatching(/sample test inputs/i) as unknown,
 		});
 		expect(payload).toHaveProperty('requestId');
 	});
@@ -769,32 +742,27 @@ describe('evals tool — offer with named refs', () => {
 	it('expands the offer message with disclosure when agent has named refs', async () => {
 		const ctx = makeCtx(aiWfWithNamedRef());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
 
-		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { suspend, resumeData: undefined },
-		} as never);
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { resumeData: undefined },
+		} as never)) as { message: string };
 
-		expect(suspend).toHaveBeenCalled();
-		const message = (suspend.mock.calls[0][0] as Record<string, unknown>).message as string;
-		expect(message).toMatch(/This workflow uses AI node/);
-		expect(message).toMatch(/Voice or Text/);
-		expect(message).toMatch(/Set node in the production path/);
-		expect(message).toMatch(/`text`/);
+		expect(result.message).toMatch(/This workflow uses AI node/);
+		expect(result.message).toMatch(/Voice or Text/);
+		expect(result.message).toMatch(/Set node/);
+		expect(result.message).toMatch(/`text`/);
 	});
 
 	it('keeps the offer message short when no named refs are present', async () => {
 		const ctx = makeCtx(aiWf());
 		const tool = createEvalsTool(ctx);
-		const suspend = jest.fn();
 
-		await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
-			agent: { suspend, resumeData: undefined },
-		} as never);
+		const result = (await tool.execute!({ action: 'offer', workflowId: 'w1' }, {
+			agent: { resumeData: undefined },
+		} as never)) as { message: string };
 
-		const message = (suspend.mock.calls[0][0] as Record<string, unknown>).message as string;
-		expect(message).not.toMatch(/Set node/);
-		expect(message).not.toMatch(/production path/);
+		expect(result.message).not.toMatch(/Set node/);
+		expect(result.message).not.toMatch(/route that data/);
 	});
 });
 

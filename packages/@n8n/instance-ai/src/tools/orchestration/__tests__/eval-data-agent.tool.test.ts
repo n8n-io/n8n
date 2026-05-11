@@ -274,7 +274,7 @@ describe('eval-data tool', () => {
 		expect(insertedRows[0]).toEqual({ user_query: 'q-e0', expected_response: 'a-e0' });
 	});
 
-	it('synthetic path generates both input AND expected columns', async () => {
+	it('synthetic path generates ONLY input columns and flags expected outputs for user review', async () => {
 		const insertRows = jest.fn();
 		const ctx = buildOrchestrationCtx({
 			domainContext: {
@@ -295,15 +295,86 @@ describe('eval-data tool', () => {
 		});
 		const generateSpy = jest
 			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
-			.mockResolvedValue([{ user_query: 'q', expected_response: 'r' }]);
+			.mockResolvedValue([{ user_query: 'q' }]);
 		const tool = createEvalDataAgentTool(ctx as never);
-		await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
 		expect(generateSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
-				columns: ['user_query', 'expected_response'],
+				columns: ['user_query'],
 				rowCount: 10,
 			}),
 		);
+		expect(result).toMatchObject({
+			status: 'generated',
+			source: 'synthetic',
+			expectedOutputsNeedUserReview: true,
+			expectedOutputColumns: ['expected_response'],
+		});
+	});
+
+	it('does not flag user review on the history path (real outputs are ground truth)', async () => {
+		const summaries = Array.from({ length: 12 }, (_, i) => ({ id: `e${i}`, status: 'success' }));
+		const ctx = buildOrchestrationCtx({
+			domainContext: {
+				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWfWithMetrics()) },
+				dataTableService: {
+					insertRows: jest.fn().mockResolvedValue(undefined),
+					getSchema: jest
+						.fn()
+						.mockResolvedValue([{ name: 'user_query' }, { name: 'expected_response' }]),
+					addColumn: jest.fn(),
+				},
+				executionService: {
+					list: jest.fn().mockResolvedValueOnce(summaries).mockResolvedValueOnce([]),
+					getNodeOutput: jest.fn(async (id: string, nodeName: string) => {
+						if (nodeName === 'EvalTrig') {
+							return {
+								nodeName,
+								items: [{ json: { user_query: `q-${id}` } }],
+								totalItems: 1,
+								returned: { from: 0, to: 0 },
+							};
+						}
+						return {
+							nodeName,
+							items: [{ json: { output: `a-${id}` } }],
+							totalItems: 1,
+							returned: { from: 0, to: 0 },
+						};
+					}),
+				},
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+			},
+		});
+		const tool = createEvalDataAgentTool(ctx as never);
+		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		expect(result.source).toBe('history');
+		expect(result.expectedOutputsNeedUserReview).toBeUndefined();
+	});
+
+	it('does not flag user review when there are no expected-output columns', async () => {
+		const ctx = buildOrchestrationCtx({
+			domainContext: {
+				workflowService: { getAsWorkflowJSON: jest.fn().mockResolvedValue(evalWf()) },
+				dataTableService: {
+					insertRows: jest.fn(),
+					getSchema: jest.fn().mockResolvedValue([{ name: 'user_query' }]),
+					addColumn: jest.fn(),
+				},
+				executionService: {
+					list: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+					getNodeOutput: jest.fn(),
+				},
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+			},
+		});
+		jest
+			.spyOn(require('../../evals/generate-sample-rows.service'), 'generateSampleRows')
+			.mockResolvedValue([{ user_query: 'q' }]);
+		const tool = createEvalDataAgentTool(ctx as never);
+		const result = await tool.execute!({ workflowId: 'w1' }, { agent: {} } as never);
+		expect(result.source).toBe('synthetic');
+		expect(result.expectedOutputsNeedUserReview).toBeUndefined();
 	});
 
 	it('adds missing columns to the DataTable before inserting rows', async () => {

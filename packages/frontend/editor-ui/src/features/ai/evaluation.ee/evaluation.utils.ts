@@ -1,6 +1,5 @@
 import startCase from 'lodash/startCase';
-import type { INodeUi } from '@/Interface';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, type JsonValue } from 'n8n-workflow';
+import type { JsonValue } from 'n8n-workflow';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
 
@@ -32,31 +31,6 @@ export type MetricSource = {
 	category: MetricCategory;
 	nodeName: string;
 };
-
-const LANGCHAIN_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.';
-
-/**
- * A workflow is eligible for the in-canvas evals hint when it contains at least
- * one langchain node and has no existing Evaluation/EvaluationTrigger node.
- * Workflows where the agent reads from named nodes are still eligible — the
- * eval setup pipeline handles them via a production adapter.
- */
-export function isEligibleForEvalsHint(nodes: INodeUi[]): boolean {
-	let hasAiNode = false;
-	let alreadyConfigured = false;
-
-	for (const node of nodes) {
-		if (!node.name) continue;
-		if (node.type.startsWith(LANGCHAIN_TYPE_PREFIX)) {
-			hasAiNode = true;
-		}
-		if (node.type === EVALUATION_NODE_TYPE || node.type === EVALUATION_TRIGGER_NODE_TYPE) {
-			alreadyConfigured = true;
-		}
-	}
-
-	return hasAiNode && !alreadyConfigured;
-}
 
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;

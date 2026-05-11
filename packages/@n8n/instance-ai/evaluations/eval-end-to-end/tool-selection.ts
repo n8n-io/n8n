@@ -8,6 +8,8 @@ const EVAL_SETUP_TOOL_NAME = 'eval-setup-with-agent';
 const EVAL_DATA_TOOL_NAME = 'eval-data';
 const EVAL_SETUP_AGENT_NAMES = new Set([EVAL_SETUP_TOOL_NAME, 'eval-setup']);
 const EVAL_DATA_AGENT_NAMES = new Set([EVAL_DATA_TOOL_NAME, 'eval-data-generator']);
+const EVALS_ACTIONS = ['offer', 'select-metrics', 'propose', 'offer-data-population'] as const;
+const EVALS_PROPOSE_ACTION = 'propose';
 const TOOL_CALL_EVENT_TYPES = new Set(['tool-call']);
 const TOOL_NAME_KEYS = ['toolName', 'tool', 'name'] as const;
 const AGENT_NAME_KEYS = ['role', 'kind', 'name'] as const;
@@ -28,7 +30,9 @@ export function extractToolSelection(input: {
 	events: CapturedEvent[];
 	threadMessages?: InstanceAiRichMessagesResponse;
 }): EvalEndToEndToolSelectionResult {
+	const evalsActionsCalled = collectEvalsActions(input);
 	const evalsToolCalled =
+		evalsActionsCalled.length > 0 ||
 		input.events.some((event) => eventContainsToolCall(event, EVALS_TOOL_NAME)) ||
 		richMessagesContainToolCall(input.threadMessages, EVALS_TOOL_NAME);
 
@@ -52,6 +56,17 @@ export function extractToolSelection(input: {
 		findings.push({
 			severity: 'error',
 			code: 'evals_tool_not_called',
+			message: 'Instance AI did not call the evals tool',
+		});
+	}
+
+	// `propose` is the load-bearing action — it builds the task spec for
+	// eval-setup-with-agent and creates the empty DataTable. Without it the
+	// downstream chain cannot run, so it gets its own error code.
+	if (!evalsActionsCalled.includes(EVALS_PROPOSE_ACTION)) {
+		findings.push({
+			severity: 'error',
+			code: 'evals_propose_not_called',
 			message: 'Instance AI did not call evals(action="propose")',
 		});
 	}
@@ -74,10 +89,63 @@ export function extractToolSelection(input: {
 
 	return {
 		evalsToolCalled,
+		evalsActionsCalled,
 		evalSetupAgentCalled,
 		evalDataToolCalled,
 		findings,
 	};
+}
+
+/**
+ * Collect the distinct `evals` action names invoked across captured events
+ * and rich thread messages. Reads `args.action` directly off the structured
+ * tool-call payloads — does not rely on free-form traversal.
+ */
+function collectEvalsActions(input: {
+	events: CapturedEvent[];
+	threadMessages?: InstanceAiRichMessagesResponse;
+}): string[] {
+	const actions = new Set<string>();
+
+	for (const event of input.events) {
+		const eventType = event.type.toLowerCase();
+		if (!TOOL_CALL_EVENT_TYPES.has(eventType) && eventType !== 'confirmation-request') continue;
+		const action = readEvalsActionFromEventData(event.data);
+		if (action !== undefined) actions.add(action);
+	}
+
+	visitRichAgentTrees(input.threadMessages, (agentNode) => {
+		for (const toolCall of agentNode.toolCalls) {
+			if (toolCall.toolName !== EVALS_TOOL_NAME) continue;
+			const action = readActionFromArgs(toolCall.args);
+			if (action !== undefined) actions.add(action);
+		}
+		return false;
+	});
+
+	const ordered: string[] = [];
+	for (const action of EVALS_ACTIONS) {
+		if (actions.has(action)) ordered.push(action);
+	}
+	// Preserve any unexpected action names too — useful for diagnosing drift
+	// when a new evals action is added but this list isn't updated.
+	for (const action of actions) {
+		if (!ordered.includes(action)) ordered.push(action);
+	}
+	return ordered;
+}
+
+function readEvalsActionFromEventData(data: Record<string, unknown>): string | undefined {
+	const payload = data.payload;
+	if (!isRecord(payload)) return undefined;
+	if (payload.toolName !== EVALS_TOOL_NAME) return undefined;
+	return readActionFromArgs(payload.args);
+}
+
+function readActionFromArgs(args: unknown): string | undefined {
+	if (!isRecord(args)) return undefined;
+	const action = args.action;
+	return typeof action === 'string' ? action : undefined;
 }
 
 function eventContainsToolCall(event: CapturedEvent, expectedToolName: string): boolean {

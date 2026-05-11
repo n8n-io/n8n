@@ -50,6 +50,12 @@ export interface EvalEndToEndFinding {
 
 export interface EvalEndToEndToolSelectionResult {
 	evalsToolCalled: boolean;
+	/**
+	 * Distinct `evals` actions observed across the run, e.g.
+	 * `['offer', 'select-metrics', 'propose', 'offer-data-population']`.
+	 * Used to verify orchestration depth, not just that the tool ran.
+	 */
+	evalsActionsCalled: string[];
 	evalSetupAgentCalled: boolean;
 	evalDataToolCalled: boolean;
 	findings: EvalEndToEndFinding[];
