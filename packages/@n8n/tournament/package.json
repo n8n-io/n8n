@@ -27,7 +27,7 @@
   },
   "engines": {
     "node": ">=20.15",
-    "pnpm": ">=9.5"
+    "pnpm": ">=10.28.2"
   },
   "files": [
     "src/",
@@ -36,7 +36,7 @@
     "package.json",
     "tsconfig.json"
   ],
-  "packageManager": "pnpm@9.6.0",
+  "packageManager": "pnpm@10.28.2",
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
