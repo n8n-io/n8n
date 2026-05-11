@@ -29,6 +29,7 @@ export {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmRequestKind,
+	type InstanceAiResourceDecision,
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
@@ -197,6 +198,8 @@ export {
 } from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
+
+export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,

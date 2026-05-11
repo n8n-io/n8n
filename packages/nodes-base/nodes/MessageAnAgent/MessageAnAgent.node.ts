@@ -26,6 +26,13 @@ export class MessageAnAgent implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName:
+					'Only published agents are listed below. Publish an agent before referencing it from a workflow.',
+				name: 'publishedAgentNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Agent',
 				name: 'agentId',
 				type: 'resourceLocator',
@@ -69,6 +76,23 @@ export class MessageAnAgent implements INodeType {
 				typeOptions: {
 					rows: 4,
 				},
+			},
+			{
+				displayName: 'Advanced',
+				name: 'advanced',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Session ID',
+						name: 'sessionId',
+						type: 'string',
+						default: '',
+						description:
+							'Reuse an agent session to keep memory across runs. Leave empty to start a fresh session per execution.',
+					},
+				],
 			},
 		],
 	};
@@ -116,6 +140,8 @@ export class MessageAnAgent implements INodeType {
 				};
 				const agentId = agentIdRlc.value;
 				const message = this.getNodeParameter('message', i) as string;
+				const advanced = this.getNodeParameter('advanced', i, {}) as { sessionId?: string };
+				const sessionIdOverride = advanced.sessionId?.trim();
 
 				if (!message.trim()) {
 					throw new NodeOperationError(this.getNode(), 'Message cannot be empty', {
@@ -123,7 +149,12 @@ export class MessageAnAgent implements INodeType {
 					});
 				}
 
-				const result = await this.executeAgent({ agentId }, message, executionId, i);
+				const result = await this.executeAgent(
+					{ agentId, sessionId: sessionIdOverride || undefined },
+					message,
+					executionId,
+					i,
+				);
 
 				returnData.push({
 					json: {
@@ -132,6 +163,7 @@ export class MessageAnAgent implements INodeType {
 						usage: result.usage as unknown as IDataObject,
 						toolCalls: result.toolCalls as unknown as IDataObject[],
 						finishReason: result.finishReason,
+						session: result.session as unknown as IDataObject,
 					},
 					pairedItem: { item: i },
 				});

@@ -54,7 +54,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 
-		workflowsStore.workflow.id = WORKFLOW_ID;
+		workflowsStore.workflowId = WORKFLOW_ID;
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 
 		// Default: feature flag disabled

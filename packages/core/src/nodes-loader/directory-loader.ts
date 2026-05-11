@@ -32,6 +32,7 @@ import {
 	CUSTOM_NODES_PACKAGE_NAME,
 } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
+import { validateNodeDescription } from './validate-node-description';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -227,6 +228,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 		});
 
 		this.getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
+			validateNodeDescription(description);
 			this.types.nodes.push(description);
 		});
 
