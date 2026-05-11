@@ -44,6 +44,7 @@ const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
+	projectId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -62,6 +63,7 @@ const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
+const credentialProjectId = computed(() => props.projectId ?? projectsStore.personalProject?.id);
 
 const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
@@ -347,18 +349,23 @@ onMounted(async () => {
 		emit('update:node-name', node.value.name);
 	}
 
-	// Set personal project as current project for dynamic parameter loading
-	const personalProject = projectsStore.personalProject;
-	if (personalProject) {
-		projectsStore.setCurrentProject(personalProject);
+	// Set project context for dynamic parameter loading and credential creation.
+	if (props.projectId) {
+		await projectsStore.fetchAndSetProject(props.projectId);
+	} else if (projectsStore.personalProject) {
+		projectsStore.setCurrentProject(projectsStore.personalProject);
+	}
 
-		// Ensure credentials are loaded for the credentials selector to work
-		if (credentialsStore.allCredentials.length === 0) {
-			await Promise.all([
-				credentialsStore.fetchCredentialTypes(false),
-				credentialsStore.fetchAllCredentialsForWorkflow({ projectId: personalProject.id }),
-			]);
-		}
+	// Ensure credentials are loaded for the credentials selector to work.
+	// Always refresh for the resolved project context so previously loaded
+	// credentials from another project do not bleed into this tool config.
+	const projectId = credentialProjectId.value;
+	if (projectId) {
+		credentialsStore.setCredentials([]);
+		await Promise.all([
+			credentialsStore.fetchCredentialTypes(false),
+			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
+		]);
 	}
 });
 
@@ -396,6 +403,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:node="node"
 						:readonly="false"
 						:show-all="true"
+						:project-id="credentialProjectId"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
 						@credential-selected="handleChangeCredential"

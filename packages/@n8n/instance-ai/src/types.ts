@@ -251,7 +251,22 @@ export interface CredentialTypeSearchResult {
 }
 
 export interface InstanceAiCredentialService {
-	list(options?: { type?: string }): Promise<CredentialSummary[]>;
+	/**
+	 * List credentials.
+	 *
+	 * Without `workflowId` / `projectId`: returns every credential the user has
+	 * read access to anywhere in the instance. Use this for informational lookups.
+	 *
+	 * With `workflowId` or `projectId`: returns only credentials usable in that
+	 * workflow / project (the same scoping the editor's credential picker uses).
+	 * Use this whenever the result feeds a setup card the user will pick from —
+	 * the save path enforces the same scope and will reject anything outside it.
+	 */
+	list(options?: {
+		type?: string;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<CredentialSummary[]>;
 	get(credentialId: string): Promise<CredentialDetail>;
 	delete(credentialId: string): Promise<void>;
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
@@ -1037,6 +1052,10 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/** Mark the current orchestrator run as making progress. */
+	touchRun?: () => boolean;
+	/** Mark a running background task as making progress. */
+	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */
