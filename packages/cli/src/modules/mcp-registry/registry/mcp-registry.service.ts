@@ -48,7 +48,7 @@ export class McpRegistryService {
 
 	async init(): Promise<void> {
 		await this.loadFromSettings();
-		await this.refreshRegistryNodeTypes();
+		await this.refreshRegistryNodeTypes(false);
 		if (this.instanceSettings.isLeader) {
 			// don't want to wait for API calls to complete on init
 			void this.refreshFromApi('startup');
@@ -76,7 +76,7 @@ export class McpRegistryService {
 	@OnPubSubEvent('reload-mcp-registry')
 	async reloadFromDb(): Promise<void> {
 		await this.loadFromSettings();
-		await this.refreshRegistryNodeTypes();
+		await this.refreshRegistryNodeTypes(true);
 		if (this.isMainInstance()) {
 			await this.notifyNodeDescriptionsUpdated();
 		}
@@ -143,7 +143,7 @@ export class McpRegistryService {
 
 			await this.writeStoredServers(nextServers);
 			this.replaceCache(nextServers);
-			await this.refreshRegistryNodeTypes();
+			await this.refreshRegistryNodeTypes(true);
 			await this.notifyNodeDescriptionsUpdated();
 			await this.publishReloadCommand();
 
@@ -242,7 +242,7 @@ export class McpRegistryService {
 		}
 	}
 
-	private async refreshRegistryNodeTypes(): Promise<void> {
+	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {
 		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
 		if (!loader) {
 			return;
@@ -258,6 +258,9 @@ export class McpRegistryService {
 		loader.setServers(this.getAll({ includeDeprecated: true }));
 		await loader.loadAll();
 		await this.loadNodesAndCredentials.postProcessLoaders();
+		if (releaseTypes) {
+			this.loadNodesAndCredentials.releaseTypes();
+		}
 	}
 
 	private async publishReloadCommand(): Promise<void> {
