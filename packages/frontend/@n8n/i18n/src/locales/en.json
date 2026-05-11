@@ -1438,6 +1438,7 @@
 	"executionsList.statusTooltipText.waitingForConcurrencyCapacity.self": "This instance is limited to {concurrencyCap} concurrent production executions. {link}",
 	"executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely": "The workflow is waiting indefinitely for an incoming webhook call.",
 	"executionsList.debug.button.copyToEditor": "Copy to editor",
+	"executionsList.debug.button.copyExecutionData": "Copy execution data",
 	"executionsList.debug.button.debugInEditor": "Debug in editor",
 	"executionsList.debug.paywall.title": "Upgrade to access Debug In Editor",
 	"executionsList.debug.paywall.content": "Debug in Editor allows you to debug a previous execution with the actual data pinned, right in your editor.",
