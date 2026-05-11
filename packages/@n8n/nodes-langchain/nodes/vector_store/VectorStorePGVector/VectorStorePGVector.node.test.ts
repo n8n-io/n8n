@@ -1,44 +1,27 @@
+import type { Mock } from 'vitest';
 import * as pgModule from '@langchain/community/vectorstores/pgvector'; // <- added
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 
 import { VectorStorePGVector } from '../VectorStorePGVector/VectorStorePGVector.node';
 
 // Mock configurePostgres
-jest.mock('n8n-nodes-base/dist/nodes/Postgres/transport/index', () => ({
-	configurePostgres: jest.fn(),
+vi.mock('n8n-nodes-base/dist/nodes/Postgres/transport/index', () => ({
+	configurePostgres: vi.fn(),
 }));
 
 // Mock helpers (now in @n8n/ai-utilities)
-jest.mock('@n8n/ai-utilities/src/utils/helpers', () => ({
-	getMetadataFiltersValues: jest.fn().mockReturnValue(undefined),
-}));
-jest.mock('@n8n/ai-utilities/src/utils/log-ai-event', () => ({
-	logAiEvent: jest.fn(),
-}));
-
-// We only need handleInsertOperation for the insert test; others can be simple stubs.
-jest.mock('@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations', () => {
-	// Use the real module so we can call the actual implementation when needed
-	const actual = jest.requireActual(
-		'@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations',
-	);
+vi.mock('@n8n/ai-utilities', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/ai-utilities')>();
 	return {
 		...actual,
-		handleInsertOperation: jest.fn(async (ctx: any, args: any, embeddings: any) => {
-			// Simulate creation of documents and call the node's populateVectorStore function
-			const documents = [{ id: '1', pageContent: 'hello' }];
-			await args.populateVectorStore(ctx, embeddings, documents, 0);
-			return [];
-		}),
-		handleUpdateOperation: jest.fn(),
-		handleRetrieveOperation: jest.fn(),
-		handleRetrieveAsToolOperation: jest.fn(),
+		logAiEvent: vi.fn(),
+		getMetadataFiltersValues: vi.fn().mockReturnValue(undefined),
 	};
 });
 
 // Provide a class-like mock so ExtendedPGVectorStore can extend it
-jest.mock('@langchain/community/vectorstores/pgvector', () => {
-	const mockFromDocuments = jest.fn();
+vi.mock('@langchain/community/vectorstores/pgvector', () => {
+	const mockFromDocuments = vi.fn();
 	class MockPGVectorStore {
 		static fromDocuments = mockFromDocuments;
 		constructor(
@@ -65,9 +48,9 @@ jest.mock('@langchain/community/vectorstores/pgvector', () => {
 	}
 
 	// Make instance methods mockable via prototype
-	MockPGVectorStore.prototype._initializeClient = jest.fn().mockResolvedValue(undefined);
-	MockPGVectorStore.prototype.ensureTableInDatabase = jest.fn().mockResolvedValue(undefined);
-	MockPGVectorStore.prototype.ensureCollectionTableInDatabase = jest
+	MockPGVectorStore.prototype._initializeClient = vi.fn().mockResolvedValue(undefined);
+	MockPGVectorStore.prototype.ensureTableInDatabase = vi.fn().mockResolvedValue(undefined);
+	MockPGVectorStore.prototype.ensureCollectionTableInDatabase = vi
 		.fn()
 		.mockResolvedValue(undefined);
 
@@ -78,13 +61,15 @@ describe('VectorStorePGVector -> execute (load) triggers ----', () => {
 	const mockPool = { dummy: 'pool' };
 
 	const mockContext: any = {
-		initialize: jest.fn(),
+		initialize: vi.fn(),
 		// These will be used by the code path / or by our mocked handleInsertOperation
-		getNodeParameter: jest.fn(),
-		getInputConnectionData: jest.fn(),
-		getInputData: jest.fn(),
-		getCredentials: jest.fn(),
-		getNode: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getInputConnectionData: vi.fn(),
+		getInputData: vi.fn(),
+		getCredentials: vi.fn(),
+		getNode: vi.fn(),
+		logAiEvent: vi.fn(),
+		logger: { debug: vi.fn() },
 	};
 
 	const mockGetNodeParameter = (skipValidation: boolean) => {
@@ -119,22 +104,20 @@ describe('VectorStorePGVector -> execute (load) triggers ----', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		// configurePostgres returns an object with db.$pool
-		(configurePostgres as jest.Mock).mockResolvedValue({ db: { $pool: mockPool } });
+		(configurePostgres as Mock).mockResolvedValue({ db: { $pool: mockPool } });
 
-		(pgModule.PGVectorStore.prototype.ensureTableInDatabase as jest.Mock).mockResolvedValue(
+		(pgModule.PGVectorStore.prototype.ensureTableInDatabase as Mock).mockResolvedValue(undefined);
+		(pgModule.PGVectorStore.prototype.ensureCollectionTableInDatabase as Mock).mockResolvedValue(
 			undefined,
 		);
-		(
-			pgModule.PGVectorStore.prototype.ensureCollectionTableInDatabase as jest.Mock
-		).mockResolvedValue(undefined);
 
 		// The node expects embeddings from input connection; return a dummy object
 		const mockEmbeddings = {
-			embedDocuments: jest.fn(),
-			embedQuery: jest.fn(),
+			embedDocuments: vi.fn(),
+			embedQuery: vi.fn(),
 		};
 		mockContext.getInputConnectionData.mockResolvedValue(mockEmbeddings);
 		mockContext.getInputData.mockReturnValue([1]);
