@@ -293,7 +293,7 @@ function getN8nRestrictedPaths() {
 			...process.env[CONFIG_FILES]
 				.split(',')
 				.map((p) => p.trim())
-				.filter(Boolean),
+				?.filter(Boolean),
 		);
 	}
 
@@ -301,7 +301,7 @@ function getN8nRestrictedPaths() {
 		const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]
 			.split(';')
 			.map((p) => p.trim())
-			.filter(Boolean);
+			?.filter(Boolean);
 		restrictedPaths.push(...customExtensionFolders);
 	}
 
