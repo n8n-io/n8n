@@ -132,7 +132,13 @@ export class McpRegistryService {
 			if (existingServers.length === 0) {
 				nextServers = await this.apiClient.fetchAllServers();
 			} else {
-				nextServers = await this.refreshChangedServers(existingServers);
+				const result = await this.refreshChangedServers(existingServers);
+				if (result === null) {
+					this.logger.debug('MCP registry is up to date', { reason });
+					return;
+				}
+
+				nextServers = result;
 			}
 
 			await this.writeStoredServers(nextServers);
@@ -152,14 +158,17 @@ export class McpRegistryService {
 
 	private async refreshChangedServers(
 		existingServers: McpRegistryServer[],
-	): Promise<McpRegistryServer[]> {
+	): Promise<McpRegistryServer[] | null> {
 		const metadata = await this.apiClient.fetchServersMetadata();
 		const existingById = new Map(existingServers.map((server) => [server.id, server]));
 		const idsToFetch = metadata
 			.filter((entry) => this.shouldFetchFullServer(entry, existingById.get(entry.id)))
 			.map(({ id }) => id);
-		const fetchedServers =
-			idsToFetch.length > 0 ? await this.apiClient.fetchServersByIds(idsToFetch) : [];
+		if (idsToFetch.length === 0) {
+			return null;
+		}
+
+		const fetchedServers = await this.apiClient.fetchServersByIds(idsToFetch);
 		for (const server of fetchedServers) {
 			existingById.set(server.id, server);
 		}
