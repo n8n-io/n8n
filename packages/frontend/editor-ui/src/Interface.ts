@@ -644,6 +644,7 @@ export interface NewCredentialsModal extends ModalState {
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

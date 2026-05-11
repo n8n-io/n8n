@@ -325,7 +325,7 @@ export async function resolveRequiredParameters(
 }
 
 function getNodeTypes(): INodeTypes {
-	return useWorkflowsStore().getNodeTypes();
+	return useNodeTypesStore().getAllNodeTypes();
 }
 
 // TODO: move to separate file
@@ -830,11 +830,6 @@ export function useWorkflowHelpers() {
 
 		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
 			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
-		});
-
-		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
-		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
-			workflowsStore.workflow.versionId = payload.versionId;
 		});
 
 		initializedWorkflowDocumentStore.setName(workflowData.name);

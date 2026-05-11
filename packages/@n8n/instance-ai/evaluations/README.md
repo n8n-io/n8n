@@ -11,6 +11,8 @@ Three harnesses live here:
 Sections:
 
 - [Running e2e + sub-agent evals](#running-evals)
+- [Regression detection](#regression-detection)
+- [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the sub-agent harness works](#how-the-sub-agent-harness-works)
@@ -116,12 +118,14 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--verbose` | `false` | Log build/execute/verify timing and SSE events |
-| `--filter` | — | Filter test cases by filename substring (e.g. `contact-form`) |
+| `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
+| `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
+| `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
 | `--keep-workflows` | `false` | Don't delete built workflows after the run |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `600000` | Per-test-case timeout |
+| `--timeout-ms` | `900000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
@@ -154,6 +158,101 @@ Every run produces:
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
+
+## Regression detection
+
+When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). Two output files are written:
+
+- `eval-results.json` — structured data only, including `comparison.result` when a baseline was found.
+- `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
+
+The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
+
+### Refreshing the baseline
+
+There is no auto-refresh — refresh explicitly when you want a new reference point, ideally with high N for low noise:
+
+```bash
+# From packages/@n8n/instance-ai/, on master at the version you want to pin
+LANGSMITH_API_KEY=... dotenvx run -f ../../../.env.local -- \
+  pnpm eval:instance-ai --experiment-name instance-ai-baseline --iterations 10
+```
+
+LangSmith appends a random suffix (e.g. `instance-ai-baseline-7abc1234`); the most recently started one becomes the comparison target on the next eval run. The comparison is silently skipped on the baseline-creation run itself.
+
+### How scenarios are tiered
+
+Each scenario lands in one of three regression tiers, evaluated in order of strictness:
+
+- **Regression** — high-confidence flag, gating-grade. The drop must be statistically significant (chance of seeing it by noise < 5%), at least 30 percentage points in size, and the baseline must have been reliable (≥ 70% pass rate).
+- **Likely regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
+- **Worth watching** — any scenario whose pass rate moved by ≥ 35 percentage points but wasn't flagged as a regression (hard or likely tier). Pure visibility, no implication of cause.
+
+Other verdicts: `improvement` (PR significantly better, skips the reliability gate), `unreliable_baseline` (confident drop but baseline was too flaky to call a regression — surfaced but not flagged), `stable`, `insufficient_data`.
+
+Why these tiers and not a flat percentage threshold? At the small N PR runs use (typically 3 iterations), a flat threshold can't tell a real regression from coin-flip noise. The confidence cutoff filters out gaps that could plausibly happen by chance, and the reliability gate avoids chasing noise on already-flaky scenarios. Implementation lives in `comparison/statistics.ts` (Fisher's exact test for the confidence check, Wilson interval for the headline aggregate band). Tune the likely-regression tier first if the false-positive rate looks off — keep the hard tier strict.
+
+### Failure-category drift
+
+When both sides captured per-trial `failureCategory` values, the comparison also surfaces a run-level table of category rates (PR vs baseline). A category is marked **notable** when its absolute rate delta is ≥ 5 percentage points _and_ the count change beyond what scenario-count scaling would predict is ≥ 3 trials. This catches cross-scenario shifts (e.g. mock-generation breaking, or a model getting weaker overall) that per-scenario flags can miss.
+
+### Best-effort
+
+Comparison is logged and skipped on any LangSmith failure — it never fails the eval. It is also skipped when no baseline experiment exists yet.
+
+## Running evals against pre-built workflows
+
+The eval framework normally builds each workflow with Instance AI and then verifies it. With `--prebuilt-workflows <path>`, the build step is skipped for matched test cases — the harness fetches the existing workflow from the n8n instance and runs verification against it instead. Use this to score workflows authored by other tools (an MCP-driven session, a hand-built reference, an older Instance AI snapshot) on the same dataset and the same verifier.
+
+The manifest is a JSON file mapping test-case file slugs to workflow IDs:
+
+```json
+{
+  "contact-form-automation": ["W1abc", "W2def", "W3ghi"],
+  "deduplication-trigger": ["W4jkl"]
+}
+```
+
+- **Keys** are test-case file slugs — the JSON filename without `.json` (e.g. `contact-form-automation` for `evaluations/data/workflows/contact-form-automation.json`). The `--filter` flag uses the same identifier.
+- **Values** are arrays of workflow IDs that already exist in the target n8n instance. Multiple iterations rotate through the list with `iteration % ids.length`, so an `--iterations 5` run with 5 IDs gets 5 distinct builds.
+
+Test cases not present in the manifest fall back to the regular Instance AI build path. To run *only* the prebuilt set, pair with `--exclude` to skip the rest, or `--filter` to narrow the run.
+
+```bash
+# Score the prebuilt cohort, skipping anything not in the manifest
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --prebuilt-workflows ./mcp-manifest.json \
+  --filter contact-form-automation,deduplication-trigger \
+  --iterations 5 \
+  --experiment-name mcp-cohort
+```
+
+The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs.
+
+### Producing a manifest
+
+`pnpm eval:build-mcp-manifest` (`evaluations/cli/build-mcp-manifest.ts`) drives `claude -p` against an MCP server — defaults to n8n's instance MCP — and writes a manifest in the schema this flag expects, plus a `manifest-stats.json` sidecar with per-cohort cost / turn / duration aggregates. The output is validated against the same Zod schema the loader uses, so shape regressions surface here rather than at eval time.
+
+**Prerequisites**: `claude` CLI installed; `~/.claude.json` has the MCP server block configured (project-scoped under `.projects[<repo-root>].mcpServers[<name>]` or globally under `.mcpServers[<name>]`); n8n instance reachable at the URL the MCP block points at. Default MCP server name is `"n8n-mcp (instance)"` — override with `--mcp-server`.
+
+```bash
+# Build N=5 per test case, 4 in parallel
+pnpm eval:build-mcp-manifest -n 5 -j 4 --output-dir ./mcp-cohort
+
+# Then score the cohort
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --prebuilt-workflows ./mcp-cohort/manifest.json \
+  --iterations 5 \
+  --experiment-name mcp-cohort
+```
+
+For runs that need to leave the n8n repo (for example, driving the build from a separate Claude project where you have skills configured), three flags decouple the script from its default assumptions:
+
+- `--workflow-dir <path>` — read test-case JSONs from a directory other than the n8n repo's `evaluations/data/workflows/`. When set, the script no longer needs `git rev-parse` to find the repo.
+- `--build-cwd <path>` — set the working directory the `claude` subprocess spawns from. Affects which `~/.claude.json` `projects` entry (and which skills) Claude loads.
+- `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
+
+Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
 ## Pairwise evals
 

@@ -1,5 +1,10 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
+import type {
+	CredentialsRepository,
+	TagRepository,
+	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
@@ -45,6 +50,8 @@ describe('ImportService', () => {
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDataTableDDLService: DataTableDDLService;
+	let mockWorkflowRepository: WorkflowRepository;
+	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -58,6 +65,8 @@ describe('ImportService', () => {
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDataTableDDLService = mock<DataTableDDLService>();
+		mockWorkflowRepository = mock<WorkflowRepository>();
+		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = jest.fn(async (data: string) =>
@@ -110,6 +119,8 @@ describe('ImportService', () => {
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			mockDataTableDDLService,
+			mockWorkflowRepository,
+			mockWorkflowPublishHistoryRepository,
 		);
 	});
 
@@ -1093,6 +1104,59 @@ describe('ImportService', () => {
 
 			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
 			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('advanceIdentitySequences', () => {
+		it('should run setval for each identity column on Postgres', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'postgres' };
+
+			mockEntityManager.query = jest
+				.fn()
+				// information_schema lookup for "workflow_dependency"
+				.mockResolvedValueOnce([{ column_name: 'id' }])
+				// setval call returns nothing meaningful
+				.mockResolvedValueOnce(undefined)
+				// information_schema lookup for "insights_metadata" (has 'metaId')
+				.mockResolvedValueOnce([{ column_name: 'metaId' }])
+				.mockResolvedValueOnce(undefined)
+				// information_schema lookup for "user" (no identity columns)
+				.mockResolvedValueOnce([]);
+
+			await importService.advanceIdentitySequences(mockEntityManager, [
+				'workflow_dependency',
+				'insights_metadata',
+				'user',
+			]);
+
+			const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+				([sql]) => typeof sql === 'string' && sql.includes('setval('),
+			);
+			expect(setvalCalls).toHaveLength(2);
+			// Quoted table identifier passed through to pg_get_serial_sequence
+			// (regclass folds unquoted names to lowercase, so the quoted form is required).
+			expect(setvalCalls[0][1]).toEqual(['"workflow_dependency"', 'id']);
+			expect(setvalCalls[1][1]).toEqual(['"insights_metadata"', 'metaId']);
+		});
+
+		it('should be a no-op on SQLite', async () => {
+			// SQLite is the default in beforeEach.
+			mockEntityManager.query = jest.fn();
+
+			await importService.advanceIdentitySequences(mockEntityManager, ['workflow_dependency']);
+
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
+
+		it('should be a no-op when no tables are provided', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'postgres' };
+			mockEntityManager.query = jest.fn();
+
+			await importService.advanceIdentitySequences(mockEntityManager, []);
+
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 		});
 	});
 });
