@@ -148,6 +148,10 @@ type Input =
 	| z.infer<typeof updateVersionAction>;
 
 type PublishInput = z.infer<typeof publishExtendedAction>;
+type PublishRollbackResult = {
+	rolledBackWorkflowIds: string[];
+	rollbackErrors: Array<{ workflowId: string; error: string }>;
+};
 
 export type WorkflowAction =
 	| 'list'
@@ -626,35 +630,108 @@ async function handlePublish(
 	}
 
 	try {
+		const previousActiveVersionIds = await snapshotActiveVersionIds(context, [
+			...supportingWorkflowIds,
+			input.workflowId,
+		]);
 		const publishedSupportingWorkflowIds: string[] = [];
-		for (const supportingWorkflowId of supportingWorkflowIds) {
-			await context.workflowService.publish(supportingWorkflowId);
-			publishedSupportingWorkflowIds.push(supportingWorkflowId);
-		}
+		const publishedWorkflowIds: string[] = [];
 
-		const result = await context.workflowService.publish(input.workflowId, {
-			versionId: input.versionId,
-			...(hasNamedVersions
-				? {
-						name: input.name,
-						description: input.description,
-					}
-				: {}),
-		});
-		return {
-			success: true,
-			activeVersionId: result.activeVersionId,
-			publishedWorkflowIds: [...publishedSupportingWorkflowIds, input.workflowId],
-			...(publishedSupportingWorkflowIds.length > 0
-				? { supportingWorkflowIds: publishedSupportingWorkflowIds }
-				: {}),
-		};
+		try {
+			for (const supportingWorkflowId of supportingWorkflowIds) {
+				await context.workflowService.publish(supportingWorkflowId);
+				publishedSupportingWorkflowIds.push(supportingWorkflowId);
+				publishedWorkflowIds.push(supportingWorkflowId);
+			}
+
+			const result = await context.workflowService.publish(input.workflowId, {
+				versionId: input.versionId,
+				...(hasNamedVersions
+					? {
+							name: input.name,
+							description: input.description,
+						}
+					: {}),
+			});
+			publishedWorkflowIds.push(input.workflowId);
+
+			return {
+				success: true,
+				activeVersionId: result.activeVersionId,
+				publishedWorkflowIds,
+				...(publishedSupportingWorkflowIds.length > 0
+					? { supportingWorkflowIds: publishedSupportingWorkflowIds }
+					: {}),
+			};
+		} catch (error) {
+			const rollback = await rollbackPublishedWorkflows(
+				context,
+				previousActiveVersionIds,
+				publishedWorkflowIds,
+			);
+			return buildPublishFailure(error, rollback);
+		}
 	} catch (error) {
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Publish failed',
 		};
 	}
+}
+
+async function snapshotActiveVersionIds(
+	context: InstanceAiContext,
+	workflowIds: string[],
+): Promise<Map<string, string | null>> {
+	const activeVersionIds = new Map<string, string | null>();
+
+	for (const workflowId of workflowIds) {
+		const workflow = await context.workflowService.get(workflowId);
+		activeVersionIds.set(workflowId, workflow.activeVersionId);
+	}
+
+	return activeVersionIds;
+}
+
+async function rollbackPublishedWorkflows(
+	context: InstanceAiContext,
+	previousActiveVersionIds: Map<string, string | null>,
+	publishedWorkflowIds: string[],
+): Promise<PublishRollbackResult> {
+	const result: PublishRollbackResult = {
+		rolledBackWorkflowIds: [],
+		rollbackErrors: [],
+	};
+
+	for (const workflowId of publishedWorkflowIds.toReversed()) {
+		try {
+			const previousActiveVersionId = previousActiveVersionIds.get(workflowId);
+			if (previousActiveVersionId) {
+				await context.workflowService.publish(workflowId, { versionId: previousActiveVersionId });
+			} else {
+				await context.workflowService.unpublish(workflowId);
+			}
+			result.rolledBackWorkflowIds.push(workflowId);
+		} catch (error) {
+			result.rollbackErrors.push({
+				workflowId,
+				error: error instanceof Error ? error.message : 'Rollback failed',
+			});
+		}
+	}
+
+	return result;
+}
+
+function buildPublishFailure(error: unknown, rollback: PublishRollbackResult) {
+	return {
+		success: false,
+		error: error instanceof Error ? error.message : 'Publish failed',
+		...(rollback.rolledBackWorkflowIds.length > 0
+			? { rolledBackWorkflowIds: rollback.rolledBackWorkflowIds }
+			: {}),
+		...(rollback.rollbackErrors.length > 0 ? { rollbackErrors: rollback.rollbackErrors } : {}),
+	};
 }
 
 async function resolveSupportingWorkflowIds(

@@ -27,7 +27,17 @@ function createMockContext(
 		userId: 'user-1',
 		workflowService: {
 			list: jest.fn(),
-			get: jest.fn(),
+			get: jest.fn().mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			}),
 			getAsWorkflowJSON: jest.fn().mockResolvedValue({
 				name: 'Test WF',
 				nodes: [],
@@ -645,6 +655,61 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('should roll back direct Execute Workflow dependencies when the main workflow publish fails', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+					{
+						name: 'Call B',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-b' },
+					},
+				],
+				connections: {},
+			});
+			(context.workflowService.get as jest.Mock).mockImplementation((workflowId: string) => ({
+				id: workflowId,
+				name: workflowId,
+				versionId: `${workflowId}-draft`,
+				activeVersionId: workflowId === 'sub-a' ? 'sub-a-previous' : null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			}));
+			(context.workflowService.publish as jest.Mock).mockImplementation((workflowId: string) => {
+				if (workflowId === 'wf1') throw new Error('Main publish failed');
+				return { activeVersionId: `${workflowId}-active` };
+			});
+
+			const tool = createWorkflowsTool(context);
+			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
+				agent: { resumeData: { approved: true } },
+			} as never);
+
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(2, 'sub-b');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(3, 'wf1', {
+				versionId: undefined,
+			});
+			expect(context.workflowService.unpublish).toHaveBeenCalledWith('sub-b');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(4, 'sub-a', {
+				versionId: 'sub-a-previous',
+			});
+			expect(result).toEqual({
+				success: false,
+				error: 'Main publish failed',
+				rolledBackWorkflowIds: ['sub-b', 'sub-a'],
+			});
+		});
+
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const context = createMockContext();
 			(context.workflowService.get as jest.Mock).mockResolvedValue({
@@ -746,7 +811,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
