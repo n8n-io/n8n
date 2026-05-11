@@ -46,18 +46,17 @@ describe('memory profiles', () => {
 		const prompt = DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT;
 
 		for (const phrase of [
-			'User profile captures stable cross-session information',
-			'<user> is not task memory',
+			'User-profile captures stable cross-session information',
+			'<user-profile> is not task memory',
 			'must never be connected to the current objective of an agent',
-			'communication preferences',
-			'durable workflow preferences',
+			'stable preferences about communication style, workflow, tools, environment, ownership, or domain context',
+			'User-profile may include durable user preferences',
 			'If the information would stop being useful after the current task ends',
-			'belongs in <persona>',
-			'does not belong in <user>',
+			'describes the agent',
+			'does not belong in <user-profile>',
 			'Existing profile content is not authoritative',
-			'Persona captures actionable behavioral directives',
-			'imperative system-instruction-style directives',
-			'concrete future behavior change',
+			'Agent-profile captures durable facts about the agent',
+			'durable persona or operating mode',
 		]) {
 			expect(prompt).toContain(phrase);
 		}
@@ -71,7 +70,6 @@ describe('memory profiles', () => {
 			'next actions',
 			'temporary constraints',
 			'session objectives',
-			'descriptive agent facts',
 			'storage/data-model facts',
 			'model names',
 			'schema facts',
@@ -86,9 +84,9 @@ describe('memory profiles', () => {
 	it('updates memory profiles from the profile updater path', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				persona:
+				agentProfile:
 					'When discussing memory architecture, distinguish durable profile state from session objective state.',
-				user: 'The user prefers concise updates.',
+				userProfile: 'The user prefers concise updates.',
 			}),
 		});
 
@@ -122,7 +120,7 @@ describe('memory profiles', () => {
 		});
 		expect(generateText).toHaveBeenCalledTimes(1);
 		expect(generateText.mock.calls[0][0].system).toContain(
-			'Persona captures actionable behavioral directives',
+			'Agent-profile captures durable facts about the agent',
 		);
 		expect(generateText.mock.calls[0][0].system).toContain(
 			'Assistant messages are supporting context',
@@ -144,9 +142,9 @@ describe('memory profiles', () => {
 	it('updates memory profiles from the turn pair even when no entries are accepted', async () => {
 		generateText.mockResolvedValueOnce({
 			text: JSON.stringify({
-				persona:
+				agentProfile:
 					'When users describe technical issues, ask for the specific n8n version before suggesting fixes.',
-				user: 'The user prefers responses without business framing or em dashes.',
+				userProfile: 'The user prefers responses without business framing or em dashes.',
 			}),
 		});
 
@@ -197,7 +195,7 @@ describe('memory profiles', () => {
 		).resolves.toBeNull();
 	});
 
-	it('loads resource profiles shared across agents and persona profiles scoped to one agent', async () => {
+	it('loads resource profiles shared across agents and agent profiles scoped to one agent', async () => {
 		const memory = new InMemoryMemory();
 		await memory.saveMemoryProfile(
 			{ scopeKind: 'resource', scopeId: 'user-1' },
@@ -222,12 +220,12 @@ describe('memory profiles', () => {
 		});
 
 		expect(agentOne).toEqual({
-			persona: 'This agent handles memory debugging.',
-			user: 'The user prefers concise answers.',
+			agentProfile: 'This agent handles memory debugging.',
+			userProfile: 'The user prefers concise answers.',
 		});
 		expect(agentTwo).toEqual({
-			persona: 'This other agent handles invoices.',
-			user: 'The user prefers concise answers.',
+			agentProfile: 'This other agent handles invoices.',
+			userProfile: 'The user prefers concise answers.',
 		});
 	});
 });

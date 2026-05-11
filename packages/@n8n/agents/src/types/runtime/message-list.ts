@@ -6,7 +6,7 @@ export interface SerializedMessageList {
 	inputIds: string[];
 	responseIds: string[];
 	memoryProfile?: {
-		persona?: string | null;
-		user?: string | null;
+		agentProfile?: string | null;
+		userProfile?: string | null;
 	};
 }

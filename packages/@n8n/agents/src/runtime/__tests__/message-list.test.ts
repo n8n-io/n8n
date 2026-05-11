@@ -166,11 +166,11 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).not.toContain('Current template');
 	});
 
-	it('renders persona, user, and session memory inside memory_blocks', () => {
+	it('renders agent profile, user profile, and session memory inside memory_blocks', () => {
 		const list = new AgentMessageList();
 		list.memoryProfile = {
-			persona: 'This agent specializes in n8n memory work.',
-			user: 'The user prefers concise answers.',
+			agentProfile: 'This agent specializes in n8n memory work.',
+			userProfile: 'The user prefers concise answers.',
 		};
 		list.workingMemory = {
 			template: '# Thread memory',
@@ -183,28 +183,28 @@ describe('AgentMessageList — forLlm working memory', () => {
 		expect(prompt).toContain('<memory_blocks>');
 		expect(prompt).toContain(
 			[
-				'<persona>',
-				'<description>Durable behavior rules this agent should follow with this user.</description>',
+				'<agent-profile>',
+				'<description>Durable persona, role, and operating style for this agent.</description>',
 				'<value>',
 				'This agent specializes in n8n memory work.',
 				'</value>',
-				'</persona>',
+				'</agent-profile>',
 			].join('\n'),
 		);
 		expect(prompt).toContain(
 			[
-				'<user>',
-				'<description>Stable user preferences and context shared across agents.</description>',
+				'<user-profile>',
+				'<description>Stable facts and preferences about the user or resource.</description>',
 				'<value>',
 				'The user prefers concise answers.',
 				'</value>',
-				'</user>',
+				'</user-profile>',
 			].join('\n'),
 		);
 		expect(prompt).toContain('<session-memory>');
 		expect(prompt).toContain('Current objective: verify prompt sections.');
-		expect(prompt.indexOf('<persona>')).toBeLessThan(prompt.indexOf('<user>'));
-		expect(prompt.indexOf('<user>')).toBeLessThan(prompt.indexOf('<session-memory>'));
+		expect(prompt.indexOf('<agent-profile>')).toBeLessThan(prompt.indexOf('<user-profile>'));
+		expect(prompt.indexOf('<user-profile>')).toBeLessThan(prompt.indexOf('<session-memory>'));
 		expect(prompt).not.toContain('<memory>');
 	});
 
@@ -306,13 +306,13 @@ describe('AgentMessageList — deserialize', () => {
 
 	it('preserves injected profile context across serialization', () => {
 		const list = new AgentMessageList();
-		list.memoryProfile = { persona: 'Agent profile.', user: 'Resource profile.' };
+		list.memoryProfile = { agentProfile: 'Agent profile.', userProfile: 'Resource profile.' };
 
 		const restored = AgentMessageList.deserialize(list.serialize());
 
 		expect(restored.memoryProfile).toEqual({
-			persona: 'Agent profile.',
-			user: 'Resource profile.',
+			agentProfile: 'Agent profile.',
+			userProfile: 'Resource profile.',
 		});
 	});
 });

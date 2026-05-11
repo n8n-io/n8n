@@ -368,8 +368,8 @@ describe('runObservationalCycle', () => {
 			opts(mem, {
 				observe: undefined,
 				memoryProfile: {
-					persona: 'This agent specializes in memory debugging.',
-					user: 'The user prefers concise answers.',
+					agentProfile: 'This agent specializes in memory debugging.',
+					userProfile: 'The user prefers concise answers.',
 				},
 			}),
 		);
@@ -377,9 +377,11 @@ describe('runObservationalCycle', () => {
 		const call = mockGenerateText.mock.calls[0][0];
 		expect(call.prompt).toContain('Known durable profiles');
 		expect(call.prompt).toContain(
-			'<persona>\nThis agent specializes in memory debugging.\n</persona>',
+			'<agent-profile>\nThis agent specializes in memory debugging.\n</agent-profile>',
 		);
-		expect(call.prompt).toContain('<user>\nThe user prefers concise answers.\n</user>');
+		expect(call.prompt).toContain(
+			'<user-profile>\nThe user prefers concise answers.\n</user-profile>',
+		);
 	});
 
 	it('groups queued rows with timestamps and durations in the default compactor prompt', async () => {

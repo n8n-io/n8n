@@ -53,7 +53,7 @@ Evidence rules:
 - Transcript roles matter. User messages are authoritative for requested work,
   current-session goals, constraints, corrections, and decisions.
 - Assistant messages are supporting context only. A normal assistant reply is not verification evidence.
-- Known persona and resource/user profiles are durable memory. Do not copy them
+- Known agent and resource/user profiles are durable memory. Do not copy them
   into thread working memory unless the live transcript adds session-specific
   objective or task state.
 - Do not record assistant-created checklists, diagnostic questions, file/table
@@ -65,9 +65,9 @@ Evidence rules:
 Rules:
 - Prefer explicit session state over broad durable profile facts.
 - Do not record stable user identity, general communication style, long-lived
-  user preferences, or durable agent/persona facts as thread working memory.
+  user-profile preferences, or durable agent-profile content as thread working memory.
 - Do not record general user preferences, repo-wide habits, style preferences,
-  or persona facts as session memory.
+  or agent-profile content as session memory.
 - If a durable preference is relevant to the active objective:
   record only the objective-specific application, not the durable preference itself. For example:
   "For this task, do not run evals" instead of "User never wants evals run".
@@ -109,7 +109,7 @@ Rules:
   objective-specific constraints, objective-specific uncertainties, task state,
   concrete progress, active items, and open follow-ups.
 - Remove stable user identity, general communication style, durable preferences,
-  and agent/persona facts unless they are needed as session-specific task state.
+  and agent-profile content unless they are needed as session-specific task state.
 - When durable preferences are relevant to this thread:
   rewrite broad durable preferences into objective-specific constraints instead of copying them. For example:
   "For this task, do not run evals" instead of
@@ -325,14 +325,14 @@ export function buildDefaultObserveFn(model: ModelConfig, observerPrompt?: strin
 function renderMemoryProfileContext(
 	memoryProfile: SerializedMessageList['memoryProfile'] | undefined,
 ): string {
-	const persona = memoryProfile?.persona?.trim();
-	const user = memoryProfile?.user?.trim();
-	if (!persona && !user) return '';
+	const agentProfile = memoryProfile?.agentProfile?.trim();
+	const userProfile = memoryProfile?.userProfile?.trim();
+	if (!agentProfile && !userProfile) return '';
 
 	return [
 		'Known durable profiles (do not copy into thread working memory):',
-		persona ? `<persona>\n${persona}\n</persona>` : '',
-		user ? `<user>\n${user}\n</user>` : '',
+		agentProfile ? `<agent-profile>\n${agentProfile}\n</agent-profile>` : '',
+		userProfile ? `<user-profile>\n${userProfile}\n</user-profile>` : '',
 	]
 		.filter(Boolean)
 		.join('\n');
