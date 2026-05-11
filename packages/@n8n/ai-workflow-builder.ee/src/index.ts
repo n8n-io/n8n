@@ -18,6 +18,7 @@ export {
 	ParseValidateHandler,
 	WorkflowCodeParseError,
 	createCodeBuilderSearchTool,
+	searchCodeBuilderNodes,
 	type CodeBuilderSearchToolOptions,
 	createCodeBuilderGetTool,
 	createGetSuggestedNodesTool,
@@ -37,6 +38,7 @@ export {
 	MCP_UPDATE_WORKFLOW_TOOL,
 } from './code-builder';
 export type {
+	CodeBuilderSearchResult,
 	CodeBuilderGetToolOptions,
 	ParseAndValidateResult,
 	ValidationWarning,
