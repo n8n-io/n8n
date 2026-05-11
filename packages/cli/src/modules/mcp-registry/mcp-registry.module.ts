@@ -13,15 +13,10 @@ export class McpRegistryModule implements ModuleInterface {
 	}
 
 	async nodeLoaders() {
-		const { McpRegistryService } = await import('./registry/mcp-registry.service');
 		const { McpRegistryNodeLoader } = await import('./mcp-registry-node-loader');
 
 		return [
-			new McpRegistryNodeLoader(
-				Container.get(McpRegistryService),
-				Container.get(LoadNodesAndCredentials),
-				Container.get(Logger),
-			),
+			new McpRegistryNodeLoader(Container.get(LoadNodesAndCredentials), Container.get(Logger)),
 		];
 	}
 }

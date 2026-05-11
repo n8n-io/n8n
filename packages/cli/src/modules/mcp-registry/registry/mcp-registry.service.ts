@@ -7,6 +7,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
+import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
 import type { McpRegistryServer } from './mcp-registry.types';
@@ -47,6 +48,7 @@ export class McpRegistryService {
 
 	async init(): Promise<void> {
 		await this.loadFromSettings();
+		await this.refreshRegistryNodeTypes();
 		if (this.instanceSettings.isLeader) {
 			// don't want to wait for API calls to complete on init
 			void this.refreshFromApi('startup');
@@ -237,10 +239,16 @@ export class McpRegistryService {
 			return;
 		}
 
-		loader.reset();
+		if (!(loader instanceof McpRegistryNodeLoader)) {
+			this.logger.warn('Unexpected MCP registry loader instance type', {
+				loaderType: loader.constructor.name,
+			});
+			return;
+		}
+
+		loader.setServers(this.getAll({ includeDeprecated: true }));
 		await loader.loadAll();
 		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	private async publishReloadCommand(): Promise<void> {
