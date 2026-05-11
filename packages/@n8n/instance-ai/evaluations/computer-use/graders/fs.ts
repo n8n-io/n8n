@@ -7,8 +7,9 @@
 
 import fg from 'fast-glob';
 import { readFile, realpath, stat } from 'node:fs/promises';
-import { relative, resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 
+import { isContained } from '../path-utils';
 import type {
 	FsFileExistsGrader,
 	FsFileMatchesGrader,
@@ -133,9 +134,5 @@ async function resolveInsideSandbox(rootDir: string, relPath: string): Promise<s
 	} catch {
 		return null;
 	}
-	const r = relative(rootReal, absReal);
-	if (r === '' || r.startsWith(`..${sep}`) || r === '..' || r.startsWith(sep)) {
-		return null;
-	}
-	return absReal;
+	return isContained(rootReal, absReal) ? absReal : null;
 }

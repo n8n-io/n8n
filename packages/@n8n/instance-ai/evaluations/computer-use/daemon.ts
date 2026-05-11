@@ -63,6 +63,14 @@ export async function ensureDaemon(opts: EnsureDaemonOptions): Promise<DaemonInf
 	let status = await client.getGatewayStatus();
 	if (status.connected && status.directory) {
 		logger.verbose(`[daemon] already paired, dir=${status.directory}`);
+		// Auto-connect (N8N_EVAL_AUTO_BROWSER_CONNECT=1) is set on the daemon's
+		// own process env at spawn-time, so it only takes effect when the eval
+		// runner started the daemon. A pre-existing daemon won't have it.
+		logger.warn(
+			'Reusing existing computer-use daemon. If it was not started by this eval runner, ' +
+				'browser auto-connect may be inactive — you may need to click Connect in the ' +
+				'extension manually when the browser session resets between scenarios.',
+		);
 		return toInfo(status);
 	}
 

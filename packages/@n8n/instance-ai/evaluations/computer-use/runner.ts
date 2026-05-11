@@ -14,13 +14,14 @@
 
 import { jsonParse } from 'n8n-workflow';
 import { copyFile, mkdir, readFile, rm } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import { runChat } from './chat';
 import { cleanupDelta, snapshotResources } from './cleanup';
 import type { DaemonInfo } from './daemon';
 import { applyGrader } from './graders';
 import { findFiles } from './graders/fs';
+import { isContained } from './path-utils';
 import type { GraderResult, Scenario, ScenarioResult, ScenarioTrace } from './types';
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
@@ -179,12 +180,9 @@ function resolveFixture(fixturesDir: string, fixturePath: string): string {
 export function resolveInside(root: string, candidate: string, label: string): string {
 	const rootResolved = resolve(root);
 	const fullResolved = resolve(rootResolved, candidate);
-	const rel = relative(rootResolved, fullResolved);
-	// `relative` returns:
-	//  - '' when full === root
-	//  - a path starting with '..' when full escapes via traversal
-	//  - an absolute path when full is on a different volume (Windows cross-drive)
-	if (rel.startsWith('..') || isAbsolute(rel)) {
+	// Allow the root itself (e.g. empty candidate) as a no-op destination;
+	// otherwise require strict containment.
+	if (fullResolved !== rootResolved && !isContained(rootResolved, fullResolved)) {
 		throw new Error(`${label} "${candidate}" escapes ${root}`);
 	}
 	return fullResolved;
