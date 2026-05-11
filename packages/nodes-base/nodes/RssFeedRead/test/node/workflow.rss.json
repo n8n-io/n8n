@@ -3,22 +3,22 @@
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "4d0527e8-1906-4c09-bbd7-fa3d88f13195",
+			"id": "448372da-bc2d-4952-8d16-4b3384cd3c3d",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-200, -220]
+			"position": [-112, -176]
 		},
 		{
 			"parameters": {
 				"url": "https://lorem-rss.herokuapp.com/feed?length=3",
 				"options": {}
 			},
-			"id": "bb54b66c-2c40-4ea2-a1ae-5fef2186e4bd",
+			"id": "13b7f0a0-db25-4ff3-9e61-4748f6910860",
 			"name": "RSS Read",
 			"type": "n8n-nodes-base.rssFeedRead",
 			"typeVersion": 1,
-			"position": [0, -220]
+			"position": [96, -176]
 		},
 		{
 			"parameters": {
@@ -27,9 +27,22 @@
 			},
 			"type": "n8n-nodes-base.rssFeedRead",
 			"typeVersion": 1.2,
-			"position": [0, -40],
-			"id": "9b67fdd9-23de-40ae-b477-cb121a4ed5c8",
+			"position": [96, 16],
+			"id": "ec469874-0ca2-457e-9204-77417d08ef90",
 			"name": "RSS Read1"
+		},
+		{
+			"parameters": {
+				"url": "https://custom-rss-feed.com/feed",
+				"options": {
+					"customFields": "custom"
+				}
+			},
+			"type": "n8n-nodes-base.rssFeedRead",
+			"typeVersion": 1.2,
+			"position": [96, 176],
+			"id": "6b9593c7-22e0-4ed6-a2ca-bd48aecdfc59",
+			"name": "RSS With Custom"
 		}
 	],
 	"pinData": {
@@ -114,6 +127,50 @@
 					"isoDate": "2023-02-09T13:38:00.000Z"
 				}
 			}
+		],
+		"RSS With Custom": [
+			{
+				"json": {
+					"creator": "John Smith",
+					"title": "Lorem ipsum 2023-02-09T13:40:00Z",
+					"link": "http://example.com/test/1675950000",
+					"pubDate": "Thu, 09 Feb 2023 13:40:00 GMT",
+					"dc:creator": "John Smith",
+					"content": "Fugiat excepteur exercitation tempor ut aute sunt pariatur veniam pariatur dolor.",
+					"contentSnippet": "Fugiat excepteur exercitation tempor ut aute sunt pariatur veniam pariatur dolor.",
+					"guid": "http://example.com/test/1675950000",
+					"isoDate": "2023-02-09T13:40:00.000Z",
+					"custom": "custom"
+				}
+			},
+			{
+				"json": {
+					"creator": "John Smith",
+					"title": "Lorem ipsum 2023-02-09T13:39:00Z",
+					"link": "http://example.com/test/1675949940",
+					"pubDate": "Thu, 09 Feb 2023 13:39:00 GMT",
+					"dc:creator": "John Smith",
+					"content": "Laboris quis nulla tempor eu ullamco est esse qui aute commodo aliqua occaecat.",
+					"contentSnippet": "Laboris quis nulla tempor eu ullamco est esse qui aute commodo aliqua occaecat.",
+					"guid": "http://example.com/test/1675949940",
+					"isoDate": "2023-02-09T13:39:00.000Z",
+					"custom": "custom"
+				}
+			},
+			{
+				"json": {
+					"creator": "John Smith",
+					"title": "Lorem ipsum 2023-02-09T13:38:00Z",
+					"link": "http://example.com/test/1675949880",
+					"pubDate": "Thu, 09 Feb 2023 13:38:00 GMT",
+					"dc:creator": "John Smith",
+					"content": "Irure labore dolor dolore sint aliquip eu anim aute anim et nulla adipisicing nostrud.",
+					"contentSnippet": "Irure labore dolor dolore sint aliquip eu anim aute anim et nulla adipisicing nostrud.",
+					"guid": "http://example.com/test/1675949880",
+					"isoDate": "2023-02-09T13:38:00.000Z",
+					"custom": "custom"
+				}
+			}
 		]
 	},
 	"connections": {
@@ -129,6 +186,11 @@
 						"node": "RSS Read1",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "RSS With Custom",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -138,10 +200,10 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "9bb18c59-4606-4889-a2b0-40284952c604",
+	"versionId": "11023520-13ee-48bf-80b4-81821316ec5f",
 	"meta": {
 		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
 	},
-	"id": "wWDle8xVd0Elxoa0",
+	"id": "hKwPhUVv6w8I1s7M",
 	"tags": []
 }

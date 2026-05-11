@@ -1,15 +1,13 @@
 import { ResolveSignupTokenQueryDto } from '../resolve-signup-token-query.dto';
 
 describe('ResolveSignupTokenQueryDto', () => {
-	const validUuid = '123e4567-e89b-12d3-a456-426614174000';
-
 	describe('Valid requests', () => {
 		test.each([
 			{
-				name: 'standard UUID',
+				name: 'JWT token format',
 				request: {
-					inviterId: validUuid,
-					inviteeId: validUuid,
+					token:
+						'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJpbnZpdGVlSWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAifQ.test',
 				},
 			},
 		])('should validate $name', ({ request }) => {
@@ -21,58 +19,16 @@ describe('ResolveSignupTokenQueryDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
-				name: 'invalid inviterId UUID',
-				request: {
-					inviterId: 'not-a-valid-uuid',
-					inviteeId: validUuid,
-				},
-				expectedErrorPath: ['inviterId'],
+				name: 'missing token',
+				request: {},
+				expectedErrorPath: ['token'],
 			},
 			{
-				name: 'invalid inviteeId UUID',
+				name: 'empty token',
 				request: {
-					inviterId: validUuid,
-					inviteeId: 'not-a-valid-uuid',
+					token: '',
 				},
-				expectedErrorPath: ['inviteeId'],
-			},
-			{
-				name: 'missing inviterId',
-				request: {
-					inviteeId: validUuid,
-				},
-				expectedErrorPath: ['inviterId'],
-			},
-			{
-				name: 'missing inviteeId',
-				request: {
-					inviterId: validUuid,
-				},
-				expectedErrorPath: ['inviteeId'],
-			},
-			{
-				name: 'UUID with invalid characters',
-				request: {
-					inviterId: '123e4567-e89b-12d3-a456-42661417400G',
-					inviteeId: validUuid,
-				},
-				expectedErrorPath: ['inviterId'],
-			},
-			{
-				name: 'UUID too long',
-				request: {
-					inviterId: '123e4567-e89b-12d3-a456-426614174001234',
-					inviteeId: validUuid,
-				},
-				expectedErrorPath: ['inviterId'],
-			},
-			{
-				name: 'UUID too short',
-				request: {
-					inviterId: '123e4567-e89b-12d3-a456',
-					inviteeId: validUuid,
-				},
-				expectedErrorPath: ['inviterId'],
+				expectedErrorPath: ['token'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = ResolveSignupTokenQueryDto.safeParse(request);

@@ -4,11 +4,10 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"rootDir": ".",
-		"baseUrl": "src",
+		"lib": ["es2022"],
 		"paths": {
-			"@/*": ["./*"],
-			"@test/*": ["../test/*"]
+			"@/*": ["./src/*"],
+			"@test/*": ["./test/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,

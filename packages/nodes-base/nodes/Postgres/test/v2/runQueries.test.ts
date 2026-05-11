@@ -43,7 +43,7 @@ describe('Test PostgresV2, runQueries', () => {
 		const thisArg = mock<IExecuteFunctions>();
 		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
 
-		const result = await runQueries([{ query: 'SELECT * FROM table', values: [] }], [], {
+		const result = await runQueries([{ query: 'SELECT * FROM table', values: [] }], {
 			nodeVersion: 2.2,
 		});
 

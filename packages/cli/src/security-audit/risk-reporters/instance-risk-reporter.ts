@@ -1,12 +1,13 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { separate } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import axios from 'axios';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
@@ -88,7 +89,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		const settings: Record<string, unknown> = {};
 
 		settings.features = {
-			communityPackagesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			communityPackagesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),
@@ -129,7 +130,7 @@ export class InstanceRiskReporter implements RiskReporter {
 
 	private getUnprotectedWebhookNodes(workflows: IWorkflowBase[]) {
 		return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
-			if (!workflow.active) return acc;
+			if (!workflow.activeVersionId) return acc;
 
 			workflow.nodes.forEach((node) => {
 				if (

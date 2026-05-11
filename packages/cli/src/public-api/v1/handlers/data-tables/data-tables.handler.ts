@@ -1,0 +1,232 @@
+import {
+	PublicApiListDataTableQueryDto,
+	PublicApiCreateDataTableDto,
+	UpdateDataTableDto,
+} from '@n8n/api-types';
+import { Container } from '@n8n/di';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { ProjectService } from '@/services/project.service.ee';
+
+import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
+import type { DataTableRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import {
+	publicApiScope,
+	projectScope,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
+
+const handleError = (error: unknown) => {
+	if (error instanceof DataTableValidationError) {
+		throw new BadRequestError(error.message);
+	}
+	if (error instanceof DataTableNotFoundError) {
+		throw new NotFoundError(error.message);
+	}
+	if (error instanceof ForbiddenError) {
+		throw new ForbiddenError(error.message);
+	}
+	if (error instanceof DataTableNameConflictError) {
+		throw new ConflictError(error.message);
+	}
+
+	throw error;
+};
+
+/**
+ * Convert all query parameter values to strings for DTO validation.
+ * Express/Supertest may parse some values as numbers/booleans.
+ */
+const stringifyQuery = (query: Record<string, unknown>): Record<string, string | undefined> => {
+	const result: Record<string, string | undefined> = {};
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== undefined && value !== null) {
+			result[key] = String(value);
+		}
+	}
+	return result;
+};
+
+type DataTableHandlers = {
+	listDataTables: PublicAPIEndpoint<DataTableRequest.List>;
+	createDataTable: PublicAPIEndpoint<DataTableRequest.Create>;
+	getDataTable: PublicAPIEndpoint<DataTableRequest.Get>;
+	updateDataTable: PublicAPIEndpoint<DataTableRequest.Update>;
+	deleteDataTable: PublicAPIEndpoint<DataTableRequest.Delete>;
+};
+
+const dataTableHandlers: DataTableHandlers = {
+	listDataTables: [
+		publicApiScope('dataTable:list'),
+		validCursor,
+		async (req, res) => {
+			try {
+				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
+				if (!payload.success) {
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
+				}
+
+				const { offset, limit, filter, sortBy } = payload.data;
+
+				const providedFilter = filter ?? {};
+				const { projectId: requestedProjectId, ...restFilter } = providedFilter;
+
+				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
+
+				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
+					const projectWithScope = await Container.get(ProjectService).getProjectWithScope(
+						req.user,
+						requestedProjectId,
+						['dataTable:listProject'],
+					);
+					if (!projectWithScope) return res.json({ data: [], nextCursor: null });
+				}
+
+				const finalFilter = await getDataTableListFilter(
+					req.user.id,
+					isGlobalOwnerOrAdmin,
+					requestedProjectId,
+					restFilter,
+				);
+
+				const result = await Container.get(DataTableService).getManyAndCount({
+					skip: offset,
+					take: limit,
+					filter: finalFilter,
+					sortBy,
+				});
+
+				const data = result.data.map(({ project: _project, ...rest }) => rest);
+
+				return res.json({
+					data,
+					nextCursor: encodeNextCursor({
+						offset,
+						limit,
+						numberOfTotalRecords: result.count,
+					}),
+				});
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+
+	createDataTable: [
+		publicApiScope('dataTable:create'),
+		async (req, res) => {
+			const payload = PublicApiCreateDataTableDto.safeParse(req.body);
+			if (!payload.success) {
+				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+			}
+
+			const { projectId: requestedProjectId, ...dto } = payload.data;
+
+			const projectId = await resolveProjectIdForCreate(req.user, requestedProjectId);
+
+			try {
+				const result = await Container.get(DataTableService).createDataTable(projectId, dto);
+
+				const { project: _project, ...dataTable } = result;
+
+				return res.status(201).json(dataTable);
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+
+	getDataTable: [
+		publicApiScope('dataTable:read'),
+		projectScope('dataTable:read', 'dataTable'),
+		async (req, res) => {
+			try {
+				const { dataTableId } = req.params;
+
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
+
+				const result = await Container.get(DataTableRepository).findOne({
+					where: { id: dataTableId, project: { id: projectId } },
+					relations: ['project', 'columns'],
+				});
+
+				if (!result) {
+					throw new DataTableNotFoundError(dataTableId);
+				}
+
+				const { project: _project, ...dataTable } = result;
+
+				return res.json(dataTable);
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+
+	updateDataTable: [
+		publicApiScope('dataTable:update'),
+		projectScope('dataTable:update', 'dataTable'),
+		async (req, res) => {
+			try {
+				const { dataTableId } = req.params;
+
+				const payload = UpdateDataTableDto.safeParse(req.body);
+				if (!payload.success) {
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+				}
+
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
+
+				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
+
+				const result = await Container.get(DataTableRepository).findOne({
+					where: { id: dataTableId, project: { id: projectId } },
+					relations: ['project', 'columns'],
+				});
+
+				if (!result) {
+					throw new DataTableNotFoundError(dataTableId);
+				}
+
+				const { project: _project, ...dataTable } = result;
+
+				return res.json(dataTable);
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+
+	deleteDataTable: [
+		publicApiScope('dataTable:delete'),
+		projectScope('dataTable:delete', 'dataTable'),
+		async (req, res) => {
+			try {
+				const { dataTableId } = req.params;
+
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
+
+				await Container.get(DataTableService).deleteDataTable(dataTableId, projectId);
+
+				return res.status(204).send();
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+};
+
+export = dataTableHandlers;

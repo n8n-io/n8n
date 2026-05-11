@@ -42,25 +42,10 @@
         "profile": {
             "type": "object",
             "properties": {
-                "CA_ContractTerminationDate": {
-                    "type": "string"
-                },
-                "CA_ContractType": {
-                    "type": "string"
-                },
-                "CA_FullRemote": {
-                    "type": "string"
-                },
-                "CA_HireDate": {
-                    "type": "string"
-                },
-                "CA_PersonioEmployeeStatus": {
-                    "type": "string"
-                },
-                "CA_Team": {
-                    "type": "string"
-                },
                 "city": {
+                    "type": "string"
+                },
+                "countryCode": {
                     "type": "string"
                 },
                 "department": {
@@ -70,9 +55,6 @@
                     "type": "string"
                 },
                 "email": {
-                    "type": "string"
-                },
-                "employeeNumber": {
                     "type": "string"
                 },
                 "firstName": {
@@ -87,10 +69,31 @@
                 "manager": {
                     "type": "string"
                 },
+                "managerEmail": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "string"
+                },
+                "site": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
                 "title": {
+                    "type": "string"
+                },
+                "userType": {
                     "type": "string"
                 }
             }
+        },
+        "realmId": {
+            "type": "string"
         },
         "status": {
             "type": "string"
@@ -104,5 +107,5 @@
             }
         }
     },
-    "version": 1
+    "version": 4
 }

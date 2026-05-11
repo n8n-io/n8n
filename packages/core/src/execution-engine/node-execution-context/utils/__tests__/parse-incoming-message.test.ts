@@ -51,6 +51,17 @@ describe('parseContentType', () => {
 			description: 'should parse content type with multiple parameters',
 		},
 		{
+			input: 'multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxk=',
+			expected: {
+				type: 'multipart/form-data',
+				parameters: {
+					charset: 'utf-8',
+					boundary: '----WebKitFormBoundary7MA4YWxk=',
+				},
+			},
+			description: 'should preserve trailing = in boundary parameter',
+		},
+		{
 			input: 'text/plain; charset="utf-8"; filename="test.txt"',
 			expected: {
 				type: 'text/plain',
@@ -140,6 +151,21 @@ describe('parseContentDisposition', () => {
 			input: 'attachment; filename="%F0%9F%98%80.txt"',
 			expected: { type: 'attachment', filename: '😀.txt' },
 			description: 'should handle encoded filenames',
+		},
+		{
+			input: 'attachment; filename="my_scan_144dpi_75%.pdf"',
+			expected: { type: 'attachment', filename: 'my_scan_144dpi_75%.pdf' },
+			description: 'should handle filenames with bare percent sign',
+		},
+		{
+			input: 'attachment; filename="report=final.pdf"',
+			expected: { type: 'attachment', filename: 'report=final.pdf' },
+			description: 'should handle filenames with equals sign',
+		},
+		{
+			input: 'attachment; filename="report 50% done.pdf"',
+			expected: { type: 'attachment', filename: 'report 50% done.pdf' },
+			description: 'should handle filenames with bare percent sign and space',
 		},
 		{
 			input: 'attachment; size=123; filename="test.txt"; creation-date="Thu, 1 Jan 2020"',

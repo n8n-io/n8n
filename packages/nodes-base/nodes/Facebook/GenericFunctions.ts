@@ -1,4 +1,5 @@
 import { capitalCase } from 'change-case';
+import { createHmac } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -31,6 +32,14 @@ export async function facebookApiRequest(
 
 	qs.access_token = credentials.accessToken;
 
+	if (credentials.appSecret) {
+		const appsecretTime = Math.floor(Date.now() / 1000);
+		qs.appsecret_proof = createHmac('sha256', credentials.appSecret as string)
+			.update(`${credentials.accessToken as string}|${appsecretTime}`)
+			.digest('hex');
+		qs.appsecret_time = appsecretTime;
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			accept: 'application/json,text/*;q=0.99',
@@ -39,7 +48,7 @@ export async function facebookApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: uri || `https://graph.facebook.com/v8.0${resource}`,
+		uri: uri || `https://graph.facebook.com/v23.0${resource}`,
 		json: true,
 	};
 
@@ -63,7 +72,7 @@ export function getFields(object: string) {
 		page: [
 			{
 				value: 'affiliation',
-				description: "Describes changes to a page's Affliation profile field",
+				description: "Describes changes to a page's affiliation profile field",
 			},
 			{
 				value: 'attire',
@@ -125,7 +134,7 @@ export function getFields(object: string) {
 			},
 			{
 				value: 'hometown',
-				description: "Describes changes to a page's Homewtown profile field",
+				description: "Describes changes to a page's Hometown profile field",
 			},
 			{
 				value: 'hours',

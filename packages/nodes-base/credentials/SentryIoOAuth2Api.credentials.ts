@@ -7,7 +7,7 @@ export class SentryIoOAuth2Api implements ICredentialType {
 
 	displayName = 'Sentry.io OAuth2 API';
 
-	documentationUrl = 'sentryIo';
+	documentationUrl = 'sentryio';
 
 	properties: INodeProperties[] = [
 		{

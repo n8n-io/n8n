@@ -1,0 +1,16 @@
+{
+  "fileExtensions": ["ts"],
+  "excludeRegExp": [
+    "node_modules",
+    "dist",
+    "\\.test\\.",
+    "\\.spec\\."
+  ],
+  "tsConfig": "./tsconfig.json",
+	"layout": "neato",
+  "detectiveOptions": {
+    "ts": {
+      "skipTypeImports": false
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
@@ -20,7 +21,9 @@ import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
+	getAllowedDomains,
 	getOAuth2AdditionalParameters,
+	getSecrets,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -686,6 +689,24 @@ export class HttpRequestV2 implements INodeType {
 			} catch {}
 		}
 
+		let allowedDomains: string | undefined;
+		let secrets: string[] = [];
+		for (const credential of [
+			httpBasicAuth,
+			httpBearerAuth,
+			httpDigestAuth,
+			httpHeaderAuth,
+			httpQueryAuth,
+			oAuth1Api,
+			oAuth2Api,
+		]) {
+			if (credential) {
+				allowedDomains = getAllowedDomains(this.getNode(), credential);
+				secrets.push(...getSecrets(credential));
+				break;
+			}
+		}
+
 		let requestOptions: IRequestOptions & { useStream?: boolean };
 		let setUiParameter: IDataObject;
 
@@ -719,7 +740,36 @@ export class HttpRequestV2 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			const url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
+
+			if (nodeCredentialType) {
+				let credentialData: ICredentialDataDecryptedObject | undefined;
+				try {
+					credentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+						nodeCredentialType,
+						itemIndex,
+					);
+				} catch {}
+				if (credentialData) {
+					allowedDomains = getAllowedDomains(this.getNode(), credentialData);
+					secrets = getSecrets(credentialData);
+				}
+			}
 
 			if (
 				itemIndex > 0 &&
@@ -742,6 +792,7 @@ export class HttpRequestV2 implements INodeType {
 				uri: url,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+				allowedDomains,
 			};
 
 			if (fullResponse) {
@@ -1002,7 +1053,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys, secrets));
 			} catch (e) {}
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {

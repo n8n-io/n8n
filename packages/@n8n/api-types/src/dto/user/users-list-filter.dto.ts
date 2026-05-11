@@ -1,7 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
+import { Z } from '../../zod-class';
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const USERS_LIST_SORT_OPTIONS = [
@@ -15,8 +15,8 @@ export const USERS_LIST_SORT_OPTIONS = [
 	'role:desc',
 	'mfaEnabled:asc',
 	'mfaEnabled:desc',
-	// 'lastActive:asc',
-	// 'lastActive:desc',
+	'lastActiveAt:asc',
+	'lastActiveAt:desc',
 ] as const;
 
 export type UsersListSortOptions = (typeof USERS_LIST_SORT_OPTIONS)[number];
@@ -34,12 +34,15 @@ const userSelectSchema = z.array(
 );
 
 const userFilterSchema = z.object({
+	ids: z.array(z.string()).optional(),
 	isOwner: z.boolean().optional(),
 	firstName: z.string().optional(),
 	lastName: z.string().optional(),
 	email: z.string().optional(),
 	mfaEnabled: z.boolean().optional(),
 	fullText: z.string().optional(), // Full text search across firstName, lastName, and email
+	isPending: z.boolean().optional(),
+	projectId: z.string().optional(),
 });
 
 const filterValidatorSchema = z

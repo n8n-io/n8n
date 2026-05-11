@@ -1,0 +1,935 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "startData": {
+          "type": "object",
+          "properties": {}
+        },
+        "resultData": {
+          "type": "object",
+          "properties": {
+            "runData": {
+              "type": "object",
+              "properties": {
+                "Start": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana2": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana14": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana3": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana15": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana1": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana4": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana5": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana6": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana8": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana10": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana12": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana16": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana9": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana11": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana13": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana17": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Asana7": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "lastNodeExecuted": {
+              "type": "string"
+            }
+          }
+        },
+        "executionData": {
+          "type": "object",
+          "properties": {
+            "contextData": {
+              "type": "object",
+              "properties": {}
+            },
+            "nodeExecutionStack": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecution": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecutionSource": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "stoppedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "finished": {
+      "type": "boolean"
+    }
+  }
+}

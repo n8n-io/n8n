@@ -8,7 +8,7 @@ import type {
 export class HuggingFaceApi implements ICredentialType {
 	name = 'huggingFaceApi';
 
-	displayName = 'HuggingFaceApi';
+	displayName = 'Hugging Face API';
 
 	documentationUrl = 'huggingface';
 
@@ -34,8 +34,8 @@ export class HuggingFaceApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api-inference.huggingface.co',
-			url: '/models/gpt2',
+			baseURL: 'https://huggingface.co',
+			url: '/api/whoami-v2',
 		},
 	};
 }

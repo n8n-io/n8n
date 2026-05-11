@@ -30,7 +30,13 @@
                     }
                 }
             }
+        },
+        "sessionId": {
+            "type": "string"
+        },
+        "windowId": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

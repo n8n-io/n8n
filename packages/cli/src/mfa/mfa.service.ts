@@ -9,14 +9,15 @@ import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mf
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
+import { CacheService } from '@/services/cache/cache.service';
 
+export const MFA_CACHE_KEY = 'mfa:enforce';
 @Service()
 export class MfaService {
-	private enforceMFAValue: boolean = false;
-
 	constructor(
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
+		private cacheService: CacheService,
 		private license: LicenseState,
 		public totp: TOTPService,
 		private cipher: Cipher,
@@ -36,10 +37,9 @@ export class MfaService {
 	}
 
 	private async loadMFASettings() {
-		const value = await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING);
-		if (value) {
-			this.enforceMFAValue = value.value === 'true';
-		}
+		const value = (await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING))?.value;
+		await this.cacheService.set(MFA_CACHE_KEY, value);
+		return value === 'true';
 	}
 
 	async enforceMFA(value: boolean) {
@@ -54,15 +54,19 @@ export class MfaService {
 			},
 			['key'],
 		);
-		this.enforceMFAValue = value;
+		await this.cacheService.set(MFA_CACHE_KEY, `${value}`);
 	}
 
-	isMFAEnforced() {
-		return this.license.isMFAEnforcementLicensed() && this.enforceMFAValue;
+	async isMFAEnforced() {
+		if (!this.license.isMFAEnforcementLicensed()) return false;
+
+		const cachedValue = await this.cacheService.get(MFA_CACHE_KEY);
+
+		return cachedValue ? cachedValue === 'true' : await this.loadMFASettings();
 	}
 
 	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
-		const { encryptedSecret, encryptedRecoveryCodes } = this.encryptSecretAndRecoveryCodes(
+		const { encryptedSecret, encryptedRecoveryCodes } = await this.encryptSecretAndRecoveryCodes(
 			secret,
 			recoveryCodes,
 		);
@@ -73,19 +77,23 @@ export class MfaService {
 		await this.userRepository.save(user);
 	}
 
-	encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
-		const encryptedSecret = this.cipher.encrypt(rawSecret),
-			encryptedRecoveryCodes = rawRecoveryCodes.map((code) => this.cipher.encrypt(code));
+	async encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
+		const encryptedSecret = await this.cipher.encryptV2(rawSecret);
+		const encryptedRecoveryCodes = await Promise.all(
+			rawRecoveryCodes.map(async (code) => await this.cipher.encryptV2(code)),
+		);
 		return {
 			encryptedRecoveryCodes,
 			encryptedSecret,
 		};
 	}
 
-	private decryptSecretAndRecoveryCodes(mfaSecret: string, mfaRecoveryCodes: string[]) {
+	private async decryptSecretAndRecoveryCodes(mfaSecret: string, mfaRecoveryCodes: string[]) {
 		return {
-			decryptedSecret: this.cipher.decrypt(mfaSecret),
-			decryptedRecoveryCodes: mfaRecoveryCodes.map((code) => this.cipher.decrypt(code)),
+			decryptedSecret: await this.cipher.decryptV2(mfaSecret),
+			decryptedRecoveryCodes: await Promise.all(
+				mfaRecoveryCodes.map(async (code) => await this.cipher.decryptV2(code)),
+			),
 		};
 	}
 
@@ -93,7 +101,7 @@ export class MfaService {
 		const { mfaSecret, mfaRecoveryCodes } = await this.userRepository.findOneByOrFail({
 			id: userId,
 		});
-		return this.decryptSecretAndRecoveryCodes(mfaSecret ?? '', mfaRecoveryCodes ?? []);
+		return await this.decryptSecretAndRecoveryCodes(mfaSecret ?? '', mfaRecoveryCodes ?? []);
 	}
 
 	async validateMfa(
@@ -103,17 +111,21 @@ export class MfaService {
 	) {
 		const user = await this.userRepository.findOneByOrFail({ id: userId });
 		if (mfaCode) {
-			const decryptedSecret = this.cipher.decrypt(user.mfaSecret!);
+			const decryptedSecret = await this.cipher.decryptV2(user.mfaSecret!);
 			return this.totp.verifySecret({ secret: decryptedSecret, mfaCode });
 		}
 
 		if (mfaRecoveryCode) {
-			const validCodes = user.mfaRecoveryCodes.map((code) => this.cipher.decrypt(code));
+			const validCodes = await Promise.all(
+				user.mfaRecoveryCodes.map(async (code) => await this.cipher.decryptV2(code)),
+			);
 			const index = validCodes.indexOf(mfaRecoveryCode);
 			if (index === -1) return false;
 			// remove used recovery code
 			validCodes.splice(index, 1);
-			user.mfaRecoveryCodes = validCodes.map((code) => this.cipher.encrypt(code));
+			user.mfaRecoveryCodes = await Promise.all(
+				validCodes.map(async (code) => await this.cipher.encryptV2(code)),
+			);
 			await this.userRepository.save(user);
 			return true;
 		}
@@ -122,7 +134,10 @@ export class MfaService {
 	}
 
 	async enableMfa(userId: string) {
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 		user.mfaEnabled = true;
 		return await this.userRepository.save(user);
 	}

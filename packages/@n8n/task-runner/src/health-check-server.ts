@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import { createServer } from 'node:http';
 
 export class HealthCheckServer {

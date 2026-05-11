@@ -1,12 +1,12 @@
-import type {
-	INodeExecutionData,
-	IPairedItemData,
-	IRunExecutionData,
-	ISourceData,
-	ITaskData,
+import {
+	createRunExecutionData,
+	type INodeExecutionData,
+	type IPairedItemData,
+	type ISourceData,
+	type ITaskData,
 } from 'n8n-workflow';
 
-import { previousTaskData, findPairedItemTroughWorkflowData } from './workflow-backtracking';
+import { previousTaskData, findPairedItemThroughWorkflowData } from './workflow-backtracking';
 
 describe('backtracking.ts', () => {
 	describe('previousTaskData', () => {
@@ -186,82 +186,82 @@ describe('backtracking.ts', () => {
 		});
 	});
 
-	describe('findPairedItemTroughWorkflowData', () => {
+	describe('findPairedItemThroughWorkflowData', () => {
 		it('should return undefined when lastNodeExecuted is undefined', () => {
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {},
 					lastNodeExecuted: undefined,
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
 
 		it('should return undefined when no run data exists for lastNodeExecuted', () => {
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
 
 		it('should return undefined when run data is empty', () => {
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [],
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
 
 		it('should return undefined when task data is undefined', () => {
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [undefined as any],
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});
 
 		it('should return paired item when no previous task data exists', () => {
 			const expectedPairedItem: IPairedItemData = { item: 0 };
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -275,13 +275,13 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: expectedPairedItem,
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(expectedPairedItem);
 		});
@@ -292,7 +292,7 @@ describe('backtracking.ts', () => {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -317,9 +317,9 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -330,7 +330,7 @@ describe('backtracking.ts', () => {
 				json: { test: 'value' },
 				pairedItem: { item: 0, input: 1 },
 			};
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -353,9 +353,9 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
@@ -368,7 +368,7 @@ describe('backtracking.ts', () => {
 				pairedItem: 2, // Numeric paired item
 			};
 
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -399,16 +399,16 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 5);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 5);
 
 			expect(result).toBe(finalPairedItem);
 		});
 
 		it('should handle multiple levels of backtracking', () => {
 			const finalPairedItem: IPairedItemData = { item: 10 };
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -440,20 +440,20 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
 
 		it('should use last run data when multiple runs exist', () => {
 			const finalPairedItem: IPairedItemData = { item: 15 };
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -483,19 +483,19 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBe(finalPairedItem);
 		});
 
 		it('should handle missing nodeInformationArray gracefully', () => {
-			const workflowRunData: IRunExecutionData = {
+			const workflowRunData = createRunExecutionData({
 				resultData: {
 					runData: {
 						node1: [
@@ -518,13 +518,13 @@ describe('backtracking.ts', () => {
 					},
 					lastNodeExecuted: 'node1',
 				},
-			};
+			});
 			const item: INodeExecutionData = {
 				json: { test: 'value' },
 				pairedItem: { item: 0 },
 			};
 
-			const result = findPairedItemTroughWorkflowData(workflowRunData, item, 0);
+			const result = findPairedItemThroughWorkflowData(workflowRunData, item, 0);
 
 			expect(result).toBeUndefined();
 		});

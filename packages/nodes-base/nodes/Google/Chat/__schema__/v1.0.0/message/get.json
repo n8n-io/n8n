@@ -1,7 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "argumentText": {
+            "type": "string"
+        },
         "createTime": {
+            "type": "string"
+        },
+        "formattedText": {
             "type": "string"
         },
         "name": {
@@ -11,9 +17,6 @@
             "type": "object",
             "properties": {
                 "displayName": {
-                    "type": "string"
-                },
-                "domainId": {
                     "type": "string"
                 },
                 "name": {
@@ -41,9 +44,6 @@
                 "name": {
                     "type": "string"
                 },
-                "singleUserBotDm": {
-                    "type": "boolean"
-                },
                 "spaceHistoryState": {
                     "type": "string"
                 },
@@ -61,6 +61,9 @@
                 }
             }
         },
+        "text": {
+            "type": "string"
+        },
         "thread": {
             "type": "object",
             "properties": {
@@ -70,5 +73,5 @@
             }
         }
     },
-    "version": 1
+    "version": 3
 }

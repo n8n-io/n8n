@@ -1,0 +1,209 @@
+import { describe, it, expect } from 'vitest';
+import { useFolders } from './useFolders';
+import { FOLDER_NAME_MAX_LENGTH } from '../folders.constants';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+
+const mockFoldersStore = {
+	draggedElement: null as { type: string; id: string; name: string } | null,
+	activeDropTarget: null as { type: string; id: string; name: string } | null,
+};
+
+vi.mock('@/features/core/folders/folders.store', () => ({
+	useFoldersStore: vi.fn(() => mockFoldersStore),
+}));
+
+describe('useFolders', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		mockFoldersStore.draggedElement = null;
+		mockFoldersStore.activeDropTarget = null;
+		document.body.classList.remove('dragging-resource');
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	const { validateFolderName, onDragStart, onDragEnd } = useFolders();
+
+	describe('validateFolderName', () => {
+		describe('Valid folder names', () => {
+			const validNames = [
+				'normal-folder',
+				'folder_with_underscore',
+				'folder with spaces',
+				'folder123',
+				'UPPERCASE',
+				'MixedCase',
+				'123numbers',
+				'a', // Single character
+				'folder.with.dots', // Dots in the middle are fine
+				'folder-with-dashes',
+				'folder(with)parentheses',
+				'folder+with+plus',
+				'folder&with&ampersand',
+				"folder'with'quotes",
+				'folder,with,commas',
+				'folder;with;semicolons',
+				'folder=with=equals',
+				'folder~with~tilde',
+			];
+
+			validNames.forEach((name) => {
+				it(`should validate "${name}" as a valid folder name`, () => {
+					expect(validateFolderName(name)).toBe(true);
+				});
+			});
+		});
+
+		describe('Folder names with illegal starting dots', () => {
+			const namesWithDots = ['.hidden', '..parent', '...multiple', '.', '..', '...'];
+
+			namesWithDots.forEach((name) => {
+				it(`should reject "${name}" as it starts with dot(s)`, () => {
+					const result = validateFolderName(name);
+					if (name === '.' || name === '..' || name === '...') {
+						expect(result).toBe('Folder name cannot contain only dots');
+					} else {
+						expect(result).toBe('Folder name cannot start with a dot');
+					}
+				});
+			});
+		});
+
+		describe('Folder names with illegal characters', () => {
+			const illegalCharacterCases = [
+				{ name: 'folder[bracketed]', char: '[' },
+				{ name: 'folder]bracketed', char: ']' },
+				{ name: 'folder^caret', char: '^' },
+				{ name: 'folder\\backslash', char: '\\' },
+				{ name: 'folder/slash', char: '/' },
+				{ name: 'folder:colon', char: ':' },
+				{ name: 'folder*asterisk', char: '*' },
+				{ name: 'folder?question', char: '?' },
+				{ name: 'folder"quotes', char: '"' },
+				{ name: 'folder<angle', char: '<' },
+				{ name: 'folder>angle', char: '>' },
+				{ name: 'folder|pipe', char: '|' },
+				{ name: '???', char: '?' },
+			];
+
+			illegalCharacterCases.forEach(({ name, char }) => {
+				it(`should reject "${name}" as it contains illegal character "${char}"`, () => {
+					const result = validateFolderName(name);
+					expect(result).toBe(
+						'Folder name cannot contain the following characters: [ ] ^ \\ / : * ? " < > |',
+					);
+				});
+			});
+		});
+
+		it('should reject folder names longer than the maximum length', () => {
+			const longName = 'a'.repeat(FOLDER_NAME_MAX_LENGTH + 1);
+			const result = validateFolderName(longName);
+			expect(result).toBe(`Folder name cannot be longer than ${FOLDER_NAME_MAX_LENGTH} characters`);
+		});
+
+		describe('Edge cases', () => {
+			it('should handle empty string input', () => {
+				// Decide on your desired behavior for empty strings
+				// This is implementation-dependent - modify as needed
+				const result = validateFolderName('');
+				expect(typeof result).toBe('string'); // Expecting an error message
+			});
+
+			it('should handle folder names with Unicode characters', () => {
+				const unicodeNames = ['folder-with-émojis-😊', '中文文件夹', 'мој фолдер', 'مجلد-عربي'];
+
+				unicodeNames.forEach((name) => {
+					expect(validateFolderName(name)).toBe(true);
+				});
+			});
+
+			it('should handle folder names with multiple spaces', () => {
+				expect(validateFolderName('folder   with   spaces')).toBe(true);
+			});
+		});
+
+		describe('Combined invalid cases', () => {
+			it('should prioritize illegal characters when name has both issues', () => {
+				const result = validateFolderName('.folder*with/illegal:chars');
+				// Expect to get the illegal characters first since that's the order of checks
+				expect(result).toBe(
+					'Folder name cannot contain the following characters: [ ] ^ \\ / : * ? " < > |',
+				);
+			});
+
+			it('should check for dots-only before starting dots', () => {
+				const result = validateFolderName('...');
+				expect(result).toBe('Folder name cannot contain only dots');
+			});
+		});
+	});
+
+	describe('onDragStart', () => {
+		it('should add dragging-resource class to body when dragging a folder', () => {
+			const element = document.createElement('div');
+			element.setAttribute('data-target', 'folder');
+			element.setAttribute('data-resourceid', 'folder-123');
+			element.setAttribute('data-resourcename', 'Test Folder');
+			document.body.appendChild(element);
+
+			onDragStart(element);
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(true);
+			expect(mockFoldersStore.draggedElement).toEqual({
+				type: 'folder',
+				id: 'folder-123',
+				name: 'Test Folder',
+			});
+
+			document.body.removeChild(element);
+		});
+
+		it('should add dragging-resource class to body when dragging a workflow', () => {
+			const element = document.createElement('div');
+			element.setAttribute('data-target', 'workflow');
+			element.setAttribute('data-resourceid', 'workflow-456');
+			element.setAttribute('data-resourcename', 'Test Workflow');
+			document.body.appendChild(element);
+
+			onDragStart(element);
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(true);
+			expect(mockFoldersStore.draggedElement).toEqual({
+				type: 'workflow',
+				id: 'workflow-456',
+				name: 'Test Workflow',
+			});
+
+			document.body.removeChild(element);
+		});
+
+		it('should not add class when element has no data-target attribute', () => {
+			const element = document.createElement('div');
+			document.body.appendChild(element);
+
+			onDragStart(element);
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(false);
+
+			document.body.removeChild(element);
+		});
+	});
+
+	describe('onDragEnd', () => {
+		it('should remove dragging-resource class from body', () => {
+			document.body.classList.add('dragging-resource');
+			mockFoldersStore.draggedElement = { type: 'folder', id: '123', name: 'Test' };
+			mockFoldersStore.activeDropTarget = { type: 'folder', id: '456', name: 'Target' };
+
+			onDragEnd();
+
+			expect(document.body.classList.contains('dragging-resource')).toBe(false);
+			expect(mockFoldersStore.draggedElement).toBeNull();
+			expect(mockFoldersStore.activeDropTarget).toBeNull();
+		});
+	});
+});

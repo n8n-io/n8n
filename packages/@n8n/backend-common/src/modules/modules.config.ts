@@ -2,7 +2,35 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 
 import { UnknownModuleError } from './errors/unknown-module.error';
 
-export const MODULE_NAMES = ['insights', 'external-secrets'] as const;
+export const MODULE_NAMES = [
+	'agents',
+	'insights',
+	'external-secrets',
+	'community-packages',
+	'data-table',
+	'mcp',
+	'provisioning',
+	'breaking-changes',
+	'source-control',
+	'dynamic-credentials',
+	'chat-hub',
+	'sso-oidc',
+	'sso-saml',
+	'log-streaming',
+	'ldap',
+	'quick-connect',
+	'workflow-builder',
+	'favorites',
+	'redaction',
+	'instance-registry',
+	'instance-ai',
+	'mcp-registry',
+	'otel',
+	'token-exchange',
+	'instance-version-history',
+	'encryption-key-manager',
+	'oauth-jwe',
+] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
 

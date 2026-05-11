@@ -7,6 +7,7 @@ import type {
 import type { Assistant } from 'openai/resources/beta/assistants';
 import type { Model } from 'openai/resources/models';
 
+import { shouldIncludeModel } from '../helpers/modelFiltering';
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
@@ -77,30 +78,52 @@ export async function modelSearch(
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
 	const url = credentials.url && new URL(credentials.url);
-	const isCustomAPI = url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname);
-	return await getModelSearch(
-		(model) =>
-			!isCustomAPI &&
-			!(
-				model.id.startsWith('babbage') ||
-				model.id.startsWith('davinci') ||
-				model.id.startsWith('computer-use') ||
-				model.id.startsWith('dall-e') ||
-				model.id.startsWith('text-embedding') ||
-				model.id.startsWith('tts') ||
-				model.id.startsWith('whisper') ||
-				model.id.startsWith('omni-moderation') ||
-				(model.id.startsWith('gpt-') && model.id.includes('instruct'))
-			),
-	)(this, filter);
+	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
+	return await getModelSearch((model) => shouldIncludeModel(model.id, isCustomAPI))(this, filter);
+}
+
+export async function videoModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await getModelSearch((model) => model.id.includes('sora'))(this, filter);
 }
 
 export async function imageModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	return await getModelSearch((model) => {
+		if (
+			model.id.includes('-transcribe') ||
+			model.id.includes('-diarize') ||
+			model.id.includes('-search') ||
+			model.id.includes('-audio') ||
+			model.id.includes('-realtime')
+		) {
+			return false;
+		}
+
+		return (
+			model.id.includes('gpt-5') ||
+			model.id.includes('gpt-4o') ||
+			model.id.includes('gpt-4.1') ||
+			model.id.includes('gpt-4-turbo') ||
+			model.id.includes('vision') ||
+			model.id.startsWith('o1') ||
+			model.id.startsWith('o3') ||
+			model.id.startsWith('o4-mini') ||
+			model.id.startsWith('chatgpt-4o')
+		);
+	})(this, filter);
+}
+
+export async function imageGenerateModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	return await getModelSearch(
-		(model) => model.id.includes('vision') || model.id.includes('gpt-4o'),
+		(model) => model.id.includes('dall-e') || model.id.includes('gpt-image'),
 	)(this, filter);
 }
 

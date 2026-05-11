@@ -1,0 +1,142 @@
+{
+	"createdAt": "2024-03-04T20:33:51.500Z",
+	"updatedAt": "2024-03-13T13:41:47.000Z",
+	"id": "241",
+	"name": "Agent:OpenAiFunctions",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a2807ad9-7402-47a8-baf8-3ba8feea2494",
+							"name": "calculator_called",
+							"value": "={{ $json.intermediateSteps.filter(a => a.action.tool === 'calculator').length >= 1 }}",
+							"type": "boolean"
+						},
+						{
+							"id": "29ca8b14-ce95-4497-85eb-687db33ecd06",
+							"name": "has_correct_output",
+							"value": "={{ $json.output.includes('100052') }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "19c7f30c-1234-4dac-8635-59f3101a9dd5",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1240, 760]
+		},
+		{
+			"parameters": {
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "704163e9-dee9-4d4f-97b8-9681b050af21",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [920, 900],
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=messages"
+		},
+		{
+			"parameters": {},
+			"id": "44f670cc-c4e9-44fc-8870-18955f727be1",
+			"name": "Calculator",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [1080, 920]
+		},
+		{
+			"parameters": {},
+			"id": "f036de64-49fa-4854-89b7-2679f6e3cf59",
+			"name": "When clicking \"Test workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [700, 760]
+		},
+		{
+			"parameters": {
+				"agent": "openAiFunctionsAgent",
+				"promptType": "define",
+				"text": "What is the result of 30 + (10002200 / 100)? Only respond with a number.",
+				"options": {
+					"returnIntermediateSteps": true
+				}
+			},
+			"id": "f0129970-11c7-45c6-9665-28498c9c87dd",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.7,
+			"position": [900, 760]
+		}
+	],
+	"connections": {
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking \"Test workflow\"": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "92205881-151a-4e66-acd1-31f2d4e3a58c",
+	"triggerCount": 0,
+	"tags": []
+}

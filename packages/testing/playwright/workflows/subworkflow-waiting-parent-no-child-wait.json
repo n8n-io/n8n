@@ -1,0 +1,74 @@
+{
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"path": "1eef9e1a-1639-48cb-a6f0-69ce704ddb35",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"id": "ab4ea759-d26b-4b1b-8c66-89252df1a56a",
+			"name": "Webhook",
+			"webhookId": "1eef9e1a-1639-48cb-a6f0-69ce704ddb35"
+		},
+		{
+			"parameters": {
+				"workflowId": {
+					"value": "YJLfzxxKx2YBUjzH",
+					"mode": "list"
+				},
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {}
+				},
+				"options": {
+					"waitForSubWorkflow": false
+				}
+			},
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"position": [272, 0],
+			"id": "c27d9002-4bbe-4c13-b1a0-728b77a6ff98",
+			"name": "Call Sub-workflow"
+		},
+		{
+			"parameters": {
+				"amount": 120
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [480, 0],
+			"id": "273af435-67ac-419d-9208-26a6c83440bd",
+			"name": "Wait",
+			"webhookId": "1de20343-d792-49e1-922f-22a5364424a2"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Call Sub-workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Call Sub-workflow": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {}
+}

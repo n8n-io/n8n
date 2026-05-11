@@ -20,6 +20,10 @@ describe('Wordpress > Page Workflows', () => {
 		mock.get('/wp-json/wp/v2/pages/2').reply(200, pageGet);
 		mock.get('/wp-json/wp/v2/pages').query({ per_page: 1 }).reply(200, pageGetMany);
 		mock
+			.get('/wp-json/wp/v2/pages')
+			.query({ per_page: 1, before: '2026-01-01T00:00:00' })
+			.reply(200, pageGetMany);
+		mock
 			.post('/wp-json/wp/v2/pages/2', {
 				id: 2,
 				title: 'New Title',

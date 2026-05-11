@@ -1,27 +1,33 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import type {
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
-import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import {
+	createRunExecutionData,
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
+import { TestRunnerService } from '../test-runner.service.ee';
+
 import type { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
-
-import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -37,6 +43,10 @@ describe('TestRunnerService', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
+	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+	const publisher = mock<Publisher>();
+	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
+	const concurrencyControlService = mock<ConcurrencyControlService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -53,6 +63,11 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testCaseExecutionRepository,
 			errorReporter,
+			executionsConfig,
+			mock(),
+			publisher,
+			instanceSettings,
+			concurrencyControlService,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -217,7 +232,7 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
+				expect(error.code).toBe('CANT_FETCH_TEST_CASES');
 			}
 		});
 
@@ -452,14 +467,16 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
-			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
 			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
 			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
@@ -475,10 +492,26 @@ describe('TestRunnerService', () => {
 				resource: 'dataset',
 				operation: 'getRows',
 			});
+			expect(runCallArg).toHaveProperty('forceFullExecutionData', true);
 		});
 
 		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
-			config.set('executions.mode', 'queue');
+			const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+			const testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				queueModeConfig,
+				mock(),
+				publisher,
+				instanceSettings,
+				concurrencyControlService,
+			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
 			// Create workflow with a trigger node
@@ -515,24 +548,41 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
-			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
+			// In queue mode with offloading, executionData.executionData should not exist
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+
+			// But executionData itself should still exist with startData and manualData
+			expect(runCallArg).toHaveProperty('executionData');
+			expect(runCallArg.executionData).toBeDefined();
+			expect(runCallArg).toHaveProperty('executionData.startData.destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
+			expect(runCallArg).toHaveProperty('executionData.manualData.userId', metadata.userId);
+			expect(runCallArg).toHaveProperty(
+				'executionData.manualData.triggerToStartFrom.name',
+				triggerNodeName,
+			);
+
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
 				resource: 'dataset',
 				operation: 'getRows',
 			});
+			expect(runCallArg).toHaveProperty('forceFullExecutionData', true);
 
 			// after reset
-			config.set('executions.mode', 'regular');
 			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
@@ -644,6 +694,8 @@ describe('TestRunnerService', () => {
 			// Setup test data
 			const triggerNodeName = 'TriggerNode';
 			const workflow = mock<IWorkflowBase>({
+				id: 'workflow-id',
+				name: 'Test Workflow',
 				nodes: [
 					{
 						id: 'node1',
@@ -696,7 +748,7 @@ describe('TestRunnerService', () => {
 						},
 					},
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
+					forceFullExecutionData: true,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -759,24 +811,33 @@ describe('TestRunnerService', () => {
 		});
 
 		describe('runTestCase - Queue Mode', () => {
-			beforeEach(() => {
-				// Mock config to return 'queue' mode
-				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-					if (key === 'executions.mode') {
-						return 'queue';
-					}
-					return undefined;
-				});
-			});
+			let testRunnerService: TestRunnerService;
 
-			afterEach(() => {
-				(config.getEnv as unknown as Mock).mockRestore();
+			beforeEach(() => {
+				const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+				testRunnerService = new TestRunnerService(
+					logger,
+					telemetry,
+					workflowRepository,
+					workflowRunner,
+					activeExecutions,
+					testRunRepository,
+					testCaseExecutionRepository,
+					errorReporter,
+					queueModeConfig,
+					mock(),
+					publisher,
+					instanceSettings,
+					concurrencyControlService,
+				);
 			});
 
 			test('should call workflowRunner.run with correct data in queue mode', async () => {
 				// Setup test data
 				const triggerNodeName = 'TriggerNode';
 				const workflow = mock<IWorkflowBase>({
+					id: 'workflow-id',
+					name: 'Test Workflow',
 					nodes: [
 						{
 							id: 'node1',
@@ -816,6 +877,7 @@ describe('TestRunnerService', () => {
 				expect(runCallArg).toEqual(
 					expect.objectContaining({
 						executionMode: 'evaluation',
+						forceFullExecutionData: true,
 						pinData: {
 							[triggerNodeName]: [testCase],
 						},
@@ -830,24 +892,26 @@ describe('TestRunnerService', () => {
 							},
 						},
 						userId: metadata.userId,
-						partialExecutionVersion: 2,
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
 						executionData: {
-							resultData: {
-								pinData: {
-									[triggerNodeName]: [testCase],
+							...createRunExecutionData({
+								executionData: null,
+								resultData: {
+									pinData: {
+										[triggerNodeName]: [testCase],
+									},
+									runData: {},
 								},
-								runData: {},
-							},
-							manualData: {
-								userId: metadata.userId,
-								partialExecutionVersion: 2,
-								triggerToStartFrom: {
-									name: triggerNodeName,
+								manualData: {
+									userId: metadata.userId,
+									triggerToStartFrom: {
+										name: triggerNodeName,
+									},
 								},
-							},
+							}),
+							resumeToken: expect.any(String),
 						},
 					}),
 				);
@@ -1026,7 +1090,7 @@ describe('TestRunnerService', () => {
 			}
 		});
 
-		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node is disabled', () => {
+		it('should throw SET_METRICS_NODE_NOT_FOUND when metrics node is disabled', () => {
 			const workflow = mock<IWorkflowBase>({
 				nodes: [
 					{
@@ -1061,8 +1125,8 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).validateSetMetricsNodes(workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
-				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_FOUND');
+				expect(error.extra).toEqual({});
 			}
 		});
 
@@ -1225,46 +1289,45 @@ describe('TestRunnerService', () => {
 				}
 			});
 
-			it('should fail for version >= 4.7 with missing metric parameter', () => {
+			it('should pass for version >= 4.7 with missing metric parameter (uses default correctness) when model connected', () => {
 				const workflow = mock<IWorkflowBase>({
 					nodes: [
+						{
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
 						{
 							id: 'node1',
 							name: 'Set Metrics',
 							type: EVALUATION_NODE_TYPE,
 							typeVersion: 4.7,
-							position: [0, 0],
+							position: [100, 0],
 							parameters: {
 								operation: 'setMetrics',
-								metrics: {
-									assignments: [
-										{
-											id: '1',
-											name: 'accuracy',
-											value: 0.95,
-										},
-									],
-								},
+								// metric parameter is undefined, which means it uses the default value 'correctness'
+								// This should pass since correctness is valid and has model connected
 							},
 						},
 					],
-					connections: {},
+					connections: {
+						'OpenAI Model': {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
 				});
 
-				// Missing metric parameter - this should fail for versions >= 4.7
-				workflow.nodes[0].parameters.metric = undefined;
+				// Missing metric parameter - this should pass for versions >= 4.7 since it defaults to 'correctness' and has model
+				workflow.nodes[1].parameters.metric = undefined;
 
 				expect(() => {
 					(testRunnerService as any).validateSetMetricsNodes(workflow);
-				}).toThrow(TestRunError);
-
-				try {
-					(testRunnerService as any).validateSetMetricsNodes(workflow);
-				} catch (error) {
-					expect(error).toBeInstanceOf(TestRunError);
-					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
-					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
-				}
+				}).not.toThrow();
 			});
 
 			it('should pass for version >= 4.7 with valid customMetrics configuration', () => {
@@ -1299,7 +1362,7 @@ describe('TestRunnerService', () => {
 				}).not.toThrow();
 			});
 
-			it('should pass for version >= 4.7 with non-customMetrics metric (no metrics validation needed)', () => {
+			it('should pass for version >= 4.7 with non-AI metric (no model connection needed)', () => {
 				const workflow = mock<IWorkflowBase>({
 					nodes: [
 						{
@@ -1310,8 +1373,8 @@ describe('TestRunnerService', () => {
 							position: [0, 0],
 							parameters: {
 								operation: 'setMetrics',
-								metric: 'correctness',
-								// No metrics parameter needed for non-customMetrics
+								metric: 'stringSimilarity',
+								// Non-AI metrics don't need model connection
 							},
 						},
 					],
@@ -1361,11 +1424,19 @@ describe('TestRunnerService', () => {
 				const workflow = mock<IWorkflowBase>({
 					nodes: [
 						{
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
 							id: 'node1',
 							name: 'Set Metrics Old',
 							type: EVALUATION_NODE_TYPE,
 							typeVersion: 4.6,
-							position: [0, 0],
+							position: [100, 0],
 							parameters: {
 								operation: 'setMetrics',
 								// No metric parameter for old version
@@ -1385,20 +1456,226 @@ describe('TestRunnerService', () => {
 							name: 'Set Metrics New',
 							type: EVALUATION_NODE_TYPE,
 							typeVersion: 4.7,
-							position: [100, 0],
+							position: [200, 0],
 							parameters: {
 								operation: 'setMetrics',
 								metric: 'correctness',
-								// No metrics parameter needed for non-customMetrics
+								// Correctness needs model connection for version 4.7+
 							},
 						},
 					],
-					connections: {},
+					connections: {
+						'OpenAI Model': {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'Set Metrics New', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
 				});
 
 				expect(() => {
 					(testRunnerService as any).validateSetMetricsNodes(workflow);
 				}).not.toThrow();
+			});
+
+			describe('Model connection validation', () => {
+				it('should pass when correctness metric has model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'model1',
+								name: 'OpenAI Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [100, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'correctness',
+								},
+							},
+						],
+						connections: {
+							'OpenAI Model': {
+								[NodeConnectionTypes.AiLanguageModel]: [
+									[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+								],
+							},
+						},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should fail when correctness metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'correctness',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should pass when helpfulness metric has model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'model1',
+								name: 'OpenAI Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [100, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'helpfulness',
+								},
+							},
+						],
+						connections: {
+							'OpenAI Model': {
+								[NodeConnectionTypes.AiLanguageModel]: [
+									[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+								],
+							},
+						},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should fail when helpfulness metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'helpfulness',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should fail when default correctness metric (undefined) has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: undefined, // explicitly set to undefined to test default behavior
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should pass when non-AI metrics (customMetrics) have no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'customMetrics',
+									metrics: {
+										assignments: [
+											{
+												id: '1',
+												name: 'accuracy',
+												value: 0.95,
+											},
+										],
+									},
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should pass when stringSimilarity metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'stringSimilarity',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
 			});
 		});
 	});
@@ -1666,6 +1943,479 @@ describe('TestRunnerService', () => {
 			expect(() => {
 				(testRunnerService as any).validateSetOutputsNodes(workflow);
 			}).not.toThrow();
+		});
+	});
+
+	describe('runTest - parallel execution', () => {
+		const TRIGGER_NODE_NAME = 'Dataset Trigger';
+		const METRICS_NODE_NAME = 'Set Metrics';
+		const USER = mock<{ id: string }>({ id: 'user-1' });
+		const WORKFLOW_ID = 'wf-1';
+
+		// Builds a minimal workflow that passes validateWorkflowConfiguration.
+		// Using a plain object cast (not mock<IWorkflowBase>) so per-node
+		// boolean fields like `disabled` read as undefined instead of being
+		// auto-mocked as truthy functions by jest-mock-extended's deep proxy.
+		const buildWorkflow = (): IWorkflowBase =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Eval Workflow',
+				active: false,
+				nodes: [
+					{
+						id: 'trigger',
+						name: TRIGGER_NODE_NAME,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0] as [number, number],
+						parameters: {
+							source: 'dataTable',
+							dataTableId: 'dt-1',
+						},
+					},
+					{
+						id: 'metrics',
+						name: METRICS_NODE_NAME,
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [200, 0] as [number, number],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: {
+								assignments: [{ id: '1', name: 'score', value: 1 }],
+							},
+						},
+					},
+				],
+				connections: {},
+				settings: {},
+			}) as unknown as IWorkflowBase;
+
+		// Dataset-trigger execution result containing N test rows.
+		const buildDatasetExecution = (rowCount: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[TRIGGER_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [
+											Array.from({ length: rowCount }, (_, i) => ({
+												json: { caseId: i, prompt: `prompt ${i}` },
+											})),
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// Per-case execution result with a single user-defined metric.
+		const buildCaseExecution = (score: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[METRICS_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: { score } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// Wires repository and runner mocks for an N-case happy-path runTest.
+		// Returns a counter object the caller can read after `runTest` resolves.
+		const setupHappyPathMocks = (caseCount: number) => {
+			const workflow = buildWorkflow();
+			workflowRepository.findById.mockResolvedValue(workflow as never);
+
+			// Default: throttle resolves immediately (capacity always available).
+			// Tests that exercise abort-during-throttle override this.
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCancelled.mockResolvedValue(undefined as never);
+			testRunRepository.clearInstanceTracking.mockResolvedValue(undefined as never);
+			testRunRepository.isCancellationRequested.mockResolvedValue(false);
+			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
+			// Path C pre-seeds N pending rows up front; runner then claims them
+			// via tryMarkCaseAsRunning. Mocks return synthetic ids so the runner
+			// has something to update in place of inline create.
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, count) =>
+				Array.from({ length: count }, (_, i) => ({ id: `seeded-case-${i}` }) as never),
+			);
+			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
+			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
+			// `manager` is a TypeORM EntityManager not auto-deep-mocked by mock<T>().
+			// Provide a transaction stub that just invokes the callback so cancel
+			// paths run end-to-end.
+			Object.assign(testRunRepository, {
+				manager: {
+					transaction: jest
+						.fn()
+						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
+				},
+			});
+
+			let runCallIndex = 0;
+			const inFlightTracker = { inFlight: 0, max: 0, perCaseStarted: 0 };
+
+			workflowRunner.run.mockImplementation(async () => {
+				const id = runCallIndex === 0 ? 'dataset-exec' : `case-exec-${runCallIndex}`;
+				runCallIndex++;
+				return id;
+			});
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return buildDatasetExecution(caseCount);
+				}
+				inFlightTracker.inFlight++;
+				inFlightTracker.perCaseStarted++;
+				inFlightTracker.max = Math.max(inFlightTracker.max, inFlightTracker.inFlight);
+				// Yield to the event loop so other queued tasks observably overlap.
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				inFlightTracker.inFlight--;
+				const score = parseInt(executionId.replace('case-exec-', ''), 10) / 10;
+				return buildCaseExecution(score);
+			});
+
+			return { workflow, inFlightTracker };
+		};
+
+		test('concurrency=1 runs cases sequentially (max in-flight = 1)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(4);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			expect(inFlightTracker.perCaseStarted).toBe(4);
+			expect(inFlightTracker.max).toBe(1);
+			// 1 dataset trigger + 4 test cases.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(5);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+			expect(testRunRepository.markAsCancelled).not.toHaveBeenCalled();
+		});
+
+		test('concurrency=3 fans out cases in parallel (max in-flight > 1)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
+
+			expect(inFlightTracker.perCaseStarted).toBe(6);
+			expect(inFlightTracker.max).toBeGreaterThan(1);
+			expect(inFlightTracker.max).toBeLessThanOrEqual(3);
+			expect(workflowRunner.run).toHaveBeenCalledTimes(7);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('concurrency clamped 1-10 defensively (above-bound input does not exceed cap)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(12);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 99);
+
+			expect(inFlightTracker.perCaseStarted).toBe(12);
+			expect(inFlightTracker.max).toBeLessThanOrEqual(10);
+		});
+
+		test('aggregate metrics produce the same average regardless of concurrency', async () => {
+			setupHappyPathMocks(5);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+			const sequentialMetrics = testRunRepository.markAsCompleted.mock.calls[0][1];
+
+			// `clearAllMocks` resets call history but not implementations. The
+			// `createTestRun` stub is set in the outer `beforeEach`, so it needs
+			// re-stubbing here. `setupHappyPathMocks` re-wires everything else.
+			jest.clearAllMocks();
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
+			setupHappyPathMocks(5);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
+			const parallelMetrics = testRunRepository.markAsCompleted.mock.calls[0][1];
+
+			expect(Object.keys(parallelMetrics ?? {}).sort()).toEqual(
+				Object.keys(sequentialMetrics ?? {}).sort(),
+			);
+			for (const key of Object.keys(sequentialMetrics ?? {})) {
+				expect((parallelMetrics as Record<string, number>)[key]).toBeCloseTo(
+					(sequentialMetrics as Record<string, number>)[key],
+					15,
+				);
+			}
+		});
+
+		test('per-case error does not stop other cases from completing', async () => {
+			setupHappyPathMocks(4);
+
+			// Override per-case mock so case 2 throws.
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return buildDatasetExecution(4);
+				}
+				if (executionId === 'case-exec-2') {
+					throw new Error('synthetic failure');
+				}
+				return buildCaseExecution(0.5);
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			// 4 test-case executions attempted; 1 errored, 3 succeeded. Path C
+			// updates pre-seeded rows in place rather than creating new rows.
+			const updateCalls = testCaseExecutionRepository.update.mock.calls;
+			const errorRows = updateCalls.filter(([, row]) => row.status === 'error');
+			const successRows = updateCalls.filter(([, row]) => row.status === 'success');
+			expect(errorRows).toHaveLength(1);
+			expect(successRows).toHaveLength(3);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('throttle is called once per case and release is called once per case', async () => {
+			setupHappyPathMocks(4);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			expect(concurrencyControlService.throttle).toHaveBeenCalledTimes(4);
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(4);
+			expect(concurrencyControlService.throttle).toHaveBeenCalledWith({
+				mode: 'evaluation',
+				executionId: expect.stringContaining('test-run-id-case-'),
+			});
+			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: 'evaluation' });
+		});
+
+		test('release is called even when runTestCase throws', async () => {
+			// `setupHappyPathMocks` wires the dataset-trigger execution; the
+			// override below replaces only the per-case execution path so each
+			// case throws. The `dataset-exec` branch is preserved manually here
+			// to keep the dataset trigger intact.
+			setupHappyPathMocks(3);
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return {
+						data: {
+							resultData: {
+								runData: {
+									[TRIGGER_NODE_NAME]: [
+										{
+											data: {
+												[NodeConnectionTypes.Main]: [
+													[{ json: { id: 0 } }, { json: { id: 1 } }, { json: { id: 2 } }],
+												],
+											},
+										},
+									],
+								},
+							},
+						},
+					} as unknown as IRun;
+				}
+				throw new Error('synthetic per-case failure');
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			expect(concurrencyControlService.throttle).toHaveBeenCalledTimes(3);
+			// release fires in the finally block — must run even though every
+			// case threw.
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
+		});
+
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, flag_enabled_for_user', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4, true);
+
+			const trackCalls = telemetry.track.mock.calls.filter(
+				([eventName]) => eventName === 'Test run finished',
+			);
+			expect(trackCalls).toHaveLength(1);
+			const payload = trackCalls[0][1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 4,
+					parallel_enabled: true,
+					concurrency_limited_by_config: false,
+					flag_enabled_for_user: true,
+				}),
+			);
+		});
+
+		test('flag_enabled_for_user defaults to false when not passed', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload.flag_enabled_for_user).toBe(false);
+		});
+
+		test('telemetry parallel_enabled is false for sequential runs', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			const trackCalls = telemetry.track.mock.calls.filter(
+				([eventName]) => eventName === 'Test run finished',
+			);
+			expect(trackCalls).toHaveLength(1);
+			const payload = trackCalls[0][1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 1,
+					parallel_enabled: false,
+					concurrency_limited_by_config: false,
+				}),
+			);
+		});
+
+		test('telemetry payload reports realised fan-out (cases_started, peak_in_flight)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3, true);
+
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload.cases_started).toBe(6);
+			// Should match what the test harness independently observed —
+			// proves the telemetry stat is the same number a watcher would see.
+			expect(payload.peak_in_flight).toBe(inFlightTracker.max);
+			expect(payload.peak_in_flight).toBeGreaterThan(1);
+			expect(payload.peak_in_flight).toBeLessThanOrEqual(3);
+		});
+
+		test('evaluationLimit clamps requested concurrency and flags concurrency_limited_by_config', async () => {
+			const cappedConfig = mockInstance(ExecutionsConfig, {
+				mode: 'regular',
+				concurrency: { productionLimit: -1, evaluationLimit: 2 } as never,
+			});
+			const cappedService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				cappedConfig,
+				mock(),
+				publisher,
+				instanceSettings,
+				concurrencyControlService,
+			);
+
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
+
+			expect(inFlightTracker.max).toBeLessThanOrEqual(2);
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 2,
+					parallel_enabled: true,
+					concurrency_limited_by_config: true,
+				}),
+			);
+		});
+
+		test('abort during throttle wait evicts the queue entry and short-circuits without an UNKNOWN_ERROR row', async () => {
+			setupHappyPathMocks(3);
+
+			// Hold throttle indefinitely so all per-case tasks are stuck in the
+			// queue when we fire the abort.
+			concurrencyControlService.throttle.mockImplementation(
+				async () =>
+					await new Promise<void>(() => {
+						/* never resolves */
+					}),
+			);
+
+			// Kick off the run, then abort while cases are queued in throttle.
+			const runPromise = testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			// Reach into the service's abort controllers map and trip it.
+			// `cancelTestRunLocally` is the path the public cancel API takes.
+			const cancelled = (
+				testRunnerService as never as {
+					cancelTestRunLocally: (id: string) => boolean;
+				}
+			).cancelTestRunLocally('test-run-id');
+			expect(cancelled).toBe(true);
+
+			await runPromise;
+
+			// Each queued case should have been evicted via remove().
+			expect(concurrencyControlService.remove).toHaveBeenCalledWith({
+				mode: 'evaluation',
+				executionId: expect.stringContaining('test-run-id-case-'),
+			});
+
+			// And no test-case row should have been updated to an error state
+			// for the evicted cases — they short-circuit before touching the
+			// DB. The legacy path would have produced UNKNOWN_ERROR rows here.
+			const errorRows = testCaseExecutionRepository.update.mock.calls.filter(
+				([, row]) => row.errorCode === 'UNKNOWN_ERROR',
+			);
+			expect(errorRows).toHaveLength(0);
+
+			// Run is marked cancelled, not completed.
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		test('multi-main DB cancel flag flipped mid-run aborts the controller', async () => {
+			const multiMainInstance = mock<InstanceSettings>({
+				hostId: 'main-a',
+				isMultiMain: true,
+			});
+			const multiMainService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				executionsConfig,
+				mock(),
+				publisher,
+				multiMainInstance,
+				concurrencyControlService,
+			);
+
+			setupHappyPathMocks(4);
+
+			// Flip the cancellation flag after the first case sees it as false.
+			let pollCount = 0;
+			testRunRepository.isCancellationRequested.mockImplementation(async () => {
+				pollCount++;
+				return pollCount > 1;
+			});
+
+			await multiMainService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			expect(testRunRepository.isCancellationRequested).toHaveBeenCalled();
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 	});
 });

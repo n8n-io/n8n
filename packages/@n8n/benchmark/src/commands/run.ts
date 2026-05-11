@@ -73,6 +73,16 @@ export default class RunCommand extends Command {
 			description: 'Duration of the test with a unit, e.g. 1m',
 			default: '1m',
 		}),
+		collectAppMetrics: Flags.boolean({
+			description: 'Collect app metrics from the /metrics endpoint during test runs',
+			default: false,
+			env: 'COLLECT_APP_METRICS',
+		}),
+		appMetricsPollInterval: Flags.integer({
+			description: 'App metrics polling interval in milliseconds',
+			default: 5000,
+			env: 'APP_METRICS_POLL_INTERVAL',
+		}),
 	};
 
 	async run() {
@@ -95,6 +105,12 @@ export default class RunCommand extends Command {
 					? {
 							url: flags.resultWebhookUrl,
 							authHeader: flags.resultWebhookAuthHeader,
+						}
+					: undefined,
+				appMetricsPolling: flags.collectAppMetrics
+					? {
+							enabled: true,
+							intervalMs: flags.appMetricsPollInterval,
 						}
 					: undefined,
 			}),

@@ -1,0 +1,1703 @@
+import { setActivePinia, createPinia } from 'pinia';
+import * as workflowsApi from '@/app/api/workflows';
+import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, WAIT_NODE_TYPE } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+
+import { createEmptyRunExecutionData, createRunExecutionData, deepCopy } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { useUIStore } from '@/app/stores/ui.store';
+import type { PushPayload } from '@n8n/api-types';
+import { flushPromises } from '@vue/test-utils';
+import { mock } from 'vitest-mock-extended';
+import * as apiUtils from '@n8n/rest-api-client';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
+import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
+
+vi.mock('@/app/api/workflows', () => ({
+	getWorkflows: vi.fn(),
+	getWorkflow: vi.fn(),
+	getNewWorkflow: vi.fn(),
+	getLastSuccessfulExecution: vi.fn(),
+}));
+
+const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription> | null => ({
+	inputs: [],
+	group: [],
+	webhooks: [],
+	properties: [],
+}));
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeType,
+		getAllNodeTypes: () => ({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
+	})),
+}));
+
+const track = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const actual = await importOriginal<{}>();
+	return {
+		...actual,
+		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }),
+	};
+});
+
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: vi.fn(() => ({
+		preferences: {
+			branchReadOnly: false,
+		},
+	})),
+}));
+
+vi.mock('@n8n/permissions', () => ({
+	getResourcePermissions: vi.fn((scopes: string[] = []) => ({
+		workflow: {
+			update: scopes.includes('workflow:update'),
+			read: scopes.includes('workflow:read') || scopes.includes('workflow:update'),
+		},
+	})),
+}));
+
+vi.mock('@/features/execution/executions/executions.utils', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		openFormPopupWindow: vi.fn(),
+	};
+});
+
+// Import the mocked function after the mock is set up
+import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
+
+describe('useWorkflowsStore', () => {
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
+	let uiStore: ReturnType<typeof useUIStore>;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		workflowsStore = useWorkflowsStore();
+		workflowsListStore = useWorkflowsListStore();
+		uiStore = useUIStore();
+		track.mockReset();
+	});
+
+	it('should initialize with default state', () => {
+		expect(workflowsStore.workflowId).toBe('');
+	});
+
+	describe('allWorkflows', () => {
+		it('should return sorted workflows by name', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.setWorkflows([
+				{ id: '3', name: 'Zeta' },
+				{ id: '1', name: 'Alpha' },
+				{ id: '2', name: 'Beta' },
+			] as IWorkflowDb[]);
+
+			const allWorkflows = workflowsListStore.allWorkflows;
+			expect(allWorkflows[0].name).toBe('Alpha');
+			expect(allWorkflows[1].name).toBe('Beta');
+			expect(allWorkflows[2].name).toBe('Zeta');
+		});
+
+		it('should return empty array when no workflows are set', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.setWorkflows([]);
+
+			const allWorkflows = workflowsListStore.allWorkflows;
+			expect(allWorkflows).toEqual([]);
+		});
+	});
+
+	describe('isWorkflowSaved', () => {
+		it('should return undefined for a new workflow', () => {
+			expect(workflowsStore.isWorkflowSaved[workflowsStore.workflowId]).toBeUndefined();
+		});
+
+		it('should return true for an existing workflow', () => {
+			workflowsStore.setWorkflowId('123');
+			// Add the workflow to workflowsById to simulate it being loaded from backend
+			workflowsListStore.addWorkflow(
+				createTestWorkflow({
+					id: '123',
+					name: 'Test Workflow',
+					active: false,
+					versionId: '1',
+				}),
+			);
+			expect(workflowsStore.isWorkflowSaved['123']).toBe(true);
+		});
+	});
+
+	describe('getWorkflowRunData', () => {
+		it('should return null when no execution data is present', () => {
+			workflowsStore.setWorkflowExecutionData(null);
+
+			const runData = workflowsStore.getWorkflowRunData;
+			expect(runData).toBeNull();
+		});
+
+		it('should return null when execution data does not contain resultData', () => {
+			workflowsStore.setWorkflowExecutionData({ data: {} } as IExecutionResponse);
+
+			const runData = workflowsStore.getWorkflowRunData;
+			expect(runData).toBeNull();
+		});
+
+		it('should return runData when execution data contains resultData', () => {
+			const expectedRunData = { node1: [{}, {}], node2: [{}] };
+			workflowsStore.setWorkflowExecutionData({
+				data: { resultData: { runData: expectedRunData } },
+			} as unknown as IExecutionResponse);
+
+			const runData = workflowsStore.getWorkflowRunData;
+			expect(runData).toEqual(expectedRunData);
+		});
+	});
+
+	describe('getWorkflowResultDataByNodeName()', () => {
+		it('should return null when no workflow run data is present', () => {
+			workflowsStore.setWorkflowExecutionData(null);
+
+			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
+			expect(resultData).toBeNull();
+		});
+
+		it('should return null when node name is not present in workflow run data', () => {
+			workflowsStore.setWorkflowExecutionData({
+				data: { resultData: { runData: {} } },
+			} as unknown as IExecutionResponse);
+
+			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
+			expect(resultData).toBeNull();
+		});
+
+		it('should return result data when node name is present in workflow run data', () => {
+			const expectedData = [{}, {}];
+			workflowsStore.setWorkflowExecutionData({
+				data: { resultData: { runData: { Node1: expectedData } } },
+			} as unknown as IExecutionResponse);
+
+			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
+			expect(resultData).toEqual(expectedData);
+		});
+	});
+
+	describe('fetchAllWorkflows()', () => {
+		it('should fetch workflows successfully', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			await workflowsListStore.fetchAllWorkflows();
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalled();
+			expect(Object.values(workflowsListStore.workflowsById)).toEqual(mockWorkflows);
+		});
+	});
+
+	describe('searchWorkflows()', () => {
+		beforeEach(() => {
+			vi.mocked(workflowsApi).getWorkflows.mockClear();
+		});
+
+		it('should search workflows with no filters', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1', isArchived: false },
+				{ id: '2', name: 'Workflow 2', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with query filter', async () => {
+			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({ query: 'test' });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ query: 'test' },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with isArchived filter set to false', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Active Workflow 1', isArchived: false },
+				{ id: '2', name: 'Active Workflow 2', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({ isArchived: false });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ isArchived: false },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with isArchived filter set to true', async () => {
+			const mockWorkflows = [
+				{ id: '3', name: 'Archived Workflow 1', isArchived: true },
+				{ id: '4', name: 'Archived Workflow 2', isArchived: true },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({ isArchived: true });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ isArchived: true },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with multiple filters including isArchived', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Test Workflow', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({
+				query: 'test',
+				isArchived: false,
+				projectId: 'project-123',
+				tags: ['tag1', 'tag2'],
+				nodeTypes: ['n8n-nodes-base.httpRequest'],
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{
+					query: 'test',
+					isArchived: false,
+					projectId: 'project-123',
+					tags: ['tag1', 'tag2'],
+					nodeTypes: ['n8n-nodes-base.httpRequest'],
+				},
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with select fields', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1' },
+				{ id: '2', name: 'Workflow 2' },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({
+				select: ['id', 'name'],
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				['id', 'name'],
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should handle empty filter object correctly', async () => {
+			const mockWorkflows = [] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({
+				projectId: undefined,
+				query: undefined,
+				nodeTypes: undefined,
+				tags: undefined,
+				isArchived: undefined,
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should pass isArchived as undefined when not specified', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1', isArchived: false },
+				{ id: '2', name: 'Workflow 2', isArchived: true },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsListStore.searchWorkflows({ query: 'workflow' });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ query: 'workflow', isArchived: undefined },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+	});
+
+	describe('setWorkflowActive()', () => {
+		it('should set workflow as active in list cache and clear dirty state', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			uiStore.markStateDirty();
+			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+			workflowsStore.setWorkflowId('1');
+
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
+
+			expect(workflowsListStore.activeWorkflows).toContain('1');
+			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
+			expect(uiStore.stateIsDirty).toBe(false);
+		});
+
+		it('should not modify active workflows when workflow is already active', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
+			workflowsStore.setWorkflowId('1');
+
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
+
+			expect(workflowsListStore.activeWorkflows).toEqual(['1']);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
+		});
+
+		it('should not clear dirty state when targeting a different workflow', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			uiStore.markStateDirty();
+			workflowsStore.setWorkflowId('1');
+			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('2', mockActiveVersion, true);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(uiStore.stateIsDirty).toBe(true);
+		});
+	});
+
+	describe('setWorkflowInactive()', () => {
+		it('should set workflow as inactive when it exists', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1', '2'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
+			workflowsStore.setWorkflowInactive('1');
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.activeWorkflows).toEqual(['2']);
+		});
+
+		it('should not modify active workflows when workflow is not active', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = { '2': { active: true } as IWorkflowDb };
+			workflowsListStore.activeWorkflows = ['2'];
+			workflowsStore.setWorkflowInactive('1');
+			expect(workflowsListStore.activeWorkflows).toEqual(['2']);
+			expect(workflowsListStore.workflowsById['2'].active).toBe(true);
+		});
+
+		it('should update list cache when targeting any workflow', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
+			workflowsStore.setWorkflowId('1');
+			workflowsStore.setWorkflowInactive('1');
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.activeWorkflows).toEqual([]);
+		});
+	});
+
+	describe('getDuplicateCurrentWorkflowName()', () => {
+		it('should return the same name if appending postfix exceeds max length', async () => {
+			const longName = 'a'.repeat(MAX_WORKFLOW_NAME_LENGTH - DUPLICATE_POSTFFIX.length + 1);
+			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(longName);
+			expect(newName).toBe(longName);
+		});
+
+		it('should append postfix to the name if it does not exceed max length', async () => {
+			const name = 'TestWorkflow';
+			const expectedName = `${name}${DUPLICATE_POSTFFIX}`;
+			vi.mocked(workflowsApi).getNewWorkflow.mockResolvedValue({
+				name: expectedName,
+				settings: {} as IWorkflowSettings,
+			});
+			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(name);
+			expect(newName).toBe(expectedName);
+		});
+
+		it('should handle API failure gracefully', async () => {
+			const name = 'TestWorkflow';
+			const expectedName = `${name}${DUPLICATE_POSTFFIX}`;
+			vi.mocked(workflowsApi).getNewWorkflow.mockRejectedValue(new Error('API Error'));
+			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(name);
+			expect(newName).toBe(expectedName);
+		});
+	});
+
+	describe('updateNodeExecutionRunData', () => {
+		beforeEach(() => {
+			workflowsStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					id: 'test-execution',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								n0: [
+									createTestTaskData({
+										executionIndex: 0,
+										executionStatus: 'success',
+										executionTime: 33,
+									}),
+									createTestTaskData({
+										executionIndex: 1,
+										executionStatus: 'success',
+										executionTime: 44,
+									}),
+									createTestTaskData({
+										executionIndex: 2,
+										executionStatus: 'running',
+										executionTime: undefined,
+									}),
+								],
+							},
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should replace run data at the matched index in the execution data', () => {
+			workflowsStore.updateNodeExecutionRunData({
+				executionId: 'test-execution',
+				nodeName: 'n0',
+				data: createTestTaskData({
+					executionIndex: 2,
+					executionStatus: 'success',
+					executionTime: 100,
+				}),
+				itemCountByConnectionType: { main: [1] },
+			});
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData.n0;
+
+			expect(runData).toHaveLength(3);
+			expect(runData?.[0].executionIndex).toBe(0);
+			expect(runData?.[0].executionStatus).toBe('success');
+			expect(runData?.[0].executionTime).toBe(33);
+			expect(runData?.[1].executionIndex).toBe(1);
+			expect(runData?.[1].executionStatus).toBe('success');
+			expect(runData?.[1].executionTime).toBe(44);
+			expect(runData?.[2].executionIndex).toBe(2);
+			expect(runData?.[2].executionStatus).toBe('success');
+			expect(runData?.[2].executionTime).toBe(100);
+		});
+
+		it('should not modify execution data if there is no matched index in execution data', () => {
+			workflowsStore.updateNodeExecutionRunData({
+				executionId: 'test-execution',
+				nodeName: 'n0',
+				data: createTestTaskData({
+					executionIndex: 3,
+					executionStatus: 'success',
+					executionTime: 100,
+				}),
+				itemCountByConnectionType: { main: [1] },
+			});
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData.n0;
+
+			expect(runData).toHaveLength(3);
+			expect(runData?.[0].executionIndex).toBe(0);
+			expect(runData?.[0].executionStatus).toBe('success');
+			expect(runData?.[0].executionTime).toBe(33);
+			expect(runData?.[1].executionIndex).toBe(1);
+			expect(runData?.[1].executionStatus).toBe('success');
+			expect(runData?.[1].executionTime).toBe(44);
+			expect(runData?.[2].executionIndex).toBe(2);
+			expect(runData?.[2].executionStatus).toBe('running');
+			expect(runData?.[2].executionTime).toBe(undefined);
+		});
+	});
+
+	describe('updateNodeExecutionStatus', () => {
+		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
+		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
+		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
+
+		beforeEach(() => {
+			const events = generateMockExecutionEvents();
+			successEvent = events.successEvent;
+			errorEvent = events.errorEvent;
+			executionResponse = events.executionResponse;
+		});
+
+		it('should silently return when workflowExecutionData is not initialized', () => {
+			expect(() => workflowsStore.updateNodeExecutionStatus(successEvent)).not.toThrow();
+		});
+
+		it('should add node success run data', () => {
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
+
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
+
+			// ACT
+			workflowsStore.updateNodeExecutionStatus(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionResponse,
+				data: {
+					version: 1,
+					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
+						runData: {
+							[successEvent.nodeName]: [successEvent.data],
+						},
+					},
+				},
+			});
+		});
+
+		it('should add node error event and track errored executions', async () => {
+			workflowsStore.setWorkflowId('test-workflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow'),
+			);
+			workflowDocumentStore.setPinData({});
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
+			workflowDocumentStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			getNodeType.mockReturnValue(getMockEditFieldsNode());
+
+			// ACT
+			workflowsStore.updateNodeExecutionStatus(errorEvent);
+			await flushPromises();
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionResponse,
+				data: {
+					version: 1,
+					resultData: {
+						lastNodeExecuted: 'Edit Fields',
+						runData: {
+							[errorEvent.nodeName]: [errorEvent.data],
+						},
+					},
+				},
+			});
+			expect(track).toHaveBeenCalledWith('Manual exec errored', {
+				error_title: 'invalid syntax',
+				node_type: 'n8n-nodes-base.set',
+				node_type_version: 3.4,
+				node_id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				node_graph_string:
+					'{"node_types":["n8n-nodes-base.set"],"node_connections":[],"nodes":{"0":{"id":"554c7ff4-7ee2-407c-8931-e34234c5056a","type":"n8n-nodes-base.set","version":3.4,"position":[680,180]}},"notes":{},"is_pinned":false}',
+			});
+		});
+
+		it('should replace placeholder task data in waiting nodes correctly', () => {
+			const runWithExistingRunData = deepCopy(executionResponse);
+			runWithExistingRunData.data = createRunExecutionData({
+				resultData: {
+					runData: {
+						[successEvent.nodeName]: [
+							{
+								hints: [],
+								startTime: 1727867966633,
+								executionIndex: 2,
+								executionTime: 1,
+								source: [],
+								executionStatus: 'waiting',
+								data: {
+									main: [
+										[
+											{
+												json: {},
+												pairedItem: {
+													item: 0,
+												},
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			});
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
+
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
+
+			// ACT
+			workflowsStore.updateNodeExecutionStatus(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...runWithExistingRunData,
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEvent.data],
+							},
+						},
+					}),
+					resumeToken: expect.any(String),
+				},
+			});
+		});
+
+		it('should replace existing placeholder task data and lastNodeExecuted', () => {
+			const successEventWithExecutionIndex = deepCopy(successEvent);
+			successEventWithExecutionIndex.data.executionIndex = 1;
+
+			const runWithExistingRunData = executionResponse;
+			runWithExistingRunData.data = createRunExecutionData({
+				resultData: {
+					runData: {
+						[successEventWithExecutionIndex.nodeName]: [
+							{
+								hints: [],
+								startTime: 1727867966633,
+								executionIndex: successEventWithExecutionIndex.data.executionIndex,
+								executionTime: 1,
+								source: [],
+								executionStatus: 'running',
+								data: {
+									main: [
+										[
+											{
+												json: {},
+												pairedItem: {
+													item: 0,
+												},
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			});
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
+
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
+
+			// ACT
+			workflowsStore.updateNodeExecutionStatus(successEventWithExecutionIndex);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionResponse,
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+							},
+						},
+					}),
+					resumeToken: expect.any(String),
+				},
+			});
+		});
+	});
+
+	describe('getPartialIdForNode', () => {
+		test.each([
+			[[], 'Alphabet', 'Alphabet'],
+			[['Alphabet'], 'Alphabet', 'Alphab'],
+			[['Alphabet', 'Alphabeta'], 'Alphabeta', 'Alphabeta'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabet', 'Alphabet'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabeta', 'Alphabeta'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabetagamma', 'Alphabetag'],
+		] as Array<[string[], string, string]>)(
+			'with input %s , %s returns %s',
+			(ids, id, expected) => {
+				workflowsStore.setWorkflowId('test-wf');
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+				workflowDocumentStore.setNodes(ids.map((x) => ({ id: x }) as never));
+
+				expect(workflowsStore.getPartialIdForNode(id)).toBe(expected);
+			},
+		);
+	});
+
+	describe('archiveWorkflow', () => {
+		it('should call the API to archive the workflow without checksum', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+
+			workflowsListStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.setWorkflowId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'active-version',
+				activeVersion: null,
+			});
+			workflowDocumentStore.setVersionData({ versionId, name: null, description: null });
+			workflowDocumentStore.setIsArchived(false);
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+					checksum: 'checksum',
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId);
+
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(true);
+			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
+			expect(workflowDocumentStore.isArchived).toBe(true);
+			expect(workflowDocumentStore.versionId).toBe(updatedVersionId);
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum: undefined },
+			);
+		});
+
+		it('should pass expectedChecksum to the API when provided', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+			const expectedChecksum = 'test-checksum-123';
+
+			workflowsListStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.setWorkflowId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setVersionData({ versionId, name: null, description: null });
+			workflowDocumentStore.setIsArchived(false);
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+					checksum: 'checksum',
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId, expectedChecksum);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum },
+			);
+		});
+	});
+
+	describe('unarchiveWorkflow', () => {
+		it('should call the API to unarchive the workflow', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+
+			workflowsListStore.workflowsById = {
+				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
+			};
+			workflowsStore.setWorkflowId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentStore.setVersionData({ versionId, name: null, description: null });
+			workflowDocumentStore.setIsArchived(true);
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+					checksum: 'checksum',
+				}));
+
+			await workflowsStore.unarchiveWorkflow(workflowId);
+
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
+			expect(workflowDocumentStore.isArchived).toBe(false);
+			expect(workflowDocumentStore.versionId).toBe(updatedVersionId);
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/unarchive`,
+			);
+		});
+	});
+
+	describe('updateWorkflowSetting', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('updates current workflow setting and store state', async () => {
+			workflowsStore.setWorkflowId('w1');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setVersionData({ versionId: 'v1', name: null, description: null });
+			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
+
+			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w1',
+					versionId: 'v1',
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'UTC',
+						executionTimeout: 10,
+					},
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			// Act
+			const result = await workflowsStore.updateWorkflowSetting('w1', 'executionTimeout', 10);
+
+			// Assert request payload
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: expect.any(String) },
+				'PATCH',
+				'/workflows/w1',
+				expect.objectContaining({
+					versionId: 'v1',
+					settings: expect.objectContaining({ executionTimeout: 10, timezone: 'UTC' }),
+				}),
+			);
+
+			// Assert returned value and store updates
+			expect(result.versionId).toBe('v1');
+			expect(workflowDocumentStore.versionId).toBe('v1');
+			expect(workflowDocumentStore.settings).toEqual({
+				executionOrder: 'v1',
+				binaryMode: 'separate',
+				timezone: 'UTC',
+				executionTimeout: 10,
+			});
+		});
+
+		it('updates cached workflow without fetching when present in store', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = {
+				w2: createTestWorkflow({
+					id: 'w2',
+					name: 'Cached',
+					versionId: 'v2',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: { executionOrder: 'v1' },
+				}),
+			};
+
+			const getWorkflowSpy = vi.spyOn(workflowsApi, 'getWorkflow');
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w2',
+					versionId: 'v3',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'Europe/Berlin',
+					},
+				}),
+			);
+
+			await workflowsStore.updateWorkflowSetting('w2', 'timezone', 'Europe/Berlin');
+
+			// Should not fetch since cached with versionId exists
+			expect(getWorkflowSpy).not.toHaveBeenCalled();
+			expect(workflowsListStore.workflowsById['w2'].versionId).toBe('v3');
+			expect(workflowsListStore.workflowsById['w2'].settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'Europe/Berlin',
+			});
+		});
+
+		it('fetches workflow when not cached and updates store', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = {} as Record<string, IWorkflowDb>;
+
+			vi.mocked(workflowsApi).getWorkflow.mockResolvedValue(
+				createTestWorkflow({
+					id: 'w3',
+					name: 'Fetched',
+					versionId: 'v100',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: { executionOrder: 'v1' },
+				}),
+			);
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w3',
+					versionId: 'v101',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'Asia/Tokyo',
+					},
+				}),
+			);
+
+			await workflowsStore.updateWorkflowSetting('w3', 'timezone', 'Asia/Tokyo');
+
+			expect(workflowsApi.getWorkflow).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: expect.any(String) },
+				'w3',
+			);
+			expect(workflowsListStore.workflowsById['w3'].versionId).toBe('v101');
+			expect(workflowsListStore.workflowsById['w3'].settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'Asia/Tokyo',
+			});
+		});
+	});
+
+	describe('renameNodeSelectedAndExecution', () => {
+		it('should rename node and update execution data', () => {
+			const nodeName = 'Rename me';
+			const newName = 'Renamed';
+
+			workflowsStore.setWorkflowExecutionData({
+				data: {
+					resultData: {
+						runData: {
+							"When clicking 'Test workflow'": [
+								{
+									startTime: 1747389900668,
+									executionIndex: 0,
+									source: [],
+									hints: [],
+									executionTime: 1,
+									executionStatus: 'success',
+									data: {},
+								},
+							],
+							[nodeName]: [
+								{
+									startTime: 1747389900670,
+									executionIndex: 2,
+									source: [
+										{
+											previousNode: "When clicking 'Test workflow'",
+										},
+									],
+									hints: [],
+									executionTime: 1,
+									executionStatus: 'success',
+									data: {},
+								},
+							],
+							'Edit Fields': [
+								{
+									startTime: 1747389900671,
+									executionIndex: 3,
+									source: [
+										{
+											previousNode: nodeName,
+										},
+									],
+									hints: [],
+									executionTime: 3,
+									executionStatus: 'success',
+									data: {},
+								},
+							],
+						},
+						pinData: {
+							[nodeName]: [
+								{
+									json: {
+										foo: 'bar',
+									},
+									pairedItem: [
+										{
+											item: 0,
+											sourceOverwrite: {
+												previousNode: "When clicking 'Test workflow'",
+											},
+										},
+									],
+								},
+							],
+							'Edit Fields': [
+								{
+									json: {
+										bar: 'foo',
+									},
+									pairedItem: {
+										item: 1,
+										sourceOverwrite: {
+											previousNode: nodeName,
+										},
+									},
+								},
+							],
+						},
+						lastNodeExecuted: 'Edit Fields',
+					},
+				},
+			} as unknown as IExecutionResponse);
+
+			workflowsStore.setWorkflowId('test-workflow-id');
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: nodeName,
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			workflowDocumentStore.setPinData({
+				[nodeName]: [
+					{
+						json: {
+							foo: 'bar',
+						},
+						pairedItem: {
+							item: 2,
+							sourceOverwrite: {
+								previousNode: "When clicking 'Test workflow'",
+							},
+						},
+					},
+				],
+				'Edit Fields': [
+					{
+						json: {
+							bar: 'foo',
+						},
+						pairedItem: [
+							{
+								item: 3,
+								sourceOverwrite: {
+									previousNode: nodeName,
+								},
+							},
+						],
+					},
+				],
+			});
+
+			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
+
+			expect(workflowDocumentStore.nodeMetadata[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.nodeMetadata[newName]).toEqual({});
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.runData[nodeName],
+			).not.toBeDefined();
+			expect(workflowsStore.workflowExecutionData?.data?.resultData.runData[newName]).toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.runData['Edit Fields'][0].source,
+			).toEqual([
+				{
+					previousNode: newName,
+				},
+			]);
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[nodeName],
+			).not.toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[newName],
+			).toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.['Edit Fields'][0]
+					.pairedItem,
+			).toEqual({
+				item: 1,
+				sourceOverwrite: {
+					previousNode: newName,
+				},
+			});
+
+			expect(workflowDocumentStore.pinData?.[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.pinData?.[newName]).toBeDefined();
+			expect(workflowDocumentStore.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+				{
+					item: 3,
+					sourceOverwrite: {
+						previousNode: newName,
+					},
+				},
+			]);
+		});
+	});
+
+	describe('fetchLastSuccessfulExecution', () => {
+		beforeEach(() => {
+			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
+			uiStore.currentView = 'NodeViewExisting';
+
+			// Reset sourceControlStore mock to default
+			vi.mocked(useSourceControlStore).mockReturnValue({
+				preferences: {
+					branchReadOnly: false,
+				},
+			} as ReturnType<typeof useSourceControlStore>);
+
+			// Reset the API mock
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockReset();
+		});
+
+		it('should fetch and store the last successful execution', async () => {
+			const mockExecution = createTestWorkflowExecutionResponse({
+				id: 'execution-456',
+				status: 'success',
+			});
+
+			const workflowId = 'workflow-123';
+			const testWorkflow = createTestWorkflow({
+				id: workflowId,
+				scopes: ['workflow:update'],
+			});
+
+			workflowsStore.setWorkflowId(workflowId);
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
+			// Verify the mock is set up correctly
+			expect(workflowDocumentStore.scopes).toContain('workflow:update');
+			expect(workflowsStore.workflowId).toBe('workflow-123');
+			expect(workflowDocumentStore.isArchived).toBe(false);
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toEqual(mockExecution);
+		});
+
+		it('should handle null response from API', async () => {
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
+		});
+
+		it('should not throw error when API call fails', async () => {
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
+			const error = new Error('API Error');
+			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
+
+			// Should not throw
+			await expect(workflowsStore.fetchLastSuccessfulExecution()).resolves.toBeUndefined();
+
+			expect(workflowsApi.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'workflow-123',
+			);
+		});
+
+		it('should not fetch when workflow is placeholder empty workflow', async () => {
+			// workflowId defaults to '' which represents an empty placeholder workflow
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when workflow is read-only', async () => {
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+			// Set currentView to a read-only view (not WORKFLOW, NEW_WORKFLOW, or EXECUTION_DEBUG)
+			uiStore.currentView = 'execution';
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when workflow is archived', async () => {
+			const workflowId = 'workflow-123';
+			const testWorkflow = createTestWorkflow({
+				id: workflowId,
+				scopes: ['workflow:update'],
+			});
+			workflowsStore.setWorkflowId(workflowId);
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+			workflowDocumentStore.setIsArchived(true);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when user does not have update permissions', async () => {
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:read'],
+			});
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+
+		it('should not fetch when branch is read-only in source control', async () => {
+			// Mock the source control store BEFORE reinitializing workflows store
+			vi.mocked(useSourceControlStore).mockReturnValue({
+				preferences: {
+					branchReadOnly: true,
+				},
+			} as ReturnType<typeof useSourceControlStore>);
+
+			// Create a fresh Pinia instance and reinitialize the workflows store to pick up the new mock
+			setActivePinia(createPinia());
+			workflowsStore = useWorkflowsStore();
+			workflowsListStore = useWorkflowsListStore();
+
+			const testWorkflow = createTestWorkflow({
+				id: 'workflow-123',
+				scopes: ['workflow:update'],
+			});
+			workflowsStore.setWorkflowId(testWorkflow.id);
+			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
+			await workflowsStore.fetchLastSuccessfulExecution();
+
+			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateNodeExecutionStatus - form popup', () => {
+		beforeEach(() => {
+			vi.mocked(openFormPopupWindow).mockClear();
+		});
+
+		it('should open form popup using metadata.resumeFormUrl when present', () => {
+			const nodeName = 'Wait';
+			const executionId = 'exec-123';
+			const signedFormUrl = 'http://localhost:5678/form-waiting/exec-123?signature=abc123';
+
+			// Setup workflow with a node
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
+
+			// Initialize execution data directly
+			workflowsStore.setWorkflowExecutionData({
+				id: executionId,
+				workflowData: createTestWorkflow(),
+				finished: false,
+				mode: 'manual',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				status: 'running',
+				data: createEmptyRunExecutionData(),
+			} as IExecutionResponse);
+
+			// Call updateNodeExecutionStatus with waiting status and metadata.resumeFormUrl
+			workflowsStore.updateNodeExecutionStatus({
+				executionId,
+				nodeName,
+				data: {
+					executionStatus: 'waiting',
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					hints: [],
+					metadata: {
+						resumeFormUrl: signedFormUrl,
+					},
+				},
+				itemCountByConnectionType: {},
+			});
+
+			// Should open form popup with the signed URL from metadata
+			expect(openFormPopupWindow).toHaveBeenCalledWith(signedFormUrl);
+		});
+
+		it('should not open form popup when metadata.resumeFormUrl is not present', () => {
+			const nodeName = 'Wait';
+			const executionId = 'exec-456';
+
+			// Setup workflow with a node
+			workflowsStore.setWorkflowId('test-wf');
+			const wfDocStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			wfDocStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
+
+			// Initialize execution data directly
+			workflowsStore.setWorkflowExecutionData({
+				id: executionId,
+				workflowData: createTestWorkflow(),
+				finished: false,
+				mode: 'manual',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				status: 'running',
+				data: createEmptyRunExecutionData(),
+			} as IExecutionResponse);
+
+			// Call updateNodeExecutionStatus with waiting status but NO metadata.resumeFormUrl
+			workflowsStore.updateNodeExecutionStatus({
+				executionId,
+				nodeName,
+				data: {
+					executionStatus: 'waiting',
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					hints: [],
+					// No metadata
+				},
+				itemCountByConnectionType: {},
+			});
+
+			// Should NOT open form popup
+			expect(openFormPopupWindow).not.toHaveBeenCalled();
+		});
+	});
+});
+
+function getMockEditFieldsNode(): Partial<INodeTypeDescription> {
+	return {
+		displayName: 'Edit Fields (Set)',
+		name: 'n8n-nodes-base.set',
+		icon: 'fa:pen',
+		group: ['input'],
+		description: 'Modify, add, or remove item fields',
+		defaultVersion: 3.4,
+		iconColor: 'blue',
+		version: [3, 3.1, 3.2, 3.3, 3.4],
+		subtitle: '={{$parameter["mode"]}}',
+		defaults: {
+			name: 'Edit Fields',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}
+
+function generateMockExecutionEvents() {
+	const executionResponse: IExecutionResponse = {
+		id: '1',
+		workflowData: {
+			id: '1',
+			name: '',
+			createdAt: '1',
+			updatedAt: '1',
+			nodes: [],
+			connections: {},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			versionId: '1',
+		},
+		finished: false,
+		mode: 'cli',
+		startedAt: new Date(),
+		createdAt: new Date(),
+		status: 'new',
+		data: createEmptyRunExecutionData(),
+	};
+	const successEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '59',
+		nodeName: 'When clicking ‘Execute workflow’',
+		itemCountByConnectionType: { main: [1] },
+		data: {
+			hints: [],
+			startTime: 1727867966633,
+			executionIndex: 0,
+			executionTime: 1,
+			source: [],
+			executionStatus: 'success',
+		},
+	};
+
+	const errorEvent: PushPayload<'nodeExecuteAfter'> = {
+		executionId: '61',
+		nodeName: 'Edit Fields',
+		data: {
+			hints: [],
+			startTime: 1727869043441,
+			executionIndex: 0,
+			executionTime: 2,
+			source: [
+				{
+					previousNode: 'When clicking ‘Execute workflow’',
+				},
+			],
+			executionStatus: 'error',
+			// @ts-expect-error simpler data type, not BE class with methods
+			error: {
+				level: 'error',
+				tags: {
+					packageName: 'workflow',
+				},
+				context: {
+					itemIndex: 0,
+				},
+				functionality: 'regular',
+				name: 'NodeOperationError',
+				timestamp: 1727869043442,
+				node: {
+					parameters: {
+						mode: 'manual',
+						duplicateItem: false,
+						assignments: {
+							assignments: [
+								{
+									id: '87afdb19-4056-4551-93ef-d0126a34eb83',
+									name: "={{ $('Wh }}",
+									value: '',
+									type: 'string',
+								},
+							],
+						},
+						includeOtherFields: false,
+						options: {},
+					},
+					id: '9fb34d2d-7191-48de-8f18-91a6a28d0230',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1120, 180],
+				},
+				messages: [],
+				message: 'invalid syntax',
+				stack: 'NodeOperationError: invalid syntax',
+			},
+		},
+	};
+
+	return { executionResponse, errorEvent, successEvent };
+}

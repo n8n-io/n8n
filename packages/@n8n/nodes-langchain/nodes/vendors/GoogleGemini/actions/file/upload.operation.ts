@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { downloadFile, uploadFile } from '../../helpers/utils';
+import { transferFile } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -60,34 +60,19 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
+
+	let fileUrl: string | undefined;
 	if (inputType === 'url') {
-		const fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
-		const { fileContent, mimeType } = await downloadFile.call(
-			this,
-			fileUrl,
-			'application/octet-stream',
-		);
-		const response = await uploadFile.call(this, fileContent, mimeType);
-		return [
-			{
-				json: response,
-				pairedItem: {
-					item: i,
-				},
-			},
-		];
-	} else {
-		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-		const response = await uploadFile.call(this, buffer, binaryData.mimeType);
-		return [
-			{
-				json: response,
-				pairedItem: {
-					item: i,
-				},
-			},
-		];
+		fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
 	}
+
+	const response = await transferFile.call(this, i, fileUrl, 'application/octet-stream');
+	return [
+		{
+			json: response,
+			pairedItem: {
+				item: i,
+			},
+		},
+	];
 }

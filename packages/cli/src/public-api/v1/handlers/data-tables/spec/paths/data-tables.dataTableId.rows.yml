@@ -1,0 +1,99 @@
+get:
+  x-eov-operation-id: getDataTableRows
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
+  tags:
+    - DataTable
+  summary: Retrieve rows from a data table
+  description: Query and retrieve rows from a data table with optional filtering, sorting, and pagination.
+  operationId: get-data-table-rows
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+    - name: filter
+      in: query
+      description: JSON string of filter conditions
+      schema:
+        type: string
+        format: jsonString
+      example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"active"}]}'
+    - name: sortBy
+      in: query
+      description: 'Sort format: columnName:asc or columnName:desc'
+      schema:
+        type: string
+      example: 'createdAt:desc'
+    - name: search
+      in: query
+      description: Search text across all string columns
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Successfully retrieved rows
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTableRowList.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []
+
+post:
+  x-eov-operation-id: insertDataTableRows
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
+  tags:
+    - DataTable
+  summary: Insert rows into a data table
+  description: Insert one or more rows into a data table.
+  operationId: insert-data-table-rows
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/insertRowsRequest.yml'
+        example:
+          data:
+            - name: 'John Doe'
+              email: 'john@example.com'
+              age: 30
+            - name: 'Jane Smith'
+              email: 'jane@example.com'
+              age: 25
+          returnType: 'all'
+  responses:
+    '200':
+      description: Rows inserted successfully
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: object
+                properties:
+                  count:
+                    type: integer
+                description: Number of rows inserted (when returnType is 'count')
+              - type: array
+                items:
+                  type: integer
+                description: Array of inserted row IDs (when returnType is 'id')
+              - type: array
+                items:
+                  $ref: '../schemas/dataTableRow.yml'
+                description: Array of inserted rows (when returnType is 'all')
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

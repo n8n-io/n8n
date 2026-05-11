@@ -19,7 +19,12 @@ import {
 import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
-import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
+import {
+	getAllowedDomains,
+	getSecrets,
+	replaceNullValues,
+	sanitizeUiMessage,
+} from '../GenericFunctions';
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -641,6 +646,20 @@ export class HttpRequestV1 implements INodeType {
 			oAuth2Api = await this.getCredentials('oAuth2Api');
 		} catch {}
 
+		const secrets: string[] = [];
+		for (const credential of [
+			httpBasicAuth,
+			httpDigestAuth,
+			httpHeaderAuth,
+			httpQueryAuth,
+			oAuth1Api,
+			oAuth2Api,
+		]) {
+			if (credential) {
+				secrets.push(...getSecrets(credential));
+			}
+		}
+
 		let requestOptions: IRequestOptions;
 		let setUiParameter: IDataObject;
 
@@ -674,7 +693,22 @@ export class HttpRequestV1 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			const url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
 
 			if (
 				itemIndex > 0 &&
@@ -912,31 +946,33 @@ export class HttpRequestV1 implements INodeType {
 			const authDataKeys: IAuthDataSanitizeKeys = {};
 
 			// Add credentials if any are set
+			let nonOauthCredentialUsed = true;
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpBasicAuth.user as string,
 					pass: httpBasicAuth.password as string,
 				};
 				authDataKeys.auth = ['pass'];
-			}
-			if (httpHeaderAuth !== undefined) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpBasicAuth);
+			} else if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
-			}
-			if (httpQueryAuth !== undefined) {
-				if (!requestOptions.qs) {
-					requestOptions.qs = {};
-				}
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
+			} else if (httpQueryAuth !== undefined) {
+				requestOptions.qs ??= {};
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				authDataKeys.qs = [httpQueryAuth.name as string];
-			}
-			if (httpDigestAuth !== undefined) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
+			} else if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpDigestAuth.user as string,
 					pass: httpDigestAuth.password as string,
 					sendImmediately: false,
 				};
 				authDataKeys.auth = ['pass'];
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpDigestAuth);
+			} else {
+				nonOauthCredentialUsed = false;
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
@@ -952,14 +988,16 @@ export class HttpRequestV1 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys, secrets));
 			} catch (e) {}
 
-			if (oAuth1Api) {
+			if (!nonOauthCredentialUsed && oAuth1Api) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
 				const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
 				requestOAuth1.catch(() => {});
 				requestPromises.push(requestOAuth1);
-			} else if (oAuth2Api) {
+			} else if (!nonOauthCredentialUsed && oAuth2Api) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
 				const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
 					tokenType: 'Bearer',
 				});

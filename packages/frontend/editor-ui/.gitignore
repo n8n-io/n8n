@@ -25,3 +25,6 @@ yarn-error.log*
 
 # Auto-generated files
 src/components.d.ts
+
+# Build artifacts
+.build/

@@ -1,0 +1,561 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import CredentialEdit from './CredentialEdit.vue';
+import { createTestingPinia } from '@pinia/testing';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
+import { STORES } from '@n8n/stores';
+import { retry, mockedStore } from '@/__tests__/utils';
+import { useCredentialsStore } from '../../credentials.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { ICredentialsResponse } from '../../credentials.types';
+import { within, waitFor } from '@testing-library/vue';
+import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual('vue-router')),
+	useRouter: vi.fn(),
+	useRoute: () => ({
+		params: {},
+		query: {},
+		path: '',
+	}),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	}),
+}));
+
+const oAuth2Api: ICredentialType = {
+	name: 'oAuth2Api',
+	displayName: 'OAuth2 API',
+	documentationUrl: 'httpRequest',
+	genericAuth: true,
+	properties: [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Client Credentials',
+					value: 'clientCredentials',
+				},
+				{
+					name: 'PKCE',
+					value: 'pkce',
+				},
+			],
+			default: 'authorizationCode',
+		},
+		{
+			displayName: 'Authorization URL',
+			name: 'authUrl',
+			type: 'string',
+			displayOptions: {
+				show: {
+					grantType: ['authorizationCode', 'pkce'],
+				},
+			},
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'string',
+			displayOptions: {
+				show: {
+					grantType: ['authorizationCode', 'pkce'],
+				},
+			},
+			default: '',
+			description:
+				'For some services additional query parameters have to be set which can be defined here',
+			placeholder: 'access_type=offline',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'Body',
+					value: 'body',
+					description: 'Send credentials in body',
+				},
+				{
+					name: 'Header',
+					value: 'header',
+					description: 'Send credentials as Basic Auth header',
+				},
+			],
+			default: 'header',
+		},
+		{
+			displayName: 'Ignore SSL Issues (Insecure)',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			doNotInherit: true,
+		},
+	],
+	iconUrl: 'icons/n8n-nodes-base/dist/nodes/GraphQL/graphql.png',
+	supportedNodes: ['n8n-nodes-base.graphql', 'n8n-nodes-base.httpRequest'],
+};
+
+const googleOAuth2Api: ICredentialType = {
+	name: 'googleOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Google OAuth2 API',
+	documentationUrl: 'google/oauth-generic',
+	properties: [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
+			displayName: 'Authorization URL',
+			name: 'authUrl',
+			type: 'hidden',
+			default: 'https://accounts.google.com/o/oauth2/v2/auth',
+		},
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'hidden',
+			default: 'https://oauth2.googleapis.com/token',
+		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: 'access_type=offline&prompt=consent',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'body',
+		},
+	],
+	iconUrl: 'icons/n8n-nodes-base/dist/credentials/icons/Google.svg',
+	supportedNodes: [],
+};
+
+const googleBigQueryOAuth2Api: ICredentialType = {
+	name: 'googleBigQueryOAuth2Api',
+	extends: ['googleOAuth2Api'],
+	displayName: 'Google BigQuery OAuth2 API',
+	documentationUrl: 'google/oauth-single-service',
+	properties: [
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'hidden',
+			default:
+				'https://www.googleapis.com/auth/bigquery https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/drive',
+		},
+	],
+	iconUrl: 'icons/n8n-nodes-base/dist/nodes/Google/BigQuery/googleBigQuery.svg',
+	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
+};
+
+const renderComponent = createComponentRenderer(CredentialEdit, {
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.UI]: {
+				modalsById: {
+					[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+				},
+			},
+			[STORES.SETTINGS]: {
+				settings: {
+					enterprise: {
+						sharing: true,
+						externalSecrets: false,
+					},
+					templates: {
+						host: '',
+					},
+				},
+			},
+		},
+	}),
+});
+describe('CredentialEdit', () => {
+	beforeEach(() => {
+		const externalSecretsStore = mockedStore(useExternalSecretsStore);
+		externalSecretsStore.fetchSecretsForProject.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('shows the save button when credentialId is null', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			testApi: {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType,
+		};
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				activeId: 'testApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
+	});
+
+	test('hides the save button when credentialId exists and there are no unsaved changes', async () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				activeId: '123', // credentialId will be set to this value in edit mode
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'edit',
+			},
+		});
+		await retry(() => expect(queryByTestId('credential-save-button')).not.toBeInTheDocument());
+	});
+
+	test('hides menu item when credential is managed', async () => {
+		const credentialsStore = useCredentialsStore();
+
+		credentialsStore.state.credentials = {
+			'123': {
+				isManaged: false,
+			} as ICredentialsResponse,
+		};
+
+		const { queryByText } = renderComponent({
+			props: {
+				activeId: '123', // credentialId will be set to this value in edit mode
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'edit',
+			},
+		});
+
+		await retry(() => expect(queryByText('Details')).toBeInTheDocument());
+		await retry(() => expect(queryByText('Connection')).toBeInTheDocument());
+		await retry(() => expect(queryByText('Sharing')).toBeInTheDocument());
+	});
+
+	test('shows menu item when credential is not managed', async () => {
+		const credentialsStore = useCredentialsStore();
+
+		credentialsStore.state.credentials = {
+			'123': {
+				isManaged: true,
+			} as ICredentialsResponse,
+		};
+
+		const { queryByText } = renderComponent({
+			props: {
+				activeId: '123', // credentialId will be set to this value in edit mode
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'edit',
+			},
+		});
+
+		await retry(() => expect(queryByText('Details')).not.toBeInTheDocument());
+		await retry(() => expect(queryByText('Connection')).not.toBeInTheDocument());
+		await retry(() => expect(queryByText('Sharing')).not.toBeInTheDocument());
+	});
+
+	test.each([
+		{
+			case: 'valid credential',
+			data: {
+				clientId: 'client_id',
+				clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+			},
+		},
+		{
+			case: 'malformed credential from source-control',
+			data: {
+				grantType: '',
+				authUrl: '',
+				accessTokenUrl: '',
+				clientId: 'client_id',
+				clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+				scope: '',
+				authQueryParameters: '',
+				authentication: '',
+			},
+		},
+	])('should show Sign in with Google for $case data', async ({ data }) => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.getCredentialData.mockResolvedValueOnce({
+			// @ts-expect-error data is decrypted
+			data,
+			createdAt: '2025-05-13T10:45:45.588Z',
+			updatedAt: '2025-05-15T12:36:01.826Z',
+			id: '6ufuMkOc7bb3LyGV',
+			name: 'Google BigQuery account',
+			type: 'googleBigQueryOAuth2Api',
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:update'],
+			oauthTokenData: false,
+		});
+
+		credentialsStore.state.credentialTypes = {
+			[oAuth2Api.name]: oAuth2Api,
+			[googleOAuth2Api.name]: googleOAuth2Api,
+			[googleBigQueryOAuth2Api.name]: googleBigQueryOAuth2Api,
+		};
+
+		const { getByTestId } = renderComponent({
+			props: {
+				activeId: '6ufuMkOc7bb3LyGV',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'edit',
+			},
+		});
+		await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+		await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
+
+		await retry(() =>
+			expect(
+				within(getByTestId('credential-edit-dialog')).getAllByLabelText('Sign in with Google')
+					.length,
+			).toBeGreaterThan(0),
+		);
+	});
+
+	describe('external secrets', () => {
+		it('should fetch secrets on mount', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
+			};
+
+			renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await waitFor(() => {
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledTimes(1);
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledWith(
+					'personal-project',
+				);
+			});
+		});
+
+		it('should not block modal mount when secrets fetch fails', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			externalSecretsStore.fetchSecretsForProject.mockRejectedValue(new Error('Network error'));
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
+			};
+
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
+			});
+		});
+	});
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const alphaCredType: ICredentialType = {
+			name: 'alphaApi',
+			displayName: 'Alpha API',
+			properties: [
+				{
+					displayName: 'Alpha Key',
+					name: 'alphaKey',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const betaCredType: ICredentialType = {
+			name: 'betaApi',
+			displayName: 'Beta API',
+			properties: [
+				{
+					displayName: 'Beta Token',
+					name: 'betaToken',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: {
+							open: true,
+							showAuthSelector: true,
+						},
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = mockedStore(useCredentialsStore);
+		credStore.state.credentialTypes = {
+			alphaApi: alphaCredType,
+			betaApi: betaCredType,
+		};
+		credStore.getNewCredentialName.mockResolvedValue('Beta API');
+
+		const ndvStore = mockedStore(useNDVStore);
+		ndvStore.activeNode = {
+			name: 'DualCredTest',
+			type: 'n8n-nodes-base.dualCredTest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const mockNodeType = {
+			displayName: 'Dual Credential Test',
+			name: 'n8n-nodes-base.dualCredTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Credential Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{ name: 'alphaApi', required: true },
+				{ name: 'betaApi', required: true },
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
+	});
+});

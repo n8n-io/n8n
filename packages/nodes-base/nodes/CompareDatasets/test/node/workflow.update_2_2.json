@@ -11,21 +11,34 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {id: 1},\n  {id: 2},\n  {id: 3},\n  {id: 4},\n];"
+				"data": [
+					{
+						"id": 1
+					},
+					{
+						"id": 2
+					},
+					{
+						"id": 3
+					},
+					{
+						"id": 4
+					}
+				]
 			},
 			"id": "cec18624-ced0-4de1-8987-d4b184b136b9",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1020, 200]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n];"
+				"data": []
 			},
 			"id": "754d549c-82ce-4625-ba2b-6f8edcbf715e",
 			"name": "Code1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1020, 400]
 		},

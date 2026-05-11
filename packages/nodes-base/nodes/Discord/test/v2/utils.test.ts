@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import * as transport from '../../v2//transport/discord.api';
 import {
@@ -7,6 +7,7 @@ import {
 	prepareEmbeds,
 	checkAccessToGuild,
 	setupChannelGetter,
+	parseDiscordError,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -152,5 +153,40 @@ describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
 		const getChannel = await setupChannelGetter.call(fakeExecuteFunction('botToken'), userGuilds);
 		const channelId = await getChannel(0);
 		expect(channelId).toBe('42');
+	});
+});
+
+describe('Test Discord > parseDiscordError', () => {
+	const errorMessage =
+		'400 - {"message":"Invalid Form Body","code":50035,"errors":{"embeds":{"0":{"description":{"_errors":[{"code":"BASE_TYPE_REQUIRED","message":"This field is required"}]}}}}}';
+
+	it('should parse error with description', () => {
+		const error = {
+			cause: {
+				error: 'Invalid Form Body',
+			},
+			description: errorMessage,
+		};
+		const executeFunction = {
+			getNode: () => {},
+		} as unknown as IExecuteFunctions;
+
+		const result = parseDiscordError.call(executeFunction, error);
+		expect(result).toBeInstanceOf(NodeOperationError);
+		expect(result.message).toBe('Invalid Form Body');
+	});
+
+	it('should parse error with messages array', () => {
+		const error = {
+			cause: undefined,
+			messages: [errorMessage],
+		};
+		const executeFunction = {
+			getNode: () => {},
+		} as unknown as IExecuteFunctions;
+
+		const result = parseDiscordError.call(executeFunction, error);
+		expect(result).toBeInstanceOf(NodeOperationError);
+		expect(result.message).toBe('Invalid Form Body');
 	});
 });

@@ -1,23 +1,23 @@
-<script lang="ts" setup generic="UserType extends IUser, Actions extends UserAction<UserType>[]">
-import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
-import { ref } from 'vue';
+<script setup lang="ts" generic="T extends string">
+import { computed, getCurrentInstance, ref } from 'vue';
 
-import type { IUser, UserAction } from '@n8n/design-system/types';
-import type { IconOrientation, IconSize } from '@n8n/design-system/types/icon';
-
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nLoading from '../N8nLoading';
 
-const SIZE = ['mini', 'small', 'medium'] as const;
-const THEME = ['default', 'dark'] as const;
+type ActionToggleItem<T extends string> = {
+	label: string;
+	disabled?: boolean;
+	type?: 'external-link';
+} & ({ id: T; value?: T } | { id?: T; value: T });
 
-interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAction<UserType>>> {
-	actions?: Actions;
-	placement?: Placement;
-	size?: (typeof SIZE)[number];
-	iconSize?: IconSize;
-	theme?: (typeof THEME)[number];
-	iconOrientation?: IconOrientation;
+interface ActionToggleProps {
+	actions?: Array<ActionToggleItem<T>>;
+	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
+	theme?: 'default' | 'dark';
+	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
@@ -25,44 +25,65 @@ interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAc
 	trigger?: 'click' | 'hover';
 }
 
-type ActionValue = Actions[number]['value'];
+type ActionValue = T;
 
 defineOptions({ name: 'N8nActionToggle' });
-withDefaults(defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(), {
+const props = withDefaults(defineProps<ActionToggleProps>(), {
 	actions: () => [],
 	placement: 'bottom',
-	size: 'medium',
 	theme: 'default',
-	iconSize: 'medium',
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingRowCount: 3,
 	disabled: false,
-	popperClass: '',
 	trigger: 'click',
 });
 
-const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
-
 const emit = defineEmits<{
 	action: [value: ActionValue];
-	'visible-change': [value: boolean];
-	'item-mouseup': [action: UserAction<UserType>];
+	'visible-change': [open: boolean];
+	'update:modelValue': [open: boolean];
+	'item-mouseup': [action: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>];
 }>();
 
-const onCommand = (value: string) => emit('action', value);
-const onVisibleChange = (value: boolean) => emit('visible-change', value);
-const openActionToggle = (isOpen: boolean) => {
-	if (isOpen) {
-		actionToggleRef.value?.handleOpen();
-	} else {
-		actionToggleRef.value?.handleClose();
+const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
+const dropdownId = `n8n-action-toggle-dropdown-${getCurrentInstance()?.uid ?? 0}`;
+
+const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>> => {
+	return props.actions.map((action) => ({
+		id: (action.id ?? action.value) as ActionValue,
+		testId: `action-${String(action.id ?? action.value)}`,
+		label: action.label,
+		disabled: action.disabled,
+		data: action,
+	}));
+});
+
+const onAction = (value: ActionValue) => emit('action', value);
+const onOpenChange = (open: boolean) => {
+	emit('visible-change', open);
+	emit('update:modelValue', open);
+};
+const onItemMouseUp = (item: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>) => {
+	const action =
+		item.data ?? props.actions.find((candidate) => (candidate.id ?? candidate.value) === item.id);
+
+	if (action) {
+		emit('item-mouseup', item);
 	}
+	dropdownRef.value?.close();
 };
 
-const onActionMouseUp = (action: UserAction<UserType>) => {
-	emit('item-mouseup', action);
-	actionToggleRef.value?.handleClose();
+const openActionToggle = (isOpen: boolean) => {
+	if (props.disabled) {
+		return;
+	}
+
+	if (isOpen) {
+		dropdownRef.value?.open();
+	} else {
+		dropdownRef.value?.close();
+	}
 };
 
 defineExpose({
@@ -72,63 +93,58 @@ defineExpose({
 
 <template>
 	<span
-		:class="['action-toggle', $style.container]"
+		class="action-toggle"
+		:class="$style.container"
 		data-test-id="action-toggle"
 		@click.stop.prevent
 	>
-		<ElDropdown
-			ref="actionToggleRef"
+		<N8nDropdownMenu
+			ref="dropdownRef"
+			:id="dropdownId"
+			:items="items"
+			content-test-id="action-toggle-dropdown"
+			:modal="false"
 			:placement="placement"
-			:size="size"
 			:disabled="disabled"
-			:popper-class="popperClass"
 			:trigger="trigger"
-			@command="onCommand"
-			@visible-change="onVisibleChange"
+			:loading="loading"
+			:loading-item-count="loadingRowCount"
+			:extra-popper-class="popperClass"
+			@select="onAction"
+			@update:model-value="onOpenChange"
+			@item-mouseup="onItemMouseUp"
 		>
-			<slot>
-				<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-					<N8nIcon
+			<template #trigger>
+				<slot>
+					<N8nIconButton
+						variant="ghost"
+						:class="$style[theme]"
 						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
-						:size="iconSize"
+						size="small"
+						:disabled="disabled"
+						role="button"
+						:aria-controls="dropdownId"
 					/>
-				</span>
-			</slot>
-
-			<template #dropdown>
-				<ElDropdownMenu
-					v-if="loading"
-					:class="$style['loading-dropdown']"
-					data-test-id="action-toggle-loading-dropdown"
-				>
-					<ElDropdownItem v-for="index in loadingRowCount" :key="index" :disabled="true">
-						<template #default>
-							<N8nLoading :class="$style.loading" animated variant="text" />
-						</template>
-					</ElDropdownItem>
-				</ElDropdownMenu>
-				<ElDropdownMenu v-else data-test-id="action-toggle-dropdown">
-					<ElDropdownItem
-						v-for="action in actions"
-						:key="action.value"
-						:command="action.value"
-						:disabled="action.disabled"
-						:data-test-id="`action-${action.value}`"
-						@mouseup="onActionMouseUp(action)"
-					>
-						{{ action.label }}
-						<div :class="$style.iconContainer">
-							<N8nIcon
-								v-if="action.type === 'external-link'"
-								icon="external-link"
-								size="xsmall"
-								color="text-base"
-							/>
-						</div>
-					</ElDropdownItem>
-				</ElDropdownMenu>
+				</slot>
 			</template>
-		</ElDropdown>
+			<template #loading>
+				<N8nLoading
+					v-for="i in loadingRowCount"
+					:key="i"
+					:class="$style['loading-item']"
+					animated
+					variant="text"
+				/>
+			</template>
+			<template #item-trailing="slotProps">
+				<N8nIcon
+					v-if="slotProps.item.data?.type === 'external-link'"
+					icon="external-link"
+					size="xsmall"
+					color="text-base"
+				/>
+			</template>
+		</N8nDropdownMenu>
 	</span>
 </template>
 
@@ -137,47 +153,24 @@ defineExpose({
 	line-height: 1;
 }
 
-.button {
-	cursor: pointer;
-	padding: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
-
-	&:hover {
-		color: var(--color-primary);
-		cursor: pointer;
-	}
-
-	&:focus {
-		color: var(--color-primary);
+.trigger {
+	display: inline-flex;
+	&[aria-expanded='true'] button {
+		background-color: var(--background-active);
 	}
 }
 
 .dark {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 
 	&:focus {
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 	}
 }
 
-.iconContainer {
-	display: inline;
-}
-
-li:hover .iconContainer svg {
-	color: var(--color-primary-tint-1);
-}
-
-.loading-dropdown {
-	display: flex;
-	flex-direction: column;
-	padding: var(--spacing-xs) 0;
-	gap: var(--spacing-2xs);
-}
-
-.loading {
+.loading-item {
 	display: flex;
 	width: 100%;
-	min-width: var(--spacing-3xl);
+	min-width: var(--spacing--3xl);
 }
 </style>

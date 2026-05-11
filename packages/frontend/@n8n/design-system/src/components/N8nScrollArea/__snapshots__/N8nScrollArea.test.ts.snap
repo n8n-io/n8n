@@ -1,0 +1,75 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nScrollArea > should pass scrollHideDelay prop to ScrollAreaRoot 1`] = `
+<div>
+  <div
+    class="scrollAreaRoot"
+    dir="ltr"
+    style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+  >
+    
+    
+    <div
+      class="viewport"
+      data-reka-scroll-area-viewport=""
+      style="overflow-x: hidden; overflow-y: hidden;"
+      tabindex="0"
+    >
+      <div>
+        
+        
+        <div>
+          Test content
+        </div>
+        
+        
+      </div>
+    </div>
+    <style>
+       /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+    </style>
+    
+    <!---->
+    <!--v-if-->
+    <!--v-if-->
+    
+  </div>
+</div>
+`;
+
+exports[`N8nScrollArea > should render correctly with default props 1`] = `
+<div>
+  <div
+    class="scrollAreaRoot"
+    dir="ltr"
+    style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;"
+  >
+    
+    
+    <div
+      class="viewport"
+      data-reka-scroll-area-viewport=""
+      style="overflow-x: hidden; overflow-y: hidden;"
+      tabindex="0"
+    >
+      <div>
+        
+        
+        <div>
+          Test content
+        </div>
+        
+        
+      </div>
+    </div>
+    <style>
+       /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
+    </style>
+    
+    <!---->
+    <!--v-if-->
+    <!--v-if-->
+    
+  </div>
+</div>
+`;

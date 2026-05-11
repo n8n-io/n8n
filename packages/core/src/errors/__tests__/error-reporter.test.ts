@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
-import type { ErrorEvent } from '@sentry/types';
+import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
 import { ApplicationError, BaseError } from 'n8n-workflow';
@@ -17,7 +17,7 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
-	const errorReporter = new ErrorReporter(mock());
+	const errorReporter = new ErrorReporter(mock(), mock());
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {
@@ -104,7 +104,7 @@ describe('ErrorReporter', () => {
 
 		describe('beforeSendFilter', () => {
 			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: jest.Mock) => {
-				const errorReporter = new ErrorReporter(mock());
+				const errorReporter = new ErrorReporter(mock(), mock());
 				// @ts-expect-error - beforeSendFilter is private
 				errorReporter.beforeSendFilter = beforeSendFilter;
 				return errorReporter;
@@ -180,7 +180,7 @@ describe('ErrorReporter', () => {
 		beforeEach(() => {
 			error = new ApplicationError('Test error');
 			logger = mock<Logger>();
-			errorReporter = new ErrorReporter(logger);
+			errorReporter = new ErrorReporter(logger, mock());
 		});
 
 		it('should include stack trace for error-level `ApplicationError`', () => {
@@ -193,6 +193,39 @@ describe('ErrorReporter', () => {
 			error.level = 'warning';
 			errorReporter.error(error);
 			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
+		});
+
+		it.each([true, undefined])(
+			'should log the error when shouldBeLogged is %s',
+			(shouldBeLogged) => {
+				error.level = 'error';
+				errorReporter.error(error, { shouldBeLogged });
+				expect(logger.error).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('should not log the error when shouldBeLogged is false', () => {
+			error.level = 'error';
+			errorReporter.error(error, { shouldBeLogged: false });
+			expect(logger.error).toHaveBeenCalledTimes(0);
+		});
+
+		it('should include stack trace for generic `Error`', () => {
+			const genericError = new Error('Something broke');
+			errorReporter.error(genericError);
+			expect(logger.error).toHaveBeenCalledWith(
+				`Something broke\n${genericError.stack}\n`,
+				undefined,
+			);
+		});
+
+		it('should include stack trace for generic error cause chain', () => {
+			const cause = new Error('root cause');
+			const outer = new Error('outer', { cause });
+			errorReporter.error(outer);
+			expect(logger.error).toHaveBeenCalledTimes(2);
+			expect(logger.error).toHaveBeenNthCalledWith(1, `outer\n${outer.stack}\n`, undefined);
+			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
 		});
 	});
 });

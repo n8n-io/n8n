@@ -1,0 +1,72 @@
+{
+	"name": "sendHtml",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "test-trigger-node-id",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "sendHtml",
+				"fromEmail": "sender@example.com",
+				"toEmail": "recipient@example.com",
+				"options": {
+					"html": "<h1>Test HTML Content</h1>",
+					"subject": "Test HTML Subject"
+				}
+			},
+			"id": "test-mandrill-node-id",
+			"name": "Mandrill",
+			"type": "n8n-nodes-base.mandrill",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"mandrillApi": {
+					"id": "test-credentials-id",
+					"name": "Test Mandrill API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Mandrill",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Mandrill": [
+			{
+				"json": {
+					"email": "recipient@example.com",
+					"status": "rejected",
+					"_id": "test-message-id-123",
+					"reject_reason": "global-block",
+					"queued_reason": null
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "test-instance-id"
+	},
+	"id": "test-workflow-id-2",
+	"tags": []
+}

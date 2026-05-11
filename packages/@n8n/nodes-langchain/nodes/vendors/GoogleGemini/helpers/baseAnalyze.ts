@@ -1,4 +1,8 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import {
+	validateNodeParameters,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 
 import type { Content, GenerateContentResponse } from './interfaces';
 import { downloadFile, uploadFile } from './utils';
@@ -15,7 +19,11 @@ export async function baseAnalyze(
 	const text = this.getNodeParameter('text', i, '') as string;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {});
-
+	validateNodeParameters(
+		options,
+		{ maxOutputTokens: { type: 'number', required: false } },
+		this.getNode(),
+	);
 	const generationConfig = {
 		maxOutputTokens: options.maxOutputTokens,
 	};
