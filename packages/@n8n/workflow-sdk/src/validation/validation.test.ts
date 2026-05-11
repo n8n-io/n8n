@@ -2987,4 +2987,119 @@ describe('Validation', () => {
 			expect(warnings).toHaveLength(0);
 		});
 	});
+
+	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
+		const mockNodeTypesProviderWithPlaceholderOptOut = {
+			getByNameAndVersion: (_type: string, _version?: number) => ({
+				description: {
+					inputs: ['main'],
+					properties: [
+						{
+							name: 'path',
+							displayName: 'Path',
+							type: 'string',
+							default: '',
+							builderHint: { placeholderSupported: false },
+						},
+						{
+							name: 'method',
+							displayName: 'Method',
+							type: 'string',
+							default: 'GET',
+						},
+					],
+				},
+			}),
+			getByName: (type: string) =>
+				mockNodeTypesProviderWithPlaceholderOptOut.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		const makeWorkflow = (paramValue: string) => ({
+			id: 'test',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'webhook-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: { path: paramValue },
+				},
+			],
+			connections: {},
+		});
+
+		it('rejects bare placeholder() marker', () => {
+			const result = validateWorkflow(makeWorkflow('<__PLACEHOLDER_VALUE__my path__>'), {
+				nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('Webhook');
+			expect(errors[0].parameterName).toBe('path');
+		});
+
+		it('rejects placeholder() wrapped in expr() — leading "=" prefix', () => {
+			const result = validateWorkflow(makeWorkflow('=<__PLACEHOLDER_VALUE__my path__>'), {
+				nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('Webhook');
+			expect(errors[0].parameterName).toBe('path');
+		});
+
+		it('rejects placeholder() embedded inside a larger expression', () => {
+			const result = validateWorkflow(
+				makeWorkflow('={{ "prefix-" + "<__PLACEHOLDER_VALUE__my path__>" }}'),
+				{ nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never },
+			);
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(1);
+		});
+
+		it('does not flag literal values', () => {
+			const result = validateWorkflow(makeWorkflow('webhook-path'), {
+				nodeTypesProvider: mockNodeTypesProviderWithPlaceholderOptOut as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(0);
+		});
+
+		it('does not flag placeholder() in slots without the opt-out hint', () => {
+			const provider = {
+				getByNameAndVersion: () => ({
+					description: {
+						inputs: ['main'],
+						properties: [{ name: 'path', displayName: 'Path', type: 'string', default: '' }],
+					},
+				}),
+				getByName: () => provider.getByNameAndVersion(),
+				getKnownTypes: () => ({}),
+			};
+
+			const result = validateWorkflow(makeWorkflow('=<__PLACEHOLDER_VALUE__my path__>'), {
+				nodeTypesProvider: provider as never,
+			});
+
+			const errors = result.errors.filter(
+				(e) => e.code === 'INVALID_PARAMETER' && e.message.includes('placeholder()'),
+			);
+			expect(errors).toHaveLength(0);
+		});
+	});
 });

@@ -2,14 +2,14 @@
 import { computed, inject } from 'vue';
 import { N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
@@ -35,7 +35,7 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 }
 
 // --- Tasks ---
-const tasks = computed(() => store.currentTasks);
+const tasks = computed(() => thread.currentTasks);
 
 const doneCount = computed(() => {
 	if (!tasks.value) return 0;
@@ -56,7 +56,7 @@ const statusIconMap: Record<
 // --- Artifacts ---
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
-	for (const entry of store.producedArtifacts.values()) {
+	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow' || entry.type === 'data-table') {
 			result.push(entry);
 		}

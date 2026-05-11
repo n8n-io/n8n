@@ -108,7 +108,6 @@ export const AgentJsonConfigSchema = z.object({
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
-			requireToolApproval: z.boolean().optional(),
 			nodeTools: z
 				.object({
 					enabled: z.boolean(),
