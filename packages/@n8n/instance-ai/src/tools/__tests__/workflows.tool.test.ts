@@ -165,6 +165,17 @@ describe('workflows tool', () => {
 
 			expect(schema.safeParse(input).success).toBe(false);
 		});
+
+		it('should reject builder-disallowed publish at the schema boundary', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'publish', workflowId: 'w1' }).success).toBe(false);
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('version actions', () => {

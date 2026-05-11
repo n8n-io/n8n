@@ -121,6 +121,20 @@ describe('credentials tool', () => {
 
 			expect(schema.safeParse(input).success).toBe(false);
 		});
+
+		it('should reject builder-disallowed setup at the schema boundary', () => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(
+				schema.safeParse({
+					action: 'setup',
+					credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+				}).success,
+			).toBe(false);
+		});
 	});
 
 	// ── list ────────────────────────────────────────────────────────────────

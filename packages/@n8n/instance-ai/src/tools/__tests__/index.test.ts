@@ -161,6 +161,12 @@ describe('domain tool construction', () => {
 				'update-version',
 			],
 		});
+		expect(createWorkflowsTool).toHaveBeenCalledWith(
+			context,
+			expect.objectContaining({
+				allowedActions: expect.not.arrayContaining(['get-as-code']),
+			}),
+		);
 	});
 
 	it('includes local MCP server tools in orchestrator domain tools', () => {
