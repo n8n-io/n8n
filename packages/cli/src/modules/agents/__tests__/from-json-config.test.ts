@@ -414,22 +414,6 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.toolCallConcurrency).toBe(5);
 	});
 
-	it('sets requireToolApproval', async () => {
-		const config = makeConfig({ config: { requireToolApproval: true } });
-
-		const agent = await buildFromJson(
-			config,
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: makeMockMemoryFactory(),
-			},
-		);
-
-		expect(agent.snapshot.requireToolApproval).toBe(true);
-	});
-
 	it('configures memory when enabled', async () => {
 		const mockMemory = {
 			getThread: jest.fn(),

@@ -17,6 +17,9 @@ const props = defineProps<{
 	credentialOptions: CredentialOption[];
 	selectedCredentialId: string | null;
 	permissions: PermissionsRecord['credential'];
+	placeholder?: string;
+	loading?: boolean;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -64,6 +67,9 @@ const onCreateNewCredential = async () => {
 		filterable
 		:filter-method="onFilter"
 		:model-value="props.selectedCredentialId"
+		:placeholder="props.placeholder"
+		:loading="props.loading"
+		:disabled="props.disabled"
 		:popper-class="$style.selectPopper"
 		@update:model-value="onCredentialSelected"
 	>

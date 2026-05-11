@@ -37,10 +37,7 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -58,7 +55,6 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import { computed } from 'vue';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
@@ -81,9 +77,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({

@@ -2,17 +2,30 @@ import type {
 	AgentDbMessage,
 	AgentMessage,
 	BuiltMemory,
+	BuiltObservationStore,
 	MemoryDescriptor,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ScopeKind,
 	Thread,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
-import { LessThan, Like } from '@n8n/typeorm';
+import { Equal, In, LessThan, LessThanOrEqual, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
+import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
+import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
+import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
+import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
+import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
+import { AgentObservationRepository } from '../repositories/agent-observation.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
@@ -20,11 +33,14 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const WORKING_MEMORY_KEY = 'workingMemory';
 
 @Service()
-export class N8nMemory implements BuiltMemory {
+export class N8nMemory implements BuiltMemory, BuiltObservationStore {
 	constructor(
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly resourceRepository: AgentResourceRepository,
+		private readonly observationRepository: AgentObservationRepository,
+		private readonly observationCursorRepository: AgentObservationCursorRepository,
+		private readonly observationLockRepository: AgentObservationLockRepository,
 	) {}
 
 	// ── Thread management ────────────────────────────────────────────────
@@ -73,11 +89,24 @@ export class N8nMemory implements BuiltMemory {
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
-		await this.threadRepository.delete({ id: threadId });
+		await this.threadRepository.manager.transaction(async (trx) => {
+			const scope = { scopeKind: 'thread' as const, scopeId: threadId };
+			await trx.delete(AgentObservationEntity, scope);
+			await trx.delete(AgentObservationCursorEntity, scope);
+			await trx.delete(AgentObservationLockEntity, scope);
+			await trx.delete(AgentThreadEntity, { id: threadId });
+		});
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
-		await this.threadRepository.delete({ id: Like(`${threadIdPrefix}%`) });
+		const scopeId = Like(`${threadIdPrefix}%`);
+		await this.threadRepository.manager.transaction(async (trx) => {
+			const scope = { scopeKind: 'thread' as const, scopeId };
+			await trx.delete(AgentObservationEntity, scope);
+			await trx.delete(AgentObservationCursorEntity, scope);
+			await trx.delete(AgentObservationLockEntity, scope);
+			await trx.delete(AgentThreadEntity, { id: scopeId });
+		});
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────
@@ -184,6 +213,177 @@ export class N8nMemory implements BuiltMemory {
 		}
 	}
 
+	// ── Observational memory: data ───────────────────────────────────────
+
+	async appendObservations(rows: NewObservation[]): Promise<Observation[]> {
+		if (rows.length === 0) return [];
+
+		const entities: AgentObservationEntity[] = rows.map((row) =>
+			this.observationRepository.create({
+				scopeKind: row.scopeKind,
+				scopeId: row.scopeId,
+				kind: row.kind,
+				payload: row.payload,
+				durationMs: row.durationMs,
+				schemaVersion: row.schemaVersion,
+				createdAt: row.createdAt,
+			}),
+		);
+
+		const saved = await this.observationRepository.save(entities);
+		return saved.map((e) => this.toObservation(e));
+	}
+
+	async getObservations(opts: {
+		scopeKind: ScopeKind;
+		scopeId: string;
+		since?: { sinceCreatedAt: Date; sinceObservationId: string };
+		kindIs?: string;
+		limit?: number;
+		schemaVersionAtMost?: number;
+	}): Promise<Observation[]> {
+		const baseWhere: FindOptionsWhere<AgentObservationEntity> = {
+			scopeKind: opts.scopeKind,
+			scopeId: opts.scopeId,
+			...(opts.kindIs !== undefined && { kind: opts.kindIs }),
+			...(opts.schemaVersionAtMost !== undefined && {
+				schemaVersion: LessThanOrEqual(opts.schemaVersionAtMost),
+			}),
+		};
+		const where: FindOptionsWhere<AgentObservationEntity>[] = opts.since
+			? [
+					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
+					{
+						...baseWhere,
+						createdAt: Equal(opts.since.sinceCreatedAt),
+						id: MoreThan(opts.since.sinceObservationId),
+					},
+				]
+			: [baseWhere];
+		const entities = await this.observationRepository.find({
+			where,
+			order: { createdAt: 'ASC', id: 'ASC' },
+			...(opts.limit !== undefined && { take: opts.limit }),
+		});
+		return entities.map((e) => this.toObservation(e));
+	}
+
+	async getMessagesForScope(
+		scopeKind: ScopeKind,
+		scopeId: string,
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+	): Promise<AgentDbMessage[]> {
+		if (scopeKind !== 'thread') {
+			throw new UnexpectedError(
+				`getMessagesForScope: scopeKind='${scopeKind}' is not supported in observational memory v1`,
+			);
+		}
+
+		const baseWhere: FindOptionsWhere<AgentMessageEntity> = { threadId: scopeId };
+		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
+			? [
+					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
+					{
+						...baseWhere,
+						createdAt: Equal(opts.since.sinceCreatedAt),
+						id: MoreThan(opts.since.sinceMessageId),
+					},
+				]
+			: [baseWhere];
+
+		const entities = await this.messageRepository.find({
+			where,
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		return entities.map((e) => {
+			const msg = e.content as AgentMessage & { id?: string };
+			msg.id = e.id;
+			return msg as AgentDbMessage;
+		});
+	}
+
+	async deleteObservations(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+		await this.observationRepository.delete({ id: In(ids) });
+	}
+
+	// ── Observational memory: cursors ────────────────────────────────────
+
+	async getCursor(scopeKind: ScopeKind, scopeId: string): Promise<ObservationCursor | null> {
+		const entity = await this.observationCursorRepository.findOneBy({ scopeKind, scopeId });
+		if (!entity) return null;
+		return {
+			scopeKind: entity.scopeKind,
+			scopeId: entity.scopeId,
+			lastObservedMessageId: entity.lastObservedMessageId,
+			lastObservedAt: entity.lastObservedAt,
+			updatedAt: entity.updatedAt,
+		};
+	}
+
+	async setCursor(cursor: ObservationCursor): Promise<void> {
+		await this.observationCursorRepository.upsert(
+			{
+				scopeKind: cursor.scopeKind,
+				scopeId: cursor.scopeId,
+				lastObservedMessageId: cursor.lastObservedMessageId,
+				lastObservedAt: cursor.lastObservedAt,
+				updatedAt: cursor.updatedAt,
+			},
+			{ conflictPaths: ['scopeKind', 'scopeId'], skipUpdateIfNoValuesChanged: false },
+		);
+	}
+
+	// ── Observational memory: locks ──────────────────────────────────────
+
+	async acquireObservationLock(
+		scopeKind: ScopeKind,
+		scopeId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<ObservationLockHandle | null> {
+		const now = new Date();
+		const heldUntil = new Date(now.getTime() + opts.ttlMs);
+
+		const updateResult = await this.observationLockRepository
+			.createQueryBuilder()
+			.update(AgentObservationLockEntity)
+			.set({ holderId: opts.holderId, heldUntil })
+			.where('"scopeKind" = :scopeKind')
+			.andWhere('"scopeId" = :scopeId')
+			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
+			.setParameters({ scopeKind, scopeId, holderId: opts.holderId, now })
+			.execute();
+
+		if ((updateResult.affected ?? 0) > 0) {
+			return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
+		}
+
+		await this.observationLockRepository
+			.createQueryBuilder()
+			.insert()
+			.into(AgentObservationLockEntity)
+			.values({ scopeKind, scopeId, holderId: opts.holderId, heldUntil })
+			.orIgnore()
+			.execute();
+
+		const claimed = await this.observationLockRepository.findOneBy({
+			scopeKind,
+			scopeId,
+			holderId: opts.holderId,
+		});
+		if (!claimed) return null;
+
+		return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
+	}
+
+	async releaseObservationLock(handle: ObservationLockHandle): Promise<void> {
+		await this.observationLockRepository.delete({
+			scopeKind: handle.scopeKind,
+			scopeId: handle.scopeId,
+			holderId: handle.holderId,
+		});
+	}
+
 	// ── Descriptor ───────────────────────────────────────────────────────
 
 	describe(): MemoryDescriptor {
@@ -191,6 +391,19 @@ export class N8nMemory implements BuiltMemory {
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────
+
+	private toObservation(entity: AgentObservationEntity): Observation {
+		return {
+			id: entity.id,
+			scopeKind: entity.scopeKind,
+			scopeId: entity.scopeId,
+			kind: entity.kind,
+			payload: entity.payload as Observation['payload'],
+			durationMs: entity.durationMs === null ? null : Number(entity.durationMs),
+			schemaVersion: Number(entity.schemaVersion),
+			createdAt: entity.createdAt,
+		};
+	}
 
 	private toThread(entity: AgentThreadEntity): Thread {
 		let metadata: Record<string, unknown> | undefined;

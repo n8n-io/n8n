@@ -40,7 +40,6 @@ import { i18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -63,13 +62,15 @@ import { trackNodeExecution } from '@/app/composables/usePushConnection/handlers
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
-	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsListStore = useWorkflowsListStore();
 
+	/**
+	 * @deprecated use useWorkflowId() in Vue components/composables instead.
+	 */
 	const workflowId = ref('');
 
 	// --- Compatibility adapter wiring ---
@@ -589,6 +590,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	/**
+	 * Check if workflow contains any node from specified package
+	 * by performing a quick check based on the node type name.
+	 */
+	function containsNodeFromPackage(workflow: IWorkflowDb, packageName: string) {
+		return workflow.nodes.some((node) => node.type.startsWith(packageName));
+	}
+
+	/**
 	 * Creates a new workflow with the provided data.
 	 * Ensures that the new workflow is not active upon creation.
 	 * If the project ID is not provided in the data, it assigns the current project ID from the project store.
@@ -616,10 +625,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			sendData as unknown as IDataObject,
 		);
 
-		const isAIWorkflow = workflowHelpers.containsNodeFromPackage(
-			newWorkflow,
-			AI_NODES_PACKAGE_NAME,
-		);
+		const isAIWorkflow = containsNodeFromPackage(newWorkflow, AI_NODES_PACKAGE_NAME);
 		if (isAIWorkflow && !usersStore.isEasyAIWorkflowOnboardingDone) {
 			await updateCurrentUserSettings(rootStore.restApiContext, {
 				easyAIWorkflowOnboarded: true,
@@ -661,7 +667,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (
-			workflowHelpers.containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
+			containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
 			!usersStore.isEasyAIWorkflowOnboardingDone
 		) {
 			await updateCurrentUserSettings(rootStore.restApiContext, {

@@ -540,10 +540,13 @@ async function initialize() {
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
-	// Fire-and-forget: the interactive ask_credential tool card reads these
-	// stores. Failures are non-fatal — the cards stay disabled until data lands.
-	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);
-	void credentialsStore.fetchCredentialTypes(false).catch(() => undefined);
+	// Keep agent credential pickers aligned with the workflow editor: load only
+	// credentials the current user can use in this project context.
+	credentialsStore.setCredentials([]);
+	await Promise.all([
+		credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
+		credentialsStore.fetchCredentialTypes(false),
+	]).catch(() => undefined);
 	// Stop any in-flight auto-refresh from the previous agent before kicking
 	// off a new fetch — keeps the store tied to the current project/agent.
 	sessionsStore.stopAutoRefresh();
@@ -652,6 +655,8 @@ function onOpenToolFromList(index: number) {
 		data: {
 			toolRef: tool,
 			customTool,
+			projectId: projectId.value,
+			agentId: agentId.value,
 			existingToolNames: tools
 				.map((toolRef, i) => (i === index ? null : toolRef.name))
 				.filter((name): name is string => !!name),
