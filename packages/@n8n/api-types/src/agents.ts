@@ -7,6 +7,8 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { AgentTelegramIntegrationSettings } from './dto/agents/agent-integration.dto';
+
 /**
  * Describes a chat platform integration that agents can connect to.
  * Source of truth: the backend `ChatIntegrationRegistry`.
@@ -57,31 +59,6 @@ export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 
 export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
 	'Automated message: you were triggered on schedule.';
-
-export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
-
-export const agentTelegramIntegrationSettingsSchema = z
-	.object({
-		accessMode: z.enum(AGENT_TELEGRAM_ACCESS_MODES),
-		allowedUserIds: z
-			.array(z.string().trim().regex(/^\d+$/, 'Telegram user IDs must contain numbers only'))
-			.default([])
-			.transform((ids) => [...new Set(ids)]),
-	})
-	.strict()
-	.superRefine((settings, ctx) => {
-		if (settings.accessMode === 'private' && settings.allowedUserIds.length === 0) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ['allowedUserIds'],
-				message: 'Add at least one Telegram user ID',
-			});
-		}
-	});
-
-export type AgentTelegramIntegrationSettings = z.infer<
-	typeof agentTelegramIntegrationSettingsSchema
->;
 
 export interface AgentCredentialIntegration {
 	type: string;
