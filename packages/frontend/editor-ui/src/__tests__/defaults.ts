@@ -15,6 +15,7 @@ export const defaultSettings: FrontendSettings = {
 	allowedModules: {},
 	communityNodesEnabled: false,
 	unverifiedCommunityNodesEnabled: true,
+	communityNodesManagedByEnv: false,
 	defaultLocale: '',
 	endpointForm: '',
 	endpointFormTest: '',
@@ -118,6 +119,7 @@ export const defaultSettings: FrontendSettings = {
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
+	evaluationConcurrencyLimit: -1,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -130,6 +132,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
+	workflowsAutosaveDisabled: false,
 	variables: {
 		limit: -1,
 	},

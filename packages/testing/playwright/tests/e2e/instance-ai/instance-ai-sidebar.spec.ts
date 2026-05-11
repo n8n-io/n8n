@@ -15,6 +15,9 @@ test.describe(
 			await n8n.instanceAi.sendMessage('First thread message');
 			await n8n.instanceAi.waitForResponseComplete();
 
+			// Sidebar starts collapsed; open it so the thread list is queryable.
+			await n8n.instanceAi.openSidebar();
+
 			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Click new thread button
@@ -39,6 +42,10 @@ test.describe(
 			// Create first thread with a unique message
 			await n8n.instanceAi.sendMessage('Message in first thread');
 			await n8n.instanceAi.waitForResponseComplete();
+
+			// Sidebar starts collapsed; open it so the new-thread button and
+			// thread list are queryable.
+			await n8n.instanceAi.openSidebar();
 
 			// Create second thread
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
@@ -65,6 +72,9 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Thread to rename');
 			await n8n.instanceAi.waitForResponseComplete();
 
+			// Sidebar starts collapsed; open it so the thread list is queryable.
+			await n8n.instanceAi.openSidebar();
+
 			// Double-click the thread to enter rename mode
 			const thread = n8n.instanceAi.sidebar.getThreadItems().first();
 			await thread.dblclick();
@@ -87,6 +97,9 @@ test.describe(
 			// Create a thread with a recognizable message
 			await n8n.instanceAi.sendMessage('Thread to delete');
 			await n8n.instanceAi.waitForResponseComplete();
+
+			// Sidebar starts collapsed; open it so the thread list is queryable.
+			await n8n.instanceAi.openSidebar();
 
 			// Verify target thread is visible in the sidebar. Its generated title is not part of
 			// the behavior under test, so use the current thread item instead of title text.

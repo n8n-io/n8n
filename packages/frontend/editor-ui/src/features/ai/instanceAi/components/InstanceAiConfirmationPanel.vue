@@ -84,15 +84,18 @@ interface StandaloneChunk {
 
 type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
 
-/** Items that need the "Agent needs approval" wrapper (generic approvals, domain access). */
+/** Items that need the "Agent needs approval" wrapper (generic approvals, domain access, web search). */
 function isApprovalWrapped(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
+
 	if (conf.domainAccess) return true;
-	// Generic approval: no special fields and no inputType
+	if (conf.webSearch) return true;
+
+	// Generic approval: no special fields and no structured input UI
 	if (
 		!conf.credentialRequests?.length &&
 		!conf.setupRequests?.length &&
-		!conf.inputType &&
+		(!conf.inputType || conf.inputType === 'approval') &&
 		!conf.questions
 	) {
 		return true;
@@ -144,7 +147,7 @@ function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		[],
 	);
 	store.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(conf.requestId, approved);
+	void store.confirmAction(conf.requestId, { kind: 'approval', approved });
 }
 
 function handleApproveAll(items: PendingConfirmationItem[]) {
@@ -157,7 +160,7 @@ function handleApproveAll(items: PendingConfirmationItem[]) {
 			[],
 		);
 		store.resolveConfirmation(conf.requestId, 'approved');
-		void store.confirmAction(conf.requestId, true);
+		void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 	}
 }
 
@@ -178,7 +181,7 @@ function handleTextSubmit(conf: InstanceAiConfirmation) {
 		[],
 	);
 	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, true, undefined, undefined, undefined, value);
+	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true, userInput: value });
 }
 
 function handleTextSkip(conf: InstanceAiConfirmation) {
@@ -188,7 +191,18 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 		[{ label: conf.message, question: conf.message, input_type: 'text', options: [] }],
 	);
 	store.resolveConfirmation(conf.requestId, 'deferred');
-	void store.confirmAction(conf.requestId, false);
+	void store.confirmAction(conf.requestId, { kind: 'approval', approved: false });
+}
+
+function handleContinue(conf: InstanceAiConfirmation) {
+	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
+	trackInputCompleted(
+		conf,
+		[{ label: conf.message, options: ['continue'], option_chosen: 'continue' }],
+		[],
+	);
+	store.resolveConfirmation(conf.requestId, 'approved');
+	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
@@ -230,17 +244,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	}
 	trackInputCompleted(conf, provided, skipped, { num_tasks: answers.length });
 	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(
-		conf.requestId,
-		true,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		answers,
-	);
+	void store.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
@@ -251,7 +255,7 @@ function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 		{ num_tasks: numTasks },
 	);
 	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, true);
+	void store.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handlePlanRequestChanges(
@@ -266,12 +270,18 @@ function handlePlanRequestChanges(
 		{ num_tasks: numTasks, feedback },
 	);
 	store.resolveConfirmation(conf.requestId, 'denied');
-	void store.confirmAction(conf.requestId, false, undefined, undefined, undefined, feedback);
+	void store.confirmAction(conf.requestId, {
+		kind: 'approval',
+		approved: false,
+		userInput: feedback,
+	});
 }
 
-/** True when every item in the group is a generic approval (not domain/cred/text). */
+/** True when every item in the group is a generic approval (not domain/web-search/cred/text). */
 function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
-	return items.every((item) => !item.toolCall.confirmation.domainAccess);
+	return items.every(
+		(item) => !item.toolCall.confirmation.domainAccess && !item.toolCall.confirmation.webSearch,
+	);
 }
 </script>
 
@@ -389,6 +399,26 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						</div>
 					</N8nCard>
 				</div>
+				<!-- Continue (pause-for-user) — single-button acknowledgement -->
+				<div
+					v-else-if="chunk.item.toolCall.confirmation.inputType === 'continue'"
+					:key="'continue-' + chunk.item.toolCall.confirmation.requestId"
+					:class="$style.confirmation"
+				>
+					<N8nCard :class="$style.textCard">
+						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
+						<div :class="$style.continueRow">
+							<N8nButton
+								data-test-id="instance-ai-panel-continue"
+								size="medium"
+								variant="solid"
+								@click="handleContinue(chunk.item.toolCall.confirmation)"
+							>
+								{{ i18n.baseText('instanceAi.confirmation.continue') }}
+							</N8nButton>
+						</div>
+					</N8nCard>
+				</div>
 				<!-- Resource-access decision (gateway permission mode) -->
 				<GatewayResourceDecision
 					v-else-if="
@@ -446,6 +476,14 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							:request-id="item.toolCall.confirmation.requestId"
 							:url="item.toolCall.confirmation.domainAccess!.url"
 							:host="item.toolCall.confirmation.domainAccess!.host"
+							:severity="item.toolCall.confirmation.severity"
+						/>
+
+						<!-- Web search -->
+						<DomainAccessApproval
+							v-else-if="item.toolCall.confirmation.webSearch"
+							:request-id="item.toolCall.confirmation.requestId"
+							:query="item.toolCall.confirmation.webSearch!.query"
 							:severity="item.toolCall.confirmation.severity"
 						/>
 
@@ -537,6 +575,12 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+}
+
+.continueRow {
+	display: flex;
+	justify-content: flex-end;
 	margin-top: var(--spacing--2xs);
 }
 

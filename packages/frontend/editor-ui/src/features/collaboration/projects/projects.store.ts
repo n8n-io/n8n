@@ -318,6 +318,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
+			if (newRoute?.path?.includes('instance-ai')) {
+				projectNavActiveId.value = 'instance-ai';
+				setCurrentProject(null);
+			}
+
 			if (newRoute?.path?.includes('workflow/')) {
 				if (currentProjectId.value) {
 					projectNavActiveId.value = currentProjectId.value;

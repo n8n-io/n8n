@@ -6,13 +6,14 @@ import * as create from '../../v2/actions/conversation/create.operation';
 import * as getOperation from '../../v2/actions/conversation/get.operation';
 import * as remove from '../../v2/actions/conversation/remove.operation';
 import * as update from '../../v2/actions/conversation/update.operation';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('../../transport', () => ({
-	apiRequest: jest.fn(),
+vi.mock('../../transport', () => ({
+	apiRequest: vi.fn(),
 }));
 
-jest.mock('../../v2/actions/text/helpers/responses', () => ({
-	formatInputMessages: jest.fn().mockResolvedValue([
+vi.mock('../../v2/actions/text/helpers/responses', () => ({
+	formatInputMessages: vi.fn().mockResolvedValue([
 		{
 			role: 'user',
 			content: [{ type: 'input_text', text: 'Hello' }],
@@ -43,26 +44,26 @@ const createExecuteFunctionsMock = (parameters: IDataObject): IExecuteFunctions 
 			return undefined;
 		},
 		helpers: {
-			prepareBinaryData: jest.fn().mockResolvedValue({
+			prepareBinaryData: vi.fn().mockResolvedValue({
 				data: 'base64data',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
 			}),
-			assertBinaryData: jest.fn().mockReturnValue({
+			assertBinaryData: vi.fn().mockReturnValue({
 				filename: 'test.txt',
 				contentType: 'text/plain',
 			}),
-			getBinaryDataBuffer: jest.fn().mockReturnValue(Buffer.from('test data')),
-			binaryToBuffer: jest.fn().mockResolvedValue(Buffer.from('test data')),
+			getBinaryDataBuffer: vi.fn().mockReturnValue(Buffer.from('test data')),
+			binaryToBuffer: vi.fn().mockResolvedValue(Buffer.from('test data')),
 		},
 	} as unknown as IExecuteFunctions;
 };
 
 describe('OpenAI Conversation Operations', () => {
-	const mockApiRequest = transport.apiRequest as jest.MockedFunction<typeof transport.apiRequest>;
+	const mockApiRequest = transport.apiRequest as MockedFunction<typeof transport.apiRequest>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Create Operation', () => {

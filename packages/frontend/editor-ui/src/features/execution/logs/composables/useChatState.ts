@@ -217,7 +217,7 @@ export function useChatState(
 					mode: 'inclusive',
 				};
 				// Clear after use so subsequent messages run full workflow
-				workflowsStore.chatPartialExecutionDestinationNode = null;
+				workflowsStore.setChatPartialExecutionDestinationNode(null);
 			}
 
 			const response = await runWorkflow(runWorkflowOptions);
@@ -337,7 +337,7 @@ export function useChatState(
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		workflowsStore.setChatPartialExecutionDestinationNode(null);
 
 		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');
