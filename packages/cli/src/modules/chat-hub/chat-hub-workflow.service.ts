@@ -895,6 +895,16 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 					},
 				};
 			}
+			case 'nvidia': {
+				return {
+					...common,
+					parameters: {
+						authentication: 'cloud',
+						model,
+						options: {},
+					},
+				};
+			}
 			default:
 				throw new OperationalError('Unsupported model provider');
 		}
