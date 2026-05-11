@@ -237,6 +237,22 @@ describe('WorkflowService', () => {
 			return { settings } as unknown as WorkflowEntity;
 		}
 
+		test('should validate nodeGroups against existing workflow when not in payload', async () => {
+			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.nodeGroups = existingNodeGroups;
+
+			const user = mock<User>();
+			await workflowService.update(user, { nodes: [] } as unknown as WorkflowEntity, 'workflow-1', {
+				forceSave: true,
+			});
+
+			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith({
+				nodes: [],
+				nodeGroups: existingNodeGroups,
+			});
+		});
+
 		test('should throw BadRequestError for invalid workflow structure', async () => {
 			setupExistingWorkflow();
 			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {

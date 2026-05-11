@@ -380,7 +380,7 @@ export class WorkflowService {
 		});
 		WorkflowHelpers.validateWorkflowNodeGroups({
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			nodeGroups: workflowUpdateData.nodeGroups,
+			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
 		});
 
 		// Strip redactionPolicy if instance lacks data-redaction license
