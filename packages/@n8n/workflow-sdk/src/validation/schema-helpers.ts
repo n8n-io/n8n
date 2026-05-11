@@ -44,17 +44,59 @@ export type {
 // =============================================================================
 
 /**
- * Resource Mapper Value schema (object format)
- * Used for mapping input data to columns/fields
+ * Resource Mapper field schema.
+ * Used for dynamic field/column metadata returned by resource mapper methods.
  */
-const resourceMapperObjectSchema = z
+const resourceMapperFieldSchema = z
 	.object({
-		mappingMode: z.string(),
-		value: z.unknown().optional(),
-		schema: z.array(z.unknown()).optional(),
+		id: z.string().optional(),
+		displayName: z.string().optional(),
+		required: z.boolean().optional(),
+		defaultMatch: z.boolean().optional(),
+		display: z.boolean().optional(),
+		type: z.string().optional(),
+		canBeUsedToMatch: z.boolean().optional(),
+	})
+	.passthrough();
+
+/**
+ * Shared Resource Mapper fields.
+ */
+const resourceMapperCommonSchema = z
+	.object({
+		matchingColumns: z.array(z.string()).optional(),
 		cachedResultName: z.string().optional(),
 	})
 	.passthrough();
+
+/**
+ * Resource Mapper Value schema for manual mapping.
+ * Manual mapping requires `schema`; otherwise n8n nodes can fail at runtime
+ * when resolving `columns.schema` / equivalent resource mapper metadata.
+ */
+const resourceMapperDefineBelowSchema = resourceMapperCommonSchema.extend({
+	mappingMode: z.literal('defineBelow'),
+	value: z.record(z.string(), z.unknown()),
+	schema: z.array(resourceMapperFieldSchema),
+});
+
+/**
+ * Resource Mapper Value schema for auto-mapping input data.
+ */
+const resourceMapperAutoMapInputDataSchema = resourceMapperCommonSchema.extend({
+	mappingMode: z.literal('autoMapInputData'),
+	value: z.union([z.null(), z.record(z.string(), z.unknown())]).optional(),
+	schema: z.array(resourceMapperFieldSchema).optional(),
+});
+
+/**
+ * Resource Mapper Value schema (object format).
+ * Used for mapping input data to columns/fields
+ */
+const resourceMapperObjectSchema = z.discriminatedUnion('mappingMode', [
+	resourceMapperDefineBelowSchema,
+	resourceMapperAutoMapInputDataSchema,
+]);
 
 /**
  * Resource Mapper Value schema - accepts object format OR expression
