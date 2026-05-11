@@ -517,7 +517,7 @@ describe('HttpRequestV3', () => {
 			});
 		};
 
-		it('should throw NodeOperationError for non-string resource ID in binaryData body', async () => {
+		it('should throw for non-string resource ID in binaryData body', async () => {
 			setupBinaryBodyParams(12345);
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				'Invalid resource ID for binary data',
@@ -551,7 +551,7 @@ describe('HttpRequestV3', () => {
 			expect(result).toBeDefined();
 		});
 
-		it('should throw NodeOperationError for non-string resource ID in formBinaryData parameter', async () => {
+		it('should throw for non-string resource ID in formBinaryData parameter', async () => {
 			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
