@@ -4,7 +4,7 @@ import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { Workflow } from 'n8n-workflow';
+import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type {
@@ -22,6 +22,8 @@ import { LockedError } from '@/errors/response-errors/locked.error';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
+
+const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
 
 /**
  * Service for managing collaboration feature between users. E.g. keeping
@@ -258,6 +260,65 @@ export class CollaborationService {
 		this.push.sendToUsers({ type: 'workflowUpdated', data: msgData }, userIds);
 	}
 
+	async filterOpenWorkflowIds(workflowIds: Array<Workflow['id']>): Promise<Array<Workflow['id']>> {
+		const uniqueWorkflowIds = [...new Set(workflowIds)];
+		const openWorkflowIds: Array<Workflow['id']> = [];
+
+		for (let start = 0; start < uniqueWorkflowIds.length; start += OPEN_WORKFLOW_CHECK_BATCH_SIZE) {
+			const chunk = uniqueWorkflowIds.slice(start, start + OPEN_WORKFLOW_CHECK_BATCH_SIZE);
+			const collaboratorLookups = await Promise.allSettled(
+				chunk.map(async (workflowId) => {
+					const collaborators = await this.state.getCollaborators(workflowId);
+					return { workflowId, isOpen: collaborators.length > 0 };
+				}),
+			);
+			const failedWorkflowIds: Array<Workflow['id']> = [];
+
+			for (const [index, result] of collaboratorLookups.entries()) {
+				if (result.status === 'fulfilled') {
+					if (result.value.isOpen) openWorkflowIds.push(result.value.workflowId);
+				} else {
+					const workflowId = chunk[index];
+					if (workflowId) failedWorkflowIds.push(workflowId);
+				}
+			}
+
+			if (failedWorkflowIds.length > 0) {
+				this.logger.warn('Failed to resolve collaborators while filtering open workflows', {
+					workflowCount: failedWorkflowIds.length,
+					workflowIds: failedWorkflowIds.slice(0, 10),
+				});
+			}
+		}
+
+		return openWorkflowIds;
+	}
+
+	/**
+	 * Notifies open collaborators of a workflow that (a subset of) its
+	 * `settings` were updated out-of-band (e.g. via the MCP toggle endpoint),
+	 */
+	async broadcastWorkflowSettingsUpdated(
+		workflowId: Workflow['id'],
+		settings: Partial<IWorkflowSettings>,
+		checksum?: string,
+	) {
+		const collaborators = await this.state.getCollaborators(workflowId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+
+		const msgData: PushPayload<'workflowSettingsUpdated'> = {
+			workflowId,
+			settings,
+			...(checksum !== undefined ? { checksum } : {}),
+		};
+
+		this.push.sendToUsers({ type: 'workflowSettingsUpdated', data: msgData }, userIds);
+	}
+
 	/**
 	 * Exposes write-lock state to allow clients to restore read-only mode
 	 * after page refresh, since write-lock is persisted in backend cache
@@ -272,6 +333,18 @@ export class CollaborationService {
 		}
 
 		return await this.state.getWriteLock(workflowId);
+	}
+
+	/**
+	 * Throws if any user currently holds the write lock for the given workflow.
+	 */
+	async ensureWorkflowEditable(workflowId: Workflow['id']): Promise<void> {
+		const lock = await this.state.getWriteLock(workflowId);
+		if (lock) {
+			throw new LockedError(
+				'Cannot modify workflow while it is being edited by a user in the editor.',
+			);
+		}
 	}
 
 	/**

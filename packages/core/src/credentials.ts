@@ -24,44 +24,46 @@ export class Credentials<
 	/**
 	 * Sets new credential object
 	 */
-	setData(data: T): void {
+	async setData(data: T): Promise<void> {
 		a.ok(isObjectLiteral(data));
 
-		this.data = this.cipher.encrypt(data);
+		this.data = await this.cipher.encryptV2(data);
 	}
 
 	/**
 	 * Update parts of the credential data.
 	 * This decrypts the data, modifies it, and then re-encrypts the updated data back to a string.
 	 */
-	updateData(toUpdate: Partial<T>, toDelete: Array<keyof T> = []) {
-		const updatedData: T = { ...this.getData(), ...toUpdate };
+	async updateData(toUpdate: Partial<T>, toDelete: Array<keyof T> = []): Promise<void> {
+		const updatedData: T = { ...(await this.getData()), ...toUpdate };
 		for (const key of toDelete) {
 			delete updatedData[key];
 		}
-		this.setData(updatedData);
+		await this.setData(updatedData);
 	}
 
 	/**
 	 * Returns the decrypted credential object
 	 */
-	getData(): T {
+	async getData(): Promise<T> {
 		if (this.data === undefined) {
 			throw new CredentialDataError(this, CREDENTIAL_ERRORS.NO_DATA);
 		}
 
 		let decryptedData: string;
 		try {
-			decryptedData = this.cipher.decrypt(this.data);
+			decryptedData = await this.cipher.decryptV2(this.data);
 		} catch (cause) {
 			throw new CredentialDataError(this, CREDENTIAL_ERRORS.DECRYPTION_FAILED, cause);
 		}
 
+		let parsed: T;
 		try {
-			return jsonParse(decryptedData);
+			parsed = jsonParse(decryptedData);
 		} catch (cause) {
 			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_JSON, cause);
 		}
+		return parsed;
 	}
 
 	/**

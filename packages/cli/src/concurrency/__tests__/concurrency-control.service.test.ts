@@ -40,9 +40,9 @@ describe('ConcurrencyControlService', () => {
 	});
 
 	describe('constructor', () => {
-		it.each(['production', 'evaluation'])(
+		it.each<ConcurrencyQueueType>(['production', 'evaluation'])(
 			'should be enabled if %s cap is positive',
-			(type: ConcurrencyQueueType) => {
+			(type) => {
 				/**
 				 * Arrange
 				 */
@@ -72,9 +72,9 @@ describe('ConcurrencyControlService', () => {
 			},
 		);
 
-		it.each(['production', 'evaluation'])(
+		it.each<ConcurrencyQueueType>(['production', 'evaluation'])(
 			'should throw if %s cap is 0',
-			(type: ConcurrencyQueueType) => {
+			(type) => {
 				/**
 				 * Arrange
 				 */
@@ -126,9 +126,9 @@ describe('ConcurrencyControlService', () => {
 			expect(service.isEnabled).toBe(false);
 		});
 
-		it.each(['production', 'evaluation'])(
+		it.each<ConcurrencyQueueType>(['production', 'evaluation'])(
 			'should be disabled if %s cap is lower than -1',
-			(type: ConcurrencyQueueType) => {
+			(type) => {
 				/**
 				 * Arrange
 				 */
@@ -186,9 +186,9 @@ describe('ConcurrencyControlService', () => {
 
 	describe('if enabled', () => {
 		describe('throttle', () => {
-			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
+			it.each<ExecutionMode>(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
-				async (mode: ExecutionMode) => {
+				async (mode) => {
 					/**
 					 * Arrange
 					 */
@@ -215,9 +215,9 @@ describe('ConcurrencyControlService', () => {
 				},
 			);
 
-			it.each(['webhook', 'trigger', 'chat'])(
+			it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
 				'should enqueue on %s mode',
-				async (mode: ExecutionMode) => {
+				async (mode) => {
 					/**
 					 * Arrange
 					 */
@@ -272,9 +272,9 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('release', () => {
-			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
+			it.each<ExecutionMode>(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
-				async (mode: ExecutionMode) => {
+				async (mode) => {
 					/**
 					 * Arrange
 					 */
@@ -301,9 +301,9 @@ describe('ConcurrencyControlService', () => {
 				},
 			);
 
-			it.each(['webhook', 'trigger', 'chat'])(
+			it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
 				'should dequeue on %s mode',
-				(mode: ExecutionMode) => {
+				(mode) => {
 					/**
 					 * Arrange
 					 */
@@ -358,9 +358,9 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('remove', () => {
-			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
+			it.each<ExecutionMode>(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
-				async (mode: ExecutionMode) => {
+				async (mode) => {
 					/**
 					 * Arrange
 					 */
@@ -387,9 +387,9 @@ describe('ConcurrencyControlService', () => {
 				},
 			);
 
-			it.each(['webhook', 'trigger', 'chat'])(
+			it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
 				'should remove an execution on %s mode',
-				(mode: ExecutionMode) => {
+				(mode) => {
 					/**
 					 * Arrange
 					 */
@@ -444,9 +444,9 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('removeAll', () => {
-			it.each(['production', 'evaluation'])(
+			it.each<ConcurrencyQueueType>(['production', 'evaluation'])(
 				'should remove all executions from the %s queue',
-				async (type: ConcurrencyQueueType) => {
+				async (type) => {
 					/**
 					 * Arrange
 					 */

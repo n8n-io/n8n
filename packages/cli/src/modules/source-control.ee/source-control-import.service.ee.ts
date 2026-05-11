@@ -362,31 +362,33 @@ export class SourceControlImportService {
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 
-		return localCredentials.map((local) => {
-			const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+		return (await Promise.all(
+			localCredentials.map(async (local) => {
+				const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
 
-			let data: Record<string, unknown> = {};
-			try {
-				const credentials = new Credentials(
-					{ id: local.id, name: local.name },
-					local.type,
-					local.data,
-				);
-				data = sanitizeCredentialData(credentials.getData());
-			} catch {
-				// Credential data may not be decryptable (e.g. empty or corrupted data)
-			}
+				let data: Record<string, unknown> = {};
+				try {
+					const credentials = new Credentials(
+						{ id: local.id, name: local.name },
+						local.type,
+						local.data,
+					);
+					data = sanitizeCredentialData(await credentials.getData());
+				} catch {
+					// Credential data may not be decryptable (e.g. empty or corrupted data)
+				}
 
-			return {
-				id: local.id,
-				name: local.name,
-				type: local.type,
-				data,
-				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
-				ownedBy: toStatusOwner(ownerProject),
-				isGlobal: local.isGlobal,
-			};
-		}) as StatusExportableCredential[];
+				return {
+					id: local.id,
+					name: local.name,
+					type: local.type,
+					data,
+					filename: getCredentialExportPath(local.id, this.credentialExportFolder),
+					ownedBy: toStatusOwner(ownerProject),
+					isGlobal: local.isGlobal,
+				};
+			}),
+		)) as StatusExportableCredential[];
 	}
 
 	async getRemoteVariablesFromFile(): Promise<ExportableVariable[]> {
@@ -921,17 +923,17 @@ export class SourceControlImportService {
 						existingCredential.type,
 						existingCredential.data,
 					);
-					const localData = existingDecrypted.getData();
+					const localData = await existingDecrypted.getData();
 					const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
 						local: localData,
 						remote: data,
 					});
-					newCredentialObject.setData(mergedData);
+					await newCredentialObject.setData(mergedData);
 				} else {
 					// This is a safe guard, in principle remote data should already be sanitized
 					// This prevents importing invalid data that should have not been synched in the first place
 					const sanitizedData = sanitizeCredentialData(data);
-					newCredentialObject.setData(sanitizedData);
+					await newCredentialObject.setData(sanitizedData);
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
@@ -1203,68 +1205,93 @@ export class SourceControlImportService {
 
 		const result: { imported: string[] } = { imported: [] };
 
-		// Import each data table from its individual file
+		// Phase 1: Parse all data table files and resolve target projects upfront
+		// so we can validate name collisions before any imports happen.
+		const parsedTables: Array<{
+			dataTable: ExportableDataTable;
+			candidate: SourceControlledFile;
+			targetProjectId: string;
+		}> = [];
+
 		for (const candidate of candidates) {
+			this.logger.debug(`Parsing data table from file ${candidate.file}`);
+			let dataTable: ExportableDataTable;
 			try {
-				this.logger.debug(`Importing data table from file ${candidate.file}`);
-				const dataTable = jsonParse<ExportableDataTable>(
+				dataTable = jsonParse<ExportableDataTable>(
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
+			} catch (error) {
+				this.logger.error(`Failed to parse data table from file ${candidate.file}`, {
+					error: ensureError(error),
+				});
+				continue;
+			}
 
-				if (!dataTable || typeof dataTable !== 'object' || !dataTable.id || !dataTable.name) {
-					this.logger.warn(`Failed to parse data table from file ${candidate.file}`);
-					continue;
-				}
+			if (!dataTable || typeof dataTable !== 'object' || !dataTable.id || !dataTable.name) {
+				this.logger.warn(`Failed to parse data table from file ${candidate.file}`);
+				continue;
+			}
 
-				// Find the target project based on owner information
-				// Use the same logic as workflows/credentials to handle both team and personal projects
-				let targetProject: Project | null = null;
+			let targetProject: Project | null = null;
 
-				if (dataTable.ownedBy) {
-					if (dataTable.ownedBy.type === 'personal') {
-						// For personal projects, try to find the user locally
-						const personalEmail = dataTable.ownedBy.personalEmail;
-						if (personalEmail) {
-							const user = await this.userRepository.findOne({ where: { email: personalEmail } });
-							if (user) {
-								targetProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-									user.id,
-								);
-							} else {
-								// User doesn't exist locally - fall back to pulling user's personal project
-								this.logger.debug(
-									`User ${personalEmail} not found locally for data table ${dataTable.name}. Using pulling user's personal project as fallback.`,
-								);
-								targetProject = pullingUserPersonalProject;
-							}
-						}
-					} else if (dataTable.ownedBy.type === 'team') {
-						// For team projects, find or create
-						targetProject = await this.projectRepository.findOne({
-							where: { id: dataTable.ownedBy.teamId },
-						});
-
-						if (!targetProject) {
-							targetProject = await this.createTeamProject({
-								type: 'team',
-								teamId: dataTable.ownedBy.teamId,
-								teamName: dataTable.ownedBy.teamName,
-							});
+			if (dataTable.ownedBy) {
+				if (dataTable.ownedBy.type === 'personal') {
+					const personalEmail = dataTable.ownedBy.personalEmail;
+					if (personalEmail) {
+						const user = await this.userRepository.findOne({ where: { email: personalEmail } });
+						if (user) {
+							targetProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+						} else {
+							this.logger.debug(
+								`User ${personalEmail} not found locally for data table ${dataTable.name}. Using pulling user's personal project as fallback.`,
+							);
+							targetProject = pullingUserPersonalProject;
 						}
 					}
+				} else if (dataTable.ownedBy.type === 'team') {
+					targetProject = await this.projectRepository.findOne({
+						where: { id: dataTable.ownedBy.teamId },
+					});
+
+					if (!targetProject) {
+						targetProject = await this.createTeamProject({
+							type: 'team',
+							teamId: dataTable.ownedBy.teamId,
+							teamName: dataTable.ownedBy.teamName,
+						});
+					}
 				}
+			}
 
-				// If no owner specified or owner not found, use pulling user's personal project
-				if (!targetProject) {
-					this.logger.debug(
-						`No owner specified for data table ${dataTable.name}. Using pulling user's personal project.`,
-					);
-					targetProject = pullingUserPersonalProject;
-				}
+			if (!targetProject) {
+				this.logger.debug(
+					`No owner specified for data table ${dataTable.name}. Using pulling user's personal project.`,
+				);
+				targetProject = pullingUserPersonalProject;
+			}
 
-				const targetProjectId = targetProject.id;
+			parsedTables.push({ dataTable, candidate, targetProjectId: targetProject.id });
+		}
 
-				// Check if data table already exists
+		// Phase 2: Validate all name collisions before importing anything.
+		// This prevents partial imports when a collision is detected mid-way.
+		for (const { dataTable, targetProjectId } of parsedTables) {
+			const existingByName = await this.dataTableRepository.findOne({
+				where: { name: dataTable.name, projectId: targetProjectId },
+				select: ['id'],
+			});
+			if (existingByName && existingByName.id !== dataTable.id) {
+				throw new UserError(
+					`A data table with the name <strong>${dataTable.name}</strong> already exists locally.<br />Please either rename the local data table, or the remote one with the id <strong>${dataTable.id}</strong> in the source control files.`,
+				);
+			}
+		}
+
+		// Phase 3: Import all data tables (no name collisions at this point)
+		for (const { dataTable, candidate, targetProjectId } of parsedTables) {
+			try {
+				this.logger.debug(`Importing data table from file ${candidate.file}`);
+
 				const existingDataTable = await this.dataTableRepository.findOne({
 					where: { id: dataTable.id },
 					relations: ['columns'],

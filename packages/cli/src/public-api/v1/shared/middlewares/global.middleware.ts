@@ -4,13 +4,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { PaginatedRequest } from '@/public-api/types';
 
-import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
@@ -60,20 +61,22 @@ export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeReso
 	buildScopeMiddleware(Array.isArray(scopes) ? scopes : [scopes], resource, { globalOnly: false });
 
 export const validCursor = (
-	req: PaginatedRequest,
+	req: Request,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	if (req.query.cursor) {
-		const { cursor } = req.query;
+	const paginatedReq = req as unknown as PaginatedRequest;
+
+	if (paginatedReq.query.cursor) {
+		const { cursor } = paginatedReq.query;
 		try {
 			const paginationData = decodeCursor(cursor);
 			if ('offset' in paginationData) {
-				req.query.offset = paginationData.offset;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.offset = paginationData.offset;
+				paginatedReq.query.limit = paginationData.limit;
 			} else {
-				req.query.lastId = paginationData.lastId;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.lastId = paginationData.lastId;
+				paginatedReq.query.limit = paginationData.limit;
 			}
 		} catch (error) {
 			return res.status(400).json({
@@ -85,22 +88,21 @@ export const validCursor = (
 	return next();
 };
 
-export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+export type ScopeTaggedMiddleware = Middleware & {
 	__apiKeyScope: ApiKeyScope;
 };
 
-function tagMiddleware(
-	middleware: (...args: unknown[]) => unknown,
-	apiKeyScope: ApiKeyScope,
-): ScopeTaggedMiddleware {
+export type Middleware = (req: Request, res: Response, next: NextFunction) => unknown;
+
+function tagMiddleware(middleware: Middleware, apiKeyScope: ApiKeyScope): ScopeTaggedMiddleware {
 	const tagged: ScopeTaggedMiddleware = Object.assign(
-		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		(req: Request, res: Response, next: NextFunction) => middleware(req, res, next),
 		{ __apiKeyScope: apiKeyScope },
 	);
 	return tagged;
 }
 
-function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
+function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 	return async (
 		req: AuthenticatedRequest,
 		res: express.Response,
@@ -113,7 +115,7 @@ function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 			return;
 		}
 
-		if (!tokenGrant.scopes.includes(endpointScope)) {
+		if (!tokenGrant.apiKeyScopes?.includes(endpointScope)) {
 			res.status(403).json({ message: 'Forbidden' });
 			return;
 		}
@@ -124,13 +126,13 @@ function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 }
 
 export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
-	tagMiddleware(makeScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
+	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
 	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-	return tagMiddleware(makeScopeEnforcementMiddleware(scope), scope);
+	return tagMiddleware(makePublicApiScopeEnforcementMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (

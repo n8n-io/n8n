@@ -18,10 +18,10 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 
 const { settingsItems } = useSettingsItems();
-const { fetchCredits, isEnabled } = useAiGateway();
+const { fetchWallet, isEnabled } = useAiGateway();
 
 onMounted(() => {
-	if (isEnabled.value) void fetchCredits();
+	if (isEnabled.value) void fetchWallet();
 });
 </script>
 

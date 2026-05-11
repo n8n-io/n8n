@@ -279,7 +279,10 @@ async function handleContinue() {
 
 	isSubmitted.value = true;
 
-	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
+	const success = await store.confirmAction(props.requestId, {
+		kind: 'credentialSelection',
+		credentials,
+	});
 	if (success) {
 		store.resolveConfirmation(props.requestId, 'approved');
 	} else {
@@ -293,7 +296,10 @@ async function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
-	const success = await store.confirmAction(props.requestId, false);
+	const success = await store.confirmAction(props.requestId, {
+		kind: 'approval',
+		approved: false,
+	});
 	if (success) {
 		store.resolveConfirmation(props.requestId, 'deferred');
 	} else {
@@ -306,11 +312,7 @@ async function handleLater() {
 <template>
 	<div>
 		<template v-if="!isSubmitted">
-			<div
-				v-if="currentRequest"
-				data-test-id="instance-ai-credential-card"
-				:class="[$style.card, { [$style.completed]: allSelected }]"
-			>
+			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
@@ -361,8 +363,8 @@ async function handleLater() {
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isPrevDisabled"
 							data-test-id="instance-ai-credential-prev"
@@ -376,8 +378,8 @@ async function handleLater() {
 						</N8nText>
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isNextDisabled"
 							data-test-id="instance-ai-credential-next"
@@ -391,7 +393,7 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="
 								i18n.baseText(
@@ -404,7 +406,7 @@ async function handleLater() {
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							:disabled="!anySelected"
@@ -444,10 +446,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .header {

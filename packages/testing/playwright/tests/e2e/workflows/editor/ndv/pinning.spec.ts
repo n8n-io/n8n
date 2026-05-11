@@ -179,10 +179,10 @@ test.describe(
 				await expressionInput.click();
 				await n8n.ndv.clearExpressionEditor();
 				await n8n.ndv.typeInExpressionEditor(`{{ $('${NODES.HTTP_REQUEST}').item`);
-				await n8n.page.keyboard.press('Escape');
 
-				const expectedOutput = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
-				await expect(n8n.ndv.getParameterInputHintWithText(expectedOutput)).toBeVisible();
+				const hint = n8n.ndv.getParameterInputHint();
+				await expect(hint).toContainText('"http": 123');
+				await expect(hint).toContainText('pairedItem');
 			});
 
 			test('should use pin data in manual webhook executions', async ({

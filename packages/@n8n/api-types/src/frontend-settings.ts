@@ -35,6 +35,7 @@ export interface IUserManagementSettings {
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
 }
 
 export interface IEnterpriseSettings {
@@ -92,6 +93,7 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
@@ -99,6 +101,7 @@ export interface FrontendSettings {
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
 	concurrency: number;
+	evaluationConcurrencyLimit: number;
 	authCookie: {
 		secure: boolean;
 	};
@@ -131,6 +134,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -145,6 +149,9 @@ export interface FrontendSettings {
 			loginEnabled: boolean;
 		};
 	};
+	logStreaming: {
+		managedByEnv: boolean;
+	};
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -154,6 +161,7 @@ export interface FrontendSettings {
 		};
 	};
 	workflowTagsDisabled: boolean;
+	workflowsAutosaveDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -168,6 +176,7 @@ export interface FrontendSettings {
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	unverifiedCommunityNodesEnabled: boolean;
+	communityNodesManagedByEnv: boolean;
 	aiAssistant: {
 		enabled: boolean;
 		setup: boolean;
@@ -217,7 +226,7 @@ export interface FrontendSettings {
 	};
 	aiGateway?: {
 		enabled: boolean;
-		creditsQuota: number;
+		budget: number;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
@@ -229,6 +238,9 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
@@ -261,6 +273,8 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+		/** Whether MCP settings are managed via environment variables. */
+		mcpManagedByEnv: boolean;
 	};
 
 	/**
@@ -280,6 +294,7 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**
@@ -301,6 +316,19 @@ export type FrontendModuleSettings = {
 		roleBasedAccess: boolean;
 		/** Whether system roles (admin, editor) have external secrets scopes. */
 		systemRolesEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for the agents module.
+	 */
+	agents?: {
+		/**
+		 * Enabled agent sub-feature modules. Each token unlocks a specific
+		 * capability inside the agents module (see the backend's
+		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
+		 * `N8N_AGENTS_MODULES` (comma-separated).
+		 */
+		modules: string[];
 	};
 };
 

@@ -1,0 +1,15 @@
+type: object
+properties:
+  name:
+    $ref: './dataTableColumnName.yml'
+  type:
+    type: string
+    enum: [string, number, boolean, date]
+    description: Column data type
+  index:
+    type: integer
+    minimum: 0
+    description: Column position (optional, appended to end if omitted)
+required:
+  - name
+  - type

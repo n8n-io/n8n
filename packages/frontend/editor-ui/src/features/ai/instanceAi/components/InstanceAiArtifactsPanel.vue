@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { computed, inject } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
+import ConnectionsCard from './ConnectionsCard.vue';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
@@ -55,7 +56,7 @@ const statusIconMap: Record<
 // --- Artifacts ---
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
-	for (const entry of store.resourceRegistry.values()) {
+	for (const entry of store.producedArtifacts.values()) {
 		if (entry.type === 'workflow' || entry.type === 'data-table') {
 			result.push(entry);
 		}
@@ -73,15 +74,15 @@ const artifactIconMap: Record<string, IconName> = {
 	<div :class="$style.panel">
 		<!-- Artifacts section -->
 		<div :class="[$style.section, $style.card]">
-			<div :class="$style.sectionTitle">
+			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
 				{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
-			</div>
+			</N8nHeading>
 
 			<div v-if="artifacts.length > 0" :class="$style.artifactList">
 				<div
 					v-for="artifact in artifacts"
 					:key="artifact.id"
-					:class="$style.artifactRow"
+					:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
 					@click="handleArtifactClick(artifact, $event)"
 				>
 					<span :class="$style.artifactIconWrap">
@@ -92,6 +93,9 @@ const artifactIconMap: Record<string, IconName> = {
 						/>
 					</span>
 					<span :class="$style.artifactName">{{ artifact.name }}</span>
+					<span v-if="artifact.archived" :class="$style.archivedBadge">
+						{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+					</span>
 				</div>
 			</div>
 
@@ -106,10 +110,10 @@ const artifactIconMap: Record<string, IconName> = {
 
 		<!-- Tasks section -->
 		<div v-if="tasks" :class="[$style.section, $style.card]">
-			<div :class="$style.sectionTitle">
+			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
 				{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
 				<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
-			</div>
+			</N8nHeading>
 
 			<div :class="$style.taskList">
 				<div
@@ -134,6 +138,9 @@ const artifactIconMap: Record<string, IconName> = {
 				</div>
 			</div>
 		</div>
+
+		<!-- Connections section -->
+		<ConnectionsCard />
 	</div>
 </template>
 
@@ -161,16 +168,14 @@ const artifactIconMap: Record<string, IconName> = {
 }
 
 .sectionTitle {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
 	margin-bottom: var(--spacing--2xs);
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	gap: var(--spacing--3xs);
 }
 
 .progress {
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--regular);
 }
@@ -185,7 +190,7 @@ const artifactIconMap: Record<string, IconName> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
 	border-radius: var(--radius);
 	transition: background-color 0.2s ease;
@@ -214,15 +219,34 @@ const artifactIconMap: Record<string, IconName> = {
 }
 
 .artifactIcon {
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 }
 
 .artifactName {
 	font-size: var(--font-size--sm);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	flex: 1;
+	min-width: 0;
+}
+
+.artifactRowArchived {
+	opacity: 0.55;
+
+	.artifactName {
+		text-decoration: line-through;
+	}
+}
+
+.archivedBadge {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	flex-shrink: 0;
 }
 
 /* Empty state */

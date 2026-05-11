@@ -20,6 +20,7 @@ import {
 	credentialsProperty,
 	defaultWebhookDescription,
 	httpMethodsProperty,
+	inboundTriggerAuthenticationBuilderHint,
 	optionsProperty,
 	responseBinaryPropertyNameProperty,
 	responseCodeOption,
@@ -135,13 +136,16 @@ export class Webhook extends Node {
 				default: '',
 				placeholder: 'webhook',
 				builderHint: {
-					message: 'The webhook path that triggers this workflow',
+					propertyHint: 'The webhook path that triggers this workflow',
 					placeholderSupported: false,
 				},
 				description:
 					"The path to listen to, dynamic values could be specified by using ':', e.g. 'your-path/:dynamic-value'. If dynamic values are set 'webhookId' would be prepended to path.",
 			},
-			authenticationProperty(this.authPropertyName),
+			{
+				...authenticationProperty(this.authPropertyName),
+				builderHint: inboundTriggerAuthenticationBuilderHint,
+			},
 			responseModeProperty,
 			responseModePropertyStreaming,
 			{
