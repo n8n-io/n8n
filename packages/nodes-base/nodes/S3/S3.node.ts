@@ -162,6 +162,36 @@ export class S3 implements INodeType {
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
 					}
+
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+					if (operation === 'delete') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+							location: '',
+						});
+
+						const region = responseData.LocationConstraint?._ as string | undefined;
+
+						responseData = await s3ApiRequestSOAP.call(
+							this,
+							bucketName,
+							'DELETE',
+							'',
+							'',
+							qs,
+							headers,
+							{},
+							region,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', 0);
@@ -266,9 +296,9 @@ export class S3 implements INodeType {
 						);
 						returnData.push(...executionData);
 						// if (Array.isArray(responseData)) {
-						// 	returnData.push.apply(returnData, responseData);
+						//  returnData.push.apply(returnData, responseData);
 						// } else {
-						// 	returnData.push(responseData);
+						//  returnData.push(responseData);
 						// }
 					}
 				}
