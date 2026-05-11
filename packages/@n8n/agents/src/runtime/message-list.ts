@@ -121,7 +121,6 @@ export class AgentMessageList {
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
 
-	/** Retrieved episodic memory context for this run. Set by buildMessageList / resume. */
 	episodicMemory: EpisodicMemoryContext | undefined;
 
 	/** Mutable profile context for this run. Set by buildMessageList / resume. */

@@ -144,7 +144,6 @@ export class Memory {
 		return this;
 	}
 
-	/** Enable episodic memory entries and the built-in recall_memory(query) tool. */
 	episodicMemory(config: EpisodicMemoryConfig = {}): this {
 		if (config.enabled === false) {
 			this.episodicMemoryConfig = undefined;

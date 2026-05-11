@@ -97,7 +97,6 @@ export interface BuiltMemory {
 		vector: number[];
 		topK: number;
 	}): Promise<Array<{ id: string; score: number }>>;
-	// --- Episodic memory entries (optional) ---
 	saveEpisodicMemoryEntries?(entries: NewEpisodicMemoryEntry[]): Promise<EpisodicMemoryEntry[]>;
 	searchEpisodicMemoryEntries?(
 		scope: EpisodicMemoryScope,
@@ -194,34 +193,23 @@ export interface BuiltMemoryProfileStore {
 }
 
 export interface EpisodicMemoryPrompts {
-	/** Custom entry extraction instructions. Replaces the default template entirely. */
 	extraction?: string;
-	/** Custom recall_memory usage instruction. Replaces the default template entirely. */
 	recallToolInstruction?: string;
-	/** Custom instruction text used inside the auto-injected <memory> section. */
 	injection?: string;
 }
 
 export interface EpisodicMemoryConfig {
-	/** False disables an otherwise persisted JSON config. */
 	enabled?: boolean;
 	topK?: number;
 	halfLifeDays?: number;
 	maxEntriesPerTurn?: number;
 	maxEntryLength?: number;
-	/** When true, wait for post-turn extraction before completing the run. */
 	sync?: boolean;
-	/** @default true */
 	autoInject?: boolean;
-	/** @default 12 */
 	autoInjectTopK?: number;
-	/** Set to false to keep exact-hash dedupe only. @default 0.86 */
 	dedupeSimilarityThreshold?: number | false;
-	/** Embedding model supplied by the SDK consumer. */
 	embedder?: EmbeddingModel;
-	/** Non-secret model identifier persisted with stored entry embeddings for inspection/debugging. */
 	embeddingModel?: string;
-	/** Override the default prompt templates. */
 	prompts?: EpisodicMemoryPrompts;
 }
 

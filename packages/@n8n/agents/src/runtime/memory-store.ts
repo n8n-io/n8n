@@ -210,8 +210,6 @@ export class InMemoryMemory implements BuiltMemory, BuiltObservationStore {
 		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
 	}
 
-	// ── Episodic memory entries ──────────────────────────────────────────────
-
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async saveEpisodicMemoryEntries(
 		entries: NewEpisodicMemoryEntry[],
