@@ -25,23 +25,38 @@ The user prompt contains a JSON bundle like:
 ```json
 {
   "issue": {
-    "id": "CAT-3043",
-    "identifier": "CAT-3043",
+    "id": "b4672b91-7cec-...",
+    "identifier": "NODE-5013",
     "title": "...",
     "description": "<markdown>",
-    "team": "Engineering",
-    "labels": ["bug"],
-    "url": "https://linear.app/n8n/issue/..."
+    "team": "NODES",
+    "team_key": "NODE",
+    "labels": ["Bucket › MCP Client Tool Node", "type › bug", "support escalation"],
+    "existing_bucket": "MCP Client Tool Node",
+    "url": "https://linear.app/n8n/issue/NODE-5013/...",
+    "agent_session_url": "https://linear.app/n8n/issue/NODE-5013/...#agent-session-...",
+    "session_id": "18ac00f4-..."
   },
   "promptContext": "<XML blob from Linear webhook>",
   "comments": [
     { "author": "...", "body": "...", "createdAt": "..." }
   ],
+  "attachments": [
+    { "type": "image" | "loom" | "file" | "link", "name": "...", "url": "..." }
+  ],
   "media_summaries": [
     { "type": "image", "url": "...", "summary": "..." }
   ],
+  "related_issues": [
+    { "identifier": "NODE-4390", "title": "..." }
+  ],
+  "customer_request": { "createdAt": "...", "body": "<Plain ticket summary>" } | null,
+  "team_guidance": [
+    { "origin": "Team", "team": "NODES", "body": "<per-team triage rules — tier-1 features, real critical bug examples, signals, zero-tolerance scope>" }
+  ],
   "signals": {
-    "customer_tier": "Platinum" | null,
+    "customer_tier": "Platinum" | "unknown" | null,
+    "support_escalation": true | false,
     "sentry_frequency": null,
     "instance_version": "2.18.5",
     "node_popularity": { "n8n-nodes-base.foo": 0.64 } | null
@@ -51,6 +66,14 @@ The user prompt contains a JSON bundle like:
 ```
 
 Fields may be `null` or missing. Treat as honest signals — if `customer_tier` is null, do not assume Platinum.
+
+**Key bundle conventions:**
+- `issue.labels` are raw Linear label names. Labels with the `Group › Value` pattern (e.g. `Bucket › MCP Client Tool Node`) encode their group as the segment before the `›`.
+- `issue.existing_bucket` is the value of any `Bucket › X` label, pre-extracted. If present, prefer it for `bucket_hint` unless code analysis strongly disagrees.
+- `signals.support_escalation` is `true` when the `support escalation` label is on the ticket. Per team-guidance this typically floors priority at `medium`.
+- `customer_request.body` is a pre-summarised Plain ticket / escalation. Presence implies real customer impact even when `customer_tier` is unknown.
+- `team_guidance[].body` is the team's own pre-baked triage rules (Tier 1 features, critical examples, signals used, zero-tolerance scope). Apply those rules — the team knows their domain better than the default heuristics.
+- `related_issues` lists parent / blocking / sibling tickets. Useful to spot regressions and recurring patterns.
 
 ## Workflow
 
@@ -92,16 +115,24 @@ For node-specific issues, this is typically `packages/nodes-base/nodes/<NodeName
 
 ### 4. Choose a bucket
 
-If the input bundle includes a `canonical_buckets` list, pick exactly one from that list. If it doesn't (yet), suggest a bucket name as a string but flag it via `bucket_hint_is_canonical: false` in your output. The downstream apply step will validate.
+Priority order:
+
+1. **If `issue.existing_bucket` is set**, use it for `bucket_hint` unless the suspected files + code analysis clearly point to a different domain. When you override, briefly state why in `hypothesis`.
+2. If the input bundle includes a `canonical_buckets` list, pick exactly one from that list.
+3. Otherwise suggest a bucket name as a string and flag it via `bucket_hint_is_canonical: false` in your output. The downstream apply step will validate.
 
 ### 5. Compute priority hint
 
 Combine these signals (in order of weight):
 
-- Severity from text: data loss / silent failure / RCE / sandbox escape → urgent. Workflow execution failures → high. UI bugs without data impact → medium. Cosmetic → low.
-- Customer tier (if present): Platinum bumps one notch.
-- Sentry frequency (if present): >100/day bumps one notch.
-- Node popularity (if applicable): popularity ≥ 0.8 bumps one notch.
+- **Team guidance overrides.** If `team_guidance` is present, read each `body` field — teams list their own Tier 1 features, zero-tolerance scope, and signals they care about. Apply those rules before the defaults below. (E.g. NODES marks bugs in Wait/Webhook nodes as `urgent` regardless of other factors.)
+- **Severity from text:** data loss / silent failure / RCE / sandbox escape → urgent. Workflow execution failures → high. UI bugs without data impact → medium. Cosmetic → low.
+- **Support escalation** (`signals.support_escalation === true`): floor at `medium`.
+- **Customer request present** (`customer_request != null`): floor at `medium`. If the body indicates Enterprise / Platinum tier, bump one notch.
+- **Customer tier** (when surfaced): Platinum bumps one notch.
+- **Sentry frequency** (if present): >100/day bumps one notch.
+- **Node popularity** (if applicable): popularity ≥ 0.8 bumps one notch.
+- **Related issues** (`related_issues`): if 3+ related tickets exist or one is a parent/regression, bump one notch.
 - Cap at `urgent`. Floor at `low`.
 
 Output one of: `urgent`, `high`, `medium`, `low`.
@@ -184,4 +215,9 @@ Emit a single fenced JSON block as the final output. Schema:
 | `customer_tier` not in input | Treat as standard customer |
 | `sentry_frequency` not in input | No Sentry-based bump |
 | `node_popularity` not in input | No popularity-based bump |
+| `team_guidance` empty | Use the default severity rules in Step 5 |
+| `existing_bucket` null | Derive bucket from code analysis as before |
+| `related_issues` empty | No related-issue bump |
+| `customer_request` null | No customer-request floor |
+| `media_summaries` empty | Work from `attachments` + description text only; do not fetch images |
 | Bug clearly invalid/empty | Output minimal JSON with `priority_hint: "low"`, `hypothesis: "Insufficient context to triage"`. Caller decides what to do. |
