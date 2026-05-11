@@ -1215,7 +1215,7 @@ onBeforeUnmount(() => {
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
 							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
-								<template v-if="isRedactionSettingLocked" #content>
+								<template #content>
 									<span
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
@@ -1293,7 +1293,7 @@ onBeforeUnmount(() => {
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
 							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
-								<template v-if="isRedactionSettingLocked" #content>
+								<template #content>
 									<span
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
 										<span
