@@ -2,7 +2,6 @@
 import { AGENT_SCHEDULE_TRIGGER_TYPE, type AgentTelegramIntegrationSettings } from '@n8n/api-types';
 import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -54,7 +53,6 @@ const emit = defineEmits<{
 }>();
 
 const rootStore = useRootStore();
-const i18n = useI18n();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
