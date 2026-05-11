@@ -95,7 +95,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
-	'080_instance_ai_proactive_agent',
+	'082_instance_ai_proactive_agent',
 );
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
