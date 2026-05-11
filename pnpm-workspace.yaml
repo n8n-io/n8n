@@ -62,8 +62,8 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 4.1.1
+  axios: 1.16.0
   agent-browser: 0.26.0
-  axios: 1.15.1
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
@@ -112,7 +112,7 @@ catalog:
   vite-plugin-dts: ^4.5.4
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
-  vm2: ^3.10.5
+  vm2: 3.11.2
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3

@@ -61,6 +61,7 @@ export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
+export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';

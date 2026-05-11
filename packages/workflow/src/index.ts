@@ -16,6 +16,7 @@ export * from './interfaces';
 export * from './run-execution-data-factory';
 export * from './message-event-bus';
 export * from './execution-status';
+export * from './trimmed-task-data';
 export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';

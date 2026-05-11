@@ -233,6 +233,8 @@ import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
+import IconLucideTrendingDown from '~icons/lucide/trending-down';
+import IconLucideTrendingUp from '~icons/lucide/trending-up';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
@@ -707,6 +709,8 @@ export const updatedIconSet = {
 	'thumbs-up': IconLucideThumbsUp,
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
+	'trending-down': IconLucideTrendingDown,
+	'trending-up': IconLucideTrendingUp,
 	'triangle-alert': IconLucideTriangleAlert,
 	type: IconLucideType,
 	'toggle-right': IconLucideToggleRight,

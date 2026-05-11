@@ -25,12 +25,14 @@ function createSetupContext(): InstanceAiContext {
 
 function createLocalWorkspace(
 	writeFile: jest.Mock<Promise<void>, [string, string, { recursive: true }]>,
+	mkdir?: jest.Mock<Promise<void>, [string, { recursive?: boolean }]>,
 ): Workspace {
 	return {
 		filesystem: {
 			provider: 'local',
 			basePath: '/sandbox',
 			writeFile,
+			mkdir: mkdir ?? jest.fn(async () => {}),
 		},
 	} as unknown as Workspace;
 }
@@ -139,6 +141,33 @@ describe('setupSandboxWorkspace', () => {
 		expect(markerCallIndex).toBeGreaterThan(-1);
 		expect(writeFile.mock.invocationCallOrder[markerCallIndex]).toBeGreaterThan(
 			runInSandbox.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('always creates workflows/, src/, and chunks/ even when no workflows exist', async () => {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[Workspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
+			Promise<string | null>,
+			[Workspace, string]
+		>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+		const mkdir = jest.fn<Promise<void>, [string, { recursive?: boolean }]>(async () => {});
+
+		// Setup context defaults to an empty workflow list, mirroring a fresh DB.
+		await setupSandboxWorkspace(createLocalWorkspace(writeFile, mkdir), createSetupContext());
+
+		const mkdirPaths = mkdir.mock.calls.map(([path]) => path);
+		expect(mkdirPaths).toEqual(
+			expect.arrayContaining(['/sandbox/src', '/sandbox/chunks', '/sandbox/workflows']),
 		);
 	});
 

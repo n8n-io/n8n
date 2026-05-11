@@ -118,8 +118,10 @@ describe('workflows tool', () => {
 			expect(result).toEqual({ versions });
 		});
 
-		it('should support update-version when updateVersion exists', async () => {
-			const context = createMockContext();
+		it('should support update-version when updateVersion exists and updateWorkflow is always_allow', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+			});
 			context.workflowService.listVersions = jest.fn();
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
@@ -137,6 +139,105 @@ describe('workflows tool', () => {
 			);
 
 			expect(result).toEqual({ success: true });
+			expect(context.workflowService.updateVersion).toHaveBeenCalledWith('w1', '1', {
+				name: 'v1',
+				description: undefined,
+			});
+		});
+
+		it('should suspend update-version for approval by default', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
+			const suspend = jest.fn().mockResolvedValue(undefined);
+
+			const tool = createWorkflowsTool(context, 'full');
+			await tool.execute!(
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'renamed',
+					description: null,
+				} as never,
+				{ agent: { suspend, resumeData: undefined } } as never,
+			);
+
+			// Note: like other suspending handlers in this file, we don't assert on
+			// the tool's return value — the test wrapper validates the payload
+			// against the strict setupSuspendSchema and returns a wrapped error
+			// when minimal `{requestId,message,severity}` payloads come through.
+			// At runtime the agent loop suspends correctly; this is purely a
+			// test-infrastructure quirk shared with handleDelete / handlePublish /
+			// handleUnpublish / handleRestoreVersion.
+			expect(suspend).toHaveBeenCalledTimes(1);
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: expect.stringContaining('"renamed"'),
+				severity: 'info',
+			});
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+		});
+
+		it('should block update-version when updateWorkflow is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+			context.workflowService.updateVersion = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!(
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'renamed',
+				} as never,
+				{} as never,
+			);
+
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+		});
+
+		it('should proceed with update-version when resume approves', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!(
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'renamed',
+				} as never,
+				{ agent: { resumeData: { approved: true } } } as never,
+			);
+
+			expect(context.workflowService.updateVersion).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should deny update-version when resume rejects', async () => {
+			const context = createMockContext();
+			context.workflowService.updateVersion = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!(
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'renamed',
+				} as never,
+				{ agent: { resumeData: { approved: false } } } as never,
+			);
+
+			expect(context.workflowService.updateVersion).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'User denied the action',
+			});
 		});
 	});
 
@@ -520,6 +621,43 @@ describe('workflows tool', () => {
 			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				'HTTP Request': { url: 'https://example.com/api' },
 			});
+		});
+
+		it('should block setup when updateWorkflow is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+		});
+
+		it('should block setup apply when updateWorkflow is blocked', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
+					},
+				},
+			} as never);
+
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
 		});
 	});
 
