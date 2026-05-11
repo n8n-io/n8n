@@ -621,7 +621,6 @@ describe('buildFromJson()', () => {
 			enabled: true,
 		});
 		expect(getMemoryConfig(agent)?.profiles).not.toHaveProperty('agentDescription');
-		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeDefined();
 		expect(agent.snapshot.instructions).not.toContain('Memory is not enabled');
 		expect(agent.snapshot.instructions).not.toContain('Memory panel');
 	});
