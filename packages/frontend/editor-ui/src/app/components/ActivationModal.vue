@@ -18,11 +18,18 @@ import {
 } from '../constants';
 
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
 
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const router = useRouter();
@@ -31,7 +38,9 @@ const i18n = useI18n();
 const modalTitle = computed(() => i18n.baseText('activationModal.workflowPublished'));
 
 const triggerContent = computed(() => {
-	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
+	const foundTriggers = getActivatableTriggerNodes(
+		workflowDocumentStore.value.workflowTriggerNodes,
+	);
 	if (!foundTriggers.length) {
 		return '';
 	}
@@ -74,11 +83,13 @@ const showExecutionsList = async () => {
 		router
 			.push({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: activeExecution.id },
+				params: { workflowId: currentWorkflow, executionId: activeExecution.id },
 			})
 			.catch(() => {});
 	} else {
-		router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
+		router
+			.push({ name: VIEWS.EXECUTION_HOME, params: { workflowId: currentWorkflow } })
+			.catch(() => {});
 	}
 	uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 };

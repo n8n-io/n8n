@@ -4,7 +4,7 @@ import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
@@ -60,10 +60,10 @@ const emit = defineEmits<{
 	closeDialog: [];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 
 const telemetry = useTelemetry();

@@ -32,11 +32,6 @@ on:
         required: false
         default: 30
         type: number
-      upload-failure-artifacts:
-        description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
-        required: false
-        default: false
-        type: boolean
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
@@ -102,9 +97,16 @@ jobs:
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Run Tests
-        # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
-        run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+        run: |
+          # shellcheck disable=SC2086
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
         env:
+          # Protect args from template injections
+          TEST_COMMAND: ${{ inputs.test-command }}
+          # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
+          WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
+          SHARD_ARGS: ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          # Args for actual test command runner
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
@@ -114,15 +116,17 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
 
-      - name: Upload Failure Artifacts
-        if: ${{ failure() && inputs.upload-failure-artifacts }}
+      - name: Upload Shard Artifacts
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: playwright-report-shard-${{ matrix.shard }}
+          name: e2e-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
-          retention-days: 7
+            packages/testing/playwright/.nyc_output/
+          retention-days: 1
+          if-no-files-found: ignore
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}
