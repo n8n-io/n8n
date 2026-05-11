@@ -25,6 +25,12 @@ on:
   issue_comment:
     types: [created]
   merge_group:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to re-verify'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -33,7 +39,7 @@ permissions:
   statuses: write
 
 concurrency:
-  group: cla-check-${{ github.event.pull_request.number || github.event.issue.number || github.event.merge_group.head_sha || github.ref }}
+  group: cla-check-${{ github.event.pull_request.number || github.event.issue.number || github.event.merge_group.head_sha || github.event.inputs.pr_number || github.ref }}
   cancel-in-progress: true
 
 env:

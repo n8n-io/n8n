@@ -53,6 +53,20 @@ export default async function resolveClaContext({ github, context, core }) {
 		isMergeGroup = true;
 		headSha = context.payload.merge_group.head_sha;
 		baseSha = context.payload.merge_group.base_sha;
+	} else if (event === 'workflow_dispatch') {
+		const input = context.payload.inputs?.pr_number;
+		if (!input) {
+			core.setFailed('workflow_dispatch requires the pr_number input');
+			return;
+		}
+		prNumber = String(input);
+		const { data: pr } = await github.rest.pulls.get({
+			owner,
+			repo,
+			pull_number: Number(prNumber),
+		});
+		headSha = pr.head.sha;
+		baseSha = pr.base.sha;
 	}
 
 	core.setOutput('pr_number', prNumber);
