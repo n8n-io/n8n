@@ -90,7 +90,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
@@ -2785,6 +2785,8 @@ export class InstanceAiService {
 				userId: user.id,
 				modelId,
 				input: traceInput,
+				n8nVersion: N8N_VERSION,
+				workflowSdkVersion: WORKFLOW_SDK_VERSION,
 				proxyConfig: orchestrationContext.tracingProxyConfig,
 			});
 
