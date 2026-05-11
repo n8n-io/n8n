@@ -523,7 +523,13 @@ function hasExactSourceEvidence(entry: ParsedExtractedEntry, messages: AgentDbMe
 	if (!evidence) return false;
 
 	return messages.some((message) => {
-		if (!isLlmMessage(message) || !evidenceRoles.includes(message.role)) return false;
+		if (
+			!isLlmMessage(message) ||
+			(message.role !== 'user' && message.role !== 'assistant') ||
+			!evidenceRoles.includes(message.role)
+		) {
+			return false;
+		}
 		return textFromMessage(message).includes(evidence);
 	});
 }
