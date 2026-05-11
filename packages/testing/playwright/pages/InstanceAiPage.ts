@@ -15,6 +15,10 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
+	async gotoThread(threadId: string): Promise<void> {
+		await this.page.goto(`/instance-ai/${threadId}`);
+	}
+
 	getContainer(): Locator {
 		return this.page.getByTestId('instance-ai-container');
 	}
@@ -61,7 +65,7 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-assistant-message');
 	}
 
-	getAssistantMessageText(text: string): Locator {
+	getAssistantMessageText(text: string | RegExp): Locator {
 		return this.getAssistantMessages().getByText(text);
 	}
 
@@ -80,6 +84,16 @@ export class InstanceAiPage extends BasePage {
 
 	getEmptyState(): Locator {
 		return this.page.getByTestId('instance-ai-empty-state');
+	}
+
+	// ── Attachments ────────────────────────────────────────────────────
+
+	getFileInput(): Locator {
+		return this.getContainer().locator('input[type="file"]');
+	}
+
+	getAttachmentsAt(messageIndex: number): Locator {
+		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────

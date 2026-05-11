@@ -1,6 +1,3 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { describe as _describe } from 'vitest';
 import { z } from 'zod';
 
@@ -12,7 +9,7 @@ import {
 	type StreamChunk,
 	type AgentMessage,
 } from '../../index';
-import { SqliteMemory } from '../../storage/sqlite-memory';
+import { InMemoryMemory } from '../../runtime/memory-store';
 
 export type { StreamChunk };
 
@@ -416,25 +413,18 @@ export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 };
 
 export function createSqliteMemory(): {
-	memory: SqliteMemory;
+	memory: InMemoryMemory;
 	cleanup: () => void;
 	url: string;
 } {
-	const dbPath = path.join(
-		os.tmpdir(),
-		`test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
-	);
-	const url = `file:${dbPath}`;
-	const memory = new SqliteMemory({ url });
+	// In-memory backend; the `url` field is kept on the return type so existing
+	// integration tests that reference it (e.g. for "restart" scenarios) keep
+	// compiling, but it's not load-bearing — InMemoryMemory has no persistence.
 	return {
-		memory,
-		url,
+		memory: new InMemoryMemory(),
+		url: '',
 		cleanup: () => {
-			try {
-				fs.unlinkSync(dbPath);
-			} catch {
-				// File may already be removed — ignore
-			}
+			// no-op for in-memory backend
 		},
 	};
 }

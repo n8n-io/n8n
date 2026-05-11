@@ -53,20 +53,17 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 function createMockStore() {
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
+	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
-	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	return reactive({
 		messages,
 		isStreaming,
+		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
 		currentThreadId: 'thread-1',
-		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
-		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
-			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
-		},
 	});
 }
 
@@ -245,22 +242,11 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
-	describe('markUserSentMessage', () => {
-		test('sets userSentMessage to true', () => {
-			const ctx = setup();
-			expect(ctx.userSentMessage.value).toBe(false);
-
-			ctx.markUserSentMessage();
-			expect(ctx.userSentMessage.value).toBe(true);
-		});
-	});
-
 	describe('thread switch (route.params.threadId change)', () => {
 		test('resets all preview state on thread switch', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
-			ctx.markUserSentMessage();
 
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
@@ -269,10 +255,9 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeDataTableId.value).toBeNull();
 			expect(ctx.activeDataTableProjectId.value).toBeNull();
-			expect(ctx.userSentMessage.value).toBe(false);
 		});
 
-		test('preserves wasCanvasOpenBeforeSwitch when preview was visible', async () => {
+		test('clears the preview on thread switch, then stays closed while the new thread hydrates', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
@@ -281,13 +266,13 @@ describe('useCanvasPreview', () => {
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
-			// Preview was cleared by thread switch
+			// Preview was cleared by thread switch.
 			expect(ctx.isPreviewVisible.value).toBe(false);
 
-			// Register the restored workflow so activeWorkflowId can derive
-			registerWorkflow(ctx.store, 'wf-restored');
-
-			// But if a build result appears, it should auto-open because canvas was open before
+			// Past artifacts surfacing during the new thread's hydration shouldn't
+			// pop the panel — historical data, not a live build.
+			ctx.store.isHydratingThread = true;
+			registerWorkflow(ctx.store, 'wf-historical');
 			ctx.store.messages = [
 				makeMessage({
 					agentTree: makeAgentNode({
@@ -295,7 +280,7 @@ describe('useCanvasPreview', () => {
 							makeToolCall({
 								toolCallId: 'tc-build',
 								toolName: 'build-workflow',
-								result: { success: true, workflowId: 'wf-restored' },
+								result: { success: true, workflowId: 'wf-historical' },
 							}),
 						],
 					}),
@@ -303,7 +288,7 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeWorkflowId.value).toBe('wf-restored');
+			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
 
@@ -332,32 +317,11 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
-		test('auto-opens canvas when user sent a message', async () => {
+		test('does not auto-open while hydrating historical messages', async () => {
 			const ctx = setup();
-			ctx.markUserSentMessage();
-			registerWorkflow(ctx.store, 'wf-new');
-
-			ctx.store.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
-								result: { success: true, workflowId: 'wf-new' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.activeWorkflowId.value).toBe('wf-new');
-		});
-
-		test('does not auto-open for historical data when canvas was closed', async () => {
-			const ctx = setup();
-			// Not streaming, user didn't send message, canvas was not open before switch
+			// Simulate the loadHistoricalMessages window: artifacts that surface
+			// as part of past data shouldn't pop the preview panel.
+			ctx.store.isHydratingThread = true;
 
 			ctx.store.messages = [
 				makeMessage({
@@ -456,8 +420,9 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeWorkflowId.value).toBeNull();
 		});
 
-		test('does not auto-open for historical data table results', async () => {
+		test('does not auto-open data table preview while hydrating', async () => {
 			const ctx = setup();
+			ctx.store.isHydratingThread = true;
 
 			ctx.store.messages = [
 				makeMessage({

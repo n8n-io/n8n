@@ -125,7 +125,14 @@ jest.mock('@mastra/core/workflows', () => ({}));
 
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
-import { resumeAgentRun, type TerminalOutcome } from '@n8n/instance-ai';
+import {
+	resumeAgentRun,
+	type ManagedBackgroundTask,
+	type SpawnBackgroundTaskOptions,
+	type SpawnBackgroundTaskResult,
+	type SpawnManagedBackgroundTaskOptions,
+	type TerminalOutcome,
+} from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -147,6 +154,203 @@ type ServiceInternals = {
 type RunningTask = { taskId: string };
 type MarkedWorkflow = { workflowId: string };
 type ArchiveIfAiTemporary = jest.MockedFunction<(workflowId: string) => Promise<boolean>>;
+
+type BackgroundTaskFollowUpServiceInternals = {
+	spawnBackgroundTask: (
+		runId: string,
+		opts: SpawnBackgroundTaskOptions,
+		snapshotStorage: unknown,
+		messageGroupIdOverride?: string,
+	) => SpawnBackgroundTaskResult;
+	backgroundTasks: {
+		spawn: jest.MockedFunction<
+			(options: SpawnManagedBackgroundTaskOptions) => {
+				status: 'started';
+				task: ManagedBackgroundTask;
+			}
+		>;
+		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
+	};
+	runState: {
+		getMessageGroupId: jest.MockedFunction<(threadId: string) => string | undefined>;
+		getThreadUser: jest.MockedFunction<(threadId: string) => User | undefined>;
+		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
+		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
+		getThreadResearchMode: jest.MockedFunction<(threadId: string) => boolean | undefined>;
+	};
+	liveness: {
+		hasTimedOutActiveRunThread: jest.MockedFunction<(threadId: string) => boolean>;
+	};
+	eventBus: {
+		publish: jest.MockedFunction<(threadId: string, event: InstanceAiEvent) => void>;
+	};
+	finalizeBackgroundTaskTracing: jest.MockedFunction<
+		(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
+	>;
+	handlePlannedTaskSettlement: jest.MockedFunction<
+		(
+			user: User,
+			task: ManagedBackgroundTask,
+			status: 'succeeded' | 'failed' | 'cancelled',
+		) => Promise<void>
+	>;
+	recordBackgroundTerminalOutcome: jest.MockedFunction<
+		(task: ManagedBackgroundTask) => Promise<void>
+	>;
+	saveAgentTreeSnapshot: jest.MockedFunction<
+		(
+			threadId: string,
+			runId: string,
+			snapshotStorage: unknown,
+			isUpdate?: boolean,
+			overrideMessageGroupId?: string,
+		) => Promise<void>
+	>;
+	startInternalFollowUpRun: jest.MockedFunction<
+		(
+			user: User,
+			threadId: string,
+			message: string,
+			researchMode?: boolean,
+			messageGroupId?: string,
+		) => Promise<string | undefined>
+	>;
+	queuePendingCheckpointReentry: jest.MockedFunction<
+		(threadId: string, checkpointTaskId: string) => void
+	>;
+	maybeReenterParentCheckpoint: jest.MockedFunction<
+		(user: User, threadId: string, task: ManagedBackgroundTask) => Promise<boolean>
+	>;
+	logger: { warn: jest.Mock; debug: jest.Mock };
+};
+
+function createBackgroundTaskFollowUpService({
+	timedOutThread = false,
+}: { timedOutThread?: boolean } = {}): {
+	service: BackgroundTaskFollowUpServiceInternals;
+	task: ManagedBackgroundTask;
+	getSpawnOptions: () => SpawnManagedBackgroundTaskOptions;
+} {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as BackgroundTaskFollowUpServiceInternals;
+	let spawnOptions: SpawnManagedBackgroundTaskOptions | undefined;
+	const task: ManagedBackgroundTask = {
+		taskId: 'task-1',
+		threadId: 'thread-a',
+		runId: 'run-1',
+		role: 'workflow-builder',
+		agentId: 'agent-builder',
+		status: 'completed',
+		result: 'done',
+		startedAt: 0,
+		lastActivityAt: 0,
+		abortController: new AbortController(),
+		corrections: [],
+		messageGroupId: 'group-1',
+	};
+
+	service.backgroundTasks = {
+		spawn: jest.fn((options: SpawnManagedBackgroundTaskOptions) => {
+			spawnOptions = options;
+			return { status: 'started', task };
+		}),
+		getRunningTasks: jest.fn((_threadId: string) => []),
+	};
+	service.runState = {
+		getMessageGroupId: jest.fn((_threadId: string) => 'group-1'),
+		getThreadUser: jest.fn((_threadId: string) => fakeUser),
+		getActiveRunId: jest.fn((_threadId: string) => undefined),
+		hasSuspendedRun: jest.fn((_threadId: string) => false),
+		getThreadResearchMode: jest.fn((_threadId: string) => false),
+	};
+	service.liveness = {
+		hasTimedOutActiveRunThread: jest.fn((threadId: string) =>
+			timedOutThread ? threadId === 'thread-a' : false,
+		),
+	};
+	service.eventBus = { publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}) };
+	service.finalizeBackgroundTaskTracing = jest.fn(
+		async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
+	);
+	service.handlePlannedTaskSettlement = jest.fn(
+		async (
+			_user: User,
+			_task: ManagedBackgroundTask,
+			_status: 'succeeded' | 'failed' | 'cancelled',
+		) => {},
+	);
+	service.recordBackgroundTerminalOutcome = jest.fn(async (_task: ManagedBackgroundTask) => {});
+	service.saveAgentTreeSnapshot = jest.fn(
+		async (
+			_threadId: string,
+			_runId: string,
+			_snapshotStorage: unknown,
+			_isUpdate?: boolean,
+			_overrideMessageGroupId?: string,
+		) => {},
+	);
+	service.startInternalFollowUpRun = jest.fn(
+		async (
+			_user: User,
+			_threadId: string,
+			_message: string,
+			_researchMode?: boolean,
+			_messageGroupId?: string,
+		) => 'run-follow-up',
+	);
+	service.queuePendingCheckpointReentry = jest.fn();
+	service.maybeReenterParentCheckpoint = jest.fn(
+		async (_user: User, _threadId: string, _task: ManagedBackgroundTask) => false,
+	);
+	service.logger = { warn: jest.fn(), debug: jest.fn() };
+
+	return {
+		service,
+		task,
+		getSpawnOptions: () => {
+			if (!spawnOptions) throw new Error('Background task was not spawned');
+			return spawnOptions;
+		},
+	};
+}
+
+type StartRunServiceInternals = {
+	startRun: InstanceAiService['startRun'];
+	liveness: {
+		clearThreadState: jest.MockedFunction<(threadId: string) => void>;
+	};
+	runState: {
+		startRun: jest.MockedFunction<
+			(options: { threadId: string; user: User; researchMode?: boolean }) => {
+				runId: string;
+				abortController: AbortController;
+				messageGroupId?: string;
+			}
+		>;
+		setTimeZone: jest.MockedFunction<(threadId: string, timeZone: string) => void>;
+	};
+	threadPushRef: Map<string, string>;
+	executeRun: jest.Mock;
+};
+
+function createStartRunService(): StartRunServiceInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as StartRunServiceInternals;
+	service.liveness = {
+		clearThreadState: jest.fn((_threadId: string) => {}),
+	};
+	service.runState = {
+		startRun: jest.fn((_options) => ({
+			runId: 'run-1',
+			abortController: new AbortController(),
+			messageGroupId: 'group-1',
+		})),
+		setTimeZone: jest.fn(),
+	};
+	service.threadPushRef = new Map();
+	service.executeRun = jest.fn();
+	return service;
+}
 
 type TemporaryCleanupService = {
 	reapAiTemporaryFromRun: (
@@ -457,6 +661,74 @@ function makeAgentTree(): InstanceAiAgentNode {
 	};
 }
 
+describe('InstanceAiService — background task auto-follow-up', () => {
+	it('starts an internal follow-up when the last direct background task settles normally', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+
+		const result = service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(result).toEqual({ status: 'started', taskId: 'task-1', agentId: 'agent-builder' });
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			expect.stringContaining('<background-task-completed>'),
+			false,
+			'group-1',
+		);
+	});
+
+	it('skips internal follow-up when the active run already timed out', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService({
+			timedOutThread: true,
+		});
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		expect(service.recordBackgroundTerminalOutcome).toHaveBeenCalledWith(task);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			{},
+			true,
+			'group-1',
+		);
+	});
+
+	it('clears the active-timeout guard when the user starts a new run', () => {
+		const service = createStartRunService();
+
+		service.startRun(fakeUser, 'thread-a', 'try again');
+
+		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
+		expect(service.executeRun).toHaveBeenCalled();
+	});
+});
+
 describe('InstanceAiService — pending checkpoint re-entry', () => {
 	describe('queuePendingCheckpointReentry', () => {
 		it('records a marker keyed by threadId + checkpointTaskId', () => {
@@ -559,6 +831,186 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 
 			expect(service.reenterCheckpointById).not.toHaveBeenCalled();
 		});
+	});
+});
+
+type RevalidationServiceInternals = {
+	revalidateActiveUser: (userId: string) => Promise<User | null>;
+	userRepository: { findOne: jest.Mock };
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createRevalidationService(): RevalidationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as RevalidationServiceInternals;
+	service.userRepository = { findOne: jest.fn() };
+	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	return service;
+}
+
+function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
+	return {
+		id: 'user-1',
+		disabled: false,
+		role: { scopes: scopes.map((slug) => ({ slug })) },
+		...overrides,
+	} as unknown as User;
+}
+
+describe('InstanceAiService — revalidateActiveUser', () => {
+	it('returns the user when active and scoped for AI Assistant', async () => {
+		const service = createRevalidationService();
+		const fresh = userWithScopes(['instanceAi:message']);
+		service.userRepository.findOne.mockResolvedValue(fresh);
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBe(fresh);
+		expect(service.userRepository.findOne).toHaveBeenCalledWith({
+			where: { id: 'user-1' },
+			relations: ['role'],
+		});
+	});
+
+	it('returns null when the user no longer exists', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(null);
+
+		const result = await service.revalidateActiveUser('user-gone');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when the user has been disabled', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(
+			userWithScopes(['instanceAi:message'], { disabled: true }),
+		);
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when the user lost the instanceAi:message scope', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(userWithScopes(['workflow:read']));
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null and logs when the lookup throws', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockRejectedValue(new Error('db down'));
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to revalidate user',
+			expect.objectContaining({ userId: 'user-1' }),
+		);
+	});
+});
+
+type ResolveConfirmationServiceInternals = {
+	resolveConfirmation: (
+		requestingUserId: string,
+		requestId: string,
+		request: { kind: 'approval'; approved: boolean; userInput?: string },
+	) => Promise<boolean>;
+	revalidateActiveUser: jest.Mock<Promise<User | null>, [string]>;
+	cancelRun: jest.Mock<void, [string]>;
+	runState: {
+		resolvePendingConfirmation: jest.Mock;
+		findSuspendedByRequestId: jest.Mock;
+		rejectPendingConfirmation: jest.Mock;
+	};
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ResolveConfirmationServiceInternals;
+	service.revalidateActiveUser = jest.fn();
+	service.cancelRun = jest.fn();
+	service.runState = {
+		resolvePendingConfirmation: jest.fn(),
+		findSuspendedByRequestId: jest.fn(),
+		rejectPendingConfirmation: jest.fn(),
+	};
+	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — resolveConfirmation', () => {
+	const approval = { kind: 'approval' as const, approved: true };
+
+	it('rejects sub-agent confirmations when the user is no longer authorized', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue(undefined);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Rejecting confirmation: user no longer authorized for AI Assistant',
+			expect.objectContaining({ userId: 'user-1', requestId: 'req-1' }),
+		);
+	});
+
+	it('cancels the suspended run owned by the requesting user when revalidation fails', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			threadId: 'thread-1',
+			user: { id: 'user-1' },
+		});
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('does not cancel a suspended run owned by a different user when revalidation fails', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			threadId: 'thread-1',
+			user: { id: 'someone-else' },
+		});
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(false);
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+
+	it('resolves the pending sub-agent confirmation when the user is still authorized', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(true);
+		expect(service.runState.resolvePendingConfirmation).toHaveBeenCalledWith(
+			'user-1',
+			'req-1',
+			expect.objectContaining({ approved: true }),
+		);
+		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
 	});
 });
 
@@ -889,5 +1341,26 @@ describe('InstanceAiService — AI temporary workflow cleanup', () => {
 		expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
 		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
 		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
+	});
+});
+
+describe('InstanceAiService — OAuth callback URL', () => {
+	// Regression: the OAuth callback URL handed to the browser-credential-setup
+	// sub-agent must come from urlService.getInstanceBaseUrl() (which honors
+	// WEBHOOK_URL on cloud), not from globalConfig.editorBaseUrl with a
+	// localhost fallback. With the old fallback the agent pasted
+	// http://localhost:5678/... into the user's Slack app on a cloud instance.
+	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).toMatch(
+			/this\.oauth2CallbackUrl\s*=[^;]*this\.urlService\.getInstanceBaseUrl\(\)[^;]*oauth2-credential\/callback/,
+		);
+	});
+
+	it('does not fall back to localhost when editorBaseUrl is empty', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
 	});
 });

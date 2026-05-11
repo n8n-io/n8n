@@ -117,6 +117,7 @@ const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
+const isChatFullWidth = ref(false);
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -156,10 +157,21 @@ watch(
 	(c) => {
 		if (c) {
 			localConfig.value = deepCopy(c);
+			syncAgentIdentityFromConfig(c);
 		}
 	},
 	{ immediate: true },
 );
+
+function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
+	agentName.value = c.name;
+	if (!agent.value) return;
+	agent.value = {
+		...agent.value,
+		name: c.name,
+		description: c.description ?? null,
+	};
+}
 
 const projectName = computed<string | null>(() => {
 	if (projectsStore.personalProject?.id === projectId.value) {
@@ -416,6 +428,9 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
 	}
+	if (updates.description !== undefined && agent.value) {
+		agent.value = { ...agent.value, description: updates.description ?? null };
+	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
@@ -525,10 +540,13 @@ async function initialize() {
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
-	// Fire-and-forget: the interactive ask_credential tool card reads these
-	// stores. Failures are non-fatal — the cards stay disabled until data lands.
-	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);
-	void credentialsStore.fetchCredentialTypes(false).catch(() => undefined);
+	// Keep agent credential pickers aligned with the workflow editor: load only
+	// credentials the current user can use in this project context.
+	credentialsStore.setCredentials([]);
+	await Promise.all([
+		credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
+		credentialsStore.fetchCredentialTypes(false),
+	]).catch(() => undefined);
 	// Stop any in-flight auto-refresh from the previous agent before kicking
 	// off a new fetch — keeps the store tied to the current project/agent.
 	sessionsStore.stopAutoRefresh();
@@ -637,6 +655,8 @@ function onOpenToolFromList(index: number) {
 		data: {
 			toolRef: tool,
 			customTool,
+			projectId: projectId.value,
+			agentId: agentId.value,
 			existingToolNames: tools
 				.map((toolRef, i) => (i === index ? null : toolRef.name))
 				.filter((name): name is string => !!name),
@@ -831,10 +851,14 @@ function onSwitchAgent(nextAgentId: string) {
 			}"
 		>
 			<N8nResizeWrapper
-				:class="$style.chatResizer"
-				:width="chatPanelResizer.size.value"
-				:style="{ width: `${chatPanelResizer.size.value}px` }"
-				:supported-directions="['right']"
+				:class="{
+					[$style.chatResizer]: true,
+					[$style.chatResizerFullWidth]: isChatFullWidth,
+				}"
+				:width="isChatFullWidth ? 0 : chatPanelResizer.size.value"
+				:style="{ width: isChatFullWidth ? '100%' : `${chatPanelResizer.size.value}px` }"
+				:is-resizing-enabled="!isChatFullWidth"
+				:supported-directions="isChatFullWidth ? [] : ['right']"
 				:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
 				:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
 				:grid-size="8"
@@ -863,6 +887,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:is-builder-configured="isBuilderConfigured"
 					:is-build-chat-streaming="isBuildChatStreaming"
 					:is-published="Boolean(agent?.publishedVersion)"
+					:is-full-width="isChatFullWidth"
 					:before-build-send="flushAutosave"
 					@session-select="onSessionPick"
 					@new-chat="onNewChat"
@@ -873,12 +898,14 @@ function onSwitchAgent(nextAgentId: string) {
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
 					@update:connected-triggers="onConnectedTriggersUpdate"
+					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
 				/>
 			</N8nResizeWrapper>
 
 			<AgentBuilderEditorColumn
+				v-if="!isChatFullWidth"
 				:class="$style.editorColumn"
 				v-model:active-main-tab="activeMainTab"
 				:local-config="localConfig"
@@ -946,6 +973,10 @@ function onSwitchAgent(nextAgentId: string) {
 			opacity: 1;
 		}
 	}
+}
+
+.chatResizerFullWidth {
+	flex: 1 1 auto;
 }
 
 .isResizingChat {

@@ -17,7 +17,6 @@ import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
-import { N8nSandboxImageManager } from './n8n-sandbox-image-manager';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import {
 	isLinkWorkspaceSdkEnabled,
@@ -69,8 +68,6 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 
 export class BuilderSandboxFactory {
 	private daytona: Daytona | null = null;
-
-	private n8nSandboxImageManager: N8nSandboxImageManager | null = null;
 
 	constructor(
 		private readonly config: SandboxConfig,
@@ -149,11 +146,6 @@ export class BuilderSandboxFactory {
 			apiUrl: config.daytonaApiUrl,
 		});
 		return this.daytona;
-	}
-
-	private getN8nSandboxImageManager(): N8nSandboxImageManager {
-		this.n8nSandboxImageManager ??= new N8nSandboxImageManager();
-		return this.n8nSandboxImageManager;
 	}
 
 	/** Cached node-types catalog string — generated once, reused across builders. */
@@ -292,14 +284,12 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsN8nSandbox();
 
-		const dockerfile = this.getN8nSandboxImageManager().getDockerfile();
 		const catalog = await this.getNodeCatalog(context);
 
 		const sandbox = new N8nSandboxServiceSandbox({
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,
 			timeout: config.timeout ?? 300_000,
-			dockerfile,
 		});
 
 		const destroySandbox = async (): Promise<void> => {

@@ -94,7 +94,10 @@ export const askQuestionInputSchema = z.object({
 });
 
 export const askQuestionResumeSchema = z.object({
-	values: z.array(z.string()).min(1),
+	values: z
+		.array(z.string())
+		.min(1)
+		.describe('Selected option values, or freeform text entered in the Other field.'),
 });
 
 export type AskQuestionOption = z.infer<typeof askQuestionOptionSchema>;

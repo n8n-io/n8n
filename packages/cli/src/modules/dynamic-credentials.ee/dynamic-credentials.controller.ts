@@ -1,18 +1,24 @@
-import { Delete, Options, Post, RestController } from '@n8n/decorators';
-import { Request, Response } from 'express';
-
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { Time } from '@n8n/constants';
 import { CredentialsEntity } from '@n8n/db';
-import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
-import { DynamicCredentialResolverRegistry } from './services';
-import { getDynamicCredentialMiddlewares } from './utils';
+import { Delete, Options, Post, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+
+import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
+import { DynamicCredentialsConfig } from './dynamic-credentials.config';
+import { DynamicCredentialResolverRegistry } from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
+import { getDynamicCredentialMiddlewares } from './utils';
+
+const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
 
 @RestController('/credentials')
 export class DynamicCredentialsController {
@@ -77,6 +83,10 @@ export class DynamicCredentialsController {
 	@Delete('/:id/revoke', {
 		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitPerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
 	})
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
@@ -114,6 +124,10 @@ export class DynamicCredentialsController {
 	@Post('/:id/authorize', {
 		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitAuthorizePerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
 	})
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
