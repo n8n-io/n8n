@@ -49,6 +49,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
+import RedactionPermissionNotice from '@/app/components/RedactionPermissionNotice.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -1215,17 +1216,8 @@ onBeforeUnmount(() => {
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
 							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
-								<template v-if="isRedactionSettingLocked" #content>
-									<span
-										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
-										<span
-											:class="$style['permission-notice-link']"
-											@click="redactionMembersModalOpen = true"
-											>{{
-												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
-											}}</span
-										></span
-									>
+								<template #content>
+									<RedactionPermissionNotice @view-users="redactionMembersModalOpen = true" />
 								</template>
 								<N8nSelect
 									v-model="redactProductionData"
@@ -1293,17 +1285,8 @@ onBeforeUnmount(() => {
 							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
 						>
 							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
-								<template v-if="isRedactionSettingLocked" #content>
-									<span
-										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
-										<span
-											:class="$style['permission-notice-link']"
-											@click="redactionMembersModalOpen = true"
-											>{{
-												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
-											}}</span
-										></span
-									>
+								<template #content>
+									<RedactionPermissionNotice @view-users="redactionMembersModalOpen = true" />
 								</template>
 								<N8nSelect
 									v-model="redactManualData"
@@ -1611,12 +1594,6 @@ onBeforeUnmount(() => {
 
 .setting-name--disabled {
 	opacity: 0.5;
-}
-
-.permission-notice-link {
-	color: var(--color-foreground-xlight);
-	text-decoration: underline;
-	cursor: pointer;
 }
 
 .upgrade-badge {
