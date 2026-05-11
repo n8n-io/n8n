@@ -46,7 +46,7 @@ describe('useToolParameters', () => {
 		// Setup default mocks
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		projectsStore.currentProjectId = 'test-project';
-		workflowsStore.workflowId = 'test-workflow';
+		workflowsStore.setWorkflowId('test-workflow');
 		workflowsStore.getWorkflowExecution = null;
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
 	});

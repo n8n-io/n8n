@@ -244,7 +244,7 @@ const AI_TYPE_TO_SUBNODE_FIELD: Record<
 // =============================================================================
 
 export interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
 }
 
@@ -875,7 +875,7 @@ function generateNestedPropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
+		const safeBuilderHint = prop.builderHint.propertyHint
 			.replace(/\*\//g, '*\\/')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
@@ -1041,7 +1041,7 @@ function generateFixedCollectionType(
 				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${desc}`);
 			}
 			if (group.builderHint) {
-				const safeBuilderHint = group.builderHint.message
+				const safeBuilderHint = group.builderHint.propertyHint
 					.replace(/\*\//g, '*\\/')
 					.replace(/</g, '&lt;')
 					.replace(/>/g, '&gt;');
@@ -1901,7 +1901,7 @@ export function generatePropertyJSDoc(
 
 	// Builder hint - guidance for AI/workflow builders
 	if (prop.builderHint) {
-		const safeBuilderHint = prop.builderHint.message
+		const safeBuilderHint = prop.builderHint.propertyHint
 			.replace(/\*\//g, '*\\/')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
