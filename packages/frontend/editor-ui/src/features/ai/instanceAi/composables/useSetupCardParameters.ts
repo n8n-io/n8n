@@ -1,15 +1,11 @@
 import type { ComputedRef, Ref } from 'vue';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IUpdateInformation } from '@/Interface';
 import { isNestedParam, isParamValueSet, type SetupCard } from '../instanceAiWorkflowSetup.utils';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /** Check if the original node parameter value was a placeholder sentinel. */
 function isOriginalValuePlaceholder(req: SetupCard['nodes'][0], paramName: string): boolean {
@@ -21,10 +17,7 @@ export function useSetupCardParameters(
 	trackedParamNames: Ref<Map<string, Set<string>>>,
 	cardHasParamWork: (card: SetupCard) => boolean,
 ) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 
 	const paramValues = ref<Record<string, Record<string, unknown>>>({});
