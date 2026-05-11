@@ -70,7 +70,6 @@ describe('buildFromJson()', () => {
 						autoInjectTopK?: number;
 						dedupeSimilarityThreshold?: number | false;
 						embeddingModel?: string;
-						embedder?: unknown;
 						prompts?: {
 							extraction?: string;
 							recallToolInstruction?: string;

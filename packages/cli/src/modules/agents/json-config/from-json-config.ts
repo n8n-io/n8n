@@ -379,10 +379,9 @@ async function resolveEpisodicMemoryConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
 ) {
-	const embeddingModel = config.embedder ?? DEFAULT_EPISODIC_MEMORY_EMBEDDER;
-	const providerPrefix = getProviderPrefix(embeddingModel);
+	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDER;
 	const raw = await credentialProvider.resolve(config.credential);
-	const mapped = mapCredentialForProvider(providerPrefix, raw);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
 
 	return {
 		enabled: true,

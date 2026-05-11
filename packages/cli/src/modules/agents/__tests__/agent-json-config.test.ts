@@ -187,14 +187,13 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 		credential: 'openai-credential-id',
 	} as const;
 
-	it('accepts episodic memory entries with an embedding model and credential reference', () => {
+	it('accepts episodic memory entries with a credential reference', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			memory: {
 				...memoryBase,
 				episodicMemory: {
 					...enabledEpisodicMemoryBase,
-					embedder: 'openai/text-embedding-3-small',
 					topK: 8,
 					autoInject: false,
 					autoInjectTopK: 4,
@@ -213,7 +212,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 		expect(parsed.success).toBe(true);
 	});
 
-	it('accepts the default embedding model path and disabled episodic memory without credentials', () => {
+	it('accepts enabled and disabled episodic memory config', () => {
 		for (const episodicMemory of [enabledEpisodicMemoryBase, { enabled: false }] satisfies Array<
 			NonNullable<AgentJsonConfig['memory']>['episodicMemory']
 		>) {
@@ -252,7 +251,10 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 			},
 			{
 				...memoryBase,
-				episodicMemory: { enabled: true, embedder: 'openai/text-embedding-3-small' },
+				episodicMemory: {
+					...enabledEpisodicMemoryBase,
+					embedder: 'openai/text-embedding-3-small',
+				},
 			},
 		];
 

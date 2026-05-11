@@ -53,11 +53,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 			maxEntriesPerTurn: z.number().int().min(1).max(20).optional(),
 			maxEntryLength: z.number().int().min(40).max(2000).optional(),
 			dedupeSimilarityThreshold: z.union([z.number().min(0).max(1), z.literal(false)]).optional(),
-			embedder: z
-				.string()
-				.min(1)
-				.regex(/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i)
-				.optional(),
 			credential: z.string().min(1),
 			prompts: EpisodicMemoryPromptsSchema.optional(),
 		})
