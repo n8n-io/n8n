@@ -74,6 +74,32 @@ describe('getAsStream()', () => {
 		expect(stream).toBeInstanceOf(Readable);
 		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'stream' });
 	});
+
+	it('should re-chunk source bytes into pieces capped at chunkSize', async () => {
+		objectStoreService.get.mockResolvedValue(mockStream);
+
+		const stream = await objectStoreManager.getAsStream(fileId, 2);
+
+		const chunks: Buffer[] = [];
+		for await (const chunk of chunks) {
+			chunks.push(chunk);
+		}
+
+		for (const c of chunks) {
+			expect(c.length).toBeLessThanOrEqual(2);
+		}
+
+		expect(stream).toBeInstanceOf(Readable);
+		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'stream' });
+	});
+
+	it('should return the raw stream untouched when chunkSize is omitted', async () => {
+		objectStoreService.get.mockResolvedValue(mockStream);
+
+		const stream = await objectStoreManager.getAsStream(fileId);
+
+		expect(stream).toBe(mockStream);
+	});
 });
 
 describe('getMetadata()', () => {
