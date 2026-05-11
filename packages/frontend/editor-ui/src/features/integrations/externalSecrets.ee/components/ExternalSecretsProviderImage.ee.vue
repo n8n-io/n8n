@@ -8,6 +8,7 @@ import vault from '../assets/images/hashicorp.webp';
 import AwsSecretsManager from '../assets/images/aws-secrets-manager.svg';
 import AzureKeyVault from '../assets/images/azure-key-vault.svg';
 import GcpSecretsManager from '../assets/images/gcp-secrets-manager.svg';
+import OnePassword from '../assets/images/one-password.svg';
 import Akeyless from '../assets/images/akeyless.svg';
 
 const { provider } = defineProps<{
@@ -21,6 +22,7 @@ const image = computed(() => ({ doppler, infisical, vault })[provider.name]);
 	<AwsSecretsManager v-if="provider.name === 'awsSecretsManager'" />
 	<AzureKeyVault v-else-if="provider.name === 'azureKeyVault'" />
 	<GcpSecretsManager v-else-if="provider.name === 'gcpSecretsManager'" />
+	<OnePassword v-else-if="provider.name === 'onePassword'" />
 	<Akeyless v-else-if="provider.name === 'akeyless'" />
 	<img v-else :src="image" :alt="provider.displayName" width="28" height="28" />
 </template>
