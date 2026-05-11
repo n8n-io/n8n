@@ -189,8 +189,22 @@ export async function createStubServices(
 		async list() {
 			return [];
 		},
-		async run() {
-			return stubExecutionResult('stub: execution disabled in eval');
+		// `verify-built-workflow` invokes `executionService.run()` after
+		// `submit-workflow` has captured the TS-compiled workflow JSON. The eval
+		// has no execution backend, but we want the builder agent's submit →
+		// verify → done sequence to complete cleanly so the production briefing
+		// (`DETACHED_BUILDER_REQUIREMENTS`) reads coherently. Returning a
+		// synthetic success here lets the agent terminate after submit. The
+		// eval's `buildSuccess` metric is derived from `submit-workflow` capture
+		// — never from this synthetic verdict — so this can't inflate the score.
+		async run(workflowId) {
+			return {
+				executionId: 'eval-exec-' + nanoid(),
+				status: 'success' as const,
+				data: { __eval_synthetic_verify__: [{ workflowId }] },
+				startedAt: new Date().toISOString(),
+				finishedAt: new Date().toISOString(),
+			};
 		},
 		async getStatus() {
 			return stubExecutionResult('stub: execution disabled in eval');

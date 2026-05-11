@@ -616,6 +616,7 @@ export class WorkflowRunner {
 						startedAt: fullExecutionData.startedAt,
 						stoppedAt: fullExecutionData.stoppedAt,
 						status: fullExecutionData.status,
+						waitTill: fullExecutionData.waitTill,
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,
@@ -627,6 +628,7 @@ export class WorkflowRunner {
 						startedAt: jobResult.startedAt,
 						stoppedAt: jobResult.stoppedAt,
 						status: jobResult.status,
+						waitTill: jobResult.waitTill,
 						data: createRunExecutionData({
 							resultData: {
 								runData: {},

@@ -23,6 +23,7 @@ const props = withDefaults(
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		beforeSend?: () => Promise<void> | void;
+		inputDraft?: string;
 	}>(),
 	{
 		visible: true,
@@ -31,6 +32,7 @@ const props = withDefaults(
 		initialMessage: undefined,
 		continueSessionId: undefined,
 		beforeSend: undefined,
+		inputDraft: undefined,
 	},
 );
 
@@ -39,6 +41,7 @@ const emit = defineEmits<{
 	codeDelta: [delta: string];
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
+	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
 	'initial-consumed': [];
 	back: [];
@@ -48,7 +51,17 @@ const emit = defineEmits<{
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 
-const inputText = ref('');
+const internalInputText = ref(props.inputDraft ?? '');
+const inputText = computed<string>({
+	get: () => (props.inputDraft !== undefined ? props.inputDraft : internalInputText.value),
+	set: (value) => {
+		if (props.inputDraft !== undefined) {
+			emit('update:inputDraft', value);
+		} else {
+			internalInputText.value = value;
+		}
+	},
+});
 const isPreparingToSend = ref(false);
 
 const {
@@ -94,6 +107,16 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
+const hasOpenInteractiveQuestion = computed(() =>
+	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
+);
+
+const chatPlaceholder = computed(() =>
+	hasOpenInteractiveQuestion.value
+		? locale.baseText('agents.chat.answerQuestionPlaceholder')
+		: locale.baseText('agents.chat.input.placeholder'),
+);
+
 function onOpenBuild() {
 	dismissFatalError();
 	emit('open-build');
@@ -103,7 +126,9 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value) return;
+	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenInteractiveQuestion.value) {
+		return;
+	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -135,6 +160,7 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
+	if (hasOpenInteractiveQuestion.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -244,10 +270,19 @@ onBeforeUnmount(() => {
 			<slot name="above-input" />
 			<ChatInputBase
 				v-model="inputText"
-				placeholder="Type a message..."
+				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
-				:can-submit="!isStreaming && !isPreparingToSend && inputText.trim().length > 0"
-				:disabled="isPreparingToSend || (isStreaming && messagingState !== 'receiving')"
+				:can-submit="
+					!hasOpenInteractiveQuestion &&
+					!isStreaming &&
+					!isPreparingToSend &&
+					inputText.trim().length > 0
+				"
+				:disabled="
+					hasOpenInteractiveQuestion ||
+					isPreparingToSend ||
+					(isStreaming && messagingState !== 'receiving')
+				"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

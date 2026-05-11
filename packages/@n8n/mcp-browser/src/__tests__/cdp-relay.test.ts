@@ -192,14 +192,45 @@ describe('CDPRelayServer', () => {
 			relay.onExtensionDisconnect = (r) => resolve(r);
 		});
 
-		// Advance past heartbeat interval (5s) + timeout (15s)
-		await jest.advanceTimersByTimeAsync(20_000);
+		// Advance past heartbeat interval (5s) + timeout (15s) + one extra interval.
+		// With the sleep-aware heartbeat the first termination check that passes
+		// requires a ping to have been sent AFTER the last pong, which adds one
+		// extra 5s interval compared to the naive elapsed-only check.
+		await jest.advanceTimersByTimeAsync(25_000);
 
 		const reason = await disconnectPromise;
 		expect(reason).toBe('heartbeat_timeout');
 
 		// Restore real timers before afterEach cleanup (ws.close uses setTimeout)
 		jest.useRealTimers();
+	});
+
+	it('should allow extension to connect after waitForExtension times out', async () => {
+		jest.useFakeTimers();
+
+		relay.stop();
+		relay = new CDPRelayServer({ connectionTimeoutMs: 2_000 });
+		port = await relay.listen();
+
+		// Timeout the waitForExtension call — relay stays alive
+		const waitPromise = relay.waitForExtension().catch((e: unknown) => e);
+		await jest.advanceTimersByTimeAsync(2_100);
+		const error = await waitPromise;
+		expect(error).toBeInstanceOf(ExtensionNotConnectedError);
+
+		jest.useRealTimers();
+
+		// Extension connects after the timeout — must be registered
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		createFakeExtension(ext);
+
+		expect(relay.isExtensionConnected()).toBe(true);
+
+		const tabs = await relay.listTabs();
+		expect(tabs.length).toBeGreaterThan(0);
+
+		ext.close();
 	});
 
 	it('should return targetInfos shape from Target.getTargets', async () => {
