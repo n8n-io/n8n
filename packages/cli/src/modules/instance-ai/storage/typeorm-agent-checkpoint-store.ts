@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { CheckpointStore, SerializableAgentState } from '@n8n/instance-ai';
-import { UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
@@ -16,7 +16,7 @@ function isSerializableAgentState(value: unknown): value is SerializableAgentSta
 }
 
 function parseState(entity: InstanceAiCheckpoint): SerializableAgentState {
-	const parsed: unknown = JSON.parse(entity.state);
+	const parsed = jsonParse<unknown>(entity.state);
 	if (!isSerializableAgentState(parsed)) {
 		throw new UnexpectedError('Invalid Instance AI checkpoint state', {
 			extra: { key: entity.key },
