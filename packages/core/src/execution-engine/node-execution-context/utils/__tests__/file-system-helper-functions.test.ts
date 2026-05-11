@@ -115,6 +115,12 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath(configPath))).toBe(true);
 	});
 
+	it('should trim whitespace from path in CONFIG_FILES', async () => {
+		process.env[CONFIG_FILES] = '/path/to/config1, /path/to/config2 ';
+		const configPath = '/path/to/config2/somefile';
+		expect(isFilePathBlocked(await resolvePath(configPath))).toBe(true);
+	});
+
 	it('should return true when file paths in CUSTOM_EXTENSION_ENV', async () => {
 		process.env[CUSTOM_EXTENSION_ENV] = '/path/to/extensions1;/path/to/extensions2';
 		const extensionPath = '/path/to/extensions1/somefile';
