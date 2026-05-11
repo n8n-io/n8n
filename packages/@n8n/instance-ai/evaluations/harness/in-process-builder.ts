@@ -297,7 +297,6 @@ export async function buildInProcess(
 	builderTools['submit-workflow'] = createSubmitWorkflowTool(
 		services.context,
 		builderWs.workspace,
-		undefined,
 		async (attempt) => {
 			await workflowTaskService.reportBuildOutcome(
 				toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
