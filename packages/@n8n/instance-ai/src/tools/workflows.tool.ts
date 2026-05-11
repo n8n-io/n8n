@@ -144,9 +144,7 @@ type Input =
 
 type PublishInput = z.infer<typeof publishExtendedAction>;
 
-type WorkflowsToolSurface = 'full' | 'orchestrator' | 'builder';
-
-type WorkflowAction =
+export type WorkflowAction =
 	| 'list'
 	| 'get'
 	| 'get-as-code'
@@ -162,6 +160,12 @@ type WorkflowAction =
 
 type WorkflowActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
 
+export interface WorkflowsToolOptions {
+	allowedActions?: readonly WorkflowAction[];
+	descriptionPrefix?: string;
+	descriptionSuffix?: string;
+}
+
 const WORKFLOW_ACTION_ORDER = [
 	'list',
 	'get',
@@ -176,21 +180,6 @@ const WORKFLOW_ACTION_ORDER = [
 	'restore-version',
 	'update-version',
 ] as const satisfies readonly WorkflowAction[];
-
-const BUILDER_WORKFLOW_ACTION_BLOCKLIST = new Set<WorkflowAction>([
-	'delete',
-	'unarchive',
-	'setup',
-	'publish',
-	'unpublish',
-	'list-versions',
-	'get-version',
-	'restore-version',
-	'update-version',
-]);
-
-const ORCHESTRATOR_WORKFLOW_ACTION_BLOCKLIST = new Set<WorkflowAction>(['get-as-code']);
-const EMPTY_WORKFLOW_ACTION_BLOCKLIST = new Set<WorkflowAction>();
 
 const WORKFLOW_ACTION_LABELS = {
 	list: 'list',
@@ -233,28 +222,30 @@ function getSupportedWorkflowActionSchemas(
 	};
 }
 
-function getWorkflowActionBlocklist(surface: WorkflowsToolSurface): ReadonlySet<WorkflowAction> {
-	if (surface === 'builder') return BUILDER_WORKFLOW_ACTION_BLOCKLIST;
-	if (surface === 'orchestrator') return ORCHESTRATOR_WORKFLOW_ACTION_BLOCKLIST;
-	return EMPTY_WORKFLOW_ACTION_BLOCKLIST;
-}
-
 function getWorkflowActions(
 	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
-	surface: WorkflowsToolSurface,
+	options: WorkflowsToolOptions,
 ): WorkflowAction[] {
-	const blockedActions = getWorkflowActionBlocklist(surface);
+	const allowedActions = new Set(options.allowedActions ?? WORKFLOW_ACTION_ORDER);
 	return WORKFLOW_ACTION_ORDER.filter(
-		(action) => supportedSchemas[action] !== undefined && !blockedActions.has(action),
+		(action) => supportedSchemas[action] !== undefined && allowedActions.has(action),
 	);
 }
 
-function buildInputSchema(context: InstanceAiContext, surface: WorkflowsToolSurface) {
+function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
 	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
 	const actionSchemas: WorkflowActionSchema[] = [];
-	for (const action of getWorkflowActions(supportedSchemas, surface)) {
+	for (const action of getWorkflowActions(supportedSchemas, options)) {
 		const schema = supportedSchemas[action];
 		if (schema) actionSchemas.push(schema);
+	}
+
+	if (actionSchemas.length === 0) {
+		throw new Error('Workflows tool requires at least one allowed action');
+	}
+
+	if (actionSchemas.length === 1) {
+		return sanitizeInputSchema(actionSchemas[0]);
 	}
 
 	return sanitizeInputSchema(
@@ -801,22 +792,24 @@ function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
 	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
 }
 
-function getToolDescription(context: InstanceAiContext, surface: WorkflowsToolSurface): string {
+function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
 	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
-	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, surface));
+	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
+	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
+	const suffix =
+		options.descriptionSuffix ??
+		(options.descriptionPrefix
+			? undefined
+			: 'Workflow results use activeVersionId: null for unpublished workflows.');
 
-	if (surface === 'builder') {
-		return `Inspect workflows during build — ${actionList}.`;
-	}
-
-	return `Manage workflows — ${actionList}. Workflow results use activeVersionId: null for unpublished workflows.`;
+	return suffix ? `${description} ${suffix}` : description;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createWorkflowsTool(
 	context: InstanceAiContext,
-	surface: WorkflowsToolSurface = 'full',
+	options: WorkflowsToolOptions = {},
 ) {
 	// Closure state for the setup action's suspend/resume cycle
 	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
@@ -824,11 +817,11 @@ export function createWorkflowsTool(
 		preTestSnapshot: null,
 	};
 
-	const inputSchema = buildInputSchema(context, surface);
+	const inputSchema = buildInputSchema(context, options);
 
 	return createTool({
 		id: 'workflows',
-		description: getToolDescription(context, surface),
+		description: getToolDescription(context, options),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

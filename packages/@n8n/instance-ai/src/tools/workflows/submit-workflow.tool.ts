@@ -45,6 +45,10 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification?: boolean;
+	/** Workflow IDs referenced by Execute Workflow nodes in this submitted workflow. */
+	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
 	remediation?: RemediationMetadata;
@@ -89,6 +93,43 @@ export function isTriggerNodeType(nodeType: string | undefined): boolean {
 	if (!nodeType) return false;
 	if (KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType)) return true;
 	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function extractWorkflowIdParameter(value: unknown): string | undefined {
+	const rawValue = isRecord(value) ? value.value : value;
+	if (typeof rawValue !== 'string') return undefined;
+
+	const workflowId = rawValue.trim();
+	if (workflowId === '' || workflowId.startsWith('=')) return undefined;
+
+	return workflowId;
+}
+
+function shouldSkipReferencedWorkflow(source: unknown): boolean {
+	return typeof source === 'string' && source !== 'database';
+}
+
+export function getReferencedWorkflowIds(json: WorkflowJSON): string[] {
+	const referencedWorkflowIds: string[] = [];
+	const seen = new Set<string>();
+
+	for (const node of json.nodes ?? []) {
+		if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+		const parameters = isRecord(node.parameters) ? node.parameters : {};
+		if (shouldSkipReferencedWorkflow(parameters.source)) continue;
+
+		const workflowId = extractWorkflowIdParameter(parameters.workflowId);
+		if (!workflowId || seen.has(workflowId)) continue;
+
+		seen.add(workflowId);
+		referencedWorkflowIds.push(workflowId);
+	}
+
+	return referencedWorkflowIds;
 }
 
 /**
@@ -192,6 +233,10 @@ export const submitWorkflowOutputSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Workflow IDs referenced by Execute Workflow nodes in this submitted workflow. */
+	referencedWorkflowIds: z.array(z.string()).optional(),
 	remediation: z
 		.object({
 			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
@@ -489,6 +534,7 @@ export function createSubmitWorkflowTool(
 
 			// Scan node parameters for unresolved placeholder values
 			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+			const referencedWorkflowIds = getReferencedWorkflowIds(json);
 
 			await reportAttempt({
 				success: true,
@@ -503,6 +549,9 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				usesWorkflowPinDataForVerification:
+					hasMockedCredentials && mockResult.usesWorkflowPinDataForVerification ? true : undefined,
+				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
 			return {
@@ -518,6 +567,9 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				usesWorkflowPinDataForVerification:
+					hasMockedCredentials && mockResult.usesWorkflowPinDataForVerification ? true : undefined,
+				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				warnings:
 					informational.length > 0
 						? informational.map((w) => `[${w.code}]: ${w.message}`)

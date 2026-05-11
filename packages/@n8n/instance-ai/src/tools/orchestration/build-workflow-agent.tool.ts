@@ -52,14 +52,14 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { createCredentialsTool } from '../credentials.tool';
+import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
 import { buildCredentialSnapshot, type CredentialEntry } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import {
 	type SubmitWorkflowAttempt,
 	type SubmitWorkflowOutput,
 } from '../workflows/submit-workflow.tool';
-import { createWorkflowsTool } from '../workflows.tool';
+import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 interface BuilderMemoryBinding {
 	resource: string;
@@ -68,6 +68,53 @@ interface BuilderMemoryBinding {
 
 function createBuilderResourceId(userId: string): string {
 	return `${userId}:workflow-builder`;
+}
+
+const BUILDER_WORKFLOW_ACTIONS = [
+	'list',
+	'get',
+	'get-as-code',
+] as const satisfies readonly WorkflowAction[];
+
+const BUILDER_CREDENTIAL_ACTIONS = [
+	'list',
+	'get',
+	'search-types',
+	'test',
+] as const satisfies readonly CredentialAction[];
+
+// The builder owns its tool/action surface here. The generic tool factories only enforce
+// the action list they are given, which keeps agent policy out of shared tools.
+const BUILDER_SANDBOX_TOOL_NAMES = [
+	'nodes',
+	'workflows',
+	'credentials',
+	'executions',
+	'data-tables',
+	'ask-user',
+] as const;
+
+const BUILDER_TOOL_MODE_TOOL_NAMES = [
+	'build-workflow',
+	'nodes',
+	'workflows',
+	'data-tables',
+	'ask-user',
+] as const;
+
+function createBuilderWorkflowsTool(context: InstanceAiContext) {
+	return createWorkflowsTool(context, {
+		allowedActions: BUILDER_WORKFLOW_ACTIONS,
+		descriptionPrefix: 'Inspect workflows during build',
+	});
+}
+
+function createBuilderCredentialsTool(context: InstanceAiContext) {
+	return createCredentialsTool(context, {
+		allowedActions: BUILDER_CREDENTIAL_ACTIONS,
+		descriptionPrefix: 'Inspect credentials during build',
+		descriptionSuffix: 'Setup is handled after workflow verification.',
+	});
 }
 
 export function buildWarmBuilderFollowUp(input: {
@@ -185,6 +232,7 @@ function buildOutcome(
 	taskId: string,
 	attempt: SubmitWorkflowAttempt | undefined,
 	finalText: string,
+	supportingWorkflowIds: string[] = [],
 ): WorkflowBuildOutcome {
 	if (!attempt?.success) {
 		return {
@@ -222,6 +270,8 @@ function buildOutcome(
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		triggerNodes: attempt.triggerNodes,
 		verificationPinData: attempt.verificationPinData,
+		usesWorkflowPinDataForVerification: attempt.usesWorkflowPinDataForVerification,
+		supportingWorkflowIds: supportingWorkflowIds.length > 0 ? supportingWorkflowIds : undefined,
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		remediation: placeholderRemediation ?? attempt.remediation,
 		summary: finalText,
@@ -297,8 +347,16 @@ async function buildOutcomeWithLatestVerification(
 	taskId: string,
 	attempt: SubmitWorkflowAttempt | undefined,
 	finalText: string,
+	supportingWorkflowIds: string[] = [],
 ): Promise<WorkflowBuildOutcome> {
-	const outcome = buildOutcome(workItemId, context.runId, taskId, attempt, finalText);
+	const outcome = buildOutcome(
+		workItemId,
+		context.runId,
+		taskId,
+		attempt,
+		finalText,
+		supportingWorkflowIds,
+	);
 	return await finalBuildOutcome(context, workItemId, outcome);
 }
 
@@ -343,11 +401,6 @@ Before writing code that uses external services, **resolve real resource IDs**:
 - Do NOT use "primary", "default", or any assumed identifier — look up the actual value
 - Call \`nodes(action="suggested")\` early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
 - Check @builderHint annotations in node type definitions for critical configuration guidance
-
-### Publishing
-
-Do NOT call \`workflows(action="publish")\`. Publishing is outside the builder's scope. Your job ends at a successful submit and verification.
-Do not make publishing a blocker in the builder result; the orchestrator or user handles go-live decisions outside this build task.
 `;
 
 function hashContent(content: string | null): string {
@@ -414,6 +467,30 @@ function latestMainSubmit(
 	return undefined;
 }
 
+export function supportingWorkflowIdsFromSubmitAttempts(
+	submitAttempts: SubmitWorkflowAttempt[],
+	mainWorkflowPath: string,
+	mainWorkflowId: string | undefined,
+	referencedWorkflowIds: string[] = [],
+): string[] {
+	const seen = new Set<string>();
+	const referencedWorkflowIdSet = new Set(referencedWorkflowIds);
+	const supportingWorkflowIds: string[] = [];
+
+	for (const attempt of submitAttempts) {
+		if (!attempt.success || !attempt.workflowId) continue;
+		if (attempt.filePath === mainWorkflowPath) continue;
+		if (attempt.workflowId === mainWorkflowId) continue;
+		if (!referencedWorkflowIdSet.has(attempt.workflowId)) continue;
+		if (seen.has(attempt.workflowId)) continue;
+
+		seen.add(attempt.workflowId);
+		supportingWorkflowIds.push(attempt.workflowId);
+	}
+
+	return supportingWorkflowIds;
+}
+
 /**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
  * from the submit-attempt history so the orchestrator doesn't redo a build that
@@ -443,7 +520,19 @@ export function resultFromPostStreamError(input: {
 	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, attempt, text),
+		outcome: buildOutcome(
+			input.workItemId,
+			input.runId,
+			input.taskId,
+			attempt,
+			text,
+			supportingWorkflowIdsFromSubmitAttempts(
+				input.submitAttempts,
+				input.mainWorkflowPath,
+				attempt.workflowId,
+				attempt.referencedWorkflowIds,
+			),
+		),
 	};
 }
 
@@ -538,7 +627,19 @@ export function resultFromLaterFailedMainSubmit(input: {
 		`A later submit failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, preservedAttempt, text),
+		outcome: buildOutcome(
+			input.workItemId,
+			input.runId,
+			input.taskId,
+			preservedAttempt,
+			text,
+			supportingWorkflowIdsFromSubmitAttempts(
+				input.submitAttempts,
+				input.mainWorkflowPath,
+				preservedAttempt.workflowId,
+				preservedAttempt.referencedWorkflowIds,
+			),
+		),
 	};
 }
 
@@ -619,20 +720,11 @@ export async function startBuildWorkflowAgentTask(
 	if (useSandbox) {
 		const credentialSnapshot = await buildCredentialSnapshot(domainContext.credentialService);
 		availableCredentials = credentialSnapshot.list;
-		const builderWorkflowsTool = createWorkflowsTool(domainContext, 'builder');
-		const builderCredentialsTool = createCredentialsTool(domainContext, 'builder');
-
-		const toolNames = [
-			'nodes',
-			'workflows',
-			'credentials',
-			'executions',
-			'data-tables',
-			'ask-user',
-		];
+		const builderWorkflowsTool = createBuilderWorkflowsTool(domainContext);
+		const builderCredentialsTool = createBuilderCredentialsTool(domainContext);
 
 		builderTools = {};
-		for (const name of toolNames) {
+		for (const name of BUILDER_SANDBOX_TOOL_NAMES) {
 			if (context.domainTools[name]) {
 				builderTools[name] = context.domainTools[name];
 			}
@@ -645,22 +737,17 @@ export async function startBuildWorkflowAgentTask(
 	} else {
 		builderTools = {};
 
-		const toolNames = [
-			'build-workflow',
-			'nodes',
-			'workflows',
-			'data-tables',
-			'ask-user',
-			...(context.researchMode ? ['research'] : []),
-		];
+		const toolNames = context.researchMode
+			? [...BUILDER_TOOL_MODE_TOOL_NAMES, 'research']
+			: BUILDER_TOOL_MODE_TOOL_NAMES;
 		for (const name of toolNames) {
 			if (name in context.domainTools) {
 				builderTools[name] = context.domainTools[name];
 			}
 		}
 		if (domainContext) {
-			builderTools.workflows = createWorkflowsTool(domainContext, 'builder');
-			builderTools.credentials = createCredentialsTool(domainContext, 'builder');
+			builderTools.workflows = createBuilderWorkflowsTool(domainContext);
+			builderTools.credentials = createBuilderCredentialsTool(domainContext);
 		}
 
 		if (!builderTools['build-workflow']) {
@@ -868,6 +955,12 @@ export async function startBuildWorkflowAgentTask(
 											attempt.success
 												? 'Workflow submitted and ready for verification.'
 												: (attempt.errors?.join(' ') ?? 'Workflow submission failed.'),
+											supportingWorkflowIdsFromSubmitAttempts(
+												submitAttemptHistory,
+												mainWorkflowPath,
+												attempt.workflowId,
+												attempt.referencedWorkflowIds,
+											),
 										),
 									);
 								},
@@ -1069,6 +1162,12 @@ export async function startBuildWorkflowAgentTask(
 											taskId,
 											refreshedAttempt,
 											finalText,
+											supportingWorkflowIdsFromSubmitAttempts(
+												submitAttemptHistory,
+												mainWorkflowPath,
+												refreshedAttempt.workflowId,
+												refreshedAttempt.referencedWorkflowIds,
+											),
 										);
 										return {
 											text: finalText,
@@ -1139,6 +1238,12 @@ export async function startBuildWorkflowAgentTask(
 								taskId,
 								mainWorkflowAttempt,
 								finalText,
+								supportingWorkflowIdsFromSubmitAttempts(
+									submitAttemptHistory,
+									mainWorkflowPath,
+									mainWorkflowAttempt.workflowId,
+									mainWorkflowAttempt.referencedWorkflowIds,
+								),
 							);
 							return {
 								text: finalText,

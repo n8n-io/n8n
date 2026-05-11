@@ -298,7 +298,7 @@ export async function buildInProcess(
 			},
 			control: {
 				mode: 'auto',
-				waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
 					interactivity.autoApprovedSuspensions++;
 					traceCollector.markAutoApproved(requestId);
 					chunkLog?.write({ kind: 'auto-approve', requestId });

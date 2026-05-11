@@ -158,6 +158,18 @@ describe('getSystemPrompt', () => {
 				/Run verify even when `outcome\.mockedCredentialsByNode` is non-empty/,
 			);
 		});
+
+		it('does not require sidecar pin data when workflow pin data can verify mocked nodes', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('outcome.usesWorkflowPinDataForVerification');
+		});
+
+		it('publishes supporting sub-workflows before the main workflow when requested', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('outcome.supportingWorkflowIds');
+		});
 	});
 
 	describe('checkpoint branch — in-turn patch rule + retry carve-out', () => {

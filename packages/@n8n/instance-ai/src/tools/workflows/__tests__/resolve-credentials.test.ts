@@ -128,7 +128,7 @@ describe('resolveCredentials', () => {
 	});
 
 	describe('credential mocking with sidecar verification data', () => {
-		it('mocks unresolved credentials and preserves existing pinData', async () => {
+		it('mocks unresolved credentials and marks existing pinData as verification-ready', async () => {
 			const json = makeWorkflow({
 				nodes: [
 					{
@@ -156,8 +156,9 @@ describe('resolveCredentials', () => {
 			expect(json.pinData).toEqual({
 				Slack: [{ ok: true, channel: 'C123', message: { text: 'Hello' } }],
 			});
-			// No verification pin data needed — existing pinData suffices
+			// No sidecar pin data needed — existing workflow pinData suffices
 			expect(result.verificationPinData).toEqual({});
+			expect(result.usesWorkflowPinDataForVerification).toBe(true);
 		});
 
 		it('produces sidecar verification pinData when no existing pinData', async () => {
@@ -472,6 +473,7 @@ describe('resolveCredentials', () => {
 				Slack: [{ ok: true }],
 			});
 			expect(result.verificationPinData).toEqual({});
+			expect(result.usesWorkflowPinDataForVerification).toBe(true);
 		});
 	});
 

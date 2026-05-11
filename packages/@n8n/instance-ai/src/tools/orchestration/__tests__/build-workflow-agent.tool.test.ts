@@ -34,6 +34,7 @@ const {
 	createBuildWorkflowAgentTool,
 	buildWarmBuilderFollowUp,
 	mergeLatestVerificationIntoOutcome,
+	supportingWorkflowIdsFromSubmitAttempts,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
@@ -117,6 +118,7 @@ describe('buildWarmBuilderFollowUp', () => {
 		expect(briefing).toContain('Do NOT stop after a successful submit without verifying');
 		expect(briefing).toContain('verify-built-workflow');
 		expect(briefing).toContain('nodes(action="explore-resources")');
+		expect(briefing).not.toContain('workflows(action="publish")');
 		expect(briefing).toContain('<requested-change>');
 		expect(briefing).toContain('Change the Gmail recipient');
 	});
@@ -179,10 +181,17 @@ describe('resultFromPostStreamError', () => {
 	it('preserves the submitted workflow when the stream errors after a successful submit', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
 			{
+				filePath: '/home/daytona/workspace/chunks/fetch-weather.ts',
+				sourceHash: 'sub',
+				success: true,
+				workflowId: 'SUB_123',
+			},
+			{
 				filePath: MAIN_PATH,
 				sourceHash: 'abc',
 				success: true,
 				workflowId: 'WF_123',
+				referencedWorkflowIds: ['SUB_123'],
 			},
 		];
 
@@ -201,6 +210,7 @@ describe('resultFromPostStreamError', () => {
 			taskId: 'task_test',
 			workflowId: 'WF_123',
 			submitted: true,
+			supportingWorkflowIds: ['SUB_123'],
 		});
 		expect(result!.text).toContain('Unauthorized');
 	});
@@ -437,6 +447,57 @@ describe('resultFromPostStreamError', () => {
 				reason: 'mocked_credentials_or_placeholders',
 			},
 		});
+	});
+});
+
+describe('supportingWorkflowIdsFromSubmitAttempts', () => {
+	it('collects referenced successful non-main workflow IDs once in submit order', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: '/home/daytona/workspace/chunks/a.ts',
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'SUB_A',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/setup.ts',
+				sourceHash: 'setup',
+				success: true,
+				workflowId: 'SETUP_ONLY',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/b.ts',
+				sourceHash: 'b',
+				success: true,
+				workflowId: 'SUB_B',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/a.ts',
+				sourceHash: 'a2',
+				success: true,
+				workflowId: 'SUB_A',
+			},
+			{
+				filePath: '/home/daytona/workspace/chunks/failed.ts',
+				sourceHash: 'f',
+				success: false,
+				errors: ['failed'],
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'main',
+				success: true,
+				workflowId: 'WF_123',
+				referencedWorkflowIds: ['SUB_A', 'SUB_B'],
+			},
+		];
+
+		expect(
+			supportingWorkflowIdsFromSubmitAttempts(submitAttempts, MAIN_PATH, 'WF_123', [
+				'SUB_A',
+				'SUB_B',
+			]),
+		).toEqual(['SUB_A', 'SUB_B']);
 	});
 });
 

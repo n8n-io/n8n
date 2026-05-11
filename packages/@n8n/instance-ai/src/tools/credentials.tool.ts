@@ -125,8 +125,6 @@ const testAction = z.object({
 	credentialId: credentialIdField,
 });
 
-type CredentialsToolSurface = 'full' | 'builder';
-
 const CREDENTIAL_ACTION_SCHEMAS = {
 	list: listAction,
 	get: getAction,
@@ -136,8 +134,14 @@ const CREDENTIAL_ACTION_SCHEMAS = {
 	test: testAction,
 } as const;
 
-type CredentialAction = keyof typeof CREDENTIAL_ACTION_SCHEMAS;
+export type CredentialAction = keyof typeof CREDENTIAL_ACTION_SCHEMAS;
 type CredentialActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
+
+export interface CredentialsToolOptions {
+	allowedActions?: readonly CredentialAction[];
+	descriptionPrefix?: string;
+	descriptionSuffix?: string;
+}
 
 const CREDENTIAL_ACTION_ORDER = [
 	'list',
@@ -148,8 +152,6 @@ const CREDENTIAL_ACTION_ORDER = [
 	'test',
 ] as const satisfies readonly CredentialAction[];
 
-const BUILDER_CREDENTIAL_ACTION_BLOCKLIST = new Set<CredentialAction>(['delete', 'setup']);
-
 const CREDENTIAL_ACTION_LABELS = {
 	list: 'list',
 	get: 'get',
@@ -159,19 +161,36 @@ const CREDENTIAL_ACTION_LABELS = {
 	test: 'test connections',
 } satisfies Record<CredentialAction, string>;
 
-function getCredentialActions(surface: CredentialsToolSurface): CredentialAction[] {
-	const blockedActions = surface === 'builder' ? BUILDER_CREDENTIAL_ACTION_BLOCKLIST : undefined;
-	return CREDENTIAL_ACTION_ORDER.filter((action) => !blockedActions?.has(action));
+function getCredentialActions(options: CredentialsToolOptions): CredentialAction[] {
+	if (!options.allowedActions) return [...CREDENTIAL_ACTION_ORDER];
+
+	const allowedActions = new Set(options.allowedActions);
+	return CREDENTIAL_ACTION_ORDER.filter((action) => allowedActions.has(action));
 }
 
 function createCredentialInputSchema(actions: readonly CredentialAction[]) {
-	const actionSchemas = actions.map((action) => CREDENTIAL_ACTION_SCHEMAS[action]) as unknown as [
-		CredentialActionSchema,
-		CredentialActionSchema,
-		...CredentialActionSchema[],
-	];
+	const actionSchemas: CredentialActionSchema[] = actions.map(
+		(action) => CREDENTIAL_ACTION_SCHEMAS[action],
+	);
 
-	return sanitizeInputSchema(z.discriminatedUnion('action', actionSchemas));
+	if (actionSchemas.length === 0) {
+		throw new Error('Credentials tool requires at least one allowed action');
+	}
+
+	if (actionSchemas.length === 1) {
+		return sanitizeInputSchema(actionSchemas[0]);
+	}
+
+	return sanitizeInputSchema(
+		z.discriminatedUnion(
+			'action',
+			actionSchemas as [
+				CredentialActionSchema,
+				CredentialActionSchema,
+				...CredentialActionSchema[],
+			],
+		),
+	);
 }
 
 type Input =
@@ -182,8 +201,8 @@ type Input =
 	| z.infer<typeof setupAction>
 	| z.infer<typeof testAction>;
 
-function buildInputSchema(surface: CredentialsToolSurface) {
-	return createCredentialInputSchema(getCredentialActions(surface));
+function buildInputSchema(options: CredentialsToolOptions) {
+	return createCredentialInputSchema(getCredentialActions(options));
 }
 
 function formatActionList(actions: readonly CredentialAction[]): string {
@@ -194,14 +213,11 @@ function formatActionList(actions: readonly CredentialAction[]): string {
 	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
 }
 
-function getToolDescription(surface: CredentialsToolSurface): string {
-	const actionList = formatActionList(getCredentialActions(surface));
+function getToolDescription(options: CredentialsToolOptions): string {
+	const actionList = formatActionList(getCredentialActions(options));
+	const description = `${options.descriptionPrefix ?? 'Manage credentials'} — ${actionList}.`;
 
-	if (surface === 'builder') {
-		return `Inspect credentials during build — ${actionList}. Setup is handled after workflow verification.`;
-	}
-
-	return `Manage credentials — ${actionList}.`;
+	return options.descriptionSuffix ? `${description} ${options.descriptionSuffix}` : description;
 }
 
 // ── Suspend / resume schemas (superset covering delete + setup) ────────────
@@ -408,13 +424,13 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 
 export function createCredentialsTool(
 	context: InstanceAiContext,
-	surface: CredentialsToolSurface = 'full',
+	options: CredentialsToolOptions = {},
 ) {
-	const inputSchema = buildInputSchema(surface);
+	const inputSchema = buildInputSchema(options);
 
 	return createTool({
 		id: CREDENTIALS_TOOL_ID,
-		description: getToolDescription(surface),
+		description: getToolDescription(options),
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

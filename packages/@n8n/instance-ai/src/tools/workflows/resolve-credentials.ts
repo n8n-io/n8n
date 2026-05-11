@@ -54,6 +54,8 @@ export interface CredentialResolutionResult {
 	mockedCredentialsByNode: Record<string, string[]>;
 	/** Pin data for verification only — NEVER written to workflow JSON. */
 	verificationPinData: Record<string, Array<Record<string, unknown>>>;
+	/** True when mocked credential nodes can be skipped by existing workflow-level pin data. */
+	usesWorkflowPinDataForVerification: boolean;
 }
 
 /**
@@ -78,6 +80,7 @@ export async function resolveCredentials(
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
 	const verificationPinData: Record<string, Array<Record<string, unknown>>> = {};
+	let usesWorkflowPinDataForVerification = false;
 
 	// Build a map of existing credentials by node name (for updates)
 	const existingCredsByNode = new Map<string, Record<string, unknown>>();
@@ -128,7 +131,9 @@ export async function resolveCredentials(
 					// Produce sidecar verification pin data (never saved to workflow).
 					// If the workflow already has real pinData for this node, skip — the
 					// existing pinData will suffice for execution skipping.
-					if (!(json.pinData && nodeName in json.pinData)) {
+					if (json.pinData && nodeName in json.pinData) {
+						usesWorkflowPinDataForVerification = true;
+					} else {
 						verificationPinData[nodeName] ??= [];
 						if (verificationPinData[nodeName].length === 0) {
 							verificationPinData[nodeName].push({ _mockedCredential: key });
@@ -170,6 +175,7 @@ export async function resolveCredentials(
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
 		verificationPinData,
+		usesWorkflowPinDataForVerification,
 	};
 }
 

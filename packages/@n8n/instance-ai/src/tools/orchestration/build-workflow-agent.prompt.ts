@@ -465,7 +465,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 ### Step 2: Submit and test the chunk
 
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
-   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. Publishing is handled outside the builder after the user decides the workflow should go live.
+   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\`.
 2. Run the chunk: \`executions(action="run")\` with \`inputData\` matching the trigger schema.
    - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
    - **Event-based triggers** (e.g. Linear Trigger, GitHub Trigger, Slack Trigger): pass \`inputData\` matching what the trigger would normally emit. The system injects it as the trigger node's output — e.g. \`inputData: { action: "create", data: { id: "123", title: "Test issue" } }\` for a Linear Trigger. No need to rebuild the workflow with a Manual Trigger.
@@ -586,7 +586,6 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
 - **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/run/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
-- **Do NOT call \`workflows(action="publish")\`.** Publishing is outside the builder's scope. Your job ends at a successful submit and the required verification step.
 
 ## Mandatory Process
 
@@ -642,11 +641,11 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 5. **For each chunk**:
    a. Write the chunk to \`${workspaceRoot}/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
    b. Run tsc.
-   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\` (no publish needed for manual runs).
+   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\`.
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish and do not make publishing a blocker; the orchestrator or user handles go-live decisions outside the builder.
+8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

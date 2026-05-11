@@ -1,7 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
-import { createCredentialsTool } from '../credentials.tool';
+import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,9 +58,16 @@ function getDescription(tool: unknown): string {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('credentials tool', () => {
-	describe('surface filtering', () => {
-		it('should support setup on the full surface', () => {
-			const tool = createCredentialsTool(createMockContext(), 'full');
+	describe('action filtering', () => {
+		const builderCredentialActions = [
+			'list',
+			'get',
+			'search-types',
+			'test',
+		] as const satisfies readonly CredentialAction[];
+
+		it('should support setup by default', () => {
+			const tool = createCredentialsTool(createMockContext());
 			const schema = getInputSchema(tool);
 
 			expect(
@@ -72,8 +79,12 @@ describe('credentials tool', () => {
 			expect(getDescription(tool)).toContain('set up new credentials');
 		});
 
-		it('should describe only build-safe actions on the builder surface', () => {
-			const tool = createCredentialsTool(createMockContext(), 'builder');
+		it('should describe only explicitly allowed actions', () => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+				descriptionPrefix: 'Inspect credentials during build',
+				descriptionSuffix: 'Setup is handled after workflow verification.',
+			});
 
 			expect(getDescription(tool)).toContain('Inspect credentials during build');
 			expect(getDescription(tool)).not.toContain('delete');
@@ -85,8 +96,10 @@ describe('credentials tool', () => {
 			[{ action: 'get', credentialId: 'cred-1' }],
 			[{ action: 'search-types', query: 'slack' }],
 			[{ action: 'test', credentialId: 'cred-1' }],
-		])('should support %p on the builder surface', (input) => {
-			const tool = createCredentialsTool(createMockContext(), 'builder');
+		])('should support explicitly allowed action %p', (input) => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+			});
 			const schema = getInputSchema(tool);
 
 			expect(schema.safeParse(input).success).toBe(true);
@@ -100,8 +113,10 @@ describe('credentials tool', () => {
 				},
 			],
 			[{ action: 'delete', credentialId: 'cred-1' }],
-		])('should reject %p on the builder surface', (input) => {
-			const tool = createCredentialsTool(createMockContext(), 'builder');
+		])('should reject action %p when it is not explicitly allowed', (input) => {
+			const tool = createCredentialsTool(createMockContext(), {
+				allowedActions: builderCredentialActions,
+			});
 			const schema = getInputSchema(tool);
 
 			expect(schema.safeParse(input).success).toBe(false);

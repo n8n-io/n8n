@@ -2,7 +2,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../types';
 import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
-import { createWorkflowsTool } from '../workflows.tool';
+import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 jest.mock('../workflows/setup-workflow.service', () => ({
@@ -92,10 +92,16 @@ describe('workflows tool', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('surface filtering', () => {
-		it('should support get-as-code on full surface', async () => {
+	describe('action filtering', () => {
+		const builderWorkflowActions = [
+			'list',
+			'get',
+			'get-as-code',
+		] as const satisfies readonly WorkflowAction[];
+
+		it('should support get-as-code by default', async () => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 
 			const result = await tool.execute!(
 				{ action: 'get-as-code', workflowId: 'w1' } as never,
@@ -109,9 +115,12 @@ describe('workflows tool', () => {
 			});
 		});
 
-		it('should describe only build-safe actions on the builder surface', () => {
+		it('should describe only explicitly allowed actions', () => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'builder');
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+				descriptionPrefix: 'Inspect workflows during build',
+			});
 
 			expect(getDescription(tool)).toContain('Inspect workflows during build');
 			expect(getDescription(tool)).not.toContain('set up');
@@ -123,9 +132,11 @@ describe('workflows tool', () => {
 			[{ action: 'list' }],
 			[{ action: 'get', workflowId: 'w1' }],
 			[{ action: 'get-as-code', workflowId: 'w1' }],
-		])('should support %p on the builder surface', (input) => {
+		])('should support explicitly allowed action %p', (input) => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'builder');
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+			});
 			const schema = getInputSchema(tool);
 
 			expect(schema.safeParse(input).success).toBe(true);
@@ -141,13 +152,15 @@ describe('workflows tool', () => {
 			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
-		])('should reject %p on the builder surface', (input) => {
+		])('should reject action %p when it is not explicitly allowed', (input) => {
 			const context = createMockContext();
 			context.workflowService.listVersions = jest.fn();
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
 			context.workflowService.updateVersion = jest.fn();
-			const tool = createWorkflowsTool(context, 'builder');
+			const tool = createWorkflowsTool(context, {
+				allowedActions: builderWorkflowActions,
+			});
 			const schema = getInputSchema(tool);
 
 			expect(schema.safeParse(input).success).toBe(false);
@@ -162,7 +175,7 @@ describe('workflows tool', () => {
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!(
 				{ action: 'list-versions', workflowId: 'w1' } as never,
 				{} as never,
@@ -180,7 +193,7 @@ describe('workflows tool', () => {
 			context.workflowService.restoreVersion = jest.fn();
 			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!(
 				{
 					action: 'update-version',
@@ -203,7 +216,7 @@ describe('workflows tool', () => {
 			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
 			const suspend = jest.fn().mockResolvedValue(undefined);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!(
 				{
 					action: 'update-version',
@@ -236,7 +249,7 @@ describe('workflows tool', () => {
 			});
 			context.workflowService.updateVersion = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!(
 				{
 					action: 'update-version',
@@ -255,7 +268,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!(
 				{
 					action: 'update-version',
@@ -274,7 +287,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			context.workflowService.updateVersion = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!(
 				{
 					action: 'update-version',
@@ -310,7 +323,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as jest.Mock).mockResolvedValue(workflows);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'list', query: 'test', limit: 10 }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ limit: 10, query: 'test' });
@@ -321,7 +334,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'list', status: 'archived' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'archived' });
@@ -331,7 +344,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'list', status: 'all' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'all' });
@@ -354,7 +367,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.get as jest.Mock).mockResolvedValue(detail);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -368,7 +381,7 @@ describe('workflows tool', () => {
 				permissions: { deleteWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
@@ -386,7 +399,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -409,7 +422,7 @@ describe('workflows tool', () => {
 			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -423,7 +436,7 @@ describe('workflows tool', () => {
 		it('should archive when approved via resume', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
@@ -435,7 +448,7 @@ describe('workflows tool', () => {
 		it('should return denied when user rejects', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: false } },
 			} as never);
@@ -454,7 +467,7 @@ describe('workflows tool', () => {
 				permissions: { deleteWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
@@ -473,7 +486,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -501,7 +514,7 @@ describe('workflows tool', () => {
 			const suspension = { suspended: true };
 			const suspend = jest.fn().mockResolvedValue(suspension);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -513,7 +526,7 @@ describe('workflows tool', () => {
 		it('should unarchive when approved via resume', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
@@ -525,7 +538,7 @@ describe('workflows tool', () => {
 		it('should return denied when user rejects', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'unarchive', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: false } },
 			} as never);
@@ -545,7 +558,7 @@ describe('workflows tool', () => {
 				permissions: { publishWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
@@ -561,7 +574,7 @@ describe('workflows tool', () => {
 				activeVersionId: 'v2',
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
@@ -580,7 +593,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -608,7 +621,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -628,7 +641,7 @@ describe('workflows tool', () => {
 
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
 				agent: { resumeData: undefined },
 			} as never);
@@ -660,7 +673,7 @@ describe('workflows tool', () => {
 				connections: {},
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
 				agent: {
 					resumeData: {
@@ -682,7 +695,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
@@ -698,7 +711,7 @@ describe('workflows tool', () => {
 				permissions: { updateWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
 				agent: {
 					resumeData: {
@@ -718,7 +731,7 @@ describe('workflows tool', () => {
 		it('should unpublish when approved', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
@@ -735,7 +748,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = jest.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);

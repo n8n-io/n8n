@@ -148,6 +148,10 @@ export const workflowBuildOutcomeSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
+	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	remediation: remediationMetadataSchema.optional(),
