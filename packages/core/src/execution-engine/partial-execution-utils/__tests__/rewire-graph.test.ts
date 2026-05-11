@@ -148,7 +148,7 @@ describe('rewireGraph()', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const root = createNodeData({ name: 'root' });
 		const agentRequest = {
-			query: { some: 'query' },
+			query: { tool: { some: 'query' } },
 			tool: {
 				name: 'toolName',
 			},
@@ -168,8 +168,9 @@ describe('rewireGraph()', () => {
 			.values()
 			.next().value as INode;
 
-		expect(executorNode.parameters.query).toEqual(agentRequest.query);
+		expect(executorNode.parameters.query).toEqual(JSON.stringify(agentRequest.query));
 		expect(executorNode.parameters.toolName).toEqual(agentRequest.tool.name);
+		expect(executorNode.parameters.node).toEqual(tool.name);
 	});
 
 	it('rewires deeply nested tools', () => {

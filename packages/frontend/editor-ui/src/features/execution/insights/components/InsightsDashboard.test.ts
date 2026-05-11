@@ -71,7 +71,7 @@ const mockTelemetry = {
 	track: vi.fn(),
 };
 
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 
@@ -207,17 +207,17 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 const personalProject = createProjectListItem('personal');
 const teamProjects = Array.from({ length: 2 }, () => createProjectListItem('team'));
 const projects = [personalProject, ...teamProjects];
-const date = new Date(2000, 11, 19);
+const date = new Date('2000-12-19T00:00:00.000Z');
 
 // Test helper constants
 const DEFAULT_DATE_RANGE = {
-	startDate: '2000-12-13T00:00:00.000Z',
-	endDate: '2000-12-19T00:00:00.000Z',
+	startDate: new Date('2000-12-12T00:00:00.000Z'),
+	endDate: new Date('2000-12-19T00:00:00.000Z'),
 };
 
 const SINGLE_DAY_RANGE = {
-	startDate: '2000-12-19T00:00:00.000Z',
-	endDate: '2000-12-19T00:00:00.000Z',
+	startDate: new Date('2000-12-18T00:00:00.000Z'),
+	endDate: new Date('2000-12-19T00:00:00.000Z'),
 };
 
 const DEFAULT_TABLE_PARAMS = {
@@ -226,11 +226,7 @@ const DEFAULT_TABLE_PARAMS = {
 };
 
 // Helper functions
-const expectStoreExecutions = (params: {
-	summary?: object;
-	charts?: object;
-	table?: object;
-}) => {
+const expectStoreExecutions = (params: { summary?: object; charts?: object; table?: object }) => {
 	if (params.summary) {
 		expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, params.summary);
 	}
@@ -242,8 +238,8 @@ const expectStoreExecutions = (params: {
 	}
 };
 
-const openDatePicker = async (getByText: (text: string, options?: object) => HTMLElement) => {
-	const trigger = getByText('13 Dec - 19 Dec, 2000', { selector: 'button' });
+const openDatePicker = async (getByRole: (role: string, options?: object) => HTMLElement) => {
+	const trigger = getByRole('button', { name: '12 Dec - 19 Dec, 2000' });
 	expect(trigger).toBeInTheDocument();
 	await userEvent.click(trigger);
 
@@ -288,6 +284,8 @@ describe('InsightsDashboard', () => {
 		// Mock projects store
 		projectsStore.availableProjects = projects;
 		projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.globalProjectPermissions = { list: true };
 
 		// Mock async states
 		insightsStore.summary = {
@@ -387,17 +385,17 @@ describe('InsightsDashboard', () => {
 
 	describe('Date Range Selection', () => {
 		it('should update the selected time range', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 24 hours');
 			await userEvent.click(dayOption);
 
 			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
-				end_date: SINGLE_DAY_RANGE.endDate,
-				start_date: SINGLE_DAY_RANGE.startDate,
+				end_date: SINGLE_DAY_RANGE.endDate.toISOString(),
+				start_date: SINGLE_DAY_RANGE.startDate.toISOString(),
 				range_length_days: 1,
 				type: 'preset',
 			});
@@ -414,11 +412,11 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should show upgrade modal when unlicensed time range selected ', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 90 days');
 			await userEvent.click(dayOption);
 
@@ -426,6 +424,46 @@ describe('InsightsDashboard', () => {
 			expect(
 				screen.getByText(/Viewing this time period requires an enterprise plan/),
 			).toBeVisible();
+		});
+
+		it('should set start date to beginning of day for multi-day ranges', async () => {
+			// Set system time to Dec 19, 2000 at 14:30:45
+			const currentTime = new Date('2000-12-19T14:30:45.000Z');
+			vi.setSystemTime(currentTime);
+
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			vi.clearAllMocks();
+
+			const picker = await openDatePicker(getByRole);
+			// Select month option to get a multi-day range
+			const monthOption = within(picker).getByText('Last 30 days');
+			await userEvent.click(monthOption);
+
+			// For multi-day ranges ending today: start is midnight, end is current time
+			const expectedRange = {
+				startDate: new Date('2000-11-19T00:00:00.000Z'), // 30 days ago at midnight
+				endDate: currentTime, // Current time
+			};
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
+				end_date: expectedRange.endDate.toISOString(),
+				start_date: expectedRange.startDate.toISOString(),
+				range_length_days: 30,
+				type: 'preset',
+			});
+
+			expectStoreExecutions({
+				summary: expectedRange,
+				charts: expectedRange,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...expectedRange,
+				},
+			});
 		});
 	});
 
@@ -608,14 +646,14 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should combine project filter with date range changes', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
 			await selectProject(teamProjects[0].name);
 			vi.clearAllMocks();
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 24 hours');
 			await userEvent.click(dayOption);
 

@@ -3,10 +3,10 @@ import { computed, inject, ref, type StyleValue, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useEventListener } from '@vueuse/core';
-import { PopOutWindowKey } from '@/constants';
+import { PopOutWindowKey } from '@/app/constants';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import { N8nIcon, N8nInput } from '@n8n/design-system';
@@ -44,7 +44,7 @@ const popOutWindow = inject(PopOutWindowKey, undefined);
 const keyboardEventTarget = computed(() => popOutWindow?.value?.document ?? window.document);
 const focusReturnTo = ref<Element | null>(null);
 
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const search = ref(props.modelValue ?? '');
 const opened = ref(!!search.value);
 const placeholder = computed(() => {
@@ -163,32 +163,38 @@ watch(
 </script>
 
 <template>
-	<N8nInput
-		ref="inputRef"
-		data-test-id="ndv-search"
-		:class="{
-			[$style.ioSearch]: true,
-			[$style.ioSearchOpened]: opened,
-		}"
-		:style="style"
-		:model-value="search"
-		:placeholder="placeholder"
-		size="small"
-		@update:model-value="onSearchUpdate"
-		@focus="onFocus"
-		@blur="onBlur"
-	>
-		<template #prefix>
-			<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
-		</template>
-	</N8nInput>
+	<div data-test-id="ndv-search-container">
+		<N8nInput
+			ref="inputRef"
+			data-test-id="ndv-search"
+			:class="{
+				[$style.ioSearch]: true,
+				[$style.ioSearchOpened]: opened,
+			}"
+			:style="style"
+			:model-value="search"
+			:placeholder="placeholder"
+			size="small"
+			@update:model-value="onSearchUpdate"
+			@focus="onFocus"
+			@blur="onBlur"
+		>
+			<template #prefix>
+				<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
+			</template>
+		</N8nInput>
+	</div>
 </template>
 
 <style lang="scss" module>
-@use '@/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .ioSearch {
 	transition: max-width 0.3s $ease-out-expo;
+	--input--border-color: transparent;
+	--input--border-color--hover: transparent;
+	--input--border-color--focus: transparent;
+	--input--color--background: transparent;
 
 	.ioSearchIcon {
 		color: var(--color--foreground--shade-2);
@@ -196,31 +202,22 @@ watch(
 		vertical-align: middle;
 	}
 
-	:global(.el-input__prefix) {
-		left: 8px;
-	}
-
-	&:global(.el-input--prefix .el-input__inner) {
-		padding-left: 30px;
-	}
-
 	input {
-		border: 0;
 		opacity: 0;
-		background: transparent;
 		cursor: pointer;
 	}
 }
 
 .ioSearchOpened {
+	--input--border-color: var(--border-color);
+	--input--border-color--focus: var(--color--secondary);
+	--input--color--background: var(--color--foreground--tint-2);
+
 	.ioSearchIcon {
 		cursor: default;
 	}
 
 	input {
-		border: var(--input--border-color, var(--border-color))
-			var(--input--border-style, var(--border-style)) var(--border-width);
-		background: var(--input--color--background, var(--color--foreground--tint-2));
 		opacity: 1;
 		cursor: text;
 	}

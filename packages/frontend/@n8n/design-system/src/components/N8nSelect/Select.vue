@@ -160,6 +160,7 @@ defineExpose({
 .container {
 	display: inline-flex;
 	width: 100%;
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 }
 
 .withPrepend {
@@ -179,7 +180,7 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	padding: 0 var(--spacing--3xs);
-	background-color: var(--color--background--light-2);
+	background-color: var(--input--color--background);
 	border-bottom-left-radius: var(--input--radius, var(--radius));
 	border-top-left-radius: var(--input--radius, var(--radius));
 	color: var(--color--text);

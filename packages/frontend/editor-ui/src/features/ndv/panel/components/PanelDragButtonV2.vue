@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
-import Draggable from '@/components/Draggable.vue';
+import Draggable from '@/app/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
 defineProps<{
@@ -52,13 +52,13 @@ const onDragStart = () => {
 	cursor: ew-resize;
 	border: none;
 	outline: none;
-	background: var(--color--background--light-3);
+	background: var(--ndv--background--color);
 
 	display: flex;
 	align-items: baseline;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) var(--spacing--3xs) 0 var(--spacing--3xs);
-	color: var(--color--foreground--shade-1);
+	color: var(--color--foreground--shade-2);
 	border: var(--border);
 	border-bottom: none;
 	border-top-left-radius: var(--radius);

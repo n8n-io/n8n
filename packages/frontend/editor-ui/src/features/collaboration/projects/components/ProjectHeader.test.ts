@@ -8,12 +8,15 @@ import ProjectHeader from './ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { mock } from 'vitest-mock-extended';
+import type { IUser } from '@n8n/rest-api-client';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -31,6 +34,13 @@ vi.mock('vue-router', async () => {
 		}),
 	};
 });
+
+const trackClickedNewAgent = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent,
+	}),
+}));
 
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
@@ -55,6 +65,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
+			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value"></button>
 			</div>
@@ -76,6 +87,7 @@ let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let projectPages: ReturnType<typeof useProjectPages>;
+let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
@@ -83,6 +95,7 @@ describe('ProjectHeader', () => {
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		projectPages = useProjectPages();
 
@@ -163,6 +176,22 @@ describe('ProjectHeader', () => {
 		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
 	});
 
+	it('Personal: should render the correct title when currentProject is null but personalProject exists', async () => {
+		settingsStore.isDataTableFeatureEnabled = false;
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const { getByTestId, rerender } = renderComponent();
+		const personalSubtitle = 'Workflows and credentials owned by you';
+
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = { type: ProjectTypes.Personal } as Project;
+
+		await rerender({});
+
+		expect(getByTestId('project-name')).toHaveTextContent('Personal');
+		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
+	});
+
 	it('Team project: should render the correct title and no subtitle if there is no description', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
@@ -212,7 +241,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update permission', () => {
+	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -222,6 +251,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project editor has externalSecretsProvider:read scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);
@@ -256,6 +300,33 @@ describe('ProjectHeader', () => {
 		expect(mockPush).toHaveBeenCalledWith({
 			name: VIEWS.NEW_WORKFLOW,
 			query: { projectId: project.id },
+		});
+	});
+
+	describe('new agent telemetry', () => {
+		beforeEach(() => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			projectsStore.currentProject = createTestProject({ scopes: ['workflow:create'] });
+		});
+
+		it('tracks source=button when the agent main button is clicked', async () => {
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			await userEvent.click(getByTestId('add-resource-agent'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('button');
+		});
+
+		it('tracks source=dropdown when the agent action is selected from the dropdown', async () => {
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+			await waitFor(() => expect(getByTestId('action-agent')).toBeVisible());
+			await userEvent.click(getByTestId('action-agent'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
 		});
 	});
 
@@ -426,7 +497,7 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(3);
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
 		});
 
 		it('should pass empty array when no modules are active', () => {
@@ -526,6 +597,40 @@ describe('ProjectHeader', () => {
 					},
 				}),
 			);
+		});
+
+		it('should enable variable create button if project scope allows it', () => {
+			const project = createTestProject({
+				scopes: ['projectVariable:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(getByTestId('add-resource-variable')).toBeInTheDocument();
+			expect(getByTestId('add-resource-variable')).toBeEnabled();
+		});
+
+		it('should enable create variable button if global scope allows it', () => {
+			usersStore.currentUser = mock<IUser>({
+				globalScopes: ['variable:create'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(getByTestId('add-resource-variable')).toBeInTheDocument();
+			expect(getByTestId('add-resource-variable')).toBeEnabled();
+		});
+
+		it('should not enable variable create button if no scope allows it', () => {
+			const project = createTestProject({
+				scopes: [],
+			});
+			projectsStore.currentProject = project;
+
+			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(queryByTestId('add-resource-variable')).toBeDisabled();
 		});
 	});
 });

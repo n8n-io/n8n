@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref, type Ref } from 'vue';
 import { useAgGrid } from './useAgGrid';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import type {
 	GridApi,
 	GridReadyEvent,
@@ -15,7 +15,7 @@ import type {
 	IRowNode,
 } from 'ag-grid-community';
 
-vi.mock('@/composables/useClipboard', () => ({
+vi.mock('@/app/composables/useClipboard', () => ({
 	useClipboard: vi.fn((options) => {
 		return {
 			copy: vi.fn(async (text: string) => text),
@@ -729,6 +729,7 @@ describe('useAgGrid', () => {
 				api: mockGridApi as GridApi,
 				column: mockColumn,
 				rowIndex: 0,
+				node: { rowPinned: null },
 			} as unknown as CellClickedEvent;
 
 			onCellClicked(click);
@@ -754,6 +755,7 @@ describe('useAgGrid', () => {
 				api: mockGridApi as GridApi,
 				column: mockColumn,
 				rowIndex: 0,
+				node: { rowPinned: null },
 			} as unknown as CellClickedEvent;
 
 			onCellClicked(event);
@@ -777,8 +779,31 @@ describe('useAgGrid', () => {
 				api: mockGridApi as GridApi,
 				column: mockColumn,
 				rowIndex: 0,
+				node: { rowPinned: null },
 			} as unknown as CellClickedEvent;
 
+			onCellClicked(event);
+
+			expect(mockGridApi.startEditingCell).not.toHaveBeenCalled();
+		});
+
+		it('should not start editing when clicking a pinned row cell', () => {
+			const { onGridReady, onCellClicked } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			const mockColumn = {
+				getColId: () => 'name',
+				getColDef: () => ({ editable: true }),
+			} as unknown as Column;
+
+			const event = {
+				api: mockGridApi as GridApi,
+				column: mockColumn,
+				rowIndex: 0,
+				node: { rowPinned: 'bottom' },
+			} as unknown as CellClickedEvent;
+
+			onCellClicked(event);
 			onCellClicked(event);
 
 			expect(mockGridApi.startEditingCell).not.toHaveBeenCalled();
@@ -799,6 +824,7 @@ describe('useAgGrid', () => {
 				api: mockGridApi as GridApi,
 				column: mockColumn,
 				rowIndex: 0,
+				node: { rowPinned: null },
 			} as unknown as CellClickedEvent;
 
 			onCellClicked(event);

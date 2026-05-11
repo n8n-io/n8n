@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { resolveRequiredParameters } from '@/app/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type {
 	INode,
 	INodeParameters,
@@ -14,7 +14,8 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers } from 'n8n-workflow';
-import { computed, onMounted, reactive, watch } from 'vue';
+import { computed, inject, onMounted, reactive, watch } from 'vue';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
@@ -22,12 +23,12 @@ import {
 	fieldCannotBeDeleted,
 	isResourceMapperFieldListStale,
 	parseResourceMapperFieldName,
-} from '@/utils/nodeTypesUtils';
-import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
+} from '@/app/utils/nodeTypesUtils';
+import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '../ParameterInputFull.vue';
@@ -46,9 +47,10 @@ type Props = {
 };
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -82,6 +84,25 @@ const state = reactive({
 	hasStaleFields: false,
 	emptyFieldsNotice: '',
 });
+
+function getDefaultFieldValue(field?: ResourceMapperField): string | number | boolean | null {
+	if (!field) {
+		return null;
+	}
+
+	if (field.defaultValue !== undefined) {
+		return field.defaultValue;
+	}
+
+	// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+	// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+	// mode you get when the field exists, but is empty in `Fixed` mode.
+	if (field.type === 'boolean') {
+		return false;
+	}
+
+	return null;
+}
 
 // Reload fields to map when dependent parameters change
 watch(
@@ -288,6 +309,10 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
+		// Set default values after loading schema if value is empty
+		if (!state.paramValue.value || Object.keys(state.paramValue.value).length === 0) {
+			setDefaultFieldValues();
+		}
 		state.hasStaleFields = false;
 	} catch (error) {
 		state.loadingError = true;
@@ -297,7 +322,7 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
-const createRequestParams = (methodName: string) => {
+const createRequestParams = async (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
@@ -306,14 +331,16 @@ const createRequestParams = (methodName: string) => {
 			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveRequiredParameters(
+		currentNodeParameters: (await resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
-		) as INodeParameters,
+			expressionLocalResolveCtx?.value ?? {},
+		)) as INodeParameters,
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowsStore.workflowId,
 	};
 
 	return requestParams;
@@ -324,16 +351,15 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields: ResourceMapperFields | null = null;
-
 	if (typeof resourceMapperMethod === 'string') {
-		const requestParams = createRequestParams(
+		const requestParams = (await createRequestParams(
 			resourceMapperMethod,
-		) as ResourceMapperFieldsRequestDto;
+		)) as ResourceMapperFieldsRequestDto;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else if (typeof localResourceMapperMethod === 'string') {
-		const requestParams = createRequestParams(
+		const requestParams = (await createRequestParams(
 			localResourceMapperMethod,
-		) as ResourceMapperFieldsRequestDto;
+		)) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
@@ -388,17 +414,11 @@ function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
 			if (hideAllFields) {
 				field.removed = !field.required;
 			}
-			if (field.type === 'boolean') {
-				state.paramValue.value = {
-					...state.paramValue.value,
-					[field.id]: false,
-				};
-			} else {
-				state.paramValue.value = {
-					...state.paramValue.value,
-					[field.id]: null,
-				};
-			}
+
+			state.paramValue.value = {
+				...state.paramValue.value,
+				[field.id]: field.removed ? null : getDefaultFieldValue(field),
+			};
 		}
 	});
 	emitValueChanged();
@@ -508,12 +528,10 @@ function addField(name: string): void {
 	const schema = state.paramValue.schema;
 	const field = schema.find((f) => f.id === name);
 
+	const defaultValue = getDefaultFieldValue(field);
 	state.paramValue.value = {
 		...state.paramValue.value,
-		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
-		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
-		// mode you get when the field exists, but is empty in `Fixed` mode.
-		[name]: field?.type === 'boolean' ? false : null,
+		[name]: defaultValue,
 	};
 
 	if (field) {
@@ -524,7 +542,7 @@ function addField(name: string): void {
 }
 
 function addAllFields(): void {
-	const newValues: { [name: string]: null } = {};
+	const newValues: Record<string, string | number | boolean | null> = {};
 	state.paramValue.schema.forEach((field) => {
 		if (field.display && field.removed) {
 			newValues[field.id] = null;
@@ -644,9 +662,9 @@ defineExpose({
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="refresh-cw"
-					type="secondary"
 					:loading="state.refreshInProgress"
 					@click="initFetching(true)"
 				>

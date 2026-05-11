@@ -1,3 +1,4 @@
+import type { SecretProviderTypeResponse, SecretsProviderType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { AkeylessProvider } from './providers/akeyless';
@@ -5,6 +6,7 @@ import { AwsSecretsManager } from './providers/aws-secrets-manager';
 import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault';
 import { GcpSecretsManager } from './providers/gcp-secrets-manager/gcp-secrets-manager';
 import { InfisicalProvider } from './providers/infisical';
+import { OnePasswordProvider } from './providers/one-password';
 import { VaultProvider } from './providers/vault';
 import type { SecretsProvider } from './types';
 
@@ -17,6 +19,7 @@ export class ExternalSecretsProviders {
 		vault: VaultProvider,
 		azureKeyVault: AzureKeyVault,
 		gcpSecretsManager: GcpSecretsManager,
+		onePassword: OnePasswordProvider,
 	};
 
 	getProvider(name: string): { new (): SecretsProvider } {
@@ -29,5 +32,14 @@ export class ExternalSecretsProviders {
 
 	getAllProviders() {
 		return this.providers;
+	}
+
+	toProviderTypeResponse(provider: SecretsProvider): SecretProviderTypeResponse {
+		return {
+			type: provider.name as SecretsProviderType,
+			displayName: provider.displayName,
+			icon: provider.name,
+			properties: provider.properties,
+		};
 	}
 }

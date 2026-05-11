@@ -1,11 +1,17 @@
+import type { INodeListSearchResult } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { computed, shallowRef } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
+import { vi } from 'vitest';
 import {
 	TEST_MODEL_VALUE,
 	TEST_NODE_MULTI_MODE,
@@ -34,7 +40,7 @@ vi.mock('vue-router', async () => {
 		}),
 	};
 });
-vi.mock('@/composables/useWorkflowHelpers', () => {
+vi.mock('@/app/composables/useWorkflowHelpers', () => {
 	return {
 		useWorkflowHelpers: vi.fn(() => ({
 			resolveExpression: vi.fn().mockImplementation((val) => val),
@@ -42,7 +48,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => {
 		})),
 	};
 });
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -130,8 +136,9 @@ describe('ResourceLocator', () => {
 		const { getByTestId, getByText, getAllByTestId } = renderComponent();
 
 		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
-		// Click on the input to fetch resources
-		await userEvent.click(getByTestId('rlc-input'));
+		// Focus on the input to fetch resources (the dropdown opens on focus)
+		const input = getByTestId('rlc-input');
+		await fireEvent.focus(input);
 		// Wait for the resources to be fetched
 		await waitFor(() => {
 			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
@@ -243,7 +250,8 @@ describe('ResourceLocator', () => {
 
 		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('rlc-input'));
+		const input = getByTestId('rlc-input');
+		await fireEvent.focus(input);
 
 		expect(getByTestId('rlc-error-container')).toBeInTheDocument();
 		expect(getByTestId('permission-error-link')).toBeInTheDocument();
@@ -289,7 +297,8 @@ describe('ResourceLocator', () => {
 			getByTestId(`resource-locator-${TEST_PARAMETER_SKIP_CREDENTIALS_CHECK.name}`),
 		).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('rlc-input'));
+		const input = getByTestId('rlc-input');
+		await fireEvent.focus(input);
 
 		await waitFor(() => {
 			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
@@ -360,7 +369,8 @@ describe('ResourceLocator', () => {
 
 			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-			await userEvent.click(getByTestId('rlc-input'));
+			const input = getByTestId('rlc-input');
+			await fireEvent.focus(input);
 			await waitFor(() => {
 				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
 			});
@@ -386,7 +396,8 @@ describe('ResourceLocator', () => {
 
 			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-			await userEvent.click(getByTestId('rlc-input'));
+			const input = getByTestId('rlc-input');
+			await fireEvent.focus(input);
 
 			await waitFor(() => {
 				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
@@ -470,5 +481,539 @@ describe('ResourceLocator', () => {
 		);
 
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
+	});
+
+	it('falls back to workflow homeProject ID when currentProjectId is not available', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		projectsStore.currentProjectId = undefined as unknown as string;
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+
+		const mockWorkflowDocumentStore = shallowRef({
+			homeProject: { id: 'home-project-456', name: 'Test Project', type: 'team' },
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: mockWorkflowDocumentStore,
+				},
+			},
+		});
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'/projects/home-project-456/datatables/new',
+			'_blank',
+		);
+	});
+
+	it('clears cached resources after URL redirect so fresh data is fetched on re-open', async () => {
+		const TEST_ITEMS = [{ name: 'Old Table', value: 'old-table' }];
+		const TEST_ITEMS_UPDATED = [
+			{ name: 'Old Table', value: 'old-table' },
+			{ name: 'New Table', value: 'new-table' },
+		];
+
+		nodeTypesStore.getResourceLocatorResults
+			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
+			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
+
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				modelValue: { __rl: true, value: '', mode: 'list' },
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		// Open dropdown — first fetch returns old data
+		await fireEvent.focus(getByTestId('rlc-input'));
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledTimes(1);
+		});
+		expect(getByText('Old Table')).toBeInTheDocument();
+
+		// Click "Create new" — opens URL and clears cache
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		// Re-open dropdown — should fetch fresh data since cache was cleared
+		await fireEvent.focus(getByTestId('rlc-input'));
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledTimes(2);
+		});
+		expect(getByText('New Table')).toBeInTheDocument();
+	});
+
+	describe('slow load notice', () => {
+		it('should pass slowLoadNotice configuration to dropdown component', async () => {
+			vi.useFakeTimers();
+			const SLOW_LOAD_PARAMETER = {
+				...TEST_PARAMETER_SINGLE_MODE,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list' as const,
+						typeOptions: {
+							searchListMethod: 'getItems',
+							slowLoadNotice: {
+								message: 'This is taking longer than expected',
+								timeout: 500,
+							},
+						},
+					},
+				],
+			};
+
+			// Use a slow response to keep loading state
+			let resolvePromise: ((value: INodeListSearchResult) => void) | undefined;
+			nodeTypesStore.getResourceLocatorResults.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePromise = resolve;
+				}),
+			);
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: SLOW_LOAD_PARAMETER,
+					path: `parameters.${SLOW_LOAD_PARAMETER.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			// Focus to open dropdown - Focus triggers onInputFocus -> showResourceDropdown
+			// Use fireEvent instead of userEvent because userEvent doesn't work with fake timers
+			await fireEvent.focus(getByTestId('rlc-input'));
+			await vi.advanceTimersByTimeAsync(100);
+
+			// Advance time past the slowLoadNotice timeout (500ms)
+			await vi.advanceTimersByTimeAsync(600);
+
+			expect(queryByText('This is taking longer than expected')).toBeInTheDocument();
+
+			if (resolvePromise) {
+				resolvePromise({ results: [], paginationToken: null });
+			}
+			vi.useRealTimers();
+		}, 10000);
+
+		it('should not show notice when dropdown is not visible', async () => {
+			vi.useFakeTimers();
+			const SLOW_LOAD_PARAMETER = {
+				...TEST_PARAMETER_SINGLE_MODE,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list' as const,
+						typeOptions: {
+							searchListMethod: 'getItems',
+							slowLoadNotice: {
+								message: 'This is taking longer than expected',
+								timeout: 100,
+							},
+						},
+					},
+				],
+			};
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: SLOW_LOAD_PARAMETER,
+					path: `parameters.${SLOW_LOAD_PARAMETER.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			await vi.advanceTimersByTimeAsync(200);
+			expect(queryByText('This is taking longer than expected')).not.toBeInTheDocument();
+			vi.useRealTimers();
+		});
+
+		it('should hide notice when loading completes', async () => {
+			vi.useFakeTimers();
+			const SLOW_LOAD_PARAMETER = {
+				...TEST_PARAMETER_SINGLE_MODE,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list' as const,
+						typeOptions: {
+							searchListMethod: 'getItems',
+							slowLoadNotice: {
+								message: 'This is taking longer than expected',
+								timeout: 100,
+							},
+						},
+					},
+				],
+			};
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [{ name: 'Test Item', value: 'test-item' }],
+				paginationToken: null,
+			});
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: SLOW_LOAD_PARAMETER,
+					path: `parameters.${SLOW_LOAD_PARAMETER.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			// Focus to open dropdown
+			// Use fireEvent instead of userEvent because userEvent doesn't work with fake timers
+			await fireEvent.focus(getByTestId('rlc-input'));
+
+			// Allow time for loading to complete - the mock resolves immediately
+			await vi.advanceTimersByTimeAsync(200);
+
+			// Since the mock resolves immediately, the loading should be complete
+			// and the slow load notice should not be shown (timeout is 100ms, but loading finishes faster)
+			expect(queryByText('This is taking longer than expected')).not.toBeInTheDocument();
+			vi.useRealTimers();
+		});
+
+		it('should not show notice when slowLoadNotice is not configured', async () => {
+			vi.useFakeTimers();
+			let resolvePromise: ((value: INodeListSearchResult) => void) | undefined;
+			nodeTypesStore.getResourceLocatorResults.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePromise = resolve;
+				}),
+			);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_SINGLE_MODE,
+					path: `parameters.${TEST_PARAMETER_SINGLE_MODE.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			// Focus to open dropdown
+			// Use fireEvent instead of userEvent because userEvent doesn't work with fake timers
+			await fireEvent.focus(getByTestId('rlc-input'));
+
+			await vi.advanceTimersByTimeAsync(500);
+
+			const noticeContainer = document.querySelector('[class*="slowLoadNoticeContainer"]');
+			expect(noticeContainer).not.toBeInTheDocument();
+
+			if (resolvePromise) {
+				resolvePromise({ results: [], paginationToken: null });
+			}
+			vi.useRealTimers();
+		});
+	});
+
+	describe('credential change resets value', () => {
+		it('should reset value when node credentials change', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Change credentials on the node
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toEqual([
+				[
+					{
+						...modelValue,
+						cachedResultName: '',
+						cachedResultUrl: '',
+						value: '',
+					},
+				],
+			]);
+		});
+
+		it('should not reset value when credentials have not changed', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Re-render with same credentials but different parameter
+			await rerender({
+				node: {
+					...node,
+					parameters: { ...node.parameters, operation: 'list' },
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on initial mount', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node: TEST_NODE_MULTI_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset when value is already empty', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: '',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on first credential assignment', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			// Start with no credentials
+			const node = {
+				...TEST_NODE_MULTI_MODE,
+				credentials: undefined,
+			};
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Assign credentials for the first time
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '1234',
+							name: 'Test Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+	});
+
+	describe('ExpressionLocalResolveContext injection', () => {
+		const mockResolveExpression = vi.fn().mockImplementation((val) => val);
+		const mockResolveRequiredParameters = vi.fn().mockImplementation((_, params) => params);
+
+		beforeEach(() => {
+			vi.mocked(useWorkflowHelpers).mockReturnValue({
+				resolveExpression: mockResolveExpression,
+				resolveRequiredParameters: mockResolveRequiredParameters,
+			} as unknown as ReturnType<typeof useWorkflowHelpers>);
+		});
+
+		afterEach(() => {
+			mockResolveExpression.mockClear();
+			mockResolveRequiredParameters.mockClear();
+		});
+
+		it('passes injected context to resolveRequiredParameters when loading resources', async () => {
+			const testContext = { localResolve: true, nodeName: 'TestTool' };
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						[ExpressionLocalResolveContextSymbol as symbol]: computed(() => testContext),
+					},
+				},
+			});
+
+			const input = getByTestId('rlc-input');
+			await fireEvent.focus(input);
+
+			await waitFor(() => {
+				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					testContext,
+				);
+			});
+		});
+
+		it('passes empty object when no context is injected', async () => {
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const input = getByTestId('rlc-input');
+			await fireEvent.focus(input);
+
+			await waitFor(() => {
+				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					{},
+				);
+			});
+		});
+
+		it('passes injected context to resolveRequiredParameters when adding a resource', async () => {
+			const testContext = { localResolve: true, nodeName: 'TestTool' };
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+			nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_ADD_RESOURCE,
+					path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+				global: {
+					provide: {
+						[ExpressionLocalResolveContextSymbol as symbol]: computed(() => testContext),
+					},
+				},
+			});
+
+			await userEvent.click(getByTestId('rlc-input'));
+			await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+			await waitFor(() => {
+				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					testContext,
+				);
+			});
+		});
 	});
 });

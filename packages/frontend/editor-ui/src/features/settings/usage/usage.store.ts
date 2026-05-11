@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import type { UsageState } from '@n8n/api-types';
 import * as usageApi from '@n8n/rest-api-client/api/usage';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export type UsageTelemetry = {
 	instance_id: string;

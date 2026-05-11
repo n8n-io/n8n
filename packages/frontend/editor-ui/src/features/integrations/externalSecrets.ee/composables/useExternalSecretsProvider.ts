@@ -8,7 +8,7 @@ import type {
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 
 export function useExternalSecretsProvider(
 	provider:
@@ -86,7 +86,7 @@ export function useExternalSecretsProvider(
 			setConnectionState('error');
 
 			if (options.showError) {
-				toast.showError(error, 'Error', error.response?.data?.data.error);
+				toast.showError(error, 'Error', { message: error.response?.data?.data.error });
 			}
 
 			return 'error';

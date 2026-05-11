@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { IMPORT_CURL_MODAL_KEY } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
+import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton } from '@n8n/design-system';
 defineProps<{
@@ -19,10 +19,10 @@ function onImportCurlClicked() {
 <template>
 	<div :class="$style.importSection">
 		<N8nButton
-			type="secondary"
+			variant="subtle"
 			:label="i18n.baseText('importCurlParameter.label')"
 			:disabled="isReadOnly"
-			size="mini"
+			size="xsmall"
 			@click="onImportCurlClicked"
 		/>
 	</div>

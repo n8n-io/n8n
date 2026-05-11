@@ -1,16 +1,20 @@
 import type { Schema } from '@/Interface';
 import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useDataSchema } from '@/composables/useDataSchema';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { generateCodeForPrompt } from '@/api/ai';
+import { useDataSchema } from '@/app/composables/useDataSchema';
+import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
+import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type AskAiRequest } from '@/features/ai/assistant/assistant.types';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 export type TextareaRowData = {
 	rows: string[];
@@ -19,16 +23,17 @@ export type TextareaRowData = {
 
 export function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { workflowObject, getNodeByName } = useWorkflowsStore();
+	const { workflowId } = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
-	if (!activeNode || !workflowObject) return [];
+	if (!activeNode) return [];
 
-	return workflowObject
+	return workflowDocumentStore
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 

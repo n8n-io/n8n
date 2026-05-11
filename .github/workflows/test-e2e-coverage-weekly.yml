@@ -1,0 +1,93 @@
+name: 'Test: E2E Coverage Weekly'
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Every Monday at 2 AM
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  prepare-docker:
+    name: Prepare Docker (coverage)
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      build-variant: coverage
+      runner: blacksmith-8vcpu-ubuntu-2204
+    secrets: inherit
+
+  e2e:
+    name: E2E (coverage)
+    needs: prepare-docker
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:coverage
+      workers: '1'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      timeout-minutes: 45
+      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""}]'
+    secrets: inherit
+
+  aggregate:
+    name: Aggregate Coverage
+    needs: e2e
+    if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Download shard artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: e2e-shard-*
+          path: /tmp/shards/
+
+      - name: Collect coverage JSON
+        shell: bash
+        run: |
+          mkdir -p packages/testing/playwright/.nyc_output/coverage
+          found=$(find /tmp/shards -path '*/.nyc_output/coverage/*.json' 2>/dev/null | wc -l)
+          echo "Found $found coverage JSON files across shards"
+          find /tmp/shards -path '*/.nyc_output/coverage/*.json' \
+            -exec cp {} packages/testing/playwright/.nyc_output/coverage/ \;
+          ls -la packages/testing/playwright/.nyc_output/coverage/ || true
+
+      - name: Generate Coverage Report
+        run: pnpm --filter n8n-playwright coverage:report
+
+      - name: Upload Coverage Report Artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-report
+          path: packages/testing/playwright/coverage/
+          retention-days: 14
+
+      - name: Upload E2E Coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/testing/playwright/coverage/lcov.info
+          flags: frontend-e2e
+          name: playwright-e2e
+          fail_ci_if_error: false
+
+      - name: Analyse Coverage Gaps
+        if: always()
+        env:
+          CODECOV_API_TOKEN: ${{ secrets.CODECOV_API_TOKEN }}
+        run: |
+          node packages/testing/playwright/scripts/coverage-analysis.mjs \
+            --md --top=15 --out-json=coverage-gaps.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Gap Report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-gap-report
+          path: coverage-gaps.json
+          retention-days: 21

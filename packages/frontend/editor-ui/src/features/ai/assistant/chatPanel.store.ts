@@ -1,17 +1,25 @@
 import { computed, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute } from 'vue-router';
-import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/constants';
-import type { VIEWS } from '@/constants';
+import {
+	ASK_AI_SLIDE_IN_DURATION_MS,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
+} from '@/app/constants';
+import type { VIEWS } from '@/app/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
+import { useI18n } from '@n8n/i18n';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
@@ -33,6 +41,23 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
+	const posthogStore = usePostHog();
+	const locale = useI18n();
+
+	let openTimerId: ReturnType<typeof setTimeout> | null = null;
+
+	const isMergeAskBuildEnabled = computed(
+		() =>
+			posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name) &&
+			settingsStore.isAiAssistantEnabled &&
+			useBuilderStore().isAIBuilderEnabled,
+	);
+
+	/** When merge is enabled, redirect assistant mode requests to builder */
+	function resolveMode(mode: ChatPanelMode): ChatPanelMode {
+		return mode === 'assistant' && isMergeAskBuildEnabled.value ? 'builder' : mode;
+	}
 
 	// Computed
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
@@ -45,11 +70,16 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	);
 
 	// Actions
-	async function open(options?: { mode?: ChatPanelMode }) {
-		const mode = options?.mode;
+	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
+		if (!settingsStore.isAiAssistantOrBuilderEnabled) return;
+
+		const mode = options?.mode ? resolveMode(options.mode) : undefined;
+		const showCoachmark = options?.showCoachmark ?? true;
+
 		if (mode) {
 			chatPanelStateStore.activeMode = mode;
 		}
+		chatPanelStateStore.showCoachmark = showCoachmark;
 
 		// Check if the mode is enabled in the current view
 		const enabledViews =
@@ -68,10 +98,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
-			builderStore.chatMessages = [];
-			// Load credits and sessions in the background without blocking panel opening
-			void builderStore.fetchBuilderCredits();
-			void builderStore.loadSessions();
+			if (!builderStore.streaming) {
+				void builderStore.fetchBuilderCredits();
+				void builderStore.loadSessions();
+			}
 		} else if (chatPanelStateStore.activeMode === 'assistant') {
 			const assistantStore = useAssistantStore();
 			assistantStore.chatMessages = assistantStore.chatMessages.map((msg) => ({
@@ -79,15 +109,24 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-		// Update UI grid dimensions when opening
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatPanelStateStore.width,
-		};
+		// Wait for slide animation to finish before updating grid width
+		if (openTimerId) clearTimeout(openTimerId);
+		openTimerId = setTimeout(() => {
+			openTimerId = null;
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}, ASK_AI_SLIDE_IN_DURATION_MS);
 	}
 
 	function close() {
+		if (openTimerId) {
+			clearTimeout(openTimerId);
+			openTimerId = null;
+		}
 		chatPanelStateStore.isOpen = false;
+		chatPanelStateStore.showCoachmark = false;
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -96,15 +135,11 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			};
 
 			const assistantStore = useAssistantStore();
-			const builderStore = useBuilderStore();
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
-				assistantStore.resetAssistantChat();
+				assistantStore.resetAssistantChat(workflowsStore.workflowId);
 			}
-
-			// Always reset builder
-			builderStore.resetBuilderChat();
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
@@ -117,8 +152,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	}
 
 	function switchMode(mode: ChatPanelMode) {
+		const resolved = resolveMode(mode);
+
 		// Check if the mode is enabled in the current view
-		const enabledViews = mode === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
+		const enabledViews = resolved === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
 		const currentRoute = route?.name;
 
 		if (!isEnabledView(currentRoute, enabledViews)) {
@@ -128,7 +165,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		}
 
 		// Switch the mode without re-initialization
-		chatPanelStateStore.activeMode = mode;
+		chatPanelStateStore.activeMode = resolved;
+		chatPanelStateStore.showCoachmark = false;
 	}
 
 	function updateWidth(newWidth: number) {
@@ -146,8 +184,17 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	 * Opens assistant with credential help context
 	 */
 	async function openWithCredHelp(credentialType: ICredentialType) {
+		if (isMergeAskBuildEnabled.value) {
+			const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
+				interpolate: { credentialName: credentialType.displayName },
+			});
+			await open({ mode: 'builder' });
+			const builderStore = useBuilderStore();
+			await builderStore.sendChatMessage({ text: question, helpMessage: true });
+			return;
+		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initCredHelp(credentialType);
+		await assistantStore.initCredHelp(workflowsStore.workflowId, credentialType);
 		await open({ mode: 'assistant' });
 	}
 
@@ -155,8 +202,17 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	 * Opens assistant with error helper context
 	 */
 	async function openWithErrorHelper(context: ChatRequest.ErrorContext) {
+		if (isMergeAskBuildEnabled.value) {
+			const errorText = locale.baseText('aiAssistant.builder.errorHelpMessage', {
+				interpolate: { nodeName: context.node.name, errorMessage: context.error.message },
+			});
+			await open({ mode: 'builder' });
+			const builderStore = useBuilderStore();
+			await builderStore.sendChatMessage({ text: errorText, helpMessage: true });
+			return;
+		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper(workflowsStore.workflowId, context);
 		await open({ mode: 'assistant' });
 	}
 
@@ -164,10 +220,25 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	watch(
 		() => route?.name,
 		(newRoute) => {
-			if (!chatPanelStateStore.isOpen || !newRoute) {
+			if (!newRoute) {
 				return;
 			}
+
 			const builderStore = useBuilderStore();
+
+			// Re-open panel if streaming and entering a builder view
+			if (
+				!chatPanelStateStore.isOpen &&
+				builderStore.streaming &&
+				isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)
+			) {
+				void open({ mode: 'builder' });
+				return;
+			}
+
+			if (!chatPanelStateStore.isOpen) {
+				return;
+			}
 
 			const enabledViews =
 				chatPanelStateStore.activeMode === 'assistant'
@@ -176,8 +247,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			if (!isEnabledView(newRoute, enabledViews)) {
 				close();
-			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)) {
-				// If entering an editable canvas view with builder mode active, refresh state
+			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS) && !builderStore.streaming) {
 				builderStore.resetBuilderChat();
 			}
 		},
@@ -188,6 +258,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		isOpen: computed(() => chatPanelStateStore.isOpen),
 		width: computed(() => chatPanelStateStore.width),
 		activeMode: computed(() => chatPanelStateStore.activeMode),
+		showCoachmark: computed(() => chatPanelStateStore.showCoachmark),
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,

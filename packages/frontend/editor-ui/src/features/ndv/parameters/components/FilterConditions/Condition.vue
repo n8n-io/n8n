@@ -11,9 +11,10 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { computedAsync, until } from '@vueuse/core';
 import OperatorSelect from './OperatorSelect.vue';
-import { type FilterOperatorId } from './constants';
+import { type FilterOperatorId, DEFAULT_OPERATOR_BY_TYPE } from './constants';
 import {
 	getFilterOperator,
 	handleOperatorChange,
@@ -22,7 +23,8 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
-import { useDebounce } from '@/composables/useDebounce';
+import type { ConditionResult } from './types';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -57,7 +59,7 @@ const { debounce } = useDebounce();
 const condition = ref<FilterConditionValue>(props.condition);
 
 const operatorId = computed<FilterOperatorId>(() => {
-	const { type, operation } = props.condition.operator;
+	const { type, operation } = condition.value.operator;
 	return `${type}:${operation}` as FilterOperatorId;
 });
 const operator = computed(() => getFilterOperator(operatorId.value));
@@ -70,13 +72,33 @@ const isEmpty = computed(() => {
 	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
 });
 
-const conditionResult = computed(() =>
-	resolveCondition({ condition: condition.value, options: props.options }),
+const isEvaluatingCondition = ref(false);
+const conditionResult = computedAsync<ConditionResult>(
+	async () => {
+		// Access nested properties to ensure deep change tracking
+		const currentCondition = condition.value;
+		void currentCondition.leftValue;
+		void currentCondition.rightValue;
+		void currentCondition.operator;
+		const currentOptions = props.options;
+
+		return await resolveCondition({
+			condition: currentCondition,
+			options: currentOptions,
+		});
+	},
+	{ status: 'resolve_error' },
+	{ evaluating: isEvaluatingCondition },
 );
 
 const suggestedType = computed(() => {
 	if (conditionResult.value.status !== 'resolve_error') {
-		return inferOperatorType(conditionResult.value.resolved.leftValue);
+		let inferenceValue = conditionResult.value.resolved.leftValue;
+		if (inferenceValue === '') {
+			inferenceValue = conditionResult.value.resolved.rightValue;
+		}
+
+		return inferOperatorType(inferenceValue);
 	}
 
 	return 'any';
@@ -145,6 +167,54 @@ const onRemove = (): void => {
 const onBlur = (): void => {
 	debouncedEmitUpdate();
 };
+
+const setSuggestedType = (): void => {
+	const type = suggestedType.value;
+
+	const newOperatorId = DEFAULT_OPERATOR_BY_TYPE[type];
+
+	if (newOperatorId) {
+		onOperatorChange(newOperatorId);
+	}
+};
+
+const onLeftValueDrop = async (droppedExpression: string): Promise<void> => {
+	condition.value.leftValue = droppedExpression;
+	// Wait for the condition result computation to complete before inferring the type
+	await nextTick();
+	await until(isEvaluatingCondition).toBe(false);
+	setSuggestedType();
+};
+
+const onRightValueDrop = async (droppedExpression: string): Promise<void> => {
+	condition.value.rightValue = droppedExpression;
+
+	// Wait for the condition result computation to complete before inferring the type
+	await nextTick();
+	await until(isEvaluatingCondition).toBe(false);
+
+	// Only auto-switch operator if the default operator for the dropped type
+	// is compatible with the right side (not single-value and right type matches)
+	const inferredType = suggestedType.value;
+	const defaultOperatorId = DEFAULT_OPERATOR_BY_TYPE[inferredType];
+
+	if (defaultOperatorId) {
+		const defaultOperator = getFilterOperator(defaultOperatorId);
+		const expectedRightType = defaultOperator.rightType ?? defaultOperator.type;
+
+		// Only switch if operator accepts a right value AND the right type matches exactly
+		if (!defaultOperator.singleValue && expectedRightType === inferredType) {
+			setSuggestedType();
+		}
+	}
+};
+
+watch(
+	() => props.condition,
+	() => {
+		condition.value = props.condition;
+	},
+);
 </script>
 
 <template>
@@ -156,18 +226,16 @@ const onBlur = (): void => {
 		data-test-id="filter-condition"
 	>
 		<N8nIconButton
+			variant="ghost"
 			v-if="canDrag && !readOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			v-if="canRemove && !readOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="trash-2"
 			data-test-id="filter-remove-condition"
@@ -179,11 +247,11 @@ const onBlur = (): void => {
 			<template #left>
 				<ParameterInputFull
 					v-if="!fixedLeftValue"
-					:key="leftParameter.type"
 					display-options
 					hide-label
 					hide-hint
 					hide-issues
+					options-position="top-absolute"
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
 					:value="condition.leftValue"
@@ -192,6 +260,7 @@ const onBlur = (): void => {
 					data-test-id="filter-condition-left"
 					@update="onLeftValueChange"
 					@blur="onBlur"
+					@drop="onLeftValueDrop"
 				/>
 			</template>
 			<template #middle>
@@ -202,15 +271,14 @@ const onBlur = (): void => {
 					@operator-change="onOperatorChange"
 				></OperatorSelect>
 			</template>
-			<template v-if="!operator.singleValue" #right="{ breakpoint }">
+			<template v-if="!operator.singleValue" #right="{ isStacked }">
 				<ParameterInputFull
-					:key="rightParameter.type"
 					display-options
 					hide-label
 					hide-hint
 					hide-issues
+					:options-position="isStacked ? 'bottom' : 'top-absolute'"
 					:is-read-only="readOnly"
-					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="rightParameter"
 					:value="condition.rightValue"
 					:path="`${path}.rightValue`"
@@ -218,6 +286,7 @@ const onBlur = (): void => {
 					data-test-id="filter-condition-right"
 					@update="onRightValueChange"
 					@blur="onBlur"
+					@drop="onRightValueDrop"
 				/>
 			</template>
 		</InputTriple>
@@ -268,7 +337,7 @@ const onBlur = (): void => {
 
 .status {
 	align-self: flex-start;
-	padding-top: 28px;
+	padding-top: var(--spacing--2xs);
 }
 
 .iconButton {
@@ -280,9 +349,9 @@ const onBlur = (): void => {
 }
 
 .defaultTopPadding {
-	top: var(--spacing--md);
+	top: 0;
 }
 .extraTopPadding {
-	top: calc(14px + var(--spacing--md));
+	top: var(--spacing--sm);
 }
 </style>

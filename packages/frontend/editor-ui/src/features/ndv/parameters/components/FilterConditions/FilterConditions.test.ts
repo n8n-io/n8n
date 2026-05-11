@@ -1,17 +1,26 @@
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import FilterConditions from './FilterConditions.vue';
-import { STORES } from '@n8n/stores';
+import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within, waitFor } from '@testing-library/vue';
-import { getFilterOperator } from './utils';
+import { cleanup, waitFor, within } from '@testing-library/vue';
 import get from 'lodash/get';
-import * as workFlowHelpers from '@/composables/useWorkflowHelpers';
-import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
-import type { FilterTypeOptions, FilterValue } from 'n8n-workflow';
+import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-workflow';
+import FilterConditions from './FilterConditions.vue';
+import { getFilterOperator } from './utils';
+import { flushPromises } from '@vue/test-utils';
 
+vi.mock('vue-router');
+
+const DEFAULT_OPTIONS: FilterOptionsValue = {
+	caseSensitive: true,
+	leftValue: '',
+	typeValidation: 'loose',
+	version: 2,
+};
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
 		initialState: {
@@ -30,16 +39,21 @@ const DEFAULT_SETUP = {
 			credentials: {},
 			disabled: false,
 		},
-		parameter: createTestNodeProperties({ name: 'conditions', displayName: 'Conditions' }),
-		value: {} as FilterValue,
+		parameter: createTestNodeProperties({
+			name: 'conditions',
+			displayName: 'Conditions',
+		}),
 	},
 } satisfies RenderOptions<typeof FilterConditions>;
 
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
 describe('FilterConditions.vue', () => {
-	afterEach(() => {
+	beforeEach(cleanup);
+
+	afterEach(async () => {
 		vi.clearAllMocks();
+		await flushPromises();
 	});
 
 	it('renders default state properly', async () => {
@@ -59,12 +73,7 @@ describe('FilterConditions.vue', () => {
 			props: {
 				...DEFAULT_SETUP.props,
 				value: {
-					options: {
-						caseSensitive: true,
-						leftValue: '',
-						typeValidation: 'loose',
-						version: 2,
-					},
+					options: DEFAULT_OPTIONS,
 					conditions: [
 						{
 							id: '1',
@@ -109,9 +118,9 @@ describe('FilterConditions.vue', () => {
 		expect(within(conditions[0]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.tags }}',
 		);
-		expect(
-			within(conditions[0]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('contains');
+		expect(within(conditions[0]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'contains',
+		);
 		expect(
 			within(conditions[0]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue('exotic');
@@ -120,18 +129,18 @@ describe('FilterConditions.vue', () => {
 		expect(within(conditions[1]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.meta }}',
 		);
-		expect(
-			within(conditions[1]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is not empty');
+		expect(within(conditions[1]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is not empty',
+		);
 		expect(within(conditions[1]).queryByTestId('filter-condition-right')).not.toBeInTheDocument();
 
 		// string:equals
 		expect(within(conditions[2]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.name }}',
 		);
-		expect(
-			within(conditions[2]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is equal to');
+		expect(within(conditions[2]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is equal to',
+		);
 		expect(
 			within(conditions[2]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue('John');
@@ -140,9 +149,9 @@ describe('FilterConditions.vue', () => {
 		expect(within(conditions[3]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.tags }}',
 		);
-		expect(
-			within(conditions[3]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('length greater than or equal to');
+		expect(within(conditions[3]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'length greater than or equal to',
+		);
 		expect(
 			within(conditions[3]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue(5);
@@ -296,12 +305,7 @@ describe('FilterConditions.vue', () => {
 			props: {
 				...DEFAULT_SETUP.props,
 				value: {
-					options: {
-						caseSensitive: true,
-						leftValue: '',
-						typeValidation: 'loose',
-						version: 2,
-					},
+					options: DEFAULT_OPTIONS,
 					conditions: [
 						{
 							id: '1',
@@ -394,7 +398,7 @@ describe('FilterConditions.vue', () => {
 			expect(right.querySelector('input')).toBeDisabled();
 
 			const operatorSelect = within(condition).getByTestId('filter-operator-select');
-			expect(operatorSelect.querySelector('input')).toBeDisabled();
+			expect(operatorSelect.querySelector('button')).toBeDisabled();
 		}
 	});
 
@@ -444,18 +448,18 @@ describe('FilterConditions.vue', () => {
 		expect(
 			within(conditions[0]).getByTestId('filter-condition-left').querySelector('input'),
 		).toHaveValue('quz');
-		expect(
-			within(conditions[0]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is not equal to');
+		expect(within(conditions[0]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is not equal to',
+		);
 		expect(
 			within(conditions[0]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue('qux');
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-left').querySelector('input'),
 		).toHaveValue(5);
-		expect(
-			within(conditions[1]).getByTestId('filter-operator-select').querySelector('input'),
-		).toHaveValue('is greater than');
+		expect(within(conditions[1]).getByTestId('filter-operator-select')).toHaveTextContent(
+			'is greater than',
+		);
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue(6);
@@ -482,7 +486,7 @@ describe('FilterConditions.vue', () => {
 		// No emission on initial render
 		expect(emitted('valueChanged')).toBeUndefined();
 
-		vi.spyOn(workFlowHelpers, 'resolveParameter').mockReturnValue({ caseSensitive: false });
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({ caseSensitive: false });
 
 		// Change caseSensitive and also change node.parameters to trigger the watcher
 		await rerender({
@@ -504,5 +508,45 @@ describe('FilterConditions.vue', () => {
 
 		const events = emitted('valueChanged') ?? [];
 		expect(get(events[0], '0.value.options.caseSensitive')).toBe(false);
+	});
+
+	it('should auto-change operator type when dropping a value', async () => {
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({
+			leftValue: 42,
+			rightValue: 42,
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: {
+					conditions: [
+						{
+							id: '1',
+							leftValue: '',
+							rightValue: '',
+							operator: getFilterOperator('string:equals'),
+						},
+					],
+					combinator: 'and',
+				} as Partial<FilterValue> as FilterValue,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
+		});
+
+		// Wait for async type inference to complete
+		await waitFor(() => {
+			expect(get(emitted('valueChanged'), '0.0.value.conditions.0.operator.type')).toBe('number');
+		});
 	});
 });

@@ -15,6 +15,7 @@ import type {
 	ProjectRole,
 	Scope,
 } from '@n8n/permissions';
+import type { Request } from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -50,6 +51,11 @@ export namespace ListQuery {
 	};
 }
 
+export function appendListQueryOptions(req: Request, options: ListQuery.Options) {
+	const listReq = req as ListQuery.Request;
+	listReq.listQueryOptions = { ...listReq.listQueryOptions, ...options };
+}
+
 // ----------------------------------
 //            list query
 // ----------------------------------
@@ -72,6 +78,8 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;

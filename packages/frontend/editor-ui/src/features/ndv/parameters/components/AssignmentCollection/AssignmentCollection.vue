@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
@@ -10,14 +11,14 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { computed, inject, reactive, useTemplateRef, watch } from 'vue';
-import DropArea from '@/components/DropArea/DropArea.vue';
+import DropArea from '@/app/components/DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from '../../utils/assignmentCollection.utils';
-import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import Draggable from 'vuedraggable';
 import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
@@ -45,17 +46,21 @@ const i18n = useI18n();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const dropAreaContainer = useTemplateRef('dropArea');
 
-const state = reactive<{ paramValue: AssignmentCollectionValue }>({
-	paramValue: {
+function createParamValue(value: AssignmentCollectionValue): AssignmentCollectionValue {
+	return {
 		assignments:
-			props.value.assignments?.map((assignment) => {
+			value.assignments?.map((assignment) => {
 				if (!assignment.id) assignment.id = crypto.randomUUID();
 				return assignment;
 			}) ?? [],
-	},
+	};
+}
+
+const state = reactive<{ paramValue: AssignmentCollectionValue }>({
+	paramValue: createParamValue(props.value),
 });
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
@@ -82,14 +87,27 @@ const actions = computed(() => {
 	];
 });
 
-watch(state.paramValue, (value) => {
-	void callDebounced(
-		() => {
-			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
-		},
-		{ debounceTime: 1000 },
-	);
-});
+watch(
+	() => props.node,
+	() => {
+		const newParamValue = createParamValue(props.value);
+		if (isEqual(state.paramValue, newParamValue)) return;
+		state.paramValue = newParamValue;
+	},
+);
+
+watch(
+	() => state.paramValue,
+	(value) => {
+		void callDebounced(
+			() => {
+				emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
+			},
+			{ debounceTime: 1000 },
+		);
+	},
+	{ deep: true },
+);
 
 function addAssignment(): void {
 	state.paramValue.assignments.push({
@@ -100,12 +118,13 @@ function addAssignment(): void {
 	});
 }
 
-function dropAssignment(expression: string): void {
+async function dropAssignment(expression: string): Promise<void> {
+	const type = props.defaultType ?? (await typeFromExpression(expression));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: props.defaultType ?? typeFromExpression(expression),
+		type,
 	});
 }
 

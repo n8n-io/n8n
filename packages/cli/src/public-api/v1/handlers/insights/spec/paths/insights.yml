@@ -1,0 +1,42 @@
+get:
+  x-eov-operation-id: getInsightsSummary
+  x-eov-operation-handler: v1/handlers/insights/insights.handler
+  tags:
+    - Insights
+  summary: Retrieve insights summary
+  description: Retrieve the insights summary for the selected date range.
+  parameters:
+    - name: startDate
+      in: query
+      required: false
+      description: ISO 8601 start date. Defaults to 7 days ago.
+      schema:
+        type: string
+        format: date-time
+    - name: endDate
+      in: query
+      required: false
+      description: ISO 8601 end date. Defaults to now.
+      schema:
+        type: string
+        format: date-time
+    - name: projectId
+      in: query
+      required: false
+      description: Project identifier to filter insights by project.
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/insights.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

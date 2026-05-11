@@ -6,7 +6,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
+import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
 import type { NodeFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -270,6 +270,151 @@ describe('NodesListPanel', () => {
 			expect(screen.queryByText('Node 1')).toBeInTheDocument();
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
+		});
+	});
+
+	describe('openingContext', () => {
+		it('should have null openingContext by default', () => {
+			getWrapperComponent(() => {
+				const nodeCreatorStore = useNodeCreatorStore();
+				const { setMergeNodes } = nodeCreatorStore;
+
+				setMergeNodes([
+					mockSimplifiedNodeType({
+						name: 'Test Node',
+						displayName: 'Test Node',
+						group: ['input'],
+					}),
+				]);
+
+				expect(nodeCreatorStore.openingContext).toBeNull();
+				return {};
+			});
+		});
+
+		it('should maintain openingContext when set to "replacement"', async () => {
+			getWrapperComponent(() => {
+				const nodeCreatorStore = useNodeCreatorStore();
+				const { setMergeNodes } = nodeCreatorStore;
+
+				setMergeNodes([
+					mockSimplifiedNodeType({
+						name: 'Test Node',
+						displayName: 'Test Node',
+						group: ['input'],
+					}),
+				]);
+
+				// Simulate setting context when replacing a node
+				nodeCreatorStore.openingContext = 'replacement';
+				expect(nodeCreatorStore.openingContext).toBe('replacement');
+				return {};
+			});
+
+			await nextTick();
+		});
+
+		it('should allow resetting openingContext back to null', async () => {
+			getWrapperComponent(() => {
+				const nodeCreatorStore = useNodeCreatorStore();
+				const { setMergeNodes } = nodeCreatorStore;
+
+				setMergeNodes([
+					mockSimplifiedNodeType({
+						name: 'Test Node',
+						displayName: 'Test Node',
+						group: ['input'],
+					}),
+				]);
+
+				// Set context
+				nodeCreatorStore.openingContext = 'replacement';
+				expect(nodeCreatorStore.openingContext).toBe('replacement');
+
+				// Reset context (simulating node creator close)
+				nodeCreatorStore.openingContext = null;
+				expect(nodeCreatorStore.openingContext).toBeNull();
+				return {};
+			});
+
+			await nextTick();
+		});
+
+		it('should preserve openingContext during node search when in replacement mode', async () => {
+			const mockedNodes = [...Array(10).keys()].map(
+				(n) =>
+					mockSimplifiedNodeType({
+						name: `Node ${n}`,
+						displayName: `Node ${n}`,
+						group: ['input'],
+					}) as INodeTypeDescription,
+			);
+
+			const wrapperComponent = defineComponent({
+				components: {
+					NodesListPanel,
+				},
+				props: {
+					nodeTypes: {
+						type: Array as PropType<INodeTypeDescription[]>,
+						required: true,
+					},
+					selectedView: {
+						type: String as PropType<NodeFilterType>,
+						default: REGULAR_NODE_CREATOR_VIEW,
+						required: false,
+					},
+				},
+				setup(props) {
+					const nodeCreatorStore = useNodeCreatorStore();
+					const { setMergeNodes, setSelectedView } = nodeCreatorStore;
+
+					// Set replacement context
+					nodeCreatorStore.openingContext = 'replacement';
+
+					watch(
+						() => props.nodeTypes,
+						(nodeTypes: INodeTypeDescription[]) => {
+							setMergeNodes([...nodeTypes]);
+						},
+						{ immediate: true },
+					);
+					watch(
+						() => props.selectedView,
+						(selectedView: NodeFilterType) => {
+							setSelectedView(selectedView);
+						},
+						{ immediate: true },
+					);
+
+					return { nodeCreatorStore };
+				},
+				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
+			});
+
+			const renderComponent = createComponentRenderer(wrapperComponent);
+
+			renderComponent({
+				pinia: createPinia(),
+				props: {
+					nodeTypes: mockedNodes,
+					selectedView: REGULAR_NODE_CREATOR_VIEW,
+				},
+			});
+
+			await nextTick();
+
+			const nodeCreatorStore = useNodeCreatorStore();
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
+
+			// Perform search
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: 'Node 5' },
+			});
+			await nextTick();
+
+			// Context should still be 'replacement' after search
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
 		});
 	});
 });

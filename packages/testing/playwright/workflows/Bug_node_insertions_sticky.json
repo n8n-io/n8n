@@ -1,0 +1,146 @@
+{
+	"name": "Bug - node insertions",
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [1472, 736],
+			"id": "16e710d5-b78b-4e57-b044-bc00f0a19dfd",
+			"name": "Loop Over Items"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1696, 736],
+			"id": "3caf8c4e-c605-4939-bd4d-12c20025f9ed",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1904, 736],
+			"id": "02cf7192-ce83-4efd-a45d-8ef0f85d24d4",
+			"name": "A"
+		},
+		{
+			"parameters": {
+				"content": "## Note for A",
+				"height": 224,
+				"width": 160
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1872, 672],
+			"typeVersion": 1,
+			"id": "f0cd8fa7-4838-49e1-a428-a7109ebc48ad",
+			"name": "Note for A"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1904, 976],
+			"id": "b51783d1-9ee8-424e-a2f0-a64189920aed",
+			"name": "C"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1472, 1008],
+			"id": "e0a704c5-4796-456c-b58a-1b8ef0394877",
+			"name": "C1"
+		},
+		{
+			"parameters": {
+				"content": "Insert here",
+				"width": 150,
+				"color": 3
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1776, 704],
+			"typeVersion": 1,
+			"id": "e246f382-08ca-4a55-bb2e-af1140c8b15d",
+			"name": "Sticky Note14"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "C",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"C": {
+			"main": [
+				[
+					{
+						"node": "C1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"C1": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"binaryMode": "separate",
+		"availableInMCP": false
+	},
+	"versionId": "cfab06c6-1663-4cb5-b6f8-0d1150d0e7d7",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0113851022152b5a0ec6c5db30b5953a2e16759b15b7f941dc4f60ecce106633"
+	},
+	"id": "gNUjNMHkr4jvR2MIrzu78",
+	"tags": []
+}

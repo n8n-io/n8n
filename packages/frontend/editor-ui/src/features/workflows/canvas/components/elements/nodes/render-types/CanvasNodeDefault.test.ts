@@ -1,13 +1,11 @@
-import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import {
 	createCanvasNodeProvide,
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -49,10 +47,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
-	const workflowsStore = useWorkflowsStore();
 	nodeTypesStore = mockedStore(useNodeTypesStore);
-	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-	workflowsStore.workflowObject = workflowObject;
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 });
 
@@ -415,5 +410,81 @@ describe('CanvasNodeDefault', () => {
 		await fireEvent.dblClick(getByText('Test Node'));
 
 		expect(emitted()).toHaveProperty('activate');
+	});
+
+	describe('placeholder node', () => {
+		it('should emit "replace:node" event when placeholder node is double-clicked', async () => {
+			const nodeId = 'placeholder-node-id';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			expect(emitted()).toHaveProperty('replace:node');
+			expect(emitted('replace:node')?.[0]).toEqual([nodeId]);
+		});
+
+		it('should emit "replace:node" instead of "activate" when placeholder node is double-clicked', async () => {
+			const nodeId = 'placeholder-node-id-2';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			// Placeholder nodes should emit replace:node, not activate
+			expect(emitted()).toHaveProperty('replace:node');
+			expect(emitted()).not.toHaveProperty('activate');
+			expect(emitted('replace:node')?.[0]).toEqual([nodeId]);
+		});
+
+		it('should not emit "replace:node" when non-placeholder node is clicked', async () => {
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: false },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.click(getByText('Test Node'));
+
+			expect(emitted()).not.toHaveProperty('replace:node');
+		});
 	});
 });

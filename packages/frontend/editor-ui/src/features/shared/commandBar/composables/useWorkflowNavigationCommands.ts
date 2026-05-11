@@ -3,21 +3,22 @@ import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import debounce from 'lodash/debounce';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CommandGroup, CommandBarItem } from '../types';
-import { useTagsStore } from '@/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
@@ -35,6 +36,7 @@ export function useWorkflowNavigationCommands(options: {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 	const sourceControlStore = useSourceControlStore();
@@ -78,23 +80,41 @@ export function useWorkflowNavigationCommands(options: {
 			const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === trimmedLower);
 
 			// Search workflows by name with minimal fields
-			const nameSearchPromise = workflowsStore.searchWorkflows({
-				name: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived'],
+			const nameSearchPromise = workflowsListStore.searchWorkflows({
+				query: trimmed,
+				select: ['id', 'name', 'versionId', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
-					? workflowsStore.searchWorkflows({
+					? workflowsListStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
-							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder', 'isArchived'],
+							select: [
+								'id',
+								'name',
+								'versionId',
+								'nodes',
+								'ownedBy',
+								'parentFolder',
+								'isArchived',
+								'description',
+							],
 						})
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
-				? workflowsStore.searchWorkflows({
+				? workflowsListStore.searchWorkflows({
 						tags: [matchedTag.name],
-						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder', 'isArchived'],
+						select: [
+							'id',
+							'name',
+							'versionId',
+							'ownedBy',
+							'tags',
+							'parentFolder',
+							'isArchived',
+							'description',
+						],
 					})
 				: Promise.resolve([]);
 
@@ -219,7 +239,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const createWorkflowCommand = (workflow: IWorkflowDb): CommandBarItem => {
+	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -242,6 +262,10 @@ export function useWorkflowNavigationCommands(options: {
 		const workflowName = workflow.name;
 		keywords = [...keywords, workflowName];
 
+		if (workflow.description) {
+			keywords = [...keywords, workflow.description];
+		}
+
 		if (workflow.tags && workflow.tags.length > 0) {
 			keywords = [
 				...keywords,
@@ -251,24 +275,34 @@ export function useWorkflowNavigationCommands(options: {
 
 		const suffix = getWorkflowProjectSuffix(workflow);
 
+		const name = workflow.name || i18n.baseText('commandBar.workflows.unnamed');
+		const title = isRoot
+			? i18n.baseText('generic.openResource', {
+					interpolate: { resource: name },
+				})
+			: name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.workflows')
+			: i18n.baseText('commandBar.workflows.open');
+
 		return {
 			id: workflow.id,
+			matchAnySearchTerm: !isRoot,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
-					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+					title,
 					suffix,
 					...(suffix ? { suffixIcon: getProjectIcon(workflow) } : {}),
-					actionText: i18n.baseText('generic.open'),
 				},
 			},
-			section: i18n.baseText('commandBar.sections.workflows'),
+			section,
 			...(keywords.length > 0 ? { keywords } : {}),
 			...(icon ? { icon } : {}),
 			handler: () => {
 				const targetRoute = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflow.id },
+					params: { workflowId: workflow.id },
 				});
 				window.location.href = targetRoute.fullPath;
 			},
@@ -276,14 +310,14 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.length <= 2 || !workflowsStore.canViewWorkflows) {
 			return [];
 		}
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -318,20 +352,24 @@ export function useWorkflowNavigationCommands(options: {
 		};
 		return [
 			...(hasCreatePermission ? [newWorkflowCommand] : []),
-			{
-				id: ITEM_ID.OPEN_WORKFLOW,
-				title: i18n.baseText('commandBar.workflows.open'),
-				section: i18n.baseText('commandBar.sections.workflows'),
-				placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
-				children: openWorkflowCommands.value,
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'arrow-right',
-						color: 'text-light',
-					},
-				},
-			},
+			...(workflowsStore.canViewWorkflows
+				? [
+						{
+							id: ITEM_ID.OPEN_WORKFLOW,
+							title: i18n.baseText('commandBar.workflows.open'),
+							section: i18n.baseText('commandBar.sections.workflows'),
+							placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
+							children: openWorkflowCommands.value,
+							icon: {
+								component: N8nIcon,
+								props: {
+									icon: 'arrow-right',
+									color: 'text-light',
+								},
+							},
+						},
+					]
+				: []),
 			...rootWorkflowItems.value,
 		];
 	});
@@ -342,7 +380,7 @@ export function useWorkflowNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInWorkflowParent || isRootWithQuery) {
-			isLoading.value = isInWorkflowParent;
+			isLoading.value = true;
 			void fetchWorkflowsDebounced(trimmed);
 		}
 	}
@@ -354,6 +392,7 @@ export function useWorkflowNavigationCommands(options: {
 			isLoading.value = true;
 			void fetchWorkflowsImpl('');
 		} else if (to === null) {
+			isLoading.value = false;
 			workflowResults.value = [];
 			workflowKeywords.value.clear();
 			workflowMatchedNodeTypes.value.clear();

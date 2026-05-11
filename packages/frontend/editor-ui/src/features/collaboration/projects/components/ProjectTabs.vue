@@ -2,16 +2,16 @@
 import { ref, watch, computed } from 'vue';
 import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
-import { processDynamicTabs, type DynamicTabOptions } from '@/utils/modules/tabUtils';
+import { processDynamicTabs, type DynamicTabOptions } from '@/app/utils/modules/tabUtils';
 
 import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
 import { ProjectTypes } from '../projects.types';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;
@@ -116,7 +116,15 @@ const options = computed<Array<TabOptions<string>>>(() => {
 
 	if (props.additionalTabs?.length) {
 		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);
-		tabs.push(...processedAdditionalTabs);
+		for (const processed of processedAdditionalTabs) {
+			const { insertAfter, ...tab } = processed;
+			const anchorIndex = insertAfter ? tabs.findIndex((t) => t.value === insertAfter) : -1;
+			if (anchorIndex !== -1) {
+				tabs.splice(anchorIndex + 1, 0, tab);
+			} else {
+				tabs.push(tab);
+			}
+		}
 	}
 
 	if (props.showSettings) {

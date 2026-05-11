@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';

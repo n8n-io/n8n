@@ -21,6 +21,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
+	const ssoManagedByEnv = ref(false);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -37,6 +38,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const initialize = (options: {
 		authenticationMethod: UserManagementAuthenticationMethod;
+		managedByEnv?: boolean;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
@@ -52,6 +54,7 @@ export const useSSOStore = defineStore('sso', () => {
 		};
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
+		ssoManagedByEnv.value = options.managedByEnv ?? false;
 
 		isEnterpriseLdapEnabled.value = options.features.ldap;
 		if (options.config.ldap) {
@@ -88,7 +91,6 @@ export const useSSOStore = defineStore('sso', () => {
 		get: () => saml.value.loginEnabled,
 		set: (value: boolean) => {
 			saml.value.loginEnabled = value;
-			void toggleLoginEnabled(value);
 		},
 	});
 
@@ -98,21 +100,21 @@ export const useSSOStore = defineStore('sso', () => {
 		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
 	);
 
-	const toggleLoginEnabled = async (enabled: boolean) =>
-		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
-
 	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
 
 	const getSamlConfig = async () => {
 		const config = await ssoApi.getSamlConfig(rootStore.restApiContext);
 		samlConfig.value = config;
+		saml.value.loginEnabled = config.loginEnabled;
+		saml.value.loginLabel = config.loginLabel;
 		return config;
 	};
 
 	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
 		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
 
-	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
+	const testSamlConfig = async (config: Partial<SamlPreferences>) =>
+		await ssoApi.testSamlConfig(rootStore.restApiContext, config);
 
 	/**
 	 * OIDC
@@ -136,6 +138,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
+		oidc.value.loginEnabled = config.loginEnabled;
 		return config;
 	};
 
@@ -144,6 +147,8 @@ export const useSSOStore = defineStore('sso', () => {
 		oidcConfig.value = savedConfig;
 		return savedConfig;
 	};
+
+	const testOidcConfig = async () => await ssoApi.testOidcConfig(rootStore.restApiContext);
 
 	const isOidcLoginEnabled = computed({
 		get: () => oidc.value.loginEnabled,
@@ -210,6 +215,7 @@ export const useSSOStore = defineStore('sso', () => {
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,
+		ssoManagedByEnv,
 
 		saml,
 		samlConfig,
@@ -228,6 +234,7 @@ export const useSSOStore = defineStore('sso', () => {
 		isDefaultAuthenticationOidc,
 		getOidcConfig,
 		saveOidcConfig,
+		testOidcConfig,
 
 		ldap,
 		isLdapLoginEnabled,

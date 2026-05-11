@@ -5,11 +5,11 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import { AGENT_NODE_TYPE, OPEN_AI_NODE_TYPE, WIKIPEDIA_TOOL_NODE_TYPE } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { AGENT_NODE_TYPE, OPEN_AI_NODE_TYPE, WIKIPEDIA_TOOL_NODE_TYPE } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
 import RunDataAi from './RunDataAi.vue';
@@ -47,7 +47,7 @@ describe('RunDataAi', () => {
 	// - Second run involves a model call and a tool usage
 	const executionResponse = createTestWorkflowExecutionResponse({
 		workflowData: workflow,
-		data: {
+		data: createRunExecutionData({
 			resultData: {
 				runData: {
 					a0: [
@@ -85,13 +85,13 @@ describe('RunDataAi', () => {
 					],
 				},
 			},
-		},
+		}),
 	});
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflowExecutionData = executionResponse;
+		workflowsStore.setWorkflowExecutionData(executionResponse);
 	});
 
 	it('should render the log that belong to given run index', async () => {

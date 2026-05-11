@@ -11,7 +11,14 @@ import {
 import { WithCreatedAt } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
-export type DependencyType = 'credential' | 'nodeType' | 'webhookPath' | 'workflowCall';
+export type DependencyType =
+	| 'credentialId'
+	| 'dataTableId'
+	| 'errorWorkflow'
+	| 'nodeType'
+	| 'webhookPath'
+	| 'workflowCall'
+	| 'workflowIndexed';
 
 @Entity({ name: 'workflow_dependency' })
 export class WorkflowDependency extends WithCreatedAt {
@@ -33,8 +40,17 @@ export class WorkflowDependency extends WithCreatedAt {
 	workflowVersionId: number;
 
 	/**
+	 * The published version ID, if this dependency belongs to a published workflow version.
+	 * - NULL = draft dependency (current behavior)
+	 * - UUID value = published version dependency (the activeVersionId)
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Index()
+	publishedVersionId: string | null;
+
+	/**
 	 * The type of the dependency.
-	 * credential | nodeType | webhookPath | workflowCall
+	 * credentialId | dataTableId | errorWorkflow | nodeType | webhookPath | workflowCall | workflowIndexed
 	 */
 	@Column({ length: 32 })
 	@Index()
@@ -42,7 +58,7 @@ export class WorkflowDependency extends WithCreatedAt {
 
 	/**
 	 * The ID of the dependency, interpreted based on the dependency type.
-	 * E.g., for 'credential' it would be the credential ID, for 'nodeType' the node type name, etc.
+	 * E.g., for 'credentialId' it would be the credential ID, for 'nodeType' the node type name, etc.
 	 */
 	@Column({ length: 255 })
 	@Index()

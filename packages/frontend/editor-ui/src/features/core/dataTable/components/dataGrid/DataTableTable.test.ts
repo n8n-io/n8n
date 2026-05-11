@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -12,8 +13,9 @@ interface MockComponentInstance {
 vi.mock('ag-grid-vue3', () => ({
 	AgGridVue: {
 		name: 'AgGridVue',
-		template: '<div data-test-id="ag-grid-vue" />',
-		props: ['rowData', 'columnDefs', 'defaultColDef', 'domLayout', 'animateRows', 'theme'],
+		template:
+			"<div data-test-id=\"ag-grid-vue\" :data-row-selection=\"rowSelection && typeof rowSelection === 'object' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? 'enabled' : 'disabled'\" />",
+		props: ['rowData', 'columnDefs', 'domLayout', 'animateRows', 'theme', 'rowSelection'],
 		emits: ['gridReady'],
 		mounted(this: MockComponentInstance) {
 			this.$emit('gridReady', {
@@ -71,20 +73,21 @@ vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnPopover.vue', ()
 }));
 
 // Mock composables
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
 	}),
 }));
 
+const setCurrentPageMock = vi.fn();
 vi.mock('@/features/core/dataTable/composables/useDataTablePagination', () => ({
 	useDataTablePagination: () => ({
 		totalItems: 0,
 		setTotalItems: vi.fn(),
 		ensureItemOnPage: vi.fn(),
 		currentPage: 1,
-		setCurrentPage: vi.fn(),
+		setCurrentPage: setCurrentPageMock,
 	}),
 }));
 
@@ -180,6 +183,100 @@ describe('DataTableTable', () => {
 			});
 
 			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
+		});
+	});
+
+	describe('Search behavior', () => {
+		it('resets to first page when search changes', async () => {
+			const { rerender } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					search: '',
+				},
+			});
+
+			await rerender({
+				dataTable: mockDataTable,
+				search: 'john',
+			});
+
+			await waitFor(() => {
+				expect(setCurrentPageMock).toHaveBeenCalledWith(1);
+			});
+		});
+	});
+
+	describe('Read-only behavior', () => {
+		it('should render component when readOnly is true', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					readOnly: true,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue).toBeInTheDocument();
+			});
+		});
+
+		it('should disable row selection when readOnly is true', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					readOnly: true,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue).toBeInTheDocument();
+				expect(agGridVue.getAttribute('data-row-selection')).toBe('disabled');
+			});
+		});
+
+		it('should render component when readOnly is false', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					readOnly: false,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue).toBeInTheDocument();
+			});
+		});
+
+		it('should enable row selection when readOnly is false', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					readOnly: false,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue).toBeInTheDocument();
+				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
+			});
+		});
+
+		it('should enable row selection when readOnly is undefined', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue).toBeInTheDocument();
+				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
+			});
 		});
 	});
 });

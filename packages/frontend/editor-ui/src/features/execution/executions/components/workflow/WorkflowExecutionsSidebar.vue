@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionFilterType } from '../../executions.types';
-import { isComponentPublicInstance } from '@/utils/typeGuards';
+import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useIntersectionObserver } from '@/composables/useIntersectionObserver';
+import ExecutionStopAllText from '../ExecutionStopAllText.vue';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -28,6 +28,7 @@ const props = defineProps<{
 	executions: ExecutionSummary[];
 	loading: boolean;
 	loadingMore: boolean;
+	hasMore: boolean;
 	temporaryExecution?: ExecutionSummary;
 }>();
 
@@ -36,6 +37,7 @@ const emit = defineEmits<{
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
 	'update:autoRefresh': [boolean];
+	'execution:stopMany': [];
 }>();
 
 const route = useRoute();
@@ -52,14 +54,27 @@ const autoScrollDeps = ref<AutoScrollDeps>({
 	scroll: true,
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
-const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: executionListRef,
 	threshold: 0.01,
 	onIntersect: () => emit('loadMore', 20),
 });
+
+// Re-attach the observer whenever the items array grows or hasMore/loadingMore flips.
+// This handles tall screens where the sentinel may already be visible and the previous
+// observer has disconnected itself after firing once.
+watch(
+	[loadMoreSentinel, () => props.hasMore, () => props.loadingMore, () => props.executions.length],
+	([sentinel, hasMore, loadingMore]) => {
+		if (sentinel && hasMore && !loadingMore) {
+			observeForLoadMore(sentinel);
+		}
+	},
+	{ immediate: true, flush: 'post' },
+);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
@@ -108,30 +123,9 @@ function addCurrentWorkflowExecutionsCardRef(
 }
 
 function onItemMounted(id: string): void {
-	const index = props.executions.findIndex((execution) => execution.id === id);
-
 	if (executionsStore.activeExecution?.id === id) {
 		autoScrollDeps.value.activeExecutionSet = true;
 		autoScrollDeps.value.cardsMounted = true;
-	}
-
-	// Observe the last item to trigger loading more executions
-	if (index === props.executions.length - 1 && !props.loading && !props.loadingMore) {
-		const cardElement = currentWorkflowExecutionsCardRefs.value[id]?.$el;
-		observeForLoadMore(cardElement);
-	}
-}
-
-function loadMore(limit = 20): void {
-	if (!props.loading) {
-		if (executionListRef.value) {
-			const diff =
-				executionListRef.value.offsetHeight -
-				(executionListRef.value.scrollHeight - executionListRef.value.scrollTop);
-			if (diff > -10 && diff < 10) {
-				emit('loadMore', limit);
-			}
-		}
 	}
 }
 
@@ -146,9 +140,8 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: string | number | boolean) {
-	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
-	emit('update:autoRefresh', boolValue);
+function onAutoRefreshChange(enabled: boolean) {
+	emit('update:autoRefresh', enabled);
 }
 
 function scrollToActiveCard(): void {
@@ -177,11 +170,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<div
-		ref="sidebarContainerRef"
-		:class="['executions-sidebar', $style.container]"
-		data-test-id="executions-sidebar"
-	>
+	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
 			<N8nHeading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}
@@ -194,22 +183,26 @@ const goToUpgrade = () => {
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
 			/>
+			<ExecutionStopAllText :executions="props.executions" />
 		</div>
 		<div :class="$style.controls">
-			<ElCheckbox
+			<N8nCheckbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
-			>
-				{{ i18n.baseText('executionsList.autoRefresh') }}
-			</ElCheckbox>
-			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
+			/>
+			<ExecutionsFilter
+				popover-side="right"
+				popover-align="start"
+				:workflow-id="props.workflow?.id"
+				@filter-changed="onFilterChanged"
+			/>
 		</div>
 		<div
 			ref="executionListRef"
 			:class="$style.executionList"
 			data-test-id="current-executions-list"
-			@scroll="loadMore(20)"
 		>
 			<div v-if="loading" class="mr-l">
 				<N8nLoading variant="rect" />
@@ -244,6 +237,13 @@ const goToUpgrade = () => {
 					@mounted="onItemMounted"
 				/>
 			</TransitionGroup>
+			<div
+				v-if="executions.length && hasMore"
+				ref="loadMoreSentinel"
+				:class="$style.loadMoreSentinel"
+				aria-hidden="true"
+				data-test-id="executions-load-more-sentinel"
+			/>
 			<div v-if="loadingMore" class="mr-m">
 				<N8nLoading variant="p" :rows="1" />
 			</div>
@@ -270,21 +270,16 @@ const goToUpgrade = () => {
 .heading {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
-	padding-right: var(--spacing--lg);
+	align-items: center;
+	padding-right: var(--spacing--md);
 }
 
 .controls {
-	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
-
-	button {
-		display: flex;
-		align-items: center;
-	}
 }
 
 .executionList {
@@ -328,6 +323,11 @@ const goToUpgrade = () => {
 	margin-top: var(--spacing--2xl);
 	text-align: center;
 }
+
+.loadMoreSentinel {
+	height: 1px;
+	width: 100%;
+}
 </style>
 
 <style lang="scss" scoped>
@@ -336,10 +336,5 @@ const goToUpgrade = () => {
 		height: 60px;
 		border-radius: 0;
 	}
-}
-
-:deep(.el-checkbox) {
-	display: flex;
-	align-items: center;
 }
 </style>

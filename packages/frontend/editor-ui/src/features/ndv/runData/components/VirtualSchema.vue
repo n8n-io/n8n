@@ -1,25 +1,27 @@
 <script lang="ts" setup>
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import Draggable from '@/components/Draggable.vue';
+import Draggable from '@/app/components/Draggable.vue';
 import VirtualSchemaHeader from './VirtualSchemaHeader.vue';
 import VirtualSchemaItem from './VirtualSchemaItem.vue';
 import {
 	useDataSchema,
 	useFlattenSchema,
+	type RenderCallout,
 	type RenderHeader,
 	type RenderNotice,
 	type Renders,
 	type SchemaNode,
-} from '@/composables/useDataSchema';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+} from '@/app/composables/useDataSchema';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	type IRunExecutionData,
 	createResultError,
@@ -36,21 +38,20 @@ import {
 } from 'vue-virtual-scroller';
 import MappingPill from './MappingPill.vue';
 
-import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
+import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { isEmpty } from '@/utils/typesUtils';
+import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { isEmpty } from '@/app/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
-import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
-import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	nodes?: IConnectedNode[];
 	node?: INodeUi | null;
@@ -82,9 +83,9 @@ const props = withDefaults(defineProps<Props>(), {
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
@@ -93,6 +94,7 @@ const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSche
 	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
 const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHelpers();
+const { dismissCallout, isCalloutDismissed } = useCalloutHelpers();
 
 const emit = defineEmits<{
 	'clear:search': [];
@@ -105,6 +107,10 @@ const closedNodesBeforeSearch = ref(new Set<string>());
 const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 
+const onCalloutDismiss = async (calloutId: string) => {
+	await dismissCallout(calloutId);
+};
+
 const toggleNodeExclusiveAndScrollTop = (id: string) => {
 	const isClosed = closedNodes.value.has(id);
 	if (isClosed) {
@@ -115,7 +121,8 @@ const toggleNodeExclusiveAndScrollTop = (id: string) => {
 };
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
-	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
+	const rawPinData = workflowDocumentStore?.value?.getNodePinData(connectedNode.name);
+	const pinData = rawPinData ? executionDataToJson(rawPinData) : undefined;
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
 	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
 
@@ -211,7 +218,11 @@ const contextSchema = computed(() => {
 			mode: 'test',
 			resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
 		},
-		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
+		$workflow: {
+			id: workflowDocumentStore?.value?.workflowId ?? '',
+			name: workflowDocumentStore?.value?.name ?? '',
+			active: workflowDocumentStore?.value?.active ?? false,
+		},
 	};
 
 	return filterSchema(getSchema(schemaSource), props.search);
@@ -286,6 +297,12 @@ const nodeSchema = asyncComputed(async () => {
 
 async function getSchemaPreview(node: INodeUi | null) {
 	if (!node) return createResultError(new Error());
+
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (nodeType?.group.includes('trigger')) {
+		return createResultError(new Error('Trigger nodes do not have schema previews'));
+	}
+
 	const {
 		type,
 		typeVersion,
@@ -305,7 +322,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 	const search = props.search;
 
 	for (const node of props.nodes) {
-		const fullNode = workflowsStore.getNodeByName(node.name);
+		const fullNode = workflowDocumentStore?.value?.getNodeByName(node.name) ?? null;
 		if (!fullNode) continue;
 
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
@@ -386,11 +403,37 @@ const flattenNodeSchema = computed(() =>
 const isDebugging = computed(() => !props.nodes.length);
 
 const items = computed(() => {
+	let allItems: Renders[];
+
 	if (isDebugging.value || props.paneType === 'output') {
-		return flattenNodeSchema.value;
+		allItems = flattenNodeSchema.value;
+
+		if (
+			props.node?.type === 'n8n-nodes-base.merge' &&
+			props.paneType === 'output' &&
+			props.data &&
+			props.data.length > 1
+		) {
+			const mergeCallout: RenderCallout = {
+				id: `${props.node.name}-mergeNotice`,
+				type: 'callout',
+				level: 0,
+				message: i18n.baseText('dataMapping.schemaView.mergeNotice'),
+				theme: 'info',
+			};
+			allItems = [mergeCallout, ...allItems];
+		}
+	} else {
+		allItems = flattenedNodes.value.concat(contextItems.value);
 	}
 
-	return flattenedNodes.value.concat(contextItems.value);
+	// Filter out dismissed callouts
+	return allItems.filter((item) => {
+		if (item.type === 'callout') {
+			return !isCalloutDismissed(item.id);
+		}
+		return true;
+	});
 });
 
 const noSearchResults = computed(() => {
@@ -409,15 +452,21 @@ watch(
 	},
 );
 
-// Collapse all nodes except the first
+// Collapse all nodes except the first, collapse all binary data items
 const unwatchItems = watch(items, (newItems) => {
-	if (newItems.length < 2) return;
-	closedNodes.value = new Set(
-		newItems
-			.filter((item) => item.type === 'header')
-			.slice(1)
-			.map((item) => item.id),
-	);
+	const headers =
+		newItems.length < 2
+			? []
+			: newItems
+					.filter((item) => item.type === 'header')
+					.slice(1)
+					.map((item) => item.id);
+
+	const binaries = newItems
+		.filter((item) => item.type === 'item' && item.binaryData)
+		.map((item) => item.id);
+
+	closedNodes.value = new Set(headers.concat(binaries));
 	unwatchItems();
 });
 
@@ -536,6 +585,34 @@ const onDragEnd = (el: HTMLElement) => {
 							class="notice"
 							:style="{ '--schema-level': item.level }"
 						/>
+
+						<div
+							v-else-if="item.type === 'callout'"
+							class="callout-wrapper"
+							:style="{ '--schema-level': item.level }"
+							@click.stop
+						>
+							<N8nCallout
+								:theme="item.theme || 'info'"
+								:slim="true"
+								:round-corners="true"
+								:iconless="false"
+							>
+								{{ item.message }}
+								<template #trailingContent>
+									<N8nIcon
+										icon="x"
+										:title="i18n.baseText('generic.dismiss')"
+										size="medium"
+										type="secondary"
+										class="callout-dismiss"
+										data-test-id="callout-dismiss-icon"
+										@click="onCalloutDismiss(item.id)"
+									/>
+								</template>
+							</N8nCallout>
+						</div>
+
 						<div
 							v-else-if="item.type === 'empty'"
 							class="empty-schema"
@@ -557,6 +634,7 @@ const onDragEnd = (el: HTMLElement) => {
 											size="small"
 											type="secondary"
 											hide-icon
+											execution-mode="exclusive"
 										/>
 									</template>
 								</I18nT>
@@ -619,5 +697,20 @@ const onDragEnd = (el: HTMLElement) => {
 	padding-bottom: var(--spacing--xs);
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	margin-left: calc((var(--spacing--xl) * var(--schema-level)));
+}
+
+.callout-wrapper {
+	padding-bottom: var(--spacing--xs);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	margin-left: calc(var(--spacing--lg) * var(--schema-level));
+}
+
+.callout-dismiss {
+	margin-left: var(--spacing--xs);
+	line-height: 1;
+	cursor: pointer;
+}
+.callout-dismiss:hover {
+	color: var(--icon--color--hover);
 }
 </style>

@@ -3,11 +3,11 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import SettingsSourceControl from './SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
@@ -157,9 +157,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
 			await nextTick();
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, getByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -179,9 +177,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show HTTPS-specific fields when HTTPS protocol is selected', async () => {
 			await nextTick();
-			const { container, queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, queryByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -228,6 +224,8 @@ describe('SettingsSourceControl', () => {
 				['http://github.com/user/repository', false],
 				['https://github.com/user/repository', false],
 				['git@gitlab.com:something.net/n8n.git', true],
+				// Test cases for usernames containing dots
+				['user.name@github.com:user/repository.git', true],
 			])('%s', async (url: string, isValid: boolean) => {
 				await nextTick();
 				const { container, queryByText } = renderComponent({

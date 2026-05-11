@@ -1,230 +1,395 @@
-import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
-import { INode } from 'n8n-workflow';
-import { strict as assert } from 'node:assert';
-
-import { RuleRegistry } from './breaking-changes.rule-registry.service';
-import { allRules, RuleInstances } from './rules';
-import type {
-	DetectionReport,
+import type { BreakingChangeAffectedWorkflow } from '@n8n/api-types';
+import {
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeReportResult,
 	BreakingChangeVersion,
-	DetectionResult,
-	IBreakingChangeRule,
-	AffectedWorkflow,
-	IBreakingChangeWorkflowRule,
-	IBreakingChangeInstanceRule,
-} from './types';
-import { BreakingChangeSeverity } from './types';
-import { N8N_VERSION } from '../../constants';
+	BreakingChangeWorkflowRuleResult,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
+import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import { BreakingChangeRuleMetadata } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
+import { ErrorReporter } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
+
+import { RuleRegistry } from './breaking-changes.rule-registry.service';
+import type {
+	IBreakingChangeBatchWorkflowRule,
+	IBreakingChangeInstanceRule,
+	IBreakingChangeRule,
+	IBreakingChangeWorkflowRule,
+} from './types';
+import { N8N_VERSION } from '../../constants';
+
+interface WorkflowMetadata {
+	name: string;
+	active: boolean;
+	numberOfExecutions: number;
+	lastExecutedAt?: Date;
+	lastUpdatedAt: Date;
+}
 
 @Service()
 export class BreakingChangeService {
 	private readonly batchSize = 100;
+	private static readonly REPORT_DURATION_CACHE_THRESHOLD = Time.seconds.toMilliseconds * 2;
 	private static readonly CACHE_KEY_PREFIX = 'breaking-changes:results:';
-	private readonly ongoingDetections = new Map<BreakingChangeVersion, Promise<DetectionReport>>();
+	private readonly ongoingDetections = new Map<
+		BreakingChangeVersion,
+		Promise<BreakingChangeReportResult>
+	>();
 
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
-		this.registerRules();
 	}
 
 	registerRules() {
-		const rulesServices: RuleInstances[] = allRules.map((rule) =>
-			Container.get<RuleInstances>(rule),
-		);
-		this.ruleRegistry.registerAll(rulesServices);
+		const ruleMetadata = Container.get(BreakingChangeRuleMetadata);
+		const ruleInstances = ruleMetadata
+			.getEntries()
+			.map((entry) => Container.get(entry.class) as IBreakingChangeRule);
+		this.ruleRegistry.registerAll(ruleInstances);
 	}
 
 	async getAllInstanceRulesResults(
 		instanceLevelRules: IBreakingChangeInstanceRule[],
-	): Promise<DetectionResult[]> {
-		const instanceLevelResults: DetectionResult[] = [];
+	): Promise<BreakingChangeInstanceRuleResult[]> {
+		const instanceLevelResults: BreakingChangeInstanceRuleResult[] = [];
 		for (const rule of instanceLevelRules) {
 			try {
 				const ruleResult = await rule.detect();
 				if (ruleResult.isAffected) {
 					instanceLevelResults.push({
 						ruleId: rule.id,
-						affectedWorkflows: [],
+						ruleTitle: rule.getMetadata().title,
+						ruleDescription: rule.getMetadata().description,
+						ruleSeverity: rule.getMetadata().severity,
+						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
 					});
 				}
 			} catch (error) {
+				console.log('error', error);
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
 		}
 		return instanceLevelResults;
 	}
 
+	private groupNodesByType(nodes: INode[]): Map<string, INode[]> {
+		const nodesGroupedByType: Map<string, INode[]> = new Map();
+		for (const node of nodes) {
+			if (!nodesGroupedByType.has(node.type)) {
+				nodesGroupedByType.set(node.type, []);
+			}
+			nodesGroupedByType.get(node.type)!.push(node);
+		}
+		return nodesGroupedByType;
+	}
+
+	private async aggregateRegularRuleResults(
+		workflowLevelRules: IBreakingChangeWorkflowRule[],
+		allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]>,
+	): Promise<BreakingChangeWorkflowRuleResult[]> {
+		const results: BreakingChangeWorkflowRuleResult[] = [];
+		for (const rule of workflowLevelRules) {
+			const workflowResults = allAffectedWorkflowsByRule.get(rule.id) ?? [];
+			const isAffected = workflowResults.some((wr) => wr.issues.length > 0);
+
+			if (isAffected) {
+				results.push({
+					ruleId: rule.id,
+					ruleTitle: rule.getMetadata().title,
+					ruleDescription: rule.getMetadata().description,
+					ruleSeverity: rule.getMetadata().severity,
+					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
+					affectedWorkflows: workflowResults,
+					recommendations: await rule.getRecommendations(workflowResults),
+				});
+			}
+		}
+		return results;
+	}
+
+	private async aggregateBatchRuleResults(
+		batchRules: IBreakingChangeBatchWorkflowRule[],
+		workflowMetadataMap: Map<string, WorkflowMetadata>,
+	): Promise<BreakingChangeWorkflowRuleResult[]> {
+		const results: BreakingChangeWorkflowRuleResult[] = [];
+		for (const rule of batchRules) {
+			const batchReport = await rule.produceReport();
+			if (batchReport.affectedWorkflows.length === 0) {
+				continue;
+			}
+
+			const affectedWorkflows: BreakingChangeAffectedWorkflow[] = [];
+			for (const affected of batchReport.affectedWorkflows) {
+				const metadata = workflowMetadataMap.get(affected.workflowId);
+				if (!metadata) {
+					this.logger.warn('Workflow metadata not found for batch rule result', {
+						workflowId: affected.workflowId,
+						ruleId: rule.id,
+					});
+					continue;
+				}
+
+				affectedWorkflows.push({
+					id: affected.workflowId,
+					name: metadata.name,
+					active: metadata.active,
+					issues: affected.issues,
+					numberOfExecutions: metadata.numberOfExecutions,
+					lastExecutedAt: metadata.lastExecutedAt,
+					lastUpdatedAt: metadata.lastUpdatedAt,
+				});
+			}
+
+			if (affectedWorkflows.length > 0) {
+				results.push({
+					ruleId: rule.id,
+					ruleTitle: rule.getMetadata().title,
+					ruleDescription: rule.getMetadata().description,
+					ruleSeverity: rule.getMetadata().severity,
+					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
+					affectedWorkflows,
+					recommendations: await rule.getRecommendations(affectedWorkflows),
+				});
+			}
+		}
+		return results;
+	}
+
 	private async getAllWorkflowRulesResults(
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
-	): Promise<DetectionResult[]> {
-		const totalWorkflows = await this.workflowRepository.count();
-		const allAffectedWorkflowsByRule: Map<string, AffectedWorkflow[]> = new Map();
-		const allResults: DetectionResult[] = [];
+		batchRules: IBreakingChangeBatchWorkflowRule[],
+		totalWorkflows: number,
+	): Promise<BreakingChangeWorkflowRuleResult[]> {
+		const allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]> = new Map();
+		const workflowMetadataMap: Map<string, WorkflowMetadata> = new Map();
 
-		this.logger.info('Processing workflows in batches', {
+		// Reset batch rules internal state before processing
+		batchRules.forEach((rule) => rule.reset());
+
+		this.logger.debug('Processing workflows in batches', {
 			totalWorkflows,
 			batchSize: this.batchSize,
+			regularRulesCount: workflowLevelRules.length,
+			batchRulesCount: batchRules.length,
 		});
 
-		// Process workflows in batches
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'nodes'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
 			});
 
-			this.logger.debug('Processing batch', {
-				skip,
-				workflowsInBatch: workflows.length,
+			this.logger.debug('Processing batch', { skip, workflowsInBatch: workflows.length });
+
+			// Load statistics separately for all workflows in this batch
+			const workflowIds = workflows.map((w) => w.id);
+			const allStatistics = await this.workflowStatisticsRepository.find({
+				where: { workflowId: In(workflowIds) },
 			});
 
-			for (const workflow of workflows) {
-				const nodesGroupedByType: Map<string, INode[]> = new Map();
-				for (const node of workflow.nodes) {
-					if (!nodesGroupedByType.has(node.type)) {
-						nodesGroupedByType.set(node.type, []);
-					}
-					nodesGroupedByType.get(node.type)!.push(node);
+			// Group statistics by workflowId
+			const statisticsByWorkflowId = new Map<string, typeof allStatistics>();
+			for (const stat of allStatistics) {
+				if (!stat.workflowId) continue;
+				const existing = statisticsByWorkflowId.get(stat.workflowId);
+				if (existing) {
+					existing.push(stat);
+				} else {
+					statisticsByWorkflowId.set(stat.workflowId, [stat]);
 				}
+			}
+
+			for (const workflow of workflows) {
+				const nodesGroupedByType = this.groupNodesByType(workflow.nodes);
+				const statistics = statisticsByWorkflowId.get(workflow.id) ?? [];
+
+				const workflowMetadata: WorkflowMetadata = {
+					name: workflow.name,
+					active: !!workflow.activeVersionId,
+					numberOfExecutions: statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
+					lastExecutedAt: statistics.sort(
+						(a, b) => b.latestEvent.getTime() - a.latestEvent.getTime(),
+					)[0]?.latestEvent,
+					lastUpdatedAt: workflow.updatedAt,
+				};
+				workflowMetadataMap.set(workflow.id, workflowMetadata);
+
 				for (const rule of workflowLevelRules) {
-					const workflowDetectionResult = await rule.detectWorkflow(workflow, nodesGroupedByType);
-					if (workflowDetectionResult.isAffected) {
-						const affectedWorkflow = {
+					const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					if (result.isAffected) {
+						const affectedWorkflow: BreakingChangeAffectedWorkflow = {
 							id: workflow.id,
-							name: workflow.name,
-							active: workflow.active,
-							issues: workflowDetectionResult.issues,
+							issues: result.issues,
+							...workflowMetadata,
 						};
-						if (!allAffectedWorkflowsByRule.has(rule.id)) {
-							allAffectedWorkflowsByRule.set(rule.id, [affectedWorkflow]);
+						const existing = allAffectedWorkflowsByRule.get(rule.id);
+						if (existing) {
+							existing.push(affectedWorkflow);
 						} else {
-							allAffectedWorkflowsByRule.get(rule.id)!.push(affectedWorkflow);
+							allAffectedWorkflowsByRule.set(rule.id, [affectedWorkflow]);
 						}
 					}
 				}
+
+				for (const rule of batchRules) {
+					await rule.collectWorkflowData(workflow, nodesGroupedByType);
+				}
 			}
 		}
 
-		// Aggregate results
-		for (const rule of workflowLevelRules) {
-			const workflowResults = allAffectedWorkflowsByRule.get(rule.id) || [];
-			const isAffected = workflowResults.some((wr) => wr.issues.length > 0);
+		const regularResults = await this.aggregateRegularRuleResults(
+			workflowLevelRules,
+			allAffectedWorkflowsByRule,
+		);
+		const batchResults = await this.aggregateBatchRuleResults(batchRules, workflowMetadataMap);
 
-			if (isAffected) {
-				allResults.push({
-					ruleId: rule.id,
-					affectedWorkflows: workflowResults,
-					instanceIssues: [],
-					recommendations: await rule.getRecommendations(workflowResults),
-				});
-			}
-		}
-		return allResults;
+		return regularResults.concat(batchResults);
 	}
 
 	async refreshDetectionResults(
 		targetVersion: BreakingChangeVersion,
-	): Promise<DetectionReport | undefined> {
-		await this.cacheService.deleteFromHash(BreakingChangeService.CACHE_KEY_PREFIX, targetVersion);
+	): Promise<BreakingChangeReportResult> {
+		await this.cacheService.delete(`${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`);
 		return await this.getDetectionResults(targetVersion);
 	}
 
 	async getDetectionResults(
 		targetVersion: BreakingChangeVersion,
-	): Promise<DetectionReport | undefined> {
-		return await this.cacheService.getHashValue<DetectionReport>(
-			BreakingChangeService.CACHE_KEY_PREFIX,
-			targetVersion,
-			{
-				refreshFn: async () => {
-					// Check if there's already an ongoing detection for this version
-					const existingDetection = this.ongoingDetections.get(targetVersion);
-					if (existingDetection) {
-						this.logger.debug('Reusing ongoing detection', { targetVersion });
-						return await existingDetection;
-					}
+	): Promise<BreakingChangeReportResult> {
+		// Check if there's already an ongoing detection for this version
+		const existingDetection = this.ongoingDetections.get(targetVersion);
+		if (existingDetection) {
+			this.logger.debug('Reusing ongoing detection', { targetVersion });
+			return await existingDetection;
+		}
 
-					// Start a new detection and store the promise
-					const detectionPromise = this.detect(targetVersion);
-					this.ongoingDetections.set(targetVersion, detectionPromise);
+		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
 
-					try {
-						return await detectionPromise;
-					} finally {
-						// Clean up the promise after completion (success or failure)
-						this.ongoingDetections.delete(targetVersion);
-					}
-				},
-			},
-		);
+		// Start a new detection and store the promise
+		const detectionPromise: Promise<BreakingChangeReportResult> = new Promise((resolve) => {
+			void (async () => {
+				// Check cache first
+				const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
+				if (cachedResult) {
+					this.logger.debug('Using cached breaking change detection results', {
+						targetVersion,
+					});
+					return resolve(cachedResult);
+				}
+
+				// Perform detection
+				const detectionResult = await this.detect(targetVersion);
+				return resolve(detectionResult);
+			})();
+		});
+		this.ongoingDetections.set(targetVersion, detectionPromise);
+
+		try {
+			const result = await detectionPromise;
+			// Store in cache if detection took significant time
+			if (result.shouldCache) {
+				await this.cacheService.set(cacheKey, result);
+			}
+			return result;
+		} finally {
+			// Clean up the promise after completion (success or failure)
+			this.ongoingDetections.delete(targetVersion);
+		}
 	}
 
-	async detect(targetVersion: BreakingChangeVersion): Promise<DetectionReport> {
+	private shouldCacheDetection(durationMs: number): boolean {
+		return durationMs > BreakingChangeService.REPORT_DURATION_CACHE_THRESHOLD;
+	}
+
+	async detect(targetVersion: BreakingChangeVersion): Promise<BreakingChangeReportResult> {
 		const startTime = Date.now();
-		this.logger.info('Starting breaking change detection', { targetVersion });
+		this.logger.debug('Starting breaking change detection', { targetVersion });
 
 		const rules = this.ruleRegistry.getRules(targetVersion);
 
-		const workflowLevelRules = rules.filter((rule) => 'detectWorkflow' in rule);
-		const instanceLevelRules = rules.filter((rule) => 'detect' in rule);
+		const workflowLevelRules = rules.filter(
+			(rule): rule is IBreakingChangeWorkflowRule => 'detectWorkflow' in rule,
+		);
+		const batchWorkflowRules = rules.filter(
+			(rule): rule is IBreakingChangeBatchWorkflowRule => 'collectWorkflowData' in rule,
+		);
+		const instanceLevelRules = rules.filter(
+			(rule): rule is IBreakingChangeInstanceRule => 'detect' in rule,
+		);
+
+		const totalWorkflows = await this.workflowRepository.count();
 
 		const [instanceLevelResults, workflowLevelResults] = await Promise.all([
 			this.getAllInstanceRulesResults(instanceLevelRules),
-			this.getAllWorkflowRulesResults(workflowLevelRules),
+			this.getAllWorkflowRulesResults(workflowLevelRules, batchWorkflowRules, totalWorkflows),
 		]);
 
 		const report = this.createDetectionReport(
 			targetVersion,
-			instanceLevelResults.concat(workflowLevelResults),
-			rules,
+			instanceLevelResults,
+			workflowLevelResults,
 		);
 
 		const duration = Date.now() - startTime;
-		this.logger.info('Breaking change detection completed', {
+		this.logger.debug('Breaking change detection completed', {
 			duration,
-			totalIssues: report.summary.totalIssues,
-			criticalIssues: report.summary.criticalIssues,
 		});
 
-		return report;
+		return {
+			report,
+			totalWorkflows,
+			shouldCache: this.shouldCacheDetection(duration),
+		};
+	}
+
+	async getDetectionReportForRule(
+		ruleId: string,
+	): Promise<BreakingChangeInstanceRuleResult | BreakingChangeWorkflowRuleResult | undefined> {
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule) {
+			return undefined;
+		}
+
+		const totalWorkflows = await this.workflowRepository.count();
+
+		if ('detectWorkflow' in rule) {
+			return (await this.getAllWorkflowRulesResults([rule], [], totalWorkflows))[0];
+		}
+		if ('collectWorkflowData' in rule) {
+			return (await this.getAllWorkflowRulesResults([], [rule], totalWorkflows))[0];
+		}
+		return (await this.getAllInstanceRulesResults([rule]))[0];
 	}
 
 	private createDetectionReport(
 		targetVersion: BreakingChangeVersion,
-		results: DetectionResult[],
-		rules: IBreakingChangeRule[],
-	): DetectionReport {
-		const criticalIssues = results.filter((r) => {
-			const rule = rules.find((rule) => rule.id === r.ruleId);
-			assert(rule);
-
-			return rule.getMetadata().severity === BreakingChangeSeverity.critical;
-		}).length;
-
+		instanceResults: BreakingChangeInstanceRuleResult[],
+		workflowResults: BreakingChangeWorkflowRuleResult[],
+	): BreakingChangeReportResult['report'] {
 		return {
 			generatedAt: new Date(),
 			targetVersion,
 			currentVersion: N8N_VERSION,
-			summary: {
-				totalIssues: results.length,
-				criticalIssues,
-			},
-			results,
+			workflowResults,
+			instanceResults,
 		};
 	}
 }

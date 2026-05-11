@@ -4,6 +4,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class DataTableDetails extends BasePage {
+	async goto(datatableId: string) {
+		await this.page.goto(`/datatables/${datatableId}`);
+	}
+
 	getPageWrapper() {
 		return this.page.getByTestId('data-table-details-view');
 	}
@@ -116,10 +120,6 @@ export class DataTableDetails extends BasePage {
 
 	async addRowFromTable() {
 		await this.getAddRowTableButton().click();
-	}
-
-	getDataGrid() {
-		return this.page.getByTestId('data-table-grid');
 	}
 
 	getDataRows() {
@@ -363,7 +363,8 @@ export class DataTableDetails extends BasePage {
 			const textCount = await textElement.count();
 
 			if (textCount > 0 && ariaColIndex) {
-				const text = await textElement.textContent();
+				// Use innerText instead of textContent to avoid getting hidden input values
+				const text = await textElement.innerText();
 				if (text) {
 					columnData.push({
 						index: parseInt(ariaColIndex, 10),
@@ -382,5 +383,21 @@ export class DataTableDetails extends BasePage {
 		const targetColumn = this.getColumnHeaderByName(targetColumnName);
 
 		await sourceColumn.dragTo(targetColumn);
+	}
+
+	getSearchInput() {
+		return this.page.getByTestId('data-table-search-input');
+	}
+
+	async search(query: string) {
+		const searchInput = this.getSearchInput();
+		await searchInput.fill(query);
+		// Wait for debounce
+		await this.page.waitForTimeout(300);
+		await this.page.getByText('Loading...').waitFor({ state: 'hidden' });
+	}
+
+	async clearSearch() {
+		await this.search('');
 	}
 }

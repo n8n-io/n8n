@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "defaultEncryptionScope": {
+                    "type": "string"
+                },
+                "denyEncryptionScopeOverride": {
+                    "type": "string"
+                },
+                "etag": {
+                    "type": "string"
+                },
+                "hasImmutabilityPolicy": {
+                    "type": "boolean"
+                },
+                "hasLegalHold": {
+                    "type": "boolean"
+                },
+                "immutableStorageWithVersioningEnabled": {
+                    "type": "string"
+                },
+                "lastModified": {
+                    "type": "string"
+                },
+                "leaseState": {
+                    "type": "string"
+                },
+                "leaseStatus": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -4,7 +4,7 @@ import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { reactive } from 'vue';
@@ -16,7 +16,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 vi.mock('@/features/execution/insights/insights.api');
 
-const mockFilter = { dateRange: 'week' as const };
+const mockFilter = { projectId: 'test-project' };
 const mockData = [
 	{
 		date: '2023-01-01',

@@ -1,30 +1,37 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ImportCurlModal from './ImportCurlModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { nextTick } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
-vi.mock('@/composables/useImportCurlCommand', () => ({
-	useImportCurlCommand: (options: {
-		onImportSuccess: () => void;
-		onAfterImport: () => void;
-	}) => ({
-		importCurlCommand: () => {
-			options.onImportSuccess();
-			options.onAfterImport();
-		},
-	}),
+const mockShowToast = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showToast: mockShowToast }),
+}));
+
+const mockImportCurlCommand = vi.fn();
+let mockImportOptions: {
+	onImportSuccess: () => void;
+	onImportFailure: (data: { invalidProtocol: boolean; protocol?: string }) => void;
+	onAfterImport: () => void;
+};
+
+vi.mock('@/app/composables/useImportCurlCommand', () => ({
+	useImportCurlCommand: (options: typeof mockImportOptions) => {
+		mockImportOptions = options;
+		return { importCurlCommand: mockImportCurlCommand };
+	},
 }));
 
 const renderModal = createComponentRenderer(ImportCurlModal, {
@@ -43,6 +50,10 @@ const testNode = {
 describe('ImportCurlModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockImportCurlCommand.mockImplementation(() => {
+			mockImportOptions.onImportSuccess();
+			mockImportOptions.onAfterImport();
+		});
 	});
 
 	it('should show empty input when no curl command exists for active node', async () => {
@@ -148,5 +159,36 @@ describe('ImportCurlModal', () => {
 		expect(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands).toEqual({
 			'node-1': 'curl -X GET https://api.example.com/other',
 		});
+	});
+
+	it('should show error toast and track failure telemetry when import throws (e.g. WASM load failure)', async () => {
+		mockImportCurlCommand.mockImplementation(() => {
+			throw new Error('WASM failed to load');
+		});
+
+		const uiStore = mockedStore(useUIStore);
+		uiStore.modalsById = {
+			[IMPORT_CURL_MODAL_KEY]: {
+				open: true,
+				data: { curlCommands: {} },
+			},
+		};
+		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
+		const ndvStore = mockedStore(useNDVStore);
+		ndvStore.activeNode = testNode;
+
+		const { getByTestId } = renderModal();
+		await nextTick();
+
+		const input = getByTestId('import-curl-modal-input');
+		await userEvent.type(input, 'curl -X GET https://api.example.com/data');
+		const button = getByTestId('import-curl-modal-button');
+		await userEvent.click(button);
+
+		expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			'User imported curl command',
+			expect.objectContaining({ success: false }),
+		);
 	});
 });

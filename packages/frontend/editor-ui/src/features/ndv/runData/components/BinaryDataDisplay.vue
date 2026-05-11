@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton } from '@n8n/design-system';

@@ -7,8 +7,8 @@ import { useRouter } from 'vue-router';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/composables/useToast';
-import { telemetry } from '@/plugins/telemetry';
+import { useToast } from '@/app/composables/useToast';
+import { telemetry } from '@/app/plugins/telemetry';
 
 import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
@@ -16,9 +16,14 @@ const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataTable: DataTable;
+	readOnly: boolean;
 };
 
 const props = defineProps<Props>();
+
+defineEmits<{
+	imported: [];
+}>();
 
 const renameInput = useTemplateRef<{ forceFocus: () => void }>('renameInput');
 
@@ -29,6 +34,10 @@ const router = useRouter();
 const toast = useToast();
 
 const editableName = ref(props.dataTable.name);
+
+const isRenameDisabled = computed(
+	() => !dataTableStore.projectPermissions.dataTable.update || props.readOnly,
+);
 
 const project = computed(() => {
 	return props.dataTable.project ?? null;
@@ -118,9 +127,8 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:max-length="30"
-					:read-only="false"
-					:disabled="false"
+					:read-only="readOnly"
+					:disabled="isRenameDisabled"
 					@update:model-value="onNameSubmit"
 				/>
 			</template>
@@ -128,9 +136,11 @@ watch(
 		<div :class="$style['data-table-actions']">
 			<DataTableActions
 				:data-table="props.dataTable"
+				:is-read-only="readOnly"
 				location="breadcrumbs"
 				@rename="onRename"
 				@on-deleted="onDelete"
+				@imported="$emit('imported')"
 			/>
 		</div>
 	</div>

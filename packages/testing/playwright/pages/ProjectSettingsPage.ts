@@ -1,8 +1,13 @@
+import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
 export class ProjectSettingsPage extends BasePage {
+	async goto(projectId: string) {
+		await this.page.goto(`/projects/${projectId}/settings`);
+	}
+
 	async fillProjectName(name: string) {
 		await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
 	}
@@ -37,32 +42,29 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('project-settings-delete-button');
 	}
 
-	async clearMemberSearch() {
-		const searchInput = this.page.getByTestId('project-members-search');
-		const clearButton = searchInput.locator('+ span');
-		if (await clearButton.isVisible()) {
-			await clearButton.click();
-		}
+	getMembersSearchInput() {
+		return this.page.getByPlaceholder('Add users...');
+	}
+
+	async searchForMember(query: string) {
+		await this.getMembersSearchInput().click();
+		await this.page.keyboard.type(query, { delay: 50 });
+	}
+
+	getRoleDropdownFor(email: string) {
+		return this.getMembersTable()
+			.locator('tr')
+			.filter({ hasText: email })
+			.getByTestId('project-member-role-dropdown');
 	}
 
 	getMembersTable() {
 		return this.page.getByTestId('project-members-table');
 	}
 
-	async getMemberRowCount() {
-		const table = this.getMembersTable();
-		const rows = table.locator('tbody tr');
-		return await rows.count();
-	}
-
 	async expectTableHasMemberCount(expectedCount: number) {
-		const actualCount = await this.getMemberRowCount();
-		expect(actualCount).toBe(expectedCount);
-	}
-
-	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.page.getByTestId('project-members-search').locator('input');
-		await expect(searchInput).toHaveValue(expectedValue);
+		const rows = this.getMembersTable().locator('tbody tr');
+		await expect(rows).toHaveCount(expectedCount);
 	}
 
 	getTitle() {
@@ -111,5 +113,20 @@ export class ProjectSettingsPage extends BasePage {
 
 	async selectFirstEmoji() {
 		await this.page.getByTestId('icon-picker-emoji').first().click();
+	}
+
+	getExternalSecretsSection(): Locator {
+		return this.page.getByTestId('external-secrets-section');
+	}
+
+	/**
+	 * The data table listing project-scoped secret provider connections.
+	 */
+	getExternalSecretsTable(): Locator {
+		return this.page.getByTestId('external-secrets-table');
+	}
+
+	getExternalSecretsTableRow(name: string): Locator {
+		return this.getExternalSecretsTable().getByText(name);
 	}
 }

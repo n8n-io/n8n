@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { STORES } from '@n8n/stores';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import ExecutionsList from './GlobalExecutionsList.vue';
 import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
@@ -16,7 +16,7 @@ import {
 } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 
 vi.mock('vue-router', () => ({
@@ -138,66 +138,62 @@ describe('GlobalExecutionsList', () => {
 		expect(getByTestId('execution-list-empty')).toBeInTheDocument();
 	});
 
-	it(
-		'should handle selection flow when loading more items',
-		async () => {
-			const { getByTestId, getAllByTestId, queryByTestId, rerender } = renderComponent({
-				props: {
-					executions: executionsData[0].results as ExecutionSummaryWithScopes[],
-					total: executionsData[0].count,
-					filters: {} as ExecutionFilterType,
-					estimated: false,
-				},
-			});
-			await waitAllPromises();
+	test('should handle selection flow when loading more items', async () => {
+		const { getByTestId, getAllByTestId, queryByTestId, rerender } = renderComponent({
+			props: {
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				total: executionsData[0].count,
+				filters: {} as ExecutionFilterType,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
 
-			await userEvent.click(getByTestId('select-visible-executions-checkbox'));
+		await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
-			await retry(() =>
-				expect(
-					getAllByTestId('select-execution-checkbox').filter((el) =>
-						el.contains(el.querySelector(':checked')),
-					).length,
-				).toBe(10),
-			);
-			expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
-			expect(getByTestId('selected-items-info').textContent).toContain(10);
-
-			await userEvent.click(getByTestId('load-more-button'));
-			await rerender({
-				executions: executionsData[0].results.concat(executionsData[1].results),
-				filteredExecutions: executionsData[0].results.concat(executionsData[1].results),
-			});
-
-			await waitFor(() => expect(getAllByTestId('select-execution-checkbox').length).toBe(20));
+		await retry(() => {
 			expect(
-				getAllByTestId('select-execution-checkbox').filter((el) =>
-					el.contains(el.querySelector(':checked')),
+				getAllByTestId('select-execution-checkbox').filter(
+					(el) => el.getAttribute('data-state') === 'checked',
 				).length,
 			).toBe(10);
+		});
+		expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
+		expect(getByTestId('selected-items-info').textContent).toContain(10);
 
-			await userEvent.click(getByTestId('select-all-executions-checkbox'));
-			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
-			expect(
-				getAllByTestId('select-execution-checkbox').filter((el) =>
-					el.contains(el.querySelector(':checked')),
-				).length,
-			).toBe(20);
-			expect(getByTestId('selected-items-info').textContent).toContain(20);
+		await userEvent.click(getByTestId('load-more-button'));
+		await rerender({
+			executions: executionsData[0].results.concat(executionsData[1].results),
+			filteredExecutions: executionsData[0].results.concat(executionsData[1].results),
+		});
 
-			await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
-			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
-			expect(
-				getAllByTestId('select-execution-checkbox').filter((el) =>
-					el.contains(el.querySelector(':checked')),
-				).length,
-			).toBe(19);
-			expect(getByTestId('selected-items-info').textContent).toContain(19);
-			expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
-			expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
-		},
-		{ timeout: 10000 },
-	);
+		await waitFor(() => expect(getAllByTestId('select-execution-checkbox').length).toBe(20));
+		expect(
+			getAllByTestId('select-execution-checkbox').filter(
+				(el) => el.getAttribute('data-state') === 'checked',
+			).length,
+		).toBe(10);
+
+		await userEvent.click(getByTestId('select-all-executions-checkbox'));
+		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
+		expect(
+			getAllByTestId('select-execution-checkbox').filter(
+				(el) => el.getAttribute('data-state') === 'checked',
+			).length,
+		).toBe(20);
+		expect(getByTestId('selected-items-info').textContent).toContain(20);
+
+		await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
+		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
+		expect(
+			getAllByTestId('select-execution-checkbox').filter(
+				(el) => el.getAttribute('data-state') === 'checked',
+			).length,
+		).toBe(19);
+		expect(getByTestId('selected-items-info').textContent).toContain(19);
+		expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
+		expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
+	}, 10000);
 
 	it('should show "retry" data when appropriate', async () => {
 		const retryOf = executionsData[0].results.filter((execution) => execution.retryOf);

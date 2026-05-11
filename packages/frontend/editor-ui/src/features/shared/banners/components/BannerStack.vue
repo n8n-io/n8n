@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { BannerName } from '@n8n/api-types';
-import { useBannersStore } from '@/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';
@@ -8,6 +8,7 @@ import V1Banner from './banners/V1Banner.vue';
 import EmailConfirmationBanner from './banners/EmailConfirmationBanner.vue';
 import DataTableStorageLimitWarningBanner from './banners/DataTableStorageLimitWarningBanner.vue';
 import DataTableStorageLimitErrorBanner from './banners/DataTableStorageLimitErrorBanner.vue';
+import WorkflowAutoDeactivatedBanner from './banners/WorkflowAutoDeactivatedBanner.vue';
 import type { Component } from 'vue';
 import type { N8nBanners } from '../banners.types';
 
@@ -17,6 +18,10 @@ import type { N8nBanners } from '../banners.types';
 // https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
 export const N8N_BANNERS: N8nBanners = {
 	V1: { priority: 350, component: V1Banner as Component },
+	WORKFLOW_AUTO_DEACTIVATED: {
+		priority: 340,
+		component: WorkflowAutoDeactivatedBanner as Component,
+	},
 	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },
@@ -34,7 +39,7 @@ export const N8N_BANNERS: N8nBanners = {
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { getBannerRowHeight } from '@/utils/htmlUtils';
+import { getBannerRowHeight } from '@/app/utils/htmlUtils';
 
 const bannersStore = useBannersStore();
 
@@ -45,6 +50,10 @@ async function updateCurrentBannerHeight() {
 
 const getBannerForName = (bannerName: BannerName) => {
 	return N8N_BANNERS[bannerName] || bannersStore.dynamicBannersMap[bannerName];
+};
+
+const removeUndefinedValues = (obj: Record<string, unknown>) => {
+	return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
 };
 
 const currentlyShownBanner = computed(() => {
@@ -64,13 +73,13 @@ const currentlyShownBanner = computed(() => {
 
 	return {
 		component: currentBanner.component,
-		props: {
+		props: removeUndefinedValues({
 			name: currentBannerName,
 			content: currentBanner.content,
 			theme: currentBanner.theme,
 			isDismissible: currentBanner.isDismissible,
 			dismissPermanently: currentBanner.dismissPermanently,
-		},
+		}),
 	};
 });
 

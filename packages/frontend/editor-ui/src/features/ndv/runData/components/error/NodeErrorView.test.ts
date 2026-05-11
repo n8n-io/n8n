@@ -1,5 +1,6 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
@@ -7,9 +8,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import NodeErrorView from './NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
 	href: '',
@@ -34,7 +35,13 @@ let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
-const renderComponent = createComponentRenderer(NodeErrorView);
+const renderComponent = createComponentRenderer(NodeErrorView, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;
@@ -241,7 +248,7 @@ describe('NodeErrorView.vue', () => {
 			expect(mockRouterResolve).toHaveBeenCalledWith({
 				name: 'ExecutionPreview',
 				params: {
-					name: 'different-workflow-id',
+					workflowId: 'different-workflow-id',
 					executionId: 'different-execution-id',
 					nodeId: 'd1ce5dc9-f9ae-4ac6-84e5-0696ba175dd9',
 				},

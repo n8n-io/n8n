@@ -1,19 +1,20 @@
 <script lang="ts" setup>
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
-} from '@/constants';
-import { useClipboard } from '@/composables/useClipboard';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+} from '@/app/constants';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
 import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
@@ -49,16 +50,6 @@ const urlOptions = computed(() => [
 	},
 ]);
 
-const visibleWebhookUrls = computed(() => {
-	return webhooksNode.value.filter((webhook) => {
-		if (typeof webhook.ndvHideUrl === 'string') {
-			return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
-		}
-
-		return !webhook.ndvHideUrl;
-	});
-});
-
 const webhooksNode = computed(() => {
 	if (props.nodeTypeDescription?.webhooks === undefined) {
 		return [];
@@ -68,6 +59,67 @@ const webhooksNode = computed(() => {
 		(webhookData) => webhookData.restartWebhook !== true,
 	);
 });
+
+interface WebhookDisplayData {
+	webhook: IWebhookDescription;
+	url: string;
+	httpMethod: string;
+	isMethodVisible: boolean;
+}
+
+const visibleWebhookUrls = computedAsync(async () => {
+	const urlFor = showUrlFor.value;
+	const node = props.node;
+	const result: WebhookDisplayData[] = [];
+
+	for (const webhook of webhooksNode.value) {
+		// Check visibility
+		let isVisible = !webhook.ndvHideUrl;
+		if (typeof webhook.ndvHideUrl === 'string') {
+			isVisible = !(await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl'));
+		}
+		if (!isVisible) continue;
+
+		// Get URL
+		let url = '';
+		if (node) {
+			url = await workflowHelpers.getWebhookUrl(
+				webhook,
+				node,
+				isProductionOnly.value ? 'production' : urlFor,
+			);
+		}
+
+		// Check method visibility
+		let isMethodVisible = !webhook.ndvHideMethod;
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			if (Array.isArray(method) && method.length !== 1) {
+				isMethodVisible = false;
+			} else if (typeof webhook.ndvHideMethod === 'string') {
+				isMethodVisible = !(await workflowHelpers.getWebhookExpressionValue(
+					webhook,
+					'ndvHideMethod',
+				));
+			}
+		} catch {
+			// Keep default
+		}
+
+		// Get HTTP method
+		let httpMethod = '';
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			httpMethod = Array.isArray(method) ? method[0] : (method as string);
+		} catch {
+			// Keep empty
+		}
+
+		result.push({ webhook, url, httpMethod, isMethodVisible });
+	}
+
+	return result;
+}, []);
 
 const baseText = computed(() => {
 	const nodeType = props.nodeTypeDescription?.name;
@@ -122,9 +174,8 @@ const baseText = computed(() => {
 	}
 });
 
-function copyWebhookUrl(webhookData: IWebhookDescription): void {
-	const webhookUrl = getWebhookUrlDisplay(webhookData);
-	void clipboard.copy(webhookUrl);
+function copyWebhookUrl(item: WebhookDisplayData): void {
+	void clipboard.copy(item.url);
 
 	toast.showMessage({
 		title: baseText.value.copyTitle,
@@ -136,40 +187,6 @@ function copyWebhookUrl(webhookData: IWebhookDescription): void {
 		pane: 'parameters',
 		type: `${showUrlFor.value} url`,
 	});
-}
-
-function getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
-	if (props.node) {
-		return workflowHelpers.getWebhookUrl(
-			webhookData,
-			props.node,
-			isProductionOnly.value ? 'production' : showUrlFor.value,
-		);
-	}
-	return '';
-}
-
-function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
-	try {
-		const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-		if (Array.isArray(method) && method.length !== 1) {
-			return false;
-		}
-	} catch (error) {}
-
-	if (typeof webhook.ndvHideMethod === 'string') {
-		return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
-	}
-
-	return !webhook.ndvHideMethod;
-}
-
-function getWebhookHttpMethod(webhook: IWebhookDescription): string {
-	const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-	if (Array.isArray(method)) {
-		return method[0];
-	}
-	return method;
 }
 
 watch(
@@ -204,26 +221,26 @@ watch(
 				</div>
 
 				<N8nTooltip
-					v-for="(webhook, index) in visibleWebhookUrls"
+					v-for="(item, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
+					<div v-if="item.isMethodVisible" class="webhook-wrapper">
 						<div class="http-field">
-							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
+							<div class="http-method">{{ item.httpMethod }}<br /></div>
 						</div>
 						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+								{{ item.url }}<br />
 							</div>
 						</div>
 					</div>
 					<div v-else class="webhook-wrapper">
 						<div class="url-field-full-width">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+								{{ item.url }}<br />
 							</div>
 						</div>
 					</div>

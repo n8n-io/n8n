@@ -1,13 +1,16 @@
-import { computed, nextTick, ref } from 'vue';
+import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import Assignment from './Assignment.vue';
-import { defaultSettings } from '@/__tests__/defaults';
-import { STORES } from '@n8n/stores';
+import { cleanup, screen, waitFor, within } from '@testing-library/vue';
 import merge from 'lodash/merge';
-import * as useResolvedExpression from '@/composables/useResolvedExpression';
+import Assignment from './Assignment.vue';
+import { flushPromises } from '@vue/test-utils';
+
+vi.mock('vue-router');
 
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({
@@ -28,12 +31,15 @@ const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 
 describe('Assignment.vue', () => {
-	afterEach(() => {
+	beforeEach(cleanup);
+
+	afterEach(async () => {
 		vi.clearAllMocks();
+		await flushPromises();
 	});
 
 	it('can edit name, type and value', async () => {
-		const { getByTestId, baseElement, emitted } = renderComponent();
+		const { getByTestId, emitted } = renderComponent();
 
 		const nameField = getByTestId('assignment-name').querySelector('input') as HTMLInputElement;
 		const valueField = getByTestId('assignment-value').querySelector('input') as HTMLInputElement;
@@ -46,7 +52,9 @@ describe('Assignment.vue', () => {
 		await userEvent.type(nameField, 'New name');
 		await userEvent.type(valueField, 'New value');
 
-		await userEvent.click(baseElement.querySelectorAll('.option')[3]);
+		const typeSelect = getByTestId('assignment-type-select');
+		await userEvent.click(within(typeSelect).getByRole('button'));
+		await userEvent.click(screen.getByRole('menuitem', { name: 'Array' }));
 
 		await waitFor(() =>
 			expect(emitted('update:model-value')[0]).toEqual([
@@ -70,26 +78,8 @@ describe('Assignment.vue', () => {
 		expect(() => getByTestId('parameter-input-hint')).toThrow();
 	});
 
-	it('should shorten the expression preview hint if options are on the bottom', async () => {
-		vi.spyOn(useResolvedExpression, 'useResolvedExpression').mockReturnValueOnce({
-			resolvedExpressionString: ref('foo'),
-			resolvedExpression: ref(null),
-			isExpression: computed(() => true),
-		});
-		const { getByTestId } = renderComponent();
-
-		const previewValue = getByTestId('parameter-expression-preview-value');
-
-		expect(previewValue).not.toHaveClass('optionsPadding');
-
-		await fireEvent.mouseEnter(getByTestId('assignment-value'));
-		await nextTick();
-
-		expect(previewValue).toHaveClass('optionsPadding');
-	});
-
 	it('should show binary data tooltip when assignment type is binary', async () => {
-		const { getByTestId, getByRole } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
 				modelValue: {
@@ -102,18 +92,71 @@ describe('Assignment.vue', () => {
 		});
 
 		const typeSelect = getByTestId('assignment-type-select');
+		expect(typeSelect).toBeInTheDocument();
 
-		// Hover over the type select to trigger tooltip
-		await fireEvent.mouseEnter(typeSelect);
-		await nextTick();
+		// Hover and verify tooltip shows binary data access help
+		await hoverTooltipTrigger(typeSelect);
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent('Specify the property name of the binary data'),
+		);
+	});
 
-		// Check if tooltip with binary data information is displayed
-		await waitFor(() => {
-			const tooltip = getByRole('tooltip');
-			expect(tooltip).toBeInTheDocument();
-			expect(tooltip).toHaveTextContent(
-				'Specify the property name of the binary data in the input item',
-			);
+	it('should not auto-change type when disableType is true', async () => {
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue(42);
+
+		const { emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: true,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
 		});
+
+		const events = emitted('update:model-value');
+		const lastEvent = events.at(-1);
+		expect(lastEvent).not.toContainEqual(expect.objectContaining({ type: 'number' }));
+
+		spy.mockRestore();
+	});
+
+	it('should auto-change type when dropping a value', async () => {
+		const spy = vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue(42);
+
+		const { emitted } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				disableType: false,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+							emit('blur');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
+		});
+
+		// Wait for async type inference to complete
+		await waitFor(() => {
+			const events = emitted('update:model-value');
+			const lastEvent = events.at(-1);
+			expect(lastEvent).toContainEqual(expect.objectContaining({ type: 'number' }));
+		});
+
+		spy.mockRestore();
 	});
 });

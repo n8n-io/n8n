@@ -5,10 +5,12 @@ import { ApplicationError } from './errors';
 import type {
 	FieldType,
 	FormFieldsParameter,
+	IBinaryData,
 	INodePropertyOptions,
 	ValidationResult,
 } from './interfaces';
 import { jsonParse } from './utils';
+import { isBinaryValue } from './type-guards';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
@@ -157,10 +159,19 @@ export const tryToParseObject = (value: unknown): object => {
 	}
 };
 
+export const tryToParseBinary = (value: unknown): IBinaryData => {
+	if (!value || typeof value !== 'object' || Array.isArray(value) || !isBinaryValue(value)) {
+		throw new ApplicationError('Value is not a valid binary data object', { extra: { value } });
+	}
+
+	return value;
+};
+
 const ALLOWED_FORM_FIELDS_KEYS = [
 	'fieldLabel',
 	'fieldType',
 	'placeholder',
+	'defaultValue',
 	'fieldOptions',
 	'multiselect',
 	'multipleFiles',
@@ -170,6 +181,11 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'fieldValue',
 	'elementName',
 	'html',
+	'fieldName',
+	'limitSelection',
+	'numberOfSelections',
+	'minSelections',
+	'maxSelections',
 ];
 
 const ALLOWED_FIELD_TYPES = [
@@ -263,17 +279,27 @@ export const getValueDescription = <T>(value: T): string => {
 	return `'${String(value)}'`;
 };
 
+const ALLOWED_URL_PROTOCOLS = ['http:', 'https:', 'ftp:', 'file:'];
+
 export const tryToParseUrl = (value: unknown): string => {
 	if (typeof value === 'string' && !value.includes('://')) {
-		value = `http://${value}`;
+		value = `https://${value}`;
 	}
-	const urlPattern = /^(https?|ftp|file):\/\/\S+|www\.\S+/;
-	if (!urlPattern.test(String(value))) {
+
+	try {
+		const parsed = new URL(String(value));
+		if (!ALLOWED_URL_PROTOCOLS.includes(parsed.protocol)) {
+			throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
+				extra: { value },
+			});
+		}
+		return String(value);
+	} catch (e) {
+		if (e instanceof ApplicationError) throw e;
 		throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
 			extra: { value },
 		});
 	}
-	return String(value);
 };
 
 export const tryToParseJwt = (value: unknown): string => {
@@ -377,6 +403,14 @@ export function validateFieldType(
 					valid: false,
 					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got ${getValueDescription(value)}.`,
 				};
+			}
+		}
+		case 'binary': {
+			try {
+				return { valid: true, newValue: tryToParseBinary(value) };
+			} catch (e) {
+				const errorMessage = `${defaultErrorMessage}. Make sure the value is a valid binary data object with 'mimeType' and 'data' or 'id' property.`;
+				return { valid: false, errorMessage };
 			}
 		}
 		case 'object': {

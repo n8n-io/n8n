@@ -1,29 +1,54 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
-import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { useToast } from '@/app/composables/useToast';
+import type { ChatHubLLMProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import { useSpeechRecognition } from '@vueuse/core';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import {
+	isLlmProviderModel,
+	enrichMimeTypesWithExtensions,
+	isFileAcceptedByAccept,
+} from '@/features/ai/chatHub/chat.utils';
+import { useI18n } from '@n8n/i18n';
+import type { MessagingState } from '@/features/ai/chatHub/chat.types';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ChatPromptCallouts from './ChatPromptCallouts.vue';
+import ChatPromptCompact from './ChatPromptCompact.vue';
+import ChatPromptFull from './ChatPromptFull.vue';
 
-const { selectedModel, isMissingCredentials } = defineProps<{
-	isResponding: boolean;
+const props = defineProps<{
+	messagingState: MessagingState;
 	isNewSession: boolean;
+	isToolsSelectable: boolean;
 	selectedModel: ChatModelDto | null;
-	isMissingCredentials: boolean;
+	checkedToolIds: string[];
+	sessionId?: ChatSessionId;
+	customAgentId?: string;
+	showCreditsClaimedCallout: boolean;
+	showDynamicCredentialsMissingCallout: boolean;
+	aiCreditsQuota: string;
+	compact?: boolean;
+	placeholder?: string;
 }>();
 
+const chatStore = useChatStore();
+
 const emit = defineEmits<{
-	submit: [string];
+	submit: [message: string, attachments: File[]];
 	stop: [];
 	selectModel: [];
 	setCredentials: [ChatHubLLMProvider];
+	editAgent: [agentId: string];
+	dismissCreditsCallout: [];
+	openDynamicCredentials: [];
 }>();
 
-const inputRef = useTemplateRef<HTMLElement>('inputRef');
+const activePromptRef = ref<InstanceType<typeof ChatPromptCompact | typeof ChatPromptFull>>();
 const message = ref('');
+const committedSpokenMessage = ref('');
+const attachments = ref<File[]>([]);
 
 const toast = useToast();
+const i18n = useI18n();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -31,17 +56,45 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-const placeholder = computed(() =>
-	selectedModel ? `Message ${selectedModel.name ?? 'a model'}...` : 'Select a model',
-);
+const placeholder = computed(() => {
+	if (props.placeholder) {
+		return props.placeholder;
+	}
+	if (props.selectedModel) {
+		return i18n.baseText('chatHub.chat.prompt.placeholder.withModel', {
+			interpolate: { model: props.selectedModel.name ?? 'a model' },
+		});
+	}
+	return i18n.baseText('chatHub.chat.prompt.placeholder.selectModel');
+});
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
-	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
-		? undefined
-		: selectedModel?.model.provider,
+	isLlmProviderModel(props.selectedModel?.model) ? props.selectedModel?.model.provider : undefined,
 );
 
+const acceptedMimeTypes = computed(() =>
+	enrichMimeTypesWithExtensions(props.selectedModel?.metadata.allowedFilesMimeTypes ?? ''),
+);
+
+const canUploadFiles = computed(() => props.selectedModel?.metadata.allowFileUploads ?? false);
+
+const showMissingAgentCallout = computed(() => props.messagingState === 'missingAgent');
+const showMissingCredentialsCallout = computed(
+	() => props.messagingState === 'missingCredentials' && !!llmProvider.value,
+);
+
+const calloutVisible = computed(() => {
+	return (
+		showMissingAgentCallout.value ||
+		showMissingCredentialsCallout.value ||
+		props.showDynamicCredentialsMissingCallout ||
+		props.showCreditsClaimedCallout
+	);
+});
+
 function onMic() {
+	committedSpokenMessage.value = message.value;
+
 	if (speechInput.isListening.value) {
 		speechInput.stop();
 	} else {
@@ -53,208 +106,223 @@ function onStop() {
 	emit('stop');
 }
 
+function onAttach() {
+	activePromptRef.value?.fileInputRef?.click();
+}
+
+function handleFileSelect(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const files = target.files;
+
+	if (!files || files.length === 0) {
+		return;
+	}
+
+	const allowed = acceptedMimeTypes.value;
+	const accepted: File[] = [];
+	const rejected: File[] = [];
+
+	for (const file of Array.from(files)) {
+		if (isFileAcceptedByAccept(file.name, file.type, allowed)) {
+			accepted.push(file);
+		} else {
+			rejected.push(file);
+		}
+	}
+
+	for (const file of accepted) {
+		attachments.value.push(file);
+	}
+
+	for (const file of rejected) {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('chatHub.chat.attachments.unsupported.title'),
+			message: i18n.baseText('chatHub.chat.attachments.unsupported.toast', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
+
+	// Reset input
+	if (target) {
+		target.value = '';
+	}
+
+	activePromptRef.value?.inputRef?.focus();
+}
+
+function removeAttachment(removed: File) {
+	attachments.value = attachments.value.filter((attachment) => attachment !== removed);
+}
+
 function handleSubmitForm() {
 	const trimmed = message.value.trim();
 
 	if (trimmed) {
 		speechInput.stop();
-		emit('submit', trimmed);
+		emit('submit', trimmed, attachments.value);
 	}
 }
 
 function handleKeydownTextarea(e: KeyboardEvent) {
 	const trimmed = message.value.trim();
 
+	speechInput.stop();
+
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
+		e.stopPropagation();
 		speechInput.stop();
-		emit('submit', trimmed);
+		emit('submit', trimmed, attachments.value);
 	}
 }
 
 watch(speechInput.result, (spoken) => {
-	if (spoken) {
-		message.value = spoken;
-	}
+	message.value = committedSpokenMessage.value + ' ' + spoken.trimStart();
 });
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final) {
+			committedSpokenMessage.value = message.value;
+		}
+	},
+	{ flush: 'post' },
+);
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
 		toast.showError(
-			new Error('Microphone access denied'),
-			'Please allow microphone access to use voice input',
+			new Error(i18n.baseText('chatHub.chat.prompt.microphone.accessDenied')),
+			i18n.baseText('chatHub.chat.prompt.microphone.allowAccess'),
 		);
 		return;
 	}
 
 	if (event?.error === 'no-speech') {
 		toast.showMessage({
-			title: 'No speech detected. Please try again',
+			title: i18n.baseText('chatHub.chat.prompt.microphone.noSpeech'),
 			type: 'warning',
 		});
 	}
 });
 
+async function handleToolToggle(toolId: string) {
+	if (props.customAgentId) {
+		await chatStore.toggleCustomAgentTool(props.customAgentId, toolId);
+		return;
+	}
+	if (props.sessionId) {
+		// Existing session: toggle per-session tool
+		await chatStore.toggleSessionTool(props.sessionId, toolId);
+		return;
+	}
+	// New session: toggle global enabled state
+	const tool = chatStore.configuredTools.find((t) => t.definition.id === toolId);
+	if (tool) {
+		await chatStore.toggleToolEnabled(toolId, !tool.enabled);
+	}
+}
+
 defineExpose({
-	focus: () => inputRef.value?.focus(),
+	focus: () => activePromptRef.value?.inputRef?.focus(),
+	reset: () => {
+		message.value = '';
+		committedSpokenMessage.value = '';
+		attachments.value = [];
+	},
 	setText: (text: string) => {
 		message.value = text;
+	},
+	appendText: (text: string) => {
+		message.value += text;
+	},
+	addAttachments: (files: File[]) => {
+		attachments.value.push(...files);
+		activePromptRef.value?.inputRef?.focus();
 	},
 });
 </script>
 
 <template>
-	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
-		<div :class="$style.inputWrap">
-			<N8nText v-if="!selectedModel" :class="$style.callout">
-				<template v-if="isNewSession">
-					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
-					conversation
-				</template>
-				<template v-else>
-					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
-					the conversation
-				</template>
-			</N8nText>
-			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
-				<template v-if="isNewSession">
-					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
-					for {{ providerDisplayNames[llmProvider] }} to start a conversation
-				</template>
-				<template v-else>
-					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
-					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
-				</template>
-			</N8nText>
-			<N8nInput
-				ref="inputRef"
-				v-model="message"
-				:class="$style.input"
-				type="textarea"
-				:placeholder="placeholder"
-				autocomplete="off"
-				:autosize="{ minRows: 1, maxRows: 6 }"
-				autofocus
-				:disabled="isMissingCredentials || !selectedModel"
-				@keydown="handleKeydownTextarea"
+	<ChatPromptCompact
+		v-if="compact"
+		ref="activePromptRef"
+		v-model:message="message"
+		:attachments="attachments"
+		:placeholder="placeholder"
+		:messaging-state="messagingState"
+		:accepted-mime-types="acceptedMimeTypes"
+		:can-upload-files="canUploadFiles"
+		:callout-visible="calloutVisible"
+		:is-speech-supported="speechInput.isSupported.value"
+		:is-listening="speechInput.isListening.value"
+		@submit="handleSubmitForm"
+		@keydown="handleKeydownTextarea"
+		@file-select="handleFileSelect"
+		@attach="onAttach"
+		@mic="onMic"
+		@stop="onStop"
+		@remove-attachment="removeAttachment"
+	>
+		<template #callouts>
+			<ChatPromptCallouts
+				:show-missing-agent-callout="showMissingAgentCallout"
+				:show-missing-credentials-callout="showMissingCredentialsCallout"
+				:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
+				:show-credits-claimed-callout="showCreditsClaimedCallout"
+				:is-new-session="isNewSession"
+				:llm-provider="llmProvider"
+				:ai-credits-quota="aiCreditsQuota"
+				compact
+				@select-model="emit('selectModel')"
+				@set-credentials="emit('setCredentials', $event)"
+				@dismiss-credits-callout="emit('dismissCreditsCallout')"
+				@open-dynamic-credentials="emit('openDynamicCredentials')"
 			/>
-
-			<div :class="$style.actions">
-				<!-- TODO: Implement attachments
-				<N8nIconButton
-					native-type="button"
-					type="secondary"
-					title="Attach"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					icon="paperclip"
-					icon-size="large"
-					text
-					@click="onAttach"
-				/> -->
-				<N8nIconButton
-					v-if="speechInput.isSupported"
-					native-type="button"
-					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
-					type="secondary"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					:icon="speechInput.isListening.value ? 'square' : 'mic'"
-					:class="{ [$style.recording]: speechInput.isListening.value }"
-					icon-size="large"
-					@click="onMic"
-				/>
-				<N8nIconButton
-					v-if="!isResponding"
-					native-type="submit"
-					:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-					title="Send"
-					icon="arrow-up"
-					icon-size="large"
-				/>
-				<N8nIconButton
-					v-else
-					native-type="button"
-					title="Stop generating"
-					icon="square"
-					icon-size="large"
-					@click="onStop"
-				/>
-			</div>
-		</div>
-	</form>
+		</template>
+	</ChatPromptCompact>
+	<ChatPromptFull
+		v-else
+		ref="activePromptRef"
+		v-model:message="message"
+		:attachments="attachments"
+		:placeholder="placeholder"
+		:messaging-state="messagingState"
+		:accepted-mime-types="acceptedMimeTypes"
+		:can-upload-files="canUploadFiles"
+		:callout-visible="calloutVisible"
+		:is-speech-supported="speechInput.isSupported.value"
+		:is-listening="speechInput.isListening.value"
+		:checked-tool-ids="checkedToolIds"
+		:custom-agent-id="customAgentId"
+		:is-tools-selectable="isToolsSelectable"
+		:selected-model="selectedModel"
+		@submit="handleSubmitForm"
+		@keydown="handleKeydownTextarea"
+		@file-select="handleFileSelect"
+		@attach="onAttach"
+		@mic="onMic"
+		@stop="onStop"
+		@remove-attachment="removeAttachment"
+		@tool-toggle="handleToolToggle"
+	>
+		<template #callouts>
+			<ChatPromptCallouts
+				:show-missing-agent-callout="showMissingAgentCallout"
+				:show-missing-credentials-callout="showMissingCredentialsCallout"
+				:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
+				:show-credits-claimed-callout="showCreditsClaimedCallout"
+				:is-new-session="isNewSession"
+				:llm-provider="llmProvider"
+				:ai-credits-quota="aiCreditsQuota"
+				@select-model="emit('selectModel')"
+				@set-credentials="emit('setCredentials', $event)"
+				@dismiss-credits-callout="emit('dismissCreditsCallout')"
+				@open-dynamic-credentials="emit('openDynamicCredentials')"
+			/>
+		</template>
+	</ChatPromptFull>
 </template>
-
-<style lang="scss" module>
-.prompt {
-	display: grid;
-	place-items: center;
-}
-
-.inputWrap {
-	position: relative;
-	display: flex;
-	align-items: center;
-	flex-direction: column;
-	width: 100%;
-}
-
-.callout {
-	color: var(--color--secondary);
-	background-color: hsla(247, 49%, 53%, 0.1);
-	padding: 12px 16px 24px;
-	border-top-left-radius: 16px;
-	border-top-right-radius: 16px;
-	width: 100%;
-	border: var(--border);
-	border-color: var(--color--secondary);
-	text-align: center;
-	margin-bottom: -16px;
-
-	& a {
-		text-decoration: underline;
-		color: inherit;
-	}
-}
-
-.input {
-	& textarea {
-		font: inherit;
-		line-height: 1.5em;
-		border-radius: 16px !important;
-		resize: none;
-		padding: 16px 16px 48px;
-		box-shadow: 0 10px 24px 0 #00000010;
-		background-color: var(--color--background--light-3);
-	}
-}
-
-/* Right-side actions */
-.actions {
-	position: absolute;
-	right: 0;
-	bottom: 0;
-	padding: var(--spacing--sm);
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-
-	& button path {
-		stroke-width: 2.5;
-	}
-}
-
-.recording {
-	animation: chatHubPromptRecordingPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes chatHubPromptRecordingPulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.6;
-	}
-}
-</style>

@@ -2,11 +2,12 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useToast } from '@/app/composables/useToast';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -18,13 +19,13 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/app/constants';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import {
 	N8nInlineAskAssistantButton,
@@ -49,15 +50,15 @@ const toast = useToast();
 const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const workflowId = computed(() => workflowsStore.workflowId);
 const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 const displayCause = computed(() => {
@@ -416,7 +417,7 @@ const onOpenErrorNodeDetailClick = () => {
 		const link = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
-				name: props.error.workflowId,
+				workflowId: props.error.workflowId,
 				executionId: props.error.executionId,
 				nodeId: props.error.node.id,
 			},
@@ -473,8 +474,8 @@ async function onAskAssistantClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
+					variant="subtle"
 					icon="arrow-right"
-					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"
@@ -501,14 +502,7 @@ async function onAskAssistantClick() {
 					placement="left"
 				>
 					<div class="copy-button">
-						<N8nIconButton
-							icon="files"
-							type="secondary"
-							size="small"
-							:text="true"
-							transparent-background="transparent"
-							@click="copyErrorDetails"
-						/>
+						<N8nIconButton variant="ghost" icon="files" size="small" @click="copyErrorDetails" />
 					</div>
 				</N8nTooltip>
 			</div>

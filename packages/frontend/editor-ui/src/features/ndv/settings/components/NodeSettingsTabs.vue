@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
 
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
-import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
-import { useTelemetry } from '@/composables/useTelemetry';
-import type { NodeSettingsTab } from '@/types/nodeSettings';
+import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nTabs } from '@n8n/design-system';
@@ -39,7 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const externalHooks = useExternalHooks();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();

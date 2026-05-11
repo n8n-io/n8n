@@ -34,7 +34,7 @@ import {
 	BAMBOO_HR_NODE_TYPE,
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import {
 	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_500_999,

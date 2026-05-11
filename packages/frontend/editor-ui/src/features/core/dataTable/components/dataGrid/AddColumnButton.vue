@@ -9,7 +9,7 @@ import { DATA_TABLE_COLUMN_TYPES } from '@/features/core/dataTable/dataTable.typ
 import { useI18n } from '@n8n/i18n';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/core/dataTable/constants';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import {
 	N8nButton,
@@ -18,7 +18,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
-	N8nPopoverReka,
+	N8nPopover,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
@@ -28,14 +28,24 @@ type FormError = {
 	description?: string;
 };
 
-const props = defineProps<{
-	// the params key is needed so that we can pass this directly to ag-grid as column
-	params: {
-		onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
-	};
-	popoverId?: string;
-	useTextTrigger?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		// the params key is needed so that we can pass this directly to ag-grid as column
+		params: {
+			onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
+			disabled?: boolean;
+		};
+		popoverId?: string;
+		useTextTrigger?: boolean;
+		disabled?: boolean;
+	}>(),
+	{
+		disabled: false,
+	},
+);
+
+// Use disabled from params if available (when used as AG Grid header), otherwise use prop
+const isDisabled = computed(() => props.params?.disabled ?? props.disabled);
 
 const i18n = useI18n();
 const { getIconForType } = useDataTableTypes();
@@ -80,7 +90,7 @@ const onAddButtonClicked = async () => {
 		let errorDescription = response.errorMessage;
 		// Provide custom error message for conflict (column already exists)
 		if (response.httpStatus === 409) {
-			errorMessage = i18n.baseText('dataTable.addColumn.alreadyExistsError', {
+			errorMessage = i18n.baseText('dataTable.column.alreadyExistsError', {
 				interpolate: { name: columnName.value },
 			});
 			errorDescription = response.errorMessage?.includes('system')
@@ -107,8 +117,9 @@ const handlePopoverOpenChange = async (open: boolean) => {
 		return;
 	}
 	popoverOpen.value = open;
-	// Focus name input when opening popover
+	// Reset error state and focus name input when opening popover
 	if (open) {
+		error.value = null;
 		await nextTick(() => {
 			nameInputRef.value?.focus();
 		});
@@ -133,7 +144,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 <template>
 	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('dataTable.addColumn.label')">
 		<div class="add-column-header-component-wrapper">
-			<N8nPopoverReka
+			<N8nPopover
 				:id="popoverId"
 				:open="popoverOpen"
 				:popper-options="{ strategy: 'fixed' }"
@@ -142,16 +153,21 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 			>
 				<template #trigger>
 					<template v-if="props.useTextTrigger">
-						<N8nButton data-test-id="data-table-add-column-trigger-button" type="tertiary">
+						<N8nButton
+							variant="subtle"
+							data-test-id="data-table-add-column-trigger-button"
+							:disabled="isDisabled"
+						>
 							{{ i18n.baseText('dataTable.addColumn.label') }}
 						</N8nButton>
 					</template>
 					<template v-else>
 						<N8nIconButton
+							variant="ghost"
 							data-test-id="data-table-add-column-trigger-button"
-							text
 							icon="plus"
-							type="tertiary"
+							:aria-label="i18n.baseText('dataTable.addColumn.label')"
+							:disabled="isDisabled"
 						/>
 					</template>
 				</template>
@@ -218,8 +234,8 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
+								variant="solid"
 								data-test-id="data-table-add-column-submit-button"
-								type="primary"
 								class="mt-m"
 								size="large"
 								:disabled="!columnName || !columnType || !!error"
@@ -230,7 +246,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 						</div>
 					</div>
 				</template>
-			</N8nPopoverReka>
+			</N8nPopover>
 		</div>
 	</N8nTooltip>
 </template>

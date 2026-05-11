@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useEvaluationStore } from './evaluation.store'; // Adjust the import path as necessary
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
+import { useAnnotationTagsStore } from '@/features/shared/tags/tags.store';
 import type { TestRunRecord } from './evaluation.api';
 import { mockedStore } from '@/__tests__/utils';
 
@@ -41,7 +41,7 @@ describe('evaluation.store.ee', () => {
 	let rootStoreMock: ReturnType<typeof useRootStore>;
 
 	beforeEach(() => {
-		vi.restoreAllMocks();
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		store = useEvaluationStore();
 		rootStoreMock = useRootStore();
@@ -84,7 +84,16 @@ describe('evaluation.store.ee', () => {
 		test('Starting Test Run', async () => {
 			const result = await store.startTestRun('1');
 
-			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', undefined);
+			expect(result).toEqual({ success: true });
+		});
+
+		test('Starting Test Run with concurrency', async () => {
+			const result = await store.startTestRun('1', { concurrency: 5 });
+
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
+				concurrency: 5,
+			});
 			expect(result).toEqual({ success: true });
 		});
 

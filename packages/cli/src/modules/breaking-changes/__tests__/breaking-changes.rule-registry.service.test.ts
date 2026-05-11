@@ -4,10 +4,10 @@ import { mock } from 'jest-mock-extended';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import type {
 	IBreakingChangeRule,
-	BreakingChangeMetadata,
-	InstanceDetectionResult,
+	BreakingChangeRuleMetadata,
+	InstanceDetectionReport,
 } from '../types';
-import { BreakingChangeCategory, BreakingChangeSeverity } from '../types';
+import { BreakingChangeCategory } from '../types';
 
 describe('RuleRegistry', () => {
 	const logger = mock<Logger>({
@@ -26,12 +26,12 @@ describe('RuleRegistry', () => {
 		version: string = 'v2',
 		title: string = 'Test Rule',
 	): IBreakingChangeRule => {
-		const metadata: BreakingChangeMetadata = {
+		const metadata: BreakingChangeRuleMetadata = {
 			version: version as 'v2',
 			title,
 			description: `Description for ${title}`,
 			category: BreakingChangeCategory.workflow,
-			severity: BreakingChangeSeverity.medium,
+			severity: 'medium',
 		};
 
 		const mockRule: IBreakingChangeRule = {
@@ -42,7 +42,7 @@ describe('RuleRegistry', () => {
 					isAffected: false,
 					instanceIssues: [],
 					recommendations: [],
-				} as InstanceDetectionResult);
+				} as InstanceDetectionReport);
 			}),
 		};
 

@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import BaseBanner from './BaseBanner.vue';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { i18n as locale } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed } from 'vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 
 import { N8nButton } from '@n8n/design-system';
 const toast = useToast();
@@ -43,7 +43,8 @@ async function onConfirmEmailClick() {
 		</template>
 		<template #trailingContent>
 			<N8nButton
-				type="success"
+				class="n8n-button--success"
+				variant="solid"
 				icon="mail"
 				size="small"
 				data-test-id="confirm-email-button"

@@ -34,8 +34,12 @@ export type IMenuItem = {
 	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;
+	disabledReason?: string;
 	notification?: boolean;
 	size?: 'medium' | 'small';
+	preview?: boolean;
+	new?: boolean;
+	creditsTag?: string;
 };
 
 export interface ICustomMenuItem {

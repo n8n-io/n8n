@@ -2,26 +2,28 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
-import type { Segment } from '@/types/expressions';
+import type { Segment } from '@/app/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { CanvasKey } from '@/constants';
+import { CanvasKey } from '@/app/constants';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
-import { isEventTargetContainedBy } from '@/utils/htmlUtils';
+import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+const i18n = useI18n();
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
@@ -56,7 +58,7 @@ const emit = defineEmits<{
 }>();
 
 const telemetry = useTelemetry();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 
 const canvas = inject(CanvasKey, undefined);
@@ -218,12 +220,12 @@ defineExpose({ focus, select });
 				</template>
 			</DraggableTarget>
 			<N8nButton
+				variant="outline"
+				iconOnly
 				v-if="!isDragging"
-				square
-				outline
-				type="tertiary"
 				icon="external-link"
-				size="mini"
+				size="xsmall"
+				:aria-label="i18n.baseText('expressionEdit.editExpression')"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
 				@click="emit('modal-opener-click')"
@@ -306,6 +308,8 @@ defineExpose({ focus, select });
 
 .focused :global(.cm-editor) {
 	border-color: var(--color--secondary);
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .focused > .expression-editor-modal-opener {
@@ -315,12 +319,14 @@ defineExpose({ focus, select });
 }
 
 .droppable {
-	--input--border-color: var(--ndv--droppable-parameter--color);
-	--input--border-right-color: var(--ndv--droppable-parameter--color);
-	--input--border-style: dashed;
+	--input--border-color: transparent;
+	--input--border-right-color: transparent;
 
 	:global(.cm-editor) {
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
 	}
 }
 
@@ -332,7 +338,10 @@ defineExpose({ focus, select });
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;
+		border-color: var(--color--success);
 		border-width: 1px;
+		outline: none;
+		transition: none;
 	}
 }
 </style>

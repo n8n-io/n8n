@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { ref } from 'vue';
+import { defineComponent, ref, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import type { IconSize } from '@n8n/design-system/types';
@@ -9,6 +9,7 @@ import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 type BaseItem = {
 	id: string;
@@ -19,6 +20,7 @@ type BaseItem = {
 	iconMargin?: boolean;
 	route?: RouteLocationRaw;
 	isDivider?: false;
+	description?: string;
 };
 
 type Divider = { isDivider: true; id: string };
@@ -33,15 +35,25 @@ defineProps<{
 	menu: Array<Item | Divider>;
 	disabled?: boolean;
 	teleport?: boolean;
+	submenuClass?: string;
 }>();
 
 const menuRef = ref<typeof ElMenu | null>(null);
 const ROOT_MENU_INDEX = '-1';
 
+// Passing both expand-close-icon and expand-open-icon to ElSubMenu disables
+// Element Plus's default 180° chevron rotation. The displayed chevron for
+// nested submenus is fixed to ArrowRight by Element Plus, so this no-op
+// component is never actually rendered.
+const NoopIcon = defineComponent({ name: 'NoopIcon', render: () => null });
+
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
 }>();
+
+const slots = useSlots();
+const hasAppendSlot = (id: string) => Boolean(slots[`item.append.${id}`]);
 
 defineSlots<{
 	default?: () => unknown;
@@ -91,7 +103,7 @@ defineExpose({
 			:index="ROOT_MENU_INDEX"
 			:class="$style.trigger"
 			:popper-offset="-10"
-			:popper-class="$style.submenu"
+			:popper-class="[$style.submenu, submenuClass ?? ''].join(' ')"
 			:disabled
 			:teleported="teleport"
 		>
@@ -106,6 +118,8 @@ defineExpose({
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
 						:popper-offset="-10"
+						:expand-close-icon="NoopIcon"
+						:expand-open-icon="NoopIcon"
 						data-test-id="navigation-submenu"
 					>
 						<template #title>
@@ -157,8 +171,18 @@ defineExpose({
 										</template>
 									</slot>
 
-									{{ subitem.title }}
-									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									<span :class="$style.menuItemTitle">{{ subitem.title }}</span>
+									<N8nTooltip
+										v-if="subitem.description"
+										:content="subitem.description"
+										placement="right"
+										:class="$style.infoTooltip"
+									>
+										<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
+									</N8nTooltip>
+									<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+										<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									</span>
 								</ElMenuItem>
 							</ConditionalRouterLink>
 						</template>
@@ -171,7 +195,9 @@ defineExpose({
 						data-test-id="navigation-menu-item"
 					>
 						{{ item.title }}
-						<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+							<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						</span>
 					</ElMenuItem>
 				</ConditionalRouterLink>
 			</template>
@@ -200,12 +226,6 @@ defineExpose({
 				border: 0;
 			}
 		}
-	}
-
-	& hr {
-		border-top: none;
-		border-bottom: var(--border);
-		margin-block: var(--spacing--4xs);
 	}
 }
 
@@ -248,6 +268,12 @@ defineExpose({
 	:global(.el-sub-menu__icon-arrow svg) {
 		margin-top: auto;
 	}
+
+	& hr {
+		border-top: none;
+		border-bottom: var(--border);
+		margin-block: var(--spacing--4xs);
+	}
 }
 
 .subMenuTitle {
@@ -259,5 +285,33 @@ defineExpose({
 .submenu__icon {
 	margin-right: var(--spacing--2xs);
 	color: var(--color--text);
+}
+
+.menuItemTitle {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+
+.menuItemAppend {
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+	padding-left: var(--spacing--2xs);
+}
+
+.infoTooltip {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	padding-left: var(--spacing--xs);
+}
+
+.infoIcon {
+	color: var(--color--text--tint-1);
+	outline: none;
+	margin-left: var(--spacing--2xs);
 }
 </style>

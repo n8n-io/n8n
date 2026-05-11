@@ -10,9 +10,10 @@ import type {
 	DropTarget,
 } from './folders.types';
 import * as foldersApi from './folders.api';
-import * as workflowsApi from '@/api/workflows';
-import * as workflowsEEApi from '@/api/workflows.ee';
+import * as workflowsApi from '@/app/api/workflows';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -23,6 +24,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
 
+	const workflowsCountLoaded = ref(false);
 	const totalWorkflowCount = ref<number>(0);
 
 	// Resource that is currently being dragged
@@ -98,6 +100,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		projectId?: string,
 		parentFolderId?: string,
 	): Promise<number> {
+		workflowsCountLoaded.value = false;
 		const { count } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
 			{ projectId, parentFolderId },
@@ -105,6 +108,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			true,
 		);
 		totalWorkflowCount.value = count;
+		workflowsCountLoaded.value = true;
 		return count;
 	}
 
@@ -120,6 +124,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	async function renameFolder(projectId: string, folderId: string, name: string) {
 		await foldersApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+		useFavoritesStore().renameFavorite(folderId, 'folder', name);
 	}
 
 	async function fetchProjectFolders(projectId: string) {
@@ -348,6 +353,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		createFolder,
 		getFolderPath,
 		totalWorkflowCount,
+		workflowsCountLoaded,
 		deleteFolder,
 		deleteFoldersFromCache,
 		renameFolder,

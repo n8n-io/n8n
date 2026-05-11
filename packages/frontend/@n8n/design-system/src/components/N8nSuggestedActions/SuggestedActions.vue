@@ -6,7 +6,7 @@ import N8nCallout from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
-import N8nPopoverReka from '../N8nPopoverReka';
+import N8nPopover from '../N8nPopover';
 import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 
@@ -65,7 +65,7 @@ const handleIgnoreClick = (actionId: string) => {
 </script>
 
 <template>
-	<N8nPopoverReka
+	<N8nPopover
 		v-if="completedCount !== actions.length"
 		:open="open"
 		width="360px"
@@ -146,7 +146,7 @@ const handleIgnoreClick = (actionId: string) => {
 				</div>
 			</div>
 		</template>
-	</N8nPopoverReka>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

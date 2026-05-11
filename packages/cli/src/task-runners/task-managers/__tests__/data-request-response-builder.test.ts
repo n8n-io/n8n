@@ -1,11 +1,12 @@
 import type { PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteContextData,
-	INode,
-	INodeExecutionData,
-	IRunExecutionData,
-	Workflow,
+import {
+	createRunExecutionData,
+	type IExecuteContextData,
+	type INode,
+	type INodeExecutionData,
+	type IRunExecutionData,
+	type Workflow,
 } from 'n8n-workflow';
 
 import { DataRequestResponseBuilder } from '../data-request-response-builder';
@@ -58,6 +59,7 @@ const metadata = {
 };
 
 const runExecutionData = mock<IRunExecutionData>({
+	resumeToken: 'test-resume-token-preserved',
 	executionData: {
 		contextData,
 		metadata,
@@ -128,15 +130,18 @@ describe('DataRequestResponseBuilder', () => {
 		const result = builder.buildFromTaskData(taskData);
 
 		expect(result.runExecutionData).toStrictEqual({
-			startData: runExecutionData.startData,
-			resultData: runExecutionData.resultData,
-			executionData: {
-				contextData,
-				metadata,
-				nodeExecutionStack: [],
-				waitingExecution: {},
-				waitingExecutionSource: null,
-			},
+			...createRunExecutionData({
+				startData: runExecutionData.startData,
+				resultData: runExecutionData.resultData,
+				executionData: {
+					contextData,
+					metadata,
+					nodeExecutionStack: [],
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			}),
+			resumeToken: 'test-resume-token-preserved',
 		});
 	});
 });

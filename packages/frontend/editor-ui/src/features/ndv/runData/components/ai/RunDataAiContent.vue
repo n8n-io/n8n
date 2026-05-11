@@ -1,15 +1,15 @@
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeTypeDescription, NodeConnectionType, NodeError } from 'n8n-workflow';
 import { computed } from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useI18n } from '@n8n/i18n';
 import { getConsumedTokens } from '@/features/execution/logs/logs.utils';
-import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
+import ConsumedTokensDetails from '@/app/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
-import { formatTokenUsageCount } from '@/utils/aiUtils';
+import { formatTokenUsageCount } from '@/app/utils/aiUtils';
 import { getReferencedData } from '@/features/ndv/runData/components/ai/utils';
 import { type LogEntry } from '@/features/execution/logs/logs.types';
 

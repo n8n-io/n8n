@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { ComponentInstance } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
@@ -11,7 +12,7 @@ import type {
 	ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '../ParameterIssues.vue';
@@ -21,14 +22,25 @@ import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflo
 import { useWorkflowResourceLocatorModes } from '../../composables/useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { VIEWS } from '@/constants';
-import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants/samples';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
+import {
+	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
+} from '@/app/constants/samples';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
-import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
-import { useToast } from '@/composables/useToast';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
+import { useToast } from '@/app/composables/useToast';
 
-import { N8nIcon, N8nInput, N8nLink, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
@@ -66,12 +78,13 @@ const emit = defineEmits<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectStore = useProjectsStore();
 
 const router = useRouter();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
-const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
+const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
 const telemetry = useTelemetry();
 const toast = useToast();
 
@@ -169,7 +182,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
-		const resource = workflowsStore.getWorkflowById(workflowId);
+		const resource = workflowsListStore.getWorkflowById(workflowId);
 		if (resource?.name) {
 			params.cachedResultName = getWorkflowName(workflowId);
 		}
@@ -220,7 +233,7 @@ async function refreshCachedWorkflow() {
 
 	const workflowId = props.modelValue.value;
 	try {
-		await workflowsStore.fetchWorkflow(`${workflowId}`);
+		await workflowsListStore.fetchWorkflow(`${workflowId}`);
 		onInputChange(workflowId);
 	} catch (e) {
 		// keep old cached value
@@ -272,7 +285,7 @@ const onAddResourceClicked = async () => {
 		const projectId = projectStore.currentProjectId;
 		const sampleWorkflow = props.sampleWorkflow;
 		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
-		const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+		const sampleSubWorkflows = workflowsListStore.allWorkflows.filter(
 			(w) => w.name && new RegExp(workflowName).test(w.name),
 		);
 
@@ -288,7 +301,7 @@ const onAddResourceClicked = async () => {
 		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 		const { href } = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+			params: { workflowId: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
 		});
 		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
 		emit('update:modelValue', {
@@ -330,6 +343,7 @@ const onAddResourceClicked = async () => {
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
+			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
@@ -342,19 +356,24 @@ const onAddResourceClicked = async () => {
 					</N8nText>
 				</div>
 			</template>
+			<template #item-badge="{ item, isHovered }">
+				<span v-if="!item.active && isHovered" :class="$style.inactiveBadgeWrapper">
+					<N8nTooltip
+						:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+						placement="top"
+					>
+						<span :class="$style.inactiveBadge">
+							<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
+						</span>
+					</N8nTooltip>
+				</span>
+			</template>
 			<div
 				:class="{
 					[$style.resourceLocator]: true,
 					[$style.multipleModes]: true,
 				}"
 			>
-				<div
-					:class="{
-						[$style.background]: true,
-						[$style.backgroundWithIssuesAndShowResourceLink]:
-							showOpenResourceLink && parameterIssues?.length,
-					}"
-				/>
 				<div :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
@@ -424,10 +443,9 @@ const onAddResourceClicked = async () => {
 									@blur="onInputBlur"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: isDropdownVisible,
 											}"
@@ -460,4 +478,16 @@ const onAddResourceClicked = async () => {
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
+
+.inactiveBadgeWrapper {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
+.inactiveBadge {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color--warning);
+}
 </style>

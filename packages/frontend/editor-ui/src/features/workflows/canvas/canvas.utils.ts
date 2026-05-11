@@ -8,9 +8,9 @@ import type { INodeUi } from '@/Interface';
 import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
 import type { Connection } from '@vue-flow/core';
-import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
+import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/constants';
+import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
@@ -20,9 +20,10 @@ export function mapLegacyConnectionsToCanvasConnections(
 	nodes: INodeUi[],
 ): CanvasConnection[] {
 	const mappedConnections: CanvasConnection[] = [];
+	const nodeIdByName = new Map(nodes.map((n) => [n.name, n.id]));
 
 	Object.keys(legacyConnections).forEach((fromNodeName) => {
-		const fromId = nodes.find((node) => node.name === fromNodeName)?.id ?? '';
+		const fromId = nodeIdByName.get(fromNodeName) ?? '';
 		const fromConnectionTypes = Object.keys(
 			legacyConnections[fromNodeName],
 		) as NodeConnectionType[];
@@ -32,7 +33,7 @@ export function mapLegacyConnectionsToCanvasConnections(
 			fromPorts?.forEach((toPorts, fromIndex) => {
 				toPorts?.forEach((toPort) => {
 					const toNodeName = toPort.node;
-					const toId = nodes.find((node) => node.name === toNodeName)?.id ?? '';
+					const toId = nodeIdByName.get(toNodeName) ?? '';
 					const toConnectionType = toPort.type;
 					const toIndex = toPort.index;
 

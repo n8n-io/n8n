@@ -1,0 +1,74 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nActionPill > snapshots > renders clickable correctly 1`] = `
+<div>
+  <span
+    class="root clickable"
+  >
+    
+    Label
+    
+  </span>
+</div>
+`;
+
+exports[`N8nActionPill > snapshots > renders danger + clickable + hoverText correctly 1`] = `
+<div>
+  <span
+    class="root danger clickable"
+  >
+    <span
+      class="labelGrid"
+    >
+      <span
+        class="label"
+      >
+        
+        No credits
+        
+      </span>
+      <span
+        class="label labelHidden"
+      >
+        Top up
+      </span>
+    </span>
+  </span>
+</div>
+`;
+
+exports[`N8nActionPill > snapshots > renders danger type correctly 1`] = `
+<div>
+  <span
+    class="root danger"
+  >
+    
+    No credits
+    
+  </span>
+</div>
+`;
+
+exports[`N8nActionPill > snapshots > renders default type correctly 1`] = `
+<div>
+  <span
+    class="root"
+  >
+    
+    $5.00 remaining
+    
+  </span>
+</div>
+`;
+
+exports[`N8nActionPill > snapshots > renders small size correctly 1`] = `
+<div>
+  <span
+    class="root small"
+  >
+    
+    Label
+    
+  </span>
+</div>
+`;

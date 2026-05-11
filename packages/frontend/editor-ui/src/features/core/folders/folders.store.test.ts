@@ -8,7 +8,7 @@ import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResponseItem } from './folders.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-vi.mock('@/utils/apiUtils', () => ({
+vi.mock('@/app/utils/apiUtils', () => ({
 	makeRestApiRequest: vi.fn(),
 }));
 
@@ -36,6 +36,7 @@ describe('folders.store', () => {
 	let rootStore: ReturnType<typeof useRootStore>;
 
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		setActivePinia(createPinia());
 		rootStore = useRootStore();
 		foldersStore = useFoldersStore();

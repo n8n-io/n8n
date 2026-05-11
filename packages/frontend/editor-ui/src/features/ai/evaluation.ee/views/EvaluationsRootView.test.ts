@@ -4,21 +4,30 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationRootView from './EvaluationsRootView.vue';
 
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../evaluation.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import type { TestRunRecord } from '../evaluation.api';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('vue-router', () => ({
+	useRoute: () => ({
+		query: {},
+		params: {},
+	}),
+	useRouter: () => ({}),
+	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -27,10 +36,22 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	}),
+}));
+
 const getNodeType = vi.fn();
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
@@ -50,6 +71,7 @@ describe('EvaluationsRootView', () => {
 		id: 'different-id',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		createdAt: Date.now(),
 		updatedAt: Date.now(),
@@ -85,32 +107,29 @@ describe('EvaluationsRootView', () => {
 		});
 	});
 
-	it('should initialize workflow on mount if not already initialized', async () => {
+	it('should not fetch workflow since WorkflowLayout handles initialization', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		const uninitializedWorkflow = { ...mockWorkflow, id: PLACEHOLDER_EMPTY_WORKFLOW_ID };
-		workflowsStore.workflow = uninitializedWorkflow;
-		const newWorkflowId = 'workflow123';
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
 
-		renderComponent({ props: { name: newWorkflowId } });
-
-		// Wait for async operation to complete
-		await waitFor(() => expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId));
-	});
-
-	it('should not initialize workflow if already loaded', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.workflow = mockWorkflow;
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 
-		renderComponent({ props: { name: mockWorkflow.id } });
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
 
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		await flushPromises();
+
+		// Verify that evaluation-specific data is loaded
+		expect(usageStore.getLicenseInfo).toHaveBeenCalled();
+		expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id);
 	});
 
 	it('should load test data', async () => {
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.fetchTestRuns.mockResolvedValue(mockTestRuns);
 
-		renderComponent({ props: { name: mockWorkflow.id } });
+		renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		await waitFor(() =>
 			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id),
@@ -118,12 +137,10 @@ describe('EvaluationsRootView', () => {
 	});
 
 	it('should not render setup wizard when there are test runs', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.testRunsById = { foo: mock<TestRunRecord>({ workflowId: mockWorkflow.id }) };
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 		// Check that setupContent is not present
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeFalsy());
@@ -131,21 +148,35 @@ describe('EvaluationsRootView', () => {
 
 	it('should render the setup wizard when there there are no test runs', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		workflowsStore.workflow = mockWorkflow;
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockResolvedValue([]);
+		evaluationStore.testRunsById = {};
 
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
+
+		await flushPromises();
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeTruthy());
 	});
 
 	it('should render read-only callout when in protected environment', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
 		const sourceControlStore = mockedStore(useSourceControlStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+
+		workflowsStore.workflow = mockWorkflow;
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockResolvedValue([]);
+		evaluationStore.testRunsById = {};
 		sourceControlStore.preferences = mock<SourceControlPreferences>({ branchReadOnly: true });
 
-		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+		const { container } = renderComponent({ props: { workflowId: mockWorkflow.id } });
 
+		await flushPromises();
 		await waitFor(() => {
 			const callout = container.querySelector('[role="alert"]');
 			expect(callout).toBeTruthy();
@@ -167,7 +198,7 @@ describe('EvaluationsRootView', () => {
 			// Mock no evaluation nodes in workflow
 			getNodeType.mockReturnValue(null);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -195,7 +226,7 @@ describe('EvaluationsRootView', () => {
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 1;
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -228,6 +259,9 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithTrigger;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			// and the document store's setNodes is a no-op
+			evaluationStore.evaluationTriggerExists = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -238,7 +272,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -280,6 +314,8 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithOutputNode;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			evaluationStore.evaluationSetOutputsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -290,7 +326,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -332,6 +368,8 @@ describe('EvaluationsRootView', () => {
 
 			workflowsStore.workflow = workflowWithMetricsNode;
 			evaluationStore.testRunsById = {};
+			// Override the computed property directly since createTestingPinia stubs actions
+			evaluationStore.evaluationSetMetricsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
 
@@ -342,7 +380,7 @@ describe('EvaluationsRootView', () => {
 					: null,
 			);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
@@ -370,7 +408,7 @@ describe('EvaluationsRootView', () => {
 			// Mock no evaluation nodes in workflow
 			getNodeType.mockReturnValue(null);
 
-			renderComponent({ props: { name: mockWorkflow.id } });
+			renderComponent({ props: { workflowId: mockWorkflow.id } });
 
 			await waitFor(() => {
 				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {

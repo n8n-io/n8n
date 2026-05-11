@@ -409,6 +409,46 @@ describe('dataTable', () => {
 			await expect(result).rejects.toThrow(DataTableNotFoundError);
 		});
 
+		it('should clamp insertion index to append when index exceeds current column count', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'clampIndexTable',
+				columns: [
+					{ name: 'a', type: 'string' },
+					{ name: 'b', type: 'number' },
+				],
+			});
+
+			const added = await dataTableService.addColumn(dataTableId, project1.id, {
+				name: 'c',
+				type: 'string',
+				index: 100,
+			});
+
+			expect(added.index).toBe(2);
+
+			const columnResult = await dataTableService.getColumns(dataTableId, project1.id);
+			expect(columnResult.map((c) => ({ name: c.name, index: c.index }))).toEqual([
+				{ name: 'a', index: 0 },
+				{ name: 'b', index: 1 },
+				{ name: 'c', index: 2 },
+			]);
+		});
+
+		it('should reject a negative insertion index when adding a column', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'negativeIndexTable',
+				columns: [{ name: 'a', type: 'string' }],
+			});
+
+			await expect(
+				dataTableService.addColumn(dataTableId, project1.id, {
+					name: 'b',
+					type: 'string',
+					index: -1,
+				}),
+			).rejects.toThrow(DataTableValidationError);
+		});
+
 		it('should succeed with adding column to table that already has rows and set null values for existing rows', async () => {
 			// ARRANGE
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
@@ -998,7 +1038,7 @@ describe('dataTable', () => {
 
 		it('inserts a row even if it matches with the existing one', async () => {
 			// ARRANGE
-			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
 				name: 'myDataTable',
 				columns: [
 					{ name: 'c1', type: 'number' },
@@ -1026,7 +1066,11 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual([{ id: 2 }]);
 
-			const { count, data } = await dataTableRowsRepository.getManyAndCount(dataTableId, {});
+			const { count, data } = await dataTableRowsRepository.getManyAndCount(
+				dataTableId,
+				{},
+				columns,
+			);
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
@@ -1045,7 +1089,7 @@ describe('dataTable', () => {
 
 		it('return correct IDs even after deletions', async () => {
 			// ARRANGE
-			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
 				name: 'myDataTable',
 				columns: [
 					{ name: 'c1', type: 'number' },
@@ -1086,7 +1130,11 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual([{ id: 3 }, { id: 4 }]);
 
-			const { count, data } = await dataTableRowsRepository.getManyAndCount(dataTableId, {});
+			const { count, data } = await dataTableRowsRepository.getManyAndCount(
+				dataTableId,
+				{},
+				columns,
+			);
 
 			expect(count).toEqual(3);
 			expect(data).toEqual([
@@ -1244,9 +1292,8 @@ describe('dataTable', () => {
 			);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError("unknown column name 'cWrong'"),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow("unknown column name 'cWrong'");
 		});
 
 		it('inserts rows with partial data (some columns missing)', async () => {
@@ -1332,9 +1379,8 @@ describe('dataTable', () => {
 			);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError("unknown column name 'cWrong'"),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow("unknown column name 'cWrong'");
 		});
 
 		it('rejects an invalid date string to date column', async () => {
@@ -2324,10 +2370,9 @@ describe('dataTable', () => {
 				filter: undefined as any,
 			});
 
+			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow(
-				new DataTableValidationError(
-					'Filter is required for delete operations to prevent accidental deletion of all data',
-				),
+				'Filter is required for delete operations to prevent accidental deletion of all data',
 			);
 		});
 
@@ -2350,10 +2395,9 @@ describe('dataTable', () => {
 				filter: { type: 'and', filters: [] },
 			});
 
+			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow(
-				new DataTableValidationError(
-					'Filter is required for delete operations to prevent accidental deletion of all data',
-				),
+				'Filter is required for delete operations to prevent accidental deletion of all data',
 			);
 		});
 
@@ -2902,9 +2946,8 @@ describe('dataTable', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError('Filter must not be empty'),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow('Filter must not be empty');
 
 			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
 			expect(data).toEqual([
@@ -2934,9 +2977,8 @@ describe('dataTable', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError('Data columns must not be empty'),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow('Data columns must not be empty');
 
 			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
 			expect(data).toEqual([

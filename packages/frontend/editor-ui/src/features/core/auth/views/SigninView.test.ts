@@ -5,9 +5,9 @@ import userEvent from '@testing-library/user-event';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { VIEWS } from '@/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -26,7 +26,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({

@@ -3,16 +3,16 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '../usage.store';
 import { useUsageStore } from '../usage.store';
-import { telemetry } from '@/plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 import { i18n as locale } from '@n8n/i18n';
-import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
 import { ElDialog } from 'element-plus';
@@ -72,18 +72,24 @@ const canUserRegisterCommunityPlus = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
-const showActivationSuccess = () => {
+const showActivationSuccess = (eulaAccepted = false) => {
+	const message = eulaAccepted
+		? locale.baseText('settings.usageAndPlan.license.activation.success.message.eula', {
+				interpolate: { name: usageStore.planName },
+			})
+		: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
+				interpolate: {
+					name: usageStore.planName,
+					type: usageStore.planId
+						? locale.baseText('settings.usageAndPlan.plan')
+						: locale.baseText('settings.usageAndPlan.edition'),
+				},
+			});
+
 	toast.showMessage({
 		type: 'success',
 		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
-		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
-			interpolate: {
-				name: usageStore.planName,
-				type: usageStore.planId
-					? locale.baseText('settings.usageAndPlan.plan')
-					: locale.baseText('settings.usageAndPlan.edition'),
-			},
-		}),
+		message,
 	});
 };
 
@@ -103,17 +109,17 @@ const isEulaError = (error: unknown): error is EulaErrorResponse => {
 
 const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value, eulaUri);
+		await usageStore.activateLicense(activationKey.value.trim(), eulaUri?.trim());
 		activationKeyModal.value = false;
 		eulaModal.value = false;
 		activationKey.value = '';
-		showActivationSuccess();
+		showActivationSuccess(!!eulaUri);
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance using type guard
 		if (isEulaError(error)) {
-			activationKeyModal.value = false;
 			eulaUrl.value = error.meta.eulaUrl;
 			eulaModal.value = true;
+			activationKeyModal.value = false;
 			return;
 		}
 
@@ -136,6 +142,18 @@ const onEulaCancel = () => {
 	eulaModal.value = false;
 	eulaUrl.value = '';
 	activationKey.value = '';
+};
+
+const onActivationCancel = () => {
+	activationKeyModal.value = false;
+	activationKey.value = '';
+};
+
+const onActivationModalClose = () => {
+	// Only clear key if not transitioning to EULA flow
+	if (!eulaModal.value) {
+		onActivationCancel();
+	}
 };
 
 onMounted(async () => {
@@ -163,7 +181,7 @@ onMounted(async () => {
 		if (!error.name) {
 			error.name = locale.baseText('settings.usageAndPlan.error');
 		}
-		toast.showError(error, error.name, error.message);
+		toast.showError(error, error.name, { message: error.message });
 	}
 });
 
@@ -185,10 +203,6 @@ const onViewPlans = () => {
 
 const onManagePlan = () => {
 	sendUsageTelemetry('manage_plan');
-};
-
-const onDialogClosed = () => {
-	activationKey.value = '';
 };
 
 const onDialogOpened = () => {
@@ -240,8 +254,8 @@ const openCommunityRegisterModal = () => {
 				<I18nT keypath="settings.usageAndPlan.callOut" scope="global">
 					<template #link>
 						<N8nButton
+							variant="ghost"
 							class="pl-0 pr-0"
-							text
 							:label="locale.baseText('settings.usageAndPlan.callOut.link')"
 							@click="openCommunityRegisterModal"
 						/>
@@ -281,9 +295,9 @@ const openCommunityRegisterModal = () => {
 
 			<div :class="$style.buttons">
 				<N8nButton
+					variant="subtle"
 					v-if="canUserActivateLicense"
 					:class="$style.buttonTertiary"
-					type="tertiary"
 					size="large"
 					@click="onAddActivationKey"
 				>
@@ -307,7 +321,7 @@ const openCommunityRegisterModal = () => {
 				top="0"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
-				@closed="onDialogClosed"
+				@closed="onActivationModalClose"
 				@opened="onDialogOpened"
 			>
 				<template #default>
@@ -318,12 +332,14 @@ const openCommunityRegisterModal = () => {
 					/>
 				</template>
 				<template #footer>
-					<N8nButton type="secondary" @click="activationKeyModal = false">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-					</N8nButton>
-					<N8nButton :disabled="!activationKey" @click="onLicenseActivation">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-					</N8nButton>
+					<div :class="$style.dialogButtonsContainer">
+						<N8nButton variant="subtle" @click="onActivationCancel">
+							{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
+						</N8nButton>
+						<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
+							{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
+						</N8nButton>
+					</div>
 				</template>
 			</ElDialog>
 
@@ -338,7 +354,7 @@ const openCommunityRegisterModal = () => {
 </template>
 
 <style lang="scss" module>
-@use '@/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .center > div {
 	justify-content: center;
@@ -431,6 +447,11 @@ div[class*='info'] > span > span:last-child {
 	display: flex;
 	align-items: center;
 	margin: 0 0 0 var(--spacing--2xs);
+}
+
+.dialogButtonsContainer {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>
 

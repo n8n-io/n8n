@@ -12,7 +12,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { keyFromCredentialTypeAndName } from './utils/templateTransforms';
 import { useSetupTemplateStore } from './setupTemplate.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import {
 	nodeTypeHttpRequest,
@@ -20,7 +20,7 @@ import {
 	nodeTypeReadImap,
 	nodeTypeTelegram,
 	nodeTypeTwitter,
-} from '@/utils/testData/nodeTypeTestData';
+} from '@/app/utils/testData/nodeTypeTestData';
 import * as testData from './__tests__/setupTemplate.store.testData';
 
 const mockCredentialsResponse = (id: string) =>

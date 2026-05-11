@@ -11,17 +11,24 @@ import { NodeDiffStatus, type IConnections } from 'n8n-workflow';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 
 // Mock modules at top level
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => ({
 		createWorkflowObject: vi.fn().mockReturnValue({
 			id: 'test-workflow',
 			nodes: [],
 			connections: {},
 		}),
 	}),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: vi.fn().mockReturnValue({
 			name: 'Test Node Type',
@@ -156,6 +163,7 @@ describe('useWorkflowDiff', () => {
 			nodes,
 			connections,
 			active: false,
+			activeVersionId: null,
 			createdAt: '2023-01-01T00:00:00.000Z',
 			updatedAt: '2023-01-01T00:00:00.000Z',
 			tags: [],
@@ -367,6 +375,36 @@ describe('useWorkflowDiff', () => {
 			expect(connectionDiff?.status).toBe(NodeDiffStatus.Added);
 			expect(connectionDiff?.connection).toBeDefined();
 			expect(connectionDiff?.connection.id).toBe('conn1');
+		});
+
+		it('should generate IDs for nodes that are missing them', () => {
+			const nodeWithoutId = {
+				name: 'Node Without ID',
+				type: 'test-node',
+				typeVersion: 1,
+				position: [100, 100] as [number, number],
+				parameters: {},
+			} as INodeUi;
+
+			const nodeWithId = createMockNode('existing-id');
+
+			const sourceWorkflow = createMockWorkflow('source', [nodeWithoutId, nodeWithId]);
+
+			useWorkflowDiff(sourceWorkflow, undefined);
+
+			// Verify useCanvasMapping was called with nodes that have IDs
+			const firstCall = mockUseCanvasMapping.mock.calls[0][0];
+			const passedNodes = firstCall.nodes.value;
+
+			expect(passedNodes).toHaveLength(2);
+			// Node without ID should now have a generated UUID
+			expect(passedNodes[0].id).toBeDefined();
+			expect(passedNodes[0].id).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(passedNodes[0].name).toBe('Node Without ID');
+			// Node with existing ID should keep its ID
+			expect(passedNodes[1].id).toBe('existing-id');
 		});
 	});
 });

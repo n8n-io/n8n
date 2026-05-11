@@ -3,131 +3,82 @@ import { sql } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 /**
- * Generates database-specific SQL for a datetime value relative to now
- * @param dbType - The database type
- * @param daysFromToday - Number of days back from today (0 = now)
- * @param useStartOfDay - Whether to truncate to start of day (00:00:00)
- */
-const getDatetimeSql = ({
-	dbType,
-	daysFromToday,
-	useStartOfDay = false,
-}: {
-	dbType: DatabaseConfig['type'];
-	daysFromToday: number;
-	useStartOfDay?: boolean;
-}): string => {
-	// Handle "now" case
-	if (daysFromToday === 0 && !useStartOfDay) {
-		return dbType === 'sqlite' ? "datetime('now')" : 'NOW()';
-	}
-
-	// SQLite
-	if (dbType === 'sqlite') {
-		if (daysFromToday === 0 && useStartOfDay) {
-			return "datetime('now', 'start of day')";
-		}
-		if (useStartOfDay) {
-			return `datetime('now', '-${daysFromToday} days', 'start of day')`;
-		}
-		return `datetime('now', '-${daysFromToday} days')`;
-	}
-
-	// PostgreSQL
-	if (dbType === 'postgresdb') {
-		if (daysFromToday === 0 && useStartOfDay) {
-			return "DATE_TRUNC('day', NOW())";
-		}
-		if (useStartOfDay) {
-			return `DATE_TRUNC('day', NOW() - INTERVAL '${daysFromToday} days')`;
-		}
-		return `NOW() - INTERVAL '${daysFromToday} days'`;
-	}
-
-	// MySQL/MariaDB
-	if (daysFromToday === 0 && useStartOfDay) {
-		return 'DATE(NOW())';
-	}
-	if (useStartOfDay) {
-		return `DATE(DATE_SUB(NOW(), INTERVAL ${daysFromToday} DAY))`;
-	}
-	return `DATE_SUB(NOW(), INTERVAL ${daysFromToday} DAY)`;
-};
-
-/**
  * Generates a SQL Common Table Expression (CTE) query that provides three date boundaries for insights queries
  *
  * Behavior:
- * - If startDate and endDate are the same and today
- *   - returns the last 24 hours: prev_start_date (2 days ago), start_date (1 day ago), end_date (now).
- * - Otherwise:
- *   - prev_start_date: start of the day before the range
- *   - start_date: start of the current range
- *   - end_date: "now" if endDate is today, else start of the day after endDate
+ * - If the end date is today and the start date is also today, start date is set to the start of the day to take today's data.
+ * - If the end date is in the past, both start and end dates are set to the start of their respective days, to take full days.
  *
  * The SQL CTE can be joined with the insights table for filtering/aggregation.
  *
- * @param dbType - The database type ('sqlite', 'postgresdb', 'mysqldb', 'mariadb')
  * @param startDate - The start date of the range (inclusive)
  * @param endDate - The end date of the range (inclusive, or "now" if today)
+ * @param dbType - The database type (postgresdb or sqlite)
  * @returns SQL CTE query with `prev_start_date`, `start_date`, and `end_date` columns
  * - `prev_start_date`: The start of the previous period (used for comparison)
  * - `start_date`: The start of the current period (inclusive)
  * - `end_date`: The end of the current period (exclusive)
  */
 export const getDateRangesCommonTableExpressionQuery = ({
-	dbType,
 	startDate,
 	endDate,
+	dbType,
 }: {
-	dbType: DatabaseConfig['type'];
 	startDate: Date;
 	endDate: Date;
+	dbType: DatabaseConfig['type'];
 }) => {
-	const today = DateTime.now().startOf('day');
-	const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
-	const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
+	let startDateTime = DateTime.fromJSDate(startDate).toUTC();
+	let endDateTime = DateTime.fromJSDate(endDate).toUTC();
 
-	const daysFromEndDateToToday = Math.floor(today.diff(endDateStartOfDay, 'days').days);
-	const daysDiff = Math.floor(endDateStartOfDay.diff(startDateStartOfDay, 'days').days);
+	const today = DateTime.now().toUTC();
+	const isEndDateToday = endDateTime.hasSame(today, 'day');
 
-	const isEndDateToday = daysFromEndDateToToday === 0;
+	// Past range, take full days
+	if (!isEndDateToday) {
+		startDateTime = startDateTime.startOf('day');
+		endDateTime = endDateTime.plus({ days: 1 }).startOf('day');
+	}
 
-	let prevStartDateSql: string;
-	let startDateSql: string;
-	let endDateSql: string;
+	// Today range, take all day data starting from the beginning of the day
+	if (isEndDateToday && startDateTime.hasSame(endDateTime, 'day')) {
+		startDateTime = startDateTime.startOf('day');
+	}
 
-	if (daysDiff === 0 && isEndDateToday) {
-		// Last 24 hours
-		prevStartDateSql = getDatetimeSql({ dbType, daysFromToday: 2, useStartOfDay: false });
-		startDateSql = getDatetimeSql({ dbType, daysFromToday: 1, useStartOfDay: false });
-		endDateSql = getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false });
-	} else {
-		// Calculate the date range (minimum 1 day) for previous period
-		const dateRangeInDays = Math.max(1, daysDiff);
-		const daysFromStartDateToToday = Math.floor(today.diff(startDateStartOfDay, 'days').days);
-		const prevStartDaysFromToday = daysFromStartDateToToday + dateRangeInDays;
+	const prevStartDateTime = startDateTime.minus(endDateTime.diff(startDateTime));
 
-		prevStartDateSql = getDatetimeSql({
-			dbType,
-			daysFromToday: prevStartDaysFromToday,
-			useStartOfDay: true,
-		});
+	return getDateRangesSelectQuery({ dbType, prevStartDateTime, startDateTime, endDateTime });
+};
 
-		startDateSql = getDatetimeSql({
-			dbType,
-			daysFromToday: daysFromStartDateToToday,
-			useStartOfDay: true,
-		});
+export function getDateRangesSelectQuery({
+	dbType,
+	prevStartDateTime,
+	startDateTime,
+	endDateTime,
+}: {
+	dbType: DatabaseConfig['type'];
+	prevStartDateTime: DateTime;
+	startDateTime: DateTime;
+	endDateTime: DateTime;
+}) {
+	const prevStartStr = prevStartDateTime.toSQL({ includeZone: false, includeOffset: false });
+	const startStr = startDateTime.toSQL({ includeZone: false, includeOffset: false });
+	const endStr = endDateTime.toSQL({ includeZone: false, includeOffset: false });
 
-		endDateSql = isEndDateToday
-			? getDatetimeSql({ dbType, daysFromToday: 0, useStartOfDay: false })
-			: getDatetimeSql({ dbType, daysFromToday: daysFromEndDateToToday - 1, useStartOfDay: true });
+	// Database-specific timestamp casting
+	// PostgreSQL requires explicit CAST or :: syntax for timestamp comparisons
+	// SQLite can work with string literals in comparisons
+	if (dbType === 'postgresdb') {
+		return sql`SELECT
+			CAST('${prevStartStr}' AS TIMESTAMP) AS prev_start_date,
+			CAST('${startStr}' AS TIMESTAMP) AS start_date,
+			CAST('${endStr}' AS TIMESTAMP) AS end_date
+		`;
 	}
 
 	return sql`SELECT
-			${prevStartDateSql} AS prev_start_date,
-			${startDateSql} AS start_date,
-			${endDateSql} AS end_date
+			'${prevStartStr}' AS prev_start_date,
+			'${startStr}' AS start_date,
+			'${endStr}' AS end_date
 	`;
-};
+}

@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
+import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
@@ -190,7 +190,7 @@ async function handleActionItemClick(commandData: Command) {
 				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: execution.workflowId, executionId: execution.id },
+						params: { workflowId: execution.workflowId, executionId: execution.id },
 					}"
 					:class="$style.workflowName"
 					target="_blank"
@@ -272,9 +272,9 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<N8nButton
+				variant="ghost"
 				v-if="!execution.stoppedAt || execution.waitTill"
 				data-test-id="stop-execution-button"
-				type="secondary"
 				:loading="isStopping"
 				:disabled="isStopping"
 				@click.stop="onStopExecution"
@@ -284,7 +284,7 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton text type="tertiary" icon="ellipsis-vertical" />
+				<N8nIconButton variant="subtle" icon="ellipsis-vertical" />
 				<template #dropdown>
 					<ElDropdownMenu
 						:class="{

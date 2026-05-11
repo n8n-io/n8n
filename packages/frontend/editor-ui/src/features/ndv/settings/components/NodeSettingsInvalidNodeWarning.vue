@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { CUSTOM_NODES_DOCS_URL } from '@/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { CUSTOM_NODES_DOCS_URL } from '@/app/constants';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/settings/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -16,6 +16,7 @@ import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -23,7 +24,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const usersStore = useUsersStore();
 
@@ -34,7 +35,9 @@ const isVerifiedCommunityNode = computed(
 		nodeTypesStore.communityNodeType(node.type)?.isOfficialNode,
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
-const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 
 const { installNode, loading } = useInstallNode();
 
@@ -65,6 +68,10 @@ async function onInstallClick() {
 			type: 'verified',
 			packageName: npmPackage.value,
 			nodeType: node.type,
+			telemetry: {
+				source: 'missing node modal source',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
 		});
 	} else {
 		uiStore.openModalWithData({
@@ -107,11 +114,11 @@ watch(isNodeDefined, () => {
 					<N8nText size="medium" bold>{{ npmPackage }}</N8nText>
 				</template>
 			</I18nT>
-			<div v-if="isOwner" :class="$style.communityNodeActionsContainer">
+			<div v-if="isAdminOrOwner" :class="$style.communityNodeActionsContainer">
 				<N8nButton
-					v-if="isOwner"
+					variant="solid"
+					v-if="isAdminOrOwner"
 					icon="hard-drive-download"
-					type="primary"
 					data-test-id="install-community-node-button"
 					:loading="loading"
 					:disabled="loading"
@@ -120,8 +127,8 @@ watch(isNodeDefined, () => {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installButton.label') }}
 				</N8nButton>
 				<N8nButton
+					variant="subtle"
 					icon="external-link"
-					type="secondary"
 					@click="onViewDetailsClick"
 					data-test-id="view-details-button"
 				>

@@ -38,6 +38,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'id',
 		'name',
 		'active',
+		'activeVersionId',
 		'isArchived',
 		'createdAt',
 		'updatedAt',
@@ -72,6 +73,22 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	return fullExecutionData;
 }
 
+export async function updateExistingExecutionMetadata(
+	executionId: string,
+	metadata?: Record<string, string>,
+) {
+	const logger = Container.get(Logger);
+
+	try {
+		if (metadata && Object.keys(metadata).length > 0) {
+			await Container.get(ExecutionMetadataService).save(executionId, metadata);
+		}
+	} catch (e) {
+		const error = ensureError(e);
+		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
+	}
+}
+
 export async function updateExistingExecution(parameters: {
 	executionId: string;
 	workflowId: string;
@@ -88,18 +105,6 @@ export async function updateExistingExecution(parameters: {
 	});
 
 	await Container.get(ExecutionRepository).updateExistingExecution(executionId, executionData);
-
-	try {
-		if (executionData.data?.resultData.metadata) {
-			await Container.get(ExecutionMetadataService).save(
-				executionId,
-				executionData.data.resultData.metadata,
-			);
-		}
-	} catch (e) {
-		const error = ensureError(e);
-		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
-	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
 		await Container.get(ExecutionRepository).updateExistingExecution(executionData.retryOf, {

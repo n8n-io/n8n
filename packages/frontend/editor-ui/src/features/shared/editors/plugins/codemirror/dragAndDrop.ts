@@ -1,5 +1,5 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { unwrapExpression } from '@/utils/expressions';
+import { unwrapExpression } from '@/app/utils/expressions';
 import { syntaxTree } from '@codemirror/language';
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';

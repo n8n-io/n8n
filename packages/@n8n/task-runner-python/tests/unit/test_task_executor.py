@@ -3,8 +3,10 @@ import json
 from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
+from src.pipe_reader import PipeReader
 from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
 from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
+from src.config.security_config import SecurityConfig
 from src.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
@@ -28,7 +30,6 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
-                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -47,7 +48,6 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
-                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -66,7 +66,6 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
-                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -89,7 +88,6 @@ class TestTaskExecutorProcessExitHandling:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
-                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -119,7 +117,6 @@ class TestTaskExecutorPipeCommunication:
             read_conn=read_conn,
             write_conn=write_conn,
             task_timeout=60,
-            pipe_reader_timeout=3.0,
             continue_on_fail=False,
         )
 
@@ -160,7 +157,6 @@ class TestTaskExecutorPipeCommunication:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=60,
-                pipe_reader_timeout=3.0,
                 continue_on_fail=False,
             )
 
@@ -174,7 +170,7 @@ class TestTaskExecutorLowLevelIO:
         data = b"test data"
         mock_os_read.return_value = data
 
-        result = TaskExecutor._read_exact_bytes(999, len(data))
+        result = PipeReader._read_exact_bytes(999, len(data))
 
         assert result == data
         mock_os_read.assert_called_once_with(999, len(data))
@@ -183,7 +179,7 @@ class TestTaskExecutorLowLevelIO:
     def test_read_exact_bytes_multiple_reads(self, mock_os_read):
         mock_os_read.side_effect = [b"test", b" ", b"data"]
 
-        result = TaskExecutor._read_exact_bytes(999, 9)
+        result = PipeReader._read_exact_bytes(999, 9)
 
         assert result == b"test data"
         assert mock_os_read.call_count == 3
@@ -193,7 +189,7 @@ class TestTaskExecutorLowLevelIO:
         mock_os_read.side_effect = [b"test", b""]  # empty for EOF
 
         with pytest.raises(EOFError, match="Pipe closed before reading all data"):
-            TaskExecutor._read_exact_bytes(999, 10)
+            PipeReader._read_exact_bytes(999, 10)
 
     @patch("os.write")
     def test_write_bytes_write_failure(self, mock_os_write):
@@ -201,3 +197,81 @@ class TestTaskExecutorLowLevelIO:
 
         with pytest.raises(OSError, match="Write failed"):
             TaskExecutor._write_bytes(999, b"test data")
+
+
+class TestFilterBuiltins:
+    def _make_security_config(self) -> SecurityConfig:
+        return SecurityConfig(
+            stdlib_allow=set(),
+            external_allow=set(),
+            builtins_deny=set(),
+            runner_env_deny=False,
+        )
+
+    def test_supports_item_access(self):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        assert result["__import__"] is not None
+        assert result["len"] is len
+        assert "len" in result
+
+    def test_supports_attribute_access(self):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        assert result.__import__ is not None
+        assert result.len is len
+
+    def test_is_not_a_dict(self):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        assert not isinstance(result, dict)
+
+    @pytest.mark.parametrize(
+        "name,mutate,expected",
+        [
+            (
+                "item_assignment",
+                lambda r: r.__setitem__("len", None),
+                (TypeError, AttributeError),
+            ),
+            (
+                "attribute_assignment",
+                lambda r: setattr(r, "__import__", None),
+                AttributeError,
+            ),
+            (
+                "dict_class_setitem",
+                lambda r: dict.__setitem__(r, "len", None),
+                TypeError,
+            ),
+            ("dict_class_init", lambda r: dict.__init__(r, {"pwned": True}), TypeError),
+            ("dict_class_update", lambda r: dict.update(r, {"len": None}), TypeError),
+            ("dict_class_clear", lambda r: dict.clear(r), TypeError),
+            ("class_swap", lambda r: setattr(r, "__class__", dict), AttributeError),
+            ("vars_injection", lambda r: vars(r), TypeError),
+            (
+                "object_setattr",
+                lambda r: object.__setattr__(r, "_x", {"pwned": True}),
+                AttributeError,
+            ),
+        ],
+    )
+    def test_rejects_mutation(self, name, mutate, expected):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        with pytest.raises(expected):
+            mutate(result)
+
+    def test_applies_builtins_deny(self):
+        config = SecurityConfig(
+            stdlib_allow=set(),
+            external_allow=set(),
+            builtins_deny={"open", "eval"},
+            runner_env_deny=False,
+        )
+        result = TaskExecutor._filter_builtins(config)
+
+        assert "open" not in result
+        assert "eval" not in result
+        assert "len" in result
+        assert result["__import__"] is not None

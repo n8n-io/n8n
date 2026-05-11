@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { type INodeUi } from '@/Interface';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
-import { isChatNode } from '@/utils/aiUtils';
+import { isChatNode } from '@/app/utils/aiUtils';
 import { I18nT } from 'vue-i18n';
 
 import { N8nActionDropdown, N8nButton, N8nText, type ActionDropdownItem } from '@n8n/design-system';
@@ -17,18 +17,27 @@ const emit = defineEmits<{
 	selectTriggerNode: [name: string];
 }>();
 
-const props = defineProps<{
-	selectedTriggerNodeName?: string;
-	triggerNodes: INodeUi[];
-	waitingForWebhook?: boolean;
-	executing?: boolean;
-	disabled?: boolean;
-	hideTooltip?: boolean;
-	label?: string;
-	size?: 'small' | 'medium' | 'large';
-	includeChatTrigger?: boolean;
-	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		selectedTriggerNodeName?: string;
+		triggerNodes: INodeUi[];
+		waitingForWebhook?: boolean;
+		executing?: boolean;
+		disabled?: boolean;
+		hideTooltip?: boolean;
+		label?: string;
+		size?: 'small' | 'medium' | 'large';
+		includeChatTrigger?: boolean;
+		/** When the canvas is embedded in another view (e.g. the Instance AI
+		 * workflow preview iframe) the execute button is a secondary action,
+		 * not the primary CTA — render it less prominently. */
+		embedded?: boolean;
+		getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
+	}>(),
+	{ embedded: false },
+);
+
+const buttonVariant = computed(() => (props.embedded ? 'subtle' : 'solid'));
 
 const i18n = useI18n();
 
@@ -87,12 +96,14 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			:disabled="executing || hideTooltip"
 		>
 			<N8nButton
+				:variant="buttonVariant"
 				:class="$style.button"
 				:loading="executing"
+				:iconOnly="executing"
+				:aria-label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"
-				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
@@ -124,7 +135,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						type="primary"
+						:variant="buttonVariant"
 						icon-size="large"
 						:disabled="disabled"
 						:class="$style.chevron"
@@ -158,12 +169,17 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .button {
 	.split & {
-		height: var(--spacing--2xl);
+		height: var(--height--xl);
 
 		padding-inline-start: var(--spacing--xs);
 		padding-block: 0;
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
+	}
+
+	.split &[data-icon-only] {
+		padding-inline-start: 0;
+		width: var(--height--xl);
 	}
 }
 
@@ -174,6 +190,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .chevron {
 	width: 40px;
+	height: var(--height--xl);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }
