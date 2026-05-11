@@ -1,0 +1,371 @@
+name: 'CI: CLA Check'
+
+# In-house replacement for the GitHub App "CLA Bot".
+#
+# Triggers
+#   - pull_request_target (opened/synchronize/reopened): re-checks signatures
+#     whenever a PR is opened or new commits are pushed.
+#   - issue_comment (`/cla-check` on a PR): manual re-check after a contributor
+#     signs the CLA, without needing a push.
+#   - merge_group: re-checks at merge-queue time so a ruleset can hard-block
+#     unsigned merges even if the PR check went stale.
+#
+# Output
+#   - A commit status named "CLA Check" on the head SHA. Add this name to a
+#     ruleset's required-checks list to gate merges on it.
+#   - A single, edited-in-place PR comment listing unsigned contributors.
+#
+# Note
+#   GitHub Actions does not traverse subdirectories under .github/workflows/,
+#   so all CLA logic lives in this one file.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  merge_group:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: cla-check-${{ github.event.pull_request.number || github.event.issue.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  STATUS_CONTEXT: 'CLA Check'
+  CLA_API: 'https://cla-bot-prod.users.n8n.cloud/webhook/cla/check'
+  CLA_SIGN_URL: 'https://github.com/n8n-io/cla'
+  COMMENT_MARKER: '<!-- n8n-cla-check -->'
+
+jobs:
+  cla-check:
+    name: Verify CLA signatures
+    # Skip issue_comment unless it's on a PR and the body starts with /cla-check.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/cla-check'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve PR context
+        id: context
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const event = context.eventName;
+
+            let prNumber = '';
+            let headSha = '';
+            let baseSha = '';
+            let isMergeGroup = false;
+
+            if (event === 'pull_request_target') {
+              const pr = context.payload.pull_request;
+              prNumber = String(pr.number);
+              headSha = pr.head.sha;
+              baseSha = pr.base.sha;
+            } else if (event === 'issue_comment') {
+              prNumber = String(context.payload.issue.number);
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: Number(prNumber),
+              });
+              headSha = pr.head.sha;
+              baseSha = pr.base.sha;
+
+              // Acknowledge the command so the commenter sees we received it.
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner, repo,
+                  comment_id: context.payload.comment.id,
+                  content: 'eyes',
+                });
+              } catch (e) {
+                core.info(`Could not react to comment: ${e.message}`);
+              }
+            } else if (event === 'merge_group') {
+              isMergeGroup = true;
+              headSha = context.payload.merge_group.head_sha;
+              baseSha = context.payload.merge_group.base_sha;
+            }
+
+            core.setOutput('pr_number', prNumber);
+            core.setOutput('head_sha', headSha);
+            core.setOutput('base_sha', baseSha);
+            core.setOutput('is_merge_group', String(isMergeGroup));
+
+      - name: Post pending commit status
+        if: steps.context.outputs.head_sha != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.HEAD_SHA,
+              state: 'pending',
+              context: process.env.STATUS_CONTEXT,
+              description: 'Verifying CLA signatures…',
+            });
+
+      - name: Check CLA signatures
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+          BASE_SHA: ${{ steps.context.outputs.base_sha }}
+          IS_MERGE_GROUP: ${{ steps.context.outputs.is_merge_group }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = process.env.PR_NUMBER;
+            const headSha = process.env.HEAD_SHA;
+            const baseSha = process.env.BASE_SHA;
+            const isMergeGroup = process.env.IS_MERGE_GROUP === 'true';
+
+            // Collect unique commit authors and any commits whose author email
+            // isn't linked to a GitHub account (we can't query the CLA API for
+            // those, so we surface them separately).
+            const authors = new Set();
+            const unlinkedCommits = [];
+
+            const collect = (commits) => {
+              for (const c of commits) {
+                if (c.author && c.author.login && c.author.type !== 'Bot') {
+                  authors.add(c.author.login);
+                } else if (c.commit && c.commit.author) {
+                  unlinkedCommits.push({
+                    sha: c.sha,
+                    name: c.commit.author.name,
+                    email: c.commit.author.email,
+                  });
+                }
+              }
+            };
+
+            if (isMergeGroup) {
+              const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
+                owner, repo, basehead: `${baseSha}...${headSha}`,
+              });
+              collect(comparison.commits || []);
+            } else if (prNumber) {
+              const commits = await github.paginate(github.rest.pulls.listCommits, {
+                owner, repo, pull_number: Number(prNumber), per_page: 100,
+              });
+              collect(commits);
+            }
+
+            const loginList = [...authors];
+            core.info(`Contributors to check: ${loginList.join(', ') || '(none)'}`);
+            if (unlinkedCommits.length > 0) {
+              core.warning(
+                `${unlinkedCommits.length} commit(s) have an author email not linked to a GitHub account ` +
+                `and cannot be verified against the CLA service.`,
+              );
+            }
+
+            const signed = [];
+            const unsigned = [];
+            const errored = [];
+
+            for (const login of loginList) {
+              const url = `${process.env.CLA_API}?checkContributor=${encodeURIComponent(login)}`;
+              try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data && data.isContributor === true) {
+                  signed.push(login);
+                } else {
+                  unsigned.push(login);
+                }
+              } catch (e) {
+                core.warning(`CLA lookup failed for @${login}: ${e.message}`);
+                errored.push(login);
+              }
+            }
+
+            // Treat lookup errors as unsigned to fail-closed: a ruleset gating
+            // on this status should never green-light a merge we couldn't verify.
+            const blocking = [...unsigned, ...errored];
+            const allSigned = blocking.length === 0 && unlinkedCommits.length === 0;
+
+            core.setOutput('signed', signed.join(','));
+            core.setOutput('unsigned', unsigned.join(','));
+            core.setOutput('errored', errored.join(','));
+            core.setOutput('unlinked', JSON.stringify(unlinkedCommits));
+            core.setOutput('all_signed', String(allSigned));
+
+      - name: Post final commit status
+        if: always() && steps.context.outputs.head_sha != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+          UNSIGNED: ${{ steps.check.outputs.unsigned }}
+          ERRORED: ${{ steps.check.outputs.errored }}
+          UNLINKED: ${{ steps.check.outputs.unlinked }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const allSigned = process.env.ALL_SIGNED === 'true';
+            const unsigned = process.env.UNSIGNED.split(',').filter(Boolean);
+            const errored = process.env.ERRORED.split(',').filter(Boolean);
+            const unlinked = JSON.parse(process.env.UNLINKED || '[]');
+
+            let state;
+            let description;
+            if (allSigned) {
+              state = 'success';
+              description = 'All contributors have signed the CLA';
+            } else if (errored.length > 0 && unsigned.length === 0 && unlinked.length === 0) {
+              state = 'error';
+              description = `Could not verify: ${errored.join(', ')}`;
+            } else {
+              state = 'failure';
+              const parts = [];
+              if (unsigned.length > 0) parts.push(`unsigned: ${unsigned.join(', ')}`);
+              if (errored.length > 0) parts.push(`errored: ${errored.join(', ')}`);
+              if (unlinked.length > 0) parts.push(`${unlinked.length} unlinked commit(s)`);
+              description = parts.join(' | ');
+            }
+
+            // GitHub commit status description is capped at 140 chars.
+            if (description.length > 140) description = description.slice(0, 137) + '…';
+
+            // target_url points the contributor at the place to sign.
+            const prNumber = process.env.PR_NUMBER;
+            const target_url = prNumber
+              ? `${context.payload.repository.html_url}/pull/${prNumber}`
+              : process.env.CLA_SIGN_URL;
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.HEAD_SHA,
+              state,
+              context: process.env.STATUS_CONTEXT,
+              description,
+              target_url,
+            });
+
+      - name: Update PR comment
+        # Don't comment from merge_group (no PR context) or when the check failed
+        # to produce a result.
+        if: >-
+          always() &&
+          steps.context.outputs.pr_number != '' &&
+          steps.check.outputs.all_signed != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+          UNSIGNED: ${{ steps.check.outputs.unsigned }}
+          ERRORED: ${{ steps.check.outputs.errored }}
+          UNLINKED: ${{ steps.check.outputs.unlinked }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = Number(process.env.PR_NUMBER);
+            const allSigned = process.env.ALL_SIGNED === 'true';
+            const unsigned = process.env.UNSIGNED.split(',').filter(Boolean);
+            const errored = process.env.ERRORED.split(',').filter(Boolean);
+            const unlinked = JSON.parse(process.env.UNLINKED || '[]');
+            const MARKER = process.env.COMMENT_MARKER;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(MARKER));
+
+            let body;
+            if (allSigned) {
+              // Only leave a "thanks" trail if we already nudged once. Avoids
+              // pinging every clean PR with a CLA comment.
+              if (!existing) return;
+              body = [
+                MARKER,
+                '✅ **CLA Check passed.** All contributors on this PR have signed the n8n CLA — thank you!',
+              ].join('\n');
+            } else {
+              const lines = [MARKER, '## CLA signatures required', ''];
+              lines.push(
+                `Thanks for the contribution! Before we can merge this PR, the following needs ` +
+                `to be resolved against the [n8n Contributor License Agreement](${process.env.CLA_SIGN_URL}):`,
+              );
+              lines.push('');
+
+              if (unsigned.length > 0) {
+                lines.push('**Contributors who still need to sign:**');
+                for (const u of unsigned) lines.push(`- @${u}`);
+                lines.push('');
+              }
+              if (errored.length > 0) {
+                lines.push('**Could not verify (will retry on next push):**');
+                for (const u of errored) lines.push(`- @${u}`);
+                lines.push('');
+              }
+              if (unlinked.length > 0) {
+                lines.push(
+                  '**Commits authored by an email not linked to a GitHub account:**',
+                );
+                for (const c of unlinked) {
+                  lines.push(`- \`${c.sha.slice(0, 7)}\` — ${c.name} <${c.email}>`);
+                }
+                lines.push('');
+                lines.push(
+                  'Add the email to your GitHub account ' +
+                  '([instructions](https://docs.github.com/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/adding-an-email-address-to-your-github-account)) ' +
+                  'or amend the commits to use a linked email, then push again.',
+                );
+                lines.push('');
+              }
+
+              lines.push(
+                'Once signed, comment `/cla-check` on this PR to re-run verification.',
+              );
+              body = lines.join('\n');
+            }
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
+
+      - name: React to /cla-check comment
+        if: always() && github.event_name == 'issue_comment' && steps.check.outputs.all_signed != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          ALL_SIGNED: ${{ steps.check.outputs.all_signed }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: process.env.ALL_SIGNED === 'true' ? '+1' : '-1',
+              });
+            } catch (e) {
+              core.info(`Could not react to comment: ${e.message}`);
+            }
