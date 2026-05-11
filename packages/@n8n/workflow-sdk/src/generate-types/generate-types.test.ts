@@ -543,6 +543,36 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map resourceMapper type to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue | Expression<string>');
+		});
+
+		it('should map resourceMapper with loadOptionsDependsOn and noDataExpression to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: { mappingMode: 'defineBelow', value: null },
+				typeOptions: {
+					loadOptionsDependsOn: ['sheetName.value'],
+				},
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue');
+		});
+
 		it('should map string type with multipleValues to an array type', () => {
 			const prop: NodeProperty = {
 				name: 'attendees',
@@ -1994,6 +2024,39 @@ describe('generate-types', () => {
 
 			// Should indicate it's a trigger
 			expect(result).toContain('isTrigger: true');
+		});
+
+		it('should emit helper type for resourceMapper properties', () => {
+			const sheetsLikeNode: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleSheets',
+				displayName: 'Google Sheets',
+				description: 'Read and write rows',
+				group: ['transform'],
+				version: 4.7,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'columns',
+						displayName: 'Columns',
+						type: 'resourceMapper',
+						noDataExpression: true,
+						default: { mappingMode: 'defineBelow', value: null },
+						typeOptions: {
+							loadOptionsDependsOn: ['sheetName.value'],
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(sheetsLikeNode);
+
+			expect(result).toContain('type ResourceMapperField = {');
+			expect(result).toContain('mappingMode: string;');
+			expect(result).toContain('value?: null | Record<string, unknown>;');
+			expect(result).toContain('schema?: ResourceMapperField[]');
+			expect(result).toContain('columns?: ResourceMapperValue;');
+			expect(result).not.toContain('columns?: string;');
 		});
 
 		// Regression: required string with default: '' used to emit

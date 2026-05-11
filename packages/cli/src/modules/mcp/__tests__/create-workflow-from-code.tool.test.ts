@@ -294,6 +294,9 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			const response = parseResult(result);
 			expect(response.hint).toContain('sdk_ref');
+			expect(response.hint).toContain('Workflow SDK reference');
+			expect(response.hint).toContain('validate_workflow_code until it returns valid=true');
+			expect(response.hint).toContain('create_workflow_from_code again');
 		});
 
 		test('does not include SDK reference hint for non-parse errors', async () => {
