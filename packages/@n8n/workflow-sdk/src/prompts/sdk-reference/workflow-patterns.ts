@@ -198,7 +198,10 @@ export default workflow('id', 'name')
 
 <multi_way_routing>
 
-Switch rules use \`rules.values\` (NOT \`rules.rules\`). Each rule needs \`outputKey\` and a complete \`conditions\` object:
+Each rule needs \`outputKey\` and a complete \`conditions\` object.
+
+\`onCase(index, target)\` takes a **numeric index** — entry 0 targets the first rule's \`outputKey\`, entry 1 the second, and so on.
+
 \`\`\`javascript
 const routeByPriority = switchCase({
   version: 3.2,
@@ -218,9 +221,35 @@ const routeByPriority = switchCase({
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(routeByPriority
-    .onCase('urgent', processUrgent.to(notifyTeam.to(escalate)))
-    .onCase('normal', processNormal)
-    .onDefault(archive));
+    .onCase(0, processUrgent.to(notifyTeam.to(escalate)))
+    .onCase(1, processNormal));
+\`\`\`
+
+For a catch-all route, enable \`options.fallbackOutput: 'extra'\` — the Switch node appends an extra output for unmatched items. Target it from the builder using the positional index *after* the last rule:
+
+\`\`\`javascript
+const routeByStatus = switchCase({
+  version: 3.2,
+  config: {
+    name: 'Route by Status',
+    parameters: {
+      rules: {
+        values: [
+          { outputKey: 'active', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.status }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'active' }], combinator: 'and' } },
+          { outputKey: 'inactive', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.status }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'inactive' }], combinator: 'and' } },
+        ]
+      },
+      options: { fallbackOutput: 'extra', renameFallbackOutput: 'Other' }
+    }
+  }
+});
+
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(routeByStatus
+    .onCase(0, handleActive)
+    .onCase(1, handleInactive)
+    .onCase(2, handleOther)); // index after the last rule = the extra fallback output
 \`\`\`
 
 </multi_way_routing>
@@ -252,6 +281,20 @@ export default workflow('id', 'name')
 </parallel_execution>
 
 <batch_processing>
+
+To branch per item inside a batch, nest the \`ifElse\` inside \`.onEachBatch(...)\`:
+
+\`\`\`javascript
+// To branch per batch item, chain the conditional inside onEachBatch:
+sibNode
+  .onEachBatch(ifElse
+    .onTrue(actionA.to(nextBatch(sibNode)))
+    .onFalse(actionB.to(nextBatch(sibNode))))
+  .onDone(finalizeResults);
+\`\`\`
+
+Standard looping pattern:
+
 \`\`\`javascript
 const startTrigger = trigger({
   type: 'n8n-nodes-base.manualTrigger',
