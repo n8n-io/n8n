@@ -147,16 +147,26 @@ export const createUpdateWorkflowTool = (
 
 			stripNullCredentialStubs(workflowUpdateData.nodes);
 
-			// Preserve user-configured credentials from the existing workflow.
+			// Preserve user-configured credentials and layout positions from the existing workflow.
 			// Match nodes by name + type so that auto-assign skips them.
-			const existingCredsByNode = new Map(
-				existingWorkflow.nodes.map((n) => [n.name, { type: n.type, credentials: n.credentials }]),
+			const existingNodesByName = new Map(
+				existingWorkflow.nodes.map((n) => [
+					n.name,
+					{ type: n.type, credentials: n.credentials, position: n.position },
+				]),
 			);
 			for (const node of workflowUpdateData.nodes) {
-				if (!node.credentials) {
-					const existing = existingCredsByNode.get(node.name);
-					if (existing?.type === node.type && existing.credentials) {
+				const existing = existingNodesByName.get(node.name);
+
+				if (existing?.type === node.type) {
+					// 1. Preserve credentials if not explicitly provided by the update
+					if (!node.credentials && existing.credentials) {
 						node.credentials = { ...existing.credentials };
+					}
+
+					// 2. Preserve node position on the canvas to prevent layout breakage (#30134)
+					if (existing.position) {
+						node.position = [...existing.position];
 					}
 				}
 			}
