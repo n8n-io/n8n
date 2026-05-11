@@ -174,6 +174,8 @@ const baseTextFn = (key: string) => {
 		'agents.builder.chatMode.build': 'Build',
 		'agents.builder.chatMode.test': 'Test',
 		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
+		'agents.builder.chat.fullWidth.expand.ariaLabel': 'Expand',
+		'agents.builder.chat.fullWidth.collapse.ariaLabel': 'Collapse',
 		'projects.menu.personal': 'Personal',
 	};
 	return map[key] ?? key;
@@ -533,6 +535,31 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+	});
+
+	it('hides the editor column when the chat full-width toggle is enabled', async () => {
+		const wrapper = await renderView();
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		chatColumn.vm.$emit('update:full-width', true);
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('update:full-width', false);
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			false,
+		);
+	});
+
+	it('renders a floating full-width toggle in build chat mode', async () => {
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
 	});
 
 	it('renders the Build/Test toggle inside the chat input footer', async () => {

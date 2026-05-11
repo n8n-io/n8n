@@ -101,6 +101,7 @@ packages/cli/src/modules/workflow-builder/              @n8n-io/ai
 packages/cli/src/modules/mcp/                           @n8n-io/ai
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai
+packages/cli/src/modules/instance-ai/                   @n8n-io/instance-ai
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
@@ -205,6 +206,10 @@ packages/@n8n/imap/                                     @n8n-io/iam
 packages/@n8n/syslog-client/                            @n8n-io/iam
 packages/@n8n/scan-community-package/                   @n8n-io/nodes
 packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/nodes
+packages/@n8n/computer-use/                             @n8n-io/nodes
+packages/@n8n/local-gateway/                            @n8n-io/nodes
+packages/@n8n/mcp-browser/                              @n8n-io/nodes
+packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
 # IAM
 
