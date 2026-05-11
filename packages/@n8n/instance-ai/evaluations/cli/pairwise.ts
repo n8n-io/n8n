@@ -242,8 +242,8 @@ function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExa
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(trimmed);
-		} catch (err) {
-			logger.warn(`Skipping JSONL row ${row}: invalid JSON (${(err as Error).message})`);
+		} catch (error) {
+			logger.warn(`Skipping JSONL row ${row}: invalid JSON (${(error as Error).message})`);
 			continue;
 		}
 		if (!isRecord(parsed)) continue;
