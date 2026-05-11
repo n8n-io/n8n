@@ -10,9 +10,9 @@ import type { JSONObject } from '../utils/json';
  * Contains enough information to reconstruct the backend from a schema without exposing secrets.
  */
 export interface MemoryDescriptor<TParams extends JSONObject = JSONObject> {
-	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
+	/** Backend name (e.g. 'n8n', 'memory'). Used as key in memoryRegistry. */
 	name: string;
-	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */
+	/** Constructor name (e.g. 'N8nMemory', 'InMemoryMemory'). Used to construct the backend. */
 	constructorName: string;
 	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
 	connectionParams: TParams | null;
