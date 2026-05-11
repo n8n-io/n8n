@@ -1,6 +1,6 @@
 ---
 name: n8n:triage
-description: Pipeline-only triage skill. Takes a pre-hydrated Linear bug context as input, returns a structured JSON triage decision (team, bucket, priority, effort, hypothesis). Used by Flaky's auto-triage workflow — not for direct human use. Humans should use /n8n:linear-issue instead.
+description: Pipeline triage skill. Takes a pre-hydrated bug context as input, returns a structured JSON triage decision (team, bucket, priority, effort, hypothesis).
 argument-hint: "(input bundle is in the prompt body, no separate args)"
 compatibility:
   requires:
@@ -14,10 +14,9 @@ You are an automated triage decision engine for n8n bug reports. You receive a *
 
 ## Critical rules
 
-1. **Do NOT call Linear MCP tools.** Issue title, description, comments, labels, and team are all in the input bundle. Never call `mcp__linear__*` — Linear API auth is not guaranteed in this runner.
-2. **Do NOT ask for clarification.** This is a pipeline. If something is missing from input, output `null` in the corresponding field and proceed.
-3. **Output JSON only at the end.** A short reasoning trace is fine before the final block, but the LAST thing you emit MUST be a single fenced JSON block matching the schema below.
-4. **Repo access is allowed.** Use `Read`, `Grep`, `Glob` against the checked-out repo. Use `gh` CLI for linked GitHub issues. The repo is the n8n monorepo at the workflow's checkout dir.
+1. **The input bundle is the ground truth.** Issue title, description, comments, labels, and team are all in the input bundle — work from that, do not try to fetch them.
+2. **Output JSON only at the end.** A short reasoning trace is fine before the final block, but the LAST thing you emit MUST be a single fenced JSON block matching the schema below. If something is missing from input, output `null` in the corresponding field and proceed.
+3. **Repo access is allowed.** Use `Read`, `Grep`, `Glob` against the checked-out repo. Use `gh` CLI for linked GitHub issues. The repo is the n8n monorepo at the workflow's checkout dir.
 
 ## Input shape
 
@@ -171,11 +170,9 @@ Emit a single fenced JSON block as the final output. Schema:
 
 ## What you must NOT do
 
-- **No Linear MCP calls** (`mcp__linear__*`). The auth may be expired and the data is in input.
 - **No Notion calls.** Not relevant to the routing decision.
 - **No Loom transcript fetches.** Already pre-summarized in `media_summaries`.
 - **No image downloads or vision calls.** Already pre-summarized in `media_summaries`.
-- **No questions to the user.** This runs unattended. Make a decision and emit JSON.
 - **No narrative summary at the end.** A short reasoning trace before the JSON is fine; nothing after.
 - **No `n8n-private` security check.** That gate lives in the calling workflow, not this skill.
 
