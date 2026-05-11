@@ -444,4 +444,110 @@ describe('FormTrigger', () => {
 			],
 		]);
 	});
+
+	describe('showHeaders', () => {
+		it('should include headers in output when showHeaders is enabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: true,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toEqual({
+				'content-type': 'multipart/form-data',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should not include headers in output when showHeaders is disabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: false,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toBeUndefined();
+		});
+	});
+
+	describe('sensitiveOutputFields', () => {
+		it('declares authorization and cookie headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.authorization');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.cookie');
+		});
+
+		it('does not mark other headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
+	});
 });

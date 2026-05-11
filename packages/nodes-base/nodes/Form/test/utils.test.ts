@@ -2271,6 +2271,29 @@ describe('prepareFormReturnItem', () => {
 			});
 		});
 	});
+
+	describe('showHeaders', () => {
+		it('should include headers when showHeaders is enabled', async () => {
+			const mockHeaders = {
+				'content-type': 'multipart/form-data',
+				'user-agent': 'Mozilla/5.0',
+			};
+			mockContext.getNodeParameter.calledWith('options.showHeaders', false).mockReturnValue(true);
+			mockContext.getHeaderData.mockReturnValue(mockHeaders);
+
+			const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+			expect(result.json.headers).toEqual(mockHeaders);
+		});
+
+		it('should not include headers when showHeaders is disabled', async () => {
+			mockContext.getNodeParameter.calledWith('options.showHeaders', false).mockReturnValue(false);
+
+			const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+			expect(result.json.headers).toBeUndefined();
+		});
+	});
 });
 
 describe('resolveRawData', () => {
