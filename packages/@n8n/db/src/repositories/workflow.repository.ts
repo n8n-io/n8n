@@ -227,9 +227,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getWorkflowsWithEvaluationCount() {
-		// Count workflows having test runs
+		// Count workflows having at least one test run. Uses an explicit
+		// join on the FK column rather than a `workflow.testRuns` relation
+		// so `WorkflowEntity` doesn't need to carry a back-reference into
+		// the eval entity sub-graph. The relation drags the eval sub-graph
+		// into every `QueryDeepPartialEntity` expansion that touches
+		// workflows, which hits TS's type-instantiation budget once that
+		// sub-graph grows (TRUST-72 trips it on `FolderRepository.upsert`
+		// in `source-control-import.service.ee.ts`).
 		const totalWorkflowCount = await this.createQueryBuilder('workflow')
-			.innerJoin('workflow.testRuns', 'testrun')
+			.innerJoin('test_run', 'testrun', 'testrun.workflowId = workflow.id')
 			.distinct(true)
 			.getCount();
 
