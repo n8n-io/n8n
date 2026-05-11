@@ -192,7 +192,7 @@ const fullWidthToggleLabel = computed(() =>
 				@config-updated="emit('config-updated')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
-				<template #above-input>
+				<template v-if="canEditAgent" #above-input>
 					<div :class="$style.quickActionsRow">
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
