@@ -1189,6 +1189,8 @@
 	"duplicateWorkflowDialog.errors.forbidden.message": "This action is forbidden. Do you have the correct permissions?",
 	"duplicateWorkflowDialog.errors.generic.title": "Duplicate workflow failed",
 	"editor.mainHeader.githubButton.label": "Star n8n-io/n8n on GitHub",
+	"experiments.instanceAiProactiveAgent.message": "Hey, I can build your first workflow in a few minutes. Do you know what you want to automate, or do you want help with ideas?",
+	"experiments.instanceAiProactiveAgent.typingLabel": "AI Assistant is typing",
 	"experiments.personalizedTemplatesV3.browseAllTemplates": "Browse our template library",
 	"experiments.personalizedTemplatesV3.couldntFind": "Need something different?",
 	"experiments.personalizedTemplatesV3.exploreTemplates": "Get started with HubSpot workflows:",
