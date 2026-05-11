@@ -5,6 +5,7 @@ export * from './communityNodes';
 export * from './credentialResolvers';
 export * from './ctas';
 export * from './eventbus.ee';
+export * from './instance-registry';
 export * from './events';
 export * from './externalSecrets.ee';
 export * from './secretsProvider.ee';

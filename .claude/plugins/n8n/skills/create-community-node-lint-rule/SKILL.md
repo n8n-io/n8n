@@ -1,10 +1,10 @@
 ---
+name: n8n:create-community-node-lint-rule
 description: >-
   Create new ESLint rules for the @n8n/eslint-plugin-community-nodes package.
   Use when adding a lint rule, creating a community node lint, or working on
   eslint-plugin-community-nodes. Guides rule implementation, tests, docs, and
   plugin registration.
-user_invocable: true
 ---
 
 # Create Community Node Lint Rule

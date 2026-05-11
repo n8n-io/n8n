@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -51,14 +52,10 @@ export class OwnerInstanceSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		const { ownerManagedByEnv, ownerEmail, ownerPasswordHash } = this.instanceSettingsLoaderConfig;
+		const { ownerManagedByEnv } = this.instanceSettingsLoaderConfig;
 
 		if (!ownerManagedByEnv) {
-			if (ownerEmail || ownerPasswordHash) {
-				this.logger.warn(
-					'N8N_INSTANCE_OWNER_EMAIL or N8N_INSTANCE_OWNER_PASSWORD_HASH is set but N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled — ignoring owner env vars',
-				);
-			}
+			this.logger.debug('Owner is not managed by environment variables, skipping');
 			return 'skipped';
 		}
 
@@ -67,7 +64,7 @@ export class OwnerInstanceSettingsLoader {
 		const result = ownerEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 
 		if (!result.success) {
-			throw new OperationalError(result.error.issues[0].message);
+			throw new InstanceBootstrappingError(result.error.issues[0].message);
 		}
 
 		await this.ownershipService.setupOwner(result.data.payload, result.data.options);

@@ -1,6 +1,8 @@
 import { inTest } from '@n8n/backend-common';
+import { DeploymentKeyRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BinaryDataConfig } from 'n8n-core';
 import { z } from 'zod';
 
 import { N8N_VERSION } from '@/constants';
@@ -9,15 +11,16 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { JwtService } from '@/services/jwt.service';
 
 import { BaseCommand } from './base-command';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
@@ -89,6 +92,10 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await super.init();
 
 		Container.get(DeprecationService).warn();
+
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
 		await this.initLicense();
 		this.logger.debug('License init complete');

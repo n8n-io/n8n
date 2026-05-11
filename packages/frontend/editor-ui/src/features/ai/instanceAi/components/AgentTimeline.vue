@@ -1,12 +1,18 @@
 <script lang="ts" setup>
-import type { InstanceAiAgentNode, InstanceAiToolCallState, TaskList } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+	TaskList,
+} from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
+import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -17,16 +23,14 @@ import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	for (const entry of store.resourceRegistry.values()) {
-		if (entry.id === artifact.resourceId) return entry.name;
-	}
-	return artifact.name;
+	const entry = thread.producedArtifacts.get(artifact.resourceId);
+	return entry?.name ?? artifact.name;
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -77,18 +81,20 @@ const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
 		compact?: boolean;
+		/** When provided, renders only these entries instead of the full timeline. */
+		visibleEntries?: InstanceAiTimelineEntry[];
 	}>(),
 	{
 		compact: false,
+		visibleEntries: undefined,
 	},
 );
+
+const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
 defineSlots<{
 	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
 }>();
-
-/** Tool calls that are internal bookkeeping and should not be shown to the user. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
@@ -114,7 +120,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.currentThreadId,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'plan-review',
@@ -131,8 +137,12 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	};
 	telemetry.track('User finished providing input', eventProps);
 
-	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(requestId, {
+		kind: 'approval',
+		approved,
+		...(feedback ? { userInput: feedback } : {}),
+	});
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
@@ -167,9 +177,14 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <template>
 	<div :class="$style.timeline">
-		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
+		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment -->
-			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
+			<N8nText
+				v-if="entry.type === 'text'"
+				size="large"
+				:compact="props.compact"
+				:class="$style.timelineItem"
+			>
 				<InstanceAiMarkdown :content="entry.content" />
 			</N8nText>
 
@@ -192,21 +207,13 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher/planner handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
-				<!-- Answered questions (read-only after resolution) -->
-				<AnsweredQuestions
-					v-else-if="
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
-						!toolCallsById[entry.toolCallId].isLoading
-					"
-					:tool-call="toolCallsById[entry.toolCallId]"
-				/>
-				<!-- Plan review from plan() tool: always render inline -->
+				<!-- Plan review must match before the planner renderHint suppression:
+				     when the plan tool attaches the confirmation to its own tool call
+				     (no planner child agent), that suppression would otherwise hide it. -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:planned-tasks="
@@ -218,6 +225,16 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
 					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+				/>
+				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
+				<!-- Answered questions (read-only after resolution) -->
+				<AnsweredQuestions
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+					:tool-call="toolCallsById[entry.toolCallId]"
 				/>
 				<!-- Suppress default tool call while questions are pending -->
 				<template
@@ -231,8 +248,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				</ToolCallStep>
 			</template>
 
-			<!-- Child agent — flat section -->
-			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
+			<!-- Child agent — flat section. Running builder sub-agents are
+				 extracted and rendered at the bottom of the conversation by
+				 InstanceAiView; once a builder finishes it reappears here in its
+				 chronological slot. -->
+			<template
+				v-else-if="
+					entry.type === 'child' &&
+					childrenById[entry.agentId] &&
+					!isActiveBuilderAgent(childrenById[entry.agentId])
+				"
+			>
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Planner child: render PlanReviewPanel below the agent section -->
@@ -258,16 +284,19 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					"
 				/>
 
-				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
-				<ArtifactCard
-					v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
-					:key="artifact.resourceId"
-					:type="artifact.type"
-					:name="resolveArtifactName(artifact)"
-					:resource-id="artifact.resourceId"
-					:project-id="artifact.projectId"
-					:metadata="formatArtifactMetadata(artifact)"
-				/>
+				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
+				<template v-if="!props.visibleEntries">
+					<ArtifactCard
+						v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
+						:key="artifact.resourceId"
+						:type="artifact.type"
+						:name="resolveArtifactName(artifact)"
+						:resource-id="artifact.resourceId"
+						:project-id="artifact.projectId"
+						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
+						:metadata="formatArtifactMetadata(artifact)"
+					/>
+				</template>
 			</template>
 		</template>
 	</div>
@@ -278,5 +307,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.timelineItem {
+	max-width: 90%;
 }
 </style>

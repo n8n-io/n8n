@@ -1,7 +1,7 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import type { INodeProperties } from 'n8n-workflow';
+import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
@@ -103,24 +103,40 @@ export class AzureKeyVault extends SecretsProvider {
 
 	async update() {
 		const secretNames: string[] = [];
-
 		for await (const secret of this.client.listPropertiesOfSecrets()) {
+			if (secret.enabled === false) continue;
 			secretNames.push(secret.name);
 		}
 
-		const promises = secretNames.map(async (name) => {
-			const { value } = await this.client.getSecret(name);
-			return { name, value };
-		});
+		const promises = await Promise.allSettled(
+			secretNames.map(async (name) => {
+				const { value } = await this.client.getSecret(name);
+				return { name, value };
+			}),
+		);
 
-		const secrets = await Promise.all(promises);
+		const updated: Record<string, string> = {};
+		const readErrors: Error[] = [];
+		for (const [index, promiseResult] of promises.entries()) {
+			if (promiseResult.status === 'fulfilled') {
+				const { name, value } = promiseResult.value;
+				if (value !== undefined) updated[name] = value;
+			} else {
+				const error = ensureError(promiseResult.reason);
+				readErrors.push(error);
+				this.logger.warn(`Could not read Azure Key Vault secret "${secretNames[index]}"`, {
+					error,
+				});
+			}
+		}
 
-		this.cachedSecrets = secrets.reduce<Record<string, string>>((acc, cur) => {
-			if (cur.value === undefined) return acc;
-			acc[cur.name] = cur.value;
-			return acc;
-		}, {});
+		if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
+			throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
+				cause: readErrors[0],
+			});
+		}
 
+		this.cachedSecrets = updated;
 		this.logger.debug('Azure Key Vault provider secrets updated');
 	}
 

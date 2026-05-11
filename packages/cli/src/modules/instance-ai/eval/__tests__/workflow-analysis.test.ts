@@ -7,9 +7,17 @@ jest.mock('../node-config', () => ({
 	extractNodeConfig: jest.fn(),
 }));
 
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 
-import { identifyNodesForHints, identifyNodesForPinData } from '../workflow-analysis';
+import {
+	generateMockHints,
+	identifyNodesForHints,
+	identifyNodesForPinData,
+} from '../workflow-analysis';
+
+const mockedCreateEvalAgent = jest.mocked(createEvalAgent);
+const mockedExtractText = jest.mocked(extractText);
 
 function makeNode(overrides: Partial<INode> & { name: string; type: string }): INode {
 	return {
@@ -218,5 +226,123 @@ describe('identifyNodesForHints', () => {
 		expect(names).not.toContain('OpenAI');
 		expect(names).not.toContain('Agent');
 		expect(names).not.toContain('Postgres');
+	});
+});
+
+describe('generateMockHints', () => {
+	const workflow = makeWorkflow([
+		makeNode({ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+		makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+	]);
+
+	function mockAgentResponses(...responses: Array<string | Error>) {
+		const generate = jest.fn();
+		for (const r of responses) {
+			if (r instanceof Error) generate.mockRejectedValueOnce(r);
+			else generate.mockResolvedValueOnce({ __raw: r });
+		}
+		mockedCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockedExtractText.mockImplementation((result: unknown) => (result as { __raw: string }).__raw);
+		return generate;
+	}
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should succeed on the first attempt when the LLM returns a well-formed response', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({
+				globalContext: 'shared context',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'post a message' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(1);
+		expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+		expect(result.warnings).toEqual([]);
+	});
+
+	it('should retry when the first attempt returns empty triggerContent, then succeed', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+		expect(result.warnings).toEqual([
+			expect.stringContaining('Phase 1 attempt 1/2: empty triggerContent'),
+		]);
+	});
+
+	it('should return emptyResult with both warnings when every attempt fails', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(result.triggerContent).toEqual({});
+		expect(result.warnings).toEqual([
+			expect.stringContaining('attempt 1/2'),
+			expect.stringContaining('attempt 2/2'),
+		]);
+	});
+
+	it('should retry when the first attempt throws, then succeed', async () => {
+		const generate = mockAgentResponses(
+			new Error('anthropic rate limit'),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+		expect(result.warnings).toEqual([expect.stringContaining('anthropic rate limit')]);
+	});
+
+	it('should retry when the first attempt returns invalid nodeHints structure', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: { a: 1 }, nodeHints: [] }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { a: 1 },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(result.warnings).toEqual([expect.stringContaining('invalid nodeHints')]);
+	});
+
+	it('should not call the agent when there are no hint-eligible nodes', async () => {
+		const generate = mockAgentResponses('should never be called');
+
+		const result = await generateMockHints({ workflow, nodeNames: [] });
+
+		expect(generate).not.toHaveBeenCalled();
+		expect(result.triggerContent).toEqual({});
+		expect(result.warnings).toEqual([]);
 	});
 });

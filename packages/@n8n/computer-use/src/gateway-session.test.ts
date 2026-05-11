@@ -1,3 +1,4 @@
+import * as config from './config';
 import type { ToolGroup } from './config';
 import { GatewaySession, buildDefaultPermissions } from './gateway-session';
 import type { SettingsStore } from './settings-store';
@@ -214,6 +215,65 @@ describe('GatewaySession', () => {
 				store as unknown as SettingsStore,
 			);
 			expect(session.check('shell', 'npm')).toBe('ask');
+		});
+
+		describe('settings self-protection', () => {
+			const settingsFile = config.getSettingsFilePath();
+			const settingsDir = config.getSettingsDir();
+
+			it('denies filesystemWrite to the settings file', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('filesystemWrite', settingsFile)).toBe('deny');
+			});
+
+			it('denies filesystemWrite to the settings directory', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('filesystemWrite', settingsDir)).toBe('deny');
+			});
+
+			it('denies filesystemRead to the settings file', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('filesystemRead', settingsFile)).toBe('deny');
+			});
+
+			it('denies access even when group mode is allow', () => {
+				const store = makeStore({ allow: { filesystemWrite: [settingsFile] } });
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('filesystemWrite', settingsFile)).toBe('deny');
+			});
+
+			it('does not deny filesystemWrite to unrelated paths', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('filesystemWrite', '/tmp/unrelated.json')).toBe('allow');
+			});
+
+			it('does not deny shell group for settings-like resource strings', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('shell', settingsFile)).toBe('allow');
+			});
 		});
 	});
 

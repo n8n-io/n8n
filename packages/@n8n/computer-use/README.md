@@ -29,28 +29,30 @@ automatically disabled when their platform requirements aren't met.
 
 ### Daemon mode (recommended)
 
-Zero-click mode — n8n auto-detects the daemon on `127.0.0.1:7655`.
+Start the daemon with your n8n instance URL. n8n will connect to the daemon
+on `127.0.0.1:7655` when the AI needs local machine access.
 
 ```bash
-npx @n8n/computer-use serve
+# The start command is shown inside n8n AI — replace with your instance URL
+npx @n8n/computer-use https://my-instance.app.n8n.cloud
 
-# With a specific directory
-npx @n8n/computer-use serve /path/to/project
+# For local development (localhost is not in the default allowlist)
+npx @n8n/computer-use http://localhost:5678 --allowed-origins http://localhost:5678
+
+# Specify a working directory
+npx @n8n/computer-use https://my-instance.app.n8n.cloud --dir /path/to/project
+npx @n8n/computer-use https://my-instance.app.n8n.cloud -d /path/to/project
 
 # Non-interactive (uses Recommended defaults, override with --permission-* flags)
-npx @n8n/computer-use serve --non-interactive --permission-shell ask
+npx @n8n/computer-use https://my-instance.app.n8n.cloud --non-interactive --permission-shell ask
 ```
 
 ### Direct mode
 
-Connect to a specific n8n instance with a Computer Use token:
+Connect directly to an n8n instance with a Computer Use token:
 
 ```bash
-# Positional syntax
 npx @n8n/computer-use https://my-n8n.com abc123xyz /path/to/project
-
-# Flag syntax
-npx @n8n/computer-use --url https://my-n8n.com --api-key abc123xyz --filesystem-dir /path/to/project
 ```
 
 ## Configuration
@@ -65,8 +67,8 @@ flags**.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--log-level <level>` | `info` | Log level: `silent`, `error`, `warn`, `info`, `debug` |
-| `--allow-origin <url>` | | Allow connections from this URL without confirmation (repeatable) |
-| `-p, --port <port>` | `7655` | Daemon port (serve mode only) |
+| `--allowed-origins <patterns>` | `https://*.app.n8n.cloud` | Comma-separated allowed origin patterns (CLI only) |
+| `-p, --port <port>` | `7655` | Daemon port (daemon mode only) |
 | `--non-interactive` | | Skip all prompts; use defaults and env/CLI overrides |
 | `--auto-confirm` | | Auto-confirm all resource access prompts |
 | `-h, --help` | | Show help |
@@ -75,7 +77,7 @@ flags**.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--filesystem-dir <path>` | `.` | Root directory for filesystem tools |
+| `--dir <path>`, `-d` | `.` | Root directory for filesystem tools and shell execution |
 
 #### Permissions
 
@@ -109,10 +111,9 @@ take precedence.
 | Env var | Maps to |
 |---------|---------|
 | `N8N_GATEWAY_LOG_LEVEL` | `--log-level` |
-| `N8N_GATEWAY_FILESYSTEM_DIR` | `--filesystem-dir` |
+| `N8N_GATEWAY_FILESYSTEM_DIR` | `--dir` |
 | `N8N_GATEWAY_COMPUTER_SHELL_TIMEOUT` | `--computer-shell-timeout` |
 | `N8N_GATEWAY_BROWSER_DEFAULT` | `--browser-default` |
-| `N8N_GATEWAY_ALLOWED_ORIGINS` | `--allow-origin` (comma-separated) |
 | `N8N_GATEWAY_AUTO_CONFIRM` | `--auto-confirm` (set to `true`) |
 | `N8N_GATEWAY_NON_INTERACTIVE` | `--non-interactive` (set to `true`) |
 | `N8N_GATEWAY_PERMISSION_FILESYSTEM_READ` | `--permission-filesystem-read` |
@@ -120,6 +121,9 @@ take precedence.
 | `N8N_GATEWAY_PERMISSION_SHELL` | `--permission-shell` |
 | `N8N_GATEWAY_PERMISSION_COMPUTER` | `--permission-computer` |
 | `N8N_GATEWAY_PERMISSION_BROWSER` | `--permission-browser` |
+
+> **Note:** `--allowed-origins` is CLI-only and cannot be configured via environment variables.
+> This is intentional — it prevents a malicious actor from overriding the allowlist via an env var.
 
 ## Module reference
 
@@ -261,8 +265,8 @@ For local browser modes, see the
 ## Development
 
 ```bash
-pnpm dev    # watch mode with auto-rebuild
+pnpm dev    # build, watch for changes, and start daemon on localhost:5678
 pnpm build  # production build
 pnpm test   # run tests
-pnpm start  # starts Computer Use in serve mode
+pnpm start  # start daemon for localhost:5678 (requires prior build)
 ```

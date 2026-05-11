@@ -12,7 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = defineProps<{
@@ -26,7 +26,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const store = useInstanceAiStore();
+const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 
@@ -246,7 +246,7 @@ function onCredentialSelected(
 }
 
 function trackCredentialInput() {
-	const tc = store.findToolCallByRequestId(props.requestId);
+	const tc = thread.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 	const skipped: Array<{ label: string; options: string[] }> = [];
@@ -259,7 +259,7 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: store.currentThreadId,
+		thread_id: thread.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
@@ -279,9 +279,12 @@ async function handleContinue() {
 
 	isSubmitted.value = true;
 
-	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
+	const success = await thread.confirmAction(props.requestId, {
+		kind: 'credentialSelection',
+		credentials,
+	});
 	if (success) {
-		store.resolveConfirmation(props.requestId, 'approved');
+		thread.resolveConfirmation(props.requestId, 'approved');
 	} else {
 		isSubmitted.value = false;
 	}
@@ -293,9 +296,12 @@ async function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
-	const success = await store.confirmAction(props.requestId, false);
+	const success = await thread.confirmAction(props.requestId, {
+		kind: 'approval',
+		approved: false,
+	});
 	if (success) {
-		store.resolveConfirmation(props.requestId, 'deferred');
+		thread.resolveConfirmation(props.requestId, 'deferred');
 	} else {
 		isSubmitted.value = false;
 		isDeferred.value = false;
@@ -306,11 +312,7 @@ async function handleLater() {
 <template>
 	<div>
 		<template v-if="!isSubmitted">
-			<div
-				v-if="currentRequest"
-				data-test-id="instance-ai-credential-card"
-				:class="[$style.card, { [$style.completed]: allSelected }]"
-			>
+			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
@@ -361,8 +363,8 @@ async function handleLater() {
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isPrevDisabled"
 							data-test-id="instance-ai-credential-prev"
@@ -376,8 +378,8 @@ async function handleLater() {
 						</N8nText>
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isNextDisabled"
 							data-test-id="instance-ai-credential-next"
@@ -391,7 +393,7 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="
 								i18n.baseText(
@@ -404,7 +406,7 @@ async function handleLater() {
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							:disabled="!anySelected"
@@ -444,10 +446,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .header {

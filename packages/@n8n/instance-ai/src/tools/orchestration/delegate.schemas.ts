@@ -30,6 +30,23 @@ export type DelegateInput = z.infer<typeof delegateInputSchema>;
 
 export const delegateOutputSchema = z.object({
 	result: z.string().describe('The sub-agent synthesized answer'),
+	toolCallCount: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe('Total number of tool invocations the sub-agent made'),
+	toolErrorCount: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe('Number of tool invocations that failed'),
+	durationMs: z.number().optional().describe('Wall-clock duration in milliseconds'),
+	blockers: z
+		.array(z.string())
+		.optional()
+		.describe('Specific blockers encountered during execution'),
 });
 
 export type DelegateOutput = z.infer<typeof delegateOutputSchema>;

@@ -207,14 +207,24 @@ describe('TrustedKeyService (integration)', () => {
 			expect(sourceIds).not.toContain('old-source');
 		});
 
-		it('should skip everything as worker', async () => {
+		it('should sync on follower without starting the refresh poller', async () => {
 			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
 			config.trustedKeys = JSON.stringify([staticKeyEntry()]);
 
-			await service.initialize();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
-			expect(await sourceRepo.find()).toHaveLength(0);
-			expect(await keyRepo.find()).toHaveLength(0);
+			try {
+				await service.initialize();
+
+				const sources = await sourceRepo.find();
+				expect(sources).toHaveLength(1);
+				expect(sources[0].status).toBe('healthy');
+				expect(await keyRepo.find()).toHaveLength(1);
+
+				expect(setIntervalSpy).not.toHaveBeenCalled();
+			} finally {
+				setIntervalSpy.mockRestore();
+			}
 		});
 
 		it('should remove all sources and keys when config becomes empty', async () => {
@@ -233,23 +243,29 @@ describe('TrustedKeyService (integration)', () => {
 	});
 
 	describe('onLeaderTakeover', () => {
-		it('should sync sources and refresh keys on leader takeover', async () => {
+		it('should refresh keys and start the poller on leader takeover', async () => {
 			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
 			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'takeover-key' })]);
 			await service.initialize();
 
-			expect(await sourceRepo.find()).toHaveLength(0);
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
-			Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
-			await service.onLeaderTakeover();
+			try {
+				Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
+				await service.onLeaderTakeover();
 
-			const sources = await sourceRepo.find();
-			expect(sources).toHaveLength(1);
-			expect(sources[0].status).toBe('healthy');
+				const sources = await sourceRepo.find();
+				expect(sources).toHaveLength(1);
+				expect(sources[0].status).toBe('healthy');
 
-			const keys = await keyRepo.find();
-			expect(keys).toHaveLength(1);
-			expect(keys[0].kid).toBe('takeover-key');
+				const keys = await keyRepo.find();
+				expect(keys).toHaveLength(1);
+				expect(keys[0].kid).toBe('takeover-key');
+
+				expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			} finally {
+				setIntervalSpy.mockRestore();
+			}
 		});
 	});
 
@@ -381,26 +397,6 @@ describe('TrustedKeyService (integration)', () => {
 			await expect(service.refreshSource('nonexistent')).rejects.toThrow(
 				'Trusted key source not found',
 			);
-		});
-
-		it('should skip jwks sources without writing keys but update lastRefreshedAt', async () => {
-			await insertSource({
-				id: 'jwks-source',
-				type: 'jwks',
-				config: JSON.stringify({
-					type: 'jwks',
-					url: 'https://example.com/jwks',
-					issuer: 'https://example.com',
-				}),
-			});
-
-			await service.refreshSource('jwks-source');
-
-			expect(await keyRepo.find()).toHaveLength(0);
-
-			const source = await sourceRepo.findOneBy({ id: 'jwks-source' });
-			expect(source!.status).toBe('healthy');
-			expect(source!.lastRefreshedAt).toBeDefined();
 		});
 	});
 

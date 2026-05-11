@@ -93,10 +93,11 @@ export async function validateAccessToReferencedSecretProviders(
 	externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 	source: 'create' | 'update' | 'transfer',
 ) {
-	const secretPaths = getExternalSecretExpressionPaths(data);
-	if (secretPaths.length === 0) {
+	if (!containsExternalSecrets(data)) {
 		return; // No external secrets referenced, nothing to check
 	}
+
+	const secretPaths = getExternalSecretExpressionPaths(data);
 
 	// Track which credential properties use which providers
 	const providerToCredentialPropertyMap = new Map<string, string[]>();

@@ -17,8 +17,11 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
+import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
+
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
@@ -36,6 +39,8 @@ import type { SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
 import * as utils from '../shared/utils';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
+import { JwtService } from '@/services/jwt.service';
 
 let saveCredential: SaveCredentialFunction;
 
@@ -68,6 +73,16 @@ describe('Public API endpoints with API key scopes', () => {
 
 		await testDb.init();
 		apiKeyRepository = Container.get(ApiKeyRepository);
+
+		// Register ScopedJwtStrategy so Bearer-token auth works in the public API.
+		// Normally registered by TokenExchangeModule.init(), but that requires the
+		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
+		// the auth layer in isolation without triggering the full module boot.
+		const { ScopedJwtStrategy } = await import(
+			'@/modules/token-exchange/services/scoped-jwt.strategy'
+		);
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 
 	beforeEach(async () => {
@@ -458,6 +473,74 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(sharedCredential.credentials.name).toBe(payload.name);
 				});
 			});
+			describe('GET /credentials/:id', () => {
+				test('should retrieve credential when API key has "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body).toMatchObject({
+						id: savedCredential.id,
+						name: savedCredential.name,
+						type: savedCredential.type,
+					});
+					expect(response.body).not.toHaveProperty('data');
+					expect(response.body).not.toHaveProperty('shared');
+				});
+
+				test('should fail to retrieve credential when API key doesn\'t have "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+			describe('POST /credentials/:id/test', () => {
+				const mockCredentialsTester = mock<CredentialsTester>();
+				Container.set(CredentialsTester, mockCredentialsTester);
+
+				beforeEach(() => {
+					mockCredentialsTester.testCredentials.mockResolvedValue({
+						status: 'OK',
+						message: 'Connection successful!',
+					});
+				});
+
+				afterEach(() => {
+					mockCredentialsTester.testCredentials.mockClear();
+				});
+
+				test('should test credential when API key has "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+					expect(response.statusCode).toBe(200);
+				});
+
+				test('should fail to test credential when API key doesn\'t have "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
 			describe('DELETE /credentials/:id', () => {
 				test('should delete credential when API key has "credential:delete" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });
@@ -1531,6 +1614,47 @@ describe('Public API endpoints with API key scopes', () => {
 					const workflow = await createWorkflow({}, member);
 
 					const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+
+				test('passes apiKeyScope check via API key but fails project-level permission check', async () => {
+					// Member's API key has "workflow:delete" in apiKeyScopes → passes publicApiScope
+					const member = await createMemberWithApiKey({ scopes: ['workflow:delete'] });
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					// Workflow owned by a different user, not shared with the member
+					const owner = await createOwnerWithApiKey();
+					const ownerWorkflow = await createWorkflow({}, owner);
+
+					// publicApiScope('workflow:delete') passes (apiKeyScopes contains 'workflow:delete')
+					// projectScope('workflow:delete', 'workflow') fails (member has no access to owner's workflow)
+					const response = await authMemberAgent.delete(`/workflows/${ownerWorkflow.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+
+				test('passes apiKeyScope check via scoped JWT but fails project-level permission check', async () => {
+					// Scoped JWT sets apiKeyScopes to ALL_API_KEY_SCOPES → passes publicApiScope
+					const member = await createMember();
+					const owner = await createOwnerWithApiKey();
+					const ownerWorkflow = await createWorkflow({}, owner);
+
+					const jwtService = Container.get(JwtService);
+					const token = jwtService.sign({
+						iss: TOKEN_EXCHANGE_ISSUER,
+						sub: member.id,
+						iat: Math.floor(Date.now() / 1000),
+						exp: Math.floor(Date.now() / 1000) + 3600,
+						jti: 'test-jti',
+					});
+
+					// publicApiScope('workflow:delete') passes (ScopedJwtStrategy grants ALL_API_KEY_SCOPES)
+					// projectScope('workflow:delete', 'workflow') fails (member has no access to owner's workflow)
+					const response = await testServer
+						.publicApiAgentWithoutApiKey()
+						.set('Authorization', `Bearer ${token}`)
+						.delete(`/workflows/${ownerWorkflow.id}`);
 
 					expect(response.statusCode).toBe(403);
 				});

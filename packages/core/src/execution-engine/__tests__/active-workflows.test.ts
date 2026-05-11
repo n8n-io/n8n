@@ -163,7 +163,8 @@ describe('ActiveWorkflows', () => {
 					item: [
 						{
 							mode: 'custom',
-							cronExpression: '* * * * *' as CronExpression,
+							// 6-field expression with wildcard seconds = runs every second
+							cronExpression: '* * * * * *' as CronExpression,
 						},
 					],
 				};
@@ -173,6 +174,23 @@ describe('ActiveWorkflows', () => {
 				);
 
 				expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
+			});
+
+			it('should not throw for a 5-field cron expression with step values in minutes field', async () => {
+				// Regression test: */15 9-17 * * * means "every 15 minutes between 9am-5pm"
+				// This was incorrectly rejected because the check treated the minutes field as seconds
+				const pollTimes: PollTimes = {
+					item: [
+						{
+							mode: 'custom',
+							cronExpression: '*/15 9-17 * * *' as CronExpression,
+						},
+					],
+				};
+
+				await expect(addWorkflow({ pollNodes: [pollNode], pollTimes })).resolves.toBeUndefined();
+
+				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
 			});
 		});
 

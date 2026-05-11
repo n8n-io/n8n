@@ -177,28 +177,27 @@ watch(
 </template>
 
 <style lang="scss" module>
-.popoverContent {
-	--popover-slide-x: 0px;
-	--popover-slide-y: 0px;
-	--popover-origin-x: center;
-	--popover-origin-y: center;
+@use '../../css/mixins/motion';
 
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
-	// NOTE: In https://github.com/n8n-io/n8n/pull/27429 we'll replace custom shadows with tokens
+.popoverContent {
+	--popover--offset--slide-x: 0;
+	--popover--offset--slide-y: 0;
+	--popover--offset--origin-x: center;
+	--popover--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--popover--offset--slide-x);
+	--animation--popover-in--translate-y: var(--popover--offset--slide-y);
+
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
 	box-shadow:
-		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+		var(--shadow--md),
+		inset var(--shadow--outline);
 	will-change: transform, opacity;
-	transform-origin: var(--popover-origin-x) var(--popover-origin-y);
+	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 
 	&.enableSlideIn {
-		animation-duration: var(--duration--snappy);
-		animation-timing-function: var(--easing--ease-out);
-
 		&[data-state='open'] {
-			animation-name: popoverIn;
+			@include motion.popover-in;
 		}
 	}
 
@@ -208,63 +207,52 @@ watch(
 }
 
 .popoverContent[data-state='open'][data-side='top'] {
-	--popover-slide-y: -2px;
-	--popover-origin-y: bottom;
+	--popover--offset--slide-y: -2px;
+	--popover--offset--origin-y: bottom;
 }
 
 .popoverContent[data-state='open'][data-side='right'] {
-	--popover-slide-x: 2px;
-	--popover-origin-x: left;
+	--popover--offset--slide-x: 2px;
+	--popover--offset--origin-x: left;
 }
 
 .popoverContent[data-state='open'][data-side='bottom'] {
-	--popover-slide-y: 2px;
-	--popover-origin-y: top;
+	--popover--offset--slide-y: 2px;
+	--popover--offset--origin-y: top;
 }
 
 .popoverContent[data-state='open'][data-side='left'] {
-	--popover-slide-x: -2px;
-	--popover-origin-x: right;
+	--popover--offset--slide-x: -2px;
+	--popover--offset--origin-x: right;
 }
 
 .popoverContent[data-state='open'][data-side='top'][data-align='start'],
 .popoverContent[data-state='open'][data-side='bottom'][data-align='start'] {
-	--popover-slide-x: -2px;
-	--popover-origin-x: left;
+	--popover--offset--slide-x: -2px;
+	--popover--offset--origin-x: left;
 }
 
 .popoverContent[data-state='open'][data-side='top'][data-align='end'],
 .popoverContent[data-state='open'][data-side='bottom'][data-align='end'] {
-	--popover-slide-x: 2px;
-	--popover-origin-x: right;
+	--popover--offset--slide-x: 2px;
+	--popover--offset--origin-x: right;
 }
 
 .popoverContent[data-state='open'][data-side='left'][data-align='start'],
 .popoverContent[data-state='open'][data-side='right'][data-align='start'] {
-	--popover-slide-y: -2px;
-	--popover-origin-y: top;
+	--popover--offset--slide-y: -2px;
+	--popover--offset--origin-y: top;
 }
 
 .popoverContent[data-state='open'][data-side='left'][data-align='end'],
 .popoverContent[data-state='open'][data-side='right'][data-align='end'] {
-	--popover-slide-y: 2px;
-	--popover-origin-y: bottom;
-}
-
-@keyframes popoverIn {
-	from {
-		opacity: 0;
-		transform: translate(var(--popover-slide-x), var(--popover-slide-y)) scale(0.96);
-	}
-	to {
-		opacity: 1;
-		transform: translate(0, 0) scale(1);
-	}
+	--popover--offset--slide-y: 2px;
+	--popover--offset--origin-y: bottom;
 }
 
 .popoverArrow {
-	fill: var(--color--foreground--tint-2);
-	stroke: var(--color--foreground);
+	fill: var(--background--surface);
+	stroke: var(--border-color);
 	stroke-width: 1px;
 }
 </style>

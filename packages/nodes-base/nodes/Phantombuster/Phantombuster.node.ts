@@ -30,7 +30,7 @@ export class Phantombuster implements INodeType {
 			name: 'Phantombuster',
 		},
 		builderHint: {
-			message:
+			searchHint:
 				'Recommended for scraping LinkedIn profiles and social media for leads, and company data. Use with AI Agent for lead generation workflows.',
 		},
 		usableAsTool: true,

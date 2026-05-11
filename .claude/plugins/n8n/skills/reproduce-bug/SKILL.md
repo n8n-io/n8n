@@ -1,6 +1,6 @@
 ---
+name: n8n:reproduce-bug
 description: Reproduce a bug from a Linear ticket with a failing test. Expects the full ticket context (title, description, comments) to be provided as input.
-user_invocable: true
 ---
 
 # Bug Reproduction Framework

@@ -163,6 +163,13 @@ jest.mock('langsmith', () => {
 		}
 	}
 
+	const createFeedbackCalls: Array<{
+		runId: string;
+		key: string;
+		options: Record<string, unknown>;
+		clientApiUrl: string;
+	}> = [];
+
 	class MockClient {
 		apiUrl: string;
 		apiKey: string;
@@ -170,6 +177,15 @@ jest.mock('langsmith', () => {
 		constructor(config: { apiUrl?: string; apiKey?: string }) {
 			this.apiUrl = config.apiUrl ?? '';
 			this.apiKey = config.apiKey ?? '';
+		}
+
+		// eslint-disable-next-line @typescript-eslint/require-await
+		async createFeedback(
+			runId: string,
+			key: string,
+			options: Record<string, unknown>,
+		): Promise<void> {
+			createFeedbackCalls.push({ runId, key, options, clientApiUrl: this.apiUrl });
 		}
 	}
 
@@ -180,8 +196,10 @@ jest.mock('langsmith', () => {
 			reset: () => {
 				runCounter = 0;
 				createdRunTrees.length = 0;
+				createFeedbackCalls.length = 0;
 			},
 			getCreatedRunTrees: () => createdRunTrees,
+			getCreateFeedbackCalls: () => createFeedbackCalls,
 		},
 	};
 });
@@ -215,6 +233,12 @@ type LangSmithMockModule = {
 			parent_run_id?: string;
 			client?: unknown;
 		}>;
+		getCreateFeedbackCalls: () => Array<{
+			runId: string;
+			key: string;
+			options: Record<string, unknown>;
+			clientApiUrl: string;
+		}>;
 	};
 };
 
@@ -237,6 +261,7 @@ const {
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
 	mergeTraceRunInputs,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -477,6 +502,44 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
+	it('includes n8n and workflow SDK versions in trace metadata when provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			n8nVersion: '1.123.4',
+			workflowSdkVersion: '0.13.0',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).toEqual(
+			expect.objectContaining({
+				n8n_version: '1.123.4',
+				workflow_sdk_version: '0.13.0',
+			}),
+		);
+		expect(tracing?.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({
+				n8n_version: '1.123.4',
+				workflow_sdk_version: '0.13.0',
+			}),
+		);
+	});
+
+	it('omits version metadata when not provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).not.toHaveProperty('n8n_version');
+		expect(tracing?.messageRun.metadata).not.toHaveProperty('workflow_sdk_version');
+	});
+
 	it('redacts model secrets from trace metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -705,7 +768,8 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'proxy test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
@@ -723,7 +787,8 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'client test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
@@ -764,10 +829,101 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'disabled test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
 		expect(tracing).toBeUndefined();
+	});
+});
+
+describe('submitLangsmithUserFeedback', () => {
+	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
+	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
+	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+
+	beforeEach(() => {
+		langsmithMock.reset();
+		process.env.LANGSMITH_API_KEY = 'test-key';
+		delete process.env.LANGSMITH_TRACING;
+		delete process.env.LANGCHAIN_TRACING_V2;
+	});
+
+	afterAll(() => {
+		process.env.LANGSMITH_API_KEY = originalLangSmithApiKey;
+		if (originalLangSmithTracing === undefined) {
+			delete process.env.LANGSMITH_TRACING;
+		} else {
+			process.env.LANGSMITH_TRACING = originalLangSmithTracing;
+		}
+		if (originalLangChainTracingV2 === undefined) {
+			delete process.env.LANGCHAIN_TRACING_V2;
+		} else {
+			process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+		}
+	});
+
+	it('calls Client.createFeedback with the full payload', async () => {
+		const submitted = await submitLangsmithUserFeedback({
+			langsmithRunId: 'ls-run-1',
+			langsmithTraceId: 'ls-trace-1',
+			key: 'user_score',
+			score: 1,
+			value: 'up',
+			comment: 'nice',
+			feedbackId: 'fb-1',
+			sourceInfo: { thread_id: 'thread-1' },
+		});
+
+		expect(submitted).toBe(true);
+		const calls = langsmithMock.getCreateFeedbackCalls();
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toMatchObject({
+			runId: 'ls-run-1',
+			key: 'user_score',
+			options: {
+				score: 1,
+				value: 'up',
+				comment: 'nice',
+				feedbackId: 'fb-1',
+				sourceInfo: { thread_id: 'thread-1' },
+				feedbackSourceType: 'api',
+			},
+		});
+	});
+
+	it('returns false and does not hit the network when tracing is disabled', async () => {
+		delete process.env.LANGSMITH_API_KEY;
+		process.env.LANGCHAIN_TRACING_V2 = 'false';
+
+		const submitted = await submitLangsmithUserFeedback({
+			langsmithRunId: 'ls-run-2',
+			langsmithTraceId: 'ls-trace-2',
+			key: 'user_score',
+			score: 0,
+		});
+
+		expect(submitted).toBe(false);
+		expect(langsmithMock.getCreateFeedbackCalls()).toHaveLength(0);
+	});
+
+	it('routes through the proxy client when proxyConfig is provided', async () => {
+		const getAuthHeaders = jest.fn().mockResolvedValue({ Authorization: 'Bearer token' });
+		await submitLangsmithUserFeedback({
+			langsmithRunId: 'ls-run-3',
+			langsmithTraceId: 'ls-trace-3',
+			key: 'user_score',
+			score: 1,
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders,
+			},
+		});
+
+		const calls = langsmithMock.getCreateFeedbackCalls();
+		expect(calls).toHaveLength(1);
+		expect(calls[0].clientApiUrl).toBe('https://proxy.example.com/langsmith');
+		expect(getAuthHeaders).toHaveBeenCalled();
 	});
 });

@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -24,11 +25,16 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [] as INodeUi[],
+		workflowTriggerNodes: [] as INodeUi[],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
 	},
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -84,8 +90,7 @@ describe('useNodeMention', () => {
 		workflowsStore = useWorkflowsStore();
 		focusedNodesStore = useFocusedNodesStore();
 
-		// @ts-expect-error -- mock readonly getter
-		workflowsStore.workflowId = 'test-wf';
+		workflowsStore.setWorkflowId('test-wf');
 		// @ts-expect-error -- mock readonly property for focusedNodesStore which still reads workflowsStore.allNodes
 		workflowsStore.allNodes = mockNodes;
 		mockWorkflowDocumentStore.allNodes = mockNodes;

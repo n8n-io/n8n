@@ -141,6 +141,23 @@ describe('CodeBuilderNodeSearchEngine', () => {
 			expect(results.length).toBeLessThanOrEqual(2);
 		});
 
+		it('should apply nodeFilter before ranking and limiting results', () => {
+			const httpToolNode = createNodeType({
+				name: 'n8n-nodes-base.httpRequestTool',
+				displayName: 'HTTP Request Tool',
+				description: 'Makes HTTP requests as an AI tool',
+				group: ['output'],
+				inputs: [],
+				outputs: ['ai_tool'],
+			});
+			const engine = new CodeBuilderNodeSearchEngine([...nodeTypes, httpToolNode]);
+
+			const results = engine.searchByName('http', 1, (nodeId) => nodeId.endsWith('Tool'));
+
+			expect(results).toHaveLength(1);
+			expect(results[0].name).toBe('n8n-nodes-base.httpRequestTool');
+		});
+
 		it('should combine scores for multiple matches', () => {
 			const results = searchEngine.searchByName('request');
 
@@ -610,7 +627,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 							displayOptions: { show: { hasOutputParser: [true] } },
 						},
 					},
-					message: 'Use with output parser for structured output',
+					searchHint: 'Use with output parser for structured output',
 				},
 			});
 			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
@@ -691,7 +708,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 							displayOptions: { show: { hasOutputParser: [true] } },
 						},
 					},
-					message: 'Test hint message',
+					searchHint: 'Test hint message',
 				},
 			});
 			const engine = new CodeBuilderNodeSearchEngine([agentNode]);

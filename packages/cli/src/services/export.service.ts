@@ -90,6 +90,14 @@ export class ExportService {
 			this.cipher.encrypt(migrationsJsonl ?? '' + '\n', customEncryptionKey),
 			'utf8',
 		);
+			const migrationsJsonl: string = allMigrations
+				.map((migration: unknown) => JSON.stringify(migration))
+				.join('\n');
+			await appendFile(
+				filePath,
+				await this.cipher.encryptV2(migrationsJsonl ?? '' + '\n', customEncryptionKey),
+				'utf8',
+			);
 
 		this.logger.info(
 			`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
@@ -229,7 +237,7 @@ export class ExportService {
 					.join('\n');
 				await appendFile(
 					filePath,
-					this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
+					(await this.cipher.encryptV2(entitiesJsonl, customEncryptionKey)) + '\n',
 					'utf8',
 				);
 

@@ -9,6 +9,7 @@
  */
 
 import type {
+	BlueprintCheckpointItem,
 	BlueprintDataTableItem,
 	BlueprintDelegateItem,
 	BlueprintResearchItem,
@@ -37,7 +38,8 @@ type BlueprintItem =
 	| (BlueprintWorkflowItem & { kind: 'workflow' })
 	| (BlueprintDataTableItem & { kind: 'data-table' })
 	| (BlueprintResearchItem & { kind: 'research' })
-	| (BlueprintDelegateItem & { kind: 'delegate' });
+	| (BlueprintDelegateItem & { kind: 'delegate' })
+	| (BlueprintCheckpointItem & { kind: 'checkpoint' });
 
 // ---------------------------------------------------------------------------
 // Per-item conversion helpers
@@ -45,17 +47,27 @@ type BlueprintItem =
 
 /** Format a data table schema as a compact string for builder context. */
 export function formatTableSchema(dt: BlueprintDataTableItem): string {
+	if (!dt.columns || dt.columns.length === 0) return `Table '${dt.name}'`;
 	const cols = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
 	return `Table '${dt.name}': ${cols}`;
 }
 
 function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTaskInput {
-	const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
+	if (dt.columns && dt.columns.length > 0) {
+		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
+		return {
+			id: dt.id,
+			title: `Create '${dt.name}' data table`,
+			kind: 'manage-data-tables',
+			spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
+			deps: dt.dependsOn,
+		};
+	}
 	return {
 		id: dt.id,
-		title: `Create '${dt.name}' data table`,
+		title: dt.name,
 		kind: 'manage-data-tables',
-		spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
+		spec: dt.purpose,
 		deps: dt.dependsOn,
 	};
 }
@@ -137,6 +149,16 @@ function delegateItemToTask(di: BlueprintDelegateItem): PlannedTaskInput {
 	};
 }
 
+function checkpointItemToTask(c: BlueprintCheckpointItem): PlannedTaskInput {
+	return {
+		id: c.id,
+		title: c.title,
+		kind: 'checkpoint',
+		spec: c.instructions,
+		deps: c.dependsOn,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // BlueprintAccumulator
 // ---------------------------------------------------------------------------
@@ -149,6 +171,8 @@ export class BlueprintAccumulator {
 	private researchItems: BlueprintResearchItem[] = [];
 
 	private delegateItems: BlueprintDelegateItem[] = [];
+
+	private checkpoints: BlueprintCheckpointItem[] = [];
 
 	private tasks: PlannedTaskInput[] = [];
 
@@ -185,6 +209,12 @@ export class BlueprintAccumulator {
 				const { kind: _, ...di } = item;
 				this.upsertArray(this.delegateItems, di);
 				task = delegateItemToTask(di);
+				break;
+			}
+			case 'checkpoint': {
+				const { kind: _, ...c } = item;
+				this.upsertArray(this.checkpoints, c);
+				task = checkpointItemToTask(c);
 				break;
 			}
 		}
@@ -225,7 +255,10 @@ export class BlueprintAccumulator {
 		}
 	}
 
-	/** Remove an item by ID. Returns true if found and removed. */
+	/** Remove an item by ID. Returns true if found and removed.
+	 *  Cascade-removes any checkpoint that loses its last build-workflow dep as
+	 *  a result — otherwise submit-plan would later fail validation because
+	 *  checkpoints must depend on at least one build-workflow task. */
 	removeItem(id: string): boolean {
 		const taskIdx = this.tasks.findIndex((t) => t.id === id);
 		if (taskIdx < 0) return false;
@@ -235,10 +268,26 @@ export class BlueprintAccumulator {
 		this.removeFromArray(this.workflows, id);
 		this.removeFromArray(this.researchItems, id);
 		this.removeFromArray(this.delegateItems, id);
+		this.removeFromArray(this.checkpoints, id);
 		// Clean up dangling dep references in remaining tasks
 		for (const task of this.tasks) {
 			task.deps = task.deps.filter((dep) => dep !== id);
 		}
+
+		// Cascade-remove orphaned checkpoints: any checkpoint whose deps no
+		// longer reference a build-workflow task is invalid and must go too.
+		const workflowIds = new Set(this.workflows.map((w) => w.id));
+		const orphanedCheckpointIds: string[] = [];
+		for (const cp of this.checkpoints) {
+			const stillHasWorkflowDep = cp.dependsOn.some((depId) => workflowIds.has(depId));
+			if (!stillHasWorkflowDep) {
+				orphanedCheckpointIds.push(cp.id);
+			}
+		}
+		for (const orphanId of orphanedCheckpointIds) {
+			this.removeItem(orphanId);
+		}
+
 		return true;
 	}
 

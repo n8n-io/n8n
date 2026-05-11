@@ -6,6 +6,7 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
@@ -41,13 +42,16 @@ const containerClass = computed(() => ({
 const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const logsStore = useLogsStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { startChat } = useCanvasOperations();
 
 const chatTriggerNode = computed(() =>
-	workflowsStore.allNodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE),
+	(workflowDocumentStore.value?.allNodes ?? []).find(
+		(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+	),
 );
 const isChatHubAvailable = computed(
 	() =>

@@ -2,11 +2,13 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { ModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
+import { stringifyError } from './runtime-helpers';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { buildWorkingMemoryInstruction } from './working-memory';
 import { filterLlmMessages, getCreatedAt } from '../sdk/message';
 import type { SerializedMessageList } from '../types/runtime/message-list';
-import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../types/sdk/message';
+import type { JSONValue } from '../types/utils/json';
 
 export type { SerializedMessageList };
 
@@ -17,6 +19,8 @@ export interface WorkingMemoryContext {
 	structured: boolean;
 	/** The current persisted state, or null if not yet loaded. Falls back to template. */
 	state: string | null;
+	/** Custom instruction text. When absent the default instruction is used. */
+	instruction?: string;
 }
 
 /**
@@ -133,6 +137,76 @@ export class AgentMessageList {
 	}
 
 	/**
+	 * Locate the assistant message hosting the given toolCallId and mark the
+	 * block as resolved with the supplied output.
+	 *
+	 * Returns the mutated host message, or `undefined` if the toolCallId is
+	 * not found (internal invariant violation — caller should log/throw).
+	 */
+	setToolCallResult(toolCallId: string, output: JSONValue): AgentDbMessage | undefined {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return undefined;
+
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block) return undefined;
+
+		const mutableBlock = block;
+		mutableBlock.state = 'resolved';
+		(mutableBlock as Extract<ContentToolCall, { state: 'resolved' }>).output = output;
+		if ('error' in mutableBlock) {
+			delete (mutableBlock as { error: unknown }).error;
+		}
+
+		this.responseSet.add(host);
+		return host;
+	}
+
+	/**
+	 * Locate the assistant message hosting the given toolCallId and mark the
+	 * block as rejected with the supplied error.
+	 *
+	 * Returns the mutated host message, or `undefined` if the toolCallId is
+	 * not found (internal invariant violation — caller should log/throw).
+	 */
+	setToolCallError(toolCallId: string, error: unknown): AgentDbMessage | undefined {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return undefined;
+
+		const block = this.findToolCallBlock(host, toolCallId)!;
+		const mutableBlock = block;
+		mutableBlock.state = 'rejected';
+		(mutableBlock as Extract<ContentToolCall, { state: 'rejected' }>).error = stringifyError(error);
+		if ('output' in mutableBlock) {
+			delete (mutableBlock as { output: unknown }).output;
+		}
+
+		this.responseSet.add(host);
+		return host;
+	}
+
+	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
+		// Start from the last message and go backwards to find the host message
+		for (let i = this.all.length - 1; i >= 0; i--) {
+			const m = this.all[i];
+			if (
+				'content' in m &&
+				Array.isArray(m.content) &&
+				m.content.some((c) => c.type === 'tool-call' && c.toolCallId === toolCallId)
+			) {
+				return m;
+			}
+		}
+		return undefined;
+	}
+
+	private findToolCallBlock(host: AgentDbMessage, toolCallId: string): ContentToolCall | undefined {
+		if (!('content' in host) || !Array.isArray(host.content)) return undefined;
+		return host.content.find(
+			(c): c is ContentToolCall => c.type === 'tool-call' && c.toolCallId === toolCallId,
+		);
+	}
+
+	/**
 	 * Full LLM context for a generateText / streamText call.
 	 * Prepends the system prompt (with working memory appended if configured),
 	 * strips custom messages via filterLlmMessages.
@@ -144,10 +218,11 @@ export class AgentMessageList {
 			const wmInstruction = buildWorkingMemoryInstruction(
 				this.workingMemory.template,
 				this.workingMemory.structured,
+				this.workingMemory.instruction,
 			);
 			const wmState = this.workingMemory.state ?? this.workingMemory.template;
 			systemPrompt +=
-				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```';
+				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```\n';
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions

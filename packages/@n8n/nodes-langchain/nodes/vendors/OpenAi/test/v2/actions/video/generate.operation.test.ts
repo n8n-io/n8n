@@ -1,27 +1,36 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
+
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { VideoJob } from '../../../../helpers/interfaces';
 import * as pollingHelpers from '../../../../helpers/polling';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/video/generate.operation';
-import FormData from 'form-data';
 
-jest.mock('../../../../helpers/binary-data');
-jest.mock('../../../../helpers/polling');
-jest.mock('../../../../transport');
+const { mockFormDataAppend, mockFormDataGetHeaders } = vi.hoisted(() => ({
+	mockFormDataAppend: vi.fn(),
+	mockFormDataGetHeaders: vi.fn(),
+}));
 
-jest.mock('form-data', () => jest.fn());
+vi.mock('form-data', () => {
+	class MockFormData {
+		append = mockFormDataAppend;
+		getHeaders = mockFormDataGetHeaders;
+	}
+	return { default: MockFormData };
+});
 
-const mockFormData = jest.mocked(FormData);
+vi.mock('../../../../helpers/binary-data');
+vi.mock('../../../../helpers/polling');
+vi.mock('../../../../transport');
 
-describe('Video Generate Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+describe('Video Generate Operation', async () => {
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockFormDataInstance: jest.Mocked<FormData>;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
-	const getBinaryDataFileSpy = jest.spyOn(binaryDataHelpers, 'getBinaryDataFile');
-	const pollUntilAvailableSpy = jest.spyOn(pollingHelpers, 'pollUntilAvailable');
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
+	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
+	const pollUntilAvailableSpy = vi.spyOn(pollingHelpers, 'pollUntilAvailable');
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -36,18 +45,13 @@ describe('Video Generate Operation', () => {
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 
-		mockExecuteFunctions.helpers.prepareBinaryData = jest.fn();
-		mockExecuteFunctions.helpers.binaryToBuffer = jest.fn();
-
-		mockFormDataInstance = {
-			append: jest.fn(),
-			getHeaders: jest.fn().mockReturnValue({ 'content-type': 'multipart/form-data' }),
-		} as unknown as jest.Mocked<FormData>;
-		mockFormData.mockImplementation(() => mockFormDataInstance);
+		mockExecuteFunctions.helpers.prepareBinaryData = vi.fn();
+		mockExecuteFunctions.helpers.binaryToBuffer = vi.fn();
+		mockFormDataGetHeaders.mockReturnValue({ 'content-type': 'multipart/form-data' });
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('successful execution', () => {
@@ -95,9 +99,7 @@ describe('Video Generate Operation', () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockCompletedJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -178,9 +180,7 @@ describe('Video Generate Operation', () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -243,14 +243,12 @@ describe('Video Generate Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -266,7 +264,7 @@ describe('Video Generate Operation', () => {
 
 	describe('FormData handling', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should create FormData with correct parameters', async () => {
@@ -305,17 +303,15 @@ describe('Video Generate Operation', () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('model', 'sora-2');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('prompt', 'Test video generation');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('seconds', '6');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('size', '1024x1792');
-			expect(mockFormDataInstance.getHeaders).toHaveBeenCalled();
+			expect(mockFormDataAppend).toHaveBeenCalledWith('model', 'sora-2');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('prompt', 'Test video generation');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('seconds', '6');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('size', '1024x1792');
+			expect(mockFormDataGetHeaders).toHaveBeenCalled();
 		});
 
 		it('should append binary reference when provided', async () => {
@@ -360,18 +356,16 @@ describe('Video Generate Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+			expect(mockFormDataAppend).toHaveBeenCalledWith(
 				'input_reference',
 				mockBinaryFile.fileContent,
 				{
@@ -419,9 +413,7 @@ describe('Video Generate Operation', () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -470,9 +462,7 @@ describe('Video Generate Operation', () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 

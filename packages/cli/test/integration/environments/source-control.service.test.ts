@@ -448,6 +448,8 @@ describe('SourceControlService', () => {
 		// Skip actual git operations
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
+		(statusService as any).gitService = gitService;
+		(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
@@ -532,8 +534,9 @@ describe('SourceControlService', () => {
 			return [];
 		});
 
-		fsReadFile.mockImplementation(async (path: string) => {
-			const pathWithoutCwd = isAbsolute(path) ? basename(path) : path;
+		fsReadFile.mockImplementation(async (path) => {
+			const pathStr = String(path);
+			const pathWithoutCwd = isAbsolute(pathStr) ? basename(pathStr) : pathStr;
 			return JSON.stringify(gitFiles[pathWithoutCwd]);
 		});
 	});
