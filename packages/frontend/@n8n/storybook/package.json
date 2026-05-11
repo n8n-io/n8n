@@ -28,6 +28,7 @@
     "@storybook/addon-themes": "catalog:storybook",
     "@storybook/addon-vitest": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
+    "storybook-addon-vue-mdx": "3.0.0",
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/browser-playwright": "^4.0.16",
@@ -40,6 +41,7 @@
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
+    "remark-gfm": "^4.0.1",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },

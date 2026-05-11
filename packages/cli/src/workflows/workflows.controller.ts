@@ -10,7 +10,7 @@ import {
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import {
 	SharedWorkflow,
 	WorkflowEntity,
@@ -35,9 +35,9 @@ import {
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import express from 'express';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
+import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
 import { CollaborationService } from '../collaboration/collaboration.service';
 
 import { WorkflowCreationService } from './workflow-creation.service';
@@ -59,6 +59,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
@@ -82,6 +84,8 @@ export class WorkflowsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly collaborationService: CollaborationService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	@Post('/')
@@ -176,13 +180,8 @@ export class WorkflowsController {
 				"You don't have the permissions to create a workflow in this project.",
 			);
 		}
-		let workflowData: IWorkflowResponse | undefined;
-		try {
-			const { data } = await axios.get<IWorkflowResponse>(query.url);
-			workflowData = data;
-		} catch (error) {
-			throw new BadRequestError('The URL does not point to valid JSON file!');
-		}
+
+		const workflowData = await this.fetchWorkflowFromUrl(query.url);
 
 		// Do a very basic check if it is really a n8n-workflow-json
 		if (
@@ -696,5 +695,47 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
+	}
+
+	private async fetchWorkflowFromUrl(url: string) {
+		try {
+			if (!this.ssrfConfig.enabled) {
+				const { data } = await axios.get<IWorkflowResponse>(url);
+
+				return data;
+			}
+
+			const result = await this.ssrfProtectionService.validateUrl(url);
+			if (!result.ok) throw result.error;
+
+			const config: AxiosRequestConfig = {
+				lookup: this.ssrfProtectionService.createSecureLookup() as AxiosRequestConfig['lookup'],
+				beforeRedirect: (redirectedRequest: Record<string, string>) => {
+					this.ssrfProtectionService.validateRedirectSync(redirectedRequest.href);
+				},
+			};
+
+			const { data } = await axios.get<IWorkflowResponse>(url, config);
+			return data;
+		} catch (error) {
+			const blockedError = this.findSsrfBlockedError(error);
+			if (blockedError) throw blockedError;
+			throw new BadRequestError('The URL does not point to valid JSON file!');
+		}
+	}
+
+	/**
+	 * Walk the error cause chain to find a {@link SsrfBlockedIpError} buried
+	 * inside axios/redirect wrappers (AxiosError → RedirectionError → SsrfBlockedIpError).
+	 */
+	private findSsrfBlockedError(error: unknown): SsrfBlockedIpError | undefined {
+		let current = ensureError(error);
+
+		for (let depth = 0; depth < 4 && current; depth++) {
+			if (current instanceof SsrfBlockedIpError) return current;
+			current = ensureError(current.cause);
+		}
+
+		return undefined;
 	}
 }

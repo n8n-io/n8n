@@ -2,6 +2,8 @@ import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+export const ASK_USER_TOOL_ID = 'ask-user';
+
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
 	question: z.string().describe('The question text to display to the user'),
@@ -36,7 +38,7 @@ export const askUserResumeSchema = z.object({
 
 export function createAskUserTool() {
 	return createTool({
-		id: 'ask-user',
+		id: ASK_USER_TOOL_ID,
 		description:
 			'Ask the user one or more structured questions. Each question can be ' +
 			'single-select (pick one), multi-select (pick many), or free-text. ' +
@@ -47,7 +49,8 @@ export function createAskUserTool() {
 			'the options array — they duplicate the built-in input and confuse users. ' +
 			'Also NEVER add a separate follow-up question asking the user to elaborate ' +
 			'on a previous "other" choice. Keep questions concise and ' +
-			'avoid questions that reference answers to previous questions.',
+			'avoid questions that reference answers to previous questions. ' +
+			'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		inputSchema: askUserInputSchema,
 		outputSchema: z.object({
 			answered: z.boolean(),

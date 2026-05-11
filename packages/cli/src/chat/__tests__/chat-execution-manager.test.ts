@@ -434,6 +434,10 @@ describe('ChatExecutionManager', () => {
 			const workflow = {
 				getNode: jest.fn().mockReturnValue(node),
 				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				expression: {
+					acquireIsolate: jest.fn().mockResolvedValue(undefined),
+					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+				},
 			};
 			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
@@ -465,6 +469,10 @@ describe('ChatExecutionManager', () => {
 			const workflow = {
 				getNode: jest.fn().mockReturnValue(node),
 				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				expression: {
+					acquireIsolate: jest.fn().mockResolvedValue(undefined),
+					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+				},
 			};
 			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
@@ -472,6 +480,78 @@ describe('ChatExecutionManager', () => {
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
 			expect(result).toEqual([[{ json: message }]]);
+		});
+
+		describe('expression isolate lifecycle', () => {
+			const message: ChatMessage = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+				files: [],
+			};
+
+			function makeExecution() {
+				return {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: { lastNodeExecuted: 'nodeId' },
+						executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+					},
+					mode: 'manual',
+				} as any;
+			}
+
+			function makeWorkflow(nodeType: { onMessage?: jest.Mock }) {
+				const expression = {
+					acquireIsolate: jest.fn().mockResolvedValue(undefined),
+					releaseIsolate: jest.fn().mockResolvedValue(undefined),
+				};
+				const workflow = {
+					getNode: jest.fn().mockReturnValue({ type: 'testType', typeVersion: 1 }),
+					nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+					expression,
+				};
+				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+				return { workflow, expression };
+			}
+
+			it('should acquire and release isolate around onMessage', async () => {
+				const onMessage = jest.fn().mockResolvedValue([[{ json: message }]]);
+				const { expression } = makeWorkflow({ onMessage });
+
+				await (chatExecutionManager as any).runNode(makeExecution(), message);
+
+				expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+				const [acquireOrder] = expression.acquireIsolate.mock.invocationCallOrder;
+				const [onMessageOrder] = onMessage.mock.invocationCallOrder;
+				const [releaseOrder] = expression.releaseIsolate.mock.invocationCallOrder;
+				expect(acquireOrder).toBeLessThan(onMessageOrder);
+				expect(onMessageOrder).toBeLessThan(releaseOrder);
+			});
+
+			it('should release isolate when onMessage throws', async () => {
+				const onMessage = jest.fn().mockRejectedValue(new Error('boom'));
+				const { expression } = makeWorkflow({ onMessage });
+
+				await expect(
+					(chatExecutionManager as any).runNode(makeExecution(), message),
+				).rejects.toThrow('boom');
+
+				expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not acquire isolate when node type has no onMessage', async () => {
+				const { expression } = makeWorkflow({});
+
+				await (chatExecutionManager as any).runNode(makeExecution(), message);
+
+				expect(expression.acquireIsolate).not.toHaveBeenCalled();
+				expect(expression.releaseIsolate).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('when lastNodeExecuted is TOOL_EXECUTOR_NODE_NAME', () => {
@@ -549,6 +629,10 @@ describe('ChatExecutionManager', () => {
 					}),
 					nodeTypes: {
 						getByNameAndVersion: jest.fn().mockReturnValue({ onMessage }),
+					},
+					expression: {
+						acquireIsolate: jest.fn().mockResolvedValue(undefined),
+						releaseIsolate: jest.fn().mockResolvedValue(undefined),
 					},
 				};
 				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);

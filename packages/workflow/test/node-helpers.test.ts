@@ -3615,6 +3615,69 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: true". Skip unknown item names instead of throwing',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'number1',
+									displayName: 'Number 1',
+									values: [
+										{
+											displayName: 'Number',
+											name: 'number',
+											type: 'number',
+											default: 0,
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						values: {
+							number1: [{ number: 42 }],
+							and: [{ property: 'Status', filter: 'active' }],
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
@@ -5275,6 +5338,60 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+
+		describe('_cnd string operators with undefined property value', () => {
+			const node: INode = { ...testNode };
+			const nodeTypeDescription: INodeTypeDescription = { ...testNodeType };
+
+			const baseParam: INodeProperties = {
+				displayName: 'Test',
+				name: 'test',
+				type: 'string',
+				default: '',
+			};
+
+			test('includes returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('startsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { startsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('endsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { endsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('regex returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { regex: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('includes returns true when property matches', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({ missingParam: 'foobar' }, param, node, nodeTypeDescription)).toBe(
+					true,
+				);
+			});
+		});
 	});
 
 	describe('makeDescription', () => {

@@ -11,7 +11,8 @@ import { computed } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
+import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -22,16 +23,14 @@ import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	for (const entry of store.resourceRegistry.values()) {
-		if (entry.id === artifact.resourceId) return entry.name;
-	}
-	return artifact.name;
+	const entry = thread.producedArtifacts.get(artifact.resourceId);
+	return entry?.name ?? artifact.name;
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -121,7 +120,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.currentThreadId,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'plan-review',
@@ -138,8 +137,12 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	};
 	telemetry.track('User finished providing input', eventProps);
 
-	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(requestId, {
+		kind: 'approval',
+		approved,
+		...(feedback ? { userInput: feedback } : {}),
+	});
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
@@ -176,7 +179,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment -->
-			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
+			<N8nText
+				v-if="entry.type === 'text'"
+				size="large"
+				:compact="props.compact"
+				:class="$style.timelineItem"
+			>
 				<InstanceAiMarkdown :content="entry.content" />
 			</N8nText>
 
@@ -240,8 +248,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				</ToolCallStep>
 			</template>
 
-			<!-- Child agent — flat section -->
-			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
+			<!-- Child agent — flat section. Running builder sub-agents are
+				 extracted and rendered at the bottom of the conversation by
+				 InstanceAiView; once a builder finishes it reappears here in its
+				 chronological slot. -->
+			<template
+				v-else-if="
+					entry.type === 'child' &&
+					childrenById[entry.agentId] &&
+					!isActiveBuilderAgent(childrenById[entry.agentId])
+				"
+			>
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Planner child: render PlanReviewPanel below the agent section -->
@@ -276,6 +293,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						:name="resolveArtifactName(artifact)"
 						:resource-id="artifact.resourceId"
 						:project-id="artifact.projectId"
+						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
 						:metadata="formatArtifactMetadata(artifact)"
 					/>
 				</template>
@@ -289,5 +307,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.timelineItem {
+	max-width: 90%;
 }
 </style>

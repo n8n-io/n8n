@@ -1,12 +1,19 @@
 export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
 export { AnnotationTagRepository } from './annotation-tag.repository.ee';
+export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-workflow.repository';
 export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
-export { DeploymentKeyRepository } from './deployment-key.repository';
+export {
+	DeploymentKeyRepository,
+	type DeploymentKeySortField,
+	type DeploymentKeySortDirection,
+	type ListDeploymentKeysOptions,
+} from './deployment-key.repository';
+export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';

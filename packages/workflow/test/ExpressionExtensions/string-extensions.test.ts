@@ -289,8 +289,9 @@ describe('Data Transformation Functions', () => {
 			);
 
 			vi.useFakeTimers({ now: new Date() });
+			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(ExpressionExtensionError);
 			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(
-				new ExpressionExtensionError('cannot convert to Luxon DateTime'),
+				'cannot convert to Luxon DateTime',
 			);
 			vi.useRealTimers();
 		});

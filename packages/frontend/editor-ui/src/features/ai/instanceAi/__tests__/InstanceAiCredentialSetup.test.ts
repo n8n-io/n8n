@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -49,7 +49,7 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiCredentialSetup);
+const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
 
 /** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
@@ -252,9 +252,12 @@ describe('InstanceAiCredentialSetup', () => {
 
 			// Auto-continue fires since all are selected
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, {
-				type1: 'cred-123',
-				type2: 'cred-123',
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: {
+					type1: 'cred-123',
+					type2: 'cred-123',
+				},
 			});
 		});
 
@@ -275,7 +278,7 @@ describe('InstanceAiCredentialSetup', () => {
 			await userEvent.click(getByText('instanceAi.credential.deny'));
 
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 		});
 
 		it('auto-continues when single credential is selected', async () => {
@@ -293,7 +296,10 @@ describe('InstanceAiCredentialSetup', () => {
 			// Select credential — auto-continue should fire
 			await userEvent.click(getByTestId('credential-picker'));
 
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, { type1: 'cred-123' });
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { type1: 'cred-123' },
+			});
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 

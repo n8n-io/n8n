@@ -1,8 +1,9 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '../../../../../utils/helpers';
 import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutputParser';
@@ -10,36 +11,36 @@ import * as tracing from '../../../../../utils/tracing';
 import * as commonModule from '../../agents/ToolsAgent/common';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V2/execute';
 
-jest.mock('../../../../../utils/output_parsers/N8nOutputParser', () => ({
-	getOptionalOutputParser: jest.fn(),
-	N8nStructuredOutputParser: jest.fn(),
+vi.mock('../../../../../utils/output_parsers/N8nOutputParser', () => ({
+	getOptionalOutputParser: vi.fn(),
+	N8nStructuredOutputParser: vi.fn(),
 }));
 
-jest.mock('../../agents/ToolsAgent/common', () => ({
-	...jest.requireActual('../../agents/ToolsAgent/common'),
-	getOptionalMemory: jest.fn(),
+vi.mock('../../agents/ToolsAgent/common', async () => ({
+	...(await vi.importActual('../../agents/ToolsAgent/common')),
+	getOptionalMemory: vi.fn(),
 }));
 
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 const ensureWithConfig = <T extends object>(executor: T) => {
-	(executor as { withConfig: jest.Mock }).withConfig = jest.fn().mockReturnValue(executor);
+	(executor as { withConfig: Mock }).withConfig = vi.fn().mockReturnValue(executor);
 	return executor;
 };
 
 beforeEach(() => {
-	jest.clearAllMocks();
-	jest.resetAllMocks();
+	vi.clearAllMocks();
+	vi.resetAllMocks();
 });
 
 describe('toolsAgentExecute', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 		mockContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
 		mockContext.getExecutionId.mockReturnValue('exec-123');
@@ -56,12 +57,12 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		// Mock getNodeParameter to return default values
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
@@ -80,15 +81,15 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: { text: 'success 1' } })
 				.mockResolvedValueOnce({ output: { text: 'success 2' } }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -105,12 +106,12 @@ describe('toolsAgentExecute', () => {
 		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input 1' } }]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'text') return 'test input';
@@ -134,15 +135,15 @@ describe('toolsAgentExecute', () => {
 			runName: '[Test Workflow] Test Node',
 			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 		};
-		const tracingSpy = jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
+		const tracingSpy = vi.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
 
 		const mockExecutor = {
-			invoke: jest.fn().mockResolvedValueOnce({ output: { text: 'success' } }),
+			invoke: vi.fn().mockResolvedValueOnce({ output: { text: 'success' } }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -163,12 +164,12 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'options.batching.batchSize') return 2;
@@ -186,7 +187,7 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: { text: 'success 1' } })
 				.mockResolvedValueOnce({ output: { text: 'success 2' } })
@@ -194,9 +195,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: { text: 'success 4' } }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -219,12 +220,12 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'options.batching.batchSize') return 2;
@@ -244,15 +245,15 @@ describe('toolsAgentExecute', () => {
 		mockContext.continueOnFail.mockReturnValue(true);
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: { text: 'success' } })
 				.mockRejectedValueOnce(new Error('Test error')),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -271,12 +272,12 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'options.batching.batchSize') return 2;
@@ -296,15 +297,15 @@ describe('toolsAgentExecute', () => {
 		mockContext.continueOnFail.mockReturnValue(false);
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success' }) })
 				.mockRejectedValueOnce(new Error('Test error')),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Test error');
 	});
@@ -320,18 +321,18 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		const mockParser1 = mock<outputParserModule.N8nStructuredOutputParser>();
 		const mockParser2 = mock<outputParserModule.N8nStructuredOutputParser>();
 		const mockParser3 = mock<outputParserModule.N8nStructuredOutputParser>();
 
-		const getOptionalOutputParserSpy = jest
+		const getOptionalOutputParserSpy = vi
 			.spyOn(outputParserModule, 'getOptionalOutputParser')
 			.mockResolvedValueOnce(mockParser1)
 			.mockResolvedValueOnce(mockParser2)
@@ -353,16 +354,16 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 1' }) })
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 2' }) })
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 3' }) }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -385,19 +386,18 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockParser1 = mock<outputParserModule.N8nStructuredOutputParser>();
 		const mockParser2 = mock<outputParserModule.N8nStructuredOutputParser>();
 
-		jest
-			.spyOn(outputParserModule, 'getOptionalOutputParser')
+		vi.spyOn(outputParserModule, 'getOptionalOutputParser')
 			.mockResolvedValueOnce(mockParser1)
 			.mockResolvedValueOnce(mockParser2);
 
-		const getToolsSpy = jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		const getToolsSpy = vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
 
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'text') return 'test input';
@@ -412,15 +412,15 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 1' }) })
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 2' }) }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -442,7 +442,7 @@ describe('toolsAgentExecute', () => {
 		]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
 
@@ -453,11 +453,11 @@ describe('toolsAgentExecute', () => {
 			mock<outputParserModule.N8nStructuredOutputParser>(),
 		];
 
-		const getOptionalOutputParserSpy = jest
+		const getOptionalOutputParserSpy = vi
 			.spyOn(outputParserModule, 'getOptionalOutputParser')
 			.mockImplementation(async (_ctx, index) => mockParsers[index || 0]);
 
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
 
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'options.batching.batchSize') return 2;
@@ -474,7 +474,7 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockExecutor = {
-			invoke: jest
+			invoke: vi
 				.fn()
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 1' }) })
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 2' }) })
@@ -482,9 +482,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 4' }) }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -504,14 +504,14 @@ describe('toolsAgentExecute', () => {
 		let mockModel: BaseChatModel;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockNode = mock<INode>();
 			mockNode.typeVersion = 2.2;
 			mockContext.getNode.mockReturnValue(mockNode);
 			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
 
 			mockModel = mock<BaseChatModel>();
-			mockModel.bindTools = jest.fn();
+			mockModel.bindTools = vi.fn();
 			mockModel.lc_namespace = ['chat_models'];
 			mockContext.getInputConnectionData.mockImplementation(async (type, _index) => {
 				if (type === 'ai_languageModel') return mockModel;
@@ -536,8 +536,8 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should handle streaming when enableStreaming is true', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 			mockContext.isStreaming.mockReturnValue(true);
 
 			// Mock async generator for streamEvents
@@ -561,12 +561,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -580,8 +580,8 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should capture intermediate steps during streaming when returnIntermediateSteps is true', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 
 			mockContext.isStreaming.mockReturnValue(true);
 
@@ -656,12 +656,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -689,17 +689,17 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'Regular response' }),
-				streamEvents: jest.fn(),
+				invoke: vi.fn().mockResolvedValue({ output: 'Regular response' }),
+				streamEvents: vi.fn(),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -712,17 +712,17 @@ describe('toolsAgentExecute', () => {
 		it('should use regular execution on version 2.2 when streaming is not available', async () => {
 			mockContext.isStreaming.mockReturnValue(false);
 
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 
 			const mockExecutor = {
-				invoke: jest.fn().mockResolvedValue({ output: 'Regular response' }),
-				streamEvents: jest.fn(),
+				invoke: vi.fn().mockResolvedValue({ output: 'Regular response' }),
+				streamEvents: vi.fn(),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -734,14 +734,14 @@ describe('toolsAgentExecute', () => {
 
 		it('should respect context window length from memory in streaming mode', async () => {
 			const mockMemory = {
-				loadMemoryVariables: jest.fn().mockResolvedValue({
+				loadMemoryVariables: vi.fn().mockResolvedValue({
 					chat_history: [
 						{ role: 'human', content: 'Message 1' },
 						{ role: 'ai', content: 'Response 1' },
 					],
 				}),
 				chatHistory: {
-					getMessages: jest.fn().mockResolvedValue([
+					getMessages: vi.fn().mockResolvedValue([
 						{ role: 'human', content: 'Message 1' },
 						{ role: 'ai', content: 'Response 1' },
 						{ role: 'human', content: 'Message 2' },
@@ -750,10 +750,10 @@ describe('toolsAgentExecute', () => {
 				},
 			};
 
-			jest.spyOn(commonModule, 'getOptionalMemory').mockResolvedValue(mockMemory as any);
+			vi.spyOn(commonModule, 'getOptionalMemory').mockResolvedValue(mockMemory as any);
 
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 			mockContext.isStreaming.mockReturnValue(true);
 
 			const mockStreamEvents = async function* () {
@@ -768,12 +768,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			await toolsAgentExecute.call(mockContext);
 
@@ -794,8 +794,8 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should handle mixed message content types in streaming', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 			mockContext.isStreaming.mockReturnValue(true);
 
 			// Mock async generator for streamEvents with mixed content types
@@ -817,12 +817,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -834,8 +834,8 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should handle string content in streaming', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 			mockContext.isStreaming.mockReturnValue(true);
 
 			// Mock async generator for streamEvents with string content
@@ -851,12 +851,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -868,8 +868,8 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should ignore non-text message types in array content', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 			mockContext.isStreaming.mockReturnValue(true);
 
 			// Mock async generator with only non-text content
@@ -889,12 +889,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -906,8 +906,8 @@ describe('toolsAgentExecute', () => {
 		});
 
 		it('should handle empty chunk content gracefully', async () => {
-			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
-			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
 			mockContext.isStreaming.mockReturnValue(true);
 
 			// Mock async generator with empty content
@@ -929,12 +929,12 @@ describe('toolsAgentExecute', () => {
 			};
 
 			const mockExecutor = {
-				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest
-				.spyOn(AgentExecutor, 'fromAgentAndTools')
-				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -952,10 +952,10 @@ describe('toolsAgentExecute', () => {
 		mockSupplyDataContext.isStreaming = undefined;
 
 		mockSupplyDataContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 
 		const mockNode = mock<INode>();
@@ -964,12 +964,12 @@ describe('toolsAgentExecute', () => {
 		mockSupplyDataContext.getInputData.mockReturnValue([{ json: { text: 'test input 1' } }]);
 
 		const mockModel = mock<BaseChatModel>();
-		mockModel.bindTools = jest.fn();
+		mockModel.bindTools = vi.fn();
 		mockModel.lc_namespace = ['chat_models'];
 		mockSupplyDataContext.getInputConnectionData.mockResolvedValue(mockModel);
 
 		const mockTools = [mock<Tool>()];
-		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
 
 		// Mock getNodeParameter to return default values
 		mockSupplyDataContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
@@ -989,12 +989,12 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockExecutor = {
-			invoke: jest.fn().mockResolvedValueOnce({ output: { text: 'success 1' } }),
+			invoke: vi.fn().mockResolvedValueOnce({ output: { text: 'success 1' } }),
 		};
 
-		jest
-			.spyOn(AgentExecutor, 'fromAgentAndTools')
-			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
 
 		const result = await toolsAgentExecute.call(mockSupplyDataContext);
 

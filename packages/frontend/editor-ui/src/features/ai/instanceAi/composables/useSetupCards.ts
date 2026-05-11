@@ -2,24 +2,25 @@ import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getNodeParametersIssues } from '@/features/setupPanel/setupPanel.utils';
 import {
 	credGroupKey,
+	isNestedParam,
 	type DisplayCard,
 	type SetupCard,
 	type SetupCardGroup,
 } from '../instanceAiWorkflowSetup.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useSetupCards(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>,
 	getCardCredentialId: (card: SetupCard) => string | null,
 	isCredentialTypeTestable: (name: string) => boolean,
 ) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 
@@ -67,6 +68,34 @@ export function useSetupCards(
 
 		return escalated;
 	});
+
+	/**
+	 * True if at least one tracked parameter on this node resolves to a property
+	 * the wizard can render inline. The AI Assistant lives on its own route,
+	 * with the workflow canvas shown in an iframe — there is no NDV to fall back
+	 * to for nested-type issues. If nothing is renderable inline, the wizard
+	 * should skip the card and let the backend's re-analyze loop hand the
+	 * unresolved issue back to the LLM via `partial/skippedNodes`.
+	 */
+	function hasRenderableParamIssue(req: InstanceAiWorkflowSetupNode): boolean {
+		const nodeType = nodeTypesStore.getNodeType(req.node.type, req.node.typeVersion);
+		if (!nodeType?.properties) return false;
+
+		const node = workflowDocumentStore.value.getNodeByName(req.node.name);
+		if (!node) return false;
+
+		const tracked =
+			trackedParamNames.value.get(req.node.name) ?? new Set(Object.keys(req.parameterIssues ?? {}));
+		if (tracked.size === 0) return false;
+
+		for (const prop of nodeType.properties) {
+			if (!tracked.has(prop.name)) continue;
+			if (isNestedParam(prop)) continue;
+			if (!NodeHelpers.displayParameter(node.parameters, prop, node, nodeType)) continue;
+			return true;
+		}
+		return false;
+	}
 
 	const cards = computed((): SetupCard[] => {
 		const escalatedCredTypes = new Set<string>();
@@ -134,6 +163,12 @@ export function useSetupCards(
 					}
 				}
 			} else if (req.isTrigger || hasParamIssues) {
+				// Skip param-only cards whose issues are all non-renderable (e.g. an
+				// empty `fixedCollection`). There's nothing the user can edit inline,
+				// and this wizard has no path to NDV. The backend will re-analyze on
+				// Apply and feed the unresolved issue back to the LLM.
+				if (!req.isTrigger && hasParamIssues && !hasRenderableParamIssue(req)) continue;
+
 				ordered.push({
 					id: hasParamIssues ? `param-${req.node.id}` : `trigger-${req.node.id}`,
 					nodes: [req],
@@ -155,7 +190,7 @@ export function useSetupCards(
 
 	const displayCards = computed((): DisplayCard[] => {
 		const directSubnodes = new Map<string, Set<string>>();
-		const connectionsByDest = workflowsStore.connectionsByDestinationNode;
+		const connectionsByDest = workflowDocumentStore.value.connectionsByDestinationNode;
 		for (const [destName, conns] of Object.entries(connectionsByDest)) {
 			for (const connType of Object.keys(conns)) {
 				if (connType === NodeConnectionTypes.Main) continue;
@@ -280,7 +315,7 @@ export function useSetupCards(
 		for (const req of card.nodes) {
 			const nodeName = req.node.name;
 			if (trackedParamNames.value.has(nodeName)) return true;
-			const storeNode = workflowsStore.getNodeByName(nodeName);
+			const storeNode = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (storeNode) {
 				const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 				if (Object.keys(liveIssues).length > 0) return true;
@@ -306,7 +341,7 @@ export function useSetupCards(
 
 		if (cardHasParamWork(card)) {
 			for (const req of card.nodes) {
-				const storeNode = workflowsStore.getNodeByName(req.node.name);
+				const storeNode = workflowDocumentStore.value.getNodeByName(req.node.name);
 				if (storeNode) {
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) return false;
@@ -362,7 +397,7 @@ export function useSetupCards(
 			for (const card of cards.value) {
 				for (const req of card.nodes) {
 					const nodeName = req.node.name;
-					const storeNode = workflowsStore.getNodeByName(nodeName);
+					const storeNode = workflowDocumentStore.value.getNodeByName(nodeName);
 					if (!storeNode) continue;
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) {

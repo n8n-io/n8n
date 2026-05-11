@@ -1,0 +1,71 @@
+{
+	"name": "mysql v1 insert with backtick in table name",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d5e6f7a8-b9c0-1234-5678-90abcdef0001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "name",
+							"stringValue": "Alice"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "e6f7a8b9-c0d1-2345-6789-0abcdef00012",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"operation": "insert",
+				"table": {
+					"mode": "name",
+					"value": "user`; groups"
+				},
+				"columns": "name",
+				"options": {}
+			},
+			"id": "f7a8b9c0-d1e2-3456-7890-abcdef000123",
+			"name": "MySQL Insert With Backtick",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [900, 460],
+			"credentials": {
+				"mySql": {
+					"id": "93",
+					"name": "MySQL account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [[{ "node": "MySQL Insert With Backtick", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "a8b9c0d1-e2f3-4567-8901-bcdef0001234",
+	"id": "InsertBacktickEscaping",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

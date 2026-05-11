@@ -14,6 +14,34 @@ export { N8nBinaryLoader } from './utils/n8n-binary-loader';
 export { N8nJsonLoader } from './utils/n8n-json-loader';
 export { N8nLlmTracing } from './utils/n8n-llm-tracing';
 export {
+	TextEditorDocument,
+	NoMatchFoundError,
+	MultipleMatchesError,
+	InvalidLineNumberError,
+	InvalidViewRangeError,
+	InvalidPathError,
+	FileExistsError,
+	FileNotFoundError,
+	BatchReplacementError,
+	formatTextWithLineNumbers,
+	findDivergenceContext,
+	parseStrReplacements,
+} from './utils/text-editor';
+export type {
+	ViewCommand,
+	CreateCommand,
+	StrReplaceCommand,
+	InsertCommand,
+	BatchStrReplaceCommand,
+	TextEditorCommand,
+	TextEditorCommandWithBatch,
+	TextEditorToolCall,
+	TextEditorResult,
+	StrReplacement,
+	BatchReplaceResult,
+	TextEditorDocumentOptions,
+} from './utils/text-editor';
+export {
 	estimateTokensFromStringList,
 	estimateTokensByCharCount,
 	estimateTextSplitsByTokens,

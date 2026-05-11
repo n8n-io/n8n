@@ -28,7 +28,8 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
@@ -39,6 +40,7 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
@@ -48,7 +50,6 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
-import { storeToRefs } from 'pinia';
 
 import {
 	N8nCallout,
@@ -101,7 +102,7 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const message = useMessage();
@@ -116,6 +117,9 @@ const {
 	openSampleWorkflowTemplate,
 	isRagStarterCalloutVisible,
 } = useCalloutHelpers();
+const aiGateway = useAiGateway();
+
+const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -434,10 +438,36 @@ function deleteOption(optionName: string): void {
 	emit('valueChanged', parameterData);
 }
 
+function isHiddenByAiGateway(parameter: INodeProperties): boolean {
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
+	if (!node.value) return false;
+
+	const credentials = node.value.credentials;
+	if (!credentials) return false;
+
+	const hasGatewayCredential = Object.values(credentials).some(
+		(cred) => cred.__aiGatewayManaged === true,
+	);
+	if (!hasGatewayCredential) return false;
+
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const resource = params?.resource as string | undefined;
+	const operation = params?.operation as string | undefined;
+	if (!resource || !operation) return false;
+
+	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+}
+
 async function shouldDisplayNodeParameter(
 	parameter: INodeProperties,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ): Promise<boolean> {
+	if (displayKey === 'displayOptions' && isHiddenByAiGateway(parameter)) {
+		return false;
+	}
+
 	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		props.nodeValues,
 		node.value,
@@ -520,6 +550,50 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 
 	return true;
 }
+
+const isAiGatewayUnsupportedAction = computed(() => {
+	if (!node.value) return false;
+	const credentials = node.value.credentials;
+	if (!credentials) return false;
+
+	const hasGatewayCredential = Object.values(credentials).some(
+		(cred) => cred.__aiGatewayManaged === true,
+	);
+	if (!hasGatewayCredential) return false;
+
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const resource = params?.resource as string | undefined;
+	const operation = params?.operation as string | undefined;
+	if (!resource || !operation) return false;
+
+	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
+const aiGatewayOperationDisplayName = computed(() => {
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const operation = params?.operation as string | undefined;
+	const resource = params?.resource as string | undefined;
+	if (!operation || !resource || !nodeType.value) return operation ?? '';
+
+	const resourceParam = nodeType.value.properties?.find(
+		(p) => p.name === 'resource' && p.type === 'options',
+	);
+	const resourceLabel =
+		resourceParam?.options?.find((o) => 'value' in o && o.value === resource)?.name ?? resource;
+	const operationParam = nodeType.value.properties?.find((p) => {
+		if (p.name !== 'operation' || p.type !== 'options') return false;
+		const showResource = p.displayOptions?.show?.resource;
+		if (!showResource) return true;
+		return showResource.includes(resource);
+	});
+	const operationLabel =
+		operationParam?.options?.find((o) => 'value' in o && o.value === operation)?.name ?? operation;
+	return `${resourceLabel} - ${operationLabel}`;
+});
 
 function onCalloutAction(action: CalloutAction) {
 	switch (action.type) {
@@ -867,6 +941,19 @@ watch(
 					@blur="onParameterBlur(item.parameter.name)"
 				/>
 			</div>
+
+			<N8nNotice
+				v-if="item.parameter.name === 'operation' && isAiGatewayUnsupportedAction"
+				theme="warning"
+				:class="$style.unsupportedActionNotice"
+				data-test-id="ai-gateway-unsupported-action-notice"
+			>
+				{{
+					i18n.baseText('aiGateway.unsupportedAction.notice', {
+						interpolate: { actionName: aiGatewayOperationDisplayName },
+					})
+				}}
+			</N8nNotice>
 		</div>
 		<div v-if="parameterItems.length === 0" :class="{ indent }">
 			<slot />
@@ -958,6 +1045,11 @@ watch(
 	> :global(.multi-parameter) {
 		margin-bottom: 0;
 	}
+}
+
+.unsupportedActionNotice {
+	margin-top: var(--spacing--2xs);
+	margin-bottom: 0;
 }
 
 .inlineLayout {

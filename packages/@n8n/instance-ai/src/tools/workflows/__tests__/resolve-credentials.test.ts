@@ -1,7 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
-import { resolveCredentials, type CredentialMap } from '../resolve-credentials';
+import {
+	resolveCredentials,
+	type CredentialEntry,
+	type CredentialMap,
+} from '../resolve-credentials';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -228,6 +232,214 @@ describe('resolveCredentials', () => {
 			expect(result.verificationPinData).toEqual({
 				'Slack 1': [{ _mockedCredential: 'slackApi' }],
 				'Slack 2': [{ _mockedCredential: 'slackApi' }],
+			});
+		});
+	});
+
+	describe('raw credential validation against snapshot', () => {
+		const availableCredentials: CredentialEntry[] = [
+			{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
+			{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
+			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2Api' },
+		];
+
+		it('keeps a raw credential id that exists in the snapshot for the same type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'slack-1', name: 'Team Slack' } },
+					},
+				],
+			});
+
+			const credMap: CredentialMap = new Map([
+				['slackApi', { id: 'slack-2', name: 'Backup Slack' }],
+			]);
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				credMap,
+				availableCredentials,
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'slack-1', name: 'Team Slack' },
+			});
+		});
+
+		it('mocks a synthesized raw credential id instead of replacing it with the type-map fallback', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'WHATSAPP_CREDENTIAL_ID', name: 'WhatsApp' } },
+					},
+				],
+			});
+
+			const credMap: CredentialMap = new Map([['slackApi', { id: 'slack-1', name: 'Team Slack' }]]);
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				credMap,
+				availableCredentials,
+			);
+
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.verificationPinData).toEqual({
+				Slack: [{ _mockedCredential: 'slackApi' }],
+			});
+		});
+
+		it('mocks a mock-* raw credential id that is absent from the snapshot', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Gmail',
+						type: 'n8n-nodes-base.gmail',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { gmailOAuth2Api: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				new Map(),
+				availableCredentials,
+			);
+
+			expect(result.mockedNodeNames).toEqual(['Gmail']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(json.nodes[0].credentials).toEqual({});
+		});
+
+		it('mocks a real id when it belongs to a different credential type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'gmail-1', name: 'Gmail' } },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				new Map(),
+				availableCredentials,
+			);
+
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
+			expect(json.nodes[0].credentials).toEqual({});
+		});
+
+		it('restores the existing workflow credential on edit when the builder emits an invalid raw id', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'WHATSAPP_CREDENTIAL_ID', name: 'WhatsApp' } },
+					},
+				],
+			});
+
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'existing-slack', name: 'Existing Slack' } },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(
+				json,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				new Map(),
+				[{ id: 'existing-slack', name: 'Existing Slack', type: 'slackApi' }],
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'existing-slack', name: 'Existing Slack' },
+			});
+		});
+	});
+
+	describe('existing workflow takes priority over credential map', () => {
+		it('preserves the existing credential on an edit even when the map has a different credential of the same type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [0, 0],
+						credentials: { openAiApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [0, 0],
+						credentials: { openAiApi: { id: 'user-chosen-id', name: 'My OpenAI' } },
+					},
+				],
+			});
+
+			const credMap: CredentialMap = new Map([
+				['openAiApi', { id: 'some-other-id', name: 'Other OpenAI' }],
+			]);
+
+			const ctx = createMockContext(existingWorkflow);
+			const result = await resolveCredentials(json, 'wf-123', ctx, credMap);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				openAiApi: { id: 'user-chosen-id', name: 'My OpenAI' },
 			});
 		});
 	});

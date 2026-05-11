@@ -62,7 +62,7 @@ describe('ClientOAuth2', () => {
 				}),
 			});
 
-			const axiosSpy = jest.spyOn(axios, 'request');
+			const axiosSpy = vi.spyOn(axios, 'request');
 
 			await makeTokenCall();
 
