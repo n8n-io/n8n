@@ -147,7 +147,9 @@ function setupRuntimePinia() {
 	rootStore.instanceId = 'instance-1';
 
 	const workflowsListStore = mockedStore(useWorkflowsListStore);
-	workflowsListStore.getWorkflowById.mockReturnValue(undefined);
+	workflowsListStore.getWorkflowById.mockReturnValue(
+		undefined as unknown as ReturnType<typeof workflowsListStore.getWorkflowById>,
+	);
 }
 
 function createRuntime(threadId = 'thread-active') {
