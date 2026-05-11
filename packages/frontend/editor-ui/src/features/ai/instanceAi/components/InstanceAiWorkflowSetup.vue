@@ -22,7 +22,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, defineComponent, onMounted, onUnmounted, provide, ref, toRef, watch } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import {
 	credGroupKey,
 	isTriggerOnly as isTriggerOnlyUtil,
@@ -52,7 +52,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
@@ -171,7 +171,7 @@ const {
 	onCredentialSelected,
 } = useSetupActions({
 	requestId: toRef(props, 'requestId'),
-	store,
+	thread,
 	cards,
 	currentDisplayCard,
 	displayCards,
