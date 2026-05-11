@@ -5820,6 +5820,7 @@
 	"agents.chat.askQuestion.otherLabel": "Other",
 	"agents.chat.askQuestion.otherPlaceholder": "Type another answer",
 	"agents.chat.askQuestion.submit": "Submit",
+	"agents.heading": "Agents",
 	"agents.list.published": "Published",
 	"agents.list.noDescription": "No description",
 	"agents.list.updatedAt": "Updated {date}",

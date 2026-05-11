@@ -10,6 +10,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
@@ -57,6 +58,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -86,6 +88,10 @@ const {
 const initialized = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
+
+watch(agentName, (name) => {
+	documentTitle.set(name || locale.baseText('agents.heading'));
+});
 const {
 	activeChatSessionId,
 	continueSessionId,

@@ -10,12 +10,14 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { listAgents } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 
 const locale = useI18n();
+const documentTitle = useDocumentTitle();
 
 const route = useRoute();
 const router = useRouter();
@@ -68,7 +70,10 @@ function onAgentDeleted(agentId: string) {
 	allAgents.value = allAgents.value.filter((a) => a.id !== agentId);
 }
 
-onMounted(fetchAgents);
+onMounted(async () => {
+	documentTitle.set(locale.baseText('agents.heading'));
+	await fetchAgents();
+});
 </script>
 
 <template>
