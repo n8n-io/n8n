@@ -110,7 +110,7 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { hasManagedOAuthCredentials } = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 
 const aiGateway = useAiGateway();
 
@@ -639,7 +639,8 @@ function getServiceName(credentialTypeName: string): string {
 
 const quickConnectCredentialType = computed(() => {
 	return credentialTypesNodeDescriptions.value.find(
-		(t) => !!getQuickConnectOption(t.name, props.node.type) || hasManagedOAuthCredentials(t.name),
+		(t) =>
+			!!getQuickConnectOption(t.name, props.node.type) || canOAuthCredentialQuickConnect(t.name),
 	)?.name;
 });
 

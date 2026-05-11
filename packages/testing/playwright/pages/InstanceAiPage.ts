@@ -27,6 +27,10 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
+	async gotoThread(threadId: string): Promise<void> {
+		await this.page.goto(`/instance-ai/${threadId}`);
+	}
+
 	getContainer(): Locator {
 		return this.container;
 	}
@@ -73,7 +77,7 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-assistant-message');
 	}
 
-	getAssistantMessageText(text: string): Locator {
+	getAssistantMessageText(text: string | RegExp): Locator {
 		return this.getAssistantMessages().getByText(text);
 	}
 

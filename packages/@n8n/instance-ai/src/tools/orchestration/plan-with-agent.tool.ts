@@ -760,6 +760,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							threadId: context.threadId,
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
+							onActivity: context.touchRun,
 							llmStepTraceHooks,
 							maxSteps: MAX_STEPS.PLANNER,
 						});
