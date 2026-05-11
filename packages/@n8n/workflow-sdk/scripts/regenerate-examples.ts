@@ -1,20 +1,53 @@
 /**
- * Regenerate `examples/manifest.json` and `examples/workflows/*.json`.
+ * Regenerate `examples/manifest.json`, `examples/workflows/*.json`, and
+ * `examples/templates.zip` from the cached public-template catalog.
  *
- * Pipeline:
- *   1. Load cached catalog (from `pnpm fetch-templates`).
- *   2. Apply catalog-stage gate; score survivors; take top N candidates.
- *   3. Fetch detail JSON for each candidate (cached after first fetch).
- *   4. Apply detail-stage gate; score with full rubric; bucket key.
- *   5. Greedy round-robin pick from buckets, recomputing coverage as we go.
- *   6. Validate each pick by running through emit-instance-ai + roundtrip.
- *   7. On success: copy source JSON to examples/workflows/{slug}.json,
- *      append manifest entry. On failure: log to _failures.log, move on.
+ * The goal is a small, diverse set of high-quality real workflows the builder
+ * agent can grep when constructing new ones. Diversity beats raw popularity:
+ * we'd rather have one good `webhook + Slack + AI + branching` example than
+ * ten of them.
+ *
+ * Stage 1 — Catalog gate + cheap score (`scoreCatalogEntry`)
+ *   For every entry in the cached catalog, drop paid templates, unverified
+ *   authors, and oversized workflows. Score survivors on `traction` (log-scaled
+ *   views) and `recency` (linear decay from 90→730 days). By default the full
+ *   survivor set is used; pass `--candidates=N` to cap the detail-fetch budget
+ *   on a cold cache.
+ *
+ * Stage 2 — Detail fetch + full-rubric score (`scoreDetailedTemplate`)
+ *   For each candidate, fetch its detail JSON (cached), re-gate on real node
+ *   count + trigger presence, compute its bucket key
+ *   `(triggerType, primaryIntegration, hasAI, controlFlowKind)`, and score on
+ *   the full 6-dimension rubric (traction, recency, coverage, aiAgent, clarity,
+ *   density). Weights live in `criteria.ts` — `coverage` is the dominant
+ *   weight (35) because it drives bucket diversity.
+ *
+ * Stage 3 — Greedy round-robin pick
+ *   Loop until `--target` (default 50) accepted: re-score every remaining
+ *   candidate against the *current* `acceptedBuckets` (coverage decays once a
+ *   bucket fills), pick the highest scorer, validate it round-trips through
+ *   `generateWorkflowCode` + `emitInstanceAi`, accept on success. Validation
+ *   failures are logged to `_failures.log` and the candidate is dropped.
+ *
+ * Stage 3b — Coverage patch for must-cover node types
+ *   `MUST_COVER_NODE_TYPES` (Postgres + all langchain vector stores) must each
+ *   appear somewhere in the manifest. For any missing type, first scan the
+ *   1000-candidate pool; if none has it, fall back to scanning the full
+ *   catalog and fetching detail on demand for up to 25 ranked candidates.
+ *   This is why the final count usually exceeds `--target`.
+ *
+ * Stage 4 — Write outputs
+ *   Clear `examples/workflows/`, write one JSON per accepted candidate, write
+ *   `manifest.json` sorted by score (with the per-dimension breakdown so picks
+ *   are reviewable), write `_catalog-snapshot.json`, then pack the workflow
+ *   JSONs into `examples/templates.zip`. Only the manifest and the zip are
+ *   committed; the unpacked JSONs are gitignored and recreated on demand by
+ *   `examples-loader`.
  *
  * Usage:
  *   pnpm regenerate-examples                  # default target 50
  *   pnpm regenerate-examples --target=100     # explicit target
- *   pnpm regenerate-examples --candidates=2000 # detail-fetch budget
+ *   pnpm regenerate-examples --candidates=2000 # cap detail-fetch budget
  */
 import AdmZip from 'adm-zip';
 import * as fs from 'fs';
@@ -46,7 +79,10 @@ const SNAPSHOT_PATH = path.join(EXAMPLES_DIR, '_catalog-snapshot.json');
 const FAILURES_LOG = path.join(EXAMPLES_DIR, '_failures.log');
 
 const DEFAULT_TARGET = 50;
-const DEFAULT_CANDIDATES = 1000;
+// No cap by default — process the full catalog. Detail JSONs are cached on
+// disk in `examples/_raw/`, so warm runs are cheap. Pass `--candidates=N` to
+// bound the detail-fetch budget on a cold cache.
+const DEFAULT_CANDIDATES = Infinity;
 
 /**
  * Popular catalog node types that must be represented in the manifest. After
@@ -200,7 +236,8 @@ async function main() {
 	ensureDirs();
 	clearFailuresLog();
 
-	console.log(`Regenerating examples (target=${args.target}, candidates=${args.candidates})\n`);
+	const candidatesLabel = Number.isFinite(args.candidates) ? args.candidates : 'all';
+	console.log(`Regenerating examples (target=${args.target}, candidates=${candidatesLabel})\n`);
 
 	// Stage 1: catalog-stage filter and score
 	const catalog = loadCachedCatalog();
