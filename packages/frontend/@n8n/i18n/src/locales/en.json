@@ -5766,6 +5766,8 @@
 	"agents.list.actions.publish": "Publish",
 	"agents.list.actions.unpublish": "Unpublish",
 	"agents.list.actions.delete": "Delete",
+	"agents.list.readonly": "Read only",
+	"agents.builder.readonly.tooltip": "You don't have permission to edit this agent",
 	"agents.publish.button.publish": "Publish",
 	"agents.publish.button.published": "Published",
 	"agents.publish.dropdown.publish": "Publish",

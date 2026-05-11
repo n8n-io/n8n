@@ -33,6 +33,7 @@ const props = defineProps<{
 	isBuildChatStreaming: boolean;
 	isPublished: boolean;
 	isFullWidth: boolean;
+	canEditAgent: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
@@ -186,6 +187,7 @@ const fullWidthToggleLabel = computed(() =>
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
+				:can-edit-agent="canEditAgent"
 				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
 				@update:streaming="emit('update:streaming', $event)"
