@@ -68,15 +68,6 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
-				name: 'with null nodeGroups',
-				request: {
-					name: 'No Groups Workflow',
-					nodes: [],
-					connections: {},
-					nodeGroups: null,
-				},
-			},
-			{
 				name: 'with empty nodeGroups array',
 				request: {
 					name: 'Empty Groups Workflow',

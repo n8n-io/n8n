@@ -164,7 +164,7 @@ describe('calculateWorkflowChecksum', () => {
 	it('should generate different checksums when nodeGroups are added', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
-			nodeGroups: null,
+			nodeGroups: [],
 		};
 
 		const workflow2: WorkflowSnapshot = {

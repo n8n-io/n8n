@@ -23,7 +23,7 @@ export interface WorkflowSnapshot {
 	pinData?: IPinData;
 	isArchived?: boolean;
 	activeVersionId?: string | null;
-	nodeGroups?: IWorkflowGroup[] | null;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 export const WORKFLOW_CHECKSUM_FIELDS = [

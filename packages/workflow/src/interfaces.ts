@@ -3032,7 +3032,7 @@ export interface IWorkflowBase {
 	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
-	nodeGroups?: IWorkflowGroup[] | null;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 interface IWorkflowHistory {
@@ -3040,7 +3040,7 @@ interface IWorkflowHistory {
 	workflowId: string;
 	nodes: INode[];
 	connections: IConnections;
-	nodeGroups: IWorkflowGroup[] | null;
+	nodeGroups: IWorkflowGroup[];
 	authors: string;
 	name: string | null;
 	description: string | null;

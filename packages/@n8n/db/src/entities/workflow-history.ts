@@ -20,8 +20,8 @@ export class WorkflowHistory extends WithTimestamps {
 	@JsonColumn()
 	connections: IConnections;
 
-	@JsonColumn({ nullable: true })
-	nodeGroups: IWorkflowGroup[] | null;
+	@JsonColumn()
+	nodeGroups: IWorkflowGroup[];
 
 	@Column()
 	authors: string;

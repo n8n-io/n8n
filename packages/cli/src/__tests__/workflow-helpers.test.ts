@@ -391,12 +391,6 @@ describe('validateWorkflowNodeGroups', () => {
 		).not.toThrow();
 	});
 
-	it('should pass when nodeGroups is null', () => {
-		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: null }),
-		).not.toThrow();
-	});
-
 	it('should pass when nodeGroups is empty', () => {
 		expect(() =>
 			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),

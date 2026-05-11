@@ -56,10 +56,6 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
-				name: 'set nodeGroups to null',
-				request: { nodeGroups: null },
-			},
-			{
 				name: 'set nodeGroups to empty array',
 				request: { nodeGroups: [] },
 			},
