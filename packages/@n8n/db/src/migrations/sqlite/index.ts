@@ -164,7 +164,7 @@ import { AddExecutionDeduplicationKey1778000000000 } from '../common/17780000000
 import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
-import { AddGroupsColumnToWorkflowAndHistory1778496335798 } from '../common/1778496335798-AddGroupsColumnToWorkflowAndHistory';
+import { AddNodeGroupsColumnToWorkflowAndHistory1778496335798 } from '../common/1778496335798-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
@@ -340,7 +340,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,
-	AddGroupsColumnToWorkflowAndHistory1778496335798,
+	AddNodeGroupsColumnToWorkflowAndHistory1778496335798,
 ];
 
 export { sqliteMigrations };
