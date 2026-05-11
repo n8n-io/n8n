@@ -35,6 +35,7 @@ import {
 	STRING_SECTIONS,
 	TARGET_NODE_PARAMETER_FACET,
 	VARIABLE_SECTIONS,
+	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
@@ -66,6 +67,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -74,6 +76,7 @@ export async function datatypeCompletions(
 	context: CompletionContext,
 ): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentStore = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -102,6 +105,7 @@ export async function datatypeCompletions(
 		try {
 			resolved = await resolveAutocompleteExpression(
 				`={{ ${base} }}`,
+				workflowDocumentStore,
 				targetNodeParameterContext?.nodeName,
 			);
 		} catch (error) {
@@ -113,6 +117,7 @@ export async function datatypeCompletions(
 			try {
 				resolved = await resolveAutocompleteExpression(
 					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+					workflowDocumentStore,
 					targetNodeParameterContext?.nodeName,
 				);
 			} catch {
@@ -123,7 +128,9 @@ export async function datatypeCompletions(
 		if (resolved === null) return null;
 
 		try {
-			options = (await datatypeOptions({ resolved, base, tail })).map(stripExcessParens(context));
+			options = (await datatypeOptions({ resolved, base, tail }, workflowDocumentStore)).map(
+				stripExcessParens(context),
+			);
 		} catch {
 			options = [];
 		}
@@ -138,7 +145,11 @@ export async function datatypeCompletions(
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = await explicitDataTypeOptions(word.text, targetNodeParameterContext);
+		options = await explicitDataTypeOptions(
+			word.text,
+			workflowDocumentStore,
+			targetNodeParameterContext,
+		);
 		from = word.to;
 	}
 
@@ -202,25 +213,33 @@ function filterOptions(options: AliasCompletion[], tail: string): AliasCompletio
 
 async function explicitDataTypeOptions(
 	expression: string,
+	workflowDocumentStore: WorkflowDocumentStore,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ): Promise<AliasCompletion[]> {
 	try {
 		const resolved = await resolveAutocompleteExpression(
 			`={{ ${expression} }}`,
+			workflowDocumentStore,
 			targetNodeParameterContext?.nodeName,
 		);
-		return await datatypeOptions({
-			resolved,
-			base: expression,
-			tail: '',
-			transformLabel: (label) => '.' + label,
-		});
+		return await datatypeOptions(
+			{
+				resolved,
+				base: expression,
+				tail: '',
+				transformLabel: (label) => '.' + label,
+			},
+			workflowDocumentStore,
+		);
 	} catch {
 		return [];
 	}
 }
 
-async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletion[]> {
+async function datatypeOptions(
+	input: AutocompleteInput,
+	workflowDocumentStore: WorkflowDocumentStore,
+): Promise<AliasCompletion[]> {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -256,7 +275,7 @@ async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletio
 	}
 
 	if (typeof resolved === 'object') {
-		return await objectOptions(input as AutocompleteInput<IDataObject>);
+		return await objectOptions(input as AutocompleteInput<IDataObject>, workflowDocumentStore);
 	}
 
 	return [];
@@ -401,6 +420,7 @@ const createCompletionOption = ({
 
 const customObjectOptions = async (
 	input: AutocompleteInput<IDataObject>,
+	workflowDocumentStore: WorkflowDocumentStore,
 ): Promise<Completion[]> => {
 	const { base, resolved } = input;
 
@@ -413,11 +433,11 @@ const customObjectOptions = async (
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return await inputOptions(base);
+		return await inputOptions(base, workflowDocumentStore);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return await nodeRefOptions(base);
+		return await nodeRefOptions(base, workflowDocumentStore);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -429,7 +449,10 @@ const customObjectOptions = async (
 	return [];
 };
 
-const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Completion[]> => {
+const objectOptions = async (
+	input: AutocompleteInput<IDataObject>,
+	workflowDocumentStore: WorkflowDocumentStore,
+): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -442,7 +465,7 @@ const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Com
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = await customObjectOptions(input);
+	const customOptions = await customObjectOptions(input, workflowDocumentStore);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -958,7 +981,10 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = async (base: string) => {
+export const nodeRefOptions = async (
+	base: string,
+	workflowDocumentStore: WorkflowDocumentStore,
+) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1047,7 +1073,7 @@ export const nodeRefOptions = async (base: string) => {
 		},
 	];
 
-	const noParams = await hasNoParams(base);
+	const noParams = await hasNoParams(base, workflowDocumentStore);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))
@@ -1057,7 +1083,7 @@ export const nodeRefOptions = async (base: string) => {
 	});
 };
 
-export const inputOptions = async (base: string) => {
+export const inputOptions = async (base: string, workflowDocumentStore: WorkflowDocumentStore) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1120,7 +1146,7 @@ export const inputOptions = async (base: string) => {
 		},
 	];
 
-	const noParams = await hasNoParams(base);
+	const noParams = await hasNoParams(base, workflowDocumentStore);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))

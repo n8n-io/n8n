@@ -492,7 +492,10 @@ const dependentParametersValues = computedAsync(async () => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = node.value?.parameters;
 	try {
-		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			workflowDocumentStore.value,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -813,6 +816,7 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			workflowDocumentStore.value,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');

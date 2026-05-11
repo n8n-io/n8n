@@ -22,6 +22,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nInputLabel } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -60,6 +61,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: createParamValue(props.value),
 });
 
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
@@ -119,7 +121,8 @@ function addAssignment(): void {
 }
 
 async function dropAssignment(expression: string): Promise<void> {
-	const type = props.defaultType ?? (await typeFromExpression(expression));
+	const type =
+		props.defaultType ?? (await typeFromExpression(expression, workflowDocumentStore.value));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),

@@ -1181,11 +1181,19 @@ describe(resolveParameter, () => {
 
 	describe('with local resolve context', () => {
 		it('should resolve parameter without execution data', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					f0: '={{ 2 + 2 }}',
 					f2: '={{ String($exotic).toUpperCase() }}',
 				},
+				workflowDocumentStore,
 				{
 					localResolve: true,
 					additionalKeys: {
@@ -1212,6 +1220,7 @@ describe(resolveParameter, () => {
 					toolName: '={{ $tool.name }}',
 					toolParams: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore,
 				{
 					localResolve: true,
 					nodeName: 'toolNode',
@@ -1224,10 +1233,18 @@ describe(resolveParameter, () => {
 		});
 
 		it('should not include $tool in additionalKeys for non-tool node types', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolCheck: '={{ $tool }}',
 				},
+				workflowDocumentStore,
 				{
 					localResolve: true,
 					nodeName: 'regularNode',
@@ -1252,6 +1269,7 @@ describe(resolveParameter, () => {
 				{
 					message: '={{ "The agent wants to call " + $tool.name }}',
 				},
+				workflowDocumentStore,
 				{
 					localResolve: true,
 					nodeName: 'hitlTool',
@@ -1276,6 +1294,7 @@ describe(resolveParameter, () => {
 				{
 					params: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore,
 				{
 					localResolve: true,
 					nodeName: 'someTool',

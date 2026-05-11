@@ -163,21 +163,38 @@ export const isValidJavascriptIdentifier = (str: string) => {
 //      resolution-based utils
 // ----------------------------------
 
-export async function receivesNoBinaryData(contextNodeName?: string) {
+export async function receivesNoBinaryData(
+	workflowDocumentStore: WorkflowDocumentStore,
+	contextNodeName?: string,
+) {
 	try {
 		return (
-			(await resolveAutocompleteExpression('={{ $binary }}', contextNodeName))?.data === undefined
+			(
+				await resolveAutocompleteExpression(
+					'={{ $binary }}',
+					workflowDocumentStore,
+					contextNodeName,
+				)
+			)?.data === undefined
 		);
 	} catch {
 		return true;
 	}
 }
 
-export async function hasNoParams(toResolve: string, contextNodeName?: string) {
+export async function hasNoParams(
+	toResolve: string,
+	workflowDocumentStore: WorkflowDocumentStore,
+	contextNodeName?: string,
+) {
 	let params;
 
 	try {
-		params = await resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
+		params = await resolveAutocompleteExpression(
+			`={{ ${toResolve}.params }}`,
+			workflowDocumentStore,
+			contextNodeName,
+		);
 	} catch {
 		return true;
 	}
@@ -189,7 +206,11 @@ export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
+export async function resolveAutocompleteExpression(
+	expression: string,
+	workflowDocumentStore: WorkflowDocumentStore,
+	contextNodeName?: string,
+) {
 	const ndvStore = useNDVStore();
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
@@ -200,7 +221,7 @@ export async function resolveAutocompleteExpression(expression: string, contextN
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return await resolveParameter(expression, {
+	return await resolveParameter(expression, workflowDocumentStore, {
 		...inputData,
 		contextNodeName,
 	});

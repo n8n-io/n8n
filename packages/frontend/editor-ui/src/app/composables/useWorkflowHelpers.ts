@@ -54,6 +54,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
 export type ResolveParameterOptions = {
@@ -273,6 +274,7 @@ export async function resolveParameter<T = IDataObject>(
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
+	workflowDocumentStore: WorkflowDocumentStore,
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
@@ -283,10 +285,16 @@ export async function resolveRequiredParameters(
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
-				return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
+				return [
+					name,
+					await resolveParameter(parameter as NodeParameterValue, workflowDocumentStore, opts),
+				];
 			} else {
 				try {
-					return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
+					return [
+						name,
+						await resolveParameter(parameter as NodeParameterValue, workflowDocumentStore, opts),
+					];
 				} catch (error) {
 					// ignore any expressions errors for non required parameters
 					return [name, null];
@@ -625,7 +633,11 @@ export function useWorkflowHelpers() {
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		const returnData: IDataObject | null = await resolveParameter(parameters, opts);
+		const returnData: IDataObject | null = await resolveParameter(
+			parameters,
+			workflowDocumentStore.value,
+			opts,
+		);
 		if (!returnData) {
 			return null;
 		}

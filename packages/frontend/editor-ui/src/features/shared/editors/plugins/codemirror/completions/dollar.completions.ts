@@ -19,6 +19,7 @@ import {
 	RECOMMENDED_SECTION,
 	ROOT_DOLLAR_COMPLETIONS,
 	TARGET_NODE_PARAMETER_FACET,
+	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 
@@ -121,12 +122,14 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	}
 
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentStore = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 
 	if (!hasActiveNode(workflowDocumentStore, targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (await receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
+	if (await receivesNoBinaryData(workflowDocumentStore, targetNodeParameterContext?.nodeName))
+		SKIP.add('$binary');
 
 	const previousNodesCompletions = autocompletableNodeNames(
 		workflowDocumentStore,
