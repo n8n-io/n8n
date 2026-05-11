@@ -22,6 +22,7 @@ import type { INodeUi } from '@/Interface';
 const mockDocumentStoreState = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
 	workflowTriggerNodes: [] as INodeUi[],
+	aiNodes: [] as INodeUi[],
 	name: '',
 	settings: {},
 	getPinDataSnapshot: () => ({}),

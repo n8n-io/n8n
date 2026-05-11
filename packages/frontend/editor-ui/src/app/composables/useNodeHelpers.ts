@@ -48,11 +48,7 @@ import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -153,10 +149,7 @@ export function useNodeHelpers() {
 			return [];
 		}
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		const usedCredentials = workflowDocumentStore.usedCredentials;
+		const usedCredentials = workflowDocumentStore.value.usedCredentials;
 
 		return Object.values(credentials)
 			.map(({ id }) => id)
@@ -191,10 +184,7 @@ export function useNodeHelpers() {
 		workflow: WorkflowObjectAccessors,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		const pinDataNodeNames = Object.keys(workflowDocumentStore.pinData);
+		const pinDataNodeNames = Object.keys(workflowDocumentStore.value.pinData);
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
@@ -428,9 +418,6 @@ export function useNodeHelpers() {
 		nodeType?: INodeTypeDescription,
 	): INodeIssues | null {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
 		if (node.disabled) {
 			// Node is disabled
 			return null;
@@ -469,7 +456,7 @@ export function useNodeHelpers() {
 			// Prevents HTTP Request node from being unusable if a sharee does not have direct
 			// access to a credential
 			const isCredentialUsedInWorkflow =
-				workflowDocumentStore.usedCredentials?.[
+				workflowDocumentStore.value.usedCredentials?.[
 					node.credentials?.[nodeCredentialType]?.id as string
 				];
 
@@ -557,7 +544,7 @@ export function useNodeHelpers() {
 
 				if (nameMatches.length === 0) {
 					const isCredentialUsedInWorkflow =
-						workflowDocumentStore.usedCredentials?.[selectedCredentials.id as string];
+						workflowDocumentStore.value.usedCredentials?.[selectedCredentials.id as string];
 
 					if (
 						!isCredentialUsedInWorkflow &&
