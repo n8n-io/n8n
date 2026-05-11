@@ -43,6 +43,8 @@ What counts as a case memory entry:
 
 Extract useful durable case context when it would help a future agent recognize a similar situation, continue an investigation, avoid repeated work, or apply a prior mechanism or fix. Useful entries include:
 
+- concrete symptoms.
+- environment details.
 - resolved mechanisms and outcomes.
 - unresolved but concrete current diagnostic state.
 - attempted steps and observed results.
@@ -81,7 +83,7 @@ Use the transcript's exact terms for products, services, identifiers, configurat
 
 Conservatism:
 
-Prefer 0-3 entries. Use more only when distinct mechanisms, durable observations, attempted steps, ruled-out paths, or open states would be useful independently. Preserve uncertainty and avoid upgrading hypotheses into facts.
+Prefer 1-3 entries when durable case context exists. Return no entries when the transcript has no concrete durable case context. Use more only when distinct mechanisms, durable observations, attempted steps, ruled-out paths, or open states would be useful independently. Preserve uncertainty and avoid upgrading hypotheses into facts.
 
 Output:
 
@@ -116,6 +118,65 @@ const DEFAULT_DEDUPE_SEARCH_TOP_K = 20;
 const DEFAULT_AUTO_INJECT_TOP_K = 12;
 const RRF_K = 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DEDUPE_LEXICAL_OVERLAP_THRESHOLD = 0.62;
+const DEDUPE_CONTAINMENT_OVERLAP_THRESHOLD = 0.78;
+const DEDUPE_MIN_SHARED_KEY_TOKENS = 3;
+
+const DEDUPE_STOPWORDS = new Set([
+	'about',
+	'after',
+	'agent',
+	'also',
+	'and',
+	'because',
+	'been',
+	'before',
+	'both',
+	'case',
+	'could',
+	'from',
+	'had',
+	'has',
+	'have',
+	'into',
+	'not',
+	'only',
+	'record',
+	'records',
+	'should',
+	'that',
+	'the',
+	'then',
+	'this',
+	'user',
+	'was',
+	'were',
+	'when',
+	'while',
+	'with',
+]);
+
+const DEDUPE_RICHNESS_KEYWORDS = [
+	'attempted',
+	'because',
+	'checked',
+	'emitted',
+	'expected',
+	'failed',
+	'fixed',
+	'held',
+	'mapping',
+	'open',
+	'question',
+	'resolved',
+	'restored',
+	'result',
+	'ruled out',
+	'sent',
+	'updated',
+	'updating',
+	'used',
+];
 
 const RecallMemoryInputSchema = z.object({
 	query: z.string().min(1),
@@ -254,7 +315,7 @@ export async function extractAndStoreEpisodicMemory(
 			schema: ExtractedEpisodicMemorySchema,
 		});
 
-		const entries = dedupeEntriesByHash(
+		const exactEntries = dedupeEntriesByHash(
 			object.entries
 				.filter(
 					(entry) =>
@@ -262,6 +323,11 @@ export async function extractAndStoreEpisodicMemory(
 				)
 				.map((entry) => normalizeEntryContent(entry.content, normalized.maxEntryLength))
 				.filter((entry) => entry.length > 0),
+		);
+		const entries = (
+			normalized.dedupeSimilarityThreshold === false
+				? exactEntries
+				: dedupeLexicallySimilarEntries(exactEntries)
 		).slice(0, normalized.maxEntriesPerTurn);
 
 		if (entries.length > 0) {
@@ -564,6 +630,24 @@ function dedupeEntriesByHash(entries: string[]): string[] {
 	return deduped;
 }
 
+function dedupeLexicallySimilarEntries(entries: string[]): string[] {
+	const deduped: string[] = [];
+	for (const entry of entries) {
+		const duplicateIndex = deduped.findIndex((candidate) =>
+			describesSameEpisodicMechanism(candidate, entry),
+		);
+		if (duplicateIndex === -1) {
+			deduped.push(entry);
+			continue;
+		}
+
+		if (entryRichnessScore(entry) > entryRichnessScore(deduped[duplicateIndex])) {
+			deduped[duplicateIndex] = entry;
+		}
+	}
+	return deduped;
+}
+
 async function dedupeSimilarEpisodicMemoryEntries(opts: {
 	memory: BuiltMemory & BuiltEpisodicMemoryStore;
 	scope: EpisodicMemoryScope;
@@ -593,11 +677,79 @@ async function dedupeSimilarEpisodicMemoryEntries(opts: {
 		if (existing.some((entry) => entry.vectorScore >= threshold)) {
 			continue;
 		}
+		if (existing.some((entry) => describesSameEpisodicMechanism(content, entry.content))) {
+			continue;
+		}
 
 		accepted.push({ content, embedding });
 	}
 
 	return accepted;
+}
+
+function describesSameEpisodicMechanism(a: string, b: string): boolean {
+	const normalizedA = normalizeHashContent(a);
+	const normalizedB = normalizeHashContent(b);
+	if (normalizedA === normalizedB) return true;
+
+	const tokensA = dedupeTokenSet(a);
+	const tokensB = dedupeTokenSet(b);
+	if (tokensA.size === 0 || tokensB.size === 0) return false;
+
+	const sharedKeyTokenCount = countSharedKeyTokens(tokensA, tokensB);
+	if (sharedKeyTokenCount < DEDUPE_MIN_SHARED_KEY_TOKENS) return false;
+
+	const overlap = tokenOverlap(tokensA, tokensB);
+	if (overlap >= DEDUPE_LEXICAL_OVERLAP_THRESHOLD) return true;
+
+	const shorter = normalizedA.length <= normalizedB.length ? normalizedA : normalizedB;
+	const longer = normalizedA.length <= normalizedB.length ? normalizedB : normalizedA;
+	return longer.includes(shorter) && overlap >= DEDUPE_CONTAINMENT_OVERLAP_THRESHOLD;
+}
+
+function dedupeTokenSet(content: string): Set<string> {
+	const tokens = new Set<string>();
+	for (const token of content.toLowerCase().split(/[^a-z0-9_=-]+/)) {
+		if (token.length <= 1) continue;
+		tokens.add(token);
+		for (const part of token.split(/[^a-z0-9]+/)) {
+			if (part.length > 1) tokens.add(part);
+		}
+	}
+	return tokens;
+}
+
+function countSharedKeyTokens(tokensA: Set<string>, tokensB: Set<string>): number {
+	let count = 0;
+	for (const token of tokensA) {
+		if (!tokensB.has(token) || !isDedupeKeyToken(token)) continue;
+		count++;
+	}
+	return count;
+}
+
+function isDedupeKeyToken(token: string): boolean {
+	return !DEDUPE_STOPWORDS.has(token) && (token.length >= 5 || /[0-9_=-]/.test(token));
+}
+
+function tokenOverlap(tokensA: Set<string>, tokensB: Set<string>): number {
+	let shared = 0;
+	for (const token of tokensA) {
+		if (tokensB.has(token)) shared++;
+	}
+	return shared / Math.min(tokensA.size, tokensB.size);
+}
+
+function entryRichnessScore(content: string): number {
+	const normalized = normalizeHashContent(content);
+	let score = Math.min(normalized.length, 1200) / 100;
+	for (const keyword of DEDUPE_RICHNESS_KEYWORDS) {
+		if (normalized.includes(keyword)) score += 2;
+	}
+	for (const token of dedupeTokenSet(content)) {
+		if (/[0-9_=-]/.test(token)) score += 0.5;
+	}
+	return score;
 }
 
 function hashEntryContent(content: string): string {
