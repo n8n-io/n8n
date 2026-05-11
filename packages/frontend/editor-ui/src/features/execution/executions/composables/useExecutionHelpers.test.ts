@@ -62,7 +62,7 @@ describe('useExecutionHelpers()', () => {
 			const { getUIDetails } = useExecutionHelpers();
 			const uiDetails = getUIDetails(execution);
 
-			expect(uiDetails.startTime).toEqual('Jan 1, 00:00:00');
+			expect(uiDetails.startTime).toEqual('Jan 1, 2025, 00:00:00');
 		});
 	});
 

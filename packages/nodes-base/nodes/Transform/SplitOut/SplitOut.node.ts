@@ -17,7 +17,8 @@ export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split Out',
 		name: 'splitOut',
-		icon: 'file:splitOut.svg',
+		icon: 'node:split-out',
+		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
@@ -27,6 +28,14 @@ export class SplitOut implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Reverse operation - combine items back',
+				},
+			],
+		},
 		properties: [
 			{
 				displayName: 'Fields To Split Out',
@@ -39,6 +48,10 @@ export class SplitOut implements INodeType {
 					'The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.',
 				requiresDataPath: 'multiple',
 				hint: 'Use $binary to split out the input item by binary data',
+				builderHint: {
+					propertyHint:
+						'Must be a field name (or comma-separated list of field names) as it appears inside $json. Examples: "issues" when $json is { issues: [...] }; "user.addresses" for nested arrays (dot notation supported — disable via Options > Disable Dot Notation if keys contain literal dots); "fieldA,fieldB" to split multiple arrays. Write the key/path directly — do NOT prefix with "$json." or pass "$json" (that is the whole item, not a field name). Use "$binary" only when splitting binary data. If the upstream item is an array at $json root (no wrapping key), restructure it first (Set/Code) so the array lives under a named key.',
+				},
 			},
 			{
 				displayName: 'Include',

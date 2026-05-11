@@ -15,17 +15,21 @@ import ProjectCreateResource from './ProjectCreateResource.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -34,7 +38,22 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
+const favoritesStore = useFavoritesStore();
+
+const currentProjectId = computed(() => projectsStore.currentProject?.id);
+
+const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
+
+const isProjectFavorited = computed(() =>
+	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
+);
+
+async function onToggleProjectFavorite() {
+	if (!currentProjectId.value) return;
+	await favoritesStore.toggleFavorite(currentProjectId.value, 'project');
+}
 
 const projectPages = useProjectPages();
 
@@ -59,12 +78,20 @@ const headerIcon = computed((): IconOrEmoji => {
 	}
 });
 
+const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
+
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
 		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
 		} else if (projectPages.isOverviewSubPage) {
 			return i18n.baseText('projects.menu.overview');
+		} else if (isPersonalProject.value) {
+			return i18n.baseText('projects.menu.personal');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -84,18 +111,16 @@ const globalVariablesPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
 
+const externalSecretsProviderPermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).externalSecretsProvider,
+);
+
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		!!projectPermissions.value.update &&
+		(!!projectPermissions.value.update || !!externalSecretsProviderPermissions.value.read) &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
-
-const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-
-const isPersonalProject = computed(() => {
-	return homeProject.value?.type === ProjectTypes.Personal;
-});
 
 const showFolders = computed(() => {
 	return (
@@ -127,6 +152,7 @@ const ACTION_TYPES = {
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
+	AGENT: 'agent',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -170,7 +196,19 @@ const createVariableButton = computed(() => ({
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
-const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
+const createAgentButton = computed(() => ({
+	value: ACTION_TYPES.AGENT,
+	label: i18n.baseText('projects.header.create.agent'),
+	size: 'mini' as const,
+	disabled: sourceControlStore.preferences.branchReadOnly,
+}));
+
+const selectedMainButtonType = computed(() => {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
+});
 
 const mainButtonConfig = computed(() => {
 	switch (selectedMainButtonType.value) {
@@ -180,6 +218,8 @@ const mainButtonConfig = computed(() => {
 			return createDataTableButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
+		case ACTION_TYPES.AGENT:
+			return createAgentButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -248,6 +288,17 @@ const menu = computed(() => {
 		});
 	}
 
+	if (
+		settingsStore.isModuleActive('agents') &&
+		selectedMainButtonType.value !== ACTION_TYPES.AGENT
+	) {
+		items.push({
+			value: ACTION_TYPES.AGENT,
+			label: i18n.baseText('projects.header.create.agent'),
+			disabled: sourceControlStore.preferences.branchReadOnly,
+		});
+	}
+
 	return items;
 });
 
@@ -288,7 +339,9 @@ function getUIContext(routeName: string) {
 	}
 }
 
-const actions: Record<ActionTypes, (projectId: string) => void> = {
+type CreateSource = 'button' | 'dropdown';
+
+const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
@@ -323,6 +376,10 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.VARIABLE]: () => {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
+	},
+	[ACTION_TYPES.AGENT]: (projectId, source) => {
+		agentTelemetry.trackClickedNewAgent(source);
+		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
 	},
 } as const;
 
@@ -364,6 +421,8 @@ const projectDescription = computed(() => {
 	return null;
 });
 
+const favoriteIcon = computed(() => (isProjectFavorited.value ? 'star-filled' : 'star'));
+
 const projectHeaderRef = ref<HTMLElement | null>(null);
 const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
 
@@ -397,13 +456,13 @@ const projectDescriptionTruncated = computed(() => {
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
-const onSelect = (action: string) => {
+const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
 		return;
 	}
 
-	executableAction(homeProject.value.id);
+	executableAction(homeProject.value.id, source);
 };
 </script>
 
@@ -430,6 +489,15 @@ const onSelect = (action: string) => {
 						</div>
 					</template>
 				</div>
+				<N8nIconButton
+					v-if="isTeamProject"
+					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+					:icon="favoriteIcon"
+					variant="ghost"
+					size="medium"
+					data-test-id="project-favorite-btn"
+					@click.stop="onToggleProjectFavorite"
+				/>
 			</div>
 			<div
 				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
@@ -441,17 +509,18 @@ const onSelect = (action: string) => {
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
 					<div style="display: flex; gap: var(--spacing--xs); align-items: center">
-						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
+						<ReadyToRunButton :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
-							@action="onSelect"
+							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
 							<N8nButton
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
-								@click="onSelect(selectedMainButtonType)"
+								size="medium"
+								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>
 					</div>
@@ -475,7 +544,6 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing--lg);
 	min-height: var(--spacing--3xl);
 }
 
@@ -508,6 +576,22 @@ const onSelect = (action: string) => {
 	white-space: normal;
 	border-radius: 6px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.favoriteBtn {
+	cursor: pointer;
+	color: var(--color--text--tint-2);
+	margin-top: var(--spacing--5xs);
+	margin-left: var(--spacing--3xs);
+	opacity: 0.8;
+
+	&.favoriteBtnActive {
+		color: var(--color--yellow-500);
+	}
+}
+
+.projectDetails:hover .favoriteBtn {
+	opacity: 1;
 }
 
 @include mixins.breakpoint('xs-only') {

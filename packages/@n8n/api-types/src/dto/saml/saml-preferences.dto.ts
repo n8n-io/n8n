@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 const SamlLoginBindingSchema = z.enum(['redirect', 'post']);
 
@@ -29,7 +30,7 @@ export class SamlPreferencesAttributeMapping extends Z.class({
 
 export class SamlPreferences extends Z.class({
 	/** Mapping of SAML attributes to user fields. */
-	mapping: SamlPreferencesAttributeMapping.optional(),
+	mapping: SamlPreferencesAttributeMapping.schema.optional(),
 	/** SAML metadata in XML format. */
 	metadata: z.string().optional(),
 	metadataUrl: z.string().optional(),
@@ -44,6 +45,11 @@ export class SamlPreferences extends Z.class({
 	authnRequestsSigned: z.boolean().default(false),
 	wantAssertionsSigned: z.boolean().default(true),
 	wantMessageSigned: z.boolean().default(true),
+
+	/** PEM-encoded private key for signing SAML AuthnRequests. Stored encrypted at rest. */
+	signingPrivateKey: z.string().optional(),
+	/** PEM-encoded certificate containing the public key matching signingPrivateKey. */
+	signingCertificate: z.string().optional(),
 
 	acsBinding: SamlLoginBindingSchema.default('post'),
 	signatureConfig: SignatureConfigSchema.default({

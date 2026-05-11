@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 /**
  * DTO for OAuth client response (excludes sensitive data like clientSecret)
@@ -38,4 +39,13 @@ export class ListOAuthClientsResponseDto extends Z.class({
 export class DeleteOAuthClientResponseDto extends Z.class({
 	success: z.boolean(),
 	message: z.string(),
+}) {}
+
+/**
+ * DTO for instance-wide MCP OAuth client capacity stats (admin-only)
+ */
+export class InstanceMcpClientStatsResponseDto extends Z.class({
+	count: z.number(),
+	limit: z.number(),
+	atCapacity: z.boolean(),
 }) {}

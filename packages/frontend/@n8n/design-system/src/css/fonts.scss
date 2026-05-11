@@ -5,7 +5,7 @@
 	font-style: normal;
 	font-weight: 100 900;
 	font-display: swap;
-	src: url('#{var.$font-path}/InterVariable.woff2') format('woff2');
+	src: url('../../assets/fonts/InterVariable.woff2') format('woff2');
 }
 
 @font-face {
@@ -13,7 +13,7 @@
 	font-style: italic;
 	font-weight: 100 900;
 	font-display: swap;
-	src: url('#{var.$font-path}/InterVariable-Italic.woff2') format('woff2');
+	src: url('../../assets/fonts/InterVariable-Italic.woff2') format('woff2');
 }
 
 @font-face {
@@ -21,5 +21,5 @@
 	font-style: italic;
 	font-weight: 100 900;
 	font-display: swap;
-	src: url('#{var.$font-path}/CommitMonoVariable.woff2') format('woff2');
+	src: url('../../assets/fonts/CommitMonoVariable.woff2') format('woff2');
 }

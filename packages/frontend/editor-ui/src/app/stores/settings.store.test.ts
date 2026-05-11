@@ -20,6 +20,7 @@ const mockRootStore = {
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
+	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
 	setDefaultLocale: vi.fn(),
 	setBinaryDataMode: vi.fn(),
@@ -54,8 +55,7 @@ vi.mock('@/app/stores/versions.store', () => ({
 }));
 
 vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+	const originalModule = await vi.importActual('@vueuse/core');
 
 	return {
 		...originalModule,
@@ -81,6 +81,44 @@ describe('settings.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('isAutosaveEnabled', () => {
+		it('should return true when workflowsAutosaveDisabled is false', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: false,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+
+		it('should return false when workflowsAutosaveDisabled is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(false);
+		});
+
+		it('should return true when workflowsAutosaveDisabled is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
 	});
 
 	describe('getSettings', () => {
@@ -126,13 +164,6 @@ describe('settings.store', () => {
 				getSettings.mockResolvedValueOnce({
 					...mockSettings,
 					settingsMode: 'public',
-					telemetry: {
-						enabled: true,
-						config: {
-							url: 'https://telemetry.example.com',
-							key: 'telemetry-key',
-						},
-					},
 				});
 				const settingsStore = useSettingsStore();
 
@@ -141,14 +172,12 @@ describe('settings.store', () => {
 				// ensure that settings store is also initialized
 				expect(settingsStore.settings.releaseChannel).toEqual(mockSettings.releaseChannel);
 
-				// root store
-				expect(mockRootStore.setOauthCallbackUrls).toHaveBeenCalledWith(
+				// non-minimal settings are not set on root store
+				expect(mockRootStore.setOauthCallbackUrls).not.toHaveBeenCalledWith(
 					mockSettings.oauthCallbackUrls,
 				);
 				expect(mockRootStore.setDefaultLocale).toHaveBeenCalledWith(mockSettings.defaultLocale);
-				expect(mockRootStore.setInstanceId).toHaveBeenCalledWith(mockSettings.instanceId);
-
-				// non-minimal settings are not set on root store
+				expect(mockRootStore.setInstanceId).not.toHaveBeenCalledWith(mockSettings.instanceId);
 				expect(mockRootStore.setUrlBaseWebhook).not.toHaveBeenCalled();
 				expect(mockRootStore.setUrlBaseEditor).not.toHaveBeenCalled();
 				expect(mockRootStore.setEndpointForm).not.toHaveBeenCalled();
@@ -166,7 +195,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setBinaryDataMode).not.toHaveBeenCalled();
 
 				// side effects
-				expect(sessionStarted).toHaveBeenCalled();
+				expect(sessionStarted).not.toHaveBeenCalled();
 			});
 
 			it('should store full settings if settingsMode is not "minimal"', async () => {

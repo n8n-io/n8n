@@ -13,19 +13,26 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
+import orderBy from 'lodash/orderBy';
 import SeverityTag from './components/SeverityTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
 import { useI18n } from '@n8n/i18n';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
 
 const currentTab = ref('workflow-issues');
+const shouldShowRefreshButton = ref(false);
+
+const versionQuery = MIGRATION_REPORT_TARGET_VERSION
+	? { version: MIGRATION_REPORT_TARGET_VERSION }
+	: undefined;
 
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
-		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext);
+		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
 			response.report.workflowResults.length === 0 &&
@@ -33,10 +40,12 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 		) {
 			currentTab.value = 'instance-issues';
 		}
+		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext);
+	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
+	shouldShowRefreshButton.value = response.shouldCache;
 
 	return response;
 }, undefined);
@@ -87,6 +96,27 @@ const compatibleWorkflowsCount = computed(() => {
 		state.value.report.workflowResults.reduce((acc, issue) => acc + issue.nbAffectedWorkflows, 0)
 	);
 });
+
+// Severity order: critical (highest) -> medium -> low (lowest)
+const severityOrder = { critical: 0, medium: 1, low: 2 };
+
+const sortedWorkflowResults = computed(() => {
+	if (!state.value?.report.workflowResults) return [];
+	return orderBy(
+		state.value.report.workflowResults,
+		[(issue) => severityOrder[issue.ruleSeverity]],
+		['asc'],
+	);
+});
+
+const sortedInstanceResults = computed(() => {
+	if (!state.value?.report.instanceResults) return [];
+	return orderBy(
+		state.value.report.instanceResults,
+		[(issue) => severityOrder[issue.ruleSeverity]],
+		['asc'],
+	);
+});
 </script>
 
 <template>
@@ -103,15 +133,28 @@ const compatibleWorkflowsCount = computed(() => {
 					},
 				})
 			}}
+			<N8nLink
+				theme="text"
+				href="https://docs.n8n.io/2-0-breaking-changes/"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				<span :class="$style.UnderlinedText">{{
+					i18n.baseText('settings.migrationReport.documentationLink')
+				}}</span>
+				↗
+			</N8nLink>
 		</N8nText>
 
 		<div :class="$style.ActionBar">
 			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
 			<N8nButton
-				v-if="state?.shouldCache"
+				variant="subtle"
+				v-if="shouldShowRefreshButton"
 				:label="i18n.baseText('settings.migrationReport.refreshButton')"
 				icon="refresh-cw"
-				type="secondary"
+				:loading="isLoading"
+				:disabled="isLoading"
 				@click="refreshReport"
 			/>
 		</div>
@@ -136,11 +179,7 @@ const compatibleWorkflowsCount = computed(() => {
 				</EmptyTab>
 			</template>
 			<div v-else :class="$style.CardContainer">
-				<div
-					v-for="issue in state?.report.workflowResults"
-					:key="issue.ruleId"
-					:class="$style.Card"
-				>
+				<div v-for="issue in sortedWorkflowResults" :key="issue.ruleId" :class="$style.Card">
 					<div>
 						<div :class="$style.CardTitleContainer">
 							<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
@@ -153,19 +192,19 @@ const compatibleWorkflowsCount = computed(() => {
 							</N8nTooltip>
 						</div>
 						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}
+							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
 							<N8nLink
 								v-if="issue.ruleDocumentationUrl"
 								theme="text"
-								underline
 								:href="issue.ruleDocumentationUrl"
 								target="_blank"
 								rel="noopener noreferrer"
+								:class="$style.NoLineBreak"
 							>
-								<u :class="$style.NoLineBreak">
-									{{ i18n.baseText('settings.migrationReport.documentation') }}
-									<N8nIcon icon="external-link" />
-								</u>
+								<span :class="$style.UnderlinedText">{{
+									i18n.baseText('settings.migrationReport.documentation')
+								}}</span>
+								↗
 							</N8nLink>
 						</N8nText>
 					</div>
@@ -198,11 +237,7 @@ const compatibleWorkflowsCount = computed(() => {
 				</EmptyTab>
 			</template>
 			<div v-else :class="$style.CardContainer">
-				<div
-					v-for="issue in state?.report.instanceResults"
-					:key="issue.ruleId"
-					:class="$style.Card"
-				>
+				<div v-for="issue in sortedInstanceResults" :key="issue.ruleId" :class="$style.Card">
 					<div>
 						<div :class="$style.CardTitleContainer">
 							<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
@@ -215,12 +250,19 @@ const compatibleWorkflowsCount = computed(() => {
 							</N8nTooltip>
 						</div>
 						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}
-							<N8nLink theme="text" underline href="#">
-								<u :class="$style.NoLineBreak">
-									{{ i18n.baseText('settings.migrationReport.documentation') }}
-									<N8nIcon icon="external-link" />
-								</u>
+							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
+							<N8nLink
+								v-if="issue.ruleDocumentationUrl"
+								theme="text"
+								:href="issue.ruleDocumentationUrl"
+								target="_blank"
+								rel="noopener noreferrer"
+								:class="$style.NoLineBreak"
+							>
+								<span :class="$style.UnderlinedText">{{
+									i18n.baseText('settings.migrationReport.documentation')
+								}}</span>
+								↗
 							</N8nLink>
 						</N8nText>
 					</div>
@@ -295,5 +337,9 @@ const compatibleWorkflowsCount = computed(() => {
 	:global(.el-skeleton__p) {
 		margin-top: 0;
 	}
+}
+
+.UnderlinedText {
+	text-decoration: underline;
 }
 </style>

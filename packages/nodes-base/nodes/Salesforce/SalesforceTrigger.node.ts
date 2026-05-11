@@ -118,7 +118,7 @@ export class SalesforceTrigger implements INodeType {
 					{
 						name: 'Opportunity Updated',
 						value: 'opportunityUpdated',
-						description: 'When an existing opportunity is created',
+						description: 'When an existing opportunity is modified',
 					},
 					{
 						name: 'Task Created',
@@ -251,7 +251,7 @@ export class SalesforceTrigger implements INodeType {
 				if (this.getMode() === 'manual') {
 					qs.q = getQuery(options, triggerResource, false, 1);
 				} else {
-					qs.q = getQuery(options, triggerResource, true);
+					qs.q = getQuery(options, triggerResource, true, 0);
 				}
 				responseData = await salesforceApiRequestAllItems.call(
 					this,

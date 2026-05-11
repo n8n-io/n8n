@@ -1,0 +1,158 @@
+{
+	"id": "267",
+	"name": "Item Lists sort",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "7f7d2fbf-e075-4bd5-a211-cd52bd27c753",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-528, 368]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n];"
+			},
+			"id": "9eca4348-358f-4c8c-a33c-eaf2834c018b",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-256, 368]
+		},
+		{
+			"parameters": {
+				"operation": "sort",
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "id"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "37efad47-7f66-4617-9fc1-c7f40fe2c860",
+			"name": "ByIdAsc",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [0, 176]
+		},
+		{
+			"parameters": {
+				"operation": "sort",
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "char",
+							"order": "descending"
+						},
+						{
+							"fieldName": "id",
+							"order": "descending"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "f6e5eeba-f9d1-43be-811d-5b3eabb521d5",
+			"name": "ByCharDescIdDesc",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [0, 368]
+		},
+		{
+			"parameters": {
+				"operation": "sort",
+				"type": "code",
+				"code": "// The two items to compare are in the variables a and b\n// Access the fields in a.json and b.json\n// Return -1 if a should go before b\n// Return 1 if b should go before a\n// Return 0 if there's no difference\n\nfieldName = 'id';\n\nif (a.json[fieldName] < b.json[fieldName]) {\n\t\treturn -1;\n}\nif (a.json[fieldName] > b.json[fieldName]) {\n\t\treturn 1;\n}\nreturn 0;"
+			},
+			"id": "bc23786c-4413-4ecc-b4c2-dc9d9a238af6",
+			"name": "ByCode",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [0, 560]
+		},
+		{
+			"parameters": {
+				"numberInputs": 3
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [320, 352],
+			"id": "46dc00e6-5e35-42cc-bc0f-694b0a3e9b63",
+			"name": "Merge"
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "ByCharDescIdDesc",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "ByIdAsc",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "ByCode",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ByIdAsc": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ByCharDescIdDesc": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"ByCode": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		}
+	},
+	"settings": null,
+	"meta": null,
+	"tags": []
+}

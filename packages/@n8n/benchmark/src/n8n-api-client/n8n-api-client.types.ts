@@ -4,6 +4,7 @@
 export type Workflow = {
 	id: string;
 	name: string;
+	versionId: string;
 	tags?: string[];
 };
 

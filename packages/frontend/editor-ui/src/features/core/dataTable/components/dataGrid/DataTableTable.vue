@@ -32,6 +32,7 @@ registerAgGridModulesOnce();
 type Props = {
 	dataTable: DataTable;
 	search?: string;
+	readOnly?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -47,18 +48,25 @@ const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
+const defaultColDef = computed(() => ({
+	...GRID_FILTER_CONFIG.defaultColDef,
+	editable: !props.readOnly,
+}));
+
 const agGrid = useAgGrid<DataTableRow>({
 	gridContainerRef,
 	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
 	pinnedBottomRowId: ADD_ROW_ROW_ID,
-	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
+	defaultColDef: defaultColDef.value,
 });
 
 const dataTableColumns = useDataTableColumns({
 	onDeleteColumn: onDeleteColumnFunction,
+	onRenameColumn: onRenameColumnFunction,
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -79,6 +87,7 @@ const {
 
 const selection = useDataTableSelection({
 	gridApi: agGrid.gridApi,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const dataTableOperations = useDataTableOperations({
@@ -110,6 +119,10 @@ const dataTableOperations = useDataTableOperations({
 
 async function onDeleteColumnFunction(columnId: string) {
 	await dataTableOperations.onDeleteColumn(columnId);
+}
+
+async function onRenameColumnFunction(columnId: string, columnName: string) {
+	await dataTableOperations.onRenameColumn(columnId, columnName);
 }
 
 async function onAddColumnFunction(column: DataTableColumnCreatePayload) {
@@ -156,6 +169,7 @@ watch(
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
 	addColumn: dataTableOperations.onAddColumn,
+	fetchDataTableRows: dataTableOperations.fetchDataTableRows,
 });
 </script>
 
@@ -224,7 +238,7 @@ defineExpose({
 	--ag-cell-text-color: var(--color--text--shade-1);
 	--ag-accent-color: var(--color--purple-600);
 	--ag-row-hover-color: var(--color--background--light-1);
-	--ag-background-color: var(--color--background--light-3);
+	--ag-background-color: var(--color--background--light-2);
 	--ag-border-color: var(--border-color);
 	--ag-border-radius: var(--radius);
 	--ag-wrapper-border-radius: 0;
@@ -232,7 +246,7 @@ defineExpose({
 	--ag-font-size: var(--font-size--xs);
 	--ag-font-color: var(--color--text);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-	--ag-header-background-color: var(--color--background--light-1);
+	--ag-header-background-color: var(--color--foreground--tint-1);
 	--ag-header-font-size: var(--font-size--xs);
 	--ag-header-font-weight: var(--font-weight--medium);
 	--ag-header-foreground-color: var(--color--text--shade-1);
@@ -241,8 +255,30 @@ defineExpose({
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--color--purple-600);
 	--ag-input-padding-start: var(--spacing--2xs);
-	--ag-input-background-color: var(--color--text--tint-3);
+	--ag-input-background-color: var(--color--background--light-2);
 	--ag-focus-shadow: none;
+
+	// Theme-aware scrollbar styling (dark mode support)
+	:global(.ag-body-horizontal-scroll-viewport),
+	:global(.ag-body-vertical-scroll-viewport) {
+		scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				height: var(--spacing--2xs);
+				width: var(--spacing--2xs);
+			}
+
+			&::-webkit-scrollbar-track {
+				background: transparent;
+			}
+
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--radius);
+				background: var(--color--foreground--shade-1);
+			}
+		}
+	}
 
 	:global(.ag-cell) {
 		display: flex;
@@ -284,6 +320,10 @@ defineExpose({
 		color: var(--color--text--tint-1);
 	}
 
+	:global(.oversized-cell) {
+		cursor: not-allowed;
+	}
+
 	:global(.ag-header-cell[col-id='id']) {
 		text-align: center;
 	}
@@ -322,7 +362,7 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing--2xs);
+			padding-top: var(--spacing--3xs);
 
 			&:where(:focus-within, :active) {
 				border: var(--grid--cell--border-color--editing);

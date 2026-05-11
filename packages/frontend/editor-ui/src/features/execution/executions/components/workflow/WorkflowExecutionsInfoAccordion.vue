@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -32,12 +33,15 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 const locale = useI18n();
 
+const workflowId = useInjectWorkflowId();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const npsSurveyStore = useNpsSurveyStore();
 
 const defaultValues = ref({
@@ -102,7 +106,7 @@ const productionExecutionsStatus = computed(() => {
 		return 'unknown';
 	}
 });
-const workflowSettings = computed(() => deepCopy(workflowsStore.workflowSettings));
+const workflowSettings = computed(() => workflowDocumentStore?.value?.getSettingsSnapshot() ?? {});
 const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefined => {
 	if (
 		!workflowSaveSettings.value.saveTestExecutions ||
@@ -112,17 +116,6 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 	}
 	return undefined;
 });
-const currentWorkflowId = computed(() => workflowsStore.workflowId);
-const isNewWorkflow = computed(() => {
-	return (
-		!currentWorkflowId.value ||
-		currentWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		currentWorkflowId.value === 'new'
-	);
-});
-const workflowName = computed(() => workflowsStore.workflowName);
-const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
-
 watch(workflowSettings, (newSettings: IWorkflowSettings) => {
 	updateSettings(newSettings);
 });
@@ -169,13 +162,10 @@ function openWorkflowSettings(): void {
 
 async function onSaveWorkflowClick(): Promise<void> {
 	let currentId: string | undefined = undefined;
-	if (currentWorkflowId.value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		currentId = currentWorkflowId.value;
-	} else if (
-		router.currentRoute.value.params.name &&
-		router.currentRoute.value.params.name !== 'new'
-	) {
-		const routeName = router.currentRoute.value.params.name;
+	if (workflowId.value) {
+		currentId = workflowId.value;
+	} else if (route.params.workflowId) {
+		const routeName = route.params.workflowId;
 		currentId = Array.isArray(routeName) ? routeName[0] : routeName;
 	}
 	if (!currentId) {
@@ -183,11 +173,9 @@ async function onSaveWorkflowClick(): Promise<void> {
 	}
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id: currentId,
-		name: workflowName.value,
-		tags: currentWorkflowTagIds.value,
 	});
 	if (saved) {
-		await npsSurveyStore.fetchPromptsData();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 	}
 }
 </script>
@@ -205,7 +193,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		<template #customContent>
 			<footer class="mt-2xs">
 				{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer') }}
-				<N8nTooltip :disabled="!isNewWorkflow">
+				<N8nTooltip :disabled="workflowsStore.isWorkflowSaved[workflowId]">
 					<template #content>
 						<div>
 							<N8nLink @click.prevent="onSaveWorkflowClick">{{
@@ -215,7 +203,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 						</div>
 					</template>
 					<N8nLink
-						:class="{ [$style.disabled]: isNewWorkflow }"
+						:class="{ [$style.disabled]: !workflowsStore.isWorkflowSaved[workflowId] }"
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>

@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { EXPERIMENT_TEMPLATE_RECO_V3_KEY, TEMPLATES_URLS } from '@/app/constants';
+import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCard, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 
 const uiStore = useUIStore();
+const templatesStore = useTemplatesStore();
 const {
 	getHubSpotData,
 	getTemplateData,
@@ -24,7 +26,7 @@ const closeModal = () => {
 
 const openTemplateRepository = () => {
 	trackTemplatesRepoClickFromModal();
-	window.open(TEMPLATES_URLS.BASE_WEBSITE_URL, '_blank');
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
 };
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);

@@ -4,6 +4,9 @@
         "_id": {
             "type": "string"
         },
+        "agencia": {
+            "type": "string"
+        },
         "Created By": {
             "type": "string"
         },
@@ -14,5 +17,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

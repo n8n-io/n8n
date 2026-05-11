@@ -1,16 +1,20 @@
-import type { InstanceSettingsConfig } from '@n8n/config';
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import { SettingsFilePermissionsRule } from '../settings-file-permissions.rule';
 
 describe('SettingsFilePermissionsRule', () => {
 	let rule: SettingsFilePermissionsRule;
-	const instanceSettingsConfig = mock<InstanceSettingsConfig>({});
+	const mockGlobalConfig = mock<GlobalConfig>({
+		deployment: { type: 'default' },
+	});
 	let originalEnvValue: string | undefined;
 
 	beforeEach(() => {
-		rule = new SettingsFilePermissionsRule(instanceSettingsConfig);
+		rule = new SettingsFilePermissionsRule(mockGlobalConfig);
 		originalEnvValue = process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
+		// Clear env var before each test
+		delete process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS;
 	});
 
 	afterEach(() => {
@@ -22,8 +26,21 @@ describe('SettingsFilePermissionsRule', () => {
 	});
 
 	describe('detect()', () => {
-		it('should not be affected when enforceSettingsFilePermissions is set to false', async () => {
-			instanceSettingsConfig.enforceSettingsFilePermissions = false;
+		it('should not be affected on cloud deployments', async () => {
+			const cloudGlobalConfig = mock<GlobalConfig>({
+				deployment: { type: 'cloud' },
+			});
+			const cloudRule = new SettingsFilePermissionsRule(cloudGlobalConfig);
+
+			const result = await cloudRule.detect();
+
+			expect(result.isAffected).toBe(false);
+			expect(result.instanceIssues).toHaveLength(0);
+			expect(result.recommendations).toHaveLength(0);
+		});
+
+		it('should not be affected when N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is explicitly set to false', async () => {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'false';
 
 			const result = await rule.detect();
 
@@ -32,8 +49,18 @@ describe('SettingsFilePermissionsRule', () => {
 			expect(result.recommendations).toHaveLength(0);
 		});
 
-		it('should be affected when enforceSettingsFilePermissions is not set to false', async () => {
-			instanceSettingsConfig.enforceSettingsFilePermissions = true;
+		it('should not be affected when N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is explicitly set to true', async () => {
+			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
+
+			const result = await rule.detect();
+
+			expect(result.isAffected).toBe(false);
+			expect(result.instanceIssues).toHaveLength(0);
+			expect(result.recommendations).toHaveLength(0);
+		});
+
+		it('should be affected when N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is not set (default behavior change)', async () => {
+			// Env var is not set (cleared in beforeEach)
 			const result = await rule.detect();
 
 			expect(result.isAffected).toBe(true);

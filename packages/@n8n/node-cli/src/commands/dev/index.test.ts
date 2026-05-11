@@ -141,7 +141,6 @@ describe('dev command', () => {
 		expect(n8nCommand).toBeDefined();
 		expect(n8nCommand?.env).toMatchObject({
 			N8N_DEV_RELOAD: 'true',
-			N8N_RUNNERS_ENABLED: 'true',
 			N8N_USER_FOLDER: customFolder,
 		});
 	});

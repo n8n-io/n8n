@@ -231,6 +231,70 @@ describe('Logger', () => {
 		});
 	});
 
+	describe('optional metadata fields', () => {
+		afterEach(() => {
+			jest.resetAllMocks();
+		});
+
+		test('should include optional metadata fields in JSON output when defined', () => {
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+
+			logger.info('Workflow execution started', {
+				workflowId: 'wf-1',
+				projectId: 'proj-1',
+				projectName: 'Test Project',
+			});
+
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
+			expect(parsedOutput.metadata).toMatchObject({
+				workflowId: 'wf-1',
+				projectId: 'proj-1',
+				projectName: 'Test Project',
+			});
+		});
+
+		test('should omit undefined metadata fields from JSON output', () => {
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+
+			logger.info('Workflow execution started', { workflowId: 'wf-1' });
+
+			expect(stdoutSpy).toHaveBeenCalledTimes(1);
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
+			expect(parsedOutput.metadata.workflowId).toBe('wf-1');
+			expect(parsedOutput.metadata).not.toHaveProperty('projectId');
+			expect(parsedOutput.metadata).not.toHaveProperty('projectName');
+		});
+	});
+
 	describe('transports', () => {
 		afterEach(() => {
 			jest.restoreAllMocks();

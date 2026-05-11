@@ -259,5 +259,5 @@ export interface TodoistProjectType {
 
 export interface TodoistResponse {
 	success?: boolean;
-	data?: IDataObject;
+	data?: IDataObject | IDataObject[];
 }

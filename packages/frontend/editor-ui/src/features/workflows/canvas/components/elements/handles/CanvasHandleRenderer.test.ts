@@ -5,8 +5,15 @@ import { CanvasNodeHandleKey } from '@/app/constants';
 import { ref } from 'vue';
 import { CanvasConnectionMode, type CanvasElementPortWithRenderData } from '../../../canvas.types';
 import { Position } from '@vue-flow/core';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 
-const renderComponent = createComponentRenderer(CanvasHandleRenderer);
+const renderComponent = createComponentRenderer(CanvasHandleRenderer, {
+	global: {
+		provide: {
+			...createCanvasProvide(),
+		},
+	},
+});
 
 const Handle = {
 	template: '<div><slot /></div>',

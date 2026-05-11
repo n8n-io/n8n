@@ -1,0 +1,39 @@
+{
+  "name": "@n8n/engine",
+  "version": "0.1.0",
+  "description": "n8n workflow execution engine (v2)",
+  "scripts": {
+    "clean": "rimraf dist .turbo compiled",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:docker": "pnpm build && rimraf compiled && DOCKER_BUILD=true NODE_ENV=production pnpm --filter . --prod --legacy deploy --no-optional compiled && docker build -f ../../../docker/images/engine/Dockerfile -t n8n-engine:local .",
+    "start": "node dist/serve.js",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:dev": "vitest --watch",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "watch": "tsc -p tsconfig.build.json --watch"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "express": "5.1.0",
+    "reflect-metadata": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.1",
+    "vitest": "catalog:"
+  }
+}

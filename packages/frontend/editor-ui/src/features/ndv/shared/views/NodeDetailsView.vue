@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
+import type { IRunData, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
@@ -17,31 +17,30 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useMessage } from '@/app/composables/useMessage';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { ElDialog } from 'element-plus';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
-	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
 	openConnectionNodeCreator: [
@@ -54,7 +53,6 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: Workflow;
 		readOnly?: boolean;
 		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;
@@ -65,15 +63,16 @@ const props = withDefaults(
 	},
 );
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
@@ -98,6 +97,10 @@ const isPairedItemHoveringEnabled = ref(true);
 // computed
 
 const pushRef = computed(() => ndvStore.pushRef);
+
+const workflowObject = computed(() =>
+	workflowDocumentStore?.value?.getWorkflowObjectAccessorSnapshot(),
+);
 
 const activeNodeType = computed(() => {
 	if (activeNode.value) {
@@ -131,14 +134,14 @@ const workflowRunData = computed(() => {
 
 const parentNodes = computed(() => {
 	if (activeNode.value) {
-		return props.workflowObject.getParentNodesByDepth(activeNode.value.name, 1);
+		return workflowObject.value?.getParentNodesByDepth(activeNode.value.name, 1) ?? [];
 	}
 	return [];
 });
 
 const parentNode = computed<IConnectedNode | undefined>(() => {
 	for (const parent of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parent.name]) {
+		if (workflowDocumentStore?.value?.pinData?.[parent.name]) {
 			return parent;
 		}
 
@@ -151,8 +154,8 @@ const parentNode = computed<IConnectedNode | undefined>(() => {
 
 const inputNodeName = computed<string | undefined>(() => {
 	const nodeOutputs =
-		activeNode.value && activeNodeType.value
-			? NodeHelpers.getNodeOutputs(props.workflowObject, activeNode.value, activeNodeType.value)
+		activeNode.value && activeNodeType.value && workflowObject.value
+			? NodeHelpers.getNodeOutputs(workflowObject.value, activeNode.value, activeNodeType.value)
 			: [];
 
 	const nonMainOutputs = nodeOutputs.filter((output) => {
@@ -167,7 +170,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		// For sub-nodes, we need to get their connected output node to determine the input
 		// because sub-nodes use specialized outputs (e.g. NodeConnectionTypes.AiTool)
 		// instead of the standard Main output type
-		const connectedOutputNode = props.workflowObject.getChildNodes(
+		const connectedOutputNode = workflowObject.value?.getChildNodes(
 			activeNode.value.name,
 			'ALL_NON_MAIN',
 		)?.[0];
@@ -178,7 +181,7 @@ const inputNodeName = computed<string | undefined>(() => {
 
 const inputNode = computed(() => {
 	if (inputNodeName.value) {
-		return workflowsStore.getNodeByName(inputNodeName.value);
+		return workflowDocumentStore?.value?.getNodeByName(inputNodeName.value) ?? null;
 	}
 	return null;
 });
@@ -186,10 +189,7 @@ const inputNode = computed(() => {
 const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 const isTriggerNode = computed(
-	() =>
-		!!activeNodeType.value &&
-		(activeNodeType.value.group.includes('trigger') ||
-			activeNodeType.value.name === START_NODE_TYPE),
+	() => !!activeNodeType.value && activeNodeType.value.group.includes('trigger'),
 );
 
 const showTriggerPanel = computed(() => {
@@ -247,14 +247,14 @@ const maxInputRun = computed(() => {
 		return 0;
 	}
 
-	const workflowNode = props.workflowObject.getNode(activeNode.value.name);
+	const workflowNode = workflowObject.value?.getNode(activeNode.value.name);
 
-	if (!workflowNode || !activeNodeType.value) {
+	if (!workflowNode || !activeNodeType.value || !workflowObject.value) {
 		return 0;
 	}
 
 	const outputs = NodeHelpers.getNodeOutputs(
-		props.workflowObject,
+		workflowObject.value,
 		workflowNode,
 		activeNodeType.value,
 	);
@@ -339,17 +339,8 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		onSaveWorkflow(e);
+		e.preventDefault();
 	}
-};
-
-const onSaveWorkflow = (e: KeyboardEvent) => {
-	e.stopPropagation();
-	e.preventDefault();
-
-	if (props.readOnly) return;
-
-	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -373,9 +364,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 
 const onWorkflowActivate = () => {
 	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -398,7 +387,7 @@ const onFeatureRequestClick = () => {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: pushRef.value,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',
@@ -415,7 +404,7 @@ const onDragEnd = (e: { windowWidth: number; position: number }) => {
 		end_position: e.position,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	mainPanelPosition.value = e.position;
 };
@@ -515,7 +504,7 @@ const close = async () => {
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	triggerWaitingWarningEnabled.value = false;
 	ndvStore.unsetActiveNodeName();
@@ -556,7 +545,7 @@ const onInputNodeChange = (value: string, index: number) => {
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		selection_value: index,
 		input_node_type: inputNode.value ? inputNode.value.type : '',
 	});
@@ -618,24 +607,24 @@ watch(
 
 			setTimeout(() => ndvStore.setNDVPushRef(), 0);
 
-			if (!activeNodeType.value) {
+			if (!activeNodeType.value || !workflowObject.value) {
 				return;
 			}
 
 			void externalHooks.run('dataDisplay.nodeTypeChanged', {
-				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, props.workflowObject),
+				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, workflowObject.value),
 			});
 
 			setTimeout(() => {
 				if (activeNode.value) {
-					const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+					const outgoingConnections = workflowDocumentStore?.value?.outgoingConnectionsByNodeName(
 						activeNode.value?.name,
 					);
 
 					telemetry.track('User opened node modal', {
 						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
-						workflow_id: workflowsStore.workflowId,
+						workflow_id: workflowId.value,
 						push_ref: pushRef.value,
 						is_editable: !hasForeignCredential.value,
 						parameters_pane_position: mainPanelPosition.value,
@@ -757,7 +746,7 @@ onBeforeUnmount(() => {
 						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
-						v-else-if="!isTriggerNode"
+						v-else-if="!isTriggerNode && workflowObject"
 						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
@@ -786,6 +775,7 @@ onBeforeUnmount(() => {
 				</template>
 				<template #output>
 					<OutputPanel
+						v-if="workflowObject"
 						data-test-id="output-panel"
 						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"

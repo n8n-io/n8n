@@ -33,6 +33,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
+		setUserQuota: vi.fn(),
 	}),
 }));
 
@@ -78,14 +79,11 @@ describe('Init', () => {
 		});
 
 		it('should initialize core features only once', async () => {
-			const usersStoreSpy = vi.spyOn(usersStore, 'initialize');
 			const settingsStoreSpy = vi.spyOn(settingsStore, 'initialize');
 
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalled();
-			expect(usersStoreSpy).toHaveBeenCalled();
-
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
@@ -121,14 +119,53 @@ describe('Init', () => {
 		it('should correctly identify the user for telemetry', async () => {
 			const telemetryIdentifySpy = vi.spyOn(telemetry, 'identify');
 			usersStore.registerLoginHook.mockImplementation(async (hook) => {
-				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+				await hook(mock<CurrentUserResponse>({ id: 'userId', role: 'global:member' }));
 			});
 			rootStore.instanceId = 'testInstanceId';
 			rootStore.versionCli = '1.102.0';
 
 			await initializeCore();
 
-			expect(telemetryIdentifySpy).toHaveBeenCalledWith('testInstanceId', 'userId', '1.102.0');
+			expect(telemetryIdentifySpy).toHaveBeenCalledWith({
+				instanceId: 'testInstanceId',
+				userId: 'userId',
+				versionCli: '1.102.0',
+				userRole: 'global:member',
+			});
+		});
+
+		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {
+			const saml = { loginEnabled: false, loginLabel: '' };
+			const ldap = { loginEnabled: false, loginLabel: '' };
+			const oidc = {
+				loginEnabled: false,
+				loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
+				callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
+			};
+
+			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Oidc;
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc] = true;
+
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			// ssoStore.initialize should be called twice:
+			// once during initializeCore and once during the login hook
+			expect(ssoStore.initialize).toHaveBeenCalledTimes(2);
+			expect(ssoStore.initialize).toHaveBeenLastCalledWith({
+				authenticationMethod: UserManagementAuthenticationMethod.Oidc,
+				managedByEnv: false,
+				config: { managedByEnv: false, saml, ldap, oidc },
+				features: {
+					saml: false,
+					ldap: false,
+					oidc: true,
+				},
+			});
 		});
 
 		it('should initialize ssoStore with settings SSO configuration', async () => {
@@ -137,31 +174,20 @@ describe('Init', () => {
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
 			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
-			settingsStore.settings.sso = { saml, ldap, oidc };
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
 				authenticationMethod: UserManagementAuthenticationMethod.Saml,
-				config: { saml, ldap, oidc },
+				managedByEnv: false,
+				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
 					saml: true,
 					ldap: false,
 					oidc: false,
 				},
-			});
-		});
-
-		it('should initialize bannersStore with banners based on settings', async () => {
-			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
-			settingsStore.settings.banners = { dismissed: [] };
-			settingsStore.settings.versionCli = '1.2.3';
-
-			await initializeCore();
-
-			expect(bannersStore.loadStaticBanners).toHaveBeenCalledWith({
-				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
 			});
 		});
 	});
@@ -205,6 +231,7 @@ describe('Init', () => {
 			expect(sourceControlSpy).toHaveBeenCalled();
 			expect(nodeTranslationSpy).toHaveBeenCalled();
 			expect(versionsSpy).toHaveBeenCalled();
+			expect(usersStore.setUserQuota).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();
 
@@ -260,6 +287,21 @@ describe('Init', () => {
 			);
 		});
 
+		it('should push banners based on settings', async () => {
+			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
+			settingsStore.settings.banners = { dismissed: [] };
+			settingsStore.settings.versionCli = '1.2.3';
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+
+			const pushBannerSpy = vi.spyOn(bannersStore, 'pushBannerToStack');
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(pushBannerSpy).toHaveBeenCalledWith('NON_PRODUCTION_LICENSE');
+			expect(pushBannerSpy).toHaveBeenCalledWith('V1');
+		});
+
 		describe('cloudPlanStore', () => {
 			it('should initialize cloudPlanStore correctly', async () => {
 				settingsStore.settings.deployment.type = 'cloud';
@@ -280,6 +322,7 @@ describe('Init', () => {
 
 				cloudPlanStore.userIsTrialing = true;
 				cloudPlanStore.trialExpired = true;
+				cloudPlanStore.shouldShowBanner = true;
 
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
 
@@ -289,13 +332,14 @@ describe('Init', () => {
 				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
 			});
 
-			it('should push TRIAL banner if trial is active', async () => {
+			it('should push TRIAL banner if trial is active and does not have feature flag set', async () => {
 				settingsStore.settings.deployment.type = 'cloud';
 				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
 				usersStore.currentUserId = '123';
 
 				cloudPlanStore.userIsTrialing = true;
 				cloudPlanStore.trialExpired = false;
+				cloudPlanStore.shouldShowBanner = true;
 
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
 

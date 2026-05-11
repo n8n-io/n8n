@@ -10,6 +10,11 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
@@ -28,23 +33,30 @@ export function useNodeCommands(options: {
 	const i18n = useI18n();
 	const { lastQuery } = options;
 
-	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
+	const { addNodes, setNodeActive } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
+	const collaborationStore = useCollaborationStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
-	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+
+	const isReadOnly = computed(
+		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+	);
+	const isArchived = computed(() => workflowDocumentStore.value.isArchived);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore.value.scopes).workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
-		workflowsStore.isNewWorkflow;
+		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
@@ -127,7 +139,7 @@ export function useNodeCommands(options: {
 	};
 
 	const openNodeCommands = computed<CommandBarItem[]>(() => {
-		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, false));
+		return workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeCommand(node, false));
 	});
 
 	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
@@ -135,7 +147,7 @@ export function useNodeCommands(options: {
 			return [];
 		}
 
-		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, true));
+		return workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeCommand(node, true));
 	});
 
 	const nodeCommands = computed<CommandBarItem[]>(() => {
@@ -149,7 +161,7 @@ export function useNodeCommands(options: {
 								props: {
 									title: i18n.baseText('commandBar.nodes.addNode'),
 									shortcut: {
-										keys: ['tab'],
+										keys: ['n'],
 									},
 								},
 							},

@@ -64,6 +64,7 @@ describe('useDataTableOperations', () => {
 	let dataTableStore: ReturnType<typeof useDataTableStore>;
 	let confirmMock: ReturnType<typeof vi.fn>;
 	let showErrorMock: ReturnType<typeof vi.fn>;
+	let showMessageMock: ReturnType<typeof vi.fn>;
 	let telemetryTrackMock: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
@@ -73,6 +74,7 @@ describe('useDataTableOperations', () => {
 			addDataTableColumn: vi.fn(),
 			deleteDataTableColumn: vi.fn(),
 			moveDataTableColumn: vi.fn(),
+			renameDataTableColumn: vi.fn(),
 			deleteRows: vi.fn(),
 			insertEmptyRow: vi.fn(),
 		} as unknown as ReturnType<typeof useDataTableStore>;
@@ -85,8 +87,10 @@ describe('useDataTableOperations', () => {
 		} as unknown as ReturnType<typeof useMessage>);
 
 		showErrorMock = vi.fn();
+		showMessageMock = vi.fn();
 		vi.mocked(useToast).mockReturnValue({
 			showError: showErrorMock,
+			showMessage: showMessageMock,
 		} as unknown as ReturnType<typeof useToast>);
 
 		telemetryTrackMock = vi.fn();
@@ -599,6 +603,51 @@ describe('useDataTableOperations', () => {
 			expect(params.toggleSave).toHaveBeenCalledWith(false);
 		});
 
+		it('should show a precision warning when the new number exceeds MAX_SAFE_INTEGER', async () => {
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const { onCellValueChanged } = useDataTableOperations(params);
+			const unsafeValue = Number.MAX_SAFE_INTEGER + 10;
+			const event = {
+				data: { id: 1, amount: unsafeValue },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 0,
+				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'dataTable.updateRow.numberPrecisionWarning.title',
+					message: 'dataTable.updateRow.numberPrecisionWarning.message',
+					type: 'warning',
+				}),
+			);
+		});
+
+		it('should not show a precision warning for safe numbers', async () => {
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				updateRow: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const { onCellValueChanged } = useDataTableOperations(params);
+			const event = {
+				data: { id: 1, amount: 42 },
+				api: { applyTransaction: vi.fn() },
+				oldValue: 0,
+				colDef: { field: 'amount', cellDataType: 'number', colId: 'col1' },
+			} as unknown as CellValueChangedEvent<DataTableRow>;
+
+			await onCellValueChanged(event);
+
+			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
 		it('should revert cell value to null when old value is invalid', async () => {
 			const isDataTableValue = await import('@/features/core/dataTable/typeGuards').then(
 				(m) => m.isDataTableValue,
@@ -837,6 +886,218 @@ describe('useDataTableOperations', () => {
 
 			expect(params.toggleSave).toHaveBeenCalledWith(true);
 			expect(params.toggleSave).toHaveBeenCalledWith(false);
+		});
+	});
+
+	describe('onRenameColumn', () => {
+		it('should return early when column is not found', async () => {
+			const colDefs = ref([]);
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
+
+			await onRenameColumn('non-existent-column', 'newName');
+
+			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
+		});
+
+		it('should return early when column has no field', async () => {
+			const colDefs = ref([{ colId: 'col1', headerName: 'Name', cellDataType: 'text' }]);
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
+
+			await onRenameColumn('col1', 'newName');
+
+			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
+		});
+
+		it('should rename column successfully', async () => {
+			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: renameDataTableColumnMock,
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
+			]);
+			const rowData = ref([
+				{ id: 1, oldName: 'value1' },
+				{ id: 2, oldName: 'value2' },
+			]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col1', 'newName');
+
+			expect(colDefs.value[0].headerName).toBe('newName');
+			expect(colDefs.value[0].field).toBe('newName');
+			expect(rowData.value).toEqual([
+				{ id: 1, newName: 'value1' },
+				{ id: 2, newName: 'value2' },
+			]);
+			expect(params.setGridData).toHaveBeenCalledWith({
+				colDefs: colDefs.value,
+				rowData: rowData.value,
+			});
+			expect(renameDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 'newName');
+			expect(telemetryTrackMock).toHaveBeenCalledWith('User renamed data table column', {
+				column_id: 'col1',
+				column_type: 'text',
+				data_table_id: 'test',
+			});
+		});
+
+		it('should handle when new name equals old field name', async () => {
+			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: renameDataTableColumnMock,
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'sameName', headerName: 'Old Header', cellDataType: 'text' },
+			]);
+			const rowData = ref([{ id: 1, sameName: 'value1' }]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col1', 'sameName');
+
+			expect(colDefs.value[0].headerName).toBe('sameName');
+			expect(colDefs.value[0].field).toBe('sameName');
+			expect(rowData.value).toEqual([{ id: 1, sameName: 'value1' }]);
+			expect(renameDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 'sameName');
+		});
+
+		it('should rollback header name when API call fails', async () => {
+			const renameError = new Error('Rename failed');
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: vi.fn().mockRejectedValue(renameError),
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
+			]);
+			const rowData = ref([{ id: 1, oldName: 'value1' }]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col1', 'newName');
+
+			expect(colDefs.value[0].headerName).toBe('Old Name');
+			expect(colDefs.value[0].field).toBe('oldName');
+			expect(rowData.value).toEqual([{ id: 1, oldName: 'value1' }]);
+			expect(showErrorMock).toHaveBeenCalledWith(renameError, 'dataTable.renameColumn.error');
+			expect(params.setGridData).toHaveBeenCalledTimes(2);
+		});
+
+		it('should show specific error message for 409 conflict', async () => {
+			const responseError = new ResponseError('Column name already exists', {
+				httpStatusCode: 409,
+			});
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: vi.fn().mockRejectedValue(responseError),
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
+			]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
+
+			await onRenameColumn('col1', 'existingName');
+
+			expect(colDefs.value[0].headerName).toBe('Old Name');
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error('Column name already exists'),
+				'dataTable.column.alreadyExistsError',
+			);
+		});
+
+		it('should handle ResponseError without httpStatusCode', async () => {
+			const responseError = new ResponseError('Unknown response error');
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: vi.fn().mockRejectedValue(responseError),
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
+			]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
+
+			await onRenameColumn('col1', 'newName');
+
+			expect(colDefs.value[0].headerName).toBe('Old Name');
+			expect(showErrorMock).toHaveBeenCalledWith(responseError, 'dataTable.renameColumn.error');
+		});
+
+		it('should handle regular Error', async () => {
+			const error = new Error('Regular error message');
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: vi.fn().mockRejectedValue(error),
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
+			]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
+
+			await onRenameColumn('col1', 'newName');
+
+			expect(colDefs.value[0].headerName).toBe('Old Name');
+			expect(showErrorMock).toHaveBeenCalledWith(error, 'dataTable.renameColumn.error');
+		});
+
+		it('should update row data correctly with multiple columns', async () => {
+			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: renameDataTableColumnMock,
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'name', headerName: 'Name', cellDataType: 'text' },
+				{ colId: 'col2', field: 'age', headerName: 'Age', cellDataType: 'number' },
+			]);
+			const rowData = ref([
+				{ id: 1, name: 'John', age: 30 },
+				{ id: 2, name: 'Jane', age: 25 },
+			]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col1', 'fullName');
+
+			expect(colDefs.value[0].field).toBe('fullName');
+			expect(rowData.value).toEqual([
+				{ id: 1, fullName: 'John', age: 30 },
+				{ id: 2, fullName: 'Jane', age: 25 },
+			]);
+		});
+
+		it('should handle empty row data', async () => {
+			const renameDataTableColumnMock = vi.fn().mockResolvedValue(undefined);
+			vi.mocked(useDataTableStore).mockReturnValue({
+				...dataTableStore,
+				renameDataTableColumn: renameDataTableColumnMock,
+			});
+
+			const colDefs = ref([
+				{ colId: 'col1', field: 'oldName', headerName: 'Old Name', cellDataType: 'text' },
+			]);
+			const rowData = ref([]);
+
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col1', 'newName');
+
+			expect(colDefs.value[0].field).toBe('newName');
+			expect(rowData.value).toEqual([]);
+			expect(renameDataTableColumnMock).toHaveBeenCalledWith('test', 'test', 'col1', 'newName');
 		});
 	});
 

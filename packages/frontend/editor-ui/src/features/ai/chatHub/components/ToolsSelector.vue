@@ -1,210 +1,154 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { type ChatHubAgentTool } from '@n8n/api-types';
-import {
-	type INode,
-	deepCopy,
-	JINA_AI_TOOL_NODE_TYPE,
-	SEAR_XNG_TOOL_NODE_TYPE,
-} from 'n8n-workflow';
-import { AVAILABLE_TOOLS, type ChatHubToolProvider } from '../composables/availableTools';
-import { ElSwitch } from 'element-plus';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { N8nButton, N8nDropdownMenu, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
+import { TOOLS_MANAGER_MODAL_KEY, TOOL_SETTINGS_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
 
-const { initialValue } = defineProps<{
-	initialValue: INode[] | null;
+const props = defineProps<{
+	disabled: boolean;
+	checkedToolIds: string[];
+	customAgentId?: string;
+	disabledTooltip?: string;
 }>();
 
 const emit = defineEmits<{
-	update: [INode[]];
+	toggle: [toolId: string];
 }>();
 
-const i18n = useI18n();
-const modalBus = ref(createEventBus());
-const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const chatStore = useChatStore();
+const i18n = useI18n();
 
-const selectedByProvider = ref<Record<ChatHubAgentTool, Set<string>>>({
-	[JINA_AI_TOOL_NODE_TYPE]: new Set(),
-	[SEAR_XNG_TOOL_NODE_TYPE]: new Set(),
+const dropdownRef = useTemplateRef<{ close: () => void }>('dropdownMenu');
+const searchQuery = ref('');
+
+const checkedToolIdsSet = computed(() => new Set(props.checkedToolIds));
+
+const toolCount = computed(() => props.checkedToolIds.length);
+
+const displayToolNodeTypes = computed(() => {
+	const maxIcons = toolCount.value > 3 ? 2 : 3;
+	return chatStore.configuredTools
+		.filter((t) => checkedToolIdsSet.value.has(t.definition.id))
+		.slice(0, maxIcons)
+		.map((t) => nodeTypesStore.getNodeType(t.definition.type, t.definition.typeVersion))
+		.filter(Boolean);
 });
 
-const credentialIdByProvider = ref<Record<ChatHubAgentTool, string | null>>({
-	[JINA_AI_TOOL_NODE_TYPE]: null,
-	[SEAR_XNG_TOOL_NODE_TYPE]: null,
+const remainingToolCount = computed(() => {
+	if (toolCount.value > 3) return toolCount.value - 2;
+	return 0;
 });
 
-function resetSelections() {
-	selectedByProvider.value = {
-		[JINA_AI_TOOL_NODE_TYPE]: new Set(),
-		[SEAR_XNG_TOOL_NODE_TYPE]: new Set(),
-	};
-	credentialIdByProvider.value = {
-		[JINA_AI_TOOL_NODE_TYPE]: null,
-		[SEAR_XNG_TOOL_NODE_TYPE]: null,
-	};
+const toolsLabel = computed(() => {
+	if (toolCount.value === 1) {
+		const toolId = props.checkedToolIds[0];
+		const tool = chatStore.configuredTools.find((t) => t.definition.id === toolId);
+		if (tool) return tool.definition.name;
+	}
+	if (toolCount.value > 1) {
+		return i18n.baseText('chatHub.tools.selector.label.count', { adjustToNumber: toolCount.value });
+	}
+	return i18n.baseText('chatHub.tools.selector.label.default');
+});
+
+function openToolsManager() {
+	dropdownRef.value?.close();
+	uiStore.openModalWithData({
+		name: TOOLS_MANAGER_MODAL_KEY,
+		data: {
+			tools: chatStore.configuredTools
+				.filter((t) => checkedToolIdsSet.value.has(t.definition.id))
+				.map((t) => t.definition),
+			onConfirm: () => {},
+			customAgentId: props.customAgentId,
+		},
+	});
 }
 
-function restoreFromInitial(nodes: INode[]) {
-	resetSelections();
+function openToolSettings(item: ToolMenuItem) {
+	dropdownRef.value?.close();
+	const tool = item.data?.tool;
+	if (!tool) return;
 
-	const toolsByProvider = new Map<ChatHubAgentTool, Set<string>>();
-	Object.entries(AVAILABLE_TOOLS).forEach(([key, p]) => {
-		toolsByProvider.set(key as ChatHubAgentTool, new Set(p.tools.map((t) => t.node.name)));
+	const otherToolNames = chatStore.configuredTools
+		.filter((t) => t.definition.id !== tool.id)
+		.map((t) => t.definition.name);
+
+	uiStore.openModalWithData({
+		name: TOOL_SETTINGS_MODAL_KEY,
+		data: {
+			node: { ...tool },
+			existingToolNames: otherToolNames,
+			onConfirm: async (configuredNode: INode) => {
+				await chatStore.updateConfiguredTool(tool.id, configuredNode);
+			},
+		},
+	});
+}
+
+type ToolMenuItem = DropdownMenuItemProps<
+	string,
+	{ nodeType: INodeTypeDescription | null; tool: INode }
+>;
+
+const CREATE_NEW_TOOL_ID = 'action::create-new';
+
+const menuItems = computed<ToolMenuItem[]>(() => {
+	const query = searchQuery.value.toLowerCase();
+
+	const toolItems: ToolMenuItem[] = chatStore.configuredTools
+		.filter((tool) => {
+			if (!query) return true;
+			const def = tool.definition;
+			const nodeType = nodeTypesStore.getNodeType(def.type, def.typeVersion);
+			const nameMatch = def.name.toLowerCase().includes(query);
+			const typeMatch = nodeType?.displayName.toLowerCase().includes(query);
+			return nameMatch || typeMatch;
+		})
+		.map((tool) => ({
+			id: `tool::${tool.definition.id}`,
+			label: tool.definition.name,
+			checked: checkedToolIdsSet.value.has(tool.definition.id),
+			data: {
+				nodeType: nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion),
+				tool: tool.definition,
+			},
+		}));
+
+	toolItems.push({
+		id: CREATE_NEW_TOOL_ID,
+		label: i18n.baseText('chatHub.tools.selector.createNew'),
+		icon: { type: 'icon', value: 'plus' },
+		divided: true,
 	});
 
-	for (const node of nodes) {
-		const providerKey = node.type as ChatHubAgentTool;
-		const provider = AVAILABLE_TOOLS[providerKey];
-		if (!provider) continue;
-
-		const isValid = toolsByProvider.get(providerKey)?.has(node.name);
-		if (!isValid) continue;
-
-		selectedByProvider.value[providerKey].add(node.name);
-		if (provider.credentialType) {
-			const credentialId = node.credentials?.[provider.credentialType].id;
-			if (
-				credentialId &&
-				typeof credentialId === 'string' &&
-				!credentialIdByProvider.value[providerKey]
-			) {
-				credentialIdByProvider.value[providerKey] = credentialId;
-			}
-		}
-	}
-
-	selectedByProvider.value = { ...selectedByProvider.value };
-	credentialIdByProvider.value = { ...credentialIdByProvider.value };
-}
-
-function getAvailableCredentials(toolNodeType: ChatHubAgentTool): ICredentialsResponse[] {
-	const provider = AVAILABLE_TOOLS[toolNodeType];
-	if (!provider.credentialType) return [];
-	return credentialsStore.getCredentialsByType(provider.credentialType);
-}
-
-const providers = computed<Array<[ChatHubAgentTool, ChatHubToolProvider]>>(() => {
-	return Object.entries(AVAILABLE_TOOLS) as Array<[ChatHubAgentTool, ChatHubToolProvider]>;
+	return toolItems;
 });
 
-function getSelectedCount(): number {
-	return providers.value.reduce(
-		(acc, [key]) => acc + (selectedByProvider.value[key]?.size ?? 0),
-		0,
-	);
-}
-
-const getNodeIcon = (nodeType: ChatHubAgentTool) => {
-	return nodeTypesStore.getNodeType(nodeType);
-};
-
-function toggleTool(
-	providerKey: ChatHubAgentTool,
-	toolId: string,
-	value: string | number | boolean,
-) {
-	const enabled = typeof value === 'boolean' ? value : Boolean(value);
-	if (!selectedByProvider.value[providerKey]) {
-		selectedByProvider.value[providerKey] = new Set();
-	}
-	const set = selectedByProvider.value[providerKey];
-	if (enabled) {
-		set.add(toolId);
-	} else {
-		set.delete(toolId);
+function handleSelect(id: string) {
+	if (id === CREATE_NEW_TOOL_ID) {
+		openToolsManager();
+		return;
 	}
 
-	selectedByProvider.value = { ...selectedByProvider.value };
-}
+	const [command, toolId] = id.split('::');
 
-function onCredentialSelect(providerKey: ChatHubAgentTool, id: string) {
-	credentialIdByProvider.value[providerKey] = id;
-}
-
-function onCreateNewCredential(providerKey: ChatHubAgentTool) {
-	const provider = AVAILABLE_TOOLS[providerKey];
-	if (!provider.credentialType) return;
-
-	uiStore.openNewCredential(provider.credentialType);
-}
-
-const isMissingCredentials = computed(() => {
-	for (const [providerKey, provider] of providers.value) {
-		const selectedIds = selectedByProvider.value[providerKey];
-		if (!selectedIds || selectedIds.size === 0) {
-			continue;
-		}
-
-		// If provider requires credential, ensure one is selected
-		if (provider.credentialType) {
-			const selectedCredential = credentialIdByProvider.value[providerKey];
-			if (!selectedCredential) {
-				return true;
-			}
-		}
+	if (command === 'tool') {
+		emit('toggle', toolId);
 	}
-
-	return false;
-});
-
-function onConfirm() {
-	const tools: INode[] = [];
-	for (const [providerKey, provider] of providers.value) {
-		const selected = selectedByProvider.value[providerKey];
-		if (!selected || selected.size === 0) continue;
-
-		const pickedId = credentialIdByProvider.value[providerKey] ?? null;
-
-		let credential: ICredentialsResponse | undefined;
-		if (provider.credentialType && pickedId) {
-			credential = getAvailableCredentials(providerKey).find((c) => c.id === pickedId);
-		}
-
-		for (const toolName of selected) {
-			const tool = provider.tools.find((t) => t.node.name === toolName);
-			if (!tool) continue;
-
-			const node = deepCopy(tool.node);
-
-			// If the provider defines a credentialType and user chose a credential, attach/override it
-			if (provider.credentialType && credential) {
-				node.credentials = node.credentials ?? {};
-				node.credentials[provider.credentialType] = { id: credential.id, name: credential.name };
-			}
-
-			tools.push(node);
-		}
-	}
-
-	emit('update', tools);
-	modalBus.value.emit('close');
 }
 
-function onCancel() {
-	modalBus.value.emit('close');
+function handleSearch(query: string) {
+	searchQuery.value = query;
 }
-
-watch(
-	() => initialValue,
-	(nodes: INode[] | null) => {
-		if (nodes?.length) {
-			restoreFromInitial(nodes);
-		} else {
-			resetSelections();
-		}
-	},
-	{ immediate: true },
-);
 
 onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
@@ -212,164 +156,186 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		name="toolsSelector"
-		:event-bus="modalBus"
-		width="50%"
-		max-width="720px"
-		min-height="340px"
-		:center="true"
-	>
-		<template #header>
-			<div :class="$style.header">
-				<N8nIcon icon="settings2" :size="24" />
-				<N8nHeading size="large" color="text-dark">{{
-					i18n.baseText('chatHub.tools.editor.title')
-				}}</N8nHeading>
-			</div>
-		</template>
+	<div :class="$style.container">
+		<!-- When no tools configured, show just the button that opens the manager -->
+		<N8nTooltip
+			v-if="chatStore.configuredTools.length === 0"
+			:content="disabledTooltip"
+			:disabled="!disabledTooltip || !disabled"
+			placement="bottom"
+		>
+			<N8nButton
+				variant="subtle"
+				native-type="button"
+				:class="$style.toolsButton"
+				:disabled="disabled"
+				icon="plus"
+				data-test-id="chat-tools-button"
+				@click="openToolsManager"
+			>
+				{{ toolsLabel }}
+			</N8nButton>
+		</N8nTooltip>
 
-		<template #content>
-			<div :class="$style.content">
-				<div v-for="[key, provider] in providers" :key="key" :class="$style.provider">
-					<div :class="$style.providerHeader">
-						<div :class="$style.providerTitle">
-							<NodeIcon :node-type="getNodeIcon(key)" :size="18" />
-							<N8nHeading color="text-dark" size="medium">{{ provider.name }}</N8nHeading>
-						</div>
-						<N8nText size="small" color="text-base">{{ provider.description }}</N8nText>
-					</div>
-
-					<div v-if="provider.credentialType" :class="$style.row">
-						<N8nText size="small" color="text-base">{{
-							i18n.baseText('chatHub.tools.editor.credential')
-						}}</N8nText>
-						<div :class="$style.credentials">
-							<N8nSelect
-								:model-value="credentialIdByProvider[key] ?? null"
-								size="large"
-								:placeholder="i18n.baseText('chatHub.tools.editor.credential.placeholder')"
-								@update:model-value="onCredentialSelect(key, $event)"
-							>
-								<N8nOption
-									v-for="c in getAvailableCredentials(key)"
-									:key="c.id"
-									:value="c.id"
-									:label="c.name"
-								/>
-							</N8nSelect>
-							<N8nButton size="medium" type="secondary" @click="onCreateNewCredential(key)">
-								{{ i18n.baseText('chatHub.tools.editor.credential.new') }}
-							</N8nButton>
-						</div>
-					</div>
-
-					<div :class="$style.toolsList">
-						<div v-for="tool in provider.tools" :key="tool.node.id" :class="$style.toolRow">
-							<div :class="$style.toolInfo">
-								<N8nText size="medium" bold color="text-base">{{
-									tool.title || tool.node.name
-								}}</N8nText>
-								<N8nText size="small" color="text-base">
-									{{ tool.node.name }}
-								</N8nText>
-							</div>
-
-							<ElSwitch
-								size="large"
-								:aria-label="`Toggle ${tool.title || tool.node.name}`"
-								:model-value="!!selectedByProvider[key]?.has(tool.node.name)"
-								@update:model-value="(val) => toggleTool(key, tool.node.name, val)"
+		<N8nTooltip
+			v-else
+			:content="disabledTooltip"
+			:disabled="!disabledTooltip || !disabled"
+			placement="bottom"
+		>
+			<N8nDropdownMenu
+				ref="dropdownMenu"
+				:items="menuItems"
+				placement="top-start"
+				extra-popper-class="tools-selector-dropdown"
+				searchable
+				:search-placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+				:empty-text="i18n.baseText('chatHub.toolsManager.noResults')"
+				@select="handleSelect"
+				@search="handleSearch"
+			>
+				<template #trigger>
+					<N8nButton
+						variant="subtle"
+						native-type="button"
+						:disabled="disabled"
+						:icon="toolCount === 0 ? 'plus' : undefined"
+						data-test-id="chat-tools-button"
+					>
+						<span v-if="toolCount > 0" :class="$style.iconStack">
+							<NodeIcon
+								v-for="(nodeType, i) in displayToolNodeTypes"
+								:key="`${nodeType?.name}-${i}`"
+								:style="{ zIndex: i + 1 }"
+								:node-type="nodeType"
+								:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
+								:circle="true"
+								:size="12"
 							/>
-						</div>
-					</div>
-				</div>
-			</div>
-		</template>
+							<span
+								v-if="remainingToolCount > 0"
+								:class="[$style.icon, $style.iconOverlap, $style.countBadge]"
+							>
+								+{{ remainingToolCount }}
+							</span>
+						</span>
+						{{ toolsLabel }}
+					</N8nButton>
+				</template>
 
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nText color="text-base">
-					{{
-						i18n.baseText('chatHub.tools.editor.selectedCount', {
-							interpolate: { count: getSelectedCount() },
-						})
-					}}
-				</N8nText>
-				<div :class="$style.footerRight">
-					<N8nButton type="tertiary" @click="onCancel">{{
-						i18n.baseText('chatHub.tools.editor.cancel')
-					}}</N8nButton>
-					<N8nButton type="primary" :disabled="isMissingCredentials" @click="onConfirm">{{
-						i18n.baseText('chatHub.tools.editor.confirm')
-					}}</N8nButton>
-				</div>
-			</div>
-		</template>
-	</Modal>
+				<template #search-prefix>
+					<N8nIcon icon="search" />
+				</template>
+
+				<template #search-suffix>
+					<N8nIconButton
+						icon="settings"
+						variant="ghost"
+						size="medium"
+						text
+						:class="$style.settingsButton"
+						@click.stop="openToolsManager"
+					/>
+				</template>
+
+				<template #item-leading="{ item }">
+					<NodeIcon v-if="item.data?.nodeType" :node-type="item.data.nodeType" :size="16" />
+					<N8nIcon v-else-if="item.icon?.type === 'icon'" :icon="item.icon.value" size="large" />
+				</template>
+
+				<template #item-trailing="{ item }">
+					<template v-if="item.id !== CREATE_NEW_TOOL_ID">
+						<N8nIconButton
+							icon="settings"
+							variant="ghost"
+							size="medium"
+							text
+							:class="$style.itemSettingsButton"
+							@click.stop="openToolSettings(item)"
+						/>
+						<span v-if="!item.checked" :class="$style.checkPlaceholder" />
+					</template>
+				</template>
+			</N8nDropdownMenu>
+		</N8nTooltip>
+	</div>
 </template>
 
 <style lang="scss" module>
-.header {
+.container {
 	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	padding: var(--spacing--sm) 0 var(--spacing--md);
-}
-.provider {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	margin-bottom: var(--spacing--md);
-}
-.providerHeader {
-	display: grid;
-	gap: var(--spacing--2xs);
-}
-.providerTitle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.row {
-	display: grid;
-	gap: var(--spacing--2xs);
-}
-.credentials {
-	display: flex;
-	gap: var(--spacing--2xs);
 	align-items: center;
 }
 
-.toolsList {
-	display: grid;
-	gap: var(--spacing--sm);
-}
-.toolRow {
+.toolsButton {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) 0;
-}
-.toolInfo {
-	display: grid;
-	gap: 2px;
+	gap: var(--spacing--2xs);
+
+	&.transparentBg {
+		background-color: transparent !important;
+	}
 }
 
-.footer {
+.iconStack {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	width: 100%;
+	position: relative;
+
+	/* maintain component height regardless of icon */
+	margin-block: -4px;
 }
-.footerRight {
+
+.icon {
+	padding: var(--spacing--4xs);
+	background-color: var(--color--background--light-2);
+	border-radius: 50%;
+	outline: 2px var(--color--background--light-3) solid;
+}
+
+.iconOverlap {
+	margin-left: -5px;
+}
+
+.countBadge {
+	position: relative;
+	z-index: 4;
 	display: flex;
-	gap: var(--spacing--2xs);
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	font-size: var(--font-size--3xs);
+	color: var(--color--text);
+	box-sizing: border-box;
+}
+
+.settingsButton {
+	color: var(--button--color--text--secondary);
+	margin-right: -2px;
+
+	&:hover {
+		color: var(--button--color--text--secondary--hover-active-focus);
+	}
+}
+
+.itemSettingsButton {
+	opacity: 0;
+}
+
+.checkPlaceholder {
+	width: 16px;
+	flex-shrink: 0;
+}
+</style>
+
+<style lang="scss">
+.tools-selector-dropdown {
+	z-index: 10000;
+	min-width: 330px;
+
+	[data-highlighted] [class*='itemSettingsButton'] {
+		opacity: 1;
+	}
 }
 </style>

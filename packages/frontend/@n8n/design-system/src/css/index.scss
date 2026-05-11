@@ -1,6 +1,5 @@
 @use './primitives.scss';
 @use './tokens.scss';
-@use './tokens.dark.scss' as dark;
 @use './reset.scss';
 @use './base.scss';
 @use './fonts.scss';
@@ -13,6 +12,7 @@
 @use './radio.scss';
 @use './checkbox.scss';
 @use './switch.scss';
+@use './slider.scss';
 @use './select.scss';
 @use './skeleton.scss';
 @use './table.scss';

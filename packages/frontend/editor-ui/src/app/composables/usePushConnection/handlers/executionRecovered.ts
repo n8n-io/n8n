@@ -36,11 +36,11 @@ export async function executionRecovered(
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(options);
+		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, false);
+		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);

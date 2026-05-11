@@ -10,23 +10,16 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-
-const mockEditableWorkflow = {
-	value: {
-		nodes: [] as Array<{
-			id: string;
-			name: string;
-			type: string;
-			typeVersion: number;
-		}>,
-	},
-};
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
-		editableWorkflow: mockEditableWorkflow,
 	}),
 }));
 
@@ -76,7 +69,9 @@ describe('useNodeCommands', () => {
 	});
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		vi.clearAllMocks();
+
+		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
 		const canvasOps = useCanvasOperations();
@@ -104,18 +99,24 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflow', {
-			value: { isArchived: false, scopes: [] },
+			value: { isArchived: false, scopes: [], nodes: [] },
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
 			value: false,
 		});
 
+		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
+			value: '123',
+			writable: true,
+		});
+
+		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+			value: { '123': true },
+			writable: true,
+		});
+
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
-
-		mockEditableWorkflow.value.nodes = [];
-
-		vi.clearAllMocks();
 	});
 
 	describe('add node command', () => {
@@ -125,7 +126,6 @@ describe('useNodeCommands', () => {
 				activeNodeId: ref(null),
 			});
 
-			console.log('commands', commands.value);
 			const addCommand = commands.value.find((cmd) => cmd.id === 'add-node');
 			expect(addCommand).toBeDefined();
 		});
@@ -159,9 +159,8 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not include add node command when workflow is archived', () => {
-			Object.defineProperty(mockWorkflowsStore, 'workflow', {
-				value: { isArchived: true, scopes: [] },
-			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			workflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -177,8 +176,9 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: false },
 			});
 
-			Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
-				value: true,
+			Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+				value: {},
+				writable: true,
 			});
 
 			const { commands } = useNodeCommands({
@@ -227,15 +227,21 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should populate open node children with workflow nodes', () => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
-				{
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+				createTestNode({
 					id: 'node-2',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 1,
-				},
-			];
+				}),
+			]);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -302,9 +308,15 @@ describe('useNodeCommands', () => {
 
 	describe('root open node items', () => {
 		beforeEach(() => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
-			];
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+			]);
 		});
 
 		it('should not show root open node items when query is too short', () => {

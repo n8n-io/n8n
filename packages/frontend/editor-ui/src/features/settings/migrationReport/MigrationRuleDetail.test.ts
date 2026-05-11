@@ -40,7 +40,6 @@ const mockWorkflowWithMultipleNodes = {
 	active: false,
 	numberOfExecutions: 50,
 	lastUpdatedAt: new Date('2024-01-10'),
-	lastExecutedAt: null,
 	issues: [
 		{
 			nodeId: 'node-2',
@@ -123,7 +122,7 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('2 affected')).toBeInTheDocument();
 
 				// Description
-				expect(screen.getByText('This is a test rule description')).toBeInTheDocument();
+				expect(screen.getByText('This is a test rule description.')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getByText('Documentation')).toBeInTheDocument();
@@ -145,8 +144,8 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => {
 				expect(screen.getByText('Name')).toBeInTheDocument();
-				expect(screen.getByText('Issue')).toBeInTheDocument();
-				expect(screen.getByText('Node affected')).toBeInTheDocument();
+				expect(screen.getByText('Status', { selector: 'th' })).toBeInTheDocument();
+				expect(screen.getByText('Nodes affected')).toBeInTheDocument();
 				expect(screen.getByText(/Number of executions/)).toBeInTheDocument();
 				expect(screen.getByText(/Last executed/)).toBeInTheDocument();
 				expect(screen.getByText(/Last updated/)).toBeInTheDocument();
@@ -463,15 +462,15 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 			});
 
-			// Open filter dropdown
-			const filterButton = screen.getByTestId('migration-rule-filters');
+			// Open filter dropdown - click the actual trigger button inside ResourceFiltersDropdown
+			const filterButton = screen.getByTestId('resources-list-filters-trigger');
 			await user.click(filterButton);
 
 			await waitFor(() => {
 				const dropdown = screen.getByTestId('resources-list-filters-dropdown');
 				expect(dropdown).toBeInTheDocument();
-				// Check that the status filter label is visible
-				expect(screen.getByText('Status')).toBeInTheDocument();
+				// Check that the status filter label is visible. Ignore 'th' elements to avoid confusion with table headers.
+				expect(screen.getByText('Status', { ignore: 'th' })).toBeInTheDocument();
 			});
 		});
 
@@ -488,8 +487,8 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
 			});
 
-			// Open filter dropdown
-			const filterButton = screen.getByTestId('migration-rule-filters');
+			// Open filter dropdown - click the actual trigger button inside ResourceFiltersDropdown
+			const filterButton = screen.getByTestId('resources-list-filters-trigger');
 			await user.click(filterButton);
 
 			await waitFor(() => {

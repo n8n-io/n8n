@@ -20,6 +20,10 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -50,8 +54,10 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => {
 	};
 });
 
-vi.mock('./nodeCreator.utils', async () => {
+vi.mock('./nodeCreator.utils', async (importOriginal) => {
+	const actual = await importOriginal();
 	return {
+		...(actual as object),
 		prepareCommunityNodeDetailsViewStack: vi.fn(),
 	};
 });
@@ -69,6 +75,7 @@ describe('useNodeCreatorStore', () => {
 	let nodeCreatorStore: ReturnType<typeof useNodeCreatorStore>;
 	let mockUseNodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let mockUseWorkflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let mockUseWorkflowDocumentStore: MockedStore<() => ReturnType<typeof useWorkflowDocumentStore>>;
 	let mockUseNDVStore: MockedStore<typeof useNDVStore>;
 	let mockUseViewStacks: MockedStore<typeof useViewStacks>;
 
@@ -79,26 +86,19 @@ describe('useNodeCreatorStore', () => {
 		nodeCreatorStore = useNodeCreatorStore();
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
 		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockUseWorkflowsStore.workflowId = 'test-wf-id';
+		mockUseWorkflowDocumentStore = mockedStore(() =>
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-wf-id')),
+		);
 		mockUseNDVStore = mockedStore(useNDVStore);
 		mockUseViewStacks = mockedStore(useViewStacks);
 
 		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {
 			return name ? ({ id: 'Test Node', name, type: name } as INodeUi) : null;
 		});
-		mockUseWorkflowsStore.getNodeById = vi.fn((id?: string) => {
+		mockUseWorkflowDocumentStore.getNodeById = vi.fn((id?: string) => {
 			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
 		});
-		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
-		mockUseWorkflowsStore.workflowObject = {
-			...mockUseWorkflowsStore.workflowObject,
-			getNode: vi.fn(
-				() =>
-					({
-						type: 'n8n-node.example',
-						typeVersion: 1,
-					}) as INodeUi,
-			),
-		};
 
 		mockedPrepareCommunityNodeDetailsViewStack.mockReturnValue({
 			title: 'Test Node',
@@ -328,10 +328,30 @@ describe('useNodeCreatorStore', () => {
 			nodeCreatorStore.openNodeCreatorForConnectingNode({
 				connection,
 				eventSource: 'plus_endpoint',
-				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(AI_UNCATEGORIZED_CATEGORY);
+		});
+
+		it('sets nodeCreatorView to provided nodeCreatorView even when connection type is not Main', async () => {
+			mockedParseCanvasConnectionHandleString.mockReturnValue({
+				type: NodeConnectionTypes.AiLanguageModel, // any value that is not NodeConnectionTypes.Main
+				index: 0,
+				mode: CanvasConnectionMode.Input,
+			});
+
+			const connection = {
+				source: 'node-1',
+				sourceHandle: 'fake-handle',
+			};
+
+			nodeCreatorStore.openNodeCreatorForConnectingNode({
+				connection,
+				eventSource: 'plus_endpoint',
+				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+			});
+
+			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
 		});
 
 		it('uses the provided nodeCreatorView when connection type is Main', async () => {
@@ -408,7 +428,7 @@ describe('useNodeCreatorStore', () => {
 		};
 
 		it('should return early when nodeData is null', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue(null);
+			vi.mocked(mockUseWorkflowDocumentStore).getNodeByName.mockReturnValue(null);
 
 			mockUseNDVStore.unsetActiveNodeName = vi.fn();
 			mockUseNodeTypesStore.getNodeType = vi.fn();
@@ -422,7 +442,7 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should return early when nodeType is null', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+			vi.mocked(mockUseWorkflowDocumentStore).getNodeByName.mockReturnValue({
 				id: 'test-id',
 				name: nodeName,
 				type: 'test-type',
@@ -439,7 +459,7 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should successfully open node creator with regular node type', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+			vi.mocked(mockUseWorkflowDocumentStore).getNodeByName.mockReturnValue({
 				id: 'test-id',
 				name: nodeName,
 				type: 'test-type',
@@ -487,7 +507,7 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should successfully open node creator with community node type', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+			vi.mocked(mockUseWorkflowDocumentStore).getNodeByName.mockReturnValue({
 				id: 'test-id',
 				name: nodeName,
 				type: 'test-type',
@@ -532,7 +552,7 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should handle empty actions array', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
+			vi.mocked(mockUseWorkflowDocumentStore).getNodeByName.mockReturnValue({
 				id: 'test-id',
 				name: nodeName,
 				type: 'test-type',

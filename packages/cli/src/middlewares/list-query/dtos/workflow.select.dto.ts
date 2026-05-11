@@ -6,6 +6,7 @@ export class WorkflowSelect extends BaseSelect {
 			'id', // always included downstream
 			'name',
 			'active',
+			'activeVersionId',
 			'tags',
 			'createdAt',
 			'updatedAt',

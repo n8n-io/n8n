@@ -2,12 +2,19 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { createWorkflow } from './mock.utils';
+import {
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
+
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+
+import { v4 as uuid } from 'uuid';
 
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -17,6 +24,7 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'wrap-1',
+					activeVersionId: uuid(),
 					name: 'Wrapper',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
@@ -47,19 +55,40 @@ describe('search-workflows MCP tool', () => {
 	describe('handler tests', () => {
 		test('formats the output correctly', async () => {
 			const workflows = [
-				createWorkflow({
-					id: 'a',
-					name: 'Alpha',
-					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
-				}),
-				createWorkflow({
-					id: 'b',
-					name: 'Beta',
-					active: true,
-					nodes: [
-						{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
-					],
-				}),
+				{
+					...createWorkflow({
+						id: 'a',
+						activeVersionId: 'version-a',
+						name: 'Alpha',
+						nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
+						settings: { availableInMCP: true },
+						activeVersion: createWorkflowHistoryVersion({
+							workflowId: 'a',
+							versionId: 'version-a',
+							authors: JSON.stringify([{ id: user.id, firstName: 'Test', lastName: 'User' }]),
+							nodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE } as INode],
+						}),
+					}),
+					scopes: ['workflow:read', 'workflow:execute'],
+				},
+				{
+					...createWorkflow({
+						id: 'b',
+						name: 'Beta',
+						activeVersionId: 'version-b',
+						nodes: [
+							{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
+						],
+						settings: { availableInMCP: true },
+						activeVersion: createWorkflowHistoryVersion({
+							workflowId: 'b',
+							versionId: 'version-b',
+							authors: JSON.stringify([{ id: user.id, firstName: 'Test', lastName: 'User' }]),
+							nodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE } as INode],
+						}),
+					}),
+					scopes: ['workflow:read'],
+				},
 			];
 
 			const workflowService = mockInstance(WorkflowService, {
@@ -72,26 +101,32 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'a',
 					name: 'Alpha',
-					active: false,
-					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
-					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
-					triggerCount: 1,
-					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }],
-				},
-				{
-					id: 'b',
-					name: 'Beta',
+					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					nodes: [{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE }],
+					scopes: ['workflow:read', 'workflow:execute'],
+					canExecute: true,
+					availableInMCP: true,
+				},
+				{
+					id: 'b',
+					name: 'Beta',
+					description: null,
+					active: true,
+					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
+					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
+					triggerCount: 1,
+					scopes: ['workflow:read'],
+					canExecute: false,
+					availableInMCP: true,
 				},
 			]);
 		});
 
 		test('applies provided filters and clamps high limit', async () => {
-			const workflows = [createWorkflow({ id: 'x', active: true })];
+			const workflows = [createWorkflow({ id: 'x', activeVersionId: uuid() })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
@@ -105,7 +140,6 @@ describe('search-workflows MCP tool', () => {
 			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
-				availableInMCP: true,
 				query: 'foo',
 				projectId: 'proj-1',
 			});
@@ -122,13 +156,25 @@ describe('search-workflows MCP tool', () => {
 			expect(optionsArg.take).toBe(1);
 		});
 
-		test('formats nodes as empty array when missing', async () => {
-			const workflows = [createWorkflow({ id: 'no-nodes', nodes: undefined })];
+		test('formats workflows with basic metadata', async () => {
+			const workflows = [
+				createWorkflow({
+					id: 'no-nodes',
+					activeVersionId: 'version-no-nodes',
+					nodes: [],
+					settings: { availableInMCP: true },
+				}),
+			];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
 			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
-			expect(result.data[0]).toMatchObject({ id: 'no-nodes', nodes: [] });
+			expect(result.data[0]).toMatchObject({
+				id: 'no-nodes',
+				scopes: [],
+				canExecute: false,
+				availableInMCP: true,
+			});
 		});
 	});
 });

@@ -30,20 +30,37 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
-const WorkflowExecuteModeSchema = z.union([
-	z.literal('cli'),
-	z.literal('error'),
-	z.literal('integrated'),
-	z.literal('internal'),
-	z.literal('manual'),
-	z.literal('retry'),
-	z.literal('trigger'),
-	z.literal('webhook'),
-	z.literal('evaluation'),
-	z.literal('chat'),
+export const WorkflowExecuteModeList = [
+	'cli',
+	'error',
+	'integrated',
+	'internal',
+	'manual',
+	'retry',
+	'trigger',
+	'webhook',
+	'evaluation',
+	'chat',
+	'agent',
+] as const;
+
+const WorkflowExecuteModeSchema = z.enum(WorkflowExecuteModeList);
+
+export type WorkflowExecuteModeValues = (typeof WorkflowExecuteModeList)[number];
+
+const RedactionPolicySchema = z.union([
+	z.literal('none'),
+	z.literal('all'),
+	z.literal('non-manual'),
+	z.literal('manual-only'),
 ]);
 
-export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;
+const RedactionSettingSchemaV1 = z.object({
+	version: z.literal(1),
+	policy: RedactionPolicySchema,
+});
+
+export type IRedactionSettingV1 = z.output<typeof RedactionSettingSchemaV1>;
 
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
@@ -58,6 +75,22 @@ const ExecutionContextSchemaV1 = z.object({
 	source: WorkflowExecuteModeSchema,
 
 	/**
+	 * Optional node where execution started
+	 */
+	triggerNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+		})
+		.optional(),
+
+	/**
+	 * Optional ID of the parent execution, if this is set this
+	 * execution context inherited from the mentioned parent execution context.
+	 */
+	parentExecutionId: z.string().optional(),
+
+	/**
 	 * Encrypted credential context for dynamic credential resolution
 	 * Always encrypted when stored, decrypted on-demand by credential resolver
 	 * @see ICredentialContext for decrypted structure
@@ -66,6 +99,13 @@ const ExecutionContextSchemaV1 = z.object({
 		description:
 			'Encrypted credential context for dynamic credential resolution Always encrypted when stored, decrypted on-demand by credential resolver @see ICredentialContext for decrypted structure',
 	}),
+
+	/**
+	 * Redaction setting captured at execution time.
+	 * Persisted so the correct redaction policy is applied when reading execution data,
+	 * regardless of any subsequent changes to the workflow setting.
+	 */
+	redaction: RedactionSettingSchemaV1.optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;
@@ -82,7 +122,56 @@ export const ExecutionContextSchema = z
  */
 export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
 
-const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
+/**
+ * Runtime representation of execution context with decrypted credential data.
+ *
+ * This type is identical to IExecutionContext except the `credentials` field
+ * contains the decrypted ICredentialContext object instead of an encrypted string.
+ *
+ * **Usage contexts:**
+ * - Hook execution: Hooks work with plaintext context to extract/merge credential data
+ * - Credential resolution: Resolvers need decrypted identity tokens
+ * - Internal processing: Runtime operations that need access to credential context
+ *
+ * **Security notes:**
+ * - Never persist this type to database - use IExecutionContext with encrypted credentials
+ * - Never expose in API responses or logs
+ * - Only exists in-memory during workflow execution
+ * - Should be cleared from memory after use
+ *
+ * **Lifecycle:**
+ * 1. Load IExecutionContext from storage (credentials encrypted)
+ * 2. Decrypt credentials field → PlaintextExecutionContext (runtime only)
+ * 3. Use for hook execution, credential resolution, etc.
+ * 4. Encrypt credentials → IExecutionContext before persistence
+ *
+ * @see IExecutionContext - Persisted form with encrypted credentials
+ * @see ICredentialContext - Decrypted credential structure
+ * @see IExecutionContextUpdate - Partial updates during hook execution
+ *
+ * @example
+ * ```typescript
+ * // During hook execution:
+ * const plaintextContext: PlaintextExecutionContext = {
+ *   ...context,
+ *   credentials: decryptCredentials(context.credentials) // Decrypt for runtime use
+ * };
+ *
+ * // Hook can now access plaintext credential data
+ * const identity = plaintextContext.credentials?.identity;
+ *
+ * // Before storage, re-encrypt:
+ * const storableContext: IExecutionContext = {
+ *   ...plaintextContext,
+ *   credentials: encryptCredentials(plaintextContext.credentials)
+ * };
+ * ```
+ */
+export type PlaintextExecutionContext = Omit<IExecutionContext, 'credentials'> & {
+	credentials?: ICredentialContext;
+};
+
+export const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
 	const typeName = schema.meta()?.title ?? 'Object';
 	try {
 		const normalizedObject = typeof value === 'string' ? jsonParse(value) : value;

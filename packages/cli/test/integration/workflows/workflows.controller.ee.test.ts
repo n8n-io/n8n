@@ -3,6 +3,7 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
+	createActiveWorkflow,
 	createWorkflowWithHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
@@ -21,11 +22,18 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
-import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
+import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
+import {
+	ApplicationError,
+	WorkflowActivationError,
+	calculateWorkflowChecksum,
+	type INode,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -92,7 +100,13 @@ beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
 
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory', 'TagEntity']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+		'TagEntity',
+	]);
 });
 
 afterEach(() => {
@@ -351,6 +365,136 @@ describe('PUT /workflows/:workflowId/share', () => {
 	});
 });
 
+describe('PUT /workflows/:workflowId/share - split share/unshare scopes', () => {
+	test('should allow owner to add new shares (share operation)', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('should allow owner to remove existing shares (unshare operation)', async () => {
+		const workflow = await createWorkflow({}, member);
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		// Verify initial state: owner + 1 shared
+		const initialSharing = await getWorkflowSharing(workflow);
+		expect(initialSharing).toHaveLength(2);
+
+		// Send empty shareWithIds to remove all shares
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('should allow both share and unshare in a single request', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+
+		// Replace member with anotherMember (unshare member, share anotherMember)
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+		const projectIds = sharedWorkflows.map((sw) => sw.projectId);
+		expect(projectIds).toContain(anotherMemberPersonalProject.id);
+		expect(projectIds).not.toContain(memberPersonalProject.id);
+	});
+
+	describe('personal space sharing disabled', () => {
+		let securitySettingsService: SecuritySettingsService;
+
+		beforeEach(async () => {
+			securitySettingsService = Container.get(SecuritySettingsService);
+		});
+
+		test('should forbid adding new shares when personal space sharing is disabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const workflow = await createWorkflow({}, member);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should allow removing existing shares when personal space sharing is disabled', async () => {
+			const workflow = await createWorkflow({}, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			// Verify initial state
+			const initialSharing = await getWorkflowSharing(workflow);
+			expect(initialSharing).toHaveLength(2);
+
+			// Disable personal space sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			// Unshare should still work
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [] });
+
+			expect(response.statusCode).toBe(200);
+
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should forbid mixed share+unshare when user lacks share scope', async () => {
+			const workflow = await createWorkflow({}, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			// Disable sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const tempUser = await createUser({ role: { slug: 'global:member' } });
+			const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				tempUser.id,
+			);
+
+			// Try to unshare anotherMember AND share tempUser - should fail because of share
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [tempUserPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			// State should be unchanged
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(2);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+	});
+});
+
 describe('GET /workflows/new', () => {
 	[true, false].forEach((sharingEnabled) => {
 		test(`should return an auto-incremented name, even when sharing is ${
@@ -361,9 +505,136 @@ describe('GET /workflows/new', () => {
 			await createWorkflow({ name: 'My workflow' }, owner);
 			await createWorkflow({ name: 'My workflow 7' }, owner);
 
-			const response = await authOwnerAgent.get('/workflows/new');
+			const response = await authOwnerAgent.get('/workflows/new').query({
+				projectId: ownerPersonalProject.id,
+			});
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.name).toEqual('My workflow 8');
+		});
+	});
+
+	test('should return 403 when user does not have workflow:create permission in the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should return 403 when user is not part of the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should allow user with workflow:create permission in personal project', async () => {
+		await createWorkflow({ name: 'My workflow' }, member);
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: memberPersonalProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toEqual('My workflow 2');
+	});
+
+	test('should allow user with workflow:create permission in team project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		// The naming service generates unique names globally, not per-project
+		expect(response.body.data.name).toBeDefined();
+		expect(typeof response.body.data.name).toBe('string');
+	});
+
+	test('should allow project admin to get new workflow name', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toBeDefined();
+	});
+
+	test('should allow instance owner to get new workflow name for any project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authOwnerAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toBeDefined();
+	});
+});
+
+describe('GET /workflows/from-url', () => {
+	test('should return 403 when user does not have workflow:create permission in the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({
+				url: 'https://example.com/workflow.json',
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should return 403 when user is not part of the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({
+				url: 'https://example.com/workflow.json',
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
 		});
 	});
 });
@@ -637,6 +908,7 @@ describe('POST /workflows', () => {
 			.post('/workflows')
 			.send({ ...makeWorkflow(), projectId: teamProject.id });
 
+		expect(response.statusCode).toBe(400);
 		expect(response.body).toMatchObject({
 			code: 400,
 			message: "You don't have the permissions to save the workflow in this project.",
@@ -713,7 +985,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -784,7 +1056,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						credentials: {
 							default: {
@@ -819,7 +1091,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						credentials: {
 							default: {
@@ -842,7 +1114,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						credentials: {
 							default: {
@@ -934,7 +1206,7 @@ describe('PATCH /workflows/:workflowId', () => {
 							name: 'Start',
 							parameters: {},
 							position: [-20, 260],
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							credentials: {
 								default: {
@@ -967,7 +1239,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						firstParam: 123,
 					},
 					position: [-20, 260],
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					credentials: {
 						default: {
@@ -1006,7 +1278,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						firstParam: 123,
 					},
 					position: [-20, 555],
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					credentials: {
 						default: {
@@ -1049,6 +1321,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const ownerChecksum = await calculateWorkflowChecksum(createResponse.body.data);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1066,10 +1340,10 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const updateAttemptResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: ownerVersionId });
+				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -1092,6 +1366,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner re-updates workflow
 
@@ -1103,10 +1378,10 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: memberVersionId });
+				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block owner activation on interim activation by member', async () => {
@@ -1114,6 +1389,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const ownerChecksum = await calculateWorkflowChecksum(createResponse.body.data);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1127,12 +1404,15 @@ describe('PATCH /workflows/:workflowId', () => {
 				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
 			// owner blocked from activating workflow
 
-			const activationAttemptResponse = await authOwnerAgent
-				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: ownerVersionId, name: 'Update by owner' });
+			const activationAttemptResponse = await authOwnerAgent.patch(`/workflows/${id}`).send({
+				active: true,
+				versionId: ownerVersionId,
+				name: 'Update by owner',
+				expectedChecksum: ownerChecksum,
+			});
 
-			expect(activationAttemptResponse.status).toBe(400);
-			expect(activationAttemptResponse.body.code).toBe(100);
+			expect(activationAttemptResponse.status).toBe(409);
+			expect(activationAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member activation on interim activation by owner', async () => {
@@ -1154,6 +1434,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner activates workflow
 
@@ -1163,12 +1444,15 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from activating workflow
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				active: true,
+				versionId: memberVersionId,
+				name: 'Update by member',
+				expectedChecksum: memberChecksum,
+			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow settings on interim update by owner', async () => {
@@ -1184,6 +1468,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner updates workflow name
 
@@ -1193,12 +1478,14 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from updating workflow settings
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				settings: { saveManualExecutions: true },
+				versionId: memberVersionId,
+				expectedChecksum: memberChecksum,
+			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow name on interim update by owner', async () => {
@@ -1214,6 +1501,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`).expect(200);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner updates workflow settings
 
@@ -1223,12 +1511,14 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from updating workflow name
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				settings: { saveManualExecutions: true },
+				versionId: memberVersionId,
+				expectedChecksum: memberChecksum,
+			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 	});
 
@@ -1243,7 +1533,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -1292,49 +1582,36 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 	});
 
-	describe('activate workflow', () => {
-		test('should activate workflow without changing version ID', async () => {
-			const workflow = await createWorkflow({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: true,
-			};
+	test('should include activeVersion relation in response for active workflows', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createActiveWorkflow({}, teamProject);
 
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).toBeCalled();
-
-			const {
-				data: { id, versionId, active },
-			} = response.body;
-
-			expect(id).toBe(workflow.id);
-			expect(versionId).toBe(workflow.versionId);
-			expect(active).toBe(true);
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated Name',
+			versionId: workflow.versionId,
 		});
 
-		test('should deactivate workflow without changing version ID', async () => {
-			const workflow = await createWorkflowWithHistory({ active: true }, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: false,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).not.toBeCalled();
-			expect(activeWorkflowManager.remove).toBeCalled();
-
-			const {
-				data: { id, versionId, active },
-			} = response.body;
-
-			expect(id).toBe(workflow.id);
-			expect(versionId).toBe(workflow.versionId);
-			expect(active).toBe(false);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('activeVersion');
+		expect(response.body.data.activeVersion).toBeDefined();
+		expect(response.body.data.activeVersion).toMatchObject({
+			versionId: expect.any(String),
+			workflowId: workflow.id,
 		});
+	});
+
+	test('should include activeVersion as null for inactive workflows', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createWorkflow({}, teamProject);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated Name',
+			versionId: workflow.versionId,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('activeVersion');
+		expect(response.body.data.activeVersion).toBeNull();
 	});
 });
 
@@ -1509,7 +1786,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		//
 		// ACT
@@ -1537,10 +1814,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflowWithHistory(
-			{ active: true, parentFolder: folder },
-			member,
-		);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1572,10 +1846,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflowWithHistory(
-			{ active: true, parentFolder: folder },
-			member,
-		);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1615,10 +1886,7 @@ describe('PUT /:workflowId/transfer', () => {
 			name: 'Another Test Folder',
 		});
 
-		const workflow = await createWorkflow(
-			{ active: true, parentFolder: folderInDestinationProject },
-			member,
-		);
+		const workflow = await createWorkflow({ parentFolder: folderInDestinationProject }, member);
 
 		//
 		// ACT
@@ -1639,7 +1907,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
 
@@ -1668,7 +1936,8 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
-		expect(workflowFromDB).toMatchObject({ active: false });
+		expect(workflowFromDB.active).toBe(false);
+		expect(workflowFromDB.activeVersionId).toBeNull();
 	});
 
 	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
@@ -2009,7 +2278,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
 
@@ -2039,5 +2308,46 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.body).toMatchObject({
 			message: 'User is missing a scope required to perform this action',
 		});
+	});
+
+	test('should always load the workflow from the database, ignoring request workflowData', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const dbNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			parameters: {},
+			typeVersion: 1,
+			position: [240, 300],
+		};
+
+		const workflow = await createWorkflow({ nodes: [dbNode], connections: {} }, teamProject);
+
+		// Send tampered workflowData with an injected node
+		const tamperedWorkflowData = {
+			...workflow,
+			nodes: [
+				dbNode,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should NOT reject (the DB workflow exists and user has execute scope)
+		// It should use the DB version, not the tampered one
+		expect(response.status).not.toBe(403);
+		expect(response.status).not.toBe(404);
 	});
 });

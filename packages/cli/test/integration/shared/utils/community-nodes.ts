@@ -10,12 +10,16 @@ import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '../constants'
 
 export const mockPackageName = () => NODE_PACKAGE_PREFIX + randomName();
 
-export const mockPackage = () =>
-	Container.get(InstalledPackagesRepository).create({
+export const mockPackage = () => {
+	const now = new Date();
+	return Container.get(InstalledPackagesRepository).create({
 		packageName: mockPackageName(),
 		installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
 		installedNodes: [],
+		createdAt: now,
+		updatedAt: now,
 	});
+};
 
 export const mockNode = (packageName: string) => {
 	const nodeName = randomName();

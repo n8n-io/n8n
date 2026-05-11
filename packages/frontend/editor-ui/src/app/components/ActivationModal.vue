@@ -2,35 +2,45 @@
 import { computed, ref } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import {
-	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	LOCAL_STORAGE_ACTIVATION_FLAG,
-	VIEWS,
-} from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { useStorage } from '@/app/composables/useStorage';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useStorage } from '@/app/composables/useStorage';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
+import {
+	LOCAL_STORAGE_ACTIVATION_FLAG,
+	VIEWS,
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '../constants';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
+
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-
 const router = useRouter();
 const i18n = useI18n();
 
+const modalTitle = computed(() => i18n.baseText('activationModal.workflowPublished'));
+
 const triggerContent = computed(() => {
-	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
+	const foundTriggers = getActivatableTriggerNodes(
+		workflowDocumentStore.value.workflowTriggerNodes,
+	);
 	if (!foundTriggers.length) {
 		return '';
 	}
@@ -73,11 +83,13 @@ const showExecutionsList = async () => {
 		router
 			.push({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: activeExecution.id },
+				params: { workflowId: currentWorkflow, executionId: activeExecution.id },
 			})
 			.catch(() => {});
 	} else {
-		router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
+		router
+			.push({ name: VIEWS.EXECUTION_HOME, params: { workflowId: currentWorkflow } })
+			.catch(() => {});
 	}
 	uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 };
@@ -94,11 +106,7 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 </script>
 
 <template>
-	<Modal
-		:name="WORKFLOW_ACTIVE_MODAL_KEY"
-		:title="i18n.baseText('activationModal.workflowActivated')"
-		width="460px"
-	>
+	<Modal :name="WORKFLOW_ACTIVE_MODAL_KEY" :title="modalTitle" width="460px">
 		<template #content>
 			<div>
 				<N8nText>{{ triggerContent }}</N8nText>
@@ -120,9 +128,9 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<ElCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
-					i18n.baseText('generic.dontShowAgain')
-				}}</ElCheckbox>
+				<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
+					<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
+				</N8nCheckbox>
 				<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>
@@ -135,10 +143,12 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 }
 
 .footer {
-	text-align: right;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
 
-	> * {
-		margin-left: var(--spacing--sm);
+	> button {
+		margin-left: auto;
 	}
 }
 </style>

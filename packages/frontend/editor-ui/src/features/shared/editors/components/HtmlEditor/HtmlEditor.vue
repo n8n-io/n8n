@@ -33,7 +33,7 @@ import {
 } from '../../plugins/codemirror/expressionCloseBrackets';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
 import { n8nAutocompletion } from '../../plugins/codemirror/n8nLang';
-import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
+import { autoCloseTags, htmlLanguage } from '@n8n/codemirror-lang-html';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges, pasteHandler } from './utils';
@@ -292,9 +292,9 @@ defineExpose({
 
 .droppable {
 	:global(.cm-editor) {
-		border-color: var(--ndv--droppable-parameter--color);
-		border-style: dashed;
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
 	}
 }
 
@@ -304,6 +304,7 @@ defineExpose({
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;
+		outline: none;
 	}
 }
 </style>

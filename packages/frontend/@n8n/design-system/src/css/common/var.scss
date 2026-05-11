@@ -43,7 +43,7 @@ $color-danger-light-1: var(--color--danger);
 $color-danger-light: var(--color--danger--tint-3);
 $color-danger-lighter: var(--color--danger--tint-4);
 
-$color-info-light-1: var(-color-info);
+$color-info-light-1: var(--color--info);
 $color-info-lighter: var(--color--info--tint-2);
 
 // Background
@@ -81,7 +81,6 @@ $fill-base: $color-white;
 
 /* Typography
 -------------------------- */
-$font-path: '../../assets/fonts' !default;
 $font-display: 'auto';
 /// fontSize|1|Font Size|0
 $font-size-extra-large: var(--font-size--xl);
@@ -443,7 +442,7 @@ $input-clear-hover-color: var(--color--text);
 $input-disabled-fill: $disabled-fill-base;
 $input-disabled-border: $disabled-border-base;
 $input-disabled-color: $disabled-color-base;
-$input-disabled-placeholder-color: var(--color--text--tint-2);
+$input-disabled-placeholder-color: var(--color--text--tint-1);
 
 /// fontSize||Font|1
 $input-medium-font-size: var(--input--font-size, 14px);

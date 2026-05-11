@@ -12,6 +12,7 @@ import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 
@@ -24,52 +25,86 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		super(DataTableColumn, dataSource.manager);
 	}
 
-	async getColumns(dataTableId: string, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				const columns = await em
-					.createQueryBuilder(DataTableColumn, 'dsc')
-					.where('dsc.dataTableId = :dataTableId', { dataTableId })
-					.getMany();
+	/**
+	 * Validates that a column name is not reserved as a system column
+	 */
+	private validateNotSystemColumn(columnName: string): void {
+		if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
+			throw new DataTableSystemColumnNameConflictError(columnName);
+		}
+		if (columnName === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+			throw new DataTableSystemColumnNameConflictError(columnName, 'testing');
+		}
+	}
 
-				// Ensure columns are always returned in the correct order by index,
-				// since the database does not guarantee ordering and TypeORM does not preserve
-				// join order in @OneToMany relations.
-				columns.sort((a, b) => a.index - b.index);
-				return columns;
-			},
-			false,
-		);
+	/**
+	 * Validates that a column name is unique within a data table
+	 */
+	private async validateUniqueColumnName(
+		columnName: string,
+		dataTableId: string,
+		em: EntityManager,
+	): Promise<void> {
+		const existingColumnMatch = await em.existsBy(DataTableColumn, {
+			name: columnName,
+			dataTableId,
+		});
+
+		if (existingColumnMatch) {
+			const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
+			if (!dataTable) {
+				throw new UnexpectedError('Data table not found');
+			}
+			throw new DataTableColumnNameConflictError(columnName, dataTable.name);
+		}
+	}
+
+	async getColumns(dataTableId: string, trx?: EntityManager) {
+		const em = trx ?? this.manager;
+		const columns = await em
+			.createQueryBuilder(DataTableColumn, 'dsc')
+			.where('dsc.dataTableId = :dataTableId', { dataTableId })
+			.getMany();
+
+		// Ensure columns are always returned in the correct order by index,
+		// since the database does not guarantee ordering and TypeORM does not preserve
+		// join order in @OneToMany relations.
+		columns.sort((a, b) => a.index - b.index);
+		return columns;
+	}
+
+	async getColumnByIdOrFail(dataTableId: string, columnId: string) {
+		const column = await this.findOneBy({ id: columnId, dataTableId });
+		if (!column) {
+			throw new DataTableColumnNotFoundError(dataTableId, columnId);
+		}
+		return column;
+	}
+
+	/**
+	 * Insertion index must be in [0, currentColumnCount] (append == currentColumnCount).
+	 * Values above that would create empty columns in between.
+	 */
+	private normalizeAddColumnIndex(index: number | undefined, currentColumnCount: number): number {
+		if (index === undefined || index > currentColumnCount) {
+			return currentColumnCount;
+		}
+		if (index < 0) {
+			throw new DataTableValidationError('tried to add column at a negative index');
+		}
+		return index;
 	}
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			if (DATA_TABLE_SYSTEM_COLUMNS.includes(schema.name)) {
-				throw new DataTableSystemColumnNameConflictError(schema.name);
-			}
-			if (schema.name === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
-				throw new DataTableSystemColumnNameConflictError(schema.name, 'testing');
-			}
+			this.validateNotSystemColumn(schema.name);
+			await this.validateUniqueColumnName(schema.name, dataTableId, em);
 
-			const existingColumnMatch = await em.existsBy(DataTableColumn, {
-				name: schema.name,
-				dataTableId,
-			});
+			const columns = await this.getColumns(dataTableId, em);
+			const columnCount = columns.length;
+			schema.index = this.normalizeAddColumnIndex(schema.index, columnCount);
 
-			if (existingColumnMatch) {
-				const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
-				if (!dataTable) {
-					throw new UnexpectedError('Data table not found');
-				}
-				throw new DataTableColumnNameConflictError(schema.name, dataTable.name);
-			}
-
-			if (schema.index === undefined) {
-				const columns = await this.getColumns(dataTableId, em);
-				schema.index = columns.length;
-			} else {
+			if (schema.index < columnCount) {
 				await this.shiftColumns(dataTableId, schema.index, 1, em);
 			}
 
@@ -122,6 +157,32 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			await this.shiftColumns(dataTableId, column.index, -1, em);
 			await this.shiftColumns(dataTableId, targetIndex, 1, em);
 			await em.update(DataTableColumn, { id: column.id }, { index: targetIndex });
+		});
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		column: DataTableColumn,
+		newName: string,
+		trx?: EntityManager,
+	) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			this.validateNotSystemColumn(newName);
+			await this.validateUniqueColumnName(newName, dataTableId, em);
+
+			const oldName = column.name;
+
+			await em.update(DataTableColumn, { id: column.id }, { name: newName });
+
+			await this.ddlService.renameColumn(
+				dataTableId,
+				oldName,
+				newName,
+				em.connection.options.type,
+				em,
+			);
+
+			return { ...column, name: newName };
 		});
 	}
 

@@ -6,7 +6,6 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import type { InsightsCollectionService } from '../insights-collection.service';
 import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
@@ -16,7 +15,6 @@ describe('InsightsService', () => {
 
 	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
 	let mockCompactionService: MockProxy<InsightsCompactionService>;
-	let mockCollectionService: MockProxy<InsightsCollectionService>;
 	let mockPruningService: MockProxy<InsightsPruningService>;
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
@@ -26,7 +24,6 @@ describe('InsightsService', () => {
 
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
 		mockCompactionService = mock<InsightsCompactionService>();
-		mockCollectionService = mock<InsightsCollectionService>();
 		mockPruningService = mock<InsightsPruningService>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
@@ -34,7 +31,6 @@ describe('InsightsService', () => {
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
 			mockCompactionService,
-			mockCollectionService,
 			mockPruningService,
 			mockLicenseState,
 			mockInstanceSettings,
