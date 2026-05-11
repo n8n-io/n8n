@@ -24,9 +24,9 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.memory.profiles.userProfile.empty': 'No user profile has been saved yet.',
 				'agents.builder.memory.profiles.loading': 'Loading user profile...',
 				'agents.builder.memory.profiles.error': "Couldn't load user profile.",
-				'agents.builder.memory.episodicMemory.label': 'Case memory',
+				'agents.builder.memory.episodicMemory.label': 'Episodic memory',
 				'agents.builder.memory.episodicMemory.hint':
-					'Remember source-backed details from previous cases so this agent can recognize similar issues across sessions.',
+					'Remember source-backed details from previous sessions so this agent can recognize similar issues later.',
 			})[key] ?? key,
 	}),
 }));
@@ -103,15 +103,15 @@ describe('AgentMemoryPanel', () => {
 		openModalWithDataMock.mockClear();
 	});
 
-	it('renders memory, user profile, and case memory controls', () => {
+	it('renders memory, user profile, and episodic memory controls', () => {
 		const wrapper = mountPanel();
 
 		expect(wrapper.find('[data-testid="agent-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-memory-profiles-panel"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-case-memory-toggle"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('Memory');
 		expect(wrapper.text()).toContain('User profile');
-		expect(wrapper.text()).toContain('Case memory');
+		expect(wrapper.text()).toContain('Episodic memory');
 		expect(getAgentMemoryProfilesMock).not.toHaveBeenCalled();
 	});
 
@@ -168,13 +168,13 @@ describe('AgentMemoryPanel', () => {
 		expect(errorWrapper.text()).toContain("Couldn't load user profile.");
 	});
 
-	it('opens the credential modal without updating config when case memory is toggled on', async () => {
+	it('opens the credential modal without updating config when episodic memory is toggled on', async () => {
 		const wrapper = mountPanel();
 
-		await wrapper.find('[data-testid="agent-case-memory-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith({
-			name: 'agentCaseMemoryCredentialModal',
+			name: 'agentEpisodicMemoryCredentialModal',
 			data: expect.objectContaining({
 				initialValue: null,
 				onSelect: expect.any(Function),
@@ -186,7 +186,7 @@ describe('AgentMemoryPanel', () => {
 	it('emits the memory config after a credential is selected', async () => {
 		const wrapper = mountPanel();
 
-		await wrapper.find('[data-testid="agent-case-memory-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 		const payload = openModalWithDataMock.mock.calls[0][0] as {
 			data: { onSelect: (credentialId: string) => void };
 		};
@@ -209,7 +209,7 @@ describe('AgentMemoryPanel', () => {
 		]);
 	});
 
-	it('preserves existing memory config when enabling case memory', async () => {
+	it('preserves existing memory config when enabling episodic memory', async () => {
 		const wrapper = mountPanel({
 			config: makeConfig({
 				memory: {
@@ -224,7 +224,7 @@ describe('AgentMemoryPanel', () => {
 			}),
 		});
 
-		await wrapper.find('[data-testid="agent-case-memory-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 		const payload = openModalWithDataMock.mock.calls[0][0] as {
 			data: { onSelect: (credentialId: string) => void };
 		};
@@ -248,7 +248,7 @@ describe('AgentMemoryPanel', () => {
 		});
 	});
 
-	it('emits disabled case memory config when case memory is toggled off', async () => {
+	it('emits disabled episodic memory config when episodic memory is toggled off', async () => {
 		const wrapper = mountPanel({
 			config: makeConfig({
 				memory: {
@@ -263,7 +263,7 @@ describe('AgentMemoryPanel', () => {
 			}),
 		});
 
-		await wrapper.find('[data-testid="agent-case-memory-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 
 		expect(openModalWithDataMock).not.toHaveBeenCalled();
 		const events = wrapper.emitted('update:config') ?? [];
@@ -287,7 +287,7 @@ describe('AgentMemoryPanel', () => {
 			wrapper.find('[data-testid="agent-memory-profiles-toggle"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
-			wrapper.find('[data-testid="agent-case-memory-toggle"]').attributes('disabled'),
+			wrapper.find('[data-testid="agent-episodic-memory-toggle"]').attributes('disabled'),
 		).toBeDefined();
 	});
 });

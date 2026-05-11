@@ -6,7 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 
-import AgentCaseMemoryCredentialModal from '../components/AgentCaseMemoryCredentialModal.vue';
+import AgentEpisodicMemoryCredentialModal from '../components/AgentEpisodicMemoryCredentialModal.vue';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = { baseText: (key: string) => key };
@@ -35,10 +35,10 @@ const CredentialPickerStub = defineComponent({
 	`,
 });
 
-const MODAL_NAME = 'agentCaseMemoryCredentialModal';
+const MODAL_NAME = 'agentEpisodicMemoryCredentialModal';
 
 function renderModal({ onSelect = vi.fn() }: { onSelect?: (credentialId: string) => void } = {}) {
-	const renderComponent = createComponentRenderer(AgentCaseMemoryCredentialModal, {
+	const renderComponent = createComponentRenderer(AgentEpisodicMemoryCredentialModal, {
 		global: {
 			stubs: {
 				Modal: ModalStub,
@@ -65,7 +65,7 @@ function renderModal({ onSelect = vi.fn() }: { onSelect?: (credentialId: string)
 	});
 }
 
-describe('AgentCaseMemoryCredentialModal', () => {
+describe('AgentEpisodicMemoryCredentialModal', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	beforeEach(() => {
@@ -80,14 +80,14 @@ describe('AgentCaseMemoryCredentialModal', () => {
 		const onSelect = vi.fn();
 		const { getByTestId } = renderModal({ onSelect });
 
-		expect(getByTestId('agent-case-memory-credential-picker')).toHaveAttribute(
+		expect(getByTestId('agent-episodic-memory-credential-picker')).toHaveAttribute(
 			'data-credential-type',
 			'openAiApi',
 		);
-		expect(getByTestId('agent-case-memory-credential-confirm')).toBeDisabled();
+		expect(getByTestId('agent-episodic-memory-credential-confirm')).toBeDisabled();
 
 		await fireEvent.click(getByTestId('select-credential'));
-		await fireEvent.click(getByTestId('agent-case-memory-credential-confirm'));
+		await fireEvent.click(getByTestId('agent-episodic-memory-credential-confirm'));
 
 		expect(onSelect).toHaveBeenCalledWith('credential-1');
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
@@ -97,7 +97,7 @@ describe('AgentCaseMemoryCredentialModal', () => {
 		const onSelect = vi.fn();
 		const { getByTestId } = renderModal({ onSelect });
 
-		await fireEvent.click(getByTestId('agent-case-memory-credential-cancel'));
+		await fireEvent.click(getByTestId('agent-episodic-memory-credential-cancel'));
 
 		expect(onSelect).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);

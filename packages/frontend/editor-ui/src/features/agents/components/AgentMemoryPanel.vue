@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAgentMemoryProfiles } from '../composables/useAgentApi';
-import { AGENT_CASE_MEMORY_CREDENTIAL_MODAL_KEY } from '../constants';
+import { AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY } from '../constants';
 import type { AgentJsonConfig } from '../types';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 
@@ -128,7 +128,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	}
 
 	uiStore.openModalWithData({
-		name: AGENT_CASE_MEMORY_CREDENTIAL_MODAL_KEY,
+		name: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 		data: {
 			initialValue: episodicMemoryCredential.value,
 			onSelect: enableEpisodicMemory,
@@ -216,7 +216,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			<N8nSwitch
 				:model-value="episodicMemoryEnabled"
 				:disabled="props.disabled"
-				data-testid="agent-case-memory-toggle"
+				data-testid="agent-episodic-memory-toggle"
 				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
 			/>
 		</div>

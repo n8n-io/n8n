@@ -7,16 +7,16 @@ import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
-import { AGENT_CASE_MEMORY_CREDENTIAL_TYPE } from '../constants';
+import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
 
-export type AgentCaseMemoryCredentialModalData = {
+export type AgentEpisodicMemoryCredentialModalData = {
 	initialValue: string | null;
 	onSelect: (credentialId: string) => void;
 };
 
 const props = defineProps<{
 	modalName: string;
-	data: AgentCaseMemoryCredentialModalData;
+	data: AgentEpisodicMemoryCredentialModalData;
 }>();
 
 const i18n = useI18n();
@@ -51,12 +51,12 @@ function onConfirm() {
 		:center="true"
 		max-width="460px"
 		min-height="250px"
-		data-test-id="agent-case-memory-credential-modal"
+		data-test-id="agent-episodic-memory-credential-modal"
 	>
 		<template #header>
 			<div :class="$style.header">
 				<CredentialIcon
-					:credential-type-name="AGENT_CASE_MEMORY_CREDENTIAL_TYPE"
+					:credential-type-name="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
 					:size="24"
 					:class="$style.icon"
 				/>
@@ -75,10 +75,10 @@ function onConfirm() {
 				<CredentialPicker
 					:class="$style.credentialPicker"
 					app-name="OpenAI"
-					:credential-type="AGENT_CASE_MEMORY_CREDENTIAL_TYPE"
+					:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
 					:selected-credential-id="selectedCredentialId"
 					:show-delete="false"
-					data-test-id="agent-case-memory-credential-picker"
+					data-test-id="agent-episodic-memory-credential-picker"
 					@credential-selected="onCredentialSelect"
 					@credential-deselected="onCredentialDeselect"
 				/>
@@ -89,7 +89,7 @@ function onConfirm() {
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
-					data-test-id="agent-case-memory-credential-cancel"
+					data-test-id="agent-episodic-memory-credential-cancel"
 					@click="closeModal"
 				>
 					{{ i18n.baseText('generic.cancel') }}
@@ -97,7 +97,7 @@ function onConfirm() {
 				<N8nButton
 					variant="solid"
 					:disabled="!selectedCredentialId"
-					data-test-id="agent-case-memory-credential-confirm"
+					data-test-id="agent-episodic-memory-credential-confirm"
 					@click="onConfirm"
 				>
 					{{ i18n.baseText('agents.builder.episodicMemoryCredentialModal.confirm') }}
