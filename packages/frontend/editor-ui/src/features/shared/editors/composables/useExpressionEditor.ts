@@ -394,7 +394,7 @@ export const useExpressionEditor = ({
 				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
 					ndvStore.activeNode?.name ?? ''
 				];
-			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
+			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
 		}
