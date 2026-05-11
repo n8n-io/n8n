@@ -9,7 +9,7 @@ const telemetryTrack = vi.fn();
 
 type InputTestProps = {
 	isStreaming: boolean;
-	isSendingMessage: boolean;
+	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
@@ -20,7 +20,7 @@ type InputTestProps = {
 
 const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
-	isSendingMessage: false,
+	isSubmitting: false,
 	isAwaitingConfirmation: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
@@ -356,7 +356,7 @@ describe('InstanceAiInput', () => {
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();
 
-		await rerender(inputProps({ suggestions, isSendingMessage: true }));
+		await rerender(inputProps({ suggestions, isSubmitting: true }));
 
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
@@ -402,7 +402,7 @@ describe('InstanceAiInput', () => {
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
 		expect(textbox.getAttribute('placeholder')).not.toBe(initialPlaceholder);
 
-		await rerender(inputProps({ suggestions, isSendingMessage: true }));
+		await rerender(inputProps({ suggestions, isSubmitting: true }));
 
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
@@ -431,7 +431,7 @@ describe('InstanceAiInput', () => {
 			inputProps({
 				suggestions,
 				currentThreadId: 'thread-shown',
-				isSendingMessage: true,
+				isSubmitting: true,
 			}),
 		);
 		await waitFor(() => {

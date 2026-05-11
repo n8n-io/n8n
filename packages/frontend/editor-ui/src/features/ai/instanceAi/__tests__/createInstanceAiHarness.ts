@@ -8,7 +8,7 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import { useEventRelay } from '../useEventRelay';
-import type { useInstanceAiStore } from '../instanceAi.store';
+import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -141,7 +141,7 @@ export interface InstanceAiHarness {
 	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
-	switchThread: (threadId: string) => Promise<void>;
+	routeToThread: (threadId: string) => Promise<void>;
 	addMessage: (msg: InstanceAiMessage) => void;
 	addBuildResult: (workflowId: string, toolCallId?: string) => void;
 	addExecutionResult: (workflowId: string, executionId: string, toolCallId?: string) => void;
@@ -166,12 +166,12 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	const store = reactive({
+		id: 'thread-1',
 		messages,
 		isStreaming,
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
-		currentThreadId: 'thread-1',
 	});
 
 	// --- Mock route ---
@@ -191,7 +191,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const executionTracking = useExecutionPushEvents();
 
 	const preview = useCanvasPreview({
-		thread: store as unknown as ReturnType<typeof useInstanceAiStore>,
+		thread: store as unknown as ThreadRuntime,
 		threadId: () => route.params.threadId,
 	});
 
@@ -253,7 +253,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		await nextTick();
 	}
 
-	async function switchThread(threadId: string) {
+	async function routeToThread(threadId: string) {
 		executionTracking.clearAll();
 		route.params.threadId = threadId;
 		await nextTick();
@@ -389,7 +389,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
-		switchThread,
+		routeToThread,
 		addMessage,
 		addBuildResult,
 		addExecutionResult,
