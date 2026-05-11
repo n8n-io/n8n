@@ -24,7 +24,10 @@ const ctx = {
 
 function makeService() {
 	const nodeCatalogService = mock<NodeCatalogService>();
-	nodeCatalogService.searchNodes.mockResolvedValue('search-result');
+	nodeCatalogService.searchNodes.mockResolvedValue({
+		results: 'search-result',
+		queriesWithNoResults: [],
+	});
 	nodeCatalogService.getNodeTypes.mockResolvedValue('node-types-string');
 
 	const ephemeralNodeExecutor = mock<EphemeralNodeExecutor>();
