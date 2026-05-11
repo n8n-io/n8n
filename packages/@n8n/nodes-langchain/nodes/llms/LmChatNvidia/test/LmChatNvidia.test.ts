@@ -3,19 +3,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatNvidia } from '../LmChatNvidia.node';
 
-jest.mock('@langchain/openai');
-jest.mock('@n8n/ai-utilities');
+vi.mock('@langchain/openai');
+vi.mock('@n8n/ai-utilities');
 
-const MockedChatOpenAI = jest.mocked(ChatOpenAI);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const MockedChatOpenAI = vi.mocked(ChatOpenAI);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 describe('LmChatNvidia', () => {
 	let node: LmChatNvidia;
@@ -37,32 +37,31 @@ describe('LmChatNvidia', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			nodeDef,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
-		ctx.getCredentials = jest
+		ctx.getCredentials = vi
 			.fn()
 			.mockResolvedValue(
 				auth === 'cloud'
 					? { apiKey: 'test-key', url: 'https://integrate.api.nvidia.com/v1' }
 					: { apiKey: '', url: 'http://localhost:8000/v1' },
 			);
-		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
-		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
+		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 			if (paramName === 'authentication') return auth;
 			if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return ctx;
 	};
 
 	beforeEach(() => {
 		node = new LmChatNvidia();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -153,7 +152,7 @@ describe('LmChatNvidia', () => {
 
 		it('should pass options through to ChatOpenAI', async () => {
 			const ctx = setupMockContext('cloud');
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'authentication') return 'cloud';
 				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
 				if (paramName === 'options')
@@ -186,7 +185,7 @@ describe('LmChatNvidia', () => {
 
 		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
 			const ctx = setupMockContext('cloud');
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'authentication') return 'cloud';
 				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
 				if (paramName === 'options') return { responseFormat: 'json_object' };
