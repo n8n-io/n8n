@@ -50,6 +50,20 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'update groups',
+				request: {
+					groups: [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }],
+				},
+			},
+			{
+				name: 'set groups to null',
+				request: { groups: null },
+			},
+			{
+				name: 'set groups to empty array',
+				request: { groups: [] },
+			},
+			{
 				name: 'update multiple fields',
 				request: {
 					name: 'Updated Workflow',
@@ -117,6 +131,41 @@ describe('UpdateWorkflowDto', () => {
 				name: 'pinData as array',
 				request: { pinData: [] },
 				expectedErrorPath: ['pinData'],
+			},
+			{
+				name: 'groups as string',
+				request: { groups: 'not-an-array' },
+				expectedErrorPath: ['groups'],
+			},
+			{
+				name: 'groups with missing id',
+				request: { groups: [{ name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['groups', 0, 'id'],
+			},
+			{
+				name: 'groups with missing name',
+				request: { groups: [{ id: 'g1', nodeIds: [] }] },
+				expectedErrorPath: ['groups', 0, 'name'],
+			},
+			{
+				name: 'groups with missing nodeIds',
+				request: { groups: [{ id: 'g1', name: 'Group' }] },
+				expectedErrorPath: ['groups', 0, 'nodeIds'],
+			},
+			{
+				name: 'groups with empty id',
+				request: { groups: [{ id: '', name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['groups', 0, 'id'],
+			},
+			{
+				name: 'groups with empty name',
+				request: { groups: [{ id: 'g1', name: '', nodeIds: [] }] },
+				expectedErrorPath: ['groups', 0, 'name'],
+			},
+			{
+				name: 'groups with empty nodeId string',
+				request: { groups: [{ id: 'g1', name: 'Group', nodeIds: [''] }] },
+				expectedErrorPath: ['groups', 0, 'nodeIds', 0],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateWorkflowDto.safeParse(request);

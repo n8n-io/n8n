@@ -440,6 +440,7 @@ export class WorkflowService {
 			'name',
 			'nodes',
 			'connections',
+			'groups',
 			'meta',
 			'settings',
 			'staticData',

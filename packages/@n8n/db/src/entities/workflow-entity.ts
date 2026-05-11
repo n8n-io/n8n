@@ -10,7 +10,7 @@ import {
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowGroup } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
@@ -69,6 +69,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		transformer: objectRetriever,
 	})
 	meta?: WorkflowFEMeta;
+
+	@JsonColumn({ nullable: true })
+	groups: IWorkflowGroup[] | null;
 
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({

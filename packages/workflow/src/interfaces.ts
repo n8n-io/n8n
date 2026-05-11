@@ -3007,6 +3007,12 @@ export interface IWaitingForExecutionSource {
 
 export type WorkflowId = IWorkflowBase['id'];
 
+export interface IWorkflowGroup {
+	id: string;
+	name: string;
+	nodeIds: string[];
+}
+
 export interface IWorkflowBase {
 	id: string;
 	name: string;
@@ -3026,6 +3032,7 @@ export interface IWorkflowBase {
 	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+	groups?: IWorkflowGroup[] | null;
 }
 
 interface IWorkflowHistory {
@@ -3033,6 +3040,7 @@ interface IWorkflowHistory {
 	workflowId: string;
 	nodes: INode[];
 	connections: IConnections;
+	groups: IWorkflowGroup[] | null;
 	authors: string;
 	name: string | null;
 	description: string | null;
