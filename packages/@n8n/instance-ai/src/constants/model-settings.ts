@@ -1,11 +1,11 @@
 /**
  * Per-agent sampling temperature.
  *
- * Lower values make the model more deterministic. Agents that emit
- * structured output (e.g. workflow SDK code) run colder so "creative"
- * token choices don't translate into broken artifacts.
+ * Set to 1 because Anthropic extended thinking requires temperature = 1.
+ * Determinism for workflow SDK code emission is instead enforced by the
+ * builder's grounded prompt, file-based submission flow, and validation tools.
  */
 export const TEMPERATURE = {
 	/** Workflow builder — emits strict workflow SDK TypeScript. */
-	BUILDER: 0.2,
+	BUILDER: 1,
 } as const;

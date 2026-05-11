@@ -31,6 +31,7 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { TEMPERATURE } from '../../constants/model-settings';
+import { EXTENDED_THINKING } from '../../constants/thinking';
 import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -912,7 +913,10 @@ export async function startBuildWorkflowAgentTask(
 									const resumeOptions: Record<string, unknown> = {
 										modelSettings: { temperature: TEMPERATURE.BUILDER },
 										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
+											anthropic: {
+												cacheControl: { type: 'ephemeral' },
+												thinking: EXTENDED_THINKING,
+											},
 										},
 										...(shouldUseBuilderMemory
 											? { memory: builderMemoryBinding, savePerStep: true }
@@ -923,7 +927,10 @@ export async function startBuildWorkflowAgentTask(
 										abortSignal: signal,
 										modelSettings: { temperature: TEMPERATURE.BUILDER },
 										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
+											anthropic: {
+												cacheControl: { type: 'ephemeral' },
+												thinking: EXTENDED_THINKING,
+											},
 										},
 										...(shouldUseBuilderMemory
 											? { memory: builderMemoryBinding, savePerStep: true }
@@ -1183,7 +1190,10 @@ export async function startBuildWorkflowAgentTask(
 							const resumeOptions: Record<string, unknown> = {
 								modelSettings: { temperature: TEMPERATURE.BUILDER },
 								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
+									anthropic: {
+										cacheControl: { type: 'ephemeral' },
+										thinking: EXTENDED_THINKING,
+									},
 								},
 							};
 							const stream = await subAgent.stream(briefing, {
@@ -1191,7 +1201,10 @@ export async function startBuildWorkflowAgentTask(
 								abortSignal: signal,
 								modelSettings: { temperature: TEMPERATURE.BUILDER },
 								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
+									anthropic: {
+										cacheControl: { type: 'ephemeral' },
+										thinking: EXTENDED_THINKING,
+									},
 								},
 								...(llmStepTraceHooks?.executionOptions ?? {}),
 							});

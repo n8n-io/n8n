@@ -1,11 +1,11 @@
 /**
  * Extended-thinking config used at stream/generate time.
  *
- * Skipped for the workflow builder sub-agent — it runs at low temperature
- * for deterministic code emission, which is incompatible with extended
- * thinking on providers that require temperature = 1.
+ * Anthropic requires temperature = 1 when thinking is enabled. The workflow
+ * builder is configured to run at temperature = 1 for this reason — see
+ * `constants/model-settings.ts`.
  */
 export const EXTENDED_THINKING = {
 	type: 'enabled' as const,
-	budgetTokens: 2048,
+	budgetTokens: 1024,
 } as const;
