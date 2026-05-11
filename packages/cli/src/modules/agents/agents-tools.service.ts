@@ -245,7 +245,7 @@ export class AgentsToolsService {
 			})
 			.build();
 	}
-
+}
 
 /**
  * The catalog's `getNodeTypes` signature expects `version` as a string (matching the
