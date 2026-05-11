@@ -6,6 +6,7 @@ import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workf
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -450,6 +451,177 @@ describe('update-workflow MCP tool', () => {
 
 				const response = parseResult(result);
 				expect(response.validationWarnings).toEqual([]);
+			});
+		});
+
+		describe('credential validation', () => {
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.slack') {
+						return { description: { credentials: [{ name: 'slackApi' }] } };
+					}
+					if (type === 'n8n-nodes-base.set') {
+						return { description: { credentials: [] } };
+					}
+					return { description: {} };
+				}) as typeof nodeTypes.getByNameAndVersion);
+
+				(credentialsService.getOne as jest.Mock).mockImplementation(async (_user, id: string) => {
+					if (id === 'cred-slack') return { id, name: 'My Slack', type: 'slackApi' };
+					if (id === 'cred-wrong-type') return { id, name: 'Wrong', type: 'discordApi' };
+					throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
+				});
+			});
+
+			test('rejects setNodeCredential with a non-existent credential id', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Slack',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-missing',
+							credentialName: 'Whatever',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Operation 0 failed');
+				expect(response.error).toContain("credential 'cred-missing' not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects setNodeCredential when credential type does not match the key', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Slack',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-wrong-type',
+							credentialName: 'Wrong',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("is type 'discordApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects setNodeCredential when the node type does not accept the credential key', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Setter', type: 'n8n-nodes-base.set' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Setter',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-slack',
+							credentialName: 'My Slack',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'slackApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('accepts a setNodeCredential whose id, type and key all match', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Slack',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-slack',
+							credentialName: 'My Slack',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects addNode with an unknown credential id', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'Slack',
+								type: 'n8n-nodes-base.slack',
+								typeVersion: 1,
+								credentials: {
+									slackApi: { id: 'cred-missing', name: 'Whatever' },
+								},
+							},
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-missing' not found");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('allows addNode credentials with no id (auto-assign will pick one)', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'Slack',
+								type: 'n8n-nodes-base.slack',
+								typeVersion: 1,
+								credentials: { slackApi: { name: 'My Slack' } },
+							},
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
 			});
 		});
 	});

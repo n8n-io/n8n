@@ -5,6 +5,7 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
+import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import {
 	applyOperations,
@@ -132,6 +133,17 @@ export const createUpdateWorkflowTool = (
 
 			if (!result.success) {
 				throw new Error(result.error);
+			}
+
+			const credentialCheck = await validateCredentialReferences(
+				operations,
+				existingWorkflow,
+				user,
+				credentialsService,
+				nodeTypes,
+			);
+			if (!credentialCheck.ok) {
+				throw new Error(credentialCheck.error);
 			}
 
 			const workflowUpdateData = new WorkflowEntity();
