@@ -60,6 +60,9 @@ describe('WorkflowHistoryService', () => {
 				authors: 'John Doe',
 				connections: {},
 				nodes: workflow.nodes,
+				versionId: workflow.versionId,
+				workflowId,
+				autosaved: false,
 			});
 		});
 
