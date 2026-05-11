@@ -359,6 +359,78 @@ describe('TaskBroker', () => {
 			expect(remainingRequests[0]).toEqual(request);
 		});
 
+		it('should not create duplicate request when runner defers', async () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+
+			// Simulate a launcher-like runner that defers tasks on acceptance
+			const messageCallback = jest.fn().mockImplementation(async (message) => {
+				if (message.type === 'broker:taskofferaccept') {
+					taskBroker.handleRunnerDeferred(message.taskId);
+				}
+			});
+
+			taskBroker.registerRunner(runner, messageCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId,
+				taskType: 'taskType1',
+				validFor: -1,
+				validUntil: 0n,
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			taskBroker.settleTasks();
+
+			// Let the async acceptOffer complete
+			await new Promise(setImmediate);
+
+			const requests = taskBroker.getPendingTaskRequests();
+			expect(requests).toHaveLength(1);
+			expect(requests[0].requestId).toBe('request1');
+			expect(requests[0].acceptInProgress).toBe(false);
+		});
+
+		it('should log warning when offers exist but none match request type', () => {
+			const loggerMock = mock<Logger>();
+			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'python',
+				validFor: -1,
+				validUntil: 0n,
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'javascript',
+				acceptInProgress: false,
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
+
+			taskBroker.settleTasks();
+
+			expect(loggerMock.warn).toHaveBeenCalledWith(
+				expect.stringMatching(/No matching task offer.*request1.*javascript.*python/),
+			);
+		});
+
 		it('should expire tasks before settling', () => {
 			const validOffer: TaskOffer = {
 				offerId: 'valid',
@@ -1064,9 +1136,9 @@ describe('TaskBroker', () => {
 			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
 
 			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+				request.acceptInProgress = false;
 				clearTimeout(request.timeout);
 				request.timeout = taskBroker['createRequestTimeout'](request.requestId);
-				taskBroker.setPendingTaskRequests([request]);
 			});
 
 			taskBroker.settleTasks();

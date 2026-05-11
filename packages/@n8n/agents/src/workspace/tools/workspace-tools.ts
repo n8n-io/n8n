@@ -1,6 +1,7 @@
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { WorkspaceFilesystem, WorkspaceSandbox } from '../types';
 import { createAppendFileTool } from './append-file';
+import { createBatchStrReplaceFileTool } from './batch-str-replace-file';
 import { createCopyFileTool } from './copy-file';
 import { createDeleteFileTool } from './delete-file';
 import { createExecuteCommandTool } from './execute-command';
@@ -11,6 +12,7 @@ import { createMoveFileTool } from './move-file';
 import { createKillProcessTool, createListProcessesTool } from './process-tools';
 import { createReadFileTool } from './read-file';
 import { createRmdirTool } from './rmdir';
+import { createStrReplaceFileTool } from './str-replace-file';
 import { createWriteFileTool } from './write-file';
 
 interface WorkspaceLike {
@@ -23,6 +25,8 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 
 	if (workspace.filesystem) {
 		tools.push(createReadFileTool(workspace.filesystem));
+		tools.push(createStrReplaceFileTool(workspace.filesystem));
+		tools.push(createBatchStrReplaceFileTool(workspace.filesystem));
 		tools.push(createWriteFileTool(workspace.filesystem));
 		tools.push(createListFilesTool(workspace.filesystem));
 		tools.push(createFileStatTool(workspace.filesystem));

@@ -48,15 +48,16 @@ jobs:
 
       - name: Generate experiment name
         id: experiment
+        env:
+          PREFIX: ${{ inputs.experiment_name_prefix }}
+          BRANCH: ${{ inputs.branch }}
         run: |
           DATE=$(date +%Y_%m_%d)
-          PREFIX="${{ inputs.experiment_name_prefix }}"
 
           if [ -n "$PREFIX" ]; then
             NAME="${PREFIX}_${DATE}"
           else
             # Extract ticket ID from branch name (e.g., AI-1234 from ai-1234-feature-name)
-            BRANCH="${{ inputs.branch }}"
             TICKET=$(echo "$BRANCH" | grep -oE '^[Aa][Ii]-[0-9]+' | tr '[:lower:]' '[:upper:]' || true)
             if [ -n "$TICKET" ]; then
               NAME="${TICKET}_${DATE}"
@@ -95,14 +96,23 @@ jobs:
 
       - name: Run Evaluations
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
+        env:
+          SUITE: ${{ inputs.suite }}
+          DATASET: ${{ inputs.dataset }}
+          REPETITIONS: ${{ inputs.repetitions }}
+          JUDGES: ${{ inputs.judges }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          EXPERIMENT_NAME: ${{ steps.experiment.outputs.name }}
+          WEBHOOK_URL_ARG: ${{ secrets.EVALS_WEBHOOK_URL && format('--webhook-url={0}', secrets.EVALS_WEBHOOK_URL) || '' }}
+          WEBHOOK_SECRET_ARG: ${{ secrets.EVALS_WEBHOOK_SECRET && format('--webhook-secret={0}', secrets.EVALS_WEBHOOK_SECRET) || '' }}
         run: |
           pnpm eval \
-            --suite "${{ inputs.suite }}" \
+            --suite "$SUITE" \
             --backend langsmith \
-            --dataset "${{ inputs.dataset }}" \
-            --repetitions ${{ inputs.repetitions }} \
-            --judges ${{ inputs.judges }} \
-            --concurrency ${{ inputs.concurrency }} \
-            --name "${{ steps.experiment.outputs.name }}" \
-            ${{ secrets.EVALS_WEBHOOK_URL && format('--webhook-url "{0}"', secrets.EVALS_WEBHOOK_URL) || '' }} \
-            ${{ secrets.EVALS_WEBHOOK_SECRET && format('--webhook-secret "{0}"', secrets.EVALS_WEBHOOK_SECRET) || '' }}
+            --dataset "$DATASET" \
+            --repetitions "$REPETITIONS" \
+            --judges "$JUDGES" \
+            --concurrency "$CONCURRENCY" \
+            --name "$EXPERIMENT_NAME" \
+            "$WEBHOOK_URL_ARG" \
+            "$WEBHOOK_SECRET_ARG"

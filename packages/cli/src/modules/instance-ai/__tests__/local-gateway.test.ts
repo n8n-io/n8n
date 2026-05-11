@@ -1,5 +1,5 @@
 import { LocalGateway } from '../filesystem/local-gateway';
-import type { LocalGatewayEvent } from '../filesystem/local-gateway';
+import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway';
 import type { McpTool } from '@n8n/api-types';
 
 const SAMPLE_TOOL: McpTool = {
@@ -57,13 +57,37 @@ describe('LocalGateway', () => {
 
 			await expect(callPromise).rejects.toThrow('disconnected');
 		});
+
+		it('should emit gateway-disconnect event before clearing state', () => {
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
+
+			const observedConnectedAtEmit: boolean[] = [];
+			gateway.onDisconnect(() => {
+				observedConnectedAtEmit.push(gateway.isConnected);
+			});
+
+			gateway.disconnect();
+
+			expect(observedConnectedAtEmit).toEqual([true]);
+			expect(gateway.isConnected).toBe(false);
+		});
+
+		it('should deliver gateway-disconnect event with the expected shape', () => {
+			gateway.init(EMPTY_CAPABILITIES);
+			const events: Array<{ type: string }> = [];
+			gateway.onDisconnect((event) => events.push(event));
+
+			gateway.disconnect();
+
+			expect(events).toEqual([{ type: 'gateway-disconnect' }]);
+		});
 	});
 
 	describe('callTool (gateway round-trip)', () => {
 		it('should emit filesystem-request event and resolve on response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -94,7 +118,7 @@ describe('LocalGateway', () => {
 		it('should reject on error string response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -110,7 +134,7 @@ describe('LocalGateway', () => {
 		it('should reject on isError result', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -123,7 +147,10 @@ describe('LocalGateway', () => {
 				isError: true,
 			});
 
-			await expect(callPromise).rejects.toThrow('File too large');
+			// isError results are passed through so the tool layer can inspect them
+			const result = await callPromise;
+			expect(result.isError).toBe(true);
+			expect((result.content[0] as { type: 'text'; text: string }).text).toBe('File too large');
 		});
 
 		it('should throw when gateway is not connected', async () => {
@@ -132,7 +159,7 @@ describe('LocalGateway', () => {
 			).rejects.toThrow('not connected');
 		});
 
-		it('should timeout after 30 seconds', async () => {
+		it('should timeout after 60 seconds', async () => {
 			jest.useFakeTimers();
 
 			gateway.init(EMPTY_CAPABILITIES);
@@ -142,7 +169,7 @@ describe('LocalGateway', () => {
 				arguments: { filePath: 'slow.ts' },
 			});
 
-			jest.advanceTimersByTime(30_001);
+			jest.advanceTimersByTime(60_001);
 
 			await expect(callPromise).rejects.toThrow('timed out');
 
@@ -152,7 +179,7 @@ describe('LocalGateway', () => {
 		it('should dispatch different tool names correctly', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const treeText = 'project/\n  src/\n    index.ts';
@@ -173,6 +200,38 @@ describe('LocalGateway', () => {
 	describe('resolveRequest', () => {
 		it('should return false for unknown requestId', () => {
 			expect(gateway.resolveRequest('unknown_id', { content: [] })).toBe(false);
+		});
+	});
+
+	describe('resolveRequest with isError results', () => {
+		const CONFIRMATION_PAYLOAD = {
+			toolGroup: 'filesystemWrite',
+			resource: 'write_file',
+			description: 'Write to file: test.ts',
+			options: { allowOnce: 'token-allow-once', denyOnce: 'token-deny-once' },
+		};
+		const rawErrorText = `GATEWAY_CONFIRMATION_REQUIRED::${JSON.stringify(CONFIRMATION_PAYLOAD)}`;
+
+		it('should resolve with isError result so the tool layer can inspect it', async () => {
+			gateway.init(EMPTY_CAPABILITIES);
+
+			const requestEvents: LocalGatewayRequestEvent[] = [];
+			gateway.onRequest((e) => requestEvents.push(e));
+
+			const callPromise = gateway.callTool({
+				name: 'write_file',
+				arguments: { filePath: 'test.ts' },
+			});
+
+			const errorResult = {
+				content: [{ type: 'text' as const, text: rawErrorText }],
+				isError: true as const,
+			};
+			gateway.resolveRequest(requestEvents[0].payload.requestId, errorResult);
+
+			const result = await callPromise;
+			expect(result.isError).toBe(true);
+			expect((result.content[0] as { type: 'text'; text: string }).text).toBe(rawErrorText);
 		});
 	});
 
@@ -198,7 +257,7 @@ describe('LocalGateway', () => {
 		it('should return unsubscribe function that stops event delivery', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			const unsubscribe = gateway.onRequest((event) => events.push(event));
 
 			const p1 = gateway

@@ -1,6 +1,15 @@
 import { getDefaultDiscovery, getInstallInstructions } from './browser-discovery';
-import { AlreadyConnectedError, BrowserNotAvailableError, NotConnectedError } from './errors';
+import {
+	AlreadyConnectedError,
+	BrowserNotAvailableError,
+	ConnectionLostError,
+	ExtensionNotConnectedError,
+	NotConnectedError,
+	type ConnectionLostReason,
+} from './errors';
+import { createLogger } from './logger';
 import type {
+	Adapter,
 	BrowserName,
 	Config,
 	ConnectConfig,
@@ -11,9 +20,14 @@ import type {
 } from './types';
 import { configSchema } from './types';
 
+const log = createLogger('connection');
+
 export class BrowserConnection {
 	private state: ConnectionState | null = null;
+	private disconnectReason: ConnectionLostReason | undefined;
 	private readonly config: ResolvedConfig;
+	/** Adapter kept alive after an extension-connect timeout so its relay URL remains valid. */
+	private pendingAdapter: Adapter | null = null;
 
 	constructor(userConfig?: Partial<Config>) {
 		const parsed = configSchema.parse(userConfig ?? {});
@@ -48,6 +62,7 @@ export class BrowserConnection {
 		this.config = {
 			defaultBrowser: parsed.defaultBrowser,
 			browsers,
+			adapter: parsed.adapter,
 		};
 	}
 
@@ -67,8 +82,29 @@ export class BrowserConnection {
 			browser,
 		};
 
-		const adapter = await this.createAdapter();
-		await adapter.launch(connectConfig);
+		// Reuse a pending adapter (relay kept alive from a prior timeout) if available.
+		const adapter = this.pendingAdapter ?? (await this.createAdapter());
+		this.pendingAdapter = null;
+
+		// Listen for unexpected disconnections so we can invalidate state immediately
+		adapter.onDisconnect = (reason) => {
+			if (!this.state) return; // already disconnected
+			log.debug('unexpected disconnect, reason:', reason);
+			this.disconnectReason = reason;
+			this.state = null;
+		};
+
+		try {
+			await adapter.launch(connectConfig);
+		} catch (error) {
+			if (error instanceof ExtensionNotConnectedError) {
+				// Keep the adapter alive so its relay URL stays valid for the next retry.
+				this.pendingAdapter = adapter;
+			} else {
+				await adapter.close().catch(() => {});
+			}
+			throw error;
+		}
 
 		// Two-tier model: listTabs() returns metadata from the relay (no
 		// debugger attachment). Playwright page objects are created lazily
@@ -86,10 +122,16 @@ export class BrowserConnection {
 	}
 
 	async disconnect(): Promise<void> {
+		const pending = this.pendingAdapter;
+		this.pendingAdapter = null;
+
+		if (pending) await pending.close().catch(() => {});
+
 		if (!this.state) return; // already disconnected — idempotent
 
 		const { adapter } = this.state;
 		this.state = null;
+		this.disconnectReason = undefined;
 
 		try {
 			await adapter.close();
@@ -99,7 +141,12 @@ export class BrowserConnection {
 	}
 
 	getConnection(): ConnectionState {
-		if (!this.state) throw new NotConnectedError();
+		if (!this.state) {
+			if (this.disconnectReason) {
+				throw new ConnectionLostError(this.disconnectReason);
+			}
+			throw new NotConnectedError();
+		}
 		return this.state;
 	}
 
@@ -134,7 +181,11 @@ export class BrowserConnection {
 		}
 	}
 
-	private async createAdapter() {
+	private async createAdapter(): Promise<Adapter> {
+		if (this.config.adapter === 'agent-browser') {
+			const { AgentBrowserAdapter } = await import('./adapters/agent-browser');
+			return new AgentBrowserAdapter(this.config);
+		}
 		const { PlaywrightAdapter } = await import('./adapters/playwright');
 		return new PlaywrightAdapter(this.config);
 	}

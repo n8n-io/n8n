@@ -1,5 +1,6 @@
 import {
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
@@ -48,6 +49,17 @@ export class McpOAuthClientsController {
 			data: clientDtos,
 			count: clients.length,
 		};
+	}
+
+	/**
+	 * Instance-wide MCP OAuth client capacity stats. Admin-only — gated by
+	 * the `mcp:manage` global scope, matching the existing administrative
+	 * MCP settings endpoint.
+	 */
+	@GlobalScope('mcp:manage')
+	@Get('/instance-stats')
+	async getInstanceStats(): Promise<InstanceMcpClientStatsResponseDto> {
+		return await this.mcpOAuthService.getInstanceClientStats();
 	}
 
 	/**

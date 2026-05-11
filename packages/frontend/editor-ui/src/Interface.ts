@@ -464,6 +464,7 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -642,6 +643,8 @@ export interface NewCredentialsModal extends ModalState {
 	forceManualMode?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	nodeName?: string;
+	hideAskAssistant?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -875,7 +878,8 @@ export type CloudUpdateLinkSourceType =
 	| 'main-sidebar'
 	| 'chat-hub'
 	| 'empty-state-builder-prompt'
-	| 'instance-ai';
+	| 'instance-ai'
+	| 'workflow-settings';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -904,7 +908,8 @@ export type UTMCampaign =
 	| 'upgrade-custom-roles'
 	| 'upgrade-canvas-nav'
 	| 'upgrade-main-sidebar'
-	| 'upgrade-instance-ai';
+	| 'upgrade-instance-ai'
+	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;
@@ -953,7 +958,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'NamedVersions'
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
-	| 'CustomRoles';
+	| 'CustomRoles'
+	| 'DataRedaction';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

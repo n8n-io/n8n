@@ -4,16 +4,24 @@ import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 
-const props = defineProps<{
-	modelValue: string;
-	placeholder?: string;
-	isStreaming: boolean;
-	canSubmit: boolean;
-	disabled?: boolean;
-	showVoice?: boolean;
-	showAttach?: boolean;
-	acceptedMimeTypes?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue: string;
+		placeholder?: string;
+		isStreaming: boolean;
+		canSubmit: boolean;
+		disabled?: boolean;
+		showVoice?: boolean;
+		showAttach?: boolean;
+		acceptedMimeTypes?: string;
+		autosize?: boolean | { minRows: number; maxRows: number };
+	}>(),
+	{
+		placeholder: undefined,
+		acceptedMimeTypes: undefined,
+		autosize: () => ({ minRows: 2, maxRows: 6 }),
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -26,7 +34,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
-const isFocused = ref(false);
 
 // Voice input
 const committedSpokenMessage = ref('');
@@ -38,7 +45,9 @@ const speechInput = useSpeechRecognition({
 
 watch(speechInput.result, (spoken) => {
 	if (props.showVoice) {
-		emit('update:modelValue', committedSpokenMessage.value + ' ' + spoken.trimStart());
+		const prefix = committedSpokenMessage.value;
+		const separator = prefix.length > 0 ? ' ' : '';
+		emit('update:modelValue', prefix + separator + spoken.trimStart());
 	}
 });
 
@@ -109,11 +118,7 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		:class="[$style.inputWrapper, { [$style.focused]: isFocused }]"
-		@click="handleClickWrapper"
-		@paste="handlePaste"
-	>
+	<div :class="$style.inputWrapper" @click="handleClickWrapper" @paste="handlePaste">
 		<input
 			v-if="showAttach"
 			ref="fileInputRef"
@@ -125,19 +130,16 @@ defineExpose({
 		/>
 
 		<slot name="attachments" />
-
 		<N8nInput
 			ref="inputRef"
 			:model-value="modelValue"
 			type="textarea"
 			:placeholder="placeholder"
 			autocomplete="off"
-			:autosize="{ minRows: 1, maxRows: 6 }"
+			:autosize="autosize"
 			:disabled="disabled"
 			@update:model-value="emit('update:modelValue', $event)"
 			@keydown="handleKeydown"
-			@focus="isFocused = true"
-			@blur="isFocused = false"
 		/>
 
 		<div :class="$style.footer">
@@ -161,7 +163,7 @@ defineExpose({
 				</N8nTooltip>
 				<N8nIconButton
 					v-if="showVoice && speechInput.isSupported"
-					variant="outline"
+					variant="ghost"
 					:disabled="disabled || isStreaming"
 					:icon="speechInput.isListening.value ? 'square' : 'mic'"
 					:class="{ [$style.recording]: speechInput.isListening.value }"
@@ -198,24 +200,17 @@ defineExpose({
 	width: 100%;
 	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
-	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
-	background-color: var(--color--background--light-3);
-	border: 1px solid var(--color--foreground--tint-1);
+	box-shadow:
+		var(--shadow--xs),
+		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	background-color: var(--background--surface);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--border--shadow: none;
-	--input--border--shadow--hover: none;
-	--input--border--shadow--focus: none;
-	--input--color--background: transparent;
+	outline: 1px solid transparent;
 
-	&.focused,
-	&:hover:has(textarea:not(:disabled)) {
-		border-color: var(--color--secondary);
+	&:focus-within {
+		outline-color: var(--focus--border-color);
 	}
 
 	& textarea {
@@ -223,6 +218,7 @@ defineExpose({
 		line-height: 1.5em;
 		resize: none;
 		padding: 0 !important;
+		scrollbar-color: transparent transparent;
 	}
 
 	:global(.n8n-input) > div {
@@ -230,6 +226,7 @@ defineExpose({
 	}
 
 	:global(.n8n-input__wrapper) {
+		--input--radius: var(--radius--xl);
 		box-shadow: none !important;
 		outline: none !important;
 		background-color: transparent !important;

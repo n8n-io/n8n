@@ -29,44 +29,26 @@ describe('best-practices', () => {
 			}
 		});
 
-		it('should return documentation for techniques with guides', () => {
-			const techniquesWithDocs = [
-				WorkflowTechnique.SCHEDULING,
-				WorkflowTechnique.CHATBOT,
-				WorkflowTechnique.FORM_INPUT,
-				WorkflowTechnique.SCRAPING_AND_RESEARCH,
-				WorkflowTechnique.TRIAGE,
-				WorkflowTechnique.CONTENT_GENERATION,
-				WorkflowTechnique.DATA_EXTRACTION,
-				WorkflowTechnique.DATA_PERSISTENCE,
-				WorkflowTechnique.DATA_TRANSFORMATION,
-				WorkflowTechnique.DOCUMENT_PROCESSING,
-				WorkflowTechnique.NOTIFICATION,
-			];
-
-			for (const tech of techniquesWithDocs) {
-				const fn = documentation[tech];
-				expect(fn).toBeDefined();
-				if (fn) {
-					const doc = fn();
-					expect(typeof doc).toBe('string');
-					expect(doc.length).toBeGreaterThan(100);
-					expect(doc).toContain('# Best Practices');
-				}
-			}
-		});
-
-		it('should have undefined for techniques without guides', () => {
-			const techniquesWithoutDocs = [
+		it('should return documentation for all techniques that have it', () => {
+			const disabled = new Set<string>([
 				WorkflowTechnique.DATA_ANALYSIS,
 				WorkflowTechnique.ENRICHMENT,
 				WorkflowTechnique.KNOWLEDGE_BASE,
 				WorkflowTechnique.HUMAN_IN_THE_LOOP,
 				WorkflowTechnique.MONITORING,
-			];
-
-			for (const tech of techniquesWithoutDocs) {
-				expect(documentation[tech]).toBeUndefined();
+			]);
+			for (const tech of Object.values(WorkflowTechnique)) {
+				const fn = documentation[tech];
+				if (disabled.has(tech)) {
+					expect(fn).toBeUndefined();
+				} else {
+					expect(fn).toBeDefined();
+					if (fn) {
+						const doc = fn();
+						expect(typeof doc).toBe('string');
+						expect(doc.length).toBeGreaterThan(100);
+					}
+				}
 			}
 		});
 	});

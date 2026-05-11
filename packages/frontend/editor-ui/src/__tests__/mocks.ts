@@ -293,6 +293,7 @@ export function createMockEnterpriseSettings(
 		},
 		customRoles: false,
 		personalSpacePolicy: false,
+		dataRedaction: false,
 		...overrides, // Override with any passed properties
 	};
 }

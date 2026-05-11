@@ -5,7 +5,9 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import type { IDataObject, NodeJSON } from '@n8n/workflow-sdk';
+import { findPlaceholderDetails } from '@n8n/utils';
+import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
 import type { SetupRequest } from './setup-workflow.schema';
@@ -16,7 +18,7 @@ import type { InstanceAiContext } from '../../types';
 /** Cache for deduplicating credential fetches across nodes with the same types. */
 export interface CredentialCache {
 	/** Credential list promises, keyed by credential type. */
-	lists: Map<string, Promise<Array<{ id: string; name: string; updatedAt: string }>>>;
+	lists: Map<string, Promise<Array<{ id: string; name: string }>>>;
 	/** Testability check promises, keyed by credential type. */
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID. */
@@ -28,6 +30,122 @@ export function createCredentialCache(): CredentialCache {
 }
 
 // ── Node analysis ───────────────────────────────────────────────────────────
+
+/**
+ * Compute the set of credential types valid for a node given its current
+ * parameters. Mirrors the resolution in `buildSetupRequests`: consults the
+ * node service's dynamic resolver first, then falls back to the description's
+ * static credentials filtered by displayOptions, plus the dynamic types
+ * implied by `authentication: genericCredentialType | predefinedCredentialType`.
+ */
+export async function getValidCredentialTypes(
+	context: InstanceAiContext,
+	node: NodeJSON,
+): Promise<Set<string>> {
+	const typeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+	let nodeDesc: Awaited<ReturnType<typeof context.nodeService.getDescription>> | undefined;
+	try {
+		nodeDesc = await context.nodeService.getDescription(node.type, typeVersion);
+	} catch {
+		nodeDesc = undefined;
+	}
+
+	const types = new Set<string>();
+
+	if (context.nodeService.getNodeCredentialTypes) {
+		try {
+			const dynamic = await context.nodeService.getNodeCredentialTypes(
+				node.type,
+				typeVersion,
+				parameters,
+				node.credentials as Record<string, unknown> | undefined,
+			);
+			for (const t of dynamic) types.add(t);
+		} catch (error) {
+			// Falling through to description-based detection is safe, but the dynamic
+			// resolver isn't expected to throw — log so we can investigate if it does.
+			context.logger?.warn(
+				'[setup-workflow] getNodeCredentialTypes threw during credential validation',
+				{
+					nodeType: node.type,
+					typeVersion,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+		}
+	}
+
+	if (nodeDesc?.credentials) {
+		for (const c of nodeDesc.credentials as Array<{ name?: string; displayOptions?: unknown }>) {
+			if (!c.name) continue;
+			if (!c.displayOptions) {
+				types.add(c.name);
+				continue;
+			}
+			if (
+				matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				)
+			) {
+				types.add(c.name);
+			}
+		}
+	}
+
+	const authentication = parameters.authentication;
+	if (
+		authentication === 'genericCredentialType' &&
+		typeof parameters.genericAuthType === 'string'
+	) {
+		types.add(parameters.genericAuthType);
+	} else if (
+		authentication === 'predefinedCredentialType' &&
+		typeof parameters.nodeCredentialType === 'string'
+	) {
+		types.add(parameters.nodeCredentialType);
+	}
+
+	return types;
+}
+
+/**
+ * Drop credential entries from a node whose type is no longer valid for the
+ * node's current parameters (e.g. an `httpHeaderAuth` left over from an earlier
+ * builder revision after `authentication` was switched to `none`). Mutates
+ * `node.credentials` in place. Types in `preserveTypes` are kept regardless —
+ * used by the apply path so a credential the user just assigned isn't stripped.
+ */
+export async function stripStaleCredentialsFromNode(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	preserveTypes?: Set<string>,
+): Promise<void> {
+	if (!node.credentials || Object.keys(node.credentials).length === 0) return;
+	const validTypes = await getValidCredentialTypes(context, node);
+	const cleaned: NonNullable<typeof node.credentials> = {};
+	for (const [credType, value] of Object.entries(node.credentials)) {
+		if (validTypes.has(credType) || preserveTypes?.has(credType)) {
+			cleaned[credType] = value;
+		}
+	}
+	node.credentials = Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
+/**
+ * Run {@link stripStaleCredentialsFromNode} over every node in a workflow.
+ * Intended to run after `resolveCredentials` in the builder save paths so the
+ * LLM can't persist stale credential references between turns.
+ */
+export async function stripStaleCredentialsFromWorkflow(
+	context: InstanceAiContext,
+	json: WorkflowJSON,
+): Promise<void> {
+	await Promise.all(
+		(json.nodes ?? []).map(async (node) => await stripStaleCredentialsFromNode(context, node)),
+	);
+}
 
 /**
  * Build setup request(s) from a single WorkflowJSON node.
@@ -66,6 +184,19 @@ export async function buildSetupRequests(
 			.catch(() => ({}));
 	}
 
+	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
+	for (const [paramName, paramValue] of Object.entries(parameters)) {
+		const details = findPlaceholderDetails(paramValue);
+		if (details.length > 0) {
+			const message = `Placeholder "${details[0].label}" — please provide the real value`;
+			if (parameterIssues[paramName]) {
+				parameterIssues[paramName].push(message);
+			} else {
+				parameterIssues[paramName] = [message];
+			}
+		}
+	}
+
 	// Build editable parameter definitions for parameters that have issues
 	let editableParameters: SetupRequest['editableParameters'];
 	if (Object.keys(parameterIssues).length > 0 && nodeDesc?.properties) {
@@ -102,12 +233,42 @@ export async function buildSetupRequests(
 				node.credentials as Record<string, unknown> | undefined,
 			)
 			.catch(() => []);
-	} else {
-		const nodeCredTypes = node.credentials ? Object.keys(node.credentials) : [];
-		if (nodeCredTypes.length > 0) {
-			credentialTypes = nodeCredTypes;
-		} else if (nodeDesc?.credentials?.[0]?.name) {
-			credentialTypes = [nodeDesc.credentials[0].name];
+	}
+
+	// Fallback: if dynamic detection returned nothing, check the node description's
+	// static credentials list with displayOptions filtering. This catches cases where
+	// getNodeCredentialTypes fails silently (e.g. node lookup miss) or isn't available.
+	// We intentionally do NOT fall back to node.credentials here — stale credential
+	// entries (e.g. httpHeaderAuth left over from an earlier builder revision when
+	// authentication was later changed to 'none') must not generate setup requests.
+	if (credentialTypes.length === 0 && nodeDesc?.credentials) {
+		credentialTypes = nodeDesc.credentials
+			.filter((c: { name?: string; displayOptions?: unknown }) => {
+				if (!c.displayOptions) return true;
+				return matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				);
+			})
+			.map((c: { name?: string }) => c.name)
+			.filter((n): n is string => n !== undefined);
+	}
+
+	// Dynamic credential resolution for nodes that use genericCredentialType
+	// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+	// is stored in the node parameters rather than the description's credentials array.
+	if (credentialTypes.length === 0) {
+		const authentication = parameters.authentication;
+		if (
+			authentication === 'genericCredentialType' &&
+			typeof parameters.genericAuthType === 'string'
+		) {
+			credentialTypes = [parameters.genericAuthType];
+		} else if (
+			authentication === 'predefinedCredentialType' &&
+			typeof parameters.nodeCredentialType === 'string'
+		) {
+			credentialTypes = [parameters.nodeCredentialType];
 		}
 	}
 
@@ -136,18 +297,17 @@ export async function buildSetupRequests(
 			if (!listPromise) {
 				listPromise = context.credentialService
 					.list({ type: credentialType })
-					.then((creds) =>
-						creds
-							.map((c) => ({ id: c.id, name: c.name, updatedAt: c.updatedAt }))
-							.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-					);
+					.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
 				cache?.lists.set(credentialType, listPromise);
 			}
 			const sortedCreds = await listPromise;
 			existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 			const existingOnNode = node.credentials?.[credentialType];
-			if (!existingOnNode?.id && existingCredentials.length > 0) {
+			// Only auto-apply when there is exactly one candidate. With multiple
+			// candidates, picking the first is a silent guess — surface the list
+			// so the setup wizard can prompt the user to choose.
+			if (!existingOnNode?.id && existingCredentials.length === 1) {
 				isAutoApplied = true;
 				if (nodeCredentials) {
 					nodeCredentials[credentialType] = {
@@ -513,6 +673,12 @@ export async function applyNodeChanges(
 				});
 			}
 		}
+
+		// Drop credential entries that are no longer valid for the node's current
+		// parameters. Entries just applied via credsMap are preserved so a user
+		// can assign an auxiliary credential without it being cleaned up.
+		const appliedTypes = new Set(credsMap ? Object.keys(credsMap) : []);
+		await stripStaleCredentialsFromNode(context, node, appliedTypes);
 	}
 
 	// Single save for all changes
@@ -607,7 +773,12 @@ export async function analyzeWorkflow(
 				req.credentialType !== undefined ||
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
-		);
+		)
+		// Hide cards the user has nothing to do on: credentials already set and
+		// tested, no parameter issues, not a trigger awaiting testing. Trigger
+		// steps are always kept — triggers require user testing regardless of
+		// credential state.
+		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
 
 	sortByExecutionOrder(
 		setupRequests,

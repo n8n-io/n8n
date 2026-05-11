@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
+import { ConnectionLostError } from '../errors';
 import { createLogger } from '../logger';
 import type {
 	AffectedResource,
@@ -112,6 +113,16 @@ export function createConnectedTool<
 
 				return result;
 			} catch (error) {
+				// Playwright throws TargetClosedError when browser/page dies mid-operation.
+				// Re-throw as our typed error so the AI gets a clear message + hint.
+				if (error instanceof Error && error.name === 'TargetClosedError') {
+					return await buildErrorResponse(
+						new ConnectionLostError('browser_closed'),
+						connection,
+						args,
+						options ?? {},
+					);
+				}
 				return await buildErrorResponse(error, connection, args, options ?? {});
 			}
 		},

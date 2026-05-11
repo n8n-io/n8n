@@ -1,3 +1,4 @@
+export { MAX_STEPS } from './constants/max-steps';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
@@ -6,12 +7,33 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
+	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
+	releaseTraceClient,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
+export {
+	IdRemapper,
+	TraceIndex,
+	TraceWriter,
+	parseTraceJsonl,
+	PURE_REPLAY_TOOLS,
+} from './tracing/trace-replay';
+export type {
+	TraceEvent,
+	TraceHeader,
+	TraceToolCall,
+	TraceToolSuspend,
+	TraceToolResume,
+} from './tracing/trace-replay';
 export { createInstanceAgent } from './agent/instance-agent';
+export { createSubAgent } from './agent/sub-agent-factory';
+export type { SubAgentOptions } from './agent/sub-agent-factory';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
 export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
@@ -22,6 +44,7 @@ export {
 	MastraIterationLogStorage,
 	MastraTaskStorage,
 	PlannedTaskStorage,
+	TerminalOutcomeStorage,
 	patchThread,
 	WorkflowLoopStorage,
 } from './storage';
@@ -31,13 +54,14 @@ export type {
 	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
+	TerminalOutcome,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
-export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
+export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
+export { createEvalAgent, extractText, Tool, SONNET_MODEL, HAIKU_MODEL } from './utils/eval-agents';
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
 export { registerWithMastra } from './agent/register-with-mastra';
@@ -57,6 +81,8 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
+export { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
+export type { BuilderSandboxSession } from './runtime/builder-sandbox-session-registry';
 export { RunStateRegistry } from './runtime/run-state-registry';
 export type {
 	ActiveRunState,
@@ -66,6 +92,12 @@ export type {
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export { InstanceAiTerminalResponseGuard } from './runtime/terminal-response-guard';
+export type {
+	TerminalResponseDecision,
+	TerminalResponseStatus,
+	TerminalVisibilitySource,
+} from './runtime/terminal-response-guard';
 export { executeResumableStream } from './runtime/resumable-stream-executor';
 export type {
 	AutoResumeControl,
@@ -76,6 +108,7 @@ export type {
 	ResumableStreamControl,
 	ResumableStreamSource,
 } from './runtime/resumable-stream-executor';
+export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
 export type {
 	StreamableAgent,
@@ -103,7 +136,10 @@ export type {
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
-export { applyPlannedTaskPermissions } from './planned-tasks/planned-task-permissions';
+export {
+	applyPlannedTaskPermissions,
+	PLANNED_TASK_PERMISSION_OVERRIDES,
+} from './planned-tasks/planned-task-permissions';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -130,6 +166,7 @@ export type {
 	PlannedTaskService,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
@@ -158,11 +195,6 @@ export type {
 	WebSearchResult,
 	WebSearchResponse,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
-	FileEntry,
-	FileContent,
-	FileSearchMatch,
-	FileSearchResult,
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
@@ -172,3 +204,24 @@ export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workf
 export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export type { StartedResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
+export {
+	classifyAttachments,
+	buildAttachmentManifest,
+	isStructuredAttachment,
+	isParseableAttachment,
+} from './parsers/structured-file-parser';
+export type {
+	ClassifiedAttachment,
+	ParseableFormat,
+	TabularFormat,
+	TextLikeFormat,
+	SupportedFormat,
+} from './parsers/structured-file-parser';
+export {
+	getParseableAttachmentMimeTypes,
+	getSupportedAttachmentMimeTypes,
+	isSupportedAttachmentMimeType,
+	validateAttachmentMimeTypes,
+	UnsupportedAttachmentError,
+} from './parsers/validate-attachments';
+export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';

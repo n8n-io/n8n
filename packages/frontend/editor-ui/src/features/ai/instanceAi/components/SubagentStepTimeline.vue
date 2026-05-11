@@ -1,24 +1,41 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
-import { N8nIcon, type IconName } from '@n8n/design-system';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
+import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { useToolLabel, getToolIcon } from '../toolLabels';
-import ToolCallStep from './ToolCallStep.vue';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed } from 'vue';
+import { getToolIcon, useToolLabel } from '../toolLabels';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
+import ButtonLike from './ButtonLike.vue';
+import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import ToolCallStep from './ToolCallStep.vue';
 
-const props = defineProps<{
-	agentNode: InstanceAiAgentNode;
-}>();
+const props = withDefaults(
+	defineProps<{
+		agentNode: InstanceAiAgentNode;
+		/** When provided, renders only these entries instead of the full timeline. */
+		visibleEntries?: InstanceAiTimelineEntry[];
+		/** Peek mode: compact, pins streaming text to the bottom. */
+		peek?: boolean;
+	}>(),
+	{ visibleEntries: undefined, peek: false },
+);
 
 const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
 
+/** Tool calls that are internal and should not be shown in the step timeline. */
+const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+
 interface TimelineStep {
-	type: 'tool-call' | 'text' | 'done';
+	type: 'tool-call' | 'text';
 	icon: IconName;
 	label: string;
 	isLoading: boolean;
@@ -54,10 +71,12 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
+const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
+
 const steps = computed((): TimelineStep[] => {
 	const result: TimelineStep[] = [];
 
-	for (const entry of props.agentNode.timeline) {
+	for (const entry of timelineEntries.value) {
 		if (entry.type === 'text') {
 			const longText = isLongTextContent(entry.content);
 			result.push({
@@ -71,11 +90,11 @@ const steps = computed((): TimelineStep[] => {
 			});
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc) continue;
+			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) continue;
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: getToolLabel(tc.toolName),
+				label: getToolLabel(tc.toolName, tc.args),
 				isLoading: tc.isLoading,
 				toggleLabel: getToggleLabel(tc),
 				hideLabel: getHideLabel(tc),
@@ -83,15 +102,6 @@ const steps = computed((): TimelineStep[] => {
 			});
 		}
 		// Skip 'child' entries — parent AgentTimeline handles child cards
-	}
-
-	if (props.agentNode.status === 'completed') {
-		result.push({
-			type: 'done',
-			icon: 'circle-check',
-			label: i18n.baseText('instanceAi.stepTimeline.done'),
-			isLoading: false,
-		});
 	}
 
 	return result;
@@ -109,54 +119,37 @@ const steps = computed((): TimelineStep[] => {
 				:show-connector="idx < steps.length - 1"
 			/>
 
-			<!-- Text and done steps: use shared icon column layout -->
-			<div v-else :class="$style.step">
-				<div :class="$style.iconColumn">
-					<N8nIcon
-						:icon="step.icon"
-						size="small"
-						:spin="step.isLoading"
-						:class="[
-							$style.stepIcon,
-							step.type === 'done' && $style.doneIcon,
-							step.isLoading && $style.loadingIcon,
-						]"
-					/>
-					<div v-if="idx < steps.length - 1" :class="$style.connector" />
-				</div>
-				<div :class="$style.content">
-					<!-- Text segment: short inline or long behind toggle -->
-					<template v-if="step.type === 'text'">
-						<template v-if="step.isLongText">
-							<span :class="$style.textLabel">{{ step.shortLabel }}</span>
-							<CollapsibleRoot v-slot="{ open: textOpen }" :class="$style.toggleBlock">
-								<CollapsibleTrigger :class="$style.toggleButton">
-									{{
-										i18n.baseText(
-											textOpen
-												? 'instanceAi.stepTimeline.hideData'
-												: 'instanceAi.stepTimeline.showData',
-										)
-									}}
-								</CollapsibleTrigger>
-								<CollapsibleContent :class="$style.toggleContent">
-									<div :class="$style.dataSection">
-										<InstanceAiMarkdown :content="step.textContent!" />
-									</div>
-								</CollapsibleContent>
-							</CollapsibleRoot>
-						</template>
-						<div v-else :class="$style.textLabel">
+			<template v-else-if="step.type === 'text'">
+				<CollapsibleRoot v-if="step.isLongText" v-slot="{ open }">
+					<CollapsibleTrigger as-child>
+						<N8nButton ref="triggerRef" variant="ghost" size="small">
+							<template #icon>
+								<template v-if="step.isLoading">
+									<N8nIcon icon="spinner" size="small" color="primary" spin />
+								</template>
+								<N8nIcon v-else :icon="step.icon" size="small" />
+							</template>
+							<template v-if="open">
+								{{ i18n.baseText('instanceAi.statusBar.thinking') }}
+							</template>
+							<template v-else>{{ step.label }}</template>
+						</N8nButton>
+					</CollapsibleTrigger>
+					<AnimatedCollapsibleContent :class="$style.toggleContent">
+						<DataSection>
 							<InstanceAiMarkdown :content="step.textContent!" />
-						</div>
-					</template>
-
-					<!-- Done marker -->
-					<template v-else-if="step.type === 'done'">
-						<span :class="$style.doneLabel">{{ step.label }}</span>
-					</template>
-				</div>
-			</div>
+						</DataSection>
+					</AnimatedCollapsibleContent>
+				</CollapsibleRoot>
+				<ButtonLike v-else>
+					<!-- Peek mode only: column-reverse + overflow-y pins the scroll
+						 to the bottom so the latest streamed tokens stay visible. -->
+					<div v-if="props.peek" :class="$style.streamingMarkdown">
+						<InstanceAiMarkdown :content="step.label" />
+					</div>
+					<InstanceAiMarkdown v-else :content="step.label" />
+				</ButtonLike>
+			</template>
 		</template>
 	</div>
 </template>
@@ -165,105 +158,21 @@ const steps = computed((): TimelineStep[] => {
 .timeline {
 	display: flex;
 	flex-direction: column;
-}
-
-.step {
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.iconColumn {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 20px;
-	flex-shrink: 0;
-	padding-top: 2px;
-}
-
-.connector {
-	width: 1px;
-	flex: 1;
-	background: var(--color--foreground--shade-1);
-	min-height: 12px;
-}
-
-.stepIcon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.doneIcon {
-	color: var(--color--text--tint-1);
-}
-
-.loadingIcon {
-	color: var(--color--primary);
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	flex: 1;
-	padding-bottom: var(--spacing--2xs);
-}
-
-.textLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
-}
-
-.doneLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
-}
-
-.toggleBlock {
-	margin-top: var(--spacing--4xs);
-}
-
-.toggleButton {
-	display: inline-flex;
-	align-items: center;
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	font-family: var(--font-family);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--regular);
-	color: var(--color--text--tint-1);
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
+	gap: var(--spacing--2xs);
 }
 
 .toggleContent {
-	margin-top: var(--spacing--4xs);
 	max-height: 300px;
 	overflow-y: auto;
 }
 
-.dataSection {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
-
-	:global(pre) {
-		background: transparent;
-		margin: 0;
-		padding: 0;
-	}
-
-	& + & {
-		margin-top: var(--spacing--4xs);
-	}
+.streamingMarkdown {
+	display: flex;
+	flex-direction: column-reverse;
+	overflow-y: auto;
+	max-height: 120px;
+	flex: 1 1 auto;
+	min-width: 0;
+	scrollbar-width: none;
 }
 </style>

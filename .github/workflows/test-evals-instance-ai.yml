@@ -1,0 +1,192 @@
+name: 'Test: Instance AI Exec Evals'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        type: string
+        default: 'master'
+      filter:
+        description: 'Filter test cases by name (e.g. "contact-form")'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        default: 'master'
+      filter:
+        description: 'Filter test cases by name (e.g. "contact-form")'
+        required: false
+        default: ''
+
+jobs:
+  run-evals:
+    name: 'Run Evals'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 45
+    env:
+      # Each port hosts an independent n8n container. The eval CLI's
+      # work-stealing allocator dispatches builds across them, capped per-lane.
+      # 9 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
+      # bump back to 8vcpu if contention shows up.
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build'
+
+      # Cache populated by prepare-docker; fallback covers PRs that only touch this workflow file.
+      - name: Load n8n Docker image
+        id: load-image
+        continue-on-error: true
+        uses: ./.github/actions/load-n8n-docker
+
+      - name: Build Docker image (fallback on cache miss)
+        if: steps.load-image.outcome == 'failure'
+        run: pnpm build:docker
+        env:
+          INCLUDE_TEST_CONTROLLER: 'true'
+
+      - name: Start n8n containers
+        env:
+          EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+        run: |
+          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          for i in "${!PORTS[@]}"; do
+            port="${PORTS[$i]}"
+            docker run -d --name "n8n-eval-$((i+1))" \
+              -e E2E_TESTS=true \
+              -e N8N_ENABLED_MODULES=instance-ai \
+              -e N8N_AI_ENABLED=true \
+              -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
+              -e N8N_AI_ASSISTANT_BASE_URL="" \
+              -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
+              -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
+              -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
+              -p "$port:5678" \
+              n8nio/n8n:local
+          done
+          # 120s budget per port: containers booting in parallel on a shared
+          # 4vcpu runner contend for CPU/disk during n8n's startup (DB migrations,
+          # license init), so each takes longer than a solo boot.
+          for port in "${PORTS[@]}"; do
+            ready=false
+            for i in $(seq 1 120); do
+              if curl -s "http://localhost:$port/healthz/readiness" -o /dev/null -w "%{http_code}" | grep -q 200; then
+                echo "n8n on port $port ready after ${i}s"
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+            if [ "$ready" != "true" ]; then
+              echo "::error::n8n on port $port failed to start within 120s"
+              for n in $(docker ps -aq --filter "name=n8n-eval-"); do
+                echo "Logs for $n:"
+                docker logs "$n" --tail 30 || true
+              done
+              exit 1
+            fi
+          done
+
+      - name: Create test users
+        run: |
+          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          for port in "${PORTS[@]}"; do
+            curl -sf -X POST "http://localhost:$port/rest/e2e/reset" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},
+                "admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},
+                "members":[],
+                "chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}
+              }'
+          done
+
+      - name: Run Instance AI Evals
+        continue-on-error: true
+        working-directory: packages/@n8n/instance-ai
+        env:
+          N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          LANGSMITH_TRACING: 'true'
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          LANGSMITH_REVISION_ID: ${{ github.sha }}
+          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          IFS=',' read -ra PORTS <<< "$LANE_PORTS"
+          URLS=()
+          for port in "${PORTS[@]}"; do
+            URLS+=("http://localhost:$port")
+          done
+          BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
+          pnpm eval:instance-ai \
+            --base-url "$BASE_URLS" \
+            --concurrency 32 \
+            --verbose \
+            --iterations 5 \
+            ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
+
+      - name: Stop n8n containers
+        if: ${{ always() }}
+        run: |
+          mapfile -t ids < <(docker ps -aq --filter "name=n8n-eval-")
+          if [ "${#ids[@]}" -gt 0 ]; then
+            docker stop "${ids[@]}" 2>/dev/null || true
+            docker rm "${ids[@]}" 2>/dev/null || true
+          fi
+
+      - name: Post eval results to PR
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The eval CLI writes the full PR comment as eval-pr-comment.md
+          # (see comparison/format.ts:formatComparisonMarkdown). It includes
+          # the alert, aggregate, comparison sections, per-test-case results
+          # collapsed, and failure details collapsed. CI just relays it.
+          COMMENT_FILE="packages/@n8n/instance-ai/eval-pr-comment.md"
+          if [ ! -f "$COMMENT_FILE" ]; then
+            echo "No PR comment file found (eval likely cancelled before writing results)"
+            exit 0
+          fi
+          cp "$COMMENT_FILE" /tmp/eval-comment.md
+
+          # Find and update existing eval comment, or create new one
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval")) | .id' | tail -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/eval-comment.md
+          else
+            gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/eval-comment.md
+          fi
+
+      - name: Upload Results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: instance-ai-workflow-eval-results
+          path: |
+            packages/@n8n/instance-ai/eval-results.json
+            packages/@n8n/instance-ai/.data/workflow-eval-report.html
+          retention-days: 14

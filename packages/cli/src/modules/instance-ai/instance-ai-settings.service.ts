@@ -1,8 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
-import type { InstanceAiConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
@@ -11,15 +7,25 @@ import type {
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
-import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
+import { SettingsRepository, UserRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
+import type { IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
+import { AiService } from '@/services/ai.service';
+import { UserService } from '@/services/user.service';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
-const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
+
+type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
 
 /** Credential types we support and their Mastra provider mapping. */
 const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
@@ -56,6 +62,7 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
+	enabled?: boolean;
 	lastMessages?: number;
 	embedderModel?: string;
 	semanticRecallTopK?: number;
@@ -73,16 +80,14 @@ interface PersistedAdminSettings {
 	localGatewayDisabled?: boolean;
 }
 
-/** Per-user preferences stored under USER_PREFERENCES_KEY_PREFIX + userId. */
-interface PersistedUserPreferences {
-	credentialId?: string | null;
-	modelName?: string;
-	localGatewayDisabled?: boolean;
-}
-
 @Service()
 export class InstanceAiSettingsService {
 	private readonly config: InstanceAiConfig;
+
+	private readonly deploymentConfig: DeploymentConfig;
+
+	/** Whether n8n Agent is enabled for this instance. */
+	private enabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -94,27 +99,39 @@ export class InstanceAiSettingsService {
 
 	private adminSearchCredentialId: string | null = null;
 
-	/** In-memory cache of per-user preferences keyed by userId. */
-	private readonly userPreferences = new Map<string, PersistedUserPreferences>();
-
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly userRepository: UserRepository,
+		private readonly userService: UserService,
+		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
+		this.deploymentConfig = globalConfig.deployment;
+	}
+
+	/** Whether this instance is running on the cloud platform. */
+	private get isCloud(): boolean {
+		return this.deploymentConfig.type === 'cloud';
+	}
+
+	/** Whether the AI service proxy is active (model, search, sandbox managed externally). */
+	isProxyEnabled(): boolean {
+		return this.aiService.isProxyEnabled();
 	}
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (!row) return;
-
-		const persisted = jsonParse<PersistedAdminSettings>(row.value, {
-			fallbackValue: {},
-		});
-		this.applyAdminSettings(persisted);
+		if (row) {
+			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
+				fallbackValue: {},
+			});
+			this.applyAdminSettings(persisted);
+		}
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -122,6 +139,7 @@ export class InstanceAiSettingsService {
 	getAdminSettings(): InstanceAiAdminSettingsResponse {
 		const c = this.config;
 		return {
+			enabled: this.enabled,
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
@@ -143,7 +161,23 @@ export class InstanceAiSettingsService {
 	async updateAdminSettings(
 		update: InstanceAiAdminSettingsUpdateRequest,
 	): Promise<InstanceAiAdminSettingsResponse> {
+		if (this.isCloud) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.CLOUD_MANAGED_ADMIN_FIELDS,
+				'cloud',
+			);
+		} else if (this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
+				'proxy',
+			);
+		}
 		const c = this.config;
+		const previousMcpServers = c.mcpServers;
+		const previousBrowserMcp = c.browserMcp;
+		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
 		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
@@ -166,13 +200,19 @@ export class InstanceAiSettingsService {
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
 		await this.persistAdminSettings();
+
+		this.eventService.emit('instance-ai-settings-updated', {
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || c.browserMcp !== previousBrowserMcp,
+		});
+
 		return this.getAdminSettings();
 	}
 
 	// ── User preferences ──────────────────────────────────────────────────
 
 	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
-		const prefs = await this.loadUserPreferences(user.id);
+		const prefs = this.readUserPreferences(user);
 		const credentialId = prefs.credentialId ?? null;
 
 		let credentialType: string | null = null;
@@ -193,8 +233,7 @@ export class InstanceAiSettingsService {
 			credentialType,
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
-			localGatewayDisabled:
-				this.config.localGatewayDisabled || (prefs.localGatewayDisabled ?? false),
+			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
 		};
 	}
 
@@ -202,13 +241,26 @@ export class InstanceAiSettingsService {
 		user: User,
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
-		const prefs = await this.loadUserPreferences(user.id);
+		if (this.isCloud) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.CLOUD_MANAGED_PREFERENCE_FIELDS,
+				'cloud',
+			);
+		} else if (this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
+				'proxy',
+			);
+		}
+		const prefs: UserInstanceAiPreferences = { ...this.readUserPreferences(user) };
 		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
 		if (update.localGatewayDisabled !== undefined)
 			prefs.localGatewayDisabled = update.localGatewayDisabled;
-		this.userPreferences.set(user.id, prefs);
-		await this.persistUserPreferences(user.id, prefs);
+		await this.userService.updateSettings(user.id, { instanceAi: prefs });
+		user.settings = { ...(user.settings ?? {}), instanceAi: prefs };
 		return await this.getUserPreferences(user);
 	}
 
@@ -216,6 +268,7 @@ export class InstanceAiSettingsService {
 
 	/** List credentials the user can access that are usable as LLM providers. */
 	async listModelCredentials(user: User): Promise<InstanceAiModelCredential[]> {
+		if (this.aiService.isProxyEnabled()) return [];
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
@@ -231,6 +284,7 @@ export class InstanceAiSettingsService {
 
 	/** List credentials the user can access that are usable as sandbox/search services. */
 	async listServiceCredentials(user: User): Promise<InstanceAiModelCredential[]> {
+		if (this.aiService.isProxyEnabled()) return [];
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
@@ -263,7 +317,7 @@ export class InstanceAiSettingsService {
 		if (!credential) {
 			return {};
 		}
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		return {
 			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
 			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
@@ -292,7 +346,7 @@ export class InstanceAiSettingsService {
 			};
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
 		const apiKey = typeof data.value === 'string' ? data.value : undefined;
 		return {
@@ -320,7 +374,7 @@ export class InstanceAiSettingsService {
 		if (!credential) {
 			return {};
 		}
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		if (credential.type === 'braveSearchApi') {
 			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };
 		}
@@ -336,10 +390,17 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
-	isLocalGatewayDisabledForUser(userId: string): boolean {
+	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
+		if (!this.enabled) return true;
 		if (this.config.localGatewayDisabled) return true;
-		const prefs = this.userPreferences.get(userId);
-		return prefs?.localGatewayDisabled ?? false;
+		const user = await this.userRepository.findOneBy({ id: userId });
+		if (!user) return true;
+		return this.readUserPreferences(user).localGatewayDisabled ?? false;
+	}
+
+	/** Whether the n8n Agent is enabled by the admin. */
+	isAgentEnabled(): boolean {
+		return this.enabled;
 	}
 
 	/** Whether the local gateway is disabled globally by the admin. */
@@ -347,15 +408,20 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
+	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
+	isInstanceAiEnabled(): boolean {
+		return this.enabled;
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	async resolveModelName(user: User): Promise<string> {
-		const prefs = await this.loadUserPreferences(user.id);
+		const prefs = this.readUserPreferences(user);
 		return prefs.modelName || this.extractModelName(this.config.model);
 	}
 
 	/** Resolve the current model configuration for an agent run. */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
-		const prefs = await this.loadUserPreferences(user.id);
+		const prefs = this.readUserPreferences(user);
 		const credentialId = prefs.credentialId ?? null;
 
 		if (!credentialId) {
@@ -377,7 +443,7 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
@@ -397,6 +463,53 @@ export class InstanceAiSettingsService {
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────
+
+	/** Admin fields managed by the AI service proxy — not user-editable when proxy is active. */
+	private static readonly PROXY_MANAGED_ADMIN_FIELDS: readonly string[] = [
+		'sandboxEnabled',
+		'sandboxProvider',
+		'sandboxImage',
+		'sandboxTimeout',
+		'daytonaCredentialId',
+		'searchCredentialId',
+	];
+
+	/** User preference fields managed by the AI service proxy. */
+	private static readonly PROXY_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
+		'credentialId',
+		'modelName',
+	];
+
+	/** Admin fields managed by the cloud platform — superset of proxy-managed fields. */
+	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
+		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
+		'n8nSandboxCredentialId',
+		'lastMessages',
+		'embedderModel',
+		'semanticRecallTopK',
+		'subAgentMaxSteps',
+		'browserMcp',
+		'mcpServers',
+	];
+
+	/** User preference fields managed by the cloud platform. */
+	private static readonly CLOUD_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
+		...InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
+	];
+
+	private rejectManagedFields(
+		update: object,
+		managedFields: readonly string[],
+		label: string,
+	): void {
+		const record = update as Record<string, unknown>;
+		const present = managedFields.filter((key) => key in record && record[key] !== undefined);
+		if (present.length > 0) {
+			throw new UnprocessableRequestError(
+				`Cannot update ${label}-managed fields: ${present.join(', ')}`,
+			);
+		}
+	}
 
 	private envVarModelConfig(): ModelConfig {
 		const { model, modelUrl, modelApiKey } = this.config;
@@ -422,6 +535,7 @@ export class InstanceAiSettingsService {
 
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
+		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
 		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
 		if (persisted.semanticRecallTopK !== undefined)
@@ -449,23 +563,14 @@ export class InstanceAiSettingsService {
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 	}
 
-	private async loadUserPreferences(userId: string): Promise<PersistedUserPreferences> {
-		const cached = this.userPreferences.get(userId);
-		if (cached) return { ...cached };
-
-		const row = await this.settingsRepository.findByKey(`${USER_PREFERENCES_KEY_PREFIX}${userId}`);
-		if (row) {
-			const prefs = jsonParse<PersistedUserPreferences>(row.value, { fallbackValue: {} });
-			this.userPreferences.set(userId, prefs);
-			return { ...prefs };
-		}
-
-		return {};
+	private readUserPreferences(user: User): UserInstanceAiPreferences {
+		return user.settings?.instanceAi ?? {};
 	}
 
 	private async persistAdminSettings(): Promise<void> {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
+			enabled: this.enabled,
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
@@ -485,20 +590,6 @@ export class InstanceAiSettingsService {
 
 		await this.settingsRepository.upsert(
 			{ key: ADMIN_SETTINGS_KEY, value: JSON.stringify(value), loadOnStartup: true },
-			['key'],
-		);
-	}
-
-	private async persistUserPreferences(
-		userId: string,
-		prefs: PersistedUserPreferences,
-	): Promise<void> {
-		await this.settingsRepository.upsert(
-			{
-				key: `${USER_PREFERENCES_KEY_PREFIX}${userId}`,
-				value: JSON.stringify(prefs),
-				loadOnStartup: false,
-			},
 			['key'],
 		);
 	}

@@ -11,6 +11,7 @@ const plannedTaskKindSchema = z.enum([
 	'build-workflow',
 	'manage-data-tables',
 	'research',
+	'checkpoint',
 ]);
 
 const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
@@ -36,7 +37,7 @@ const plannedTaskRecordSchema = z.object({
 const plannedTaskGraphSchema = z.object({
 	planRunId: z.string(),
 	messageGroupId: z.string().optional(),
-	status: z.enum(['active', 'awaiting_replan', 'completed', 'cancelled']),
+	status: z.enum(['awaiting_approval', 'active', 'awaiting_replan', 'completed', 'cancelled']),
 	tasks: z.array(plannedTaskRecordSchema),
 });
 

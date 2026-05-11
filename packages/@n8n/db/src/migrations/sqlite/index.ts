@@ -151,6 +151,21 @@ import { CreateCredentialDependencyTable1773000000000 } from '../common/17730000
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
+import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
+import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
+import { AddJweKeyIndexesToDeploymentKey1777023444000 } from '../common/1777023444000-AddJweKeyIndexesToDeploymentKey';
+import { AddTracingContextToExecution1777045000000 } from '../common/1777045000000-AddTracingContextToExecution';
+import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
+import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
+import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
+import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
+import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
+import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -307,6 +322,21 @@ const sqliteMigrations: Migration[] = [
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
+	CreateTokenExchangeJtiTable1775116241000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
+	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1776150756000,
+	CreateDeploymentKeyTable1777000000000,
+	AddJweKeyIndexesToDeploymentKey1777023444000,
+	AddTracingContextToExecution1777045000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	CreateEvaluationConfig1778100000000,
+	AddWorkflowVersionToTestRun1778100001000,
+	AddEvaluationConfigColumnsToTestRun1778100002000,
+	AddExecutionDeduplicationKey1778000000000,
+	CreateAgentTables1783000000000,
+	CreateAgentExecutionTables1783000000001,
 ];
 
 export { sqliteMigrations };
