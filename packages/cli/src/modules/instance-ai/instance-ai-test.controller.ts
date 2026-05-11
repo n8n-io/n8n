@@ -1,7 +1,7 @@
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
-import { nanoid } from 'nanoid';
+import { v4 as uuidv4 } from 'uuid';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -44,7 +44,7 @@ export class InstanceAiTestController {
 	@Post('/test/background-timeout/start', { skipAuth: true })
 	async startBackgroundTimeoutSimulation(@Body payload: { userId: string; threadId?: string }) {
 		this.assertTraceReplayEnabled();
-		const threadId = payload.threadId ?? `thread_${nanoid()}`;
+		const threadId = payload.threadId ?? uuidv4();
 		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
 
 		await this.memoryService.ensureThread(user.id, threadId);
@@ -87,7 +87,10 @@ export class InstanceAiTestController {
 		for (const { id } of threads) {
 			await this.instanceAiService.clearThreadState(id);
 		}
-		await this.threadRepo.clear();
+		// `repo.clear()` issues TRUNCATE without CASCADE, which Postgres rejects
+		// when child tables (messages, snapshots, …) still reference these rows.
+		// QueryBuilder DELETE fires the FK CASCADE/SET-NULL actions correctly.
+		await this.threadRepo.createQueryBuilder().delete().execute();
 
 		const workflowIds = await this.workflowRepo.find({ select: ['id'] });
 		for (const { id } of workflowIds) {

@@ -166,13 +166,18 @@ describe('InstanceAiTestController', () => {
 		it('should clear per-thread state and delete threads + workflows', async () => {
 			threadRepo.find.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
 			workflowRepo.find.mockResolvedValue([{ id: 'w1' }, { id: 'w2' }, { id: 'w3' }] as never);
+			const deleteExecute = jest.fn().mockResolvedValue(undefined);
+			const deleteQb = { execute: deleteExecute };
+			const queryBuilder = { delete: jest.fn().mockReturnValue(deleteQb) };
+			threadRepo.createQueryBuilder.mockReturnValue(queryBuilder as never);
 
 			const result = await controller.reset();
 
 			expect(instanceAiService.cancelAllBackgroundTasks).toHaveBeenCalled();
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t1');
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t2');
-			expect(threadRepo.clear).toHaveBeenCalled();
+			expect(queryBuilder.delete).toHaveBeenCalled();
+			expect(deleteExecute).toHaveBeenCalled();
 			expect(workflowRepo.delete).toHaveBeenCalledWith('w1');
 			expect(workflowRepo.delete).toHaveBeenCalledWith('w2');
 			expect(workflowRepo.delete).toHaveBeenCalledWith('w3');

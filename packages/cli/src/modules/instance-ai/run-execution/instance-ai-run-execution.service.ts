@@ -51,7 +51,7 @@ import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -794,6 +794,8 @@ export class InstanceAiRunExecutionService {
 				userId: user.id,
 				modelId,
 				input: traceInput,
+				n8nVersion: N8N_VERSION,
+				workflowSdkVersion: WORKFLOW_SDK_VERSION,
 				proxyConfig: orchestrationContext.tracingProxyConfig,
 			});
 

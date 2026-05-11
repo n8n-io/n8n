@@ -38,3 +38,43 @@ export const notionMockServer: McpRegistryServer = {
 	status: 'active',
 	tags: ['productivity', 'docs', 'knowledge-base'],
 };
+
+export const linearMockServer: McpRegistryServer = {
+	id: 101,
+	name: 'app.linear/linear',
+	slug: 'linear',
+	title: 'Linear',
+	description: 'MCP server for Linear project management and issue tracking',
+	version: '1.0.0',
+	updatedAt: '2026-05-05T10:00:00.000Z',
+	icons: [
+		{ src: 'https://static.linear.app/integrations/mcp/icon.svg', mimeType: 'image/svg+xml' },
+	],
+	websiteUrl: 'https://linear.app',
+	authType: 'oauth2',
+	remotes: [
+		{ type: 'sse', url: 'https://mcp.linear.app/sse' },
+		{ type: 'streamable-http', url: 'https://mcp.linear.app/mcp' },
+	],
+	tools: [
+		{
+			name: 'list_issues',
+			title: 'List issues',
+			annotations: { readOnlyHint: true },
+		},
+		{
+			name: 'get_issue',
+			title: 'Get issue',
+			annotations: { readOnlyHint: true },
+		},
+		{
+			name: 'save_issue',
+			title: 'Save issue',
+			annotations: { readOnlyHint: false },
+		},
+	],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	tags: ['issue-tracking', 'project-management'],
+};

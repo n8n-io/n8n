@@ -1,17 +1,13 @@
 import type { ComputedRef, Ref } from 'vue';
-import { ref, watch, onUnmounted, computed } from 'vue';
+import { ref, watch, onUnmounted } from 'vue';
 import type { InstanceAiToolCallState, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../instanceAi.store';
 import type { DisplayCard, SetupCard } from '../instanceAiWorkflowSetup.utils';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useSetupActions(deps: {
 	requestId: Ref<string>;
@@ -34,10 +30,7 @@ export function useSetupActions(deps: {
 	onApplySuccess?: () => void;
 }) {
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeHelpers = useNodeHelpers();
 
 	const isSubmitted = ref(false);

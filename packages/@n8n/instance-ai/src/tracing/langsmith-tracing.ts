@@ -104,6 +104,8 @@ interface CreateInstanceAiTraceContextOptions {
 	modelId?: unknown;
 	input: unknown;
 	metadata?: Record<string, unknown>;
+	n8nVersion?: string;
+	workflowSdkVersion?: string;
 	/** When set, traces are routed through the AI service proxy instead of directly to LangSmith. */
 	proxyConfig?: ServiceProxyConfig;
 }
@@ -1311,6 +1313,10 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		user_id: options.userId,
 		...(options.modelId !== undefined
 			? { model_id: serializeModelIdForTrace(options.modelId) }
+			: {}),
+		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
+		...(options.workflowSdkVersion !== undefined
+			? { workflow_sdk_version: options.workflowSdkVersion }
 			: {}),
 		...options.metadata,
 	};
