@@ -1,4 +1,4 @@
-import { embed } from 'ai';
+import { embed, generateText } from 'ai';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 
@@ -19,6 +19,7 @@ import {
 	Agent,
 	AgentEvent,
 	createEmbeddingModel,
+	createModel,
 	filterLlmMessages,
 	Memory,
 	RECALL_MEMORY_TOOL_NAME,
@@ -56,6 +57,8 @@ interface CliOptions {
 	repeats: number;
 	enforceThresholds: boolean;
 	validateOnly: boolean;
+	judge: boolean;
+	judgeModel?: string;
 }
 
 interface EvalScope {
@@ -65,8 +68,20 @@ interface EvalScope {
 
 interface EvalConfig {
 	agentModel: string;
+	judgeModel: string;
 	anthropicApiKey: string;
 	openAiApiKey: string;
+}
+
+interface JudgeScore {
+	pass: boolean;
+	answerPass: boolean;
+	profilePass: boolean;
+	memoryPass: boolean;
+	reasoning: string;
+	failureMode: string;
+	raw: string;
+	latencyMs: number;
 }
 
 interface TurnRecord {
@@ -97,10 +112,42 @@ interface ScenarioRunResult {
 	retrieval: RetrievalRecord;
 	injectedMemory: string[];
 	userProfile: string;
-	personaProfile: string;
+	agentProfile: string;
 	sessionMemory: string;
 	backgroundErrors: Array<{ message: string; source?: string }>;
+	judgeScore?: JudgeScore;
 	error?: string;
+}
+
+interface RepeatSummary {
+	repeat: number;
+	runs: number;
+	passRate: number;
+	answerPassRate: number | null;
+	judgePassRate: number | null;
+	judgeAnswerPassRate: number | null;
+	judgeProfilePassRate: number | null;
+	judgeMemoryPassRate: number | null;
+}
+
+interface RateStats {
+	mean: number | null;
+	stdDev: number | null;
+}
+
+interface RepeatStats {
+	passRate: RateStats;
+	answerPassRate: RateStats;
+	judgePassRate: RateStats;
+	judgeAnswerPassRate: RateStats;
+	judgeProfilePassRate: RateStats;
+	judgeMemoryPassRate: RateStats;
+}
+
+interface MemoryEvalCategorySummary extends CategorySummary {
+	judgeScenarios: number;
+	judgePassed: number;
+	judgePassRate: number | null;
 }
 
 interface Summary {
@@ -116,6 +163,12 @@ interface Summary {
 	retrievalTop1Rate: number | null;
 	retrievalTop3Rate: number | null;
 	retrievalTop12Rate: number | null;
+	judgePassRate: number | null;
+	judgeAnswerPassRate: number | null;
+	judgeProfilePassRate: number | null;
+	judgeMemoryPassRate: number | null;
+	judgeLatencyMeanMs: number | null;
+	judgeLatencyP95Ms: number | null;
 	scopeLeakCount: number;
 	backgroundErrorCount: number;
 	harnessErrorCount: number;
@@ -126,7 +179,9 @@ interface Summary {
 	totalCompletionTokens: number;
 	totalTokens: number;
 	totalKnownCostUsd: number;
-	categorySummaries: CategorySummary[];
+	categorySummaries: MemoryEvalCategorySummary[];
+	repeatSummaries: RepeatSummary[];
+	repeatStats: RepeatStats;
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -135,6 +190,7 @@ function parseArgs(argv: string[]): CliOptions {
 		repeats: 1,
 		enforceThresholds: false,
 		validateOnly: false,
+		judge: false,
 	};
 
 	for (let index = 0; index < argv.length; index++) {
@@ -155,6 +211,10 @@ function parseArgs(argv: string[]): CliOptions {
 			opts.enforceThresholds = true;
 		} else if (arg === '--validate-only') {
 			opts.validateOnly = true;
+		} else if (arg === '--judge') {
+			opts.judge = true;
+		} else if (arg === '--judge-model') {
+			opts.judgeModel = requireArgValue(argv[++index], '--judge-model');
 		} else {
 			throw new Error(`Unknown argument: ${arg}`);
 		}
@@ -175,7 +235,22 @@ function parseArgs(argv: string[]): CliOptions {
 		opts.category = parseCategory(envCategory);
 	}
 
+	const envJudge = process.env.N8N_MEMORY_EVAL_JUDGE;
+	if (!opts.judge && envJudge && envJudge !== '0' && envJudge.toLowerCase() !== 'false') {
+		opts.judge = true;
+	}
+
+	const envJudgeModel = process.env.N8N_MEMORY_EVAL_JUDGE_MODEL;
+	if (opts.judgeModel === undefined && envJudgeModel) {
+		opts.judgeModel = envJudgeModel;
+	}
+
 	return opts;
+}
+
+function requireArgValue(raw: string | undefined, name: string): string {
+	if (!raw?.trim()) throw new Error(`${name} requires a value`);
+	return raw;
 }
 
 function parsePositiveInteger(raw: string | undefined, name: string): number {
@@ -245,7 +320,7 @@ function selectScenarios(opts: CliOptions): MemoryEvalScenario[] {
 	return scenarios;
 }
 
-function requireEvalConfig(): EvalConfig {
+function requireEvalConfig(opts: CliOptions): EvalConfig {
 	const anthropicApiKey = process.env[ANTHROPIC_API_KEY_ENV];
 	const openAiApiKey = process.env[OPENAI_API_KEY_ENV];
 	if (!anthropicApiKey || !openAiApiKey) {
@@ -256,6 +331,11 @@ function requireEvalConfig(): EvalConfig {
 
 	return {
 		agentModel: process.env.N8N_MEMORY_EVAL_AGENT_MODEL ?? DEFAULT_AGENT_MODEL,
+		judgeModel:
+			opts.judgeModel ??
+			process.env.N8N_MEMORY_EVAL_JUDGE_MODEL ??
+			process.env.N8N_MEMORY_EVAL_AGENT_MODEL ??
+			DEFAULT_AGENT_MODEL,
 		anthropicApiKey,
 		openAiApiKey,
 	};
@@ -298,7 +378,7 @@ function createAgentForScenario(
 function buildInstructions(scenario: MemoryEvalScenario): string {
 	return [
 		'You are a customer support engineering assistant.',
-		'Use <persona>, <user>, <memory>, and <session-memory> when they are present.',
+		'Use <agent-profile>, <user-profile>, <memory>, and <session-memory> when they are present.',
 		'Use source-backed case memory when it is relevant, but do not invent missing details.',
 		'If memory does not contain the answer, say that you do not know from memory.',
 		'Preserve exact identifiers, field names, dates, and causal directionality.',
@@ -358,7 +438,7 @@ async function runScenario(
 		const userProfile =
 			(await memory.getMemoryProfile({ scopeKind: 'resource', scopeId: defaultScope.resourceId }))
 				?.content ?? '';
-		const personaProfile =
+		const agentProfile =
 			(await memory.getMemoryProfile({ scopeKind: 'agent', scopeId: defaultScope.agentId }))
 				?.content ?? '';
 		const sessionMemory = await getSessionMemory(memory, scenario, defaultScope.resourceId);
@@ -369,7 +449,7 @@ async function runScenario(
 			retrievedEntries: retrieval.entries.map((entry) => entry.content),
 			answer: recallTurn.answer,
 			userProfile,
-			personaProfile,
+			agentProfile,
 			sessionMemory,
 			backgroundErrors: backgroundErrors.length,
 		});
@@ -385,7 +465,7 @@ async function runScenario(
 			retrieval,
 			injectedMemory: state.messageList.episodicMemory?.entries ?? [],
 			userProfile,
-			personaProfile,
+			agentProfile,
 			sessionMemory,
 			backgroundErrors,
 		};
@@ -407,7 +487,7 @@ async function runScenario(
 			retrievedEntries: [],
 			answer: '',
 			userProfile: '',
-			personaProfile: '',
+			agentProfile: '',
 			sessionMemory: '',
 			backgroundErrors: backgroundErrors.length + 1,
 		});
@@ -422,12 +502,182 @@ async function runScenario(
 			retrieval: { latencyMs: 0, entries: [] },
 			injectedMemory: [],
 			userProfile: '',
-			personaProfile: '',
+			agentProfile: '',
 			sessionMemory: '',
 			backgroundErrors,
 			error: message,
 		};
 	}
+}
+
+async function judgeScenario(result: ScenarioRunResult, config: EvalConfig): Promise<JudgeScore> {
+	const start = performance.now();
+	try {
+		const { text } = await generateText({
+			model: createModel({ id: config.judgeModel, apiKey: config.anthropicApiKey }),
+			system: [
+				'You are an evaluation judge for a stateful AI memory system.',
+				'Judge semantic success, not literal keyword matching.',
+				'Be strict about scope leaks, fabricated memory, and storing task-local state in durable profiles.',
+				'Treat negated or corrected facts as acceptable when they are clearly marked as ruled out or superseded.',
+				'Return only valid JSON. Do not include markdown fences.',
+			].join('\n'),
+			prompt: buildJudgePrompt(result),
+		});
+		const parsed = parseJudgeScore(text);
+		return {
+			...parsed,
+			raw: text,
+			latencyMs: Math.round(performance.now() - start),
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return {
+			pass: false,
+			answerPass: false,
+			profilePass: false,
+			memoryPass: false,
+			reasoning: `Judge failed: ${message}`,
+			failureMode: 'judge_error',
+			raw: message,
+			latencyMs: Math.round(performance.now() - start),
+		};
+	}
+}
+
+function buildJudgePrompt(result: ScenarioRunResult): string {
+	const failedChecks = result.score.checks.filter((check) => !check.passed);
+	return [
+		'Judge this n8n memory eval scenario.',
+		'',
+		'Scoring guidance:',
+		'- pass: the memory behavior satisfies the scenario intent overall.',
+		'- answerPass: the final answer uses memory appropriately and avoids harmful fabrication or leakage.',
+		'- profilePass: <agent-profile> and <user-profile> contain appropriate durable content and avoid obvious cross-contamination.',
+		'- memoryPass: episodic entries, retrieval, and <session-memory> capture useful state without serious leakage.',
+		'- If deterministic checks are too literal, you may still pass semantically correct behavior.',
+		'- Deterministic "contains" expectations are keyword anchors, not positive semantic claims. For example, expected keyword "emojis" can be satisfied by "do not use emojis".',
+		'- scenario.expect.forbiddenEntries applies only to stored episodic entries. Do not apply it to <agent-profile>, <user-profile>, <session-memory>, or the final answer unless those sections have their own excludes.',
+		'- Judge profile direction against the seed conversation, not the polarity you infer from keyword anchors.',
+		'- When there are no deterministic failed profile checks, do not invent a profile failure unless the stored profile clearly contradicts the seed conversation.',
+		'- If a profile expectation only has exclusions, an empty profile can be acceptable.',
+		'- <agent-profile> captures the agent persona, role, operating mode, and durable agent-specific rules.',
+		'- <user-profile> captures stable facts and preferences about the user/resource, including communication style, workflow preferences, and priorities.',
+		'- If the answer or memory exposes another scope, fabricates remembered details, or misses the core requested memory behavior, fail.',
+		'',
+		'Return only JSON in this exact shape:',
+		'{"pass":true,"answerPass":true,"profilePass":true,"memoryPass":true,"reasoning":"...","failureMode":"none"}',
+		'Use failureMode one of: none, answer, profile, memory, retrieval, scope, abstention, harness, judge_uncertain.',
+		'',
+		'<scenario>',
+		JSON.stringify(
+			{
+				id: result.scenario.id,
+				title: result.scenario.title,
+				category: result.scenario.category,
+				deterministicChecks: result.score.checks,
+				seedThreads: result.scenario.seedThreads,
+				recallPrompt: result.scenario.recall.prompt,
+				recallScope: result.scenario.recall.scope ?? null,
+			},
+			null,
+			2,
+		),
+		'</scenario>',
+		'',
+		'<deterministic-failed-checks>',
+		failedChecks.length ? JSON.stringify(failedChecks, null, 2) : '[]',
+		'</deterministic-failed-checks>',
+		'',
+		'<agent-profile>',
+		truncateForJudge(result.agentProfile),
+		'</agent-profile>',
+		'',
+		'<user-profile>',
+		truncateForJudge(result.userProfile),
+		'</user-profile>',
+		'',
+		'<session-memory>',
+		truncateForJudge(result.sessionMemory),
+		'</session-memory>',
+		'',
+		'<stored-episodic-entries>',
+		truncateForJudge(JSON.stringify(result.storedEntries, null, 2), 8000),
+		'</stored-episodic-entries>',
+		'',
+		'<retrieved-episodic-entries>',
+		truncateForJudge(
+			JSON.stringify(
+				result.retrieval.entries.map((entry) => ({
+					content: entry.content,
+					score: entry.finalScore,
+				})),
+				null,
+				2,
+			),
+			8000,
+		),
+		'</retrieved-episodic-entries>',
+		'',
+		'<final-answer>',
+		truncateForJudge(result.recallTurn.answer),
+		'</final-answer>',
+	].join('\n');
+}
+
+function parseJudgeScore(text: string): Omit<JudgeScore, 'raw' | 'latencyMs'> {
+	const parsed = parseJsonObject(stripMarkdownFence(text));
+	if (!isRecord(parsed)) {
+		return {
+			pass: false,
+			answerPass: false,
+			profilePass: false,
+			memoryPass: false,
+			reasoning: 'Judge did not return a JSON object.',
+			failureMode: 'judge_uncertain',
+		};
+	}
+
+	return {
+		pass: parsed.pass === true,
+		answerPass: parsed.answerPass === true,
+		profilePass: parsed.profilePass === true,
+		memoryPass: parsed.memoryPass === true,
+		reasoning:
+			typeof parsed.reasoning === 'string' && parsed.reasoning.trim()
+				? parsed.reasoning.trim()
+				: 'No reasoning provided.',
+		failureMode:
+			typeof parsed.failureMode === 'string' && parsed.failureMode.trim()
+				? parsed.failureMode.trim()
+				: parsed.pass === true
+					? 'none'
+					: 'judge_uncertain',
+	};
+}
+
+function stripMarkdownFence(text: string): string {
+	return text
+		.replace(/^```(?:json)?\s*\n?/i, '')
+		.replace(/\n?```\s*$/i, '')
+		.trim();
+}
+
+function parseJsonObject(text: string): unknown {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return null;
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function truncateForJudge(value: string, maxLength = 6000): string {
+	if (value.length <= maxLength) return value;
+	return `${value.slice(0, maxLength)}\n[truncated ${value.length - maxLength} chars]`;
 }
 
 async function generateTurn(
@@ -510,8 +760,13 @@ function buildSummary(
 	const top1 = results.filter((result) => result.score.retrievalTop1Hit !== null);
 	const top3 = results.filter((result) => result.score.retrievalTop3Hit !== null);
 	const top12 = results.filter((result) => result.score.retrievalTop12Hit !== null);
+	const judged = results.filter(hasJudgeScore);
 	const retrievalLatencies = results
 		.map((result) => result.retrieval.latencyMs)
+		.filter((latency) => latency > 0)
+		.sort((a, b) => a - b);
+	const judgeLatencies = judged
+		.map((result) => result.judgeScore.latencyMs)
 		.filter((latency) => latency > 0)
 		.sort((a, b) => a - b);
 	const usages = results
@@ -533,6 +788,7 @@ function buildSummary(
 			(result.recallTurn.totalCost ?? result.recallTurn.usage?.cost ?? 0),
 		0,
 	);
+	const repeatSummaries = summarizeRepeats(results);
 
 	return {
 		suite: opts.suite,
@@ -552,6 +808,12 @@ function buildSummary(
 		retrievalTop1Rate: rateFor(top1, 'retrievalTop1Hit'),
 		retrievalTop3Rate: rateFor(top3, 'retrievalTop3Hit'),
 		retrievalTop12Rate: rateFor(top12, 'retrievalTop12Hit'),
+		judgePassRate: judgeRateFor(judged, 'pass'),
+		judgeAnswerPassRate: judgeRateFor(judged, 'answerPass'),
+		judgeProfilePassRate: judgeRateFor(judged, 'profilePass'),
+		judgeMemoryPassRate: judgeRateFor(judged, 'memoryPass'),
+		judgeLatencyMeanMs: mean(judgeLatencies),
+		judgeLatencyP95Ms: percentile(judgeLatencies, 0.95),
 		scopeLeakCount: results.reduce((total, result) => total + result.score.scopeLeakCount, 0),
 		backgroundErrorCount: results.reduce(
 			(total, result) => total + result.backgroundErrors.length,
@@ -571,8 +833,16 @@ function buildSummary(
 		totalCompletionTokens: usages.reduce((total, usage) => total + usage.completionTokens, 0),
 		totalTokens: usages.reduce((total, usage) => total + usage.totalTokens, 0),
 		totalKnownCostUsd,
-		categorySummaries: summarizeCategories(results),
+		categorySummaries: summarizeCategoriesWithJudge(results),
+		repeatSummaries,
+		repeatStats: summarizeRepeatStats(repeatSummaries),
 	};
+}
+
+function hasJudgeScore(
+	result: ScenarioRunResult,
+): result is ScenarioRunResult & { judgeScore: JudgeScore } {
+	return result.judgeScore !== undefined;
 }
 
 function rateFor(
@@ -581,6 +851,75 @@ function rateFor(
 ): number | null {
 	if (results.length === 0) return null;
 	return ratio(results.filter((result) => result.score[key] === true).length, results.length);
+}
+
+function judgeRateFor(
+	results: Array<ScenarioRunResult & { judgeScore: JudgeScore }>,
+	key: 'pass' | 'answerPass' | 'profilePass' | 'memoryPass',
+): number | null {
+	if (results.length === 0) return null;
+	return ratio(results.filter((result) => result.judgeScore[key]).length, results.length);
+}
+
+function summarizeCategoriesWithJudge(results: ScenarioRunResult[]): MemoryEvalCategorySummary[] {
+	const deterministic = summarizeCategories(results);
+	return deterministic.map((row) => {
+		const judged = results.filter(
+			(result) => result.scenario.category === row.category && result.judgeScore !== undefined,
+		);
+		const judgePassed = judged.filter((result) => result.judgeScore?.pass === true).length;
+		return {
+			...row,
+			judgeScenarios: judged.length,
+			judgePassed,
+			judgePassRate: judged.length > 0 ? ratio(judgePassed, judged.length) : null,
+		};
+	});
+}
+
+function summarizeRepeats(results: ScenarioRunResult[]): RepeatSummary[] {
+	const repeats = [...new Set(results.map((result) => result.repeat))].sort((a, b) => a - b);
+	return repeats.map((repeat) => {
+		const rows = results.filter((result) => result.repeat === repeat);
+		const answered = rows.filter((result) => result.score.answerPassed !== null);
+		const judged = rows.filter(hasJudgeScore);
+		return {
+			repeat,
+			runs: rows.length,
+			passRate: ratio(rows.filter((result) => result.passed).length, rows.length),
+			answerPassRate: answered.length
+				? ratio(
+						answered.filter((result) => result.score.answerPassed === true).length,
+						answered.length,
+					)
+				: null,
+			judgePassRate: judgeRateFor(judged, 'pass'),
+			judgeAnswerPassRate: judgeRateFor(judged, 'answerPass'),
+			judgeProfilePassRate: judgeRateFor(judged, 'profilePass'),
+			judgeMemoryPassRate: judgeRateFor(judged, 'memoryPass'),
+		};
+	});
+}
+
+function summarizeRepeatStats(repeats: RepeatSummary[]): RepeatStats {
+	return {
+		passRate: rateStats(repeats.map((repeat) => repeat.passRate)),
+		answerPassRate: rateStats(repeats.map((repeat) => repeat.answerPassRate)),
+		judgePassRate: rateStats(repeats.map((repeat) => repeat.judgePassRate)),
+		judgeAnswerPassRate: rateStats(repeats.map((repeat) => repeat.judgeAnswerPassRate)),
+		judgeProfilePassRate: rateStats(repeats.map((repeat) => repeat.judgeProfilePassRate)),
+		judgeMemoryPassRate: rateStats(repeats.map((repeat) => repeat.judgeMemoryPassRate)),
+	};
+}
+
+function rateStats(values: Array<number | null>): RateStats {
+	const filtered = values.filter((value): value is number => value !== null);
+	if (filtered.length === 0) return { mean: null, stdDev: null };
+	const avg = mean(filtered);
+	if (avg === null) return { mean: null, stdDev: null };
+	const variance =
+		filtered.reduce((total, value) => total + Math.pow(value - avg, 2), 0) / filtered.length;
+	return { mean: avg, stdDev: Math.sqrt(variance) };
 }
 
 function ratio(numerator: number, denominator: number): number {
@@ -626,20 +965,33 @@ function renderMarkdownSummary(summary: Summary, results: ScenarioRunResult[]): 
 		`- Pass rate: ${formatPercent(summary.passRate)} (${summary.passed}/${summary.totalRuns})`,
 		`- Answer pass rate: ${formatNullablePercent(summary.answerPassRate)}`,
 		`- Retrieval top-1/top-3/top-12: ${formatNullablePercent(summary.retrievalTop1Rate)} / ${formatNullablePercent(summary.retrievalTop3Rate)} / ${formatNullablePercent(summary.retrievalTop12Rate)}`,
+		`- Judge pass rate: ${formatNullablePercent(summary.judgePassRate)}`,
+		`- Judge answer/profile/memory: ${formatNullablePercent(summary.judgeAnswerPassRate)} / ${formatNullablePercent(summary.judgeProfilePassRate)} / ${formatNullablePercent(summary.judgeMemoryPassRate)}`,
+		`- Repeat mean/std-dev: deterministic ${formatStats(summary.repeatStats.passRate)}; judge ${formatStats(summary.repeatStats.judgePassRate)}`,
 		`- Scope leaks: ${summary.scopeLeakCount}`,
 		`- Background errors: ${summary.backgroundErrorCount}`,
 		`- Harness errors: ${summary.harnessErrorCount}`,
 		`- Total tokens: ${summary.totalTokens} (${summary.totalPromptTokens} prompt, ${summary.totalCompletionTokens} completion)`,
 		`- Known model cost: $${summary.totalKnownCostUsd.toFixed(4)}`,
 		`- Retrieval latency mean/p95: ${formatMs(summary.retrievalLatencyMeanMs)} / ${formatMs(summary.retrievalLatencyP95Ms)}`,
+		`- Judge latency mean/p95: ${formatMs(summary.judgeLatencyMeanMs)} / ${formatMs(summary.judgeLatencyP95Ms)}`,
 		'',
 		'## Categories',
 		'',
-		'| Category | Pass rate | Answer rate | Runs |',
-		'|---|---:|---:|---:|',
+		'| Category | Pass rate | Answer rate | Judge rate | Runs |',
+		'|---|---:|---:|---:|---:|',
 		...summary.categorySummaries.map(
 			(row) =>
-				`| ${row.category} | ${formatPercent(row.passRate)} | ${formatNullablePercent(row.answerPassRate)} | ${row.scenarios} |`,
+				`| ${row.category} | ${formatPercent(row.passRate)} | ${formatNullablePercent(row.answerPassRate)} | ${formatNullablePercent(row.judgePassRate)} | ${row.scenarios} |`,
+		),
+		'',
+		'## Repeats',
+		'',
+		'| Repeat | Pass rate | Answer rate | Judge rate | Judge answer | Judge profile | Judge memory | Runs |',
+		'|---:|---:|---:|---:|---:|---:|---:|---:|',
+		...summary.repeatSummaries.map(
+			(row) =>
+				`| ${row.repeat} | ${formatPercent(row.passRate)} | ${formatNullablePercent(row.answerPassRate)} | ${formatNullablePercent(row.judgePassRate)} | ${formatNullablePercent(row.judgeAnswerPassRate)} | ${formatNullablePercent(row.judgeProfilePassRate)} | ${formatNullablePercent(row.judgeMemoryPassRate)} | ${row.runs} |`,
 		),
 		'',
 		'## Failure Examples',
@@ -653,6 +1005,9 @@ function renderMarkdownSummary(summary: Summary, results: ScenarioRunResult[]): 
 						...result.score.checks
 							.filter((check) => !check.passed)
 							.map((check) => `- ${check.name}: ${check.detail}`),
+						result.judgeScore
+							? `- judge: ${result.judgeScore.pass ? 'pass' : 'fail'} (${result.judgeScore.failureMode}) ${result.judgeScore.reasoning}`
+							: '',
 						result.error ? `- harness error: ${result.error}` : '',
 						'',
 						'Answer:',
@@ -672,6 +1027,11 @@ function formatPercent(value: number): string {
 
 function formatNullablePercent(value: number | null): string {
 	return value === null ? 'n/a' : formatPercent(value);
+}
+
+function formatStats(stats: RateStats): string {
+	if (stats.mean === null || stats.stdDev === null) return 'n/a';
+	return `${formatPercent(stats.mean)} ± ${formatPercent(stats.stdDev)}`;
 }
 
 function formatMs(value: number | null): string {
@@ -708,11 +1068,17 @@ function printSummary(summary: Summary): void {
 		`answer=${formatNullablePercent(summary.answerPassRate)} retrieval@1=${formatNullablePercent(summary.retrievalTop1Rate)} retrieval@3=${formatNullablePercent(summary.retrievalTop3Rate)} retrieval@12=${formatNullablePercent(summary.retrievalTop12Rate)}`,
 	);
 	console.log(
+		`judge=${formatNullablePercent(summary.judgePassRate)} judgeAnswer=${formatNullablePercent(summary.judgeAnswerPassRate)} judgeProfile=${formatNullablePercent(summary.judgeProfilePassRate)} judgeMemory=${formatNullablePercent(summary.judgeMemoryPassRate)}`,
+	);
+	console.log(
+		`repeatMean=${formatStats(summary.repeatStats.passRate)} judgeRepeatMean=${formatStats(summary.repeatStats.judgePassRate)}`,
+	);
+	console.log(
 		`tokens=${summary.totalTokens} cost=$${summary.totalKnownCostUsd.toFixed(4)} retrievalMean=${formatMs(summary.retrievalLatencyMeanMs)} retrievalP95=${formatMs(summary.retrievalLatencyP95Ms)}`,
 	);
 	for (const row of summary.categorySummaries) {
 		console.log(
-			`${row.category}: ${formatPercent(row.passRate)} (${row.passed}/${row.scenarios}) answer=${formatNullablePercent(row.answerPassRate)}`,
+			`${row.category}: ${formatPercent(row.passRate)} (${row.passed}/${row.scenarios}) answer=${formatNullablePercent(row.answerPassRate)} judge=${formatNullablePercent(row.judgePassRate)}`,
 		);
 	}
 }
@@ -746,7 +1112,7 @@ async function main(): Promise<void> {
 		throw new Error('No scenarios selected.');
 	}
 
-	const config = requireEvalConfig();
+	const config = requireEvalConfig(opts);
 	const generatedAt = new Date().toISOString();
 	const commit = await getCommit();
 	const results: ScenarioRunResult[] = [];
@@ -755,10 +1121,16 @@ async function main(): Promise<void> {
 		for (const scenario of scenarios) {
 			console.log(`[${repeat}/${opts.repeats}] ${scenario.id}: ${scenario.title}`);
 			const result = await runScenario(scenario, repeat, config);
+			if (opts.judge) {
+				result.judgeScore = await judgeScenario(result, config);
+			}
 			results.push(result);
 			const status = result.passed ? 'pass' : 'miss';
 			const toolUsed = result.recallTurn.toolCalls.includes(RECALL_MEMORY_TOOL_NAME);
-			console.log(`  ${status}; recall_memory=${toolUsed ? 'yes' : 'no'}`);
+			const judgeStatus = result.judgeScore
+				? `; judge=${result.judgeScore.pass ? 'pass' : 'miss'}`
+				: '';
+			console.log(`  ${status}; recall_memory=${toolUsed ? 'yes' : 'no'}${judgeStatus}`);
 		}
 	}
 

@@ -4,8 +4,8 @@ Stateful real-model evals for the n8n agent memory stack.
 
 These evals are intentionally not a CI gate. They measure whether the current SDK memory behavior helps across realistic support-style conversations:
 
-- `<persona>`: durable behavior the agent should follow with this user.
-- `<user>`: stable user/resource preferences and context.
+- `<agent-profile>`: durable persona, role, and operating style for this agent.
+- `<user-profile>`: stable user/resource preferences and context.
 - `<session-memory>`: current-thread objective, state, decisions, and follow-ups.
 - `<memory>`: source-backed episodic Case memory entries retrieved for the turn.
 
@@ -27,6 +27,8 @@ N8N_MEMORY_EVAL_AGENT_MODEL=anthropic/claude-haiku-4-5
 N8N_MEMORY_EVAL_LIMIT=5
 N8N_MEMORY_EVAL_CATEGORY=case-extraction
 N8N_MEMORY_EVAL_REPEATS=3
+N8N_MEMORY_EVAL_JUDGE=1
+N8N_MEMORY_EVAL_JUDGE_MODEL=anthropic/claude-haiku-4-5
 ```
 
 ## Commands
@@ -70,6 +72,19 @@ Full run:
 )
 ```
 
+Full run with LLM judge:
+
+```bash
+(
+  set -a
+  source .env
+  set +a
+
+  cd packages/@n8n/agents
+  pnpm exec tsx evals/memory/run.ts --suite full --repeats 3 --judge
+)
+```
+
 Threshold-gated run:
 
 ```bash
@@ -86,8 +101,8 @@ packages/@n8n/agents/evals/memory/results/run-<timestamp>/
 
 The directory is gitignored and contains:
 
-- `raw-results.json`: every scenario turn, answer, profiles, session memory, entries, retrieval output, tool usage, scoring checks, latency, and available token usage.
-- `summary.json`: aggregate metrics.
+- `raw-results.json`: every scenario turn, answer, profiles, session memory, entries, retrieval output, tool usage, deterministic scoring checks, optional judge score, latency, and available token usage.
+- `summary.json`: aggregate metrics, repeat summaries, and optional judge rates.
 - `summary.md`: compact human-readable report.
 
 ## Scoring
@@ -101,4 +116,4 @@ Scoring is deterministic by default:
 
 `recall_memory` usage is reported separately. A scenario can pass without a tool call when auto-injected `<memory>` was enough for the final answer.
 
-The runner does not use eval-only retrieval tuning, prompt tuning, or an LLM judge.
+Passing `--judge` adds an LLM-as-judge pass after deterministic scoring. The judge is semantic and can pass behavior that deterministic keyword checks mark as too literal, but deterministic checks remain in the report for comparison. The runner does not use eval-only retrieval tuning or prompt tuning.

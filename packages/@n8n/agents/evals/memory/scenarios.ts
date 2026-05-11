@@ -56,7 +56,7 @@ export interface MemoryEvalScenario {
 		retrieval?: EntryExpectation[];
 		answer?: KeywordExpectation;
 		userProfile?: KeywordExpectation;
-		personaProfile?: KeywordExpectation;
+		agentProfile?: KeywordExpectation;
 		sessionMemory?: KeywordExpectation;
 		maxMatchingEntries?: CountExpectation[];
 	};
@@ -65,7 +65,7 @@ export interface MemoryEvalScenario {
 export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 	{
 		id: 'profile-user-style',
-		title: 'Persona captures stable response behavior preference',
+		title: 'User profile captures stable response preference',
 		category: 'profile-split',
 		smoke: true,
 		agentDescription: 'Customer support engineering assistant for technical troubleshooting.',
@@ -80,32 +80,32 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 			prompt: 'Before we start a new ticket, how should you format your answers for me?',
 		},
 		expect: {
-			userProfile: { excludes: ['concise answers'] },
-			personaProfile: { contains: ['concise', 'emojis'] },
+			userProfile: { contains: ['concise', 'emojis'] },
+			agentProfile: { excludes: ['concise answers', 'do not use emojis'] },
 			forbiddenEntries: ['do not use emojis'],
 			answer: { contains: ['concise', 'emojis'], excludes: ['🙂', '😀', '🚀'] },
 		},
 	},
 	{
-		id: 'profile-persona-outage-rule',
-		title: 'Persona captures durable agent behavior',
+		id: 'profile-behavior-outage-rule',
+		title: 'Agent profile captures durable agent behavior',
 		category: 'profile-split',
 		smoke: true,
 		agentDescription: 'Customer support engineering assistant for production incidents.',
 		seedThreads: [
 			{
-				id: 'persona-seed',
+				id: 'behavior-seed',
 				turns: [
 					'Durable behavior rule for you: when I describe a production outage, ask for the exact n8n version and deployment region before suggesting fixes.',
 				],
 			},
 		],
 		recall: {
-			threadId: 'persona-recall',
+			threadId: 'behavior-recall',
 			prompt: 'A customer says their production instance is down. What should you ask first?',
 		},
 		expect: {
-			personaProfile: {
+			agentProfile: {
 				contains: ['version', 'region'],
 				excludes: ['production instance is down'],
 			},
@@ -135,7 +135,7 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 		expect: {
 			sessionMemory: { contains: ['rollback plan', 'canary', 'eu-west'] },
 			userProfile: { excludes: ['Quartz importer', 'pause the canary', 'checksum drift'] },
-			personaProfile: { excludes: ['Quartz importer', 'pause the canary'] },
+			agentProfile: { excludes: ['Quartz importer', 'pause the canary'] },
 			answer: { excludes: ['always pause canaries', 'Quartz importer is my preference'] },
 		},
 	},
@@ -484,7 +484,7 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 		},
 		expect: {
 			userProfile: { contains: ['escalation lead', 'blast radius', 'customer-facing impact'] },
-			personaProfile: { excludes: ['escalation lead'] },
+			agentProfile: { excludes: ['escalation lead'] },
 			forbiddenEntries: ['escalation lead'],
 			answer: { contains: ['escalation lead', 'blast radius'] },
 		},
@@ -508,14 +508,14 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 		},
 		expect: {
 			userProfile: { contains: ['diagnostic check', 'rollback path'] },
-			personaProfile: { excludes: ['schema issue'] },
+			agentProfile: { excludes: ['schema issue'] },
 			answer: { contains: ['diagnostic', 'rollback'] },
 			forbiddenEntries: ['rollback path'],
 		},
 	},
 	{
-		id: 'profile-agent-specific-persona',
-		title: 'Persona captures agent-specific response directive',
+		id: 'profile-behavior-specific-directive',
+		title: 'Agent profile captures agent-specific response directive',
 		category: 'profile-split',
 		agentDescription: 'Support agent that helps triage customer incident reports.',
 		seedThreads: [
@@ -531,7 +531,7 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 			prompt: 'I have a new customer incident report. How should you structure the first pass?',
 		},
 		expect: {
-			personaProfile: {
+			agentProfile: {
 				contains: ['customer impact', 'suspected subsystem', 'diagnostic question'],
 			},
 			userProfile: { excludes: ['customer impact', 'suspected subsystem'] },
@@ -539,25 +539,25 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 		},
 	},
 	{
-		id: 'profile-persona-vs-user-conflict',
-		title: 'Persona and user profile separate behavior from identity',
+		id: 'profile-behavior-vs-user-conflict',
+		title: 'Agent profile and user profile separate directives from identity',
 		category: 'profile-split',
 		agentDescription: 'Support assistant for incident triage and customer communication.',
 		seedThreads: [
 			{
-				id: 'persona-user-conflict-seed',
+				id: 'behavior-user-conflict-seed',
 				turns: [
 					'I am on the enterprise support team. Durable behavior for you: when I ask for customer-facing wording, avoid blame language and include one concrete next step.',
 				],
 			},
 		],
 		recall: {
-			threadId: 'persona-user-conflict-recall',
+			threadId: 'behavior-user-conflict-recall',
 			prompt: 'What do you know about me, and how should you write customer-facing wording?',
 		},
 		expect: {
 			userProfile: { contains: ['enterprise support'] },
-			personaProfile: { contains: ['avoid blame', 'next step'] },
+			agentProfile: { contains: ['avoid blame', 'next step'] },
 			answer: { contains: ['enterprise support', 'avoid blame', 'next step'] },
 			forbiddenEntries: ['avoid blame language'],
 		},
@@ -608,7 +608,7 @@ export const MEMORY_EVAL_SCENARIOS: MemoryEvalScenario[] = [
 				contains: ['Atlas export queue', 'worker autoscaling', 'lease_owner'],
 			},
 			userProfile: { excludes: ['Atlas export queue', 'lease_owner'] },
-			personaProfile: { excludes: ['Atlas export queue'] },
+			agentProfile: { excludes: ['Atlas export queue'] },
 			answer: { excludes: ['always inspect lease tables', 'Atlas is my preference'] },
 		},
 	},
