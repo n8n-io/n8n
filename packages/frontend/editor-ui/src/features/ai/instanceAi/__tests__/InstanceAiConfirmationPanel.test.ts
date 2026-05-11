@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type {
 	InstanceAiConfirmation,
 	InstanceAiToolCallState,
@@ -89,7 +89,7 @@ vi.mock('../components/PlanReviewPanel.vue', () => ({
 	default: { template: '<div />', props: ['plannedTasks', 'message', 'readOnly'] },
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiConfirmationPanel);
+const renderComponent = createThreadComponentRenderer(InstanceAiConfirmationPanel);
 
 // ---------------------------------------------------------------------------
 // Helpers

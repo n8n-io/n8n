@@ -19,8 +19,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	injectWorkflowDocumentStore,
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	getPinDataSize,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
@@ -28,7 +26,7 @@ import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
-import { computed, shallowRef, unref } from 'vue';
+import { computed, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
@@ -60,9 +58,7 @@ export function usePinnedData(
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
-	const workflowDocumentStore =
-		injectWorkflowDocumentStore() ??
-		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();

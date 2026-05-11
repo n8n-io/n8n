@@ -365,7 +365,7 @@ describe('generate-types', () => {
 		it('should map string type with Expression wrapper', () => {
 			const prop: NodeProperty = { name: 'url', displayName: 'URL', type: 'string', default: '' };
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should map number type with Expression wrapper', () => {
@@ -554,7 +554,7 @@ describe('generate-types', () => {
 				},
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('Array<string | Expression<string> | PlaceholderValue>');
+			expect(result).toBe('Array<string | Expression<string>>');
 		});
 
 		it('should map fixedCollection type to proper nested interface', () => {
@@ -606,7 +606,7 @@ describe('generate-types', () => {
 				],
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toContain('attendees?: Array<string | Expression<string> | PlaceholderValue>');
+			expect(result).toContain('attendees?: Array<string | Expression<string>>');
 		});
 
 		it('should map fixedCollection with multipleValues to array type', () => {
@@ -759,7 +759,7 @@ describe('generate-types', () => {
 			const result = generateTypes.mapPropertyType(prop);
 			// Should generate nested structure with proper types
 			expect(result).toContain('systemMessage?:');
-			expect(result).toContain('string | Expression<string> | PlaceholderValue');
+			expect(result).toContain('string | Expression<string>');
 			expect(result).toContain('maxIterations?:');
 			expect(result).toContain('number | Expression<number>');
 			expect(result).toContain('returnIntermediateSteps?:');
@@ -845,7 +845,7 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint You can add multiple intervals');
 		});
 
-		// PlaceholderValue tests - string type should include PlaceholderValue, other types should not
+		// PlaceholderValue is no longer emitted by codegen — these tests guard against regressions.
 		it('should NOT include PlaceholderValue in options type', () => {
 			const prop: NodeProperty = {
 				name: 'method',
@@ -2586,7 +2586,7 @@ describe('generate-types', () => {
 				default: null,
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should handle options with numeric values', () => {
