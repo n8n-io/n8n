@@ -513,6 +513,67 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		).toBeUndefined();
 	});
 
+	// N8N-9998: nested arrays inside `$json` were serialized as `{}` because
+	// `createDeepLazyProxy` always built an object-shaped proxy (target `{}`),
+	// so array-elements-that-are-arrays lost their array identity at the
+	// isolate boundary.
+	describe('N8N-9998: nested arrays in $json', () => {
+		it('preserves array-of-arrays when returning the whole $json', () => {
+			const data = {
+				$json: {
+					demo: [[{ foo: 'bar' }], [{ bar: 'bas' }]],
+				},
+			};
+
+			const result = evaluator.evaluate('{{ $json }}', data, caller);
+
+			expect(result).toEqual({
+				demo: [[{ foo: 'bar' }], [{ bar: 'bas' }]],
+			});
+		});
+
+		it('preserves a nested array when returned directly', () => {
+			const data = {
+				$json: {
+					demo: [[{ foo: 'bar' }], [{ bar: 'bas' }]],
+				},
+			};
+
+			const result = evaluator.evaluate('{{ $json.demo[0] }}', data, caller);
+
+			expect(result).toEqual([{ foo: 'bar' }]);
+		});
+
+		it('preserves three levels of array nesting', () => {
+			const data = { $json: { a: [[[42]]] } };
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({ a: [[[42]]] });
+		});
+
+		it('preserves arrays of primitive arrays', () => {
+			const data = {
+				$json: {
+					rows: [
+						[1, 2, 3],
+						[4, 5, 6],
+					],
+				},
+			};
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({
+				rows: [
+					[1, 2, 3],
+					[4, 5, 6],
+				],
+			});
+		});
+
+		it('preserves arrays with mixed object/array siblings', () => {
+			const data = { $json: { list: [[1, 2], { k: 'v' }] } };
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({
+				list: [[1, 2], { k: 'v' }],
+			});
+		});
+	});
+
 	it('should handle re-entrant execute() calls via closure-scoped contexts', () => {
 		const data = {
 			$json: {
