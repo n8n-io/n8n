@@ -280,7 +280,16 @@ export class ZendeskTrigger implements INodeType {
 				for (const trigger of triggers) {
 					const toDeleteTriggers = [];
 					// this trigger belong to the current target
-					if (trigger.actions[0].value[0].toString() === webhookData.targetId?.toString()) {
+					const firstAction = trigger.actions?.[0] as IDataObject | undefined;
+					const firstActionValue = Array.isArray(firstAction?.value)
+						? firstAction?.value[0]
+						: undefined;
+
+					if (
+						firstAction?.field === 'notification_webhook' &&
+						firstActionValue !== undefined &&
+						firstActionValue.toString() === webhookData.targetId?.toString()
+					) {
 						toDeleteTriggers.push(trigger.id);
 					}
 					// delete all trigger attach to this target;

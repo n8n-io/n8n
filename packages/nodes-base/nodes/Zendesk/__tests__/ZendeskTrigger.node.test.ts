@@ -3,6 +3,49 @@ import * as GenericFunctions from '../GenericFunctions';
 import * as ZendeskTriggerHelpers from '../ZendeskTriggerHelpers';
 
 describe('ZendeskTrigger Node', () => {
+	describe('checkExists method', () => {
+		let mockThis: any;
+		let webhookData: Record<string, any>;
+
+		beforeEach(() => {
+			webhookData = {};
+			mockThis = {
+				getNodeWebhookUrl: () => 'https://example.com/webhook',
+				getWorkflowStaticData: () => webhookData,
+				getNodeParameter: jest.fn().mockReturnValue({}),
+			};
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should ignore triggers without notification_webhook actions', async () => {
+			const apiRequestSpy = jest
+				.spyOn(GenericFunctions, 'zendeskApiRequest')
+				.mockResolvedValueOnce({
+					webhooks: [{ id: 'target-1', endpoint: 'https://example.com/webhook' }],
+				});
+
+			jest.spyOn(GenericFunctions, 'zendeskApiRequestAllItems').mockResolvedValueOnce([
+				{
+					id: 'non-webhook-trigger',
+					actions: [{ field: 'status', value: ['open'] }],
+				},
+			]);
+
+			const trigger = new ZendeskTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(false);
+			const deleteCalls = apiRequestSpy.mock.calls.filter(
+				([, endpoint]) =>
+					typeof endpoint === 'string' && endpoint.startsWith('/triggers/destroy_many'),
+			);
+			expect(deleteCalls).toHaveLength(0);
+		});
+	});
+
 	describe('create webhook method', () => {
 		let mockThis: any;
 		let webhookData: Record<string, any>;
