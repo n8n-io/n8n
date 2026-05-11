@@ -28,10 +28,12 @@ import type { INodeUi } from '@/Interface';
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [] as INodeUi[],
+		workflowTriggerNodes: [] as INodeUi[],
 		name: '',
 		settings: {},
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
 		getNodeByName: vi.fn().mockReturnValue(null),
+		getSnapshot: vi.fn().mockReturnValue({}),
 	},
 }));
 
@@ -454,10 +456,9 @@ describe('AI Assistant store', () => {
 
 	it('should call telemetry for opening assistant with build_with_ai source on empty canvas', () => {
 		const assistantStore = useAssistantStore();
-		const workflowsStore = useWorkflowsStore();
 
 		// Ensure canvas is empty
-		workflowsStore.workflow.nodes = [];
+		mockWorkflowDocumentStore.allNodes = [];
 
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
@@ -483,7 +484,7 @@ describe('AI Assistant store', () => {
 		const workflowsStore = useWorkflowsStore();
 
 		// Set workflow id so workflowDocumentStore is created
-		workflowsStore.workflow.id = 'test-wf';
+		workflowsStore.workflowId = 'test-wf';
 
 		// Add a node to the workflow
 		mockWorkflowDocumentStore.allNodes = [

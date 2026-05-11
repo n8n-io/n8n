@@ -71,6 +71,8 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsEncryptionKeys = async () =>
+	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
@@ -91,8 +93,6 @@ const SettingsExternalSecrets = async () => {
 };
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
-const SettingsInstanceRegistryView = async () =>
-	await import('@/features/settings/instanceRegistry/views/SettingsInstanceRegistryView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
@@ -927,6 +927,31 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'encryption-keys',
+				name: VIEWS.ENCRYPTION_KEYS_SETTINGS,
+				component: SettingsEncryptionKeys,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'encryptionKey:manage',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('ENCRYPTION_KEY_ROTATION');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'encryption-keys',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
 				component: SettingsLogStreamingView,
@@ -939,31 +964,6 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-				},
-			},
-			{
-				path: 'instance-registry',
-				name: VIEWS.INSTANCE_REGISTRY,
-				component: SettingsInstanceRegistryView,
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'orchestration:read',
-						},
-						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('INSTANCE_REGISTRY');
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'instance-registry',
-							};
-						},
 					},
 				},
 			},

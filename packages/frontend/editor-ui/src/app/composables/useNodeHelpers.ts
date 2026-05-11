@@ -288,7 +288,7 @@ export function useNodeHelpers() {
 		}
 
 		const nodeInputIssues = getNodeInputIssues(
-			workflowDocumentStore.value.getSnapshot(),
+			workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			node,
 			nodeType,
 		);
@@ -1091,6 +1091,7 @@ export function useNodeHelpers() {
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
+		getNodeCredentialIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,

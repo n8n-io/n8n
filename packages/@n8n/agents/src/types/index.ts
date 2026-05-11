@@ -9,7 +9,6 @@ export type {
 	ContentReasoning,
 	ContentFile,
 	ContentToolCall,
-	ContentToolResult,
 	ContentInvalidToolCall,
 	ContentProvider,
 	Message,
@@ -61,6 +60,7 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
 	CheckpointStore,

@@ -142,6 +142,11 @@ const contextNode = computed<INode | null>(() => {
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
 });
 
+const hideAskAssistant = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
+});
+
 const activeNodeType = computed(() => {
 	const activeNode = contextNode.value;
 
@@ -1183,6 +1188,7 @@ async function deleteCredential() {
 async function oAuthCredentialAuthorize() {
 	let url;
 
+	credentialsStore.pendingOAuthRefresh = true;
 	const credential = await saveCredential();
 	if (!credential) {
 		return;
@@ -1499,6 +1505,7 @@ const { width } = useElementSize(credNameRef);
 						:use-custom-oauth="useCustomOAuth"
 						:is-quick-connect-mode="isQuickConnectMode"
 						:context-node="contextNode"
+						:hide-ask-assistant="hideAskAssistant"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@quick-connect="onQuickConnect"

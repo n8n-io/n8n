@@ -5,7 +5,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NDVFloatingNodes from './NDVFloatingNodes.vue';
 import type { Direction, XYPosition } from '@/Interface';
@@ -38,7 +38,7 @@ interface Props {
 
 const throttledOnResize = useThrottleFn(onResize, 100);
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
 
 const props = defineProps<Props>();

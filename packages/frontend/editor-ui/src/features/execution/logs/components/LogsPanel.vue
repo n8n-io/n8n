@@ -6,7 +6,7 @@ import ChatMessagesPanel from '@/features/execution/logs/components/ChatMessages
 import LogsDetailsPanel from '@/features/execution/logs/components/LogDetailsPanel.vue';
 import LogsPanelActions from '@/features/execution/logs/components/LogsPanelActions.vue';
 import { useLogsExecutionData } from '@/features/execution/logs/composables/useLogsExecutionData';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useLogsSelection } from '@/features/execution/logs/composables/useLogsSelection';
 import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
@@ -30,7 +30,7 @@ const popOutContainer = useTemplateRef('popOutContainer');
 const popOutContent = useTemplateRef('popOutContent');
 
 const logsStore = useLogsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),

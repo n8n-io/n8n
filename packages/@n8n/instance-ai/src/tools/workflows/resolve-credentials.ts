@@ -15,6 +15,44 @@ import type { InstanceAiContext } from '../../types';
  */
 export type CredentialMap = Map<string, { id: string; name: string }>;
 
+/** Flat credential entry — preserves duplicates of the same type. */
+export interface CredentialEntry {
+	id: string;
+	name: string;
+	type: string;
+}
+
+/**
+ * Paired credential snapshot produced from a single `credentialService.list()`
+ * call: a type-keyed map for fallback resolution AND a flat list for
+ * validating raw credential ids without losing duplicates of the same type.
+ */
+export interface CredentialSnapshot {
+	map: CredentialMap;
+	list: CredentialEntry[];
+}
+
+/**
+ * Build a paired credential snapshot from all available credentials.
+ * Non-fatal — returns empty structures if listing fails.
+ */
+export async function buildCredentialSnapshot(
+	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
+): Promise<CredentialSnapshot> {
+	const map: CredentialMap = new Map();
+	const list: CredentialEntry[] = [];
+	try {
+		const allCreds = await credentialService.list();
+		for (const cred of allCreds) {
+			map.set(cred.type, { id: cred.id, name: cred.name });
+			list.push({ id: cred.id, name: cred.name, type: cred.type });
+		}
+	} catch {
+		// Non-fatal — credentials will be unresolved
+	}
+	return { map, list };
+}
+
 /**
  * Build a credential map from all available credentials.
  * Non-fatal — returns an empty map if listing fails.
@@ -22,15 +60,7 @@ export type CredentialMap = Map<string, { id: string; name: string }>;
 export async function buildCredentialMap(
 	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
 ): Promise<CredentialMap> {
-	const map: CredentialMap = new Map();
-	try {
-		const allCreds = await credentialService.list();
-		for (const cred of allCreds) {
-			map.set(cred.type, { id: cred.id, name: cred.name });
-		}
-	} catch {
-		// Non-fatal — credentials will be unresolved
-	}
+	const { map } = await buildCredentialSnapshot(credentialService);
 	return map;
 }
 
@@ -63,6 +93,7 @@ export async function resolveCredentials(
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,
 	credentialMap: CredentialMap,
+	availableCredentials?: CredentialEntry[],
 ): Promise<CredentialResolutionResult> {
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
@@ -93,15 +124,53 @@ export async function resolveCredentials(
 		let nodeMocked = false;
 
 		for (const [key, value] of Object.entries(creds)) {
-			if (value !== undefined && value !== null) continue;
-
 			// Try 1: restore from existing workflow (preserves the user's chosen credential
 			// when the LLM drops the id during an edit — e.g., emits newCredential('name')
 			// without the id, which serializes to undefined).
 			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
-			if (existingCreds?.[key]) {
+			const restoreExistingCredential = () => {
+				if (!existingCreds?.[key]) return false;
 				creds[key] = existingCreds[key];
 				cleanupMockPinData(json, node.name);
+				return true;
+			};
+
+			const mockCredential = () => {
+				const nodeName = node.name ?? '';
+				delete creds[key];
+				mockedCredentialTypesSet.add(key);
+				nodeMocked = true;
+
+				if (nodeName) {
+					// Track which credential types were mocked on this node
+					mockedCredentialsByNode[nodeName] ??= [];
+					mockedCredentialsByNode[nodeName].push(key);
+
+					// Produce sidecar verification pin data (never saved to workflow).
+					// If the workflow already has real pinData for this node, skip — the
+					// existing pinData will suffice for execution skipping.
+					if (!(json.pinData && nodeName in json.pinData)) {
+						verificationPinData[nodeName] ??= [];
+						if (verificationPinData[nodeName].length === 0) {
+							verificationPinData[nodeName].push({ _mockedCredential: key });
+						}
+					}
+				}
+			};
+
+			if (value !== undefined && value !== null) {
+				if (isKnownCredentialForType(value, key, availableCredentials)) {
+					cleanupMockPinData(json, node.name);
+					continue;
+				}
+				if (restoreExistingCredential()) {
+					continue;
+				}
+				mockCredential();
+				continue;
+			}
+
+			if (restoreExistingCredential()) {
 				continue;
 			}
 
@@ -119,26 +188,7 @@ export async function resolveCredentials(
 			// The credential key is deleted so the saved workflow doesn't reference a
 			// non-existent credential. Verification pin data is produced so the execution
 			// engine can skip this node during test runs.
-			const nodeName = node.name ?? '';
-			delete creds[key];
-			mockedCredentialTypesSet.add(key);
-			nodeMocked = true;
-
-			if (nodeName) {
-				// Track which credential types were mocked on this node
-				mockedCredentialsByNode[nodeName] ??= [];
-				mockedCredentialsByNode[nodeName].push(key);
-
-				// Produce sidecar verification pin data (never saved to workflow).
-				// If the workflow already has real pinData for this node, skip — the
-				// existing pinData will suffice for execution skipping.
-				if (!(json.pinData && nodeName in json.pinData)) {
-					verificationPinData[nodeName] ??= [];
-					if (verificationPinData[nodeName].length === 0) {
-						verificationPinData[nodeName].push({ _mockedCredential: key });
-					}
-				}
-			}
+			mockCredential();
 		}
 
 		if (nodeMocked && node.name) {
@@ -152,6 +202,30 @@ export async function resolveCredentials(
 		mockedCredentialsByNode,
 		verificationPinData,
 	};
+}
+
+function getCredentialId(value: unknown): string | undefined {
+	if (typeof value !== 'object' || value === null || !('id' in value)) return undefined;
+
+	const { id } = value;
+	if (typeof id !== 'string' || id.trim() === '') return undefined;
+
+	return id;
+}
+
+function isKnownCredentialForType(
+	value: unknown,
+	credentialType: string,
+	availableCredentials: CredentialEntry[] | undefined,
+): boolean {
+	if (!availableCredentials) return true;
+
+	const id = getCredentialId(value);
+	if (!id) return false;
+
+	return availableCredentials.some(
+		(credential) => credential.id === id && credential.type === credentialType,
+	);
 }
 
 /**
