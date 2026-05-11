@@ -43,6 +43,7 @@ const mockedValidateWorkflow = jest.mocked(validateWorkflow);
 type Executable = {
 	execute: (input: Record<string, unknown>) => Promise<{
 		success: boolean;
+		usesWorkflowPinDataForVerification?: boolean;
 		errors?: string[];
 	}>;
 };
@@ -130,7 +131,6 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 		const tool = createSubmitWorkflowTool(
 			context,
 			makeBuildSuccessWorkspace(),
-			new Map(),
 		) as unknown as Executable;
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
@@ -145,7 +145,6 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext(),
 			makeBuildSuccessWorkspace(),
-			new Map(),
 		) as unknown as Executable;
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
@@ -190,7 +189,6 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ createWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
-			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
@@ -211,7 +209,6 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ updateWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
-			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
@@ -225,6 +222,91 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		expect(attempts[0]).toMatchObject({
 			success: false,
 			errors: ['Action blocked by admin'],
+		});
+	});
+});
+
+describe('createSubmitWorkflowTool — credential verification metadata', () => {
+	it('surfaces workflow pin-data availability when mocked credentials reuse saved pin data', async () => {
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const context = makeContext({} as InstanceAiContext['permissions'], {
+			workflowService: {
+				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-1' }),
+			} as unknown as InstanceAiContext['workflowService'],
+		});
+		const tool = createSubmitWorkflowTool(
+			context,
+			makeBuildSuccessWorkspace({
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {},
+						credentials: { slackApi: null },
+					},
+				],
+				connections: {},
+				pinData: { Slack: [{ ok: true }] },
+			}),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		) as unknown as Executable;
+
+		const out = await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+
+		expect(out.success).toBe(true);
+		expect(out.usesWorkflowPinDataForVerification).toBe(true);
+		expect(attempts[0]).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+			usesWorkflowPinDataForVerification: true,
+		});
+	});
+
+	it('reports Execute Workflow references from the submitted workflow', async () => {
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const context = makeContext({} as InstanceAiContext['permissions'], {
+			workflowService: {
+				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-main' }),
+			} as unknown as InstanceAiContext['workflowService'],
+		});
+		const tool = createSubmitWorkflowTool(
+			context,
+			makeBuildSuccessWorkspace({
+				name: 'Main',
+				nodes: [
+					{
+						id: '1',
+						name: 'Run Chunk',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.2,
+						position: [0, 0],
+						parameters: {
+							source: 'database',
+							workflowId: { __rl: true, mode: 'id', value: 'wf-chunk' },
+						},
+					},
+				],
+				connections: {},
+			}),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		) as unknown as Executable;
+
+		await tool.execute({ filePath: 'src/workflow.ts', name: 'Main' });
+
+		expect(attempts[0]).toMatchObject({
+			success: true,
+			workflowId: 'wf-main',
+			referencedWorkflowIds: ['wf-chunk'],
 		});
 	});
 });

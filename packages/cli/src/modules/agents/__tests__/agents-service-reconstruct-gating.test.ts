@@ -1,5 +1,6 @@
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
+import type { AgentsConfig } from '@n8n/config';
 
 import type { ToolRegistry } from '../tool-registry';
 import type { Logger } from '@n8n/backend-common';
@@ -42,7 +43,10 @@ jest.mock('../integrations/rich-interaction-tool', () => ({
 	createRichInteractionTool: () => ({}) as never,
 }));
 
-function makeService(agentsToolsService: AgentsToolsService): AgentsService {
+function makeService(
+	agentsToolsService: AgentsToolsService,
+	modules: string[] = [],
+): AgentsService {
 	return new AgentsService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
@@ -63,6 +67,7 @@ function makeService(agentsToolsService: AgentsToolsService): AgentsService {
 		mock<AgentPublishedVersionRepository>(),
 		mock<AgentSkillsService>(),
 		mock(),
+		{ modules } as unknown as AgentsConfig,
 		mock(),
 	);
 }
@@ -98,41 +103,69 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 	});
 
-	function setup() {
+	function setup(options: { nodeToolsModuleEnabled?: boolean } = {}) {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeService(agentsToolsService);
+		const service = makeService(
+			agentsToolsService,
+			options.nodeToolsModuleEnabled ? ['node-tools-searcher'] : [],
+		);
 		return { service, agentsToolsService, credentialProvider };
 	}
 
-	it('does not attach node tools when config.nodeTools is absent (default-off)', async () => {
-		const { service, agentsToolsService, credentialProvider } = setup();
-		const entity = makeAgentEntity(); // no config block at all
+	it.each([
+		{
+			name: 'config.nodeTools is absent and the module is disabled',
+			nodeToolsModuleEnabled: false,
+			schemaConfig: undefined,
+			attaches: false,
+		},
+		{
+			name: 'config.nodeTools is absent and the module is enabled',
+			nodeToolsModuleEnabled: true,
+			schemaConfig: undefined,
+			attaches: false,
+		},
+		{
+			name: 'config.nodeTools.enabled is true but the module is disabled',
+			nodeToolsModuleEnabled: false,
+			schemaConfig: { nodeTools: { enabled: true } },
+			attaches: false,
+		},
+		{
+			name: 'config.nodeTools.enabled is true and the module is enabled',
+			nodeToolsModuleEnabled: true,
+			schemaConfig: { nodeTools: { enabled: true } },
+			attaches: true,
+		},
+		{
+			name: 'config.nodeTools.enabled is false and the module is disabled',
+			nodeToolsModuleEnabled: false,
+			schemaConfig: { nodeTools: { enabled: false } },
+			attaches: false,
+		},
+		{
+			name: 'config.nodeTools.enabled is false and the module is enabled',
+			nodeToolsModuleEnabled: true,
+			schemaConfig: { nodeTools: { enabled: false } },
+			attaches: false,
+		},
+	])('$name', async ({ nodeToolsModuleEnabled, schemaConfig, attaches }) => {
+		const { service, agentsToolsService, credentialProvider } = setup({
+			nodeToolsModuleEnabled,
+		});
+		const entity = makeAgentEntity(schemaConfig);
 
 		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
 
-		expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
-	});
-
-	it('attaches node tools when config.nodeTools.enabled is true', async () => {
-		const { service, agentsToolsService, credentialProvider } = setup();
-		const entity = makeAgentEntity({ nodeTools: { enabled: true } });
-
-		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
-
-		expect(agentsToolsService.getRuntimeTools).toHaveBeenCalledWith(
-			credentialProvider,
-			'project-1',
-		);
-	});
-
-	it('does not attach node tools when config.nodeTools.enabled is false', async () => {
-		const { service, agentsToolsService, credentialProvider } = setup();
-		const entity = makeAgentEntity({ nodeTools: { enabled: false } });
-
-		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
-
-		expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
+		if (attaches) {
+			expect(agentsToolsService.getRuntimeTools).toHaveBeenCalledWith(
+				credentialProvider,
+				'project-1',
+			);
+		} else {
+			expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
+		}
 	});
 });

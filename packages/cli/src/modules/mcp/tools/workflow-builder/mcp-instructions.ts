@@ -24,11 +24,11 @@ export function getMcpInstructions(isBuilderEnabled: boolean): string {
 
 To build n8n workflows, follow these steps in order:
 
-1. Read the SDK reference: Call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) to learn the SDK patterns and syntax.
+1. Read the SDK reference: You MUST call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) before writing workflow code. Do not guess SDK syntax.
 
-2. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]) and utility nodes (e.g., ["set", "if", "merge", "code"]). Note the discriminators (resource/operation/mode) in the results.
+2. Get suggested nodes: You MUST call ${CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName} with all relevant workflow technique categories before searching for nodes. Use the recommendations, pattern hints, and configuration guidance to decide which nodes and patterns to use.
 
-3. (Optional) Get suggestions: Call ${CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName} with workflow technique categories for curated recommendations.
+3. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]), utility nodes (e.g., ["set", "if", "merge", "code"]), and suggested nodes you plan to use. Note the discriminators (resource/operation/mode) in the results.
 
 4. Get type definitions: Call ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName} with ALL node IDs you plan to use, including discriminators from search results. This returns the exact TypeScript parameter definitions. DO NOT skip this — guessing parameter names creates invalid workflows.
 

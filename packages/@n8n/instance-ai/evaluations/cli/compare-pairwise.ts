@@ -43,6 +43,13 @@ export interface BuilderRecord {
 	feedback: FeedbackEntry[];
 	tokenInput?: number;
 	tokenOutput?: number;
+	/** Number of `submit-workflow` calls during the build. IA-only — EE
+	 *  doesn't capture a tool-call timeline in the comparable shape. */
+	submitCalls?: number;
+	/** Number of tool calls that errored or returned a failed result. */
+	toolCallErrors?: number;
+	/** Total tool calls observed, used as the error-rate denominator. */
+	toolCallsTotal?: number;
 }
 
 interface BuilderSummary {
@@ -59,6 +66,17 @@ interface BuilderSummary {
 		primaryPassRate: number;
 		avgDiagnostic: number;
 		avgDurationMs: number;
+		/** Total `submit-workflow` calls aggregated across IA records. Undefined
+		 *  for EE (which doesn't capture a comparable tool-call timeline). */
+		submitCallsTotal?: number;
+		/** Mean `submit-workflow` calls per record (IA only). */
+		avgSubmitCalls?: number;
+		/** Total tool calls observed across IA records. */
+		toolCallsTotal?: number;
+		/** Total errored tool calls observed across IA records. */
+		toolCallErrors?: number;
+		/** `toolCallErrors / toolCallsTotal` micro-averaged. IA-only. */
+		toolCallErrorRate?: number;
 	};
 }
 
@@ -70,6 +88,16 @@ interface BuilderRun {
 // ---------------------------------------------------------------------------
 // Instance AI loader (writes results.jsonl + workflows/<id>.json + summary.json)
 // ---------------------------------------------------------------------------
+
+interface IAToolCallTrace {
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	args?: unknown;
+	result?: unknown;
+	error?: string;
+	elapsedMs?: number;
+}
 
 interface IAResultRecord {
 	exampleId: string;
@@ -86,6 +114,25 @@ interface IAResultRecord {
 		tokenUsage?: { input?: number; output?: number };
 	};
 	feedback: Array<{ metric: string; score: number; kind?: string; comment?: string }>;
+	toolCalls?: IAToolCallTrace[];
+}
+
+/**
+ * Whether a tool call should count toward the "tool error rate" metric.
+ * Mirrors `isErroredToolCall` in `pairwise.ts`.
+ */
+function isErroredIAToolCall(trace: IAToolCallTrace): boolean {
+	if (trace.error !== undefined) return true;
+	const r = trace.result;
+	if (r === null || r === undefined) return false;
+	if (typeof r === 'object' && !Array.isArray(r)) {
+		const obj = r as Record<string, unknown>;
+		if (obj.success === false) return true;
+		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	}
+	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) return true;
+	return false;
 }
 
 interface IASummary {
@@ -125,20 +172,26 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 		// Use only iteration 1 for a fair 1:1 comparison.
 		.filter((r) => r.iteration === 1);
 
-	const normalized: BuilderRecord[] = records.map((r) => ({
-		prompt: r.prompt,
-		exampleId: r.exampleId,
-		dos: r.dos,
-		donts: r.donts,
-		workflow: r.workflow,
-		durationMs: r.build.durationMs,
-		success: r.build.success,
-		errorClass: r.build.errorClass,
-		errorMessage: r.build.errorMessage,
-		feedback: r.feedback,
-		tokenInput: r.build.tokenUsage?.input,
-		tokenOutput: r.build.tokenUsage?.output,
-	}));
+	const normalized: BuilderRecord[] = records.map((r) => {
+		const tcs = r.toolCalls ?? [];
+		return {
+			prompt: r.prompt,
+			exampleId: r.exampleId,
+			dos: r.dos,
+			donts: r.donts,
+			workflow: r.workflow,
+			durationMs: r.build.durationMs,
+			success: r.build.success,
+			errorClass: r.build.errorClass,
+			errorMessage: r.build.errorMessage,
+			feedback: r.feedback,
+			tokenInput: r.build.tokenUsage?.input,
+			tokenOutput: r.build.tokenUsage?.output,
+			submitCalls: tcs.filter((tc) => tc.toolName === 'submit-workflow').length,
+			toolCallErrors: tcs.filter(isErroredIAToolCall).length,
+			toolCallsTotal: tcs.length,
+		};
+	});
 
 	const avgDuration =
 		normalized.length === 0
@@ -166,6 +219,10 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			? 0
 			: diagnosticScores.reduce((a, b) => a + b, 0) / diagnosticScores.length;
 
+	const submitCallsTotal = normalized.reduce((s, r) => s + (r.submitCalls ?? 0), 0);
+	const toolCallsTotal = normalized.reduce((s, r) => s + (r.toolCallsTotal ?? 0), 0);
+	const toolCallErrors = normalized.reduce((s, r) => s + (r.toolCallErrors ?? 0), 0);
+
 	return {
 		summary: {
 			label: `${summary.builder} (instance-ai)`,
@@ -181,6 +238,11 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 				primaryPassRate,
 				avgDiagnostic,
 				avgDurationMs: avgDuration,
+				submitCallsTotal,
+				avgSubmitCalls: normalized.length ? submitCallsTotal / normalized.length : 0,
+				toolCallsTotal,
+				toolCallErrors,
+				toolCallErrorRate: toolCallsTotal ? toolCallErrors / toolCallsTotal : 0,
 			},
 		},
 		records: normalized,
@@ -564,6 +626,12 @@ function renderBuilderColumn(label: string, record: BuilderRecord | undefined): 
 	if (record.tokenInput !== undefined && record.tokenOutput !== undefined) {
 		metaParts.push(`<span>${record.tokenInput}+${record.tokenOutput} tok</span>`);
 	}
+	if (record.submitCalls !== undefined && record.submitCalls > 0) {
+		metaParts.push(`<span>submit ×${record.submitCalls}</span>`);
+	}
+	if (record.toolCallErrors !== undefined && record.toolCallErrors > 0) {
+		metaParts.push(`<span>err ×${record.toolCallErrors}</span>`);
+	}
 
 	const errorBlock = record.errorMessage
 		? `<div class="error">${escapeHtml(record.errorMessage)}</div>`
@@ -676,6 +744,16 @@ function renderSummaryCard(
   <div class="metric"><strong>${summary.totals.avgDiagnostic.toFixed(2)}</strong><span>avg diagnostic</span></div>
   <div class="metric"><strong>${formatDuration(summary.totals.avgDurationMs)}</strong><span>avg build time</span></div>
   <div class="metric"><strong>${summary.totals.buildSuccess}/${totalRecords}</strong><span>built ok</span></div>
+  ${
+		summary.totals.toolCallErrorRate !== undefined
+			? `<div class="metric"><strong>${pct(summary.totals.toolCallErrorRate)}</strong><span>tool error rate (${summary.totals.toolCallErrors ?? 0}/${summary.totals.toolCallsTotal ?? 0})</span></div>`
+			: ''
+	}
+  ${
+		summary.totals.avgSubmitCalls !== undefined
+			? `<div class="metric"><strong>${summary.totals.avgSubmitCalls.toFixed(2)}</strong><span>avg submit calls</span></div>`
+			: ''
+	}
   ${failureBits ? `<div class="meta-row failures">Failures: ${escapeHtml(failureBits)}</div>` : ''}
 </div>`;
 }
@@ -686,6 +764,8 @@ function renderMetricsNote(): string {
   <span><b>Primary pass</b> — workflow passes only if a majority of LLM judges (2 of 3) find zero "don't" violations. Computed over all prompt attempts; build failures count as fail.</span>
   <span><b>Average diagnostic</b> — mean fraction of criteria (dos + don'ts) satisfied across the dataset, averaged across judges. Range 0–1; gives partial credit.</span>
   <span><b>Average build time</b> — averaged across all attempts including failures, so build timeouts (20-min cap) inflate this number.</span>
+  <span><b>Tool error rate</b> — fraction of tool calls that errored or returned a failed result (e.g. <code>tsc</code> non-zero exit, <code>submit-workflow</code> rejection). Captures build-path roughness even on builds that eventually succeeded. <i>IA-only.</i></span>
+  <span><b>Avg submit calls</b> — mean <code>submit-workflow</code> invocations per build. 1.0 = clean first-try submit. <i>IA-only.</i></span>
   <span><b>Verdicts</b> compare per-prompt primary pass between the two builders.</span>
 </aside>`;
 }

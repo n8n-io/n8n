@@ -14,12 +14,9 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import {
-	resolveCredentials,
-	type CredentialEntry,
-	type CredentialMap,
-} from './resolve-credentials';
+import { resolveCredentials, type CredentialEntry } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
@@ -27,6 +24,8 @@ import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+
+export { getReferencedWorkflowIds, isTriggerNodeType };
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;
@@ -49,6 +48,10 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification?: boolean;
+	/** Workflow IDs referenced by Execute Workflow nodes in this submitted workflow. */
+	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
 	remediation?: RemediationMetadata;
@@ -68,32 +71,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-/**
- * Node types the bypassPlan post-build verify flow can exercise without user
- * approval (verify-built-workflow injects sidecar pin data matching each
- * trigger's production output shape). Kept in sync with the per-trigger
- * inputData shape block in the orchestrator system prompt.
- */
-const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
-]);
-
-/**
- * Whether a node's type should be surfaced in `SubmitWorkflowAttempt.triggerNodes`
- * so the orchestrator can decide if it can verify the build without user input.
- * Known-mockable types feed the post-build verify step directly; other `*Trigger`
- * suffix types are included for visibility but skipped by the verify step.
- * Exported for direct unit coverage.
- */
-export function isTriggerNodeType(nodeType: string | undefined): boolean {
-	if (!nodeType) return false;
-	if (KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType)) return true;
-	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
-}
 
 /**
  * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
@@ -167,9 +144,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 
 // Re-export from shared module for backward compatibility
 export {
-	buildCredentialMap,
 	resolveCredentials,
-	type CredentialMap,
 	type CredentialResolutionResult,
 } from './resolve-credentials';
 
@@ -198,6 +173,10 @@ export const submitWorkflowOutputSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/** Workflow IDs referenced by Execute Workflow nodes in this submitted workflow. */
+	referencedWorkflowIds: z.array(z.string()).optional(),
 	remediation: z
 		.object({
 			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
@@ -286,16 +265,13 @@ export function classifySubmitFailure(
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
-	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
 	availableCredentials?: CredentialEntry[],
 ) {
 	return createTool({
 		id: 'submit-workflow',
 		description:
-			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
-			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
+			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, and saves it to n8n as a draft.',
 		inputSchema: submitWorkflowInputSchema,
 		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
@@ -432,15 +408,9 @@ export function createSubmitWorkflowTool(
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined in toJSON().
 			// For updates: restore from the existing workflow's resolved credentials.
-			// For new nodes: look up credentials by name from the credential service.
-			// Unresolved credentials are mocked via pinned data when available.
-			const mockResult = await resolveCredentials(
-				json,
-				workflowId,
-				context,
-				credentialMap,
-				availableCredentials,
-			);
+			// For new nodes: preserve explicit valid credentials; unresolved credentials
+			// are mocked with sidecar pin data for verification.
+			const mockResult = await resolveCredentials(json, workflowId, context, availableCredentials);
 
 			// Strip credential entries that are no longer valid for the current
 			// parameters. Resolution above (and the LLM itself) can re-emit stale
@@ -504,6 +474,7 @@ export function createSubmitWorkflowTool(
 
 			// Scan node parameters for unresolved placeholder values
 			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+			const referencedWorkflowIds = getReferencedWorkflowIds(json);
 
 			await reportAttempt({
 				success: true,
@@ -518,6 +489,9 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				usesWorkflowPinDataForVerification:
+					hasMockedCredentials && mockResult.usesWorkflowPinDataForVerification ? true : undefined,
+				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
 			return {
@@ -533,6 +507,9 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				usesWorkflowPinDataForVerification:
+					hasMockedCredentials && mockResult.usesWorkflowPinDataForVerification ? true : undefined,
+				referencedWorkflowIds: referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 				warnings:
 					informational.length > 0
 						? informational.map((w) => `[${w.code}]: ${w.message}`)
