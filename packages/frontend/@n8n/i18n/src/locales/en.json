@@ -5864,8 +5864,6 @@
 	"agents.builder.advanced.reasoningEffort.label": "Reasoning effort",
 	"agents.builder.advanced.concurrency.label": "Tool call concurrency",
 	"agents.builder.advanced.concurrency.hint": "How many tool calls the agent can run in parallel.",
-	"agents.builder.advanced.approval.label": "Require tool approval",
-	"agents.builder.advanced.approval.hint": "Pause before running tool calls until a human approves.",
 	"agents.builder.memory.title": "Memory",
 	"agents.builder.memory.recentMessages.label": "Recent messages in context",
 	"agents.builder.memory.semanticRecall.topK": "Top K",

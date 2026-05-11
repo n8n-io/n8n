@@ -1,15 +1,11 @@
 import type { ComputedRef } from 'vue';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { credGroupKey, type SetupCard } from '../instanceAiWorkflowSetup.utils';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useCredentialGroupSelection(
 	cards: ComputedRef<SetupCard[]>,
@@ -17,10 +13,7 @@ export function useCredentialGroupSelection(
 	projectId?: string,
 ) {
 	const uiStore = useUIStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 

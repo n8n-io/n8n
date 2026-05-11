@@ -25,6 +25,7 @@ export interface StreamRunOptions {
 	signal: AbortSignal;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	onActivity?: () => void;
 }
 
 export interface StreamRunResult {
@@ -87,6 +88,7 @@ async function consumeStream(
 			eventBus: options.eventBus,
 			signal: options.signal,
 			logger: options.logger,
+			onActivity: options.onActivity,
 		},
 		control: { mode: 'manual' },
 		initialMastraRunId: options.mastraRunId,

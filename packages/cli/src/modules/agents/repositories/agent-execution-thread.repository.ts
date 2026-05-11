@@ -3,6 +3,8 @@ import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 
+const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
+
 export interface AgentExecutionThreadPage {
 	threads: AgentExecutionThread[];
 	nextCursor: string | null;
@@ -24,21 +26,53 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentName: string,
 		projectId: string,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
-		const existing = await this.findOneBy({ id: threadId });
-		if (existing) {
-			return { thread: existing, created: false };
+		for (let attempt = 0; ; attempt++) {
+			try {
+				return await this.findOrCreateInSerializableTransaction(
+					threadId,
+					agentId,
+					agentName,
+					projectId,
+				);
+			} catch (error) {
+				if (attempt >= SESSION_NUMBER_RETRY_ATTEMPTS - 1 || !isRetriableWriteError(error)) {
+					throw error;
+				}
+			}
 		}
+	}
 
-		const maxResult = await this.createQueryBuilder('t')
-			.select('MAX(t.sessionNumber)', 'max')
-			.where('t.projectId = :projectId', { projectId })
-			.getRawOne<{ max: number | null }>();
+	private async findOrCreateInSerializableTransaction(
+		threadId: string,
+		agentId: string,
+		agentName: string,
+		projectId: string,
+	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
+		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
+			const repository = entityManager.getRepository(AgentExecutionThread);
+			const existing = await repository.findOneBy({ id: threadId });
+			if (existing) {
+				return { thread: existing, created: false };
+			}
 
-		const sessionNumber = (maxResult?.max ?? 0) + 1;
+			const maxResult = await repository
+				.createQueryBuilder('t')
+				.select('MAX(t.sessionNumber)', 'max')
+				.where('t.projectId = :projectId', { projectId })
+				.getRawOne<{ max: number | null }>();
 
-		const thread = this.create({ id: threadId, agentId, agentName, projectId, sessionNumber });
-		const saved = await this.save(thread);
-		return { thread: saved, created: true };
+			const sessionNumber = (maxResult?.max ?? 0) + 1;
+
+			const thread = repository.create({
+				id: threadId,
+				agentId,
+				agentName,
+				projectId,
+				sessionNumber,
+			});
+			const saved = await repository.save(thread);
+			return { thread: saved, created: true };
+		});
 	}
 
 	/**
@@ -112,4 +146,18 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		const result = await this.delete({ id: threadId, projectId });
 		return (result.affected ?? 0) > 0;
 	}
+}
+
+function isRetriableWriteError(error: unknown): boolean {
+	if (!(error instanceof Error) || !('driverError' in error)) return false;
+	const { driverError } = error;
+	if (typeof driverError !== 'object' || driverError === null || !('code' in driverError)) {
+		return false;
+	}
+
+	const { code } = driverError;
+	return (
+		typeof code === 'string' &&
+		(code === '40001' || code === '40P01' || code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED')
+	);
 }

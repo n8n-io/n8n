@@ -43,10 +43,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -83,11 +80,7 @@ const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowDocumentStore = computed(() => {
-	const wfId = workflowsStore.workflowId;
-	if (!wfId) return null;
-	return useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-});
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
@@ -192,7 +185,7 @@ const isMCPEnabled = computed(
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
-const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
+const workflowName = computed(() => workflowDocumentStore.value.name);
 const workflowId = computed(() => workflowsStore.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
@@ -594,8 +587,8 @@ const saveSettings = async () => {
 	delete data.settings.maxExecutionTimeout;
 
 	isLoading.value = true;
-	data.versionId = workflowDocumentStore?.value?.versionId ?? '';
-	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
+	data.versionId = workflowDocumentStore.value.versionId;
+	data.expectedChecksum = workflowDocumentStore.value.checksum;
 
 	try {
 		await workflowsStore.updateWorkflow(String(route.params.workflowId), data);
@@ -610,10 +603,9 @@ const saveSettings = async () => {
 		Object.entries(workflowSettings.value).filter(([, value]) => value !== 'DEFAULT'),
 	);
 
-	const oldSettings = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
-		{}) as IWorkflowSettings;
+	const oldSettings = workflowDocumentStore.value.getSettingsSnapshot() as IWorkflowSettings;
 
-	workflowDocumentStore?.value?.setSettings(localWorkflowSettings);
+	workflowDocumentStore.value.setSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 
@@ -739,8 +731,8 @@ onMounted(async () => {
 		});
 	}
 
-	const workflowSettingsData = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
-		{}) as IWorkflowSettings;
+	const workflowSettingsData =
+		workflowDocumentStore.value.getSettingsSnapshot() as IWorkflowSettings;
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
