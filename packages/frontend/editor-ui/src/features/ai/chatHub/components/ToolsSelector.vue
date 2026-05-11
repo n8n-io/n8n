@@ -7,6 +7,7 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import { TOOLS_MANAGER_MODAL_KEY, TOOL_SETTINGS_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 
@@ -162,6 +163,7 @@ onMounted(async () => {
 			v-if="chatStore.configuredTools.length === 0"
 			:content="disabledTooltip"
 			:disabled="!disabledTooltip || !disabled"
+			:show-after="DEBOUNCE_TIME.UI.TOOLTIP_DELAY"
 			placement="bottom"
 		>
 			<N8nButton
@@ -181,6 +183,7 @@ onMounted(async () => {
 			v-else
 			:content="disabledTooltip"
 			:disabled="!disabledTooltip || !disabled"
+			:show-after="DEBOUNCE_TIME.UI.TOOLTIP_DELAY"
 			placement="bottom"
 		>
 			<N8nDropdownMenu

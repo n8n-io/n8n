@@ -4,6 +4,7 @@ import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
+import { DEBOUNCE_TIME } from '@/app/constants';
 
 const props = defineProps<{
 	message: string;
@@ -98,6 +99,7 @@ defineExpose({
 									: i18n.baseText('chatHub.chat.prompt.button.attach')
 							"
 							:disabled="canUploadFiles && messagingState === 'idle'"
+							:show-after="DEBOUNCE_TIME.UI.TOOLTIP_DELAY"
 							placement="top"
 						>
 							<N8nIconButton

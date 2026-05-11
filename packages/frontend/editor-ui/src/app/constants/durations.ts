@@ -44,6 +44,8 @@ export const DEBOUNCE_TIME = {
 		RESIZE: 50,
 		/** Quick UI state changes */
 		QUICK: 10,
+		/** Tooltip hover delay for intentional hover (300ms) */
+		TOOLTIP_DELAY: 300,
 	},
 
 	/** Input validation and real-time feedback */
