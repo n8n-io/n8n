@@ -13,6 +13,7 @@ import {
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
+	N8nDropdownMenuItem,
 	N8nIcon,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -20,6 +21,7 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -91,6 +93,10 @@ function onSwitcherSelect(id: string) {
 	emit('switch-agent', id);
 }
 
+function onCreateAgent() {
+	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: props.projectId } });
+}
+
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id !== props.projectId) return;
 	void router.push(projectRoute.value);
@@ -105,6 +111,7 @@ function onBreadcrumbSelect(item: PathItem) {
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
 						:items="switcherOptions"
+						placement="bottom-start"
 						data-testid="agent-header-switcher"
 						@select="onSwitcherSelect"
 					>
@@ -118,6 +125,17 @@ function onBreadcrumbSelect(item: PathItem) {
 								<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
 								<N8nIcon icon="chevron-down" :size="12" />
 							</N8nButton>
+						</template>
+						<template #footer>
+							<div :class="$style.switcherFooter">
+								<N8nDropdownMenuItem
+									id="__new_agent__"
+									:label="i18n.baseText('agents.builder.header.switcher.newAgent')"
+									:icon="{ type: 'icon', value: 'plus' }"
+									test-id="agent-header-new-agent"
+									@select="onCreateAgent"
+								/>
+							</div>
 						</template>
 					</N8nDropdownMenu>
 				</template>
@@ -190,6 +208,11 @@ function onBreadcrumbSelect(item: PathItem) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.switcherFooter {
+	border-top: var(--border);
+	padding: var(--spacing--3xs);
 }
 
 .right {

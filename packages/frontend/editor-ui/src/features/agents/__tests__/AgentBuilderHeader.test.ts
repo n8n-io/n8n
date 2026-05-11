@@ -33,6 +33,12 @@ vi.mock('vue-router', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: { template: '<button><slot /></button>', props: ['variant', 'size'] },
+	N8nDropdownMenuItem: {
+		name: 'N8nDropdownMenuItem',
+		template: '<button :data-testid="testId" @click="$emit(\'select\', id)">{{ label }}</button>',
+		props: ['id', 'label', 'icon', 'testId'],
+		emits: ['select'],
+	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
 		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
@@ -41,13 +47,15 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
-		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
+		template:
+			'<div data-testid="agent-header-switcher"><slot name="trigger" /><slot name="footer" /></div>',
 		props: ['items'],
 		emits: ['select'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
-		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
+		template:
+			'<div data-testid="agent-header-switcher"><slot name="trigger" /><slot name="footer" /></div>',
 		props: ['items'],
 		emits: ['select'],
 	},
@@ -221,5 +229,16 @@ describe('AgentBuilderHeader', () => {
 		) as DropdownStubWrapper;
 		nav.vm.$emit('select', 'a2');
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
+	});
+
+	it('navigates to the new agent page from the switcher footer', async () => {
+		const wrapper = mountHeader();
+
+		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'NewAgentView',
+			query: { projectId: 'p1' },
+		});
 	});
 });

@@ -5929,6 +5929,7 @@
 	"agents.builder.header.workspaceCrumb": "Workspace",
 	"agents.builder.header.projectFallback": "Project",
 	"agents.builder.header.switcher.empty": "No other agents",
+	"agents.builder.header.switcher.newAgent": "New agent",
 	"agents.builder.header.switcher.ariaLabel": "Switch agent",
 	"agents.builder.header.saving": "Saving…",
 	"agents.builder.header.saved": "Saved",
