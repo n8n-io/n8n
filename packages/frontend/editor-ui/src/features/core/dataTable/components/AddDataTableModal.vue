@@ -208,11 +208,23 @@ const deriveNameFromFileName = (fileName: string): string => {
 		.trim();
 };
 
-const handleFileChange = (uploadFile: UploadFile) => {
-	if (uploadFile.raw) {
-		selectedFile.value = uploadFile.raw;
+const handleFileChange = async (uploadFile: UploadFile) => {
+	if (!uploadFile.raw) return;
+	selectedFile.value = uploadFile.raw;
+	if (dataTableName.value) return;
+
+	const baseName = deriveNameFromFileName(uploadFile.raw.name);
+	if (!baseName) return;
+
+	const projectId = route.params.projectId as string;
+	try {
+		const suggested = await dataTableStore.findAvailableDataTableName(baseName, projectId);
 		if (!dataTableName.value) {
-			dataTableName.value = deriveNameFromFileName(uploadFile.raw.name);
+			dataTableName.value = suggested;
+		}
+	} catch {
+		if (!dataTableName.value) {
+			dataTableName.value = baseName;
 		}
 	}
 };

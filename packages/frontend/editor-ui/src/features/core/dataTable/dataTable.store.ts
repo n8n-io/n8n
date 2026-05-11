@@ -128,6 +128,29 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
 	};
 
+	const findAvailableDataTableName = async (
+		baseName: string,
+		projectId: string,
+	): Promise<string> => {
+		const trimmed = baseName.trim();
+		if (!trimmed || !projectId) return trimmed;
+
+		const response = await fetchDataTablesApi(
+			rootStore.restApiContext,
+			projectId,
+			{ skip: 0, take: 100 },
+			{ name: trimmed },
+		);
+		const existingNames = new Set(response.data.map((t) => t.name.toLowerCase()));
+		if (!existingNames.has(trimmed.toLowerCase())) return trimmed;
+
+		let suffix = 2;
+		while (existingNames.has(`${trimmed} ${suffix}`.toLowerCase())) {
+			suffix++;
+		}
+		return `${trimmed} ${suffix}`;
+	};
+
 	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
 		return await importCsvToDataTableApi(rootStore.restApiContext, dataTableId, projectId, fileId);
 	};
@@ -385,6 +408,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		maxSizeMB,
 		createDataTable,
 		uploadCsvFile,
+		findAvailableDataTableName,
 		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
