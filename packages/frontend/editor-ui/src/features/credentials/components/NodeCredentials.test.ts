@@ -619,6 +619,60 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Slack')).toBeInTheDocument();
 		});
 
+		it('should remove MCP from derived service name in quick connect CTA', () => {
+			setupQuickConnectStores();
+
+			const linearMcpOAuth2ApiType: ICredentialType = {
+				name: 'linearMcpOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'Linear MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'hidden',
+						default: true,
+					},
+					{
+						displayName: 'Server URL',
+						name: 'serverUrl',
+						type: 'hidden',
+						default: 'https://mcp.linear.app/mcp',
+					},
+				],
+			};
+
+			const linearMcpNode: INodeUi = {
+				parameters: {},
+				type: 'n8n-nodes-base.linearMcp',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'linear-mcp-node-id',
+				name: 'Linear MCP',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				linearMcpOAuth2Api: linearMcpOAuth2ApiType,
+			};
+
+			ndvStore.activeNode = linearMcpNode;
+
+			renderComponent(
+				{
+					props: {
+						node: linearMcpNode,
+						overrideCredType: 'linearMcpOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByText('Connect to Linear')).toBeInTheDocument();
+			expect(screen.queryByText('Connect to Linear MCP')).not.toBeInTheDocument();
+		});
+
 		it('should show node-credentials-empty-state for non-OAuth type with no credentials', () => {
 			setupQuickConnectStores();
 
