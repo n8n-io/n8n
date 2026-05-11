@@ -93,6 +93,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 	],
+	sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 	properties: [
 		{
 			displayName: 'Authentication',
