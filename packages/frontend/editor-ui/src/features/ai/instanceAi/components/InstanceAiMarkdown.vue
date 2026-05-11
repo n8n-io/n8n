@@ -2,13 +2,13 @@
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	content: string;
 }>();
 
-const store = useInstanceAiStore();
+const thread = useThread();
 const styles = useCssModule();
 const wrapperRef = ref<ComponentPublicInstance | null>(null);
 
@@ -55,7 +55,7 @@ const INTERNAL_BLOCK_PATTERN =
 	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
 
 const processedContent = computed(() => {
-	const registry = store.resourceNameIndex;
+	const registry = thread.resourceNameIndex;
 
 	// Strip internal protocol blocks the LLM may have echoed
 	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
@@ -178,7 +178,7 @@ function enhanceResourceLinks(): void {
 			// Search the name index because it contains both produced and listed
 			// resources — a user may click through to a resource the agent
 			// only referenced via a list call.
-			const registryEntry = [...store.resourceNameIndex.values()].find(
+			const registryEntry = [...thread.resourceNameIndex.values()].find(
 				(r) => r.type === type && r.id === id,
 			);
 

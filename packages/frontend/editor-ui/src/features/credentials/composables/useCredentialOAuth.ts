@@ -69,7 +69,7 @@ export function useCredentialOAuth() {
 	 * This indicates the credential can be used with quick connect (just OAuth flow, no manual config).
 	 * Reuses logic patterns from CredentialEdit.vue (credentialProperties + requiredPropertiesFilled).
 	 */
-	function hasManagedOAuthCredentials(credentialTypeName: string): boolean {
+	function canOAuthCredentialQuickConnect(credentialTypeName: string): boolean {
 		if (!isOAuthCredentialType(credentialTypeName)) {
 			return false;
 		}
@@ -84,16 +84,20 @@ export function useCredentialOAuth() {
 		}
 
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
-		if (overwrittenProperties.length === 0) {
-			return false;
-		}
-
 		const visibleProperties = credentialType.properties.filter(
 			(prop) =>
 				prop.type !== 'hidden' &&
 				prop.type !== 'notice' &&
 				!overwrittenProperties.includes(prop.name),
 		);
+
+		if (visibleProperties.length === 0) {
+			return true;
+		}
+
+		if (overwrittenProperties.length === 0) {
+			return false;
+		}
 
 		return visibleProperties.every(
 			(prop) => prop.required !== true || (prop.type !== 'string' && prop.type !== 'number'),
@@ -303,7 +307,7 @@ export function useCredentialOAuth() {
 		getParentTypes,
 		isOAuthCredentialType,
 		isGoogleOAuthType,
-		hasManagedOAuthCredentials,
+		canOAuthCredentialQuickConnect,
 		authorize,
 		createAndAuthorize,
 		cancelAuthorize,

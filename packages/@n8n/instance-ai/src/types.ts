@@ -1037,6 +1037,10 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/** Mark the current orchestrator run as making progress. */
+	touchRun?: () => boolean;
+	/** Mark a running background task as making progress. */
+	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */

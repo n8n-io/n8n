@@ -192,7 +192,6 @@ export interface AgentJsonConfig {
 			reasoningEffort?: string;
 		};
 		toolCallConcurrency?: number;
-		requireToolApproval?: boolean;
 		nodeTools?: {
 			enabled: boolean;
 		};
