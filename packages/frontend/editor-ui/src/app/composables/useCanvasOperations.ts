@@ -2698,6 +2698,18 @@ export function useCanvasOperations() {
 				});
 			}
 
+			// Remap nodeGroup nodeIds to new node IDs
+			if (regenerateIds && workflowData.nodeGroups?.length) {
+				const oldToNewIdMap = new Map(
+					Object.entries(nodeIdMap).map(([newId, previousId]) => [previousId, newId]),
+				);
+
+				workflowData.nodeGroups = workflowData.nodeGroups.map((group) => ({
+					...group,
+					nodeIds: group.nodeIds.map((id) => oldToNewIdMap.get(id) ?? id),
+				}));
+			}
+
 			removeUnknownCredentials(workflowData);
 
 			try {
