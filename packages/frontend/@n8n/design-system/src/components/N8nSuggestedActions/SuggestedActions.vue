@@ -101,7 +101,7 @@ const handleIgnoreClick = (actionId: string) => {
 				>
 					<div :class="$style.checkboxContainer">
 						<N8nIcon v-if="action.completed" icon="circle-check" color="success" />
-						<N8nIcon v-else icon="circle" color="foreground-dark" />
+						<N8nIcon v-else icon="circle" color="foreground-shade-1" />
 					</div>
 					<div :class="$style.actionItemBody">
 						<div :class="[action.completed ? '' : 'mb-3xs', $style.actionHeader]">

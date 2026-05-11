@@ -175,7 +175,7 @@ const handleAppSelectionContinue = () => {
 								<N8nIcon
 									:class="$style.cardIcon"
 									icon="zap"
-									color="foreground-dark"
+									color="foreground-shade-1"
 									:stroke-width="1.5"
 								/>
 								<N8nText size="large" class="mt-xs">
@@ -195,7 +195,7 @@ const handleAppSelectionContinue = () => {
 								<N8nIcon
 									:class="$style.cardIcon"
 									icon="file"
-									color="foreground-dark"
+									color="foreground-shade-1"
 									:stroke-width="1.5"
 								/>
 								<N8nText size="large" class="mt-xs">

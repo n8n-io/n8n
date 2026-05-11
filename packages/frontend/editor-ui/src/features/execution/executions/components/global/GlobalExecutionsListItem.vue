@@ -97,7 +97,7 @@ const executionIconStatusDictionary: Record<ExecutionStatus, { icon: IconName; c
 		},
 		[EXECUTION_STATUS.NEW]: {
 			icon: 'status-new',
-			color: 'foreground-xdark',
+			color: 'foreground-shade-2',
 		},
 		[EXECUTION_STATUS.RUNNING]: {
 			icon: 'spinner',
@@ -105,11 +105,11 @@ const executionIconStatusDictionary: Record<ExecutionStatus, { icon: IconName; c
 		},
 		[EXECUTION_STATUS.UNKNOWN]: {
 			icon: 'status-unknown',
-			color: 'foreground-xdark',
+			color: 'foreground-shade-2',
 		},
 		[EXECUTION_STATUS.CANCELED]: {
 			icon: 'status-canceled',
-			color: 'foreground-xdark',
+			color: 'foreground-shade-2',
 		},
 	};
 

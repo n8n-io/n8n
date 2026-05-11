@@ -34,8 +34,8 @@ export default {
 				'danger',
 				'success',
 				'warning',
-				'foreground-dark',
-				'foreground-xdark',
+				'foreground-shade-1',
+				'foreground-shade-2',
 			],
 		},
 		strokeWidth: {
@@ -191,12 +191,12 @@ export const AllColors: StoryFn = (args, { argTypes }) => ({
 				<span style="font-size: 12px;">warning</span>
 			</div>
 			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="foreground-dark" size="large" />
-				<span style="font-size: 12px;">foreground-dark</span>
+				<n8n-icon icon="circle" color="foreground-shade-1" size="large" />
+				<span style="font-size: 12px;">foreground-shade-1</span>
 			</div>
 			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="foreground-xdark" size="large" />
-				<span style="font-size: 12px;">foreground-xdark</span>
+				<n8n-icon icon="circle" color="foreground-shade-2" size="large" />
+				<span style="font-size: 12px;">foreground-shade-2</span>
 			</div>
 		</div>
 	`,
