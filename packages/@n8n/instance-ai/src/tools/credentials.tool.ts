@@ -11,6 +11,8 @@ import type { InstanceAiContext } from '../types';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
+export const CREDENTIALS_TOOL_ID = 'credentials';
+
 const DEFAULT_LIMIT = 50;
 
 /** Generic auth types that should be excluded from search results — the AI should prefer dedicated types. */
@@ -340,7 +342,7 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 
 export function createCredentialsTool(context: InstanceAiContext) {
 	return createTool({
-		id: 'credentials',
+		id: CREDENTIALS_TOOL_ID,
 		description:
 			'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.',
 		inputSchema,

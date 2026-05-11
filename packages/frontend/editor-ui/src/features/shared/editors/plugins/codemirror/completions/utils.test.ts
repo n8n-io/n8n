@@ -31,6 +31,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		name: '',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
+		workflowTriggerNodes: [],
 	},
 }));
 

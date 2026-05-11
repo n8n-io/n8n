@@ -17,7 +17,6 @@ import type {
 	ContentReasoning,
 	ContentText,
 	ContentToolCall,
-	ContentToolResult,
 	Message,
 	MessageContent,
 } from '../types/sdk/message';
@@ -54,10 +53,6 @@ function isToolCall(block: MessageContent): block is ContentToolCall {
 	return block.type === 'tool-call';
 }
 
-function isToolResult(block: MessageContent): block is ContentToolResult {
-	return block.type === 'tool-result';
-}
-
 /**
  * Parse a JSONValue that may be a stringified JSON object back into
  * its parsed form. Non-string values pass through unchanged.
@@ -92,32 +87,6 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			input: parseJsonValue(block.input),
 			providerExecuted: block.providerExecuted,
 		};
-	}
-	if (isToolResult(block)) {
-		if (block.isError) {
-			if (typeof block.result === 'string') {
-				base = {
-					type: 'tool-result',
-					toolCallId: block.toolCallId,
-					toolName: block.toolName,
-					output: { type: 'error-text', value: block.result },
-				};
-			} else {
-				base = {
-					type: 'tool-result',
-					toolCallId: block.toolCallId,
-					toolName: block.toolName,
-					output: { type: 'error-json', value: block.result },
-				};
-			}
-		} else {
-			base = {
-				type: 'tool-result',
-				toolCallId: block.toolCallId,
-				toolName: block.toolName,
-				output: { type: 'json', value: block.result },
-			};
-		}
 	} else if (isReasoning(block)) {
 		base = { type: 'reasoning', text: block.text };
 	}
@@ -126,6 +95,36 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		return { ...base, providerOptions: block.providerOptions } as AiContentPart;
 	}
 	return base;
+}
+
+/** Build an AI SDK ToolResultPart from a resolved/rejected ContentToolCall. */
+function toolCallToResultPart(
+	block: ContentToolCall & { state: 'resolved' | 'rejected' },
+): ToolResultPart {
+	if (block.state === 'resolved') {
+		return {
+			type: 'tool-result',
+			toolCallId: block.toolCallId,
+			toolName: block.toolName,
+			output: { type: 'json', value: block.output },
+		};
+	}
+	// rejected
+	const errorValue = block.error;
+	if (typeof errorValue === 'string') {
+		return {
+			type: 'tool-result',
+			toolCallId: block.toolCallId,
+			toolName: block.toolName,
+			output: { type: 'error-text', value: errorValue },
+		};
+	}
+	return {
+		type: 'tool-result',
+		toolCallId: block.toolCallId,
+		toolName: block.toolName,
+		output: { type: 'error-json', value: errorValue as JSONValue },
+	};
 }
 
 /** Convert a single AI SDK content part to an n8n MessageContent block. */
@@ -159,35 +158,11 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 				toolName: part.toolName,
 				input: part.input as JSONValue,
 				providerExecuted: part.providerExecuted,
+				state: 'pending',
 			};
 			break;
-		case 'tool-result': {
-			const { output } = part;
-			let result: JSONValue;
-			let isError: boolean | undefined;
-			if (output.type === 'json') {
-				result = output.value;
-			} else if (output.type === 'text') {
-				result = output.value;
-			} else if (output.type === 'error-json') {
-				result = output.value;
-				isError = true;
-			} else if (output.type === 'error-text') {
-				result = output.value;
-				isError = true;
-			} else {
-				result = null;
-				isError = true;
-			}
-			base = {
-				type: 'tool-result',
-				toolCallId: part.toolCallId,
-				toolName: part.toolName,
-				result,
-				isError,
-			};
-			break;
-		}
+		case 'tool-result':
+			return undefined;
 		// Ignore these types, because HITL is handled by our runtime
 		case 'tool-approval-request':
 		case 'tool-approval-response':
@@ -201,82 +176,172 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 	return base;
 }
 
-/** Convert a single n8n Message to an AI SDK ModelMessage. */
-export function toAiMessage(msg: Message): ModelMessage {
-	let base: ModelMessage;
+/**
+ * Convert a single n8n Message to one or more AI SDK ModelMessages.
+ *
+ * For assistant messages with resolved/rejected tool-call blocks, this emits:
+ *  1. The assistant ModelMessage (tool-call parts only, no result fields)
+ *  2. One tool ModelMessage per settled tool-call block (resolved or rejected)
+ *
+ * Pending tool-call blocks are silently skipped (defense-in-depth; the strip
+ * step should already have removed them before forLlm() calls toAiMessages).
+ */
+function toAiMessageList(msg: Message): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
 			const text = msg.content
 				.filter(isText)
 				.map((b) => b.text)
 				.join('');
-			base = { role: 'system', content: text };
-			break;
+			const base: ModelMessage = { role: 'system', content: text };
+			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
 		}
 
 		case 'user': {
 			const parts = msg.content
 				.map(toAiContent)
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
-			base = { role: 'user', content: parts };
-			break;
+			const base: ModelMessage = { role: 'user', content: parts };
+			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
 		}
 
 		case 'assistant': {
-			const parts = msg.content
-				.map(toAiContent)
-				.filter(
-					(p): p is TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart =>
-						p?.type === 'text' ||
-						p?.type === 'reasoning' ||
-						p?.type === 'tool-call' ||
-						p?.type === 'tool-result' ||
-						p?.type === 'file',
-				);
-			base = { role: 'assistant', content: parts };
-			break;
+			const assistantParts: AiContentPart[] = [];
+			const resultMessages: ModelMessage[] = [];
+
+			for (const block of msg.content) {
+				if (block.type === 'tool-call') {
+					if (!('state' in block)) {
+						// Legacy DB block - skip it
+						continue;
+					}
+					if (block.state === 'pending') {
+						// Skip pending blocks — defense-in-depth (strip step removes them first)
+						continue;
+					}
+					// Emit tool-call part (without result fields)
+					assistantParts.push({
+						type: 'tool-call',
+						toolCallId: block.toolCallId,
+						toolName: block.toolName,
+						input: parseJsonValue(block.input),
+						providerExecuted: block.providerExecuted,
+					});
+					// Emit corresponding tool-result message immediately after
+					const resultPart = toolCallToResultPart(block);
+					resultMessages.push({ role: 'tool', content: [resultPart] });
+				} else {
+					const part = toAiContent(block);
+					if (part) assistantParts.push(part);
+				}
+			}
+
+			const transformedMessages: ModelMessage[] = [];
+
+			if (assistantParts.length > 0) {
+				const assistantBase: ModelMessage = {
+					role: 'assistant',
+					content: assistantParts as Array<
+						TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart
+					>,
+				};
+				const assistantMsg: ModelMessage = msg.providerOptions
+					? { ...assistantBase, providerOptions: msg.providerOptions }
+					: assistantBase;
+				transformedMessages.push(assistantMsg);
+			}
+			if (resultMessages.length > 0) {
+				transformedMessages.push(...resultMessages);
+			}
+
+			return transformedMessages;
 		}
 
 		case 'tool': {
-			const parts = msg.content
-				.map(toAiContent)
-				.filter((p): p is ToolResultPart => p?.type === 'tool-result');
-			base = { role: 'tool', content: parts };
-			break;
+			// Legacy role: 'tool' messages (from old DB rows). Don't emit them.
+			return [];
 		}
 
 		default:
 			throw new Error(`Unknown role: ${msg.role as string}`);
 	}
-
-	if (msg.providerOptions) {
-		return { ...base, providerOptions: msg.providerOptions };
-	}
-	return base;
 }
 
 /** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
 export function toAiMessages(messages: Message[]): ModelMessage[] {
-	return messages.map(toAiMessage);
+	return messages.flatMap(toAiMessageList);
 }
 
-/** Convert a single AI SDK ModelMessage to an n8n AgentDbMessage (with a generated id). */
-export function fromAiMessage(msg: ModelMessage): AgentMessage {
-	const rawContent = msg.content;
-	const content: MessageContent[] =
-		typeof rawContent === 'string'
-			? [{ type: 'text', text: rawContent }]
-			: rawContent.map(fromAiContent).filter((p): p is MessageContent => p !== undefined);
-	const message: AgentMessage = { role: msg.role, content };
-	if ('providerOptions' in msg && msg.providerOptions) {
-		message.providerOptions = msg.providerOptions;
-	}
-	return message;
-}
-
-/** Convert AI SDK ModelMessages to n8n AgentDbMessages (each with a generated id). */
+/**
+ * Convert AI SDK ModelMessages to n8n AgentMessages.
+ *
+ * This is a stateful walk: when a role:'tool' ModelMessage is encountered,
+ * the matching tool-call block on the preceding assistant message is mutated
+ * to 'resolved' or 'rejected'. The tool message itself is not emitted as a
+ * separate n8n message.
+ *
+ * If a tool-result references a toolCallId not in the index (orphan), it is
+ * silently dropped.
+ */
 export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
-	return messages.map(fromAiMessage);
+	// Map from toolCallId → ContentToolCall block (mutable ref inside the n8n message)
+	const toolCallIndex = new Map<string, ContentToolCall>();
+	const result: AgentMessage[] = [];
+
+	for (const msg of messages) {
+		if (msg.role === 'tool') {
+			// Merge tool results back into the matching tool-call blocks
+			const toolParts = msg.content as ToolResultPart[];
+			for (const part of toolParts) {
+				const block = toolCallIndex.get(part.toolCallId);
+				if (!block) continue; // orphan — drop
+
+				const { output } = part;
+				if (output.type === 'json' || output.type === 'text') {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
+					mutableBlock.state = 'resolved';
+					mutableBlock.output = output.value as JSONValue;
+				} else if (output.type === 'error-json') {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
+					mutableBlock.state = 'rejected';
+					mutableBlock.error = JSON.stringify(output.value);
+				} else if (output.type === 'error-text') {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
+					mutableBlock.state = 'rejected';
+					mutableBlock.error = output.value;
+				} else {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
+					mutableBlock.state = 'rejected';
+					mutableBlock.error = JSON.stringify(output);
+				}
+			}
+			// Do not emit a separate n8n message for tool results
+			continue;
+		}
+
+		const rawContent = msg.content;
+		const content: MessageContent[] =
+			typeof rawContent === 'string'
+				? [{ type: 'text', text: rawContent }]
+				: rawContent.map(fromAiContent).filter((p): p is MessageContent => p !== undefined);
+
+		const agentMsg: AgentMessage = { role: msg.role, content };
+		if ('providerOptions' in msg && msg.providerOptions) {
+			agentMsg.providerOptions = msg.providerOptions;
+		}
+		result.push(agentMsg);
+
+		// Index any tool-call blocks for later merging with tool-result messages
+		if (msg.role === 'assistant') {
+			for (const block of content) {
+				if (block.type === 'tool-call' && block.toolCallId) {
+					toolCallIndex.set(block.toolCallId, block);
+				}
+			}
+		}
+	}
+
+	return result;
 }
 
 export function fromAiFinishReason(reason: AiFinishReason): FinishReason {

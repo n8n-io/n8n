@@ -17,7 +17,6 @@ import type { ChatModelDto, FrontendModuleSettings } from '@n8n/api-types';
 import { createMockAgentDto, createMockKnowledgeItem } from '@/features/ai/chatHub/__test__/data';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	const i18n = {
 		baseText: (key: string) => key,

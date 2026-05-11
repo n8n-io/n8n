@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import InstanceAiWorkflowSetup from '../components/InstanceAiWorkflowSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -78,7 +78,7 @@ vi.mock('@/features/workflows/canvas/experimental/composables/useExpressionResol
 	useExpressionResolveCtx: () => ({}),
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiWorkflowSetup);
+const renderComponent = createThreadComponentRenderer(InstanceAiWorkflowSetup);
 
 /** Render the component and wait for the async onMounted to complete (isStoreReady = true). */
 async function renderAndWait(
@@ -238,7 +238,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 			expect(getByText('instanceAi.workflowSetup.deferred')).toBeTruthy();
 		});
 
@@ -276,13 +276,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				expect.objectContaining({ action: 'apply' }),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -360,13 +354,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				expect.objectContaining({ action: 'apply' }),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -405,13 +393,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				expect.objectContaining({ action: 'apply' }),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -440,7 +422,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 			expect(getByText('instanceAi.workflowSetup.deferred')).toBeTruthy();
 		});
 	});
@@ -578,7 +560,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			// Should defer since there's only 1 card and no selection
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 		});
 	});
 
@@ -853,14 +835,8 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				true,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
 				expect.objectContaining({
-					action: 'apply',
+					kind: 'setupWorkflowApply',
 					nodeParameters: { [nodeName]: { channel: '#general' } },
 				}),
 			);
@@ -926,13 +902,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await waitFor(() => {
 				expect(confirmSpy).toHaveBeenCalledWith(
 					'req-1',
-					true,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					expect.objectContaining({ action: 'apply' }),
+					expect.objectContaining({ kind: 'setupWorkflowApply' }),
 				);
 			});
 		});
