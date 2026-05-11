@@ -532,6 +532,23 @@ function searchForQuery(
 }
 
 /**
+ * Plain (non-LangChain) implementation of node search. Callers that want
+ * their own tracing (e.g. OTel via `@n8n/agents`) can call this directly
+ * and skip the LangChain `tool(...)` wrapper, which would otherwise create
+ * its own LangSmith root run via the global LangChain tracer.
+ */
+export function searchNodes(
+	nodeTypeParser: NodeTypeParser,
+	queries: string[],
+	options?: CodeBuilderSearchToolOptions,
+): string {
+	const { nodeFilter } = options ?? {};
+	return queries
+		.map((query) => searchForQuery(nodeTypeParser, query, nodeFilter))
+		.join('\n\n---\n\n');
+}
+
+/**
  * Create the simplified node search tool for code builder
  * Accepts multiple queries and returns separate results for each
  * Includes discriminator information for nodes with resource/operation or mode patterns
@@ -540,15 +557,8 @@ export function createCodeBuilderSearchTool(
 	nodeTypeParser: NodeTypeParser,
 	options?: CodeBuilderSearchToolOptions,
 ) {
-	const { nodeFilter } = options ?? {};
-
 	return tool(
-		async (input: { queries: string[] }) => {
-			const allResults = input.queries.map((query) =>
-				searchForQuery(nodeTypeParser, query, nodeFilter),
-			);
-			return allResults.join('\n\n---\n\n');
-		},
+		async (input: { queries: string[] }) => searchNodes(nodeTypeParser, input.queries, options),
 		{
 			name: 'search_nodes',
 			description:

@@ -8,15 +8,14 @@ import { NodeCatalogService } from '../node-catalog.service';
 
 const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
-const mockSearchInvoke = jest.fn().mockResolvedValue('search-result');
-const mockGetInvoke = jest.fn().mockResolvedValue('get-result');
+const mockSearchNodes = jest.fn().mockReturnValue('search-result');
+const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
 const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
-const mockCreateSearchTool = jest.fn((..._args: unknown[]) => ({ invoke: mockSearchInvoke }));
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	NodeTypeParser: MockNodeTypeParser,
-	createCodeBuilderSearchTool: (...args: unknown[]) => mockCreateSearchTool(...args),
-	createCodeBuilderGetTool: jest.fn(() => ({ invoke: mockGetInvoke })),
+	searchNodes: (...args: unknown[]) => mockSearchNodes(...args),
+	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
 	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
 }));
 
