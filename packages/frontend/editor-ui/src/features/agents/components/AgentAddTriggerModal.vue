@@ -472,6 +472,7 @@ onMounted(async () => {
 					:flat="true"
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
+					@canceled="closeModal"
 					@saved="closeModal"
 				/>
 

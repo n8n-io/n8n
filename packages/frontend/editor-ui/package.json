@@ -70,6 +70,7 @@
     "chart.js": "^4.4.0",
     "comlink": "^4.4.1",
     "core-js": "^3.40.0",
+    "cron": "catalog:",
     "curlconverter": "^4.12.0",
     "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",
