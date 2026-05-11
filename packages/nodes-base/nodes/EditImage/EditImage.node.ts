@@ -1005,6 +1005,7 @@ export class EditImage implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			const cleanupFunctions: Array<() => Promise<void>> = [];
 			try {
 				item = items[itemIndex];
 
@@ -1019,8 +1020,6 @@ export class EditImage implements INodeType {
 				if (!binaryPropertyName) {
 					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'data';
 				}
-
-				const cleanupFunctions: Array<() => void> = [];
 
 				let gmInstance: gm.State;
 
@@ -1320,8 +1319,6 @@ export class EditImage implements INodeType {
 				returnData.push(
 					await new Promise<INodeExecutionData>((resolve, reject) => {
 						gmInstance.toBuffer(async (error: Error | null, buffer: Buffer) => {
-							cleanupFunctions.forEach(async (cleanup) => cleanup());
-
 							if (error) {
 								return reject(error);
 							}
@@ -1349,6 +1346,8 @@ export class EditImage implements INodeType {
 					continue;
 				}
 				throw error;
+			} finally {
+				await Promise.allSettled(cleanupFunctions.map((fn) => fn()));
 			}
 		}
 		return [returnData];
