@@ -1190,6 +1190,10 @@ describe('useWorkflowHelpers', () => {
 });
 
 describe(resolveParameter, () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
 	describe('with local resolve context', () => {
 		it('should resolve parameter without execution data', async () => {
 			const result = await resolveParameter(
