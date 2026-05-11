@@ -18,10 +18,7 @@ vi.mock('@/experiments/instanceAiProactiveAgent', () => ({
 	}),
 	InstanceAiProactiveStarterMessage: {
 		name: 'InstanceAiProactiveStarterMessageStub',
-		props: ['suggestions', 'disabled'],
-		emits: ['submit'],
-		template:
-			"<button data-test-id=\"instance-ai-proactive-starter\" @click=\"$emit('submit', 'starter prompt')\">{{ suggestions === undefined ? 'unset' : String(suggestions.length) }}</button>",
+		template: '<div data-test-id="instance-ai-proactive-starter">starter</div>',
 	},
 }));
 
@@ -127,7 +124,7 @@ describe('InstanceAiView', () => {
 
 		const { getByTestId, queryByTestId } = renderView();
 
-		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});

@@ -1,110 +1,73 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { N8nAssistantIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
-import InstanceAiPromptSuggestions from '@/features/ai/instanceAi/components/InstanceAiPromptSuggestions.vue';
-import type { InstanceAiEmptyStateSuggestion } from '@/features/ai/instanceAi/emptyStateSuggestions';
-import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { useInstanceAiPromptSuggestionsTelemetry } from '@/features/ai/instanceAi/instanceAiPromptSuggestions.telemetry';
+const STARTER_DELAY_MS = 800;
+const TYPING_DURATION_MS = 600;
 
-const props = defineProps<{
-	suggestions: readonly InstanceAiEmptyStateSuggestion[];
-	disabled?: boolean;
-}>();
-
-const emit = defineEmits<{
-	submit: [message: string];
-}>();
+type StarterStage = 'waiting' | 'typing' | 'message';
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
-const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
+const stage = ref<StarterStage>('waiting');
+const timers: Array<ReturnType<typeof setTimeout>> = [];
 
-const canShowSuggestions = computed(() => props.suggestions.length > 0 && props.disabled !== true);
+onMounted(() => {
+	timers.push(
+		setTimeout(() => {
+			stage.value = 'typing';
+		}, STARTER_DELAY_MS),
+	);
+	timers.push(
+		setTimeout(() => {
+			stage.value = 'message';
+		}, STARTER_DELAY_MS + TYPING_DURATION_MS),
+	);
+});
 
-const visibleSuggestionThreadId = computed(() =>
-	canShowSuggestions.value ? store.currentThreadId : null,
-);
-
-watch(
-	visibleSuggestionThreadId,
-	(threadId) => {
-		if (!threadId) return;
-
-		promptSuggestionsTelemetry.trackSuggestionsShown({
-			threadId,
-			researchMode: store.researchMode,
-		});
-	},
-	{ immediate: true },
-);
-
-function getTelemetryContext() {
-	return {
-		threadId: store.currentThreadId,
-		researchMode: store.researchMode,
-	};
-}
-
-function handleQuickExamplesOpened(payload: { suggestionId: string; position: number }) {
-	if (payload.suggestionId !== 'quick-examples') {
-		return;
+onBeforeUnmount(() => {
+	for (const timer of timers) {
+		clearTimeout(timer);
 	}
-
-	promptSuggestionsTelemetry.trackQuickExamplesOpened({
-		...getTelemetryContext(),
-		suggestionId: payload.suggestionId,
-		position: payload.position,
-	});
-}
-
-function handleSuggestionSubmit(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
-	promptSuggestionsTelemetry.trackSuggestionSelected({
-		...getTelemetryContext(),
-		suggestionId: payload.suggestionId,
-		suggestionKind: payload.suggestionKind,
-		position: payload.position,
-	});
-	emit('submit', i18n.baseText(payload.promptKey));
-}
+});
 </script>
 
 <template>
-	<article :class="$style.container" data-test-id="instance-ai-proactive-starter">
-		<header :class="$style.meta">
-			<N8nText size="xsmall" :compact="true" :class="$style.metaLabel">
-				{{ i18n.baseText('experiments.instanceAiProactiveAgent.meta' as BaseTextKey) }}
-			</N8nText>
-		</header>
-
+	<article
+		v-if="stage !== 'waiting'"
+		:class="$style.container"
+		data-test-id="instance-ai-proactive-starter"
+	>
 		<div :class="$style.avatar" aria-hidden="true">
-			<N8nAssistantIcon size="large" />
+			<N8nAssistantIcon size="large" theme="blank" />
 		</div>
 
-		<section :class="$style.bubble">
-			<N8nText tag="h2" size="large" bold :class="$style.title">
-				{{ i18n.baseText('experiments.instanceAiProactiveAgent.title' as BaseTextKey) }}
-			</N8nText>
-			<N8nText tag="p" size="medium" :class="$style.body">
-				{{ i18n.baseText('experiments.instanceAiProactiveAgent.body' as BaseTextKey) }}
+		<section :class="$style.bubble" aria-live="polite">
+			<div
+				v-if="stage === 'typing'"
+				:class="$style.typing"
+				:aria-label="
+					i18n.baseText('experiments.instanceAiProactiveAgent.typingLabel' as BaseTextKey)
+				"
+				role="status"
+				data-test-id="instance-ai-proactive-typing"
+			>
+				<span :class="$style.typingDot" />
+				<span :class="$style.typingDot" />
+				<span :class="$style.typingDot" />
+			</div>
+
+			<N8nText
+				v-else
+				tag="p"
+				size="large"
+				:class="$style.message"
+				data-test-id="instance-ai-proactive-message"
+			>
+				{{ i18n.baseText('experiments.instanceAiProactiveAgent.message' as BaseTextKey) }}
 			</N8nText>
 		</section>
-
-		<div v-if="canShowSuggestions" :class="$style.suggestions">
-			<InstanceAiPromptSuggestions
-				:suggestions="props.suggestions"
-				:disabled="props.disabled === true"
-				@quick-examples-opened="handleQuickExamplesOpened"
-				@submit-suggestion="handleSuggestionSubmit"
-			/>
-		</div>
 	</article>
 </template>
 
@@ -115,34 +78,17 @@ function handleSuggestionSubmit(payload: {
 	display: grid;
 	grid-template-columns: var(--spacing--xl) minmax(0, 1fr);
 	column-gap: var(--spacing--sm);
-	row-gap: var(--spacing--xs);
 	align-items: start;
 	width: 100%;
 	max-width: 720px;
 	padding-top: var(--spacing--md);
-}
-
-.meta {
-	grid-column: 2;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	min-height: var(--spacing--md);
 
 	@include motion.fade-in-up;
 	animation-duration: var(--duration--base);
 	animation-fill-mode: both;
 }
 
-.metaLabel {
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--medium);
-	letter-spacing: 0.01em;
-}
-
 .avatar {
-	grid-column: 1;
-	grid-row: 2;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -151,57 +97,79 @@ function handleSuggestionSubmit(payload: {
 	border-radius: var(--radius--full);
 	background: var(--assistant--color--highlight-gradient);
 	box-shadow: var(--shadow--xs);
-
-	@include motion.fade-in-up;
-	animation-delay: 80ms;
-	animation-duration: var(--duration--base);
-	animation-fill-mode: both;
 }
 
 .bubble {
-	grid-column: 2;
-	grid-row: 2;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--spacing--xl);
+	width: fit-content;
+	max-width: min(560px, 100%);
 	padding: var(--spacing--sm) var(--spacing--md);
-	background: var(--background--surface);
-	border: 1px solid var(--color--foreground--tint-1);
-	border-radius: var(--radius--3xs) var(--radius--md) var(--radius--md) var(--radius--md);
-	box-shadow: var(--shadow--sm);
-
-	@include motion.fade-in-up;
-	animation-delay: 80ms;
-	animation-duration: var(--duration--base);
-	animation-fill-mode: both;
+	background: var(--color--background--light-3);
+	border-radius: var(--radius--3xs) var(--radius--xl) var(--radius--xl) var(--radius--xl);
 }
 
-.title {
+.message {
+	--animation--fade-in-up--duration: var(--duration--base);
+	--animation--fade-in-up--translate: var(--spacing--5xs);
+
 	margin: 0;
 	color: var(--color--text);
-	line-height: var(--line-height--lg);
-}
-
-.body {
-	margin: 0;
-	color: var(--color--text--tint-1);
 	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
-}
-
-.suggestions {
-	grid-column: 2;
-	grid-row: 3;
 
 	@include motion.fade-in-up;
-	animation-delay: 160ms;
-	animation-duration: var(--duration--base);
 	animation-fill-mode: both;
+}
 
-	// The shared suggestion row centers itself by default; left-align it under
-	// the bubble so the chips line up with the speech-bubble's content edge.
-	:global([class*='suggestionRow']) {
-		justify-content: flex-start;
+.typing {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--4xs);
+}
+
+.typingDot {
+	width: var(--spacing--4xs);
+	height: var(--spacing--4xs);
+	border-radius: var(--radius--full);
+	background: var(--color--text--tint-1);
+	animation: typing-dot var(--duration--slow) ease-in-out infinite;
+
+	&:nth-child(2) {
+		animation-delay: 120ms;
+	}
+
+	&:nth-child(3) {
+		animation-delay: 240ms;
+	}
+}
+
+@keyframes typing-dot {
+	0%,
+	60%,
+	100% {
+		opacity: 0.35;
+		transform: translateY(0);
+	}
+
+	30% {
+		opacity: 1;
+		transform: translateY(calc(var(--spacing--5xs) * -1));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.container,
+	.message,
+	.typingDot {
+		animation: none;
+	}
+
+	.typingDot {
+		opacity: 0.7;
+		transform: none;
 	}
 }
 </style>

@@ -573,14 +573,7 @@ function handleStop() {
 								:class="$style.messageList"
 								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
 							>
-								<InstanceAiProactiveStarterMessage
-									v-if="showProactiveStarter"
-									:suggestions="INSTANCE_AI_EMPTY_STATE_SUGGESTIONS"
-									:disabled="
-										store.isStreaming || store.isSendingMessage || store.isAwaitingConfirmation
-									"
-									@submit="handleSubmit"
-								/>
+								<InstanceAiProactiveStarterMessage v-if="showProactiveStarter" />
 								<TransitionGroup v-else name="message-slide">
 									<InstanceAiMessage
 										v-for="message in displayedMessages"
