@@ -115,9 +115,11 @@ export class CredentialsService {
 		credentials: CredentialsEntity[],
 		includeData: boolean,
 		dependencyFilter?: CredentialDependencyFilter,
+		type?: string,
 	): Promise<CredentialsEntity[]> {
 		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
 			includeData,
+			...(type ? { type } : {}),
 			filters: { dependency: dependencyFilter },
 		});
 
@@ -126,6 +128,15 @@ export class CredentialsService {
 		const newGlobalCreds = globalCredentials.filter((gc) => !credentialIds.has(gc.id));
 
 		return [...credentials, ...newGlobalCreds];
+	}
+
+	/**
+	 * Read the credential `type` filter from listQueryOptions before any repo
+	 * call mutates it (toFindManyOptions wraps it in a Like(...) in place).
+	 */
+	private extractTypeFilter(listQueryOptions: ListQuery.Options): string | undefined {
+		const filterType = listQueryOptions.filter?.type;
+		return typeof filterType === 'string' && filterType !== '' ? filterType : undefined;
 	}
 
 	async getMany(
@@ -234,6 +245,7 @@ export class CredentialsService {
 		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
 		const { dependency: dependencyFilter } = filters ?? {};
+		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
 		// If onlySharedWithMe or dependency filtering is requested, use subquery approach.
 		if (onlySharedWithMe || dependencyFilter) {
@@ -253,7 +265,12 @@ export class CredentialsService {
 			);
 
 			if (includeGlobal) {
-				return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
+				return await this.addGlobalCredentials(
+					credentials,
+					includeData,
+					dependencyFilter,
+					typeFilter,
+				);
 			}
 
 			return credentials;
@@ -267,7 +284,12 @@ export class CredentialsService {
 		});
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
+			credentials = await this.addGlobalCredentials(
+				credentials,
+				includeData,
+				dependencyFilter,
+				typeFilter,
+			);
 		}
 
 		return credentials;
@@ -284,6 +306,7 @@ export class CredentialsService {
 		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
 		const { dependency: dependencyFilter } = filters ?? {};
+		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
@@ -344,7 +367,12 @@ export class CredentialsService {
 		);
 
 		if (includeGlobal) {
-			return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
+			return await this.addGlobalCredentials(
+				credentials,
+				includeData,
+				dependencyFilter,
+				typeFilter,
+			);
 		}
 
 		return credentials;

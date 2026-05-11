@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nCard, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
@@ -7,6 +7,7 @@ import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentEvalsPanel from './AgentEvalsPanel.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
@@ -63,6 +64,15 @@ const i18n = useI18n();
 						v-else-if="activeMainTab === 'executions'"
 						:title="i18n.baseText('agents.builder.header.tab.executions')"
 						:description="executionsDescription"
+					/>
+					<AgentPanelHeader
+						v-else-if="activeMainTab === 'evaluations'"
+						:title="i18n.baseText('agents.builder.header.tab.evaluations')"
+						:description="
+							i18n.baseText('agents.builder.evaluations.configuredInCode', {
+								interpolate: { count: '0' },
+							})
+						"
 					/>
 					<AgentPanelHeader
 						v-else-if="activeMainTab === 'raw'"
@@ -145,16 +155,7 @@ const i18n = useI18n();
 					/>
 				</div>
 
-				<div v-else data-testid="agent-evaluations-panel">
-					<div :class="$style.panel">
-						<N8nHeading size="medium">
-							{{ i18n.baseText('agents.builder.header.tab.evaluations') }}
-						</N8nHeading>
-						<N8nText color="text-light">
-							{{ i18n.baseText('agents.builder.evaluations.comingSoon') }}
-						</N8nText>
-					</div>
-				</div>
+				<AgentEvalsPanel v-else data-testid="agent-evaluations-panel" />
 			</div>
 		</div>
 	</section>
@@ -180,6 +181,8 @@ const i18n = useI18n();
 		var(--color--background--light-2)
 	);
 	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .panelAreaContainer {

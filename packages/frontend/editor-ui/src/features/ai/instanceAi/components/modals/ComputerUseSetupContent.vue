@@ -1,13 +1,12 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import MacOsIcon from '../../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../../assets/os-icons/windows-icon.svg';
 import LinuxIcon from '../../assets/os-icons/linux-icon.svg';
-import { CHROME_EXTENSION_URL } from './constants';
 
 const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
@@ -122,12 +121,6 @@ const displayCategories = computed(() => {
 	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
 });
 
-const browserAutomationHint = computed(() =>
-	i18n.baseText('instanceAi.welcomeModal.gateway.browserAutomationHint', {
-		interpolate: { url: CHROME_EXTENSION_URL },
-	}),
-);
-
 function onCommandScroll(e: Event) {
 	const el = e.target as HTMLElement;
 	isScrolledToEnd.value = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
@@ -213,8 +206,6 @@ onBeforeUnmount(() => {
 					</span>
 				</div>
 			</div>
-
-			<N8nText v-n8n-html="browserAutomationHint" color="text-light" :class="$style.browserHint" />
 		</template>
 
 		<template v-else>
@@ -222,6 +213,11 @@ onBeforeUnmount(() => {
 				v-n8n-html="i18n.baseText('instanceAi.welcomeModal.gateway.description')"
 				:class="$style.textBlock"
 			/>
+
+			<N8nCallout theme="warning">
+				{{ i18n.baseText('instanceAi.welcomeModal.gateway.warning') }}
+			</N8nCallout>
+
 			<div :class="$style.osTabs">
 				<button
 					v-for="tab in osTabs"
@@ -234,7 +230,7 @@ onBeforeUnmount(() => {
 				</button>
 			</div>
 
-			<N8nText color="text-light" :class="$style.instructions">
+			<N8nText :class="$style.instructions">
 				{{ i18n.baseText(terminalInstructionsKey) }}
 			</N8nText>
 
@@ -257,21 +253,16 @@ onBeforeUnmount(() => {
 						@click="copyCommand"
 					/>
 				</div>
-				<div :class="$style.commandMeta">
-					<N8nText v-if="tokenExpiryText" size="small" color="text-light">
+				<div :class="$style.waitingRow">
+					<div :class="$style.waitingStatus">
+						<N8nIcon icon="spinner" color="primary" spin size="small" />
+						<span>{{ i18n.baseText('instanceAi.welcomeModal.gateway.waiting') }}</span>
+					</div>
+					<N8nText v-if="tokenExpiryText" size="small" color="warning">
 						{{ tokenExpiryText }}
 					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('instanceAi.welcomeModal.gateway.leadingSpaceHint') }}
-					</N8nText>
-				</div>
-				<div :class="$style.waitingRow">
-					<N8nIcon icon="spinner" color="primary" spin size="small" />
-					<span>{{ i18n.baseText('instanceAi.welcomeModal.gateway.waiting') }}</span>
 				</div>
 			</div>
-
-			<N8nText v-n8n-html="browserAutomationHint" color="text-light" :class="$style.browserHint" />
 		</template>
 	</div>
 </template>
@@ -302,7 +293,6 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
-	margin-bottom: var(--spacing--sm);
 	color: var(--color--text--tint-1);
 }
 
@@ -354,19 +344,11 @@ onBeforeUnmount(() => {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs);
-	background: var(--color--background--shade-2);
-}
-
-.commandMeta {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	padding: 0 var(--spacing--xs) var(--spacing--xs);
-	background: var(--color--background--shade-2);
+	background: var(--color--neutral-950);
 }
 
 .commandText {
-	color: var(--color--text--tint-1);
+	color: var(--color--neutral-300);
 	white-space: nowrap;
 	overflow: auto;
 	font-size: var(--font-size--xs);
@@ -385,7 +367,7 @@ onBeforeUnmount(() => {
 
 .copyButton {
 	flex-shrink: 0;
-	color: var(--color--text);
+	color: var(--color--neutral-300);
 }
 
 .connectedBlock {
@@ -445,22 +427,25 @@ onBeforeUnmount(() => {
 	color: var(--color--text--tint-1);
 }
 
-.browserHint {
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--xl);
-}
-
 .waitingRow {
 	display: flex;
 	font-size: var(--font-size--2xs);
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-top: var(--border);
 	color: var(--color--text--tint-1);
 }
 
+.waitingStatus {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .instructions {
+	margin-top: var(--spacing--2xs);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--xl);
 }
