@@ -23,7 +23,7 @@ import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -70,6 +70,9 @@ type Props = {
 	projectId?: string;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
+	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
+	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
+	hideAskAssistant?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -93,7 +96,7 @@ const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
@@ -393,6 +396,8 @@ function createNewCredential(
 		forceManualMode,
 		props.projectId,
 		props.suggestedCredentialName,
+		undefined,
+		{ hideAskAssistant: props.hideAskAssistant },
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
@@ -582,7 +587,7 @@ function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
 
-	uiStore.openExistingCredential(credential.id);
+	uiStore.openExistingCredential(credential.id, { hideAskAssistant: props.hideAskAssistant });
 
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,

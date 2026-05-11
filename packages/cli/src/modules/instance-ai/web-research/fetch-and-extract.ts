@@ -224,19 +224,34 @@ async function extractPdf(
 	maxContentLength: number,
 ): Promise<FetchedPage> {
 	// Dynamic import to avoid loading pdf-parse unless needed
-	const pdfParse = (await import('pdf-parse')).default;
-	const result = await pdfParse(body);
+	const { PDFParse } = await import('pdf-parse');
+	const parser = new PDFParse({ data: body });
+	let textResult;
+	let title = '';
+	try {
+		textResult = await parser.getText();
+		try {
+			const infoResult = await parser.getInfo();
+			const titleField: unknown = infoResult.info?.Title;
+			if (typeof titleField === 'string') title = titleField;
+		} catch {
+			// Metadata is decorative — fall through with empty title rather than
+			// dropping the successfully extracted text.
+		}
+	} finally {
+		await parser.destroy();
+	}
 
-	const truncated = result.text.length > maxContentLength;
-	const content = truncated ? result.text.slice(0, maxContentLength) : result.text;
+	const truncated = textResult.text.length > maxContentLength;
+	const content = truncated ? textResult.text.slice(0, maxContentLength) : textResult.text;
 
 	return {
 		url,
 		finalUrl,
-		title: result.info?.Title ?? '',
+		title,
 		content,
 		truncated,
-		contentLength: result.text.length,
+		contentLength: textResult.text.length,
 	};
 }
 

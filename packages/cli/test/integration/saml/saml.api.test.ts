@@ -776,9 +776,9 @@ describe('SAML email validation', () => {
 
 			const mockRequest = {} as express.Request;
 
-			await expect(samlService.handleSamlLogin(mockRequest, 'post')).rejects.toThrow(
-				new BadRequestError('Invalid email format'),
-			);
+			const promise = samlService.handleSamlLogin(mockRequest, 'post');
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid email format');
 		});
 
 		test.each([['not-an-email'], ['@missinglocal.com'], ['missing@.com'], ['spaces in@email.com']])(
@@ -797,9 +797,9 @@ describe('SAML email validation', () => {
 
 				const mockRequest = {} as express.Request;
 
-				await expect(samlService.handleSamlLogin(mockRequest, 'post')).rejects.toThrow(
-					new BadRequestError('Invalid email format'),
-				);
+				const promise = samlService.handleSamlLogin(mockRequest, 'post');
+				await expect(promise).rejects.toThrow(BadRequestError);
+				await expect(promise).rejects.toThrow('Invalid email format');
 			},
 		);
 

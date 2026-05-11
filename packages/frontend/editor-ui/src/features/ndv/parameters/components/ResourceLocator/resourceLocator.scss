@@ -80,6 +80,11 @@ $--mode-selector-width: 92px;
 			flex-grow: 1;
 		}
 
+		/** NOTE (@heymynameisrob): Manual override to match legacy size of Select. Will need removing when sizes are unified **/
+		.inputField {
+			--input--height: 30px !important;
+		}
+
 		.inputContainerInputCorners {
 			input {
 				border-radius: 0 var(--radius) var(--radius) 0;
@@ -102,11 +107,6 @@ $--mode-selector-width: 92px;
 	input {
 		cursor: grabbing !important;
 	}
-}
-
-/** NOTE (@heymynameisrob): Manual override to match legacy size of Select. Will need removing when sizes are unified **/
-.selectInput {
-	--input--height: 30px !important;
 }
 
 .selectInput input {

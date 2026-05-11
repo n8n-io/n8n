@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { buildFilesystemResource, resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveReadablePath, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	filePath: z.string().describe('File path relative to root'),
@@ -20,26 +20,28 @@ export const editFileTool: ToolDefinition<typeof inputSchema> = {
 	annotations: {},
 	async getAffectedResources({ filePath }, { dir }) {
 		return [
+			await buildFilesystemResource(dir, filePath, 'filesystemRead', `Read file: ${filePath}`),
 			await buildFilesystemResource(dir, filePath, 'filesystemWrite', `Edit file: ${filePath}`),
 		];
 	},
 	async execute({ filePath, oldString, newString }, { dir }) {
-		const resolvedPath = await resolveSafePath(dir, filePath);
+		const resolvedReadablePath = await resolveReadablePath(dir, filePath);
+		const resolvedWritablePath = await resolveSafePath(dir, filePath);
 
-		const stat = await fs.stat(resolvedPath);
+		const stat = await fs.stat(resolvedReadablePath);
 		if (stat.size > MAX_FILE_SIZE) {
 			throw new Error(
 				`File too large: ${stat.size} bytes (max ${MAX_FILE_SIZE} bytes). Use write_file to replace the entire content.`,
 			);
 		}
 
-		const content = await fs.readFile(resolvedPath, 'utf-8');
+		const content = await fs.readFile(resolvedReadablePath, 'utf-8');
 
 		if (!content.includes(oldString)) {
 			throw new Error(`oldString not found in file: ${filePath}`);
 		}
 
-		await fs.writeFile(resolvedPath, content.replace(oldString, newString), 'utf-8');
+		await fs.writeFile(resolvedWritablePath, content.replace(oldString, newString), 'utf-8');
 
 		return formatCallToolResult({ path: filePath });
 	},
