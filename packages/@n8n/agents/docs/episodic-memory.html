@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Case memory</title>
+	<title>Episodic memory</title>
 	<style>
 		:root {
 			color-scheme: light;
@@ -164,6 +164,7 @@
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 			gap: 14px;
 		}
+		.detail-grid + .detail-grid { margin-top: 14px; }
 		.stat,
 		.block {
 			padding: 14px;
@@ -258,19 +259,19 @@
 				<a href="#overview">Overview</a>
 				<a href="#runtime">Runtime flow</a>
 				<a href="#entries">Entry shape</a>
+				<a href="#extraction">Extractor decisions</a>
 				<a href="#retrieval">Retrieval</a>
 				<a href="#config">Config</a>
 				<a href="#boundaries">Boundaries</a>
-				<a href="memory-stack.html">Memory stack doc</a>
 			</nav>
 		</aside>
 
 		<main>
 			<header class="hero" id="overview">
-				<p class="kicker">Case memory</p>
+				<p class="kicker">Episodic memory</p>
 				<h1>Episodic memory</h1>
 				<p class="lede">
-					Case memory is the embedding-backed memory layer for source-backed entries from previous threads. It helps an agent recognize similar cases without mixing case evidence into the user profile or session memory.
+					Episodic memory is the embedding-backed memory layer for source-backed entries from previous threads. It helps an agent recognize similar cases without mixing case evidence into the user profile or session memory.
 				</p>
 			</header>
 
@@ -278,7 +279,7 @@
 				<div class="summary-grid">
 					<div class="stat">
 						<strong>Product name</strong>
-						<span>Case memory in the Agents Memory panel.</span>
+						<span>Episodic memory in the Agents Memory panel.</span>
 					</div>
 					<div class="stat">
 						<strong>SDK/config name</strong>
@@ -297,8 +298,8 @@
 
 			<section class="card" id="runtime">
 				<h2>Runtime flow</h2>
-				<p>Case memory has a read path before the model call and a write path after successful turns.</p>
-				<div class="flow" aria-label="Case memory runtime flow">
+				<p>Episodic memory has a read path before the model call and a write path after successful turns.</p>
+				<div class="flow" aria-label="Episodic memory runtime flow">
 					<div class="step">
 						<span class="step-number">1</span>
 						<h3>Configure</h3>
@@ -354,11 +355,55 @@
   "entries": [
     {
       "content": "A workspace stayed inactive after renewal because record A held the active subscription while record B was used for entitlement checks. Merging the records and refreshing derived entitlements resolved the lockout.",
-      "source": "assistant_finding",
+      "source": "verified_assistant_finding",
       "evidence": "The active subscription is on record A, but entitlement checks are reading record B."
     }
   ]
 }</pre>
+			</section>
+
+			<section class="card" id="extraction">
+				<h2>Extractor decisions</h2>
+				<p>The extractor reads the role-labeled transcript JSON after the agent has answered. It writes entries only when the transcript contains durable case context that could help a future turn recognize a similar situation, continue an investigation, avoid repeated work, or apply a previous mechanism or fix. Known <code>&lt;user-profile&gt;</code> and <code>&lt;memory&gt;</code> context can be passed in for dedupe and exclusions, but those blocks are not sources for new entries.</p>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>When it stores an entry</strong>
+						<ul>
+							<li>The transcript contains a concrete situation with a useful mechanism, current diagnostic state, attempted step, ruled-out path, outcome, or open question.</li>
+							<li>The entry preserves causal direction, such as which record held state, which service checked it, or which emitted value did not match a rule.</li>
+							<li>Unresolved cases are allowed when the observation is stable enough to resume later. Uncertainty stays explicit instead of being upgraded into fact.</li>
+							<li>Useful details that only make sense together stay in one entry rather than being split into disconnected facts.</li>
+						</ul>
+					</div>
+					<div class="block">
+						<strong>When it skips</strong>
+						<ul>
+							<li>Stable user preferences, user-profile details, and agent behavior rules are not episodic entries.</li>
+							<li>Generic advice, assistant summaries, recalled-memory restatements, and unsupported recommendations are ignored.</li>
+							<li>Earlier diagnostic branches are skipped when the same transcript later corrects or supersedes them.</li>
+							<li>Current-thread details that have no likely value outside the thread are left to session memory.</li>
+						</ul>
+					</div>
+				</div>
+				<div class="detail-grid">
+					<div class="block">
+						<strong>Source labels</strong>
+						<ul>
+							<li><code>user_assertion</code>: the user directly stated the mechanism, fix, outcome, attempted step, or open state.</li>
+							<li><code>user_accepted_assistant_proposal</code>: the assistant proposed a mechanism or fix and the user explicitly accepted, applied, or verified it.</li>
+							<li><code>verified_assistant_finding</code>: the assistant stated a concrete diagnostic conclusion, ruled-out path, attempted-step result, or open case state.</li>
+						</ul>
+					</div>
+					<div class="block">
+						<strong>Evidence validation</strong>
+						<ul>
+							<li>Every default-extracted entry must include exact evidence from the transcript.</li>
+							<li>User-sourced entries require exact user-message evidence.</li>
+							<li><code>verified_assistant_finding</code> can use exact assistant evidence, or exact user evidence that confirms or grounds the finding.</li>
+							<li>After validation, entries are normalized, capped by <code>maxEntryLength</code>, limited by <code>maxEntriesPerTurn</code>, deduped by exact hash, checked for similarity duplicates, embedded, and stored.</li>
+						</ul>
+					</div>
+				</div>
 			</section>
 
 			<section class="card" id="retrieval">
@@ -412,7 +457,6 @@
 						<strong>SDK config</strong>
 						<pre>const memory = new Memory()
   .storage(myMemoryBackend)
-  .profiles()
   .episodicMemory({
     embedder,
     embeddingModel: "openai/text-embedding-3-small",
@@ -421,19 +465,19 @@
 				</div>
 				<ul>
 					<li><code>agents_memory_entries</code> stores content, content hash, provenance fields, embedding model name, embedding values, metadata, and timestamps.</li>
-					<li>n8n resolves embedding credentials through n8n credentials. Case memory does not read embedding credentials from environment variables.</li>
-					<li><code>semanticRecall</code> is a separate older recall path and is not part of Case memory.</li>
+					<li>n8n resolves embedding credentials through n8n credentials. Episodic memory does not read embedding credentials from environment variables.</li>
+					<li><code>semanticRecall</code> is a separate older recall path and is not part of Episodic memory.</li>
 				</ul>
 			</section>
 
 			<section class="card" id="boundaries">
 				<h2>Boundaries</h2>
 				<div class="callout">
-					<p>Case memory is not the user profile and not session memory. Use <a href="memory-stack.html">the memory stack doc</a> for <code>&lt;user-profile&gt;</code> and <code>&lt;session-memory&gt;</code>.</p>
+					<p>Episodic memory is not the user profile and not session memory. It only powers source-backed entries injected through <code>&lt;memory&gt;</code> and queried through <code>recall_memory</code>. Use <a href="memory-stack.html">the memory stack doc</a> for <code>&lt;user-profile&gt;</code> and <code>&lt;session-memory&gt;</code>.</p>
 				</div>
 				<ul>
 					<li>Read and write scope is fixed to <code>agentId + resourceId</code>.</li>
-					<li>Case memory stores source-backed entries that may be useful in later threads.</li>
+					<li>Episodic memory stores source-backed entries that may be useful in later threads.</li>
 					<li>User-profile memory stores what this agent remembers about the user.</li>
 					<li>Session memory stores the current thread objective, decisions, state, and follow-ups.</li>
 				</ul>
