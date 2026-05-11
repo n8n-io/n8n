@@ -233,6 +233,56 @@ describe('MongoDB CRUD Node', () => {
 			expect(items[2].pairedItem).toEqual({ item: 2 });
 		});
 
+		it('preserves input order when insert items span multiple collections', async () => {
+			// items[0] → col1, items[1] → col2, items[2] → col1
+			// groups: {col1: [0,2], col2: [1]} — without sort output would be [0,2,1]
+			const interleavedItems = [
+				{ json: { id: '1', value: 'first', collection: 'col1' } },
+				{ json: { id: '2', value: 'second', collection: 'col2' } },
+				{ json: { id: '3', value: 'third', collection: 'col1' } },
+			];
+
+			const insertManySpy = jest.spyOn(Collection.prototype, 'insertMany');
+			insertManySpy
+				.mockResolvedValueOnce({
+					acknowledged: true,
+					insertedCount: 2,
+					insertedIds: { 0: new ObjectId(), 1: new ObjectId() },
+				})
+				.mockResolvedValueOnce({
+					acknowledged: true,
+					insertedCount: 1,
+					insertedIds: { 0: new ObjectId() },
+				});
+
+			const mock = mockExecuteFunctions(1.3, 'insert');
+			mock.getInputData.mockReturnValue(interleavedItems);
+			mock.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+					switch (parameterName) {
+						case 'operation':
+							return 'insert';
+						case 'collection':
+							return interleavedItems[itemIndex].json.collection;
+						case 'fields':
+							return 'id,value';
+						case 'options.useDotNotation':
+							return false;
+						case 'options.dateFields':
+							return '';
+						default:
+							return fallbackValue;
+					}
+				},
+			);
+
+			const [items] = await node.execute.call(mock);
+
+			expect(items[0].pairedItem).toEqual({ item: 0 });
+			expect(items[1].pairedItem).toEqual({ item: 1 });
+			expect(items[2].pairedItem).toEqual({ item: 2 });
+		});
+
 		it('resolves update collections against each input item', async () => {
 			const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
 			updateOneSpy.mockResolvedValue({
@@ -319,6 +369,56 @@ describe('MongoDB CRUD Node', () => {
 			expect(items[1].pairedItem).toEqual({ item: 1 });
 			expect(items[2].pairedItem).toEqual({ item: 2 });
 		});
+
+		describe.each(['findOneAndReplace', 'findOneAndUpdate', 'update'])(
+			'%s: item missing the updateKey field',
+			(operation) => {
+				const itemsMissingKey = [{ json: { value: 'no-id-field', collection: 'col1' } }];
+
+				function mockMissingKey(continueOnFail: boolean) {
+					const mock = mockExecuteFunctions(1.3, operation);
+					mock.getInputData.mockReturnValue(itemsMissingKey);
+					mock.continueOnFail.mockReturnValue(continueOnFail);
+					mock.getNodeParameter.mockImplementation(
+						(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+							switch (parameterName) {
+								case 'operation':
+									return operation;
+								case 'collection':
+									return 'col1';
+								case 'fields':
+									return 'value';
+								case 'updateKey':
+									return 'id';
+								case 'upsert':
+									return false;
+								case 'options.useDotNotation':
+									return false;
+								case 'options.dateFields':
+									return '';
+								default:
+									return fallbackValue;
+							}
+						},
+					);
+					return mock;
+				}
+
+				// The !item check fires before any DB call, so no collection spy is needed
+				it('throws NodeOperationError when continueOnFail is off', async () => {
+					await expect(node.execute.call(mockMissingKey(false))).rejects.toThrow(
+						'Item is missing the updateKey field',
+					);
+				});
+
+				it('pushes error item with pairedItem when continueOnFail is on', async () => {
+					const [items] = await node.execute.call(mockMissingKey(true));
+					expect(items).toHaveLength(1);
+					expect(items[0].json.error).toBe('Item is missing the updateKey field');
+					expect(items[0].pairedItem).toEqual({ item: 0 });
+				});
+			},
+		);
 	});
 
 	describe('document operations in version 1.2', () => {

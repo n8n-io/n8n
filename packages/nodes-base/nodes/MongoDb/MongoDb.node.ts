@@ -5,7 +5,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { ObjectId } from 'mongodb';
-import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -262,7 +262,18 @@ export class MongoDb implements INodeType {
 							dateFields,
 						});
 
-						if (!item) continue;
+						if (!item) {
+							if (this.continueOnFail()) {
+								returnData.push({
+									json: { error: 'Item is missing the updateKey field' },
+									pairedItem: { item: i },
+								});
+								continue;
+							}
+							throw new NodeOperationError(this.getNode(), 'Item is missing the updateKey field', {
+								itemIndex: i,
+							});
+						}
 
 						try {
 							const filter = { [updateKey]: item[updateKey] };
@@ -365,7 +376,18 @@ export class MongoDb implements INodeType {
 							isUpdate: true,
 						});
 
-						if (!item) continue;
+						if (!item) {
+							if (this.continueOnFail()) {
+								returnData.push({
+									json: { error: 'Item is missing the updateKey field' },
+									pairedItem: { item: i },
+								});
+								continue;
+							}
+							throw new NodeOperationError(this.getNode(), 'Item is missing the updateKey field', {
+								itemIndex: i,
+							});
+						}
 
 						try {
 							const filter = { [updateKey]: item[updateKey] };
@@ -493,10 +515,10 @@ export class MongoDb implements INodeType {
 								.collection(collection)
 								.insertMany(groupItems.map((g) => g.item));
 
-							for (const [idx, insertedId] of Object.entries(insertedIds)) {
-								const g = groupItems[parseInt(idx, 10)];
+							for (let idx = 0; idx < groupItems.length; idx++) {
+								const g = groupItems[idx];
 								returnData.push({
-									json: { ...g.item, id: insertedId as unknown as string },
+									json: { ...g.item, id: insertedIds[idx] as unknown as string },
 									pairedItem: { item: g.originalIndex },
 								});
 							}
@@ -513,6 +535,12 @@ export class MongoDb implements INodeType {
 							throw error;
 						}
 					}
+
+					returnData.sort((a, b) => {
+						const aIdx = (a.pairedItem as { item: number }).item;
+						const bIdx = (b.pairedItem as { item: number }).item;
+						return aIdx - bIdx;
+					});
 				} else {
 					let responseData: IDataObject[] = [];
 					try {
@@ -587,7 +615,18 @@ export class MongoDb implements INodeType {
 							isUpdate: true,
 						});
 
-						if (!item) continue;
+						if (!item) {
+							if (this.continueOnFail()) {
+								returnData.push({
+									json: { error: 'Item is missing the updateKey field' },
+									pairedItem: { item: i },
+								});
+								continue;
+							}
+							throw new NodeOperationError(this.getNode(), 'Item is missing the updateKey field', {
+								itemIndex: i,
+							});
+						}
 
 						try {
 							const filter = { [updateKey]: item[updateKey] };
