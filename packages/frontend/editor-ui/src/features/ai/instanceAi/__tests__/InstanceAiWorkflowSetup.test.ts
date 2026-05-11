@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import InstanceAiWorkflowSetup from '../components/InstanceAiWorkflowSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -78,7 +78,7 @@ vi.mock('@/features/workflows/canvas/experimental/composables/useExpressionResol
 	useExpressionResolveCtx: () => ({}),
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiWorkflowSetup);
+const renderComponent = createThreadComponentRenderer(InstanceAiWorkflowSetup);
 
 /** Render the component and wait for the async onMounted to complete (isStoreReady = true). */
 async function renderAndWait(

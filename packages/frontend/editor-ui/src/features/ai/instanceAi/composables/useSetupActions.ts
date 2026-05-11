@@ -5,13 +5,13 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { INodeUi } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { useInstanceAiStore } from '../instanceAi.store';
+import type { ThreadRuntime } from '../instanceAi.store';
 import type { DisplayCard, SetupCard } from '../instanceAiWorkflowSetup.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useSetupActions(deps: {
 	requestId: Ref<string>;
-	store: ReturnType<typeof useInstanceAiStore>;
+	thread: ThreadRuntime;
 	cards: ComputedRef<SetupCard[]>;
 	currentDisplayCard: ComputedRef<DisplayCard | undefined>;
 	displayCards: ComputedRef<DisplayCard[]>;
@@ -50,7 +50,7 @@ export function useSetupActions(deps: {
 	});
 
 	function trackSetupInput() {
-		const tc = deps.store.findToolCallByRequestId(deps.requestId.value);
+		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 		const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 		const skipped: Array<{ label: string; options: string[] }> = [];
@@ -63,7 +63,7 @@ export function useSetupActions(deps: {
 			}
 		}
 		telemetry.track('User finished providing input', {
-			thread_id: deps.store.currentThreadId,
+			thread_id: deps.thread.currentThreadId,
 			input_thread_id: inputThreadId,
 			instance_id: useRootStore().instanceId,
 			type: 'setup',
@@ -82,7 +82,7 @@ export function useSetupActions(deps: {
 		let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
 		const promise = new Promise<Record<string, unknown> | null>((resolve) => {
-			const existing = deps.store.findToolCallByRequestId(requestId);
+			const existing = deps.thread.findToolCallByRequestId(requestId);
 			if (existing?.result !== undefined) {
 				resolve(isToolResult(existing.result) ? existing.result : null);
 				return;
@@ -91,7 +91,7 @@ export function useSetupActions(deps: {
 			stopWatch = watch(
 				() => {
 					const tc: InstanceAiToolCallState | undefined =
-						deps.store.findToolCallByRequestId(requestId);
+						deps.thread.findToolCallByRequestId(requestId);
 					return tc?.result;
 				},
 				(result) => {
@@ -167,7 +167,7 @@ export function useSetupActions(deps: {
 		isApplying.value = true;
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+		const postSuccess = await deps.thread.confirmAction(deps.requestId.value, {
 			kind: 'setupWorkflowApply',
 			nodeCredentials,
 			nodeParameters,
@@ -191,7 +191,7 @@ export function useSetupActions(deps: {
 			isSubmitted.value = true;
 			isPartial.value = toolResult.partial === true;
 			deps.onApplySuccess?.();
-			deps.store.resolveConfirmation(deps.requestId.value, 'approved');
+			deps.thread.resolveConfirmation(deps.requestId.value, 'approved');
 		} else if (toolResult) {
 			applyError.value = typeof toolResult.error === 'string' ? toolResult.error : 'Apply failed';
 		} else {
@@ -205,7 +205,7 @@ export function useSetupActions(deps: {
 
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+		const postSuccess = await deps.thread.confirmAction(deps.requestId.value, {
 			kind: 'setupWorkflowTestTrigger',
 			testTriggerNode: nodeName,
 			nodeCredentials,
@@ -289,12 +289,12 @@ export function useSetupActions(deps: {
 		isSubmitted.value = true;
 		isDeferred.value = true;
 
-		const success = await deps.store.confirmAction(deps.requestId.value, {
+		const success = await deps.thread.confirmAction(deps.requestId.value, {
 			kind: 'approval',
 			approved: false,
 		});
 		if (success) {
-			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');
+			deps.thread.resolveConfirmation(deps.requestId.value, 'deferred');
 		} else {
 			isSubmitted.value = false;
 			isDeferred.value = false;
