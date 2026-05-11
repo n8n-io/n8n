@@ -1,6 +1,5 @@
 import type { Schema } from '@/Interface';
 import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
@@ -11,20 +10,15 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { type WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type TextareaRowData = {
 	rows: string[];
 	linesToRowsMap: number[][];
 };
 
-export function getParentNodes() {
+export function getParentNodes(workflowDocumentStore: WorkflowDocumentStore) {
 	const activeNode = useNDVStore().activeNode;
-	const { workflowId } = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 	if (!activeNode) return [];
 
@@ -37,8 +31,8 @@ export function getParentNodes() {
 		.filter((n) => n !== null);
 }
 
-export function getSchemas() {
-	const parentNodes = getParentNodes();
+export function getSchemas(workflowDocumentStore: WorkflowDocumentStore) {
+	const parentNodes = getParentNodes(workflowDocumentStore);
 	const parentNodesNames = parentNodes.map((node) => node?.name);
 	const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes
@@ -185,8 +179,13 @@ export function reducePayloadSizeOrThrow(
 	if (remainingTokensToReduce > 0) throw error;
 }
 
-export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
-	const schemas = getSchemas();
+export async function generateCodeForAiTransform(
+	prompt: string,
+	path: string,
+	workflowDocumentStore: WorkflowDocumentStore,
+	retries = 1,
+) {
+	const schemas = getSchemas(workflowDocumentStore);
 
 	const payload: AskAiRequest.RequestPayload = {
 		question: prompt,
