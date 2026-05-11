@@ -52,6 +52,10 @@ import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderA
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import {
+	InstanceAiProactiveStarterMessage,
+	useInstanceAiProactiveAgentExperiment,
+} from '@/experiments/instanceAiProactiveAgent';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
@@ -131,6 +135,11 @@ watch(
 );
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
 const showEmptyStateLayout = computed(() => !props.threadId);
+const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
+	useInstanceAiProactiveAgentExperiment();
+const showProactiveStarter = computed(
+	() => showEmptyStateLayout.value && isProactiveAgentExperimentEnabled.value,
+);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -522,7 +531,7 @@ function handleStop() {
 			<div :class="$style.contentArea">
 				<div :class="$style.chatContent">
 					<!-- Empty state: centered layout -->
-					<div v-if="showEmptyStateLayout" :class="$style.emptyLayout">
+					<div v-if="showEmptyStateLayout && !showProactiveStarter" :class="$style.emptyLayout">
 						<InstanceAiEmptyState />
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />
@@ -551,7 +560,15 @@ function handleStop() {
 								:class="$style.messageList"
 								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
 							>
-								<TransitionGroup name="message-slide">
+								<InstanceAiProactiveStarterMessage
+									v-if="showProactiveStarter"
+									:suggestions="INSTANCE_AI_EMPTY_STATE_SUGGESTIONS"
+									:disabled="
+										store.isStreaming || store.isSendingMessage || store.isAwaitingConfirmation
+									"
+									@submit="handleSubmit"
+								/>
+								<TransitionGroup v-else name="message-slide">
 									<InstanceAiMessage
 										v-for="message in displayedMessages"
 										:key="message.id"
@@ -561,14 +578,17 @@ function handleStop() {
 								<!-- Builder sub-agents are extracted from their parent assistant
 									 messages and rendered here so they always sit at the bottom
 									 of the conversation. -->
-								<div v-if="builderAgents.length" :class="$style.builderAgents">
+								<div
+									v-if="!showProactiveStarter && builderAgents.length"
+									:class="$style.builderAgents"
+								>
 									<AgentSection
 										v-for="builder in builderAgents"
 										:key="builder.agentId"
 										:agent-node="builder"
 									/>
 								</div>
-								<InstanceAiConfirmationPanel />
+								<InstanceAiConfirmationPanel v-if="!showProactiveStarter" />
 							</div>
 						</N8nScrollArea>
 
@@ -815,6 +835,7 @@ function handleStop() {
 .centeredInput {
 	width: 100%;
 	max-width: 680px;
+	margin: 0 auto;
 }
 
 .scrollArea {

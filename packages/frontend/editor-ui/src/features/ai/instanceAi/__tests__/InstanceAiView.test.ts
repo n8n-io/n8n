@@ -4,10 +4,28 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+
+const experimentMocks = vi.hoisted(() => ({
+	proactiveAgentEnabled: { value: false },
+}));
+
+vi.mock('@/experiments/instanceAiProactiveAgent', () => ({
+	useInstanceAiProactiveAgentExperiment: () => ({
+		isFeatureEnabled: experimentMocks.proactiveAgentEnabled,
+	}),
+	InstanceAiProactiveStarterMessage: {
+		name: 'InstanceAiProactiveStarterMessageStub',
+		props: ['suggestions', 'disabled'],
+		emits: ['submit'],
+		template:
+			"<button data-test-id=\"instance-ai-proactive-starter\" @click=\"$emit('submit', 'starter prompt')\">{{ suggestions === undefined ? 'unset' : String(suggestions.length) }}</button>",
+	},
+}));
+
+import InstanceAiView from '../InstanceAiView.vue';
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
@@ -84,6 +102,7 @@ describe('InstanceAiView', () => {
 		settingsStore.isLocalGatewayDisabled = true;
 		settingsStore.refreshModuleSettings.mockResolvedValue(undefined);
 		pushStore.pushConnect.mockReturnValue(undefined);
+		experimentMocks.proactiveAgentEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -93,6 +112,24 @@ describe('InstanceAiView', () => {
 	it('passes the fixed suggestions to the empty-state composer', () => {
 		const { getByTestId } = renderView();
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('4');
+	});
+
+	it('renders the current empty state when the proactive starter experiment is disabled', () => {
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('4');
+	});
+
+	it('renders the proactive starter and moves suggestions out of the composer when enabled', () => {
+		experimentMocks.proactiveAgentEnabled.value = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('4');
+		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
 	it('does not pass suggestions once the thread has messages', () => {
@@ -108,6 +145,25 @@ describe('InstanceAiView', () => {
 		] as typeof store.messages;
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	it('does not render the proactive starter inside an existing thread route', () => {
+		experimentMocks.proactiveAgentEnabled.value = true;
+		store.hasMessages = true;
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'user',
+				content: 'hello',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.messages;
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
