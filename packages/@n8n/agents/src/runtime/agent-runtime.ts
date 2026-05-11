@@ -148,7 +148,7 @@ function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<strin
 	});
 
 	return {
-		...(toolNames.length > 0 ? { 'langsmith.metadata.available_tools': toolNames } : {}),
+		...(toolNames.length > 0 ? { 'telemetry.metadata.available_tools': toolNames } : {}),
 		...(serialized ? { 'gen_ai.prompt': serialized } : {}),
 	};
 }
@@ -723,14 +723,14 @@ export class AgentRuntime {
 		spanName: string,
 		runId: string,
 	): Record<string, AttributeValue> {
-		const metadataAttributes = this.buildTelemetryMetadataAttributes(t, 'langsmith.metadata');
+		const metadataAttributes = this.buildTelemetryMetadataAttributes(t, 'telemetry.metadata');
 
 		return {
-			'langsmith.traceable': 'true',
-			'langsmith.trace.name': spanName,
-			'langsmith.span.kind': 'chain',
-			'langsmith.metadata.agent_name': this.config.name,
-			'langsmith.metadata.agent_run_id': runId,
+			'telemetry.traceable': true,
+			'telemetry.trace.name': spanName,
+			'telemetry.span.kind': 'chain',
+			'telemetry.metadata.agent_name': this.config.name,
+			'telemetry.metadata.agent_run_id': runId,
 			...metadataAttributes,
 			...buildAgentRootInputAttributes(this.config),
 		};

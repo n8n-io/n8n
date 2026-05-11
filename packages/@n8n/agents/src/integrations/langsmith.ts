@@ -7,6 +7,13 @@ const LANGSMITH_TRACEABLE = 'langsmith.traceable';
 const LANGSMITH_IS_ROOT = 'langsmith.is_root';
 const LANGSMITH_PARENT_RUN_ID = 'langsmith.span.parent_id';
 const LANGSMITH_TRACEABLE_PARENT_OTEL_SPAN_ID = 'langsmith.traceable_parent_otel_span_id';
+const LANGSMITH_TRACE_NAME = 'langsmith.trace.name';
+const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
+const LANGSMITH_METADATA_PREFIX = 'langsmith.metadata.';
+const TELEMETRY_TRACEABLE = 'telemetry.traceable';
+const TELEMETRY_TRACE_NAME = 'telemetry.trace.name';
+const TELEMETRY_SPAN_KIND = 'telemetry.span.kind';
+const TELEMETRY_METADATA_PREFIX = 'telemetry.metadata.';
 const AI_OPERATION_ID = 'ai.operationId';
 const TRACEABLE_AI_SDK_OPERATIONS = new Set([
 	'ai.generateText.doGenerate',
@@ -71,6 +78,37 @@ function isTraceableSpan(span: OtelSpanLike): boolean {
 	);
 }
 
+function mapAttribute(
+	attributes: Record<string, unknown>,
+	sourceKey: string,
+	targetKey: string,
+	transformValue: (value: unknown) => unknown = (value) => value,
+): void {
+	if (!(sourceKey in attributes)) return;
+
+	attributes[targetKey] = transformValue(attributes[sourceKey]);
+	delete attributes[sourceKey];
+}
+
+function toLangSmithTraceableValue(value: unknown): unknown {
+	return value === true ? 'true' : value === false ? 'false' : value;
+}
+
+function mapTelemetryAttributesToLangSmith(span: OtelSpanLike): void {
+	const { attributes } = span;
+	mapAttribute(attributes, TELEMETRY_TRACEABLE, LANGSMITH_TRACEABLE, toLangSmithTraceableValue);
+	mapAttribute(attributes, TELEMETRY_TRACE_NAME, LANGSMITH_TRACE_NAME);
+	mapAttribute(attributes, TELEMETRY_SPAN_KIND, LANGSMITH_SPAN_KIND);
+
+	for (const [key, value] of Object.entries(attributes)) {
+		if (!key.startsWith(TELEMETRY_METADATA_PREFIX)) continue;
+
+		const metadataKey = key.slice(TELEMETRY_METADATA_PREFIX.length);
+		attributes[`${LANGSMITH_METADATA_PREFIX}${metadataKey}`] = value;
+		delete attributes[key];
+	}
+}
+
 function createLangSmithSpanProcessor(options: {
 	exporter: unknown;
 	BatchSpanProcessor: BatchSpanProcessorConstructor;
@@ -95,6 +133,8 @@ function createLangSmithSpanProcessor(options: {
 				delegate.onStart(span, parentContext);
 				return;
 			}
+
+			mapTelemetryAttributesToLangSmith(span);
 
 			const spanContext = span.spanContext();
 			traceMap[spanContext.traceId] ??= {

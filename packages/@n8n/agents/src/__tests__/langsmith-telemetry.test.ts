@@ -135,6 +135,49 @@ describe('LangSmithTelemetry', () => {
 		]);
 	});
 
+	it('maps generic telemetry attributes to LangSmith attributes before export', async () => {
+		await new LangSmithTelemetry({
+			apiKey: 'ls-test-key',
+			project: 'instance-ai',
+		}).build();
+
+		const processor = mockProviderConfigs[0] as {
+			spanProcessors: Array<{
+				onStart(span: unknown, parentContext: unknown): void;
+			}>;
+		};
+		const filteredProcessor = processor.spanProcessors[0];
+		const delegate = mockBatchProcessorInstances[0];
+		const root = {
+			attributes: {
+				'telemetry.traceable': true,
+				'telemetry.trace.name': 'test-agent.generate',
+				'telemetry.span.kind': 'chain',
+				'telemetry.metadata.agent_name': 'test-agent',
+				'telemetry.metadata.available_tools': ['lookup'],
+			},
+			spanContext: () => ({ traceId: 'trace-1', spanId: '1111111111111111' }),
+		};
+
+		filteredProcessor.onStart(root, {});
+
+		expect(delegate.onStart).toHaveBeenCalledWith(root, {});
+		expect(root.attributes).toEqual(
+			expect.objectContaining({
+				'langsmith.traceable': 'true',
+				'langsmith.trace.name': 'test-agent.generate',
+				'langsmith.span.kind': 'chain',
+				'langsmith.metadata.agent_name': 'test-agent',
+				'langsmith.metadata.available_tools': ['lookup'],
+			}),
+		);
+		expect(root.attributes).not.toHaveProperty('telemetry.traceable');
+		expect(root.attributes).not.toHaveProperty('telemetry.trace.name');
+		expect(root.attributes).not.toHaveProperty('telemetry.span.kind');
+		expect(root.attributes).not.toHaveProperty('telemetry.metadata.agent_name');
+		expect(root.attributes).not.toHaveProperty('telemetry.metadata.available_tools');
+	});
+
 	it('filters noisy AI SDK operation wrappers while preserving provider and tool spans', async () => {
 		await new LangSmithTelemetry({
 			apiKey: 'ls-test-key',
@@ -159,7 +202,7 @@ describe('LangSmithTelemetry', () => {
 			...(parentSpanId ? { parentSpanContext: { spanId: parentSpanId } } : {}),
 		});
 
-		const root = makeSpan('1111111111111111', { 'langsmith.traceable': 'true' });
+		const root = makeSpan('1111111111111111', { 'telemetry.traceable': true });
 		const streamWrapper = makeSpan(
 			'2222222222222222',
 			{ 'ai.operationId': 'ai.streamText' },

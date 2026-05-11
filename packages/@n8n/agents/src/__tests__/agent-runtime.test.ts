@@ -2417,12 +2417,12 @@ describe('AgentRuntime — telemetry propagation', () => {
 			'test-agent.generate',
 			{
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				attributes: expect.objectContaining<Record<string, string>>({
-					'langsmith.traceable': 'true',
-					'langsmith.trace.name': 'test-agent.generate',
-					'langsmith.span.kind': 'chain',
-					'langsmith.metadata.agent_name': 'telemetry-root-test',
-					'langsmith.metadata.env': 'test',
+				attributes: expect.objectContaining<Record<string, string | boolean>>({
+					'telemetry.traceable': true,
+					'telemetry.trace.name': 'test-agent.generate',
+					'telemetry.span.kind': 'chain',
+					'telemetry.metadata.agent_name': 'telemetry-root-test',
+					'telemetry.metadata.env': 'test',
 				}),
 			},
 			expect.any(Function),
@@ -2463,7 +2463,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		);
 	});
 
-	it('adds a LangSmith tool catalog to telemetry root spans', async () => {
+	it('adds a generic tool catalog to telemetry root spans', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const span = {
 			end: jest.fn(),
@@ -2511,9 +2511,10 @@ describe('AgentRuntime — telemetry propagation', () => {
 		const { attributes } = rootSpanOptions;
 		expect(attributes).toEqual(
 			expect.objectContaining({
-				'langsmith.metadata.available_tools': ['lookup'],
+				'telemetry.metadata.available_tools': ['lookup'],
 			}),
 		);
+		expect(attributes).not.toHaveProperty('langsmith.metadata.available_tools');
 		expect(attributes).not.toHaveProperty('langsmith.trace.id');
 		expect(attributes).not.toHaveProperty('langsmith.span.parent_id');
 		expect(attributes['gen_ai.prompt']).toEqual(expect.stringContaining('"name":"lookup"'));
