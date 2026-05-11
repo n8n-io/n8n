@@ -65,6 +65,7 @@ interface PairwiseArgs {
 	concurrency: number;
 	maxExamples?: number;
 	exampleIds?: Set<string>;
+	examplesJsonl?: string;
 	timeoutMs: number;
 	outputDir: string;
 	judgeModel: string;
@@ -104,6 +105,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 			parsePositiveInt(get('--concurrency'), '--concurrency') ?? Number(DEFAULTS.CONCURRENCY),
 		maxExamples: parsePositiveInt(get('--max-examples'), '--max-examples'),
 		exampleIds,
+		examplesJsonl: get('--examples-jsonl'),
 		timeoutMs:
 			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
@@ -180,6 +182,9 @@ interface DatasetExample {
 }
 
 async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<DatasetExample[]> {
+	if (args.examplesJsonl) {
+		return loadExamplesFromJsonl(args.examplesJsonl, logger);
+	}
 	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
 	const lsClient = new LangSmithClient();
 	const examples: DatasetExample[] = [];
@@ -214,6 +219,52 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 	logger.verbose(
 		`Dataset criteria layout: evals=${layoutCounts.evals} context=${layoutCounts.context} none=${layoutCounts.none}`,
 	);
+	return examples;
+}
+
+/**
+ * Load examples from a JSONL file. Accepts the shape produced by a previous
+ * pairwise run (`results.jsonl`) where each row carries `exampleId`, `prompt`,
+ * `dos`, `donts`. Useful for re-running a frozen example set after the source
+ * LangSmith dataset has changed.
+ */
+function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExample[] {
+	const absolute = path.resolve(filePath);
+	logger.info(`Loading examples from local JSONL: ${absolute}`);
+	const content = readFileSync(absolute, 'utf8');
+	const examples: DatasetExample[] = [];
+	const seen = new Set<string>();
+	let row = 0;
+	for (const line of content.split('\n')) {
+		row++;
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(trimmed);
+		} catch (error) {
+			logger.warn(`Skipping JSONL row ${row}: invalid JSON (${(error as Error).message})`);
+			continue;
+		}
+		if (!isRecord(parsed)) continue;
+		const id = typeof parsed.exampleId === 'string' ? parsed.exampleId : '';
+		const prompt = typeof parsed.prompt === 'string' ? parsed.prompt : '';
+		if (!id || !prompt) {
+			logger.warn(`Skipping JSONL row ${row}: missing exampleId or prompt`);
+			continue;
+		}
+		// Each iteration of the same example yields a row in results.jsonl;
+		// dedupe by id so we only run the example once per requested iteration.
+		if (seen.has(id)) continue;
+		seen.add(id);
+		examples.push({
+			id,
+			prompt,
+			dos: typeof parsed.dos === 'string' ? parsed.dos : undefined,
+			donts: typeof parsed.donts === 'string' ? parsed.donts : undefined,
+		});
+	}
+	logger.info(`Loaded ${examples.length} unique examples from ${absolute}`);
 	return examples;
 }
 

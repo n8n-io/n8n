@@ -45,6 +45,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -202,11 +203,13 @@ const isDataRedactionLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
 );
 
-const isRedactionSettingVisible = computed(
-	() =>
-		settingsStore.isModuleActive('redaction') &&
-		(isDataRedactionLicensed.value ? workflowPermissions.value.updateRedactionSetting : true),
+const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
+
+const isRedactionSettingLocked = computed(
+	() => isDataRedactionLicensed.value && !workflowPermissions.value.updateRedactionSetting,
 );
+
+const redactionMembersModalOpen = ref(false);
 
 function goToDataRedactionUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow-settings', 'upgrade-data-redaction');
@@ -1171,10 +1174,19 @@ onBeforeUnmount(() => {
 							:span="10"
 							:class="[
 								$style['setting-name'],
-								{ [$style['setting-name--disabled']]: !isDataRedactionLicensed },
+								{
+									[$style['setting-name--disabled']]:
+										!isDataRedactionLicensed || isRedactionSettingLocked,
+								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
+							<N8nIcon
+								v-if="isRedactionSettingLocked"
+								icon="lock"
+								size="xsmall"
+								style="opacity: 1"
+							/>
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1189,28 +1201,47 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="redactProductionData"
-								:disabled="
-									!isDataRedactionLicensed ||
-									readOnlyEnv ||
-									!workflowPermissions.updateRedactionSetting ||
-									workflowHasDynamicCredentials
-								"
-								:placeholder="i18n.baseText('workflowSettings.selectOption')"
-								filterable
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-redact-production-select"
-							>
-								<N8nOption
-									v-for="option of redactionToggleOptions"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
+						<ElCol
+							:span="14"
+							class="ignore-key-press-canvas"
+							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+						>
+							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+								<template #content>
+									<span
+										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
+										<span
+											:class="$style['permission-notice-link']"
+											@click="redactionMembersModalOpen = true"
+											>{{
+												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
+											}}</span
+										></span
+									>
+								</template>
+								<N8nSelect
+									v-model="redactProductionData"
+									:disabled="
+										!isDataRedactionLicensed ||
+										readOnlyEnv ||
+										!workflowPermissions.updateRedactionSetting ||
+										isRedactionSettingLocked ||
+										workflowHasDynamicCredentials
+									"
+									:placeholder="i18n.baseText('workflowSettings.selectOption')"
+									filterable
+									:limit-popper-width="true"
+									data-test-id="workflow-settings-redact-production-select"
 								>
-								</N8nOption>
-							</N8nSelect>
+									<N8nOption
+										v-for="option of redactionToggleOptions"
+										:key="option.key"
+										:label="option.value"
+										:value="option.key"
+									>
+									</N8nOption>
+								</N8nSelect>
+							</N8nTooltip>
 						</ElCol>
 					</ElRow>
 					<ElRow v-if="workflowHasDynamicCredentials" :class="$style['dynamic-credentials-hint']">
@@ -1226,10 +1257,14 @@ onBeforeUnmount(() => {
 							:span="10"
 							:class="[
 								$style['setting-name'],
-								{ [$style['setting-name--disabled']]: !isDataRedactionLicensed },
+								{
+									[$style['setting-name--disabled']]:
+										!isDataRedactionLicensed || isRedactionSettingLocked,
+								},
 							]"
 						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
+							<N8nIcon v-if="isRedactionSettingLocked" icon="lock" size="xsmall" />
 							<N8nBadge
 								v-if="!isDataRedactionLicensed"
 								:class="[$style['upgrade-badge'], 'ml-4xs']"
@@ -1244,27 +1279,46 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="redactManualData"
-								:disabled="
-									!isDataRedactionLicensed ||
-									readOnlyEnv ||
-									!workflowPermissions.updateRedactionSetting
-								"
-								:placeholder="i18n.baseText('workflowSettings.selectOption')"
-								filterable
-								:limit-popper-width="true"
-								data-test-id="workflow-settings-redact-manual-select"
-							>
-								<N8nOption
-									v-for="option of redactionToggleOptions"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
+						<ElCol
+							:span="14"
+							class="ignore-key-press-canvas"
+							:class="{ [$style['setting-name--disabled']]: isRedactionSettingLocked }"
+						>
+							<N8nTooltip :disabled="!isRedactionSettingLocked" :enterable="true" placement="top">
+								<template #content>
+									<span
+										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
+										<span
+											:class="$style['permission-notice-link']"
+											@click="redactionMembersModalOpen = true"
+											>{{
+												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
+											}}</span
+										></span
+									>
+								</template>
+								<N8nSelect
+									v-model="redactManualData"
+									:disabled="
+										!isDataRedactionLicensed ||
+										readOnlyEnv ||
+										!workflowPermissions.updateRedactionSetting ||
+										isRedactionSettingLocked
+									"
+									:placeholder="i18n.baseText('workflowSettings.selectOption')"
+									filterable
+									:limit-popper-width="true"
+									data-test-id="workflow-settings-redact-manual-select"
 								>
-								</N8nOption>
-							</N8nSelect>
+									<N8nOption
+										v-for="option of redactionToggleOptions"
+										:key="option.key"
+										:label="option.value"
+										:value="option.key"
+									>
+									</N8nOption>
+								</N8nSelect>
+							</N8nTooltip>
 						</ElCol>
 					</ElRow>
 				</template>
@@ -1494,6 +1548,12 @@ onBeforeUnmount(() => {
 					@click="saveSettings"
 				/>
 			</div>
+			<RedactionMembersModal
+				v-if="workflowDocumentStore?.homeProject?.id"
+				:open="redactionMembersModalOpen"
+				:project-id="workflowDocumentStore?.homeProject?.id"
+				@update:open="redactionMembersModalOpen = $event"
+			/>
 		</template>
 	</Modal>
 </template>
@@ -1543,6 +1603,12 @@ onBeforeUnmount(() => {
 
 .setting-name--disabled {
 	opacity: 0.5;
+}
+
+.permission-notice-link {
+	color: var(--color-foreground-xlight);
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 .upgrade-badge {
