@@ -593,7 +593,56 @@ describe('workflows tool', () => {
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
 				versionId: undefined,
 			});
-			expect(result).toEqual({ success: true, activeVersionId: 'v2' });
+			expect(result).toEqual({
+				success: true,
+				activeVersionId: 'v2',
+				publishedWorkflowIds: ['wf1'],
+			});
+		});
+
+		it('should publish direct Execute Workflow dependencies before the main workflow', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+					{
+						name: 'Call B',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: { value: 'sub-b' } },
+					},
+					{
+						name: 'Call A Again',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+				],
+				connections: {},
+			});
+			(context.workflowService.publish as jest.Mock).mockResolvedValue({
+				activeVersionId: 'v-main',
+			});
+
+			const tool = createWorkflowsTool(context);
+			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
+				agent: { resumeData: { approved: true } },
+			} as never);
+
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(2, 'sub-b');
+			expect(context.workflowService.publish).toHaveBeenNthCalledWith(3, 'wf1', {
+				versionId: undefined,
+			});
+			expect(result).toEqual({
+				success: true,
+				activeVersionId: 'v-main',
+				publishedWorkflowIds: ['sub-a', 'sub-b', 'wf1'],
+				supportingWorkflowIds: ['sub-a', 'sub-b'],
+			});
 		});
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
@@ -613,6 +662,36 @@ describe('workflows tool', () => {
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Publish workflow "My WF" (ID: wf1)?',
+				severity: 'warning',
+			});
+		});
+
+		it('should include direct Execute Workflow dependencies in publish confirmation', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'My WF',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Parent',
+				nodes: [
+					{
+						name: 'Call A',
+						type: 'n8n-nodes-base.executeWorkflow',
+						parameters: { source: 'database', workflowId: 'sub-a' },
+					},
+				],
+				connections: {},
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context);
+			await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: 'Publish workflow "My WF" (ID: wf1) and 1 referenced supporting workflow(s)?',
 				severity: 'warning',
 			});
 		});

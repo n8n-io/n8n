@@ -17,6 +17,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
+import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -587,16 +588,21 @@ async function handlePublish(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
+	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		const dependencyNote =
+			supportingWorkflowIds.length > 0
+				? ` and ${String(supportingWorkflowIds.length)} referenced supporting workflow(s)`
+				: '';
 
 		const suspension = await suspend?.({
 			requestId: nanoid(),
 			message: input.versionId
-				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})?`
-				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})?`,
+				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`
+				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`,
 			severity: 'warning' as const,
 		});
 		return suspension ?? { success: false, denied: true, reason: 'Awaiting confirmation' };
@@ -607,6 +613,12 @@ async function handlePublish(
 	}
 
 	try {
+		const publishedSupportingWorkflowIds: string[] = [];
+		for (const supportingWorkflowId of supportingWorkflowIds) {
+			await context.workflowService.publish(supportingWorkflowId);
+			publishedSupportingWorkflowIds.push(supportingWorkflowId);
+		}
+
 		const result = await context.workflowService.publish(input.workflowId, {
 			versionId: input.versionId,
 			...(hasNamedVersions
@@ -616,12 +628,33 @@ async function handlePublish(
 					}
 				: {}),
 		});
-		return { success: true, activeVersionId: result.activeVersionId };
+		return {
+			success: true,
+			activeVersionId: result.activeVersionId,
+			publishedWorkflowIds: [...publishedSupportingWorkflowIds, input.workflowId],
+			...(publishedSupportingWorkflowIds.length > 0
+				? { supportingWorkflowIds: publishedSupportingWorkflowIds }
+				: {}),
+		};
 	} catch (error) {
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Publish failed',
 		};
+	}
+}
+
+async function resolveSupportingWorkflowIds(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string[]> {
+	try {
+		const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+		return getReferencedWorkflowIds(workflowJson).filter(
+			(supportingWorkflowId) => supportingWorkflowId !== workflowId,
+		);
+	} catch {
+		return [];
 	}
 }
 

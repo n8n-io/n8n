@@ -47,6 +47,8 @@ import {
 	createRemediation,
 	type TriggerType,
 	type WorkflowBuildOutcome,
+	type WorkflowSetupRequirement,
+	type WorkflowVerificationReadiness,
 	type WorkflowLoopState,
 } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
@@ -59,6 +61,7 @@ import {
 	type SubmitWorkflowAttempt,
 	type SubmitWorkflowOutput,
 } from '../workflows/submit-workflow.tool';
+import { isMockableTriggerNodeType } from '../workflows/workflow-json-utils';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 interface BuilderMemoryBinding {
@@ -226,6 +229,149 @@ function detectTriggerType(_attempt: SubmitWorkflowAttempt | undefined): Trigger
 	return 'manual_or_testable';
 }
 
+export type OutcomeForVerificationReadiness = Pick<
+	WorkflowBuildOutcome,
+	| 'submitted'
+	| 'workflowId'
+	| 'triggerNodes'
+	| 'mockedCredentialTypes'
+	| 'mockedCredentialsByNode'
+	| 'verificationPinData'
+	| 'usesWorkflowPinDataForVerification'
+	| 'hasUnresolvedPlaceholders'
+	| 'verification'
+	| 'remediation'
+>;
+
+function hasMockedCredentials(outcome: OutcomeForVerificationReadiness): boolean {
+	return (
+		(outcome.mockedCredentialTypes?.length ?? 0) > 0 ||
+		Object.keys(outcome.mockedCredentialsByNode ?? {}).length > 0
+	);
+}
+
+function hasCredentialVerificationData(outcome: OutcomeForVerificationReadiness): boolean {
+	return (
+		Object.keys(outcome.verificationPinData ?? {}).length > 0 ||
+		outcome.usesWorkflowPinDataForVerification === true
+	);
+}
+
+function hasSuccessfulStructuredVerification(outcome: OutcomeForVerificationReadiness): boolean {
+	return (
+		outcome.verification?.attempted === true &&
+		outcome.verification.success &&
+		!!outcome.verification.executionId
+	);
+}
+
+export function determineVerificationReadiness(
+	outcome: OutcomeForVerificationReadiness,
+): WorkflowVerificationReadiness {
+	if (hasSuccessfulStructuredVerification(outcome)) {
+		return { status: 'already_verified' };
+	}
+
+	if (!outcome.submitted) {
+		return {
+			status: 'not_verifiable',
+			reason: 'not-submitted',
+			guidance: 'The build did not submit a workflow, so there is nothing to verify.',
+		};
+	}
+
+	if (!outcome.workflowId) {
+		return {
+			status: 'not_verifiable',
+			reason: 'missing-workflow-id',
+			guidance: 'The build outcome does not include a workflow ID.',
+		};
+	}
+
+	if (outcome.hasUnresolvedPlaceholders) {
+		return {
+			status: 'needs_setup',
+			reason: 'unresolved-placeholders',
+			guidance: 'Route the workflow through setup before verification.',
+		};
+	}
+
+	if (hasMockedCredentials(outcome) && !hasCredentialVerificationData(outcome)) {
+		return {
+			status: 'needs_setup',
+			reason: 'missing-mocked-credential-pin-data',
+			guidance: 'Route the workflow through setup because mocked credentials cannot be verified.',
+		};
+	}
+
+	if (outcome.remediation?.category === 'needs_setup') {
+		return {
+			status: 'needs_setup',
+			reason: 'workflow-needs-setup',
+			guidance: outcome.remediation.guidance,
+		};
+	}
+
+	if (!outcome.triggerNodes?.some((node) => isMockableTriggerNodeType(node.nodeType))) {
+		return {
+			status: 'not_verifiable',
+			reason: 'non-mockable-trigger',
+			guidance: 'The workflow does not have a trigger the post-build verifier can exercise.',
+		};
+	}
+
+	return { status: 'ready' };
+}
+
+export function determineSetupRequirement(
+	outcome: OutcomeForVerificationReadiness,
+): WorkflowSetupRequirement {
+	if (!outcome.submitted || !outcome.workflowId) {
+		return { status: 'not_required' };
+	}
+
+	if (outcome.hasUnresolvedPlaceholders) {
+		return {
+			status: 'required',
+			reason: 'unresolved-placeholders',
+			guidance: 'Route the workflow through setup so the user can fill unresolved values.',
+		};
+	}
+
+	if (hasMockedCredentials(outcome)) {
+		return {
+			status: 'required',
+			reason: 'mocked-credentials',
+			guidance: 'Route the workflow through setup so the user can add real credentials.',
+		};
+	}
+
+	if (outcome.remediation?.category === 'needs_setup') {
+		return {
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: outcome.remediation.guidance,
+		};
+	}
+
+	return { status: 'not_required' };
+}
+
+type OutcomeWithoutDeterministicRouting = Omit<
+	WorkflowBuildOutcome,
+	'verificationReadiness' | 'setupRequirement'
+>;
+
+function withDeterministicRouting(
+	outcome: OutcomeWithoutDeterministicRouting,
+): WorkflowBuildOutcome {
+	return {
+		...outcome,
+		verificationReadiness: determineVerificationReadiness(outcome),
+		setupRequirement: determineSetupRequirement(outcome),
+	};
+}
+
 function buildOutcome(
 	workItemId: string,
 	runId: string,
@@ -235,7 +381,7 @@ function buildOutcome(
 	supportingWorkflowIds: string[] = [],
 ): WorkflowBuildOutcome {
 	if (!attempt?.success) {
-		return {
+		return withDeterministicRouting({
 			workItemId,
 			runId,
 			taskId,
@@ -245,7 +391,7 @@ function buildOutcome(
 			failureSignature: attempt?.errors?.join('; '),
 			remediation: attempt?.remediation,
 			summary: finalText,
-		};
+		});
 	}
 	const placeholderRemediation = attempt.hasUnresolvedPlaceholders
 		? createRemediation({
@@ -256,7 +402,7 @@ function buildOutcome(
 					'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
 			})
 		: undefined;
-	return {
+	return withDeterministicRouting({
 		workItemId,
 		runId,
 		taskId,
@@ -275,7 +421,7 @@ function buildOutcome(
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		remediation: placeholderRemediation ?? attempt.remediation,
 		summary: finalText,
-	};
+	});
 }
 
 export function mergeLatestVerificationIntoOutcome(
@@ -293,10 +439,10 @@ export function mergeLatestVerificationIntoOutcome(
 		return outcome;
 	}
 
-	return {
+	return withDeterministicRouting({
 		...outcome,
 		verification: latestOutcome.verification,
-	};
+	});
 }
 
 export function withTerminalLoopState(
@@ -308,13 +454,13 @@ export function withTerminalLoopState(
 		return outcome;
 	}
 
-	return {
+	return withDeterministicRouting({
 		...outcome,
 		workflowId: outcome.workflowId ?? state.workflowId,
 		needsUserInput: remediation.category === 'needs_setup',
 		blockingReason: remediation.guidance,
 		remediation,
-	};
+	});
 }
 
 async function finalBuildOutcome(

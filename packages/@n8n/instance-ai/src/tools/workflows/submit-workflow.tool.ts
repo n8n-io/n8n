@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import { resolveCredentials, type CredentialEntry } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
@@ -23,6 +24,8 @@ import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+
+export { getReferencedWorkflowIds, isTriggerNodeType };
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;
@@ -68,69 +71,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-/**
- * Node types the bypassPlan post-build verify flow can exercise without user
- * approval (verify-built-workflow injects sidecar pin data matching each
- * trigger's production output shape). Kept in sync with the per-trigger
- * inputData shape block in the orchestrator system prompt.
- */
-const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
-]);
-
-/**
- * Whether a node's type should be surfaced in `SubmitWorkflowAttempt.triggerNodes`
- * so the orchestrator can decide if it can verify the build without user input.
- * Known-mockable types feed the post-build verify step directly; other `*Trigger`
- * suffix types are included for visibility but skipped by the verify step.
- * Exported for direct unit coverage.
- */
-export function isTriggerNodeType(nodeType: string | undefined): boolean {
-	if (!nodeType) return false;
-	if (KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType)) return true;
-	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
-function extractWorkflowIdParameter(value: unknown): string | undefined {
-	const rawValue = isRecord(value) ? value.value : value;
-	if (typeof rawValue !== 'string') return undefined;
-
-	const workflowId = rawValue.trim();
-	if (workflowId === '' || workflowId.startsWith('=')) return undefined;
-
-	return workflowId;
-}
-
-function shouldSkipReferencedWorkflow(source: unknown): boolean {
-	return typeof source === 'string' && source !== 'database';
-}
-
-export function getReferencedWorkflowIds(json: WorkflowJSON): string[] {
-	const referencedWorkflowIds: string[] = [];
-	const seen = new Set<string>();
-
-	for (const node of json.nodes ?? []) {
-		if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
-		const parameters = isRecord(node.parameters) ? node.parameters : {};
-		if (shouldSkipReferencedWorkflow(parameters.source)) continue;
-
-		const workflowId = extractWorkflowIdParameter(parameters.workflowId);
-		if (!workflowId || seen.has(workflowId)) continue;
-
-		seen.add(workflowId);
-		referencedWorkflowIds.push(workflowId);
-	}
-
-	return referencedWorkflowIds;
-}
 
 /**
  * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
