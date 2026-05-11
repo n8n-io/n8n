@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import SubagentStepTimeline from '../components/SubagentStepTimeline.vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 
-const renderComponent = createComponentRenderer(SubagentStepTimeline, {
+const renderComponent = createThreadComponentRenderer(SubagentStepTimeline, {
 	global: {
 		stubs: {
 			// ToolCallStep is stubbed so we can verify which toolCall was passed

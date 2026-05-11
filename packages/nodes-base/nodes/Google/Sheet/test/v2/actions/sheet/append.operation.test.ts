@@ -508,6 +508,74 @@ describe('Google Sheets Append Operation', () => {
 			expect(GoogleSheetsUtils.mapFields).toHaveBeenCalledWith(2);
 		});
 
+		it('should pass pre-fetched header row to autoMapInputData when sheet has data', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataMode' || paramName === 'columns.mappingMode') {
+					return 'autoMapInputData';
+				}
+				return {};
+			});
+			mockSheet.getData.mockResolvedValue([
+				['Name', 'Email'],
+				['John', 'john@example.com'],
+			]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalledWith(
+				'Sheet1!A1:B2',
+				mockSheet,
+				expect.any(Array),
+				{},
+				['Name', 'Email'],
+			);
+		});
+
+		it('should not pass header row to autoMapInputData when sheet is empty', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataMode' || paramName === 'columns.mappingMode') {
+					return 'autoMapInputData';
+				}
+				return {};
+			});
+			mockSheet.getData.mockResolvedValue([]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			// No 5th arg — header row is undefined for empty sheets
+			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalledWith(
+				'Sheet1!A1:B2',
+				mockSheet,
+				expect.any(Array),
+				{},
+			);
+		});
+
+		it('should call setColumnNamesHint with header row in defineBelow mode', async () => {
+			// Default dataMode from beforeEach is 'defineBelow'
+			mockSheet.getData.mockResolvedValue([
+				['Name', 'Email'],
+				['John', 'john@example.com'],
+			]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			expect(mockSheet.setColumnNamesHint).toHaveBeenCalledWith(['Name', 'Email']);
+		});
+
+		it('should not call setColumnNamesHint in defineBelow mode when sheet has no data', async () => {
+			// Empty sheet forces dataMode to autoMapInputData; headerRow is undefined
+			mockSheet.getData.mockResolvedValue([]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			expect(mockSheet.setColumnNamesHint).not.toHaveBeenCalled();
+		});
+
 		it('should call checkForSchemaChanges for node version >= 4.4', async () => {
 			mockNode.typeVersion = 4.4;
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {

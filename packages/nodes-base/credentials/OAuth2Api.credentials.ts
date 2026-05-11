@@ -214,6 +214,11 @@ export class OAuth2Api implements ICredentialType {
 			doNotInherit: true,
 		},
 		{
+			// `doNotInherit` matches `jweEnabled` above. Inheriting just `jwksUri`
+			// without `jweEnabled` breaks `getParameterResolveOrder` on every
+			// extending credential because `jwksUri.displayOptions` references a
+			// field the child doesn't have, leaving the dependency unresolved.
+			// Future JWE-aware OAuth2 extensions can re-declare both fields.
 			displayName: 'JWKS URI',
 			name: 'jwksUri',
 			type: 'string',

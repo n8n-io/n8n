@@ -39,71 +39,61 @@ export function toTokenUsage(
 	return result;
 }
 
-/** Convert a single AI SDK v6 fullStream chunk to an n8n StreamChunk (or undefined to skip). */
+/**
+ * Convert a single AI SDK v6 fullStream chunk to an n8n StreamChunk
+ */
 export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefined {
 	switch (c.type) {
+		case 'start-step':
+			return { type: 'start-step' };
+
+		case 'finish-step':
+			return { type: 'finish-step' };
+
+		case 'text-start':
+			return { type: 'text-start', id: c.id };
+
 		case 'text-delta':
-			return { type: 'text-delta', delta: c.text ?? '' };
+			return { type: 'text-delta', id: c.id, delta: c.text ?? '' };
+
+		case 'text-end':
+			return { type: 'text-end', id: c.id };
+
+		case 'reasoning-start':
+			return { type: 'reasoning-start', id: c.id };
 
 		case 'reasoning-delta':
-			return { type: 'reasoning-delta', delta: c.text ?? '' };
+			return { type: 'reasoning-delta', id: c.id, delta: c.text ?? '' };
+
+		case 'reasoning-end':
+			return { type: 'reasoning-end', id: c.id };
+
+		case 'tool-input-start':
+			// AI SDK uses `id` to carry the toolCallId on tool-input-* chunks.
+			return { type: 'tool-input-start', toolCallId: c.id, toolName: c.toolName };
+
+		case 'tool-input-delta':
+			return { type: 'tool-input-delta', toolCallId: c.id, delta: c.delta };
 
 		case 'tool-call':
 			return {
-				type: 'message',
-				message: {
-					role: 'tool',
-					content: [
-						{
-							type: 'tool-call',
-							toolCallId: c.toolCallId,
-							toolName: c.toolName ?? '',
-							input: c.input as JSONValue,
-						},
-					],
-				},
-			};
-
-		case 'tool-input-start':
-			return {
-				type: 'tool-call-delta',
-				name: c.toolName,
-			};
-
-		case 'tool-input-delta':
-			return {
-				type: 'tool-call-delta',
-				...(c.delta !== undefined && { argumentsDelta: c.delta }),
+				type: 'tool-call',
+				toolCallId: c.toolCallId,
+				toolName: c.toolName ?? '',
+				input: c.input as JSONValue,
 			};
 
 		case 'tool-result':
 			return {
-				type: 'message',
-				message: {
-					role: 'tool',
-					content: [
-						{
-							type: 'tool-result',
-							toolCallId: c.toolCallId ?? '',
-							toolName: c.toolName ?? '',
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-							result: c.output && 'value' in c.output ? (c.output.value as JSONValue) : null,
-						},
-					],
-				},
+				type: 'tool-result',
+				toolCallId: c.toolCallId ?? '',
+				toolName: c.toolName ?? '',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				output: c.output && 'value' in c.output ? (c.output.value as JSONValue) : null,
 			};
 
 		case 'error':
 			return { type: 'error', error: c.error };
-
-		case 'finish-step': {
-			const usage = toTokenUsage(c.usage);
-			return {
-				type: 'finish',
-				finishReason: (c.finishReason ?? 'stop') as FinishReason,
-				...(usage && { usage }),
-			};
-		}
 
 		case 'finish': {
 			const usage = toTokenUsage(c.totalUsage);

@@ -26,9 +26,9 @@ import type {
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
+	JsonObject,
 } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { JsonObject } from 'openid-client';
 import pLimit from 'p-limit';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -516,12 +516,36 @@ export class TestRunnerService {
 	 *
 	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
 	 */
+	/**
+	 * Convenience wrapper that awaits both the synchronous setup and the
+	 * detached execution. Mostly useful in tests that want the legacy "block
+	 * until the run is complete" semantics. The HTTP path uses
+	 * {@link startTestRun} directly so it can return the new `testRun.id`
+	 * before cases finish.
+	 */
 	async runTest(
 		user: User,
 		workflowId: string,
 		concurrency: number = 1,
 		flagEnabledForUser: boolean = false,
 	): Promise<void> {
+		const { finished } = await this.startTestRun(user, workflowId, concurrency, flagEnabledForUser);
+		await finished;
+	}
+
+	/**
+	 * Creates the new test-run row, returns it together with a `finished`
+	 * promise that resolves once every case has been processed (or aborted).
+	 * The execution loop is detached so callers can return the new
+	 * `testRun.id` without waiting for the run to complete; tests that need
+	 * to observe completion await `finished` directly.
+	 */
+	async startTestRun(
+		user: User,
+		workflowId: string,
+		concurrency: number = 1,
+		flagEnabledForUser: boolean = false,
+	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
 		const evaluationLimit = this.executionsConfig.concurrency.evaluationLimit;
 		const concurrencyLimitedByConfig =
@@ -542,6 +566,44 @@ export class TestRunnerService {
 		const testRun = await this.testRunRepository.createTestRun(workflowId);
 		assert(testRun, 'Unable to create a test run');
 
+		// Detach the long-running execution from the awaited setup so callers
+		// (the controller) can return the new `testRun.id` to the FE without
+		// waiting for cases to finish. `executeTestRun` runs synchronously
+		// until its first `await`, which guarantees `abortControllers` is
+		// populated before this method returns — `cancelTestRun(testRun.id)`
+		// called immediately after start will find the entry. Callers that
+		// need to observe completion (tests via `runTest`) await `finished`
+		// directly; the controller discards it.
+		const finished = this.executeTestRun({
+			user,
+			workflowId,
+			workflow,
+			testRun,
+			effectiveConcurrency,
+			concurrencyLimitedByConfig,
+			flagEnabledForUser,
+		});
+
+		return { testRun, finished };
+	}
+
+	private async executeTestRun({
+		user,
+		workflowId,
+		workflow,
+		testRun,
+		effectiveConcurrency,
+		concurrencyLimitedByConfig,
+		flagEnabledForUser,
+	}: {
+		user: User;
+		workflowId: string;
+		workflow: IWorkflowBase;
+		testRun: TestRun;
+		effectiveConcurrency: number;
+		concurrencyLimitedByConfig: boolean;
+		flagEnabledForUser: boolean;
+	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
 			workflow_id: workflowId,
@@ -611,6 +673,14 @@ export class TestRunnerService {
 
 			this.logger.debug('Found test cases', { count: testCases.length });
 
+			// Seed one TestCaseExecution row per dataset entry so the FE can
+			// render placeholder cards while the run is in progress and the
+			// user can pre-emptively cancel pending cases (TRUST-70).
+			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
+				testRun.id,
+				testCases.length,
+			);
+
 			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics();
 
@@ -645,6 +715,24 @@ export class TestRunnerService {
 					async (testCase, caseIndex) =>
 						await limit(async (): Promise<MetricContribution[]> => {
 							if (abortSignal.aborted) {
+								return [];
+							}
+
+							// Atomic check-and-set against the pre-seeded row: only
+							// proceed if it's still 'new'. If the user pre-emptively
+							// cancelled, the row is now 'cancelled' and the update
+							// affects 0 rows — bail before queuing for throttle
+							// capacity so cancelled cases don't take up slots that
+							// could be used by sibling runs.
+							const seededCase = seededCases[caseIndex];
+							const claimed = await this.testCaseExecutionRepository.tryMarkCaseAsRunning(
+								seededCase.id,
+							);
+							if (!claimed) {
+								this.logger.debug('Test case skipped (cancelled before start)', {
+									testRunId: testRun.id,
+									caseId: seededCase.id,
+								});
 								return [];
 							}
 
@@ -787,12 +875,12 @@ export class TestRunnerService {
 									this.logger.debug('Test case execution finished');
 
 									if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-										await this.testCaseExecutionRepository.createTestCaseExecution({
+										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
-											testRun: { id: testRun.id },
 											status: 'error',
 											errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
 											metrics: {},
+											completedAt: new Date(),
 										});
 										telemetryMeta.errored_test_case_count++;
 										return [];
@@ -812,9 +900,8 @@ export class TestRunnerService {
 									);
 
 									if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
-										await this.testCaseExecutionRepository.createTestCaseExecution({
+										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
-											testRun: { id: testRun.id },
 											runAt,
 											completedAt,
 											status: 'error',
@@ -838,9 +925,8 @@ export class TestRunnerService {
 										userDefinedContribution.addedMetrics,
 									);
 
-									await this.testCaseExecutionRepository.createTestCaseExecution({
+									await this.testCaseExecutionRepository.update(seededCase.id, {
 										executionId: testCaseExecutionId,
-										testRun: { id: testRun.id },
 										runAt,
 										completedAt,
 										status: 'success',
@@ -864,8 +950,7 @@ export class TestRunnerService {
 									telemetryMeta.errored_test_case_count++;
 
 									if (e instanceof TestCaseExecutionError) {
-										await this.testCaseExecutionRepository.createTestCaseExecution({
-											testRun: { id: testRun.id },
+										await this.testCaseExecutionRepository.update(seededCase.id, {
 											runAt,
 											completedAt,
 											status: 'error',
@@ -873,8 +958,7 @@ export class TestRunnerService {
 											errorDetails: e.extra as IDataObject,
 										});
 									} else {
-										await this.testCaseExecutionRepository.createTestCaseExecution({
-											testRun: { id: testRun.id },
+										await this.testCaseExecutionRepository.update(seededCase.id, {
 											runAt,
 											completedAt,
 											status: 'error',

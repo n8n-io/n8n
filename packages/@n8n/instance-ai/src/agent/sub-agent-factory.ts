@@ -48,7 +48,7 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 
 export { SUB_AGENT_PROTOCOL };
 
-function buildSubAgentPrompt(role: string, instructions: string, timeZone?: string): string {
+export function buildSubAgentPrompt(role: string, instructions: string, timeZone?: string): string {
 	return `${SUB_AGENT_PROTOCOL}
 ${getDateTimeSection(timeZone)}
 

@@ -52,7 +52,11 @@ import {
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
+import {
+	buildCredentialSnapshot,
+	type CredentialEntry,
+	type CredentialMap,
+} from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import {
 	type SubmitWorkflowAttempt,
@@ -300,7 +304,7 @@ async function buildOutcomeWithLatestVerification(
 	return await finalBuildOutcome(context, workItemId, outcome);
 }
 
-const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
+export const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
 You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
 
@@ -612,9 +616,12 @@ export async function startBuildWorkflowAgentTask(
 	let builderTools: ToolsInput;
 	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
+	let availableCredentials: CredentialEntry[] | undefined;
 
 	if (useSandbox) {
-		credMap = await buildCredentialMap(domainContext.credentialService);
+		const credentialSnapshot = await buildCredentialSnapshot(domainContext.credentialService);
+		credMap = credentialSnapshot.map;
+		availableCredentials = credentialSnapshot.list;
 
 		const toolNames = [
 			'nodes',
@@ -824,6 +831,7 @@ export async function startBuildWorkflowAgentTask(
 								context: domainContext,
 								workspace,
 								credentialMap: credMap,
+								availableCredentials,
 								root,
 								currentRunId: context.runId,
 								getWorkflowLoopState: async () =>
@@ -947,6 +955,7 @@ export async function startBuildWorkflowAgentTask(
 										waitForConfirmation: context.waitForConfirmation,
 										drainCorrections,
 										waitForCorrection,
+										onActivity: () => context.touchBackgroundTask?.(taskId),
 										llmStepTraceHooks,
 										maxSteps: MAX_STEPS.BUILDER,
 										resumeOptions,
@@ -1212,6 +1221,7 @@ export async function startBuildWorkflowAgentTask(
 								waitForConfirmation: context.waitForConfirmation,
 								drainCorrections,
 								waitForCorrection,
+								onActivity: () => context.touchBackgroundTask?.(taskId),
 								llmStepTraceHooks,
 								maxSteps: MAX_STEPS.BUILDER,
 								resumeOptions,

@@ -169,7 +169,7 @@ try {
     process.exit(1);
   }
   const validation = wf.validate();
-  const json = wf.toJSON();
+  const json = wf.toJSON({ tidyUp: true });
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
@@ -221,6 +221,9 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 	return parts.join(' | ');
 }
 
+/** Dirs the agent's `list_files` may probe; some providers 404 on missing dirs. */
+const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
+
 /**
  * Build a shell script that writes all files at once.
  * Each file is base64-encoded and decoded in-place.
@@ -230,7 +233,7 @@ function buildBatchWriteScript(root: string, files: Map<string, string>): string
 	const lines: string[] = ['#!/bin/bash', 'set -e'];
 
 	// Collect all unique directories
-	const dirs = new Set<string>();
+	const dirs = new Set<string>(ALWAYS_PRESENT_DIRS);
 	for (const path of files.keys()) {
 		const lastSlash = path.lastIndexOf('/');
 		if (lastSlash > 0) {
@@ -240,15 +243,7 @@ function buildBatchWriteScript(root: string, files: Map<string, string>): string
 
 	// Create all directories in one mkdir call (single-quoted + escaped to prevent shell injection)
 	const dirList = [...dirs].map((d) => `'${escapeSingleQuotes(`${root}/${d}`)}'`).join(' ');
-	if (dirList) {
-		lines.push(
-			`mkdir -p '${escapeSingleQuotes(`${root}/src`)}' '${escapeSingleQuotes(`${root}/chunks`)}' ${dirList}`,
-		);
-	} else {
-		lines.push(
-			`mkdir -p '${escapeSingleQuotes(`${root}/src`)}' '${escapeSingleQuotes(`${root}/chunks`)}'`,
-		);
-	}
+	lines.push(`mkdir -p ${dirList}`);
 
 	// Write each file via base64 decode (single-quoted paths to prevent shell injection)
 	for (const [path, content] of files) {
@@ -266,6 +261,12 @@ async function writeWorkspaceFiles(
 ): Promise<void> {
 	const filesystem = workspace.filesystem;
 	if (filesystem) {
+		// `writeFile` only creates parent dirs as a side-effect of writing a file.
+		await Promise.all(
+			ALWAYS_PRESENT_DIRS.map(
+				async (dir) => await filesystem.mkdir(`${root}/${dir}`, { recursive: true }),
+			),
+		);
 		await Promise.all(
 			[...files].map(async ([path, content]) => {
 				await filesystem.writeFile(`${root}/${path}`, content, { recursive: true });

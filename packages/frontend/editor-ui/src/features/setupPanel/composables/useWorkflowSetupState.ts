@@ -17,10 +17,7 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
@@ -63,9 +60,7 @@ export const useWorkflowSetupState = (
 	const nodeHelpers = useNodeHelpers();
 	const environmentsStore = useEnvironmentsStore();
 	const templatesStore = useTemplatesStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);
 

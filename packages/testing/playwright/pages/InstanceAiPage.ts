@@ -15,6 +15,10 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
+	async gotoThread(threadId: string): Promise<void> {
+		await this.page.goto(`/instance-ai/${threadId}`);
+	}
+
 	getContainer(): Locator {
 		return this.page.getByTestId('instance-ai-container');
 	}
@@ -61,6 +65,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-assistant-message');
 	}
 
+	getAssistantMessageText(text: string | RegExp): Locator {
+		return this.getAssistantMessages().getByText(text);
+	}
+
+	getToolCallsButton(label: string): Locator {
+		return this.page.getByRole('button', { name: label });
+	}
+
 	getStatusBar(): Locator {
 		return this.page.getByTestId('instance-ai-status-bar');
 	}
@@ -72,6 +84,16 @@ export class InstanceAiPage extends BasePage {
 
 	getEmptyState(): Locator {
 		return this.page.getByTestId('instance-ai-empty-state');
+	}
+
+	// ── Attachments ────────────────────────────────────────────────────
+
+	getFileInput(): Locator {
+		return this.getContainer().locator('input[type="file"]');
+	}
+
+	getAttachmentsAt(messageIndex: number): Locator {
+		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────
@@ -90,6 +112,10 @@ export class InstanceAiPage extends BasePage {
 
 	getCredentialContinue(): Locator {
 		return this.page.getByTestId('instance-ai-credential-continue-button');
+	}
+
+	getConfirmationText(text: string): Locator {
+		return this.page.getByText(text, { exact: false });
 	}
 
 	// ── Plan Review ───────────────────────────────────────────────────

@@ -243,6 +243,28 @@ describe('FrontendService', () => {
 
 			expect(settings.logStreaming).toEqual({ managedByEnv: false });
 		});
+
+		it('should surface communityNodesManagedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(true);
+		});
+
+		it('should default communityNodesManagedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				communityPackagesManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.communityNodesManagedByEnv).toBe(false);
+		});
 	});
 
 	describe('getPublicSettings', () => {
@@ -615,7 +637,6 @@ describe('FrontendService', () => {
 				} as unknown as ICredentialType;
 
 				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
-				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue([]);
 
 				const { service } = createMockService();
 				(service as any).overwriteCredentialsProperties();
@@ -624,10 +645,34 @@ describe('FrontendService', () => {
 				expect(jwksProperty?.default).toBe(expectedJwksUri);
 			});
 
-			it('should inject the instance JWKS URI on credentials extending oAuth2Api', () => {
+			it('should not touch standard OAuth2-extending credentials (jwksUri not inherited)', () => {
+				// Both `jweEnabled` and `jwksUri` carry `doNotInherit: true` so
+				// provider-specific OAuth2 credentials (Google, Slack, GitHub, ...)
+				// don't inherit them. Without a `jwksUri` property in scope, the
+				// injection has nothing to mutate.
 				const credential = {
 					name: 'slackOAuth2Api',
 					displayName: 'Slack OAuth2 API',
+					properties: [],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				expect(credential.properties).toEqual([]);
+			});
+
+			it('should inject the JWKS URI on JWE-aware OAuth2 extensions that re-declare jwksUri', () => {
+				// Custom credentials extending oAuth2Api can opt into the JWE flow
+				// by re-declaring both `jweEnabled` and `jwksUri`. The runtime URL
+				// injection must reach those credentials so the user sees the
+				// instance JWKS endpoint without the credential class hardcoding
+				// it (which would be impossible per-instance).
+				const credential = {
+					name: 'metaOAuth2Api',
+					displayName: 'Meta OAuth2 API',
 					properties: [makeJwksUriProperty()],
 				} as unknown as ICredentialType;
 
@@ -656,7 +701,6 @@ describe('FrontendService', () => {
 				} as unknown as ICredentialType;
 
 				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
-				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue([]);
 
 				const { service } = createMockService();
 				(service as any).overwriteCredentialsProperties();

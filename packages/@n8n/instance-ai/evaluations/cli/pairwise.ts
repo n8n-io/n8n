@@ -21,6 +21,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Client as LangSmithClient } from 'langsmith';
+import { nanoid } from 'nanoid';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -32,7 +33,9 @@ import {
 	type SimpleWorkflow,
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
+import { buildSubAgentBriefing } from '../../src/agent/sub-agent-briefing';
 import type { Logger } from '../../src/logger';
+import { DETACHED_BUILDER_REQUIREMENTS } from '../../src/tools/orchestration/build-workflow-agent.tool';
 import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
 import type { SandboxConfig } from '../../src/workspace/create-workspace';
 import { SnapshotManager } from '../../src/workspace/snapshot-manager';
@@ -43,6 +46,13 @@ import {
 } from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
+
+/** Default dataset — orchestrator-plan-derived spec rows. Each row's prompt
+ * is the spec the production planner hands the builder via
+ * `dispatchPlannedTask`. Pair this with the production briefing wrapper
+ * (`DETACHED_BUILDER_REQUIREMENTS`) below to keep the eval aligned with
+ * what the builder sees in production. */
+const DEFAULT_DATASET = 'instance-ai-builder-from-plans';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -55,6 +65,7 @@ interface PairwiseArgs {
 	concurrency: number;
 	maxExamples?: number;
 	exampleIds?: Set<string>;
+	examplesJsonl?: string;
 	timeoutMs: number;
 	outputDir: string;
 	judgeModel: string;
@@ -86,7 +97,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	}
 
 	return {
-		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
+		dataset: get('--dataset') ?? DEFAULT_DATASET,
 		judges: parsePositiveInt(get('--judges'), '--judges') ?? Number(DEFAULTS.NUM_JUDGES),
 		iterations:
 			parsePositiveInt(get('--iterations'), '--iterations') ?? Number(DEFAULTS.REPETITIONS),
@@ -94,6 +105,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 			parsePositiveInt(get('--concurrency'), '--concurrency') ?? Number(DEFAULTS.CONCURRENCY),
 		maxExamples: parsePositiveInt(get('--max-examples'), '--max-examples'),
 		exampleIds,
+		examplesJsonl: get('--examples-jsonl'),
 		timeoutMs:
 			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
@@ -170,6 +182,9 @@ interface DatasetExample {
 }
 
 async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<DatasetExample[]> {
+	if (args.examplesJsonl) {
+		return loadExamplesFromJsonl(args.examplesJsonl, logger);
+	}
 	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
 	const lsClient = new LangSmithClient();
 	const examples: DatasetExample[] = [];
@@ -207,6 +222,52 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 	return examples;
 }
 
+/**
+ * Load examples from a JSONL file. Accepts the shape produced by a previous
+ * pairwise run (`results.jsonl`) where each row carries `exampleId`, `prompt`,
+ * `dos`, `donts`. Useful for re-running a frozen example set after the source
+ * LangSmith dataset has changed.
+ */
+function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExample[] {
+	const absolute = path.resolve(filePath);
+	logger.info(`Loading examples from local JSONL: ${absolute}`);
+	const content = readFileSync(absolute, 'utf8');
+	const examples: DatasetExample[] = [];
+	const seen = new Set<string>();
+	let row = 0;
+	for (const line of content.split('\n')) {
+		row++;
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(trimmed);
+		} catch (error) {
+			logger.warn(`Skipping JSONL row ${row}: invalid JSON (${(error as Error).message})`);
+			continue;
+		}
+		if (!isRecord(parsed)) continue;
+		const id = typeof parsed.exampleId === 'string' ? parsed.exampleId : '';
+		const prompt = typeof parsed.prompt === 'string' ? parsed.prompt : '';
+		if (!id || !prompt) {
+			logger.warn(`Skipping JSONL row ${row}: missing exampleId or prompt`);
+			continue;
+		}
+		// Each iteration of the same example yields a row in results.jsonl;
+		// dedupe by id so we only run the example once per requested iteration.
+		if (seen.has(id)) continue;
+		seen.add(id);
+		examples.push({
+			id,
+			prompt,
+			dos: typeof parsed.dos === 'string' ? parsed.dos : undefined,
+			donts: typeof parsed.donts === 'string' ? parsed.donts : undefined,
+		});
+	}
+	logger.info(`Loaded ${examples.length} unique examples from ${absolute}`);
+	return examples;
+}
+
 // ---------------------------------------------------------------------------
 // Per-example runner
 // ---------------------------------------------------------------------------
@@ -230,24 +291,6 @@ interface ExampleRecord {
 	feedback: Feedback[];
 }
 
-/**
- * Eval-only suffix appended to every dataset prompt. Pushes the agent past
- * its production "ask before assuming / set up credentials first" instinct
- * — there is no human in the loop, so a clarification turn is a guaranteed
- * `no_workflow_built`. Lives in the harness, not the production builder
- * prompt, so production behavior is unaffected.
- *
- * Strictly describes the eval environment and the required terminal action
- * (call `submit-workflow`). Does not name SDK helpers or otherwise lead the
- * agent toward specific implementation choices — those are what the eval
- * measures.
- */
-const EVAL_PROMPT_SUFFIX =
-	'\n\n---\n' +
-	'You are running inside an automated, non-interactive evaluation. ' +
-	'There is no human to answer follow-up questions. ' +
-	'Do not call `ask-user` and do not ask for clarification — pick reasonable defaults and proceed.';
-
 async function runExample(
 	example: DatasetExample,
 	iteration: number,
@@ -262,8 +305,25 @@ async function runExample(
 		'chunks',
 		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
 	);
+	// Wrap the prompt the same way the production orchestrator wraps the spec
+	// it hands to the builder sub-agent (see `build-workflow-agent.tool.ts`).
+	// Keeping this aligned with prod is what closes the eval/prod gap —
+	// `DETACHED_BUILDER_REQUIREMENTS` is what tells the builder it must
+	// `submit-workflow` then `verify-built-workflow` before stopping.
+	//
+	// `workItemId` round-trips: the briefing's `additionalContext` tells the
+	// agent its work-item ID, the agent passes it to `verify-built-workflow`,
+	// which reads back the build outcome from the in-memory
+	// `workflowTaskService` keyed on the same ID.
+	const workItemId = 'wi_' + nanoid(8);
+	const builderPrompt = await buildSubAgentBriefing({
+		task: example.prompt,
+		additionalContext: `[WORK ITEM ID: ${workItemId}]`,
+		requirements: DETACHED_BUILDER_REQUIREMENTS,
+	});
 	const build = await buildInProcess({
-		prompt: example.prompt + EVAL_PROMPT_SUFFIX,
+		prompt: builderPrompt,
+		workItemId,
 		timeoutMs: args.timeoutMs,
 		logPath,
 		sandboxFactory,
@@ -336,6 +396,21 @@ interface Summary {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
+		/** Total `submit-workflow` tool invocations across all records. */
+		submitCallsTotal: number;
+		/** Mean `submit-workflow` invocations per build. 1.0 = every build called
+		 *  submit exactly once; >1.0 = builds had to fix and re-submit. */
+		avgSubmitCalls: number;
+		/** (errored tool calls) / (total tool calls) micro-averaged across all
+		 *  runs. Captures how rough the build path was even on builds that
+		 *  eventually succeeded — every TypeScript compile error or failed
+		 *  domain tool call shows up here. */
+		toolCallErrorRate: number;
+		/** Total tool calls observed (used as the error-rate denominator and
+		 *  surfaced for context). */
+		toolCallsTotal: number;
+		/** Total errored tool calls observed (numerator of `toolCallErrorRate`). */
+		toolCallErrors: number;
 	};
 	interactivity: {
 		askUserCount: number;
@@ -386,12 +461,17 @@ async function writeOutputs(
 		'durationMs',
 		'askUserCount',
 		'planToolCount',
+		'submitCalls',
+		'toolCalls',
+		'toolCallErrors',
 		'pairwisePrimary',
 		'pairwiseDiagnostic',
 		'pairwiseJudgesPassed',
 	].join(',');
 	const csvRows = records.map((r) => {
 		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
+		const submits = r.toolCalls.filter((tc) => tc.toolName === 'submit-workflow').length;
+		const errors = r.toolCalls.filter(isErroredToolCall).length;
 		return [
 			r.exampleId,
 			r.iteration,
@@ -400,6 +480,9 @@ async function writeOutputs(
 			r.build.durationMs,
 			r.build.interactivity.askUserCount,
 			r.build.interactivity.planToolCount,
+			submits,
+			r.toolCalls.length,
+			errors,
 			find('pairwise_primary'),
 			find('pairwise_diagnostic'),
 			find('pairwise_judges_passed'),
@@ -420,6 +503,9 @@ async function writeOutputs(
 	let askUserCount = 0;
 	let planToolCount = 0;
 	let autoApprovedSuspensions = 0;
+	let submitCallsTotal = 0;
+	let toolCallsTotal = 0;
+	let toolCallErrors = 0;
 
 	for (const record of records) {
 		if (record.build.success) buildSuccess++;
@@ -431,6 +517,18 @@ async function writeOutputs(
 		autoApprovedSuspensions += record.build.interactivity.autoApprovedSuspensions;
 		for (const type of record.build.interactivity.mockedCredentialTypes) {
 			allMockedCreds.add(type);
+		}
+
+		// `toolCalls` is the ordered timeline captured by the trace collector.
+		// We count any tool call that errored OR returned a failed result —
+		// hard Mastra tool failures are rare, but `submit-workflow` rejections
+		// and `execute_command` returning a non-zero `tsc` exit are common and
+		// dominate the "rough path" signal we care about. Suspensions are
+		// benign (auto-approved or surfaced via `errorClass` separately).
+		for (const tc of record.toolCalls) {
+			toolCallsTotal++;
+			if (isErroredToolCall(tc)) toolCallErrors++;
+			if (tc.toolName === 'submit-workflow') submitCallsTotal++;
 		}
 
 		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
@@ -469,6 +567,11 @@ async function writeOutputs(
 			buildFailures,
 			primaryPassRate: primaryPassCount ? primaryPassSum / primaryPassCount : 0,
 			avgDiagnostic: diagnosticCount ? diagnosticSum / diagnosticCount : 0,
+			submitCallsTotal,
+			avgSubmitCalls: records.length ? submitCallsTotal / records.length : 0,
+			toolCallsTotal,
+			toolCallErrors,
+			toolCallErrorRate: toolCallsTotal ? toolCallErrors / toolCallsTotal : 0,
 		},
 		interactivity: {
 			askUserCount,
@@ -643,6 +746,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function safeFilename(s: string): string {
 	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
+}
+
+/**
+ * Whether a tool call should count toward the "tool error rate" metric.
+ *
+ * Catches three flavours:
+ * 1. **Hard Mastra failure** (`trace.error` set) — tool threw / rejected.
+ * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
+ *    returning `{ success: false, errors: [...] }`. Looks at top-level
+ *    `success === false` or non-empty `errors` array, plus a string
+ *    `error` field.
+ * 3. **`execute_command` returned a non-zero exit code** — e.g. `tsc`
+ *    spitting out compile errors. Looks for an `Exit code: <non-zero>`
+ *    marker in the result text.
+ */
+function isErroredToolCall(trace: ToolCallTrace): boolean {
+	if (trace.error !== undefined) return true;
+	const r = trace.result;
+	if (r === null || r === undefined) return false;
+
+	if (typeof r === 'object' && !Array.isArray(r)) {
+		const obj = r as Record<string, unknown>;
+		if (obj.success === false) return true;
+		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	}
+
+	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) {
+		return true;
+	}
+
+	return false;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {

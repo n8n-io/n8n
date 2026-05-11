@@ -8,8 +8,13 @@ import { resolveMainInputCount } from './input-resolver';
 import { validateNodeConfig } from './schema-validator';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
+import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
 
-export { setSchemaBaseDirs } from './schema-validator';
+export {
+	setSchemaBaseDirs,
+	validateNodeConfig,
+	type SchemaValidationResult,
+} from './schema-validator';
 
 /**
  * Validation error codes
@@ -498,6 +503,8 @@ export function validateWorkflow(
 		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
 		// Validate that emitted connection types are actually exposed by the source node's mode
 		validateOutputUsage(json, options.nodeTypesProvider, warnings);
+		// Reject placeholder() in slots that opt out via builderHint.placeholderSupported === false
+		validatePlaceholderSlots(json, options.nodeTypesProvider, errors);
 	}
 
 	// Merge node input-count consistency
@@ -1006,6 +1013,58 @@ function validateOutputUsage(
 					undefined,
 					undefined,
 					'major',
+				),
+			);
+		}
+	}
+}
+
+/**
+ * Reject `placeholder()` markers found in parameter slots whose property
+ * description carries `builderHint.placeholderSupported === false`.
+ *
+ * This is the runtime side of the type-level signal that used to live in the
+ * generated `string | Expression<string>` union (which previously omitted
+ * `PlaceholderValue`). Now that `placeholder()` returns a plain `string`, the
+ * type system can no longer block placement; this validator does at runtime.
+ *
+ * Uses `containsPlaceholderMarker` (not `isPlaceholderValue`) so that the
+ * marker is rejected anywhere in the value — including `expr(placeholder())`,
+ * which produces `=<__PLACEHOLDER_VALUE__…__>`, and placeholders embedded
+ * inside `={{ … }}` expressions.
+ *
+ * Walks top-level properties only — the known declarations
+ * (webhook `path`, langchain agent `text`) are top-level fields. Nested
+ * collection / fixedCollection support can be added later if a node opts out
+ * of placeholders for a nested field.
+ */
+function validatePlaceholderSlots(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	errors: ValidationError[],
+): void {
+	for (const node of json.nodes) {
+		if (!node.name || !node.parameters) continue;
+
+		const version =
+			typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
+
+		const nodeType = nodeTypesProvider.getByNameAndVersion(node.type, version);
+		const properties = nodeType?.description?.properties;
+		if (!properties) continue;
+
+		const params = node.parameters as Record<string, unknown>;
+		for (const prop of properties) {
+			if (prop.builderHint?.placeholderSupported !== false) continue;
+			const value = params[prop.name];
+			if (!containsPlaceholderMarker(value)) continue;
+
+			errors.push(
+				new ValidationError(
+					'INVALID_PARAMETER',
+					`Node "${node.name}": placeholder() is not supported for parameter '${prop.name}'. Use a literal value or expr() instead.`,
+					node.name,
+					prop.name,
 				),
 			);
 		}
