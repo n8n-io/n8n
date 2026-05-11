@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, inject, provide, type InjectionKey } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -345,3 +345,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		closeSSE: runtime.closeSSE,
 	};
 });
+
+export type ThreadRuntime = ReturnType<typeof useInstanceAiStore>;
+
+const ThreadKey: InjectionKey<ThreadRuntime> = Symbol('instanceAiThread');
+
+export function provideThread(thread: ThreadRuntime): ThreadRuntime {
+	provide(ThreadKey, thread);
+	return thread;
+}
+
+export function useThread(): ThreadRuntime {
+	const thread = inject(ThreadKey, null);
+	if (!thread) {
+		throw new Error('useThread() requires a provideThread() ancestor.');
+	}
+	return thread;
+}

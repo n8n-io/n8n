@@ -1,8 +1,19 @@
 import type { JSONSchema7 } from 'json-schema';
+import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
+
+const BuilderPromptMemoryConfigSchema = z.object({
+	enabled: z.boolean(),
+	storage: z.literal('n8n'),
+	lastMessages: z.number().int().min(1).max(200).optional(),
+});
+
+const BuilderPromptAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
+	memory: BuilderPromptMemoryConfigSchema.optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Context sections — dynamic, injected at runtime
@@ -279,6 +290,10 @@ something cool"), or asked a question — reply conversationally. Ask what they
 want the agent to do, what systems it needs to touch, what triggers it. Only
 start building once you have a real goal.
 
+If the user tries to test, run, chat with, or interact with the newly built
+agent in this Build chat, reply exactly: "Please click the Test toggle next to
+Build below to chat with your new agent."
+
 Never call \`write_config\` with empty, placeholder, or guessed \`instructions\`.
 An agent without real instructions is broken and can't chat. If you don't have
 enough detail to write meaningful instructions, ask the user first.`;
@@ -300,13 +315,20 @@ Don't search for things you already know (n8n internals, common JS/TS
 patterns, widely-known public APIs you've configured many times).`;
 
 export const MEMORY_PRESETS_SECTION = `\
-## Memory presets
+## Memory
 
-| Storage  | Description                                          |
-|----------|------------------------------------------------------|
-| n8n      | Default. Persists in n8n database. No config needed. |
-| sqlite   | Local SQLite file. Needs connection.path             |
-| postgres | PostgreSQL. Needs connection.credential              |`;
+Use n8n session-scoped memory only. It keeps recent conversation context and
+thread-scoped working memory for the current chat session.
+
+Shape:
+\`\`\`json
+{ "enabled": true, "storage": "n8n", "lastMessages": 50 }
+\`\`\`
+
+Rules:
+- Set \`storage\` to "n8n".
+- \`lastMessages\` default: 50.
+- Keep memory to these fields: \`enabled\`, \`storage\`, and \`lastMessages\`.`;
 
 export const INTEGRATIONS_SECTION = `\
 ## Integrations (triggers)
@@ -524,7 +546,7 @@ export const IMPORTANT_SECTION = `\
   choice from a small set, use ask_question instead of asking in prose.
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
-- Memory with storage "n8n" is the default -- always enable it unless told otherwise
+- n8n session-scoped memory is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
 - \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.`;
 
@@ -552,15 +574,15 @@ export function getConfigRulesSection(builderModel: string): string {
 
 - \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
 - \`credential\` must be the \`credentialName\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
-- \`memory.storage\` is a preset: "n8n" (recommended, persists in n8n DB), "sqlite", or "postgres"
+- \`memory.storage\` must be "n8n"
 - \`memory.lastMessages\` default: 50
-- Use "n8n" as the default memory storage for all agents
+- Use n8n session-scoped memory for all agents
 - If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
 }
 
 export function getSchemaReferenceSection(): string {
 	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(AgentJsonConfigSchema) as JSONSchema7,
+		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
 	);
 	return `\
 ## Config schema reference

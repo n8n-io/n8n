@@ -138,9 +138,6 @@ export async function buildFromJson(
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
-		if (config.config.requireToolApproval) {
-			agent.requireToolApproval();
-		}
 	}
 
 	return agent;
