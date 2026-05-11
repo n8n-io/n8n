@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -30,13 +31,14 @@ const emit = defineEmits<{
 
 const wrapperRef = useTemplateRef('wrapper');
 
+const workflowId = useInjectWorkflowId();
 const focusPanelStore = useFocusPanelStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
 const deviceSupport = useDeviceSupport();
-const vueFlow = useVueFlow(workflowsStore.workflowId);
+const vueFlow = useVueFlow(workflowId.value);
 const activeElement = useActiveElement();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
@@ -60,7 +62,7 @@ const node = computed<INodeUi | undefined>(() => {
 	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
-		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		? (workflowDocumentStore?.value?.allNodes ?? []).find((n) => n.id === selected.id)
 		: undefined;
 });
 
@@ -144,7 +146,7 @@ onBeforeUnmount(() => {
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
-			:min-width="300"
+			:min-width="isSetupPanelEnabled ? 420 : 300"
 			:max-width="experimentalNdvStore.isNdvInFocusPanelEnabled ? undefined : 1000"
 			:grid-size="8"
 			:style="{ width: `${focusPanelWidth}px` }"
@@ -154,7 +156,7 @@ onBeforeUnmount(() => {
 				<div v-if="isSetupPanelEnabled">
 					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
-				<div v-if="showSetupPanel" :class="$style.content">
+				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
 					<SetupPanel />
 				</div>
 				<FocusPanel
@@ -186,10 +188,10 @@ onBeforeUnmount(() => {
 	height: 100%;
 }
 
-.content {
+.setup-panel-wrapper {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	height: calc(100% - 36px);
 	width: 100%;
 }
 </style>

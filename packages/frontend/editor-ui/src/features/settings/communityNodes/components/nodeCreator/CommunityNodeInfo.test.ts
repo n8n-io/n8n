@@ -35,12 +35,20 @@ const getCommunityNodeAttributes = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
+		getNodeType: vi.fn(),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
 vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
-		isInstanceOwner: true,
+		isAdmin: true,
+		isAdminOrOwner: true,
+		isInstanceOwner: false,
 	})),
 }));
 
@@ -48,8 +56,14 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(),
 }));
 
-vi.mock('@/features/integrations/quickConnect/composables/useQuickConnect', () => ({
-	useQuickConnect: vi.fn(() => ref(undefined) as ComputedRef),
+vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
+	useQuickConnect: vi.fn(() => ({
+		getQuickConnectOption: vi.fn(() => undefined),
+		getQuickConnectOptionByPackageName: vi.fn(() => undefined),
+		getQuickConnectOptionByCredentialTypes: vi.fn(() => undefined),
+		connect: vi.fn(),
+		cancelConnect: vi.fn(),
+	})),
 }));
 
 describe('CommunityNodeInfo', () => {
@@ -317,16 +331,22 @@ describe('CommunityNodeInfo', () => {
 		describe('Quick connect enabled', () => {
 			beforeEach(async () => {
 				const { useQuickConnect } = await import(
-					'@/features/integrations/quickConnect/composables/useQuickConnect'
+					'@/features/credentials/quickConnect/composables/useQuickConnect'
 				);
-				vi.mocked(useQuickConnect).mockReturnValue(
-					ref({
-						packageName: 'n8n-nodes-test',
-						credentialType: 'some-credentials',
-						text: 'This packages provides trial access',
-						quickConnectType: 'manual',
-					}) as ReturnType<typeof useQuickConnect>,
-				);
+				const quickConnectOptionData = {
+					packageName: 'n8n-nodes-test',
+					credentialType: 'some-credentials',
+					text: 'This packages provides trial access',
+					quickConnectType: 'manual',
+					serviceName: 'Test service',
+				};
+				vi.mocked(useQuickConnect).mockReturnValue({
+					getQuickConnectOption: vi.fn(() => quickConnectOptionData),
+					getQuickConnectOptionByPackageName: vi.fn(() => quickConnectOptionData),
+					getQuickConnectOptionByCredentialTypes: vi.fn(() => quickConnectOptionData),
+					connect: vi.fn(),
+					cancelConnect: vi.fn(),
+				} as unknown as ReturnType<typeof useQuickConnect>);
 			});
 
 			it('should display quick connect tag', async () => {

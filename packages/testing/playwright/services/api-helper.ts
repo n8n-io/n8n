@@ -1,4 +1,5 @@
 // services/api-helper.ts
+import type { ClusterInfoResponse, InstanceAiPermissions } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -11,6 +12,8 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
+import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
@@ -25,6 +28,11 @@ import { WorkflowApiHelper } from './workflow-api-helper';
 export interface LoginResponseData {
 	id: string;
 	[key: string]: unknown;
+}
+
+export interface InstanceAiBackgroundTimeoutSimulation {
+	threadId: string;
+	timeoutAt: number;
 }
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
@@ -49,7 +57,9 @@ export class ApiHelpers {
 	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
+	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
@@ -64,7 +74,9 @@ export class ApiHelpers {
 		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
+		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
@@ -268,22 +280,69 @@ export class ApiHelpers {
 	}
 
 	/**
-	 * Create an API helper for a specific base URL.
-	 * Useful for multi-main testing where you want to send requests
-	 * directly to a specific main instance (bypassing the load balancer).
-	 *
-	 * @param baseUrl - The base URL to use (e.g., from n8nContainer.mainUrls[0])
-	 * @returns A new ApiHelpers instance configured for the specified URL
+	 * Fetch cluster info from the instance registry endpoint.
 	 */
-	static async createForUrl(baseUrl: string): Promise<ApiHelpers> {
-		const context = await request.newContext({ baseURL: baseUrl });
-		return new ApiHelpers(context);
+	async getClusterInfo(): Promise<ClusterInfoResponse> {
+		const response = await this.request.get('/rest/instance-registry');
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-registry failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const plain = await response.json();
+		console.log('Cluster info: ', JSON.stringify(plain));
+		return (plain as { data: ClusterInfoResponse }).data;
 	}
 
-	async get(path: string, params?: URLSearchParams) {
-		const response = await this.request.get(path, { params });
-		const { data } = await response.json();
-		return data;
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
+	}
+
+	async startInstanceAiBackgroundTimeoutSimulation(
+		userId: string,
+		threadId?: string,
+	): Promise<InstanceAiBackgroundTimeoutSimulation> {
+		const response = await this.request.post('/rest/instance-ai/test/background-timeout/start', {
+			data: { userId, ...(threadId ? { threadId } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/background-timeout/start failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
+		return body.data;
+	}
+
+	async runInstanceAiLivenessSweep(now?: number): Promise<void> {
+		const response = await this.request.post('/rest/instance-ai/test/liveness-sweep', {
+			data: { ...(now !== undefined ? { now } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/liveness-sweep failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', {
+			data: { permissions },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**
@@ -331,42 +390,6 @@ export class ApiHelpers {
 		if (!response.ok()) {
 			throw new TestError(
 				`Failed to create syslog destination: ${response.status()} ${await response.text()}`,
-			);
-		}
-
-		const result = await response.json();
-		// Handle both direct response and {data: ...} wrapped response
-		return result.data ?? result;
-	}
-
-	/**
-	 * Create a webhook destination for log streaming.
-	 * Requires the logStreaming feature to be enabled.
-	 *
-	 * @param config - Webhook destination configuration
-	 * @returns Created destination data
-	 */
-	async createWebhookDestination(config: {
-		url: string;
-		method?: 'POST' | 'GET' | 'PUT' | 'PATCH';
-		label?: string;
-		subscribedEvents?: string[];
-		sendPayload?: boolean;
-	}): Promise<{ id: string }> {
-		const response = await this.request.post('/rest/eventbus/destination', {
-			data: {
-				__type: '$$MessageEventBusDestinationWebhook',
-				url: config.url,
-				method: config.method ?? 'POST',
-				label: config.label ?? 'Webhook Destination',
-				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
-				sendPayload: config.sendPayload ?? true,
-			},
-		});
-
-		if (!response.ok()) {
-			throw new TestError(
-				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
 			);
 		}
 
@@ -434,26 +457,6 @@ export class ApiHelpers {
 	}
 
 	// ===== MCP API KEY METHODS =====
-
-	/**
-	 * Get or create MCP API key for the authenticated user.
-	 * If the user already has an API key, returns the existing one (redacted).
-	 * If not, creates a new one and returns the full key.
-	 *
-	 * @returns The MCP API key data including the key itself
-	 */
-	async getMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
-		const response = await this.request.get('/rest/mcp/api-key');
-
-		if (!response.ok()) {
-			throw new TestError(
-				`Failed to get MCP API key: ${response.status()} ${await response.text()}`,
-			);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
 
 	/**
 	 * Rotate the MCP API key for the authenticated user.

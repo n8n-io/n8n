@@ -1,5 +1,5 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, SharedCredentials } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { nanoId, date } from 'minifaker';
 import { randomString } from 'n8n-workflow';
@@ -51,4 +51,40 @@ export const createdCredentialsWithScopes = (
 		resolverId: payload?.resolverId ?? null,
 		scopes: payload?.scopes ?? credentialScopes,
 	} as NewCredentialWithScopes;
+};
+
+export const mockExistingCredential = (overrides?: {
+	data?: Record<string, unknown>;
+	projectId?: string;
+	[key: string]: unknown;
+}): CredentialsEntity => {
+	const credId = (overrides?.id as string) ?? nanoId.nanoid();
+	const projId = overrides?.projectId ?? projectId;
+
+	return {
+		id: credId,
+		createdAt: date(),
+		updatedAt: date(),
+
+		name,
+		type,
+		data: overrides?.data ? JSON.stringify(overrides.data) : {},
+
+		isManaged: false,
+		isGlobal: false,
+		isResolvable: false,
+		resolvableAllowFallback: false,
+		resolverId: null,
+
+		shared: [
+			{
+				role: 'credential:owner',
+				projectId: projId,
+				credentialsId: credId,
+				createdAt: date(),
+				updatedAt: date(),
+			} as SharedCredentials,
+		],
+		...overrides,
+	} as CredentialsEntity;
 };

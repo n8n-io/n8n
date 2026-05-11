@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { getPairedItemId } from '@/app/utils/pairedItemUtils';
 import { shorten } from '@/app/utils/typesUtils';
@@ -14,7 +16,6 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -75,8 +76,9 @@ const columnLimitExceeded = ref(false);
 const draggableRef = ref<DraggableRef>();
 const fixedColumnWidths = ref<number[] | undefined>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -213,7 +215,7 @@ function getExpression(column: string) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column],
-		binaryMode: workflowsStore.workflow.settings?.binaryMode,
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
 
@@ -246,7 +248,7 @@ function getCellExpression(path: Array<string | number>, colIndex: number) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column, ...path],
-		binaryMode: workflowsStore.workflow.settings?.binaryMode,
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
 
@@ -533,12 +535,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -612,10 +613,9 @@ watch(
 											:disabled="mappingEnabled || collapsingColumnIndex === i"
 										>
 											<N8nIconButton
+												variant="ghost"
 												:class="$style.collapseColumnButton"
-												type="tertiary"
-												size="xmini"
-												text
+												size="xsmall"
 												:icon="
 													collapsingColumnIndex === i ? 'chevrons-up-down' : 'chevrons-down-up'
 												"
@@ -699,12 +699,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -901,7 +900,7 @@ th.isCollapsingColumn + th {
 	align-items: center;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 
-	span {
+	> :first-child {
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
@@ -1025,7 +1024,6 @@ th.isCollapsingColumn + th {
 	}
 
 	opacity: 0;
-	margin-block: calc(-2 * var(--spacing--2xs));
 
 	.isCollapsingColumn &,
 	th.isHoveredColumn &,

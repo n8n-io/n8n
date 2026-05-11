@@ -149,6 +149,129 @@ describe('PromptBuilder', () => {
 
 			expect(result).toContain('</a>\n\n<b>');
 		});
+
+		it('should output plain content without tags when format is "plain"', () => {
+			const result = prompt({ format: 'plain' }).section('ROLE', 'You are an assistant').build();
+
+			expect(result).toBe('You are an assistant');
+		});
+
+		it('should output multiple plain sections with separator', () => {
+			const result = prompt({ format: 'plain' })
+				.section('A', 'first')
+				.section('B', 'second')
+				.section('C', 'third')
+				.build();
+
+			expect(result).toBe('first\n\nsecond\n\nthird');
+		});
+
+		it('should support custom separator with plain format', () => {
+			const result = prompt({ format: 'plain', separator: '\n' })
+				.section('A', 'line one')
+				.section('B', 'line two')
+				.build();
+
+			expect(result).toBe('line one\nline two');
+		});
+
+		it('should work with sectionIf in plain format', () => {
+			const result = prompt({ format: 'plain' })
+				.section('A', 'always')
+				.sectionIf(true, 'B', 'included')
+				.sectionIf(false, 'C', 'excluded')
+				.build();
+
+			expect(result).toBe('always\n\nincluded');
+		});
+
+		it('should work with factory functions in plain format', () => {
+			const result = prompt({ format: 'plain' })
+				.section('DYNAMIC', () => 'computed value')
+				.build();
+
+			expect(result).toBe('computed value');
+		});
+	});
+
+	describe('per-section format override', () => {
+		it('should allow plain format override on individual section', () => {
+			const result = prompt()
+				.section('ROLE', 'You are an assistant')
+				.section('RAW', 'Plain text here', { format: 'plain' })
+				.build();
+
+			expect(result).toContain('<role>');
+			expect(result).toContain('</role>');
+			expect(result).toContain('Plain text here');
+			expect(result).not.toContain('<raw>');
+		});
+
+		it('should allow xml format override in plain builder', () => {
+			const result = prompt({ format: 'plain' })
+				.section('A', 'plain content')
+				.section('B', 'tagged content', { format: 'xml' })
+				.build();
+
+			expect(result).toContain('plain content');
+			expect(result).toContain('<b>');
+			expect(result).toContain('</b>');
+		});
+
+		it('should allow markdown format override in xml builder', () => {
+			const result = prompt()
+				.section('ROLE', 'xml tagged')
+				.section('NOTES', 'markdown header', { format: 'markdown' })
+				.build();
+
+			expect(result).toContain('<role>');
+			expect(result).toContain('## NOTES');
+		});
+
+		it('should respect per-section format in sectionIf', () => {
+			const result = prompt()
+				.sectionIf(true, 'CONDITIONAL', 'no tags', { format: 'plain' })
+				.build();
+
+			expect(result).toBe('no tags');
+		});
+
+		it('should ignore custom tag option when format is plain', () => {
+			const result = prompt()
+				.section('TEST', 'content', { format: 'plain', tag: 'custom_tag' })
+				.build();
+
+			expect(result).toBe('content');
+			expect(result).not.toContain('custom_tag');
+		});
+
+		it('should work with buildAsMessageBlocks and per-section format', () => {
+			const blocks = prompt()
+				.section('ROLE', 'tagged', { cache: true })
+				.section('RAW', 'plain', { format: 'plain' })
+				.buildAsMessageBlocks();
+
+			expect(blocks).toHaveLength(2);
+			expect(blocks[0].text).toContain('<role>');
+			expect(blocks[0]).toHaveProperty('cache_control');
+			expect(blocks[1].text).toBe('plain');
+			expect(blocks[1]).not.toHaveProperty('cache_control');
+		});
+
+		it('should handle mixed formats in complex prompt', () => {
+			const result = prompt()
+				.section('ROLE', 'You are an assistant')
+				.section('INTRO', 'Introduction text', { format: 'plain' })
+				.section('RULES', 'Important rules', { format: 'markdown' })
+				.section('OUTPUT', 'Output instructions')
+				.build();
+
+			expect(result).toContain('<role>');
+			expect(result).toContain('Introduction text');
+			expect(result).not.toContain('<intro>');
+			expect(result).toContain('## RULES');
+			expect(result).toContain('<output>');
+		});
 	});
 
 	describe('examples()', () => {
@@ -371,6 +494,30 @@ describe('PromptBuilder', () => {
 
 			expect(aSection).not.toContain('example for B');
 			expect(bSection).toContain('example for B');
+		});
+
+		it('should respect section format override for plain format', () => {
+			const result = prompt()
+				.section('TEST', 'content', { format: 'plain' })
+				.withExamples(['example 1', 'example 2'])
+				.build();
+
+			// Plain format should not wrap examples in tags
+			expect(result).toContain('content');
+			expect(result).toContain('example 1');
+			expect(result).toContain('example 2');
+			expect(result).not.toContain('<examples>');
+			expect(result).not.toContain('## Examples');
+		});
+
+		it('should respect section format override for markdown format', () => {
+			const result = prompt()
+				.section('TEST', 'content', { format: 'markdown' })
+				.withExamples(['example'])
+				.build();
+
+			expect(result).toContain('## Examples');
+			expect(result).not.toContain('<examples>');
 		});
 
 		it('should throw error for objects without content property when no formatter provided', () => {

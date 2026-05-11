@@ -60,7 +60,7 @@ export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) =>
 		maxTokens: MAX_OUTPUT_TOKENS,
 		anthropicApiUrl: config.baseUrl,
 		thinking: {
-			budget_tokens: 2056,
+			budget_tokens: 10000,
 			type: 'enabled',
 		},
 		clientOptions: {

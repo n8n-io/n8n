@@ -101,7 +101,9 @@ export class SourceControlGitService {
 		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
 			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
 				const instanceOwner = await this.ownershipService.getInstanceOwner();
-				await this.initRepository(sourceControlPreferences, instanceOwner);
+				await this.initRepository(sourceControlPreferences, instanceOwner, {
+					tolerateTrackingFetchFailure: true,
+				});
 			}
 		}
 
@@ -138,6 +140,7 @@ export class SourceControlGitService {
 					// ensures that the credentials are only used for the configured repositoryUrl of the environment
 					'credential.useHttpPath=true',
 				],
+				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
 			// Add proxy configuration if proxy environment variables are set
@@ -169,7 +172,12 @@ export class SourceControlGitService {
 			// - Subsequent connections: verifies against saved key
 			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=accept-new -i "${escapedPrivateKeyPath}"`;
 
-			this.git = simpleGit(this.gitOptions)
+			// Allow GIT_SSH_COMMAND so we can point SSH at n8n's own private key and known_hosts.
+			// This is safe because the command is constructed internally above, not from user input.
+			this.git = simpleGit({
+				...this.gitOptions,
+				unsafe: { allowUnsafeSshCommand: true },
+			})
 				.env('GIT_SSH_COMMAND', sshCommand)
 				.env('GIT_TERMINAL_PROMPT', '0');
 		}
@@ -222,6 +230,7 @@ export class SourceControlGitService {
 			'repositoryUrl' | 'branchName' | 'initRepo' | 'connectionType'
 		>,
 		user: User,
+		options?: { tolerateTrackingFetchFailure?: boolean },
 	): Promise<void> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (Promise)');
@@ -253,7 +262,7 @@ export class SourceControlGitService {
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
 
-		await this.trackRemoteIfReady(branchName);
+		await this.trackRemoteIfReady(branchName, options?.tolerateTrackingFetchFailure);
 
 		if (initRepo) {
 			try {
@@ -271,10 +280,18 @@ export class SourceControlGitService {
 	 * If this is a new local repository being set up after remote is ready,
 	 * then set this local to start tracking remote's target branch.
 	 */
-	private async trackRemoteIfReady(targetBranch: string) {
+	private async trackRemoteIfReady(targetBranch: string, tolerateFetchFailure: boolean = false) {
 		if (!this.git) return;
 
-		await this.fetch();
+		try {
+			await this.fetch();
+		} catch (error) {
+			if (!tolerateFetchFailure) {
+				throw error;
+			}
+			this.logger.warn('Failed to fetch during remote tracking setup', { error });
+			return; // Don't fail startup initialization for recoverable remote issues
+		}
 
 		const { currentBranch, branches: remoteBranches } = await this.getBranches();
 
@@ -483,11 +500,41 @@ export class SourceControlGitService {
 		return statusResult;
 	}
 
-	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
+	/**
+	 * Returns all file paths that have ever been committed under the given directory
+	 * on the current branch. Scoped to the current branch (ancestors of HEAD) so that
+	 * data tables pushed by other instances on different branches are not mistaken
+	 * for previously-synced resources on this instance.
+	 */
+	async getHistoricallyTrackedFiles(directory: string): Promise<Set<string>> {
 		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized (getFileContent)');
+			throw new UnexpectedError('Git is not initialized (getHistoricallyTrackedFiles)');
 		}
 		try {
+			const output = await this.git.raw([
+				'log',
+				'--pretty=format:',
+				'--name-only',
+				'--',
+				`${directory}/`,
+			]);
+			const files = new Set(
+				output
+					.split('\n')
+					.map((line) => line.trim())
+					.filter((line) => line.length > 0),
+			);
+			return files;
+		} catch {
+			return new Set();
+		}
+	}
+
+	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
+		try {
+			if (!this.git) {
+				throw new UnexpectedError('Git is not initialized (getFileContent)');
+			}
 			const content = await this.git.show([`${commit}:${filePath}`]);
 			return content;
 		} catch (error) {

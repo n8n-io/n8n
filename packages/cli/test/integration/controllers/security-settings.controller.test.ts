@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
@@ -12,6 +13,9 @@ import { setupTestServer } from '../shared/utils';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mockInstance(SecuritySettingsService);
+	const instanceSettingsLoaderConfig = mockInstance(InstanceSettingsLoaderConfig, {
+		securityPolicyManagedByEnv: false,
+	});
 
 	const testServer = setupTestServer({ endpointGroups: ['security-settings'] });
 	let ownerAgent: SuperAgentTest;
@@ -23,9 +27,16 @@ describe('SecuritySettingsController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		testServer.license.enable('feat:personalSpacePolicy');
+		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
 	});
 
 	describe('GET /settings/security', () => {
+		it('should return 403 when personalSpacePolicy license is not active', async () => {
+			testServer.license.disable('feat:personalSpacePolicy');
+			await ownerAgent.get('/settings/security').expect(403);
+		});
+
 		it('should return security settings and all counts', async () => {
 			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
 				personalSpacePublishing: true,
@@ -44,6 +55,7 @@ describe('SecuritySettingsController', () => {
 					publishedPersonalWorkflowsCount: 5,
 					sharedPersonalWorkflowsCount: 12,
 					sharedPersonalCredentialsCount: 3,
+					managedByEnv: false,
 				},
 			});
 			expect(securitySettingsService.arePersonalSpaceSettingsEnabled).toHaveBeenCalledTimes(1);
@@ -78,6 +90,14 @@ describe('SecuritySettingsController', () => {
 	});
 
 	describe('POST /settings/security', () => {
+		it('should return 403 when personalSpacePolicy license is not active', async () => {
+			testServer.license.disable('feat:personalSpacePolicy');
+			await ownerAgent
+				.post('/settings/security')
+				.send({ personalSpacePublishing: true })
+				.expect(403);
+		});
+
 		it('should update only personalSpacePublishing when only that is set in body', async () => {
 			securitySettingsService.setPersonalSpaceSetting.mockResolvedValue(undefined);
 
@@ -156,6 +176,35 @@ describe('SecuritySettingsController', () => {
 				.post('/settings/security')
 				.send({ personalSpacePublishing: true })
 				.expect(500);
+		});
+	});
+
+	describe('when securityPolicyManagedByEnv is true', () => {
+		beforeEach(() => {
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+		});
+
+		it('GET should return managedByEnv: true', async () => {
+			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
+				personalSpacePublishing: true,
+				personalSpaceSharing: true,
+			});
+			securitySettingsService.getPublishedPersonalWorkflowsCount.mockResolvedValue(0);
+			securitySettingsService.getSharedPersonalWorkflowsCount.mockResolvedValue(0);
+			securitySettingsService.getSharedPersonalCredentialsCount.mockResolvedValue(0);
+
+			const response = await ownerAgent.get('/settings/security').expect(200);
+
+			expect(response.body.data.managedByEnv).toBe(true);
+		});
+
+		it('POST should return 403 when settings are managed by env', async () => {
+			await ownerAgent
+				.post('/settings/security')
+				.send({ personalSpacePublishing: false })
+				.expect(403);
+
+			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
 		});
 	});
 });

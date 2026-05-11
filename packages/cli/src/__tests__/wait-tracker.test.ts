@@ -31,10 +31,14 @@ describe('WaitTracker', () => {
 		data: mock({
 			pushRef: 'push_ref',
 			parentExecution: undefined,
+			resultData: {
+				lastNodeExecuted: undefined,
+				runData: {},
+			},
 		}),
 		startedAt: undefined,
 	});
-	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
+	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd', nodes: [] });
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
@@ -159,7 +163,6 @@ describe('WaitTracker', () => {
 
 			await waitTracker.startExecution(execution.id);
 
-			// Verify startedAt is passed to workflowRunner.run()
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({
 					startedAt: originalStartedAt,
@@ -175,8 +178,9 @@ describe('WaitTracker', () => {
 				const parentExecution = mock<IExecutionResponse>({
 					id: 'parent_execution_id',
 					finished: false,
+					data: createRunExecutionData(),
 				});
-				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] });
 				execution.data.parentExecution = {
 					executionId: parentExecution.id,
 					workflowId: parentExecution.workflowData.id,
@@ -334,7 +338,7 @@ describe('WaitTracker', () => {
 					finished: false,
 					status: 'waiting',
 					waitTill: WAIT_INDEFINITELY,
-					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id' }),
+					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
 					customData: {},
 					annotation: { tags: [] },
 					createdAt: new Date(),

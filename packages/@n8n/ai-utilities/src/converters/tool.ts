@@ -39,7 +39,7 @@ export function fromLcTool(tool: LangchainChatModels.BindToolsInput): N8nTools.T
 		};
 	}
 	if ('function' in tool && 'type' in tool && tool.type === 'function') {
-		const functionTool = tool as FunctionDefinition;
+		const functionTool = tool.function as FunctionDefinition;
 		return {
 			type: 'function',
 			name: functionTool.name,

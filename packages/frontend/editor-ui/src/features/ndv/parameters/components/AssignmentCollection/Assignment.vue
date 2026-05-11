@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
@@ -45,7 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 
@@ -159,17 +159,15 @@ const onValueDrop = async (droppedExpression: string) => {
 		data-test-id="assignment"
 	>
 		<N8nIconButton
+			variant="ghost"
 			v-if="!isReadOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="grip-vertical"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			v-if="!isReadOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="trash-2"
 			data-test-id="assignment-remove"
@@ -299,11 +297,11 @@ const onValueDrop = async (droppedExpression: string) => {
 	color: var(--icon--color);
 }
 .extraTopPadding {
-	top: calc(20px + var(--spacing--lg));
+	top: calc(20px + var(--spacing--sm));
 }
 
 .defaultTopPadding {
-	top: var(--spacing--lg);
+	top: var(--spacing--sm);
 }
 
 .status {

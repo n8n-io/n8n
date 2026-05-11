@@ -115,8 +115,8 @@ export function appendChunkToParsedMessageItems(
 }
 
 function addTextToResult(result: ChatMessageContentChunk[], textContent: string): void {
-	// Skip empty or whitespace-only text
-	if (textContent.trim() === '') {
+	// Skip empty text (but preserve whitespace like newlines, which are meaningful in markdown)
+	if (textContent === '') {
 		return;
 	}
 

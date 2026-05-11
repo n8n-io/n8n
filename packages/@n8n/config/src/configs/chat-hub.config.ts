@@ -3,22 +3,21 @@ import { Config, Env } from '../decorators';
 @Config
 export class ChatHubConfig {
 	/**
-	 * TTL in seconds for storing execution context in Chat Hub.
-	 * This is the max duration for a single non-streaming Workflow Agent execution on Chat hub,
-	 * including any waiting time. Once this TTL expires, the responses produced by these
-	 * executions won't be captured or sent to the user on frontend.
-	 * */
+	 * Time to live in seconds for execution context in Chat Hub.
+	 * Maximum duration for a single non-streaming Workflow Agent execution, including wait time.
+	 * After this TTL, responses from those executions are no longer captured or sent to the client.
+	 */
 	@Env('N8N_CHAT_HUB_EXECUTION_CONTEXT_TTL')
 	executionContextTtl: number = 3600;
 
 	/**
-	 * TTL in seconds for stream state in Chat Hub.
-	 * Streams that are inactive for longer than this duration will be cleaned up.
-	 * */
+	 * Time to live in seconds for stream state in Chat Hub.
+	 * Inactive streams are cleaned up after this duration.
+	 */
 	@Env('N8N_CHAT_HUB_STREAM_STATE_TTL')
 	streamStateTtl: number = 300;
 
-	/** Maximum number of chunks to buffer for reconnection in Chat Hub. */
+	/** Maximum number of response chunks to buffer per stream for reconnection in Chat Hub. */
 	@Env('N8N_CHAT_HUB_MAX_BUFFERED_CHUNKS')
 	maxBufferedChunks: number = 1000;
 }

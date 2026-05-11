@@ -31,6 +31,7 @@ describe('CommunityNodeTypesService', () => {
 		configMock = {
 			enabled: true,
 			verifiedEnabled: true,
+			aiNodeSdkVersion: 1,
 		};
 		communityPackagesServiceMock = {};
 
@@ -51,26 +52,26 @@ describe('CommunityNodeTypesService', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
 		});
 
 		it('should call setTimestampForRetry when detectUpdates returns scheduleRetry', async () => {
@@ -113,6 +114,39 @@ describe('CommunityNodeTypesService', () => {
 
 			expect(detectUpdatesSpy).toHaveBeenCalled();
 			expect(setTimestampForRetrySpy).not.toHaveBeenCalled();
+		});
+
+		it('should batch IDs into chunks of 100 when updating >100 node types', async () => {
+			// Set up initial state so detectUpdates is called
+			(service as any).communityNodeTypes.set('node-1', {
+				name: 'node-1',
+				packageName: 'package-1',
+				npmVersion: '1.0.0',
+			});
+
+			const ids = Array.from({ length: 250 }, (_, i) => i + 1);
+
+			getCommunityNodeTypes.mockResolvedValue([]);
+
+			jest.spyOn(service as any, 'detectUpdates').mockResolvedValue({ typesToUpdate: ids });
+
+			await (service as any).fetchNodeTypes();
+
+			// 250 IDs should result in 3 batches
+			expect(getCommunityNodeTypes).toHaveBeenCalledTimes(3);
+
+			const firstCallFilters = getCommunityNodeTypes.mock.calls[0][1].filters.id.$in;
+			const secondCallFilters = getCommunityNodeTypes.mock.calls[1][1].filters.id.$in;
+			const thirdCallFilters = getCommunityNodeTypes.mock.calls[2][1].filters.id.$in;
+
+			expect(firstCallFilters).toHaveLength(100);
+			expect(secondCallFilters).toHaveLength(100);
+			expect(thirdCallFilters).toHaveLength(50);
+
+			expect(firstCallFilters[0]).toBe(1);
+			expect(firstCallFilters[99]).toBe(100);
+			expect(secondCallFilters[0]).toBe(101);
+			expect(thirdCallFilters[49]).toBe(250);
 		});
 	});
 
@@ -279,8 +313,8 @@ describe('CommunityNodeTypesService', () => {
 			(service as any).updateCommunityNodeTypes(mockNodeTypes);
 		});
 
-		it('should return the correct package when exact packageName match is found', () => {
-			const result = service.findVetted('n8n-nodes-air');
+		it('should return the correct package when exact packageName match is found', async () => {
+			const result = await service.findVetted('n8n-nodes-air');
 
 			expect(result).toBeDefined();
 			expect(result?.packageName).toBe('n8n-nodes-air');
@@ -288,14 +322,14 @@ describe('CommunityNodeTypesService', () => {
 			expect(result?.npmVersion).toBe('1.0.0');
 		});
 
-		it('should return undefined when package is not found', () => {
-			const result = service.findVetted('n8n-nodes-nonexistent');
+		it('should return undefined when package is not found', async () => {
+			const result = await service.findVetted('n8n-nodes-nonexistent');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should not match similar package names with substring matching', () => {
-			const result = service.findVetted('n8n-nodes-air');
+		it('should not match similar package names with substring matching', async () => {
+			const result = await service.findVetted('n8n-nodes-air');
 
 			expect(result).toBeDefined();
 			expect(result?.packageName).toBe('n8n-nodes-air');
@@ -303,9 +337,9 @@ describe('CommunityNodeTypesService', () => {
 			expect(result?.packageName).not.toBe('n8n-nodes-airparser');
 		});
 
-		it('should return the correct package from multiple similar names', () => {
-			const airResult = service.findVetted('n8n-nodes-air');
-			const airparserResult = service.findVetted('n8n-nodes-airparser');
+		it('should return the correct package from multiple similar names', async () => {
+			const airResult = await service.findVetted('n8n-nodes-air');
+			const airparserResult = await service.findVetted('n8n-nodes-airparser');
 
 			expect(airResult?.packageName).toBe('n8n-nodes-air');
 			expect(airResult?.checksum).toBe('checksum-air');
@@ -314,15 +348,15 @@ describe('CommunityNodeTypesService', () => {
 			expect(airparserResult?.checksum).toBe('checksum-airparser');
 		});
 
-		it('should return undefined when communityNodeTypes is empty', () => {
+		it('should return undefined when communityNodeTypes is empty', async () => {
 			(service as any).communityNodeTypes.clear();
 
-			const result = service.findVetted('n8n-nodes-air');
+			const result = await service.findVetted('n8n-nodes-air');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should handle packages with similar prefixes correctly', () => {
+		it('should handle packages with similar prefixes correctly', async () => {
 			const mockNodeTypes = [
 				{
 					name: 'n8n-nodes-test.test',
@@ -346,9 +380,9 @@ describe('CommunityNodeTypesService', () => {
 
 			(service as any).updateCommunityNodeTypes(mockNodeTypes);
 
-			const testResult = service.findVetted('n8n-nodes-test');
-			const testingResult = service.findVetted('n8n-nodes-testing');
-			const testerResult = service.findVetted('n8n-nodes-tester');
+			const testResult = await service.findVetted('n8n-nodes-test');
+			const testingResult = await service.findVetted('n8n-nodes-testing');
+			const testerResult = await service.findVetted('n8n-nodes-tester');
 
 			expect(testResult?.packageName).toBe('n8n-nodes-test');
 			expect(testingResult?.packageName).toBe('n8n-nodes-testing');
@@ -591,6 +625,57 @@ describe('CommunityNodeTypesService', () => {
 			expect(result.find((n) => n.name === 'n8n-nodes-test3.test3Tool')).toBeUndefined();
 		});
 
+		it('should not create AI tool version for nodes with trigger group', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-wcrm.wCRMTrigger',
+					packageName: 'n8n-nodes-wcrm',
+					nodeDescription: {
+						name: 'n8n-nodes-wcrm.wCRMTrigger',
+						displayName: 'wCRM Trigger',
+						group: ['trigger'],
+						inputs: [],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original, no tool version
+			expect(result.find((n) => n.name === 'n8n-nodes-wcrm.wCRMTriggerTool')).toBeUndefined();
+		});
+
+		it('should create AI tool version for nodes with "trigger" in the name but not in the group', async () => {
+			// e.g. a node for the trigger.dev service — name contains "trigger" but it's not a trigger node
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-triggerdev.triggerDevAction',
+					packageName: 'n8n-nodes-triggerdev',
+					nodeDescription: {
+						name: 'n8n-nodes-triggerdev.triggerDevAction',
+						displayName: 'Trigger.dev Action',
+						group: [],
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(2); // original + tool version
+			expect(
+				result.find((n) => n.name === 'n8n-nodes-triggerdev.triggerDevActionTool'),
+			).toBeDefined();
+		});
+
 		it('should not mutate original node type when creating tool version', async () => {
 			const mockNodeTypes = [
 				{
@@ -794,6 +879,8 @@ describe('CommunityNodeTypesService', () => {
 				{ name: 'package-2.node2', packageName: 'package-2', npmVersion: '2.0.0' },
 			];
 			(service as any).setCommunityNodeTypes(mockNodeTypes);
+			// Prevent fetchNodeTypes from running (and deleting the mock data via detectUpdates)
+			(service as any).lastUpdateTimestamp = Date.now();
 		});
 
 		it('should return node types with isInstalled flag', async () => {

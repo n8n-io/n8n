@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
-import FocusSidebarTabs from './FocusSidebarTabs.vue';
+import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
 
 const renderComponent = createComponentRenderer(FocusSidebarTabs);
 

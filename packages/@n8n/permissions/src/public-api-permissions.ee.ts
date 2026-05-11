@@ -30,6 +30,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'tag:list',
 	'workflowTags:update',
 	'workflowTags:list',
+	'executionTags:update',
+	'executionTags:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -41,6 +43,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'execution:delete',
 	'execution:read',
 	'execution:retry',
+	'execution:stop',
 	'execution:list',
 	'credential:create',
 	'credential:update',
@@ -57,6 +60,16 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
+	'folder:create',
+	'folder:delete',
+	'folder:read',
+	'folder:update',
+	'folder:list',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
+	'insights:read',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
@@ -68,6 +81,8 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'tag:list',
 	'workflowTags:update',
 	'workflowTags:list',
+	'executionTags:update',
+	'executionTags:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -79,6 +94,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'execution:delete',
 	'execution:read',
 	'execution:retry',
+	'execution:stop',
 	'execution:list',
 	'credential:create',
 	'credential:update',
@@ -94,6 +110,16 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
+	'folder:create',
+	'folder:delete',
+	'folder:read',
+	'folder:update',
+	'folder:list',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
+	'insights:read',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
@@ -107,6 +133,8 @@ export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
 export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'workflowTags:update',
 	'workflowTags:list',
+	'executionTags:update',
+	'executionTags:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -118,6 +146,7 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'execution:delete',
 	'execution:read',
 	'execution:retry',
+	'execution:stop',
 	'execution:list',
 	'credential:create',
 	'credential:update',
@@ -133,6 +162,11 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
+	'insights:read',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {

@@ -132,8 +132,8 @@ const handleDragEnd = () => {
 	<N8nPopover :class="$style.container" width="260px" max-height="300px" scroll-type="auto">
 		<template #trigger>
 			<N8nButton
+				variant="subtle"
 				icon="sliders-horizontal"
-				type="secondary"
 				:icon-size="iconSize"
 				:size="buttonSize"
 			>

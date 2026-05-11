@@ -78,9 +78,9 @@ describe('Secret Providers Types API', () => {
 				expect(response.status).toBe(200);
 			});
 
-			it('should refuse member to list provider types', async () => {
+			it('should authorize member to list provider types', async () => {
 				const response = await memberAgent.get('/secret-providers/types');
-				expect(response.status).toBe(403);
+				expect(response.status).toBe(200);
 			});
 		});
 
@@ -201,9 +201,9 @@ describe('Secret Providers Types API', () => {
 				expect(response.status).toBe(200);
 			});
 
-			it('should refuse member to get provider type', async () => {
+			it('should authorize member to get provider type', async () => {
 				const response = await memberAgent.get('/secret-providers/types/dummy');
-				expect(response.status).toBe(403);
+				expect(response.status).toBe(200);
 			});
 		});
 

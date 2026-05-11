@@ -1,5 +1,14 @@
+jest.mock('n8n-core', () => ({
+	getHtmlSandboxCSP: jest.fn(
+		() =>
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+	),
+	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+}));
+
 import { type Response } from 'express';
 import { type MockProxy, mock } from 'jest-mock-extended';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import { type INode, type IWebhookFunctions } from 'n8n-workflow';
 
 import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
@@ -87,6 +96,15 @@ describe('formCompletionUtils', () => {
 			typeVersion: 1,
 			disabled: false,
 		};
+
+		beforeEach(() => {
+			jest
+				.mocked(getHtmlSandboxCSP)
+				.mockReturnValue(
+					'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				);
+			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(false);
+		});
 
 		afterEach(() => {
 			jest.resetAllMocks();
@@ -329,7 +347,7 @@ describe('formCompletionUtils', () => {
 
 			expect(mockResponse.setHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
@@ -341,6 +359,27 @@ describe('formCompletionUtils', () => {
 					completionMessage: 'Form has been submitted successfully',
 					options: { formTitle: 'Form Title' },
 					respondWith: 'redirect',
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.any(String),
+			);
+			expect(mockResponse.render).toHaveBeenCalled();
+		});
+
+		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
+			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
 			});

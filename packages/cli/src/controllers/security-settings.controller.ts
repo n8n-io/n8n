@@ -1,12 +1,14 @@
 import { UpdateSecuritySettingsDto } from '@n8n/api-types';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Post, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
@@ -15,8 +17,10 @@ export class SecuritySettingsController {
 	constructor(
 		private readonly securitySettingsService: SecuritySettingsService,
 		private readonly eventService: EventService,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
+	@Licensed('feat:personalSpacePolicy')
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
@@ -36,9 +40,11 @@ export class SecuritySettingsController {
 			publishedPersonalWorkflowsCount,
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
+			managedByEnv: this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv,
 		};
 	}
 
+	@Licensed('feat:personalSpacePolicy')
 	@GlobalScope('securitySettings:manage')
 	@Post('/')
 	async updateSecuritySettings(
@@ -46,6 +52,12 @@ export class SecuritySettingsController {
 		_res: Response,
 		@Body dto: UpdateSecuritySettingsDto,
 	) {
+		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
+			throw new ForbiddenError(
+				'Security settings are managed via environment variables and cannot be modified through the API',
+			);
+		}
+
 		const updatedSettings: Record<string, boolean> = {};
 		if (dto.personalSpacePublishing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(

@@ -1,5 +1,9 @@
 import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
-import type { CreateCredentialDto } from '@n8n/api-types';
+import type {
+	AiGatewayConfigDto,
+	AiGatewayUsageResponse,
+	CreateCredentialDto,
+} from '@n8n/api-types';
 import {
 	AiChatRequestDto,
 	AiApplySuggestionRequestDto,
@@ -9,9 +13,11 @@ import {
 	AiSessionRetrievalRequestDto,
 	AiUsageSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
+	AiClearSessionRequestDto,
+	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -23,6 +29,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
@@ -38,6 +45,7 @@ export class AiController {
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
 		private readonly aiUsageService: AiUsageService,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
@@ -68,9 +76,14 @@ export class AiController {
 						executionData: workflowContext.executionData,
 						executionSchema: workflowContext.executionSchema,
 						expressionValues: workflowContext.expressionValues,
+						valuesExcluded: workflowContext.valuesExcluded,
+						pinnedNodes: workflowContext.pinnedNodes,
+						selectedNodes: workflowContext.selectedNodes,
 					},
 					featureFlags,
 					versionId,
+					mode: payload.payload.mode,
+					resumeData: payload.payload.resumeData,
 				},
 				req.user,
 				signal,
@@ -125,20 +138,34 @@ export class AiController {
 	@Post('/chat', { ipRateLimit: { limit: 100 } })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
 		try {
+			const abortController = new AbortController();
+			const { signal } = abortController;
+
+			const handleClose = () => abortController.abort();
+			res.on('close', handleClose);
+
 			const aiResponse = await this.aiService.chat(payload, req.user);
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
-				await aiResponse.body.pipeTo(
-					new WritableStream({
-						write(chunk) {
-							res.write(chunk);
-							res.flush();
-						},
-					}),
-				);
+				try {
+					await aiResponse.body.pipeTo(
+						new WritableStream({
+							write(chunk) {
+								res.write(chunk);
+								res.flush();
+							},
+						}),
+						{ signal },
+					);
+				} finally {
+					res.off('close', handleClose);
+				}
 				res.end();
 			}
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') {
+				return;
+			}
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}
@@ -232,6 +259,43 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiGateway')
+	@Get('/gateway/config')
+	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
+		try {
+			return await this.aiGatewayService.getGatewayConfig();
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiGateway')
+	@Get('/gateway/wallet')
+	async getGatewayWallet(req: AuthenticatedRequest): Promise<{ budget: number; balance: number }> {
+		try {
+			return await this.aiGatewayService.getWallet(req.user.id);
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiGateway')
+	@Get('/gateway/usage')
+	async getGatewayUsage(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Query query: AiGatewayUsageQueryDto,
+	): Promise<AiGatewayUsageResponse> {
+		try {
+			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
 	@Licensed('feat:aiBuilder')
 	@Get('/build/credits')
 	async getBuilderCredits(
@@ -258,8 +322,25 @@ export class AiController {
 				payload.workflowId,
 				req.user,
 				payload.messageId,
+				payload.versionCardId,
 			);
 			return { success };
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/build/clear-session', { ipRateLimit: { limit: 100 } })
+	async clearSession(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiClearSessionRequestDto,
+	): Promise<{ success: boolean }> {
+		try {
+			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
+			return { success: true };
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

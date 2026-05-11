@@ -1,27 +1,62 @@
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
+const disclaimerSchema = z.object({
+	text: z.string().refine((s) => s.includes('{link}'), {
+		message: '`disclaimer.text` must contain the {link} placeholder',
+	}),
+	linkUrl: z.string().url(),
+	linkLabel: z.string().optional(),
+});
+
+const baseQuickConnectOptionSchema = z.object({
+	packageName: z.string(),
+	credentialType: z.string(),
+	text: z.string(),
+	quickConnectType: z.string(),
+	consentText: z.string().optional(),
+	consentCheckbox: z.string().optional(),
+	disclaimer: disclaimerSchema.optional(),
+	config: z.never().optional(),
+	backendFlowConfig: z.never().optional(),
+});
+
+const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('pinecone'),
+	config: z.object({
+		integrationId: z.string(),
+	}),
+});
+
+const firecrawlQuickConnectSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('firecrawl'),
+	consentText: z.string(),
+	backendFlowConfig: z.object({
+		secret: z.string(),
+	}),
+});
+
+export type FirecrawlQuickConnect = z.infer<typeof firecrawlQuickConnectSchema>;
+
+const quickConnectOptionSchema = z.union([
+	firecrawlQuickConnectSchema,
+	pineconeQuickConnectOptionSchema,
+	baseQuickConnectOptionSchema,
+]);
+
+export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
+
 const quickConnectOptionsSchema = z.string().pipe(
-	z.preprocess(
-		(input: string) => {
-			try {
-				return JSON.parse(input);
-			} catch {
-				return [];
-			}
-		},
-		z.array(
-			z.object({
-				packageName: z.string(),
-				credentialType: z.string(),
-				text: z.string(),
-				quickConnectType: z.string(),
-			}),
-		),
-	),
+	z.preprocess((input: unknown) => {
+		try {
+			return JSON.parse(input as string);
+		} catch {
+			return [];
+		}
+	}, z.array(quickConnectOptionSchema)),
 );
 
-type QuickConnectOptions = z.infer<typeof quickConnectOptionsSchema>;
+export type QuickConnectOptions = z.infer<typeof quickConnectOptionsSchema>;
 
 @Config
 export class QuickConnectConfig {

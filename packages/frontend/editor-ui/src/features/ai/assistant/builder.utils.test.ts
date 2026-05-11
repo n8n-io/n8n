@@ -33,6 +33,13 @@ vi.mock('./composables/useAIAssistantHelpers', () => ({
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		getVariant: vi.fn().mockReturnValue('control'),
+		isFeatureEnabled: vi.fn().mockReturnValue(false),
+	}),
+}));
+
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: () => ({
+		buildContextPayload: vi.fn().mockReturnValue([]),
 	}),
 }));
 
@@ -358,11 +365,15 @@ describe('builder.utils', () => {
 			});
 			mockSimplifyResultData.mockReturnValue({ runData: {} });
 			mockExtractExpressionsFromWorkflow.mockResolvedValue({});
-			mockGetNodesSchemas.mockReturnValue([{ nodeName: 'Node 1', schema: {} }]);
+			mockGetNodesSchemas.mockReturnValue({
+				schemas: [{ nodeName: 'Node 1', schema: {} }],
+				pinnedNodeNames: [],
+			});
 		});
 
 		it('should include executionData and expressionValues when allowSendingParameterValues is true', async () => {
 			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
 				workflow: mockWorkflow,
 				executionData: mockExecutionData,
 				nodesForSchema: ['Node 1'],
@@ -385,6 +396,7 @@ describe('builder.utils', () => {
 
 		it('should include executionData and expressionValues when allowSendingParameterValues is undefined (default)', async () => {
 			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
 				workflow: mockWorkflow,
 				executionData: mockExecutionData,
 				nodesForSchema: ['Node 1'],
@@ -406,6 +418,7 @@ describe('builder.utils', () => {
 
 		it('should include executionData but NOT expressionValues when allowSendingParameterValues is false', async () => {
 			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
 				workflow: mockWorkflow,
 				executionData: mockExecutionData,
 				nodesForSchema: ['Node 1'],
@@ -428,18 +441,20 @@ describe('builder.utils', () => {
 
 		it('should always include executionSchema regardless of privacy setting', async () => {
 			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
 				workflow: mockWorkflow,
 				executionData: mockExecutionData,
 				nodesForSchema: ['Node 1'],
 				allowSendingParameterValues: false,
 			});
 
-			expect(mockGetNodesSchemas).toHaveBeenCalledWith(['Node 1'], true);
+			expect(mockGetNodesSchemas).toHaveBeenCalledWith('workflow-1', ['Node 1'], true);
 			expect(result.workflowContext?.executionSchema).toBeDefined();
 		});
 
 		it('should include workflow in payload when privacy is OFF but with trimmed parameter values', async () => {
 			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
 				workflow: mockWorkflow,
 				allowSendingParameterValues: false,
 			});

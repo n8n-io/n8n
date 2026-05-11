@@ -8,10 +8,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@n8n/ai-utilities';
-
-import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
-import { processDocuments } from '../shared/processDocuments';
+import { MemoryVectorStoreManager, processDocuments, type N8nJsonLoader } from '@n8n/ai-utilities';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryInsert implements INodeType {

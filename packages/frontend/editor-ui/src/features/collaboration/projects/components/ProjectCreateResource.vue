@@ -1,13 +1,14 @@
 <script lang="ts" setup>
-import type { ButtonType, UserAction } from '@n8n/design-system';
+import type { ButtonVariant, UserAction } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
 import { N8nActionToggle, N8nIconButton } from '@n8n/design-system';
+
 defineProps<{
 	actions: Array<UserAction<IUser>>;
 	disabled?: boolean;
-	type?: ButtonType;
+	variant?: ButtonVariant;
 }>();
 
 const emit = defineEmits<{
@@ -36,7 +37,7 @@ defineExpose({
 				:disabled="disabled"
 				:class="[$style.buttonGroupDropdown]"
 				icon="chevron-down"
-				:type="type ?? 'primary'"
+				:variant="variant ?? 'solid'"
 			/>
 		</N8nActionToggle>
 	</div>
@@ -47,8 +48,6 @@ defineExpose({
 	display: inline-flex;
 
 	:global(> .button) {
-		border-right: 1px solid var(--button--color--text, var(--button--color--text--primary));
-
 		&:not(:first-child) {
 			border-radius: 0;
 		}
@@ -61,6 +60,7 @@ defineExpose({
 }
 
 .buttonGroupDropdown {
+	border-left: 1px solid var(--color--black-alpha-100);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }

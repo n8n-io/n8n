@@ -77,15 +77,17 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
+		onMessageReceivedHandlers.value.forEach((handler) => {
+			handler(parsedData);
+		});
 	}
 
-	const url = getConnectionUrl();
+	const url = computed(() => getConnectionUrl());
 
 	const client = computed(() =>
 		useWebSockets.value
-			? useWebSocketClient({ url, onMessage })
-			: useEventSourceClient({ url, onMessage }),
+			? useWebSocketClient({ url: url.value, onMessage })
+			: useEventSourceClient({ url: url.value, onMessage }),
 	);
 
 	function serializeAndSend(message: unknown) {

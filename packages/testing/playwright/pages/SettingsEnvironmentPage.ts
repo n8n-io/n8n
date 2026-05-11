@@ -3,16 +3,16 @@ import { expect, type Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SettingsEnvironmentPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/settings/environments');
+	}
+
 	getConnectButton(): Locator {
 		return this.page.getByTestId('source-control-connect-button');
 	}
 
 	getDisconnectButton(): Locator {
 		return this.page.getByTestId('source-control-disconnect-button');
-	}
-
-	getSSHKeyValue(): Locator {
-		return this.page.getByTestId('copy-input').locator('span').first();
 	}
 
 	getRepoUrlInput(): Locator {

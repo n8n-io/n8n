@@ -6,7 +6,7 @@ import ChatMessagesPanel from '@/features/execution/logs/components/ChatMessages
 import LogsDetailsPanel from '@/features/execution/logs/components/LogDetailsPanel.vue';
 import LogsPanelActions from '@/features/execution/logs/components/LogsPanelActions.vue';
 import { useLogsExecutionData } from '@/features/execution/logs/composables/useLogsExecutionData';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useLogsSelection } from '@/features/execution/logs/composables/useLogsSelection';
 import { useLogsTreeExpand } from '@/features/execution/logs/composables/useLogsTreeExpand';
@@ -15,7 +15,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/execution/logs/composables/useLogsPanelLayout';
 import { type KeyMap } from '@/app/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
@@ -26,9 +26,9 @@ const popOutContainer = useTemplateRef('popOutContainer');
 const popOutContent = useTemplateRef('popOutContent');
 
 const logsStore = useLogsStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowName = computed(() => workflowsStore.workflow.name);
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowName = computed(() => workflowDocumentStore.value.name);
 
 const {
 	height,
@@ -50,14 +50,9 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
-const {
-	currentSessionId,
-	messages,
-	previousChatMessages,
-	sendMessage,
-	refreshSession,
-	displayExecution,
-} = useChatState(props.isReadOnly);
+const { currentSessionId, chatOptions, refreshSession, displayExecution } = useChatState(
+	props.isReadOnly,
+);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData({ isEnabled: isOpen });
@@ -166,7 +161,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 			>
 				<div ref="container" :class="$style.container" tabindex="-1">
 					<N8nResizeWrapper
-						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
+						v-if="hasChat && (!props.isReadOnly || (chatOptions.messageHistory ?? []).length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
 						:width="chatPanelWidth"
@@ -181,16 +176,13 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
-							:messages="messages"
 							:session-id="currentSessionId"
-							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
 							:is-header-clickable="!isPoppedOut"
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
-							@send-message="sendMessage"
 							@click-header="onToggleOpen"
 						/>
 					</N8nResizeWrapper>

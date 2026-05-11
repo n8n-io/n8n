@@ -93,7 +93,7 @@ function handleRowClick(_event: MouseEvent, { item }: { item: AffectedWorkflow }
 	window.open(
 		router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: item.id },
+			params: { workflowId: item.id },
 		}).href,
 		'_blank',
 	);
@@ -189,9 +189,8 @@ const sortedWorkflows = computed(() => {
 <template>
 	<div>
 		<N8nButton
+			variant="ghost"
 			:class="$style.backButton"
-			type="secondary"
-			text
 			icon="arrow-left"
 			:label="i18n.baseText('generic.back')"
 			class="mb-xs"

@@ -56,11 +56,11 @@
 		}
 	},
 	"id": "1770382922975-unknown-host-POST-_v1_messages-806f7911.json",
-	"priority": 0,
+	"priority": 1,
 	"timeToLive": {
 		"unlimited": true
 	},
 	"times": {
-		"unlimited": true
+		"remainingTimes": 1
 	}
 }

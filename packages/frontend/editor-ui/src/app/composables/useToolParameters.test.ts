@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { useToolParameters } from './useToolParameters';
 import { useWorkflowsStore } from '../stores/workflows.store';
@@ -10,9 +10,26 @@ import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
-import { mock } from 'vitest-mock-extended';
+
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		getNodeByName: vi.fn(),
+		getParentNodes: vi.fn().mockReturnValue([]),
+		allNodes: [],
+		workflowTriggerNodes: [],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
 
 describe('useToolParameters', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
@@ -28,8 +45,9 @@ describe('useToolParameters', () => {
 		agentRequestStore = useAgentRequestStore();
 
 		// Setup default mocks
+		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		projectsStore.currentProjectId = 'test-project';
-		workflowsStore.workflowId = 'test-workflow';
+		workflowsStore.setWorkflowId('test-workflow');
 		workflowsStore.getWorkflowExecution = null;
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
 	});
@@ -372,12 +390,8 @@ describe('useToolParameters', () => {
 				},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getParentNodes: vi.fn().mockReturnValue(['Connected Tool']),
-			});
-
-			workflowsStore.workflowObject = mockWorkflow;
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+			mockWorkflowDocumentStore.getParentNodes.mockReturnValue(['Connected Tool']);
+			mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 				if (name === 'Connected Tool') return connectedTool;
 				return null;
 			});
@@ -425,12 +439,8 @@ describe('useToolParameters', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getParentNodes: vi.fn().mockReturnValue(['Connected Tool']),
-			});
-
-			workflowsStore.workflowObject = mockWorkflow;
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+			mockWorkflowDocumentStore.getParentNodes.mockReturnValue(['Connected Tool']);
+			mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 				if (name === 'Connected Tool') return connectedTool;
 				return null;
 			});
