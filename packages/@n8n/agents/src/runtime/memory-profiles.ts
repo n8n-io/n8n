@@ -16,17 +16,14 @@ import type {
 import { AgentEvent } from '../types/runtime/event';
 import type { SerializedMessageList } from '../types/runtime/message-list';
 
-export const DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT = `You maintain two concise mutable memory profile documents.
+export const DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT = `You maintain one concise mutable user profile document.
 
 Inputs:
-- Agent description defines what the agent is.
-- Current agent-profile is what the agent has learned about its durable persona.
 - Current user-profile is what the agent has learned about this user or resource.
 - Recent conversation pair is the latest exchange.
 
-Update the profiles only when the conversation contains durable information that should persist across sessions.
+Update the user profile only when the conversation contains durable information that should persist across sessions.
 
-Agent-profile captures durable facts about the agent's persona, role, behavior, response style, operating constraints, and interaction patterns.
 User-profile captures stable cross-session information about the user or resource:
 - stable identity or role
 - durable context about the user's normal environment or responsibilities
@@ -42,21 +39,22 @@ Rules:
 - User-profile must exclude active project state, debugging steps, implementation order, branch stack, test flow, next actions, temporary constraints, session objectives, facts about this agent's internals, and facts about a specific feature unless phrased as a stable user preference.
 - User-profile may include durable user preferences, including response style, communication style, workflow preferences, and priorities that should personalize future conversations.
 - If the information would stop being useful after the current task ends, it does not belong in <user-profile>.
-- If the information describes the agent's own durable persona, role, identity, or operating mode, it belongs in <agent-profile>.
+- If the information describes the agent's durable persona, role, identity, operating mode, or instructions, it does not belong in <user-profile>.
 - If the information needs source or provenance, it does not belong in <user-profile>.
-- Agent-profile may include descriptive persona facts and durable operating rules, but must exclude implementation facts, model names, storage/data-model facts, schema facts, current feature details, current implementation details, and session state unless they define the configured agent's durable persona or operating mode.
 - Existing profile content is not authoritative. Rewrite profiles to remove entries that violate these rules, even if no new durable information is present.
 - Do not summarize the conversation.
 - Do not add situational or one-task-only details.
-- Do not copy the agent description verbatim.
+- Do not summarize, rewrite, or copy the agent's configured instructions.
 - If a profile needs no update or cleanup, return the existing profile content exactly.
+- Format the user profile as a plain markdown bullet list.
+- Each durable profile item should be one bullet starting with "- ".
+- Do not use sections, headings, tables, or long paragraphs.
 
 Return only JSON in this exact shape:
-{"agentProfile":"...","userProfile":"..."}`;
+{"userProfile":"..."}`;
 
 interface NormalizedMemoryProfilesConfig {
 	profileUpdatePrompt: string;
-	agentDescription?: string;
 }
 
 interface ProfileUpdateTurn {
@@ -82,7 +80,6 @@ export function isMemoryProfilesEnabled(
 function withMemoryProfileDefaults(config: MemoryProfilesConfig): NormalizedMemoryProfilesConfig {
 	return {
 		profileUpdatePrompt: config.prompts?.profileUpdate ?? DEFAULT_MEMORY_PROFILE_UPDATE_PROMPT,
-		...(config.agentDescription !== undefined && { agentDescription: config.agentDescription }),
 	};
 }
 
@@ -121,8 +118,6 @@ export async function updateMemoryProfilesFromTurn(opts: {
 			model: createModel(opts.model),
 			system: normalized.profileUpdatePrompt,
 			prompt: renderMemoryProfileUpdatePrompt({
-				agentDescription: normalized.agentDescription,
-				agentProfile: current?.agentProfile ?? '',
 				userProfile: current?.userProfile ?? '',
 				turn,
 			}),
@@ -133,13 +128,7 @@ export async function updateMemoryProfilesFromTurn(opts: {
 
 		await saveProfileIfChanged({
 			memory: opts.memory,
-			scope: agentMemoryProfileScope(opts.scope.agentId),
-			current: current?.agentProfile ?? '',
-			next: parsed.agentProfile,
-		});
-		await saveProfileIfChanged({
-			memory: opts.memory,
-			scope: resourceMemoryProfileScope(opts.scope.resourceId),
+			scope: memoryProfileScope(opts.scope),
 			current: current?.userProfile ?? '',
 			next: parsed.userProfile,
 		});
@@ -158,35 +147,22 @@ async function loadMemoryProfiles(
 	agentId: string | undefined,
 	resourceId: string | undefined,
 ): Promise<SerializedMessageList['memoryProfile'] | undefined> {
-	const [agentProfile, userProfile] = await Promise.all([
-		agentId ? memory.getMemoryProfile(agentMemoryProfileScope(agentId)) : Promise.resolve(null),
-		resourceId
-			? memory.getMemoryProfile(resourceMemoryProfileScope(resourceId))
-			: Promise.resolve(null),
-	]);
+	const userProfile =
+		agentId && resourceId
+			? await memory.getMemoryProfile(memoryProfileScope({ agentId, resourceId }))
+			: null;
 
 	const context = {
-		agentProfile: agentProfile?.content ?? null,
 		userProfile: userProfile?.content ?? null,
 	};
-	return context.agentProfile || context.userProfile ? context : undefined;
+	return context.userProfile ? context : undefined;
 }
 
 function renderMemoryProfileUpdatePrompt(ctx: {
-	agentDescription?: string;
-	agentProfile: string;
 	userProfile: string;
 	turn: ProfileUpdateTurn;
 }): string {
-	const agentDescription = ctx.agentDescription?.trim();
 	return [
-		...(agentDescription
-			? ['<agent-description>', agentDescription, '</agent-description>', '']
-			: []),
-		'<agent-profile>',
-		ctx.agentProfile.trim(),
-		'</agent-profile>',
-		'',
 		'<user-profile>',
 		ctx.userProfile.trim(),
 		'</user-profile>',
@@ -203,13 +179,12 @@ function renderMemoryProfileUpdatePrompt(ctx: {
 	].join('\n');
 }
 
-function parseProfileUpdate(text: string): { agentProfile: string; userProfile: string } | null {
+function parseProfileUpdate(text: string): { userProfile: string } | null {
 	const parsed = parseJsonObject(stripMarkdownFence(text));
 	if (!isRecord(parsed)) return null;
-	const agentProfile = parsed.agentProfile;
 	const userProfile = parsed.userProfile;
-	if (typeof agentProfile !== 'string' || typeof userProfile !== 'string') return null;
-	return { agentProfile: agentProfile.trim(), userProfile: userProfile.trim() };
+	if (typeof userProfile !== 'string') return null;
+	return { userProfile: userProfile.trim() };
 }
 
 async function saveProfileIfChanged(opts: {
@@ -223,12 +198,12 @@ async function saveProfileIfChanged(opts: {
 	await opts.memory.saveMemoryProfile(opts.scope, opts.next, null);
 }
 
-function agentMemoryProfileScope(agentId: string): MemoryProfileScope {
-	return { scopeKind: 'agent', scopeId: agentId };
-}
-
-function resourceMemoryProfileScope(resourceId: string): MemoryProfileScope {
-	return { scopeKind: 'resource', scopeId: resourceId };
+function memoryProfileScope(scope: AgentResourceScope): MemoryProfileScope {
+	return {
+		scopeKind: 'user-profile',
+		agentId: scope.agentId,
+		resourceId: scope.resourceId,
+	};
 }
 
 function findLatestUserAssistantPair(messages: AgentDbMessage[]): ProfileUpdateTurn | null {

@@ -256,6 +256,10 @@ export interface AgentPersistedMessageDto {
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
 }
+
+export interface AgentMemoryProfilesResponse {
+	userProfile: string | null;
+}
 // ─── Agent builder admin settings ─────────────────────────────────────────
 // The agent builder uses a model picked by the instance admin. By default it
 // runs through the n8n AI assistant proxy; admins can switch to a custom

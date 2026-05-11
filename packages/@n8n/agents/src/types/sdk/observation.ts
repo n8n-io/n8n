@@ -71,7 +71,6 @@ export type ObserveFn = (ctx: {
 	trigger: ObservationalMemoryTrigger;
 	gap: ObservationGapContext | null;
 	memoryProfile?: {
-		agentProfile?: string | null;
 		userProfile?: string | null;
 	};
 	telemetry: BuiltTelemetry | undefined;

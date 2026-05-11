@@ -6,11 +6,17 @@ export class CreateAgentMemoryTables1785000000000 implements ReversibleMigration
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('scopeKind').varchar(32).notNull,
-				column('scopeId').varchar(255).notNull,
+				column('agentId').varchar(36).notNull,
+				column('resourceId').varchar(255).notNull,
 				column('content').text.notNull,
 				column('metadata').json,
 			)
-			.withIndexOn(['scopeKind', 'scopeId'], true).withTimestamps;
+			.withIndexOn(['scopeKind', 'agentId', 'resourceId'], true)
+			.withForeignKey('agentId', {
+				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

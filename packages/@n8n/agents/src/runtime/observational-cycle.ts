@@ -53,7 +53,7 @@ Evidence rules:
 - Transcript roles matter. User messages are authoritative for requested work,
   current-session goals, constraints, corrections, and decisions.
 - Assistant messages are supporting context only. A normal assistant reply is not verification evidence.
-- Known agent and resource/user profiles are durable memory. Do not copy them
+- Known resource/user profiles are durable memory. Do not copy them
   into thread working memory unless the live transcript adds session-specific
   objective or task state.
 - Do not record assistant-created checklists, diagnostic questions, file/table
@@ -64,10 +64,10 @@ Evidence rules:
 
 Rules:
 - Prefer explicit session state over broad durable profile facts.
-- Do not record stable user identity, general communication style, long-lived
-  user-profile preferences, or durable agent-profile content as thread working memory.
+- Do not record stable user identity, general communication style, or long-lived
+  user-profile preferences as thread working memory.
 - Do not record general user preferences, repo-wide habits, style preferences,
-  or agent-profile content as session memory.
+  or configured agent instructions as session memory.
 - If a durable preference is relevant to the active objective:
   record only the objective-specific application, not the durable preference itself. For example:
   "For this task, do not run evals" instead of "User never wants evals run".
@@ -108,8 +108,8 @@ Rules:
 - Add only current-session objective, objective-specific decisions,
   objective-specific constraints, objective-specific uncertainties, task state,
   concrete progress, active items, and open follow-ups.
-- Remove stable user identity, general communication style, durable preferences,
-  and agent-profile content unless they are needed as session-specific task state.
+- Remove stable user identity, general communication style, and durable preferences
+  unless they are needed as session-specific task state.
 - When durable preferences are relevant to this thread:
   rewrite broad durable preferences into objective-specific constraints instead of copying them. For example:
   "For this task, do not run evals" instead of
@@ -325,13 +325,11 @@ export function buildDefaultObserveFn(model: ModelConfig, observerPrompt?: strin
 function renderMemoryProfileContext(
 	memoryProfile: SerializedMessageList['memoryProfile'] | undefined,
 ): string {
-	const agentProfile = memoryProfile?.agentProfile?.trim();
 	const userProfile = memoryProfile?.userProfile?.trim();
-	if (!agentProfile && !userProfile) return '';
+	if (!userProfile) return '';
 
 	return [
-		'Known durable profiles (do not copy into thread working memory):',
-		agentProfile ? `<agent-profile>\n${agentProfile}\n</agent-profile>` : '',
+		'Known durable user profile (do not copy into thread working memory):',
 		userProfile ? `<user-profile>\n${userProfile}\n</user-profile>` : '',
 	]
 		.filter(Boolean)
