@@ -14,25 +14,23 @@ export interface QuickStartWorkflow {
 	workflow: WorkflowDataCreate;
 	// Node types for card icons - extracted from workflow.nodes
 	nodeTypes: string[];
-	// Workflow preview image URL
-	previewImageUrl?: string;
 	// Number of nodes in workflow
 	nodeCount?: number;
 }
 
 export const quickStartWorkflows: QuickStartWorkflow[] = [
 	{
-		id: 'summarize-the-news',
-		name: 'Summarize the news',
-		description: 'Get AI-powered news summaries from top sources',
-		workflow: READY_TO_RUN_AI_WORKFLOW,
-		nodeTypes: ['n8n-nodes-base.rssFeedReadTool', '@n8n/n8n-nodes-langchain.agent'],
-	},
-	{
 		id: 'chat-with-the-news',
-		name: 'Chat with the news',
+		name: 'AI Agent: Chat with the news',
 		description: 'Chat with an AI agent about the latest news',
 		workflow: READY_TO_RUN_WORKFLOW_V5,
 		nodeTypes: ['@n8n/n8n-nodes-langchain.chatTrigger', '@n8n/n8n-nodes-langchain.agent'],
+	},
+	{
+		id: 'summarize-the-news',
+		name: 'AI Workflow: Summarize the news',
+		description: 'Get AI-powered news summaries from top sources',
+		workflow: READY_TO_RUN_AI_WORKFLOW,
+		nodeTypes: ['n8n-nodes-base.rssFeedReadTool', '@n8n/n8n-nodes-langchain.agent'],
 	},
 ];

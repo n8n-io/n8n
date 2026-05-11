@@ -75,11 +75,11 @@ const onClose = () => {
 
 		<template #footer>
 			<div :class="$style.footerActions">
-				<N8nButton type="secondary" data-test-id="eula-cancel-button" @click="onCancel">
+				<N8nButton variant="subtle" data-test-id="eula-cancel-button" @click="onCancel">
 					{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.cancel') }}
 				</N8nButton>
 				<N8nButton
-					type="primary"
+					variant="solid"
 					:disabled="isAcceptDisabled"
 					data-test-id="eula-accept-button"
 					@click="onAccept"

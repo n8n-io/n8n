@@ -1,0 +1,54 @@
+{
+	"name": "MCP Trigger Bearer Auth Test",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"authentication": "bearerAuth",
+				"path": "mcp-bearer"
+			},
+			"id": "mcp-trigger-node",
+			"name": "MCP Server Trigger",
+			"type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+			"typeVersion": 2,
+			"position": [300, 300],
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"name": "greet",
+				"description": "Greets the user with a personalized message",
+				"specifyInputSchema": true,
+				"jsonSchemaExample": "{\n\t\"name\": \"World\"\n}",
+				"jsCode": "return `Hello, ${query.name}!`;"
+			},
+			"id": "greet-tool-node",
+			"name": "Greet Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.1,
+			"position": [500, 300]
+		}
+	],
+	"connections": {
+		"Greet Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "MCP Server Trigger",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

@@ -4,6 +4,12 @@
 
 declare module 'vue-agile';
 
+declare module 'markdown-it-footnote' {
+	import type MarkdownIt from 'markdown-it';
+	const footnotePlugin: MarkdownIt.PluginSimple;
+	export default footnotePlugin;
+}
+
 declare module 'v3-infinite-loading' {
 	import { Plugin, DefineComponent } from 'vue';
 

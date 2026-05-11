@@ -6,7 +6,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
@@ -26,6 +26,8 @@ interface AuthJwtPayload {
 	browserId?: string;
 	/** This indicates if mfa was used during the creation of this token */
 	usedMfa?: boolean;
+	/** This indicates if the session originated from an embed login (cross-site cookie required) */
+	isEmbed?: boolean;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -90,6 +92,9 @@ export class AuthService {
 
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+
+			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
+			`/${restEndpoint}/instance-ai/events/:threadId`,
 		];
 	}
 
@@ -156,19 +161,28 @@ export class AuthService {
 		};
 	}
 
-	getCookieToken(req: AuthenticatedRequest) {
-		return req.cookies[AUTH_COOKIE_NAME];
+	getCookieToken(req: Request) {
+		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
+		if (typeof req.cookies === 'object' && req.cookies !== null) {
+			const cookies = req.cookies as Record<string, string | undefined>;
+			return cookies[AUTH_COOKIE_NAME];
+		}
+		return undefined;
 	}
 
-	getBrowserId(req: AuthenticatedRequest) {
-		return req.browserId;
+	getBrowserId(req: Request) {
+		// This models the behavior of APIRequest type having an optional browserId property of type string
+		if ('browserId' in req && typeof req.browserId === 'string') {
+			return req.browserId;
+		}
+		return undefined;
 	}
 
-	getMethod(req: AuthenticatedRequest) {
+	getMethod(req: Request) {
 		return req.method;
 	}
 
-	getEndpoint(req: AuthenticatedRequest) {
+	getEndpoint(req: Request) {
 		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 	}
 
@@ -192,7 +206,14 @@ export class AuthService {
 		}
 	}
 
-	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
+	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -200,26 +221,38 @@ export class AuthService {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId);
+		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: samesite,
-			secure,
+			sameSite: cookieOverrides?.sameSite ?? samesite,
+			secure: cookieOverrides?.secure ?? secure,
 		});
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
+	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
+			...(isEmbed && { isEmbed }),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
+	}
+
+	/**
+	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
+	 * user existence, and hash consistency. Skips browser-id and MFA checks
+	 * since those are not applicable to webhook cookie validation.
+	 */
+	async validateCookieToken(token: string): Promise<void> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+		await this.validateToken(token);
 	}
 
 	async authenticateUserBasedOnToken(
@@ -315,7 +348,17 @@ export class AuthService {
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, browserId);
+			const embedCookieOverrides = jwtPayload.isEmbed
+				? ({ sameSite: 'none' as const, secure: true } as const)
+				: undefined;
+			this.issueCookie(
+				res,
+				user,
+				jwtPayload.usedMfa ?? false,
+				browserId,
+				jwtPayload.isEmbed,
+				embedCookieOverrides,
+			);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
@@ -342,9 +385,9 @@ export class AuthService {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
+				this.logger.debug('Reset password token expired');
 			} else {
-				this.logger.debug('Error verifying token', { token });
+				this.logger.debug('Error verifying token');
 			}
 			return;
 		}
@@ -357,7 +400,7 @@ export class AuthService {
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
+				{ userId: decodedToken.sub },
 			);
 			return;
 		}

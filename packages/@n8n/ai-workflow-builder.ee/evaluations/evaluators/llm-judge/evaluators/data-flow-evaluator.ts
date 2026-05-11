@@ -86,14 +86,28 @@ Your task is to evaluate how accurately data is transformed and passed through t
 - Filter operations on arrays
 - Conditional data routing
 
+### 5. Loop and Batch Processing (Split In Batches)
+Split In Batches creates intentional loops for batch processing:
+- Output 0 ("done"): Fires ONCE after all batches complete
+- Output 1 ("loop"): Fires for EACH batch
+
+Correct data flow pattern:
+  Split In Batches (output 1) → Processing nodes → Split In Batches (input) [LOOP BACK]
+  Split In Batches (output 0) → Aggregate/Final step [COMPLETION]
+
+CRITICAL: The loop-back connection (Processing → Split In Batches input) is INTENTIONAL.
+- Data accumulates across iterations
+- Aggregate node on output 0 collects all processed items after loop completes
+- Do NOT flag loop-back connections as "circular references" or "infinite loops"
+
 ## Violations to Identify:
 
 **Critical (-30 to -40 points):**
 - Complete data loss in transformations
 - Wrong data types causing failures (e.g., string where number expected)
 - Missing required data fields for downstream nodes
-- Circular references or infinite loops in data
 - **DO NOT penalize AI agent tool usage patterns**
+- **DO NOT penalize Split In Batches loop-back connections** - these are intentional loops, not circular references
 
 **Major (-10 to -20 points):**
 - Partial data loss
@@ -114,6 +128,9 @@ Your task is to evaluate how accurately data is transformed and passed through t
 - Field renaming that maintains data integrity
 - Intermediate transformation steps for clarity
 - Placeholder values where user didn't provide data
+- Chat Trigger without return data flow (responses are automatic via built-in mechanism)
+- Document Loader without main input (reads from workflow context, not main connections)
+- Node positions not matching visual flow (positions are for layout only, not execution order)
 
 ### Context Awareness:
 - Consider the user's intent for data transformation

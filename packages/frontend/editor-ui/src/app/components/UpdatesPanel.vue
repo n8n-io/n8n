@@ -53,8 +53,7 @@ const i18n = useI18n();
 
 				<N8nButton
 					v-if="versionsStore.infoUrl"
-					:text="true"
-					type="primary"
+					variant="ghost"
 					size="large"
 					:class="$style['link']"
 					:bold="true"

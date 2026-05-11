@@ -9,6 +9,7 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
+import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import { INSECURE_CONNECTION_WARNING } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -27,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
@@ -79,6 +81,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isCanvasOnly = computed(() => settings.value.canvasOnly);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -109,11 +113,34 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	/**
+	 * Checks whether an agents-module sub-feature token (listed in
+	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
+	 * unless the top-level `agents` module is active AND the token is
+	 * present in the module settings' `modules` array.
+	 *
+	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
+	 */
+	const isAgentModuleActive = (name: string): boolean => {
+		return (
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.modules?.includes(name) === true
+		);
+	};
+
 	const isAiCreditsEnabled = computed(
 		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
 	);
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
+
+	const isAiDataSharingEnabled = computed(
+		() => settings.value.ai?.allowSendingParameterValues ?? true,
+	);
+
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -139,7 +166,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+	const isChatFeatureEnabled = computed(
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+	);
+
+	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
+	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
+	const isAgentsNodeToolsFeatureEnabled = computed(() =>
+		isAgentModuleActive('node-tools-searcher'),
+	);
+
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
@@ -147,6 +186,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
+	);
+
+	const isAutosaveEnabled = computed(() =>
+		settings.value.workflowsAutosaveDisabled !== undefined
+			? !settings.value.workflowsAutosaveDisabled
+			: true,
 	);
 
 	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
@@ -181,6 +226,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const endpointHealth = computed(() => settings.value.endpointHealth);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -328,6 +375,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
+	const updateAiDataSharingSettings = async (allowSendingParameterValues: boolean) => {
+		const rootStore = useRootStore();
+		await aiUsageApi.updateAiUsageSettings(rootStore.restApiContext, {
+			allowSendingParameterValues,
+		});
+		if (settings.value.ai) {
+			settings.value.ai.allowSendingParameterValues = allowSendingParameterValues;
+		}
+	};
+
 	return {
 		settings,
 		userManagement,
@@ -336,6 +393,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa,
 		isDocker,
 		isDevRelease,
+		endpointHealth,
 		isEnterpriseFeatureEnabled,
 		databaseType,
 		planName,
@@ -350,6 +408,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isCanvasOnly,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -365,6 +424,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantEnabled,
 		isCustomRolesFeatureEnabled,
 		areTagsEnabled,
+		isAutosaveEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,
 		isTemplatesEndpointReachable,
@@ -388,6 +448,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
+		isAiDataSharingEnabled,
+		isAiGatewayEnabled,
+		aiGatewayBudget,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -398,11 +461,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		initialize,
 		getModuleSettings,
 		moduleSettings,
+		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isAgentsNodeToolsFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

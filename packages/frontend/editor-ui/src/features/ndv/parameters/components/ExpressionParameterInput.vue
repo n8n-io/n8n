@@ -6,7 +6,7 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
@@ -22,6 +22,8 @@ import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+const i18n = useI18n();
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
@@ -56,7 +58,7 @@ const emit = defineEmits<{
 }>();
 
 const telemetry = useTelemetry();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 
 const canvas = inject(CanvasKey, undefined);
@@ -218,12 +220,12 @@ defineExpose({ focus, select });
 				</template>
 			</DraggableTarget>
 			<N8nButton
+				variant="outline"
+				iconOnly
 				v-if="!isDragging"
-				square
-				outline
-				type="tertiary"
 				icon="external-link"
-				size="mini"
+				size="xsmall"
+				:aria-label="i18n.baseText('expressionEdit.editExpression')"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
 				@click="emit('modal-opener-click')"
@@ -306,6 +308,8 @@ defineExpose({ focus, select });
 
 .focused :global(.cm-editor) {
 	border-color: var(--color--secondary);
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .focused > .expression-editor-modal-opener {

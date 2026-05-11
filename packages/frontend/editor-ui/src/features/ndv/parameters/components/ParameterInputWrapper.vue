@@ -14,7 +14,7 @@ import {
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import { isValueExpression, parseResourceMapperFieldName } from '@/app/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -44,6 +44,7 @@ type Props = {
 	label?: IParameterLabel;
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
+	hideLabel?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,7 +62,7 @@ const emit = defineEmits<{
 	textInput: [value: IUpdateInformation];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
@@ -187,6 +188,7 @@ defineExpose({
 				:documentation-url="documentationUrl"
 				:error-highlight="errorHighlight"
 				:is-for-credential="isForCredential"
+				:hide-label="hideLabel"
 				:event-source="eventSource"
 				:expression-evaluated="resolvedExpression"
 				:additional-expression-data="resolvedAdditionalExpressionData"

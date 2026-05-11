@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { ref, computed } from 'vue';
-import type * as I18nModule from '@n8n/i18n';
 
 // Mock the stores and composables
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -12,7 +11,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = (await importOriginal()) as typeof I18nModule;
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useI18n: () => ({

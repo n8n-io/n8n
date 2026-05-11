@@ -49,8 +49,12 @@ exports[`N8nCanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
       class="text"
     >
       
-       Working... 
-      <!--v-if-->
+      <div
+        class="wrapper"
+      >
+        Working... 
+        <!--v-if-->
+      </div>
       
     </span>
   </div>

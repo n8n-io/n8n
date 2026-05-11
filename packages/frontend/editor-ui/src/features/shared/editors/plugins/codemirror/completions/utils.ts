@@ -17,6 +17,10 @@ import type { SyntaxNode, Tree } from '@lezer/common';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -27,11 +31,16 @@ export function splitBaseTail(syntaxTree: Tree, userInput: string): [string, str
 	switch (lastNode.type.name) {
 		case '.':
 			return [read(lastNode.parent, userInput).slice(0, -1), ''];
+		case '?.':
+			return [read(lastNode.parent, userInput).slice(0, -2), ''];
 		case 'MemberExpression':
 			return [read(lastNode.parent, userInput), read(lastNode, userInput)];
-		case 'PropertyName':
+		case 'PropertyName': {
 			const tail = read(lastNode, userInput);
-			return [read(lastNode.parent, userInput).slice(0, -(tail.length + 1)), tail];
+			const parentText = read(lastNode.parent, userInput);
+			const accessorLen = parentText.endsWith('?.' + tail) ? 2 : 1;
+			return [parentText.slice(0, -(tail.length + accessorLen)), tail];
+		}
 		default:
 			return ['', ''];
 	}
@@ -138,6 +147,22 @@ export const isAllowedInDotNotation = (str: string) => {
 	return !DOT_NOTATION_BANNED_CHARS.test(str);
 };
 
+/**
+ * Whether is a string is a valid identifier to be used in dot notation.
+ * Allow-list alternative to the blocked-list approach in isAllowedInDotNotation.
+ * Rules:
+ * - Must start with a letter, underscore, or dollar sign.
+ * - Followed by zero or more letters, numbers, underscores, or dollar signs.
+ * - Nothing else allowed after that.
+ *
+ * Link to the spec: https://tc39.es/ecma262/#prod-IdentifierStart
+ */
+export const isValidJavascriptIdentifier = (str: string) => {
+	const VALID_IDENTIFIER = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+	return VALID_IDENTIFIER.test(str);
+};
+
 // ----------------------------------
 //      resolution-based utils
 // ----------------------------------
@@ -206,26 +231,47 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
-export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
-	(targetNodeParameterContext !== undefined &&
-		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
-	useNDVStore().activeNode?.name !== undefined;
+export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+	if (useNDVStore().activeNode?.name !== undefined) {
+		return true;
+	}
 
-export const isSplitInBatchesAbsent = () =>
-	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+	if (targetNodeParameterContext === undefined) {
+		return false;
+	}
+
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+
+	return workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null;
+};
+
+export const isSplitInBatchesAbsent = () => {
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+
+	return !workflowDocumentStore.allNodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+};
 
 export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const activeNode =
 		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
-			: useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName);
+			: workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];
 
 	const activeNodeName = activeNode.name;
 
-	const workflowObject = useWorkflowsStore().workflowObject;
-	const nonMainChildren = workflowObject.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+	const nonMainChildren = workflowDocumentStore.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
@@ -236,8 +282,11 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 }
 
 export function getPreviousNodes(nodeName: string) {
-	const workflowObject = useWorkflowsStore().workflowObject;
-	return workflowObject
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	return workflowDocumentStore
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
 		.filter((name) => name !== nodeName);
@@ -360,7 +409,8 @@ export const applyBracketAccessCompletion = (
 	to: number,
 ): void => {
 	const label = applyBracketAccess(completion.label);
-	const completionAtDot = view.state.sliceDoc(from - 1, from) === '.';
+	const completionAtOptionalDot = view.state.sliceDoc(from - 2, from) === '?.';
+	const completionAtDot = !completionAtOptionalDot && view.state.sliceDoc(from - 1, from) === '.';
 
 	view.dispatch({
 		...insertCompletionText(view.state, label, completionAtDot ? from - 1 : from, to),

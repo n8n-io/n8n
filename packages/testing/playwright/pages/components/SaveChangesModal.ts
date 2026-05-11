@@ -19,19 +19,11 @@ export class SaveChangesModal {
 		return this.root.locator('.el-message-box__headerbtn');
 	}
 
-	getSaveButton(): Locator {
-		return this.root.getByRole('button', { name: 'Save' });
-	}
-
 	async clickCancel(): Promise<void> {
 		await this.getCancelButton().click();
 	}
 
 	async clickClose(): Promise<void> {
 		await this.getCloseButton().click();
-	}
-
-	async clickSave(): Promise<void> {
-		await this.getSaveButton().click();
 	}
 }

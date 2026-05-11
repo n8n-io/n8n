@@ -14,6 +14,7 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -37,10 +38,12 @@ vi.mock('vue-router', () => {
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
+	const showToast = vi.fn();
 	return {
 		useToast: () => ({
 			showError,
 			showMessage,
+			showToast,
 		}),
 	};
 });
@@ -98,6 +101,7 @@ describe('WorkflowCard', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let settingsStore: MockedStore<typeof useSettingsStore>;
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let usersStore: MockedStore<typeof useUsersStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
@@ -107,6 +111,7 @@ describe('WorkflowCard', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
 		toast = useToast();
@@ -115,7 +120,9 @@ describe('WorkflowCard', () => {
 			envFeatureFlags: {
 				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
 			},
+			activeModules: ['dynamic-credentials'],
 		} as unknown as FrontendSettings;
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
@@ -135,7 +142,7 @@ describe('WorkflowCard', () => {
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 
@@ -162,7 +169,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		await waitFor(() => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
@@ -171,12 +178,12 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await userEvent.click(actions.querySelectorAll('li')[0]);
+		await userEvent.click(within(actions).getByTestId('action-open'));
 		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 	});
@@ -237,7 +244,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -265,7 +272,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -294,7 +301,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -325,7 +332,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -350,7 +357,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -365,7 +372,7 @@ describe('WorkflowCard', () => {
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
 
@@ -386,7 +393,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -401,8 +408,59 @@ describe('WorkflowCard', () => {
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
+	});
+
+	it('should show a "Delete permanently" link in the archive toast that deletes the archived workflow', async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId, emitted, rerender } = renderComponent({ props: { data } });
+		await userEvent.click(within(getByTestId('workflow-card-actions')).getByRole('button'));
+		await userEvent.click(getByTestId('action-archive'));
+
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
+		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+		expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
+		expect(toastConfig.onClick).toBeDefined();
+
+		// Simulate v-for reuse: parent replaces props.data with a different workflow.
+		// The toast onClick must still delete the originally archived workflow.
+		await rerender({ data: createWorkflow({ id: 'different-id', name: 'Other Workflow' }) });
+
+		const anchor = document.createElement('a');
+		toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+		await waitFor(() => {
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		});
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(emitted()['workflow:deleted']).toHaveLength(1);
+	});
+
+	it('should not delete when "Delete permanently" confirmation is cancelled', async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		await userEvent.click(within(getByTestId('workflow-card-actions')).getByRole('button'));
+		await userEvent.click(getByTestId('action-archive'));
+
+		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+		vi.mocked(message.confirm).mockResolvedValueOnce('cancel');
+
+		const anchor = document.createElement('a');
+		toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+		await waitFor(() => {
+			expect(message.confirm).toHaveBeenCalled();
+		});
+		expect(workflowsListStore.deleteWorkflow).not.toHaveBeenCalled();
 	});
 
 	it("should have 'Unarchive' action on archived workflows", async () => {
@@ -421,7 +479,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -455,7 +513,7 @@ describe('WorkflowCard', () => {
 		expect(cardActionsOpener).toBeInTheDocument();
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -467,8 +525,8 @@ describe('WorkflowCard', () => {
 		await userEvent.click(getByTestId('action-delete'));
 
 		expect(message.confirm).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:deleted']).toHaveLength(1);
@@ -502,7 +560,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -533,7 +591,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -559,7 +617,7 @@ describe('WorkflowCard', () => {
 		const toggleButton = within(actionsToggle).getByRole('button');
 		const controllingId = toggleButton.getAttribute('aria-controls');
 
-		await userEvent.click(actionsToggle);
+		await userEvent.click(toggleButton);
 
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
@@ -717,7 +775,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -776,7 +834,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -816,7 +874,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
@@ -833,7 +891,7 @@ describe('WorkflowCard', () => {
 		it('should show "Unpublish" action when workflow is published and user has permissions', async () => {
 			const data = createWorkflow({
 				activeVersionId: 'v1', // Published workflow
-				scopes: ['workflow:update'],
+				scopes: ['workflow:unpublish'],
 			});
 
 			const { getByTestId } = renderComponent({ props: { data } });
@@ -841,7 +899,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -853,7 +911,7 @@ describe('WorkflowCard', () => {
 		it('should not show "Unpublish" action when workflow is not published', async () => {
 			const data = createWorkflow({
 				activeVersionId: null, // Not published
-				scopes: ['workflow:update'],
+				scopes: ['workflow:unpublish'],
 			});
 
 			const { getByTestId } = renderComponent({ props: { data } });
@@ -861,7 +919,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -870,10 +928,10 @@ describe('WorkflowCard', () => {
 			expect(actions).not.toHaveTextContent('Unpublish');
 		});
 
-		it('should not show "Unpublish" action when user lacks update permission', async () => {
+		it('should not show "Unpublish" action when user lacks unpublish permission', async () => {
 			const data = createWorkflow({
 				activeVersionId: 'v1',
-				scopes: ['workflow:read'], // No update permission
+				scopes: ['workflow:read'], // No unpublish permission
 			});
 
 			const { getByTestId } = renderComponent({ props: { data } });
@@ -881,7 +939,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');
@@ -893,7 +951,7 @@ describe('WorkflowCard', () => {
 		it('should emit workflow:unpublished event when unpublish action is successful', async () => {
 			const data = createWorkflow({
 				activeVersionId: 'v1',
-				scopes: ['workflow:update'],
+				scopes: ['workflow:unpublish'],
 			});
 
 			const { getByTestId, emitted } = renderComponent({ props: { data } });
@@ -901,7 +959,7 @@ describe('WorkflowCard', () => {
 			const cardActionsOpener = within(cardActions).getByRole('button');
 			const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-			await userEvent.click(cardActions);
+			await userEvent.click(cardActionsOpener);
 			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 			if (!actions) {
 				throw new Error('Actions menu not found');

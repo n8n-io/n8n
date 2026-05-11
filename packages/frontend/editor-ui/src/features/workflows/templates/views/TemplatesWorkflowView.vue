@@ -13,6 +13,8 @@ import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
 import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client';
+
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -120,6 +122,17 @@ onBeforeUnmount(() => {
 		previewObserver = null;
 	}
 });
+
+const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() => {
+	if (!template.value?.workflow) return undefined;
+
+	if (template.value.readyToDemo) return template.value.workflow;
+
+	return {
+		...template.value.workflow,
+		pinData: {},
+	};
+});
 </script>
 
 <template>
@@ -135,7 +148,7 @@ onBeforeUnmount(() => {
 					<WorkflowPreview
 						v-if="showPreview"
 						:loading="loading"
-						:workflow="template?.workflow"
+						:workflow="strippedWorkflow"
 						@close="onHidePreview"
 					/>
 				</div>

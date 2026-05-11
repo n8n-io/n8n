@@ -11,11 +11,11 @@ import { OauthService } from '@/oauth/oauth.service';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverRegistry } from '@/modules/dynamic-credentials.ee/services';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
 jest.mock('axios');
 
 jest.mock('../utils', () => ({
-	getBearerToken: jest.requireActual('../utils').getBearerToken,
 	getDynamicCredentialMiddlewares: jest.fn(() => undefined),
 }));
 
@@ -24,6 +24,7 @@ describe('DynamicCredentialsController', () => {
 	const oauthService = mockInstance(OauthService);
 	const resolverRepository = mockInstance(DynamicCredentialResolverRepository);
 	const resolverRegistry = mockInstance(DynamicCredentialResolverRegistry);
+	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
 
 	mockInstance(Logger);
@@ -36,6 +37,13 @@ describe('DynamicCredentialsController', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
+
+		// Configure default credential context mock
+		dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue({
+			identity: 'token123',
+			version: 1 as const,
+			metadata: {},
+		});
 	});
 
 	describe('authorizeCredential', () => {
@@ -189,6 +197,7 @@ describe('DynamicCredentialsController', () => {
 				cid: '1',
 				origin: 'dynamic-credential',
 				authorizationHeader: 'Bearer token123',
+				authMetadata: {},
 				credentialResolverId: 'resolver-123',
 			});
 		});
@@ -224,32 +233,9 @@ describe('DynamicCredentialsController', () => {
 				cid: '1',
 				origin: 'dynamic-credential',
 				authorizationHeader: 'Bearer token123',
+				authMetadata: {},
 				credentialResolverId: 'resolver-123',
 			});
-		});
-
-		it('should throw UnauthenticatedError when authorization header is missing', async () => {
-			const req = mock<Request>({
-				params: { id: '1' },
-				query: { resolverId: 'resolver-123' },
-				headers: { authorization: undefined },
-			});
-			const res = mock<Response>();
-
-			await expect(controller.authorizeCredential(req, res)).rejects.toThrow('Unauthenticated');
-		});
-
-		it('should throw BadRequestError when authorization header is malformed', async () => {
-			const req = mock<Request>({
-				params: { id: '1' },
-				query: { resolverId: 'resolver-123' },
-				headers: { authorization: 'InvalidFormat' },
-			});
-			const res = mock<Response>();
-
-			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
-				'Authorization header is malformed',
-			);
 		});
 
 		it('should call validateIdentity when resolver has validateIdentity method', async () => {
@@ -268,19 +254,28 @@ describe('DynamicCredentialsController', () => {
 			});
 			const res = mock<Response>();
 
+			const expectedContext = {
+				identity: 'token123',
+				version: 1 as const,
+				metadata: {},
+			};
+
 			// Set up all mocks before calling the controller
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue(expectedContext);
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolverWithValidation);
-			cipher.decrypt.mockReturnValueOnce('{"introspectionUrl":"https://example.com/introspect"}');
+			cipher.decryptV2.mockResolvedValueOnce(
+				'{"introspectionUrl":"https://example.com/introspect"}',
+			);
 			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
 				'https://example.domain/oauth2/auth',
 			);
 
 			await controller.authorizeCredential(req, res);
 
-			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-config');
-			expect(mockResolverWithValidation.validateIdentity).toHaveBeenCalledWith('token123', {
+			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-config');
+			expect(mockResolverWithValidation.validateIdentity).toHaveBeenCalledWith(expectedContext, {
 				resolverId: 'resolver-123',
 				resolverName: 'oauth2-introspection-identifier',
 				configuration: { introspectionUrl: 'https://example.com/introspect' },
@@ -308,7 +303,7 @@ describe('DynamicCredentialsController', () => {
 
 			await controller.authorizeCredential(req, res);
 
-			expect(cipher.decrypt).not.toHaveBeenCalled();
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
 		});
 	});
 
@@ -323,30 +318,6 @@ describe('DynamicCredentialsController', () => {
 			generateId: jest.fn(),
 			setUpdateDate: jest.fn(),
 		};
-
-		it('should throw UnauthenticatedError when authorization header is missing', async () => {
-			const req = mock<Request>({
-				params: { id: '1' },
-				query: { resolverId: 'resolver-123' },
-				headers: { authorization: undefined },
-			});
-			const res = mock<Response>();
-
-			await expect(controller.revokeCredential(req, res)).rejects.toThrow('Unauthenticated');
-		});
-
-		it('should throw BadRequestError when authorization header is malformed', async () => {
-			const req = mock<Request>({
-				params: { id: '1' },
-				query: { resolverId: 'resolver-123' },
-				headers: { authorization: 'InvalidFormat' },
-			});
-			const res = mock<Response>();
-
-			await expect(controller.revokeCredential(req, res)).rejects.toThrow(
-				'Authorization header is malformed',
-			);
-		});
 
 		it('should throw NotFoundError when credential is not found', async () => {
 			const req = mock<Request>({
@@ -409,21 +380,21 @@ describe('DynamicCredentialsController', () => {
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-			cipher.decrypt.mockReturnValue('{"introspectionUrl":"https://example.com/introspect"}');
+			cipher.decryptV2.mockResolvedValue('{"introspectionUrl":"https://example.com/introspect"}');
 
 			await controller.revokeCredential(req, res);
 
 			expect(mockResolver.deleteSecret).toHaveBeenCalledTimes(1);
 			expect(mockResolver.deleteSecret).toHaveBeenCalledWith(
 				'1',
-				{ identity: 'token123', version: 1 },
+				{ identity: 'token123', version: 1, metadata: {} },
 				{
 					configuration: { introspectionUrl: 'https://example.com/introspect' },
 					resolverId: 'resolver-123',
 					resolverName: 'oauth2-introspection-identifier',
 				},
 			);
-			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-config');
+			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-config');
 			expect(res.status).toHaveBeenCalledWith(204);
 			expect(res.send).toHaveBeenCalled();
 		});
@@ -457,7 +428,7 @@ describe('DynamicCredentialsController', () => {
 
 			await controller.revokeCredential(req, res);
 
-			expect(cipher.decrypt).not.toHaveBeenCalled();
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(204);
 			expect(res.send).toHaveBeenCalled();
 		});
@@ -486,27 +457,27 @@ describe('DynamicCredentialsController', () => {
 			const res = mock<Response>();
 			res.status.mockReturnThis();
 
+			const expectedContext = {
+				identity: 'my-test-token',
+				version: 1 as const,
+				metadata: {},
+			};
+
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue(expectedContext);
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-			cipher.decrypt.mockReturnValue('{"key":"value","url":"https://test.com"}');
+			cipher.decryptV2.mockResolvedValue('{"key":"value","url":"https://test.com"}');
 
 			// Act
 			await controller.revokeCredential(req, res);
 
 			// Assert - PRIMARY FOCUS: Explicit parameter contract verification
-			expect(mockResolver.deleteSecret).toHaveBeenCalledWith(
-				'cred-456',
-				{
-					identity: 'my-test-token',
-					version: 1,
-				},
-				{
-					configuration: { key: 'value', url: 'https://test.com' },
-					resolverId: 'resolver-123',
-					resolverName: 'oauth2-introspection-identifier',
-				},
-			);
+			expect(mockResolver.deleteSecret).toHaveBeenCalledWith('cred-456', expectedContext, {
+				configuration: { key: 'value', url: 'https://test.com' },
+				resolverId: 'resolver-123',
+				resolverName: 'oauth2-introspection-identifier',
+			});
 		});
 
 		it('should work with OAuth1 credential type', async () => {
@@ -540,7 +511,7 @@ describe('DynamicCredentialsController', () => {
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-			cipher.decrypt.mockReturnValue('{"introspectionUrl":"https://example.com/introspect"}');
+			cipher.decryptV2.mockResolvedValue('{"introspectionUrl":"https://example.com/introspect"}');
 
 			// Act
 			await controller.revokeCredential(req, res);
@@ -550,7 +521,7 @@ describe('DynamicCredentialsController', () => {
 			expect(mockResolver.deleteSecret).toHaveBeenCalledTimes(1);
 			expect(mockResolver.deleteSecret).toHaveBeenCalledWith(
 				'1',
-				{ identity: 'token123', version: 1 },
+				{ identity: 'token123', version: 1, metadata: {} },
 				{
 					configuration: { introspectionUrl: 'https://example.com/introspect' },
 					resolverId: 'resolver-123',

@@ -9,7 +9,7 @@ class TagGenerator {
 		this.githubOutput = process.env.GITHUB_OUTPUT || null;
 	}
 
-	generate({ image, version, platform, includeDockerHub = false }) {
+	generate({ image, version, platform, includeDockerHub = false, sha = '' }) {
 		let imageName = image;
 		let versionSuffix = '';
 
@@ -27,6 +27,21 @@ class TagGenerator {
 		};
 
 		tags.all = [...tags.ghcr, ...tags.docker];
+
+		// Generate additional SHA-based tags for immutable references
+		if (sha) {
+			const shaVersion = `${version}-${sha}`;
+			const shaPlatformTag = `${shaVersion}${versionSuffix}${platformSuffix}`;
+			const shaGhcr = [`ghcr.io/${this.githubOwner}/${imageName}:${shaPlatformTag}`];
+			const shaDocker = includeDockerHub
+				? [`${this.dockerUsername}/${imageName}:${shaPlatformTag}`]
+				: [];
+			tags.all = [...tags.all, ...shaGhcr, ...shaDocker];
+			tags.ghcr = [...tags.ghcr, ...shaGhcr];
+			tags.docker = [...tags.docker, ...shaDocker];
+			tags.shaPrimaryTag = shaGhcr[0].replace(/-amd64$|-arm64$/, '');
+		}
+
 		return tags;
 	}
 
@@ -40,18 +55,21 @@ class TagGenerator {
 				`${prefixStr}docker_tag=${tags.docker[0] || ''}`,
 				`${prefixStr}primary_tag=${primaryTag}`,
 			];
+			if (tags.shaPrimaryTag) {
+				outputs.push(`${prefixStr}sha_primary_tag=${tags.shaPrimaryTag}`);
+			}
 			appendFileSync(this.githubOutput, outputs.join('\n') + '\n');
 		} else {
 			console.log(JSON.stringify(tags, null, 2));
 		}
 	}
 
-	generateAll({ version, platform, includeDockerHub = false }) {
+	generateAll({ version, platform, includeDockerHub = false, sha = '' }) {
 		const images = ['n8n', 'runners', 'runners-distroless'];
 		const results = {};
 
 		for (const image of images) {
-			const tags = this.generate({ image, version, platform, includeDockerHub });
+			const tags = this.generate({ image, version, platform, includeDockerHub, sha });
 			const prefix = image.replace('-distroless', '_distroless');
 			results[prefix] = tags;
 
@@ -86,6 +104,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				version,
 				platform: getArg('platform'),
 				includeDockerHub: hasFlag('include-docker'),
+				sha: getArg('sha') || '',
 			});
 			if (!generator.githubOutput) {
 				console.log(JSON.stringify(results, null, 2));
@@ -101,6 +120,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				version,
 				platform: getArg('platform'),
 				includeDockerHub: hasFlag('include-docker'),
+				sha: getArg('sha') || '',
 			});
 			generator.output(tags);
 		}

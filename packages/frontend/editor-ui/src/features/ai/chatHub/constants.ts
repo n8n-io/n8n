@@ -1,4 +1,8 @@
-import type { ChatHubLLMProvider, ChatHubProvider } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubProvider,
+	ChatHubVectorStoreProvider,
+} from '@n8n/api-types';
 
 // Route and view identifiers
 export const CHAT_VIEW = 'chat';
@@ -32,9 +36,16 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	'custom-agent': 'Personal agent',
 };
 
+export const vectorStoreProviderDisplayNames: Record<ChatHubVectorStoreProvider, string> = {
+	pgvector: 'PGVector',
+	pinecone: 'Pinecone',
+	qdrant: 'Qdrant',
+};
+
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
 
-export const TOOLS_SELECTOR_MODAL_KEY = 'toolsSelectorModal';
+export const TOOL_SETTINGS_MODAL_KEY = 'toolSettingsModal';
+export const TOOLS_MANAGER_MODAL_KEY = 'toolsManagerModal';
 export const AGENT_EDITOR_MODAL_KEY = 'agentEditorModal';
 export const CHAT_CREDENTIAL_SELECTOR_MODAL_KEY = 'chatCredentialSelectorModal';
 export const CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY = 'chatModelByIdSelectorModal';

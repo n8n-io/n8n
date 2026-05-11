@@ -2,10 +2,11 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
-import { isValidEmail, SettingsRepository } from '@n8n/db';
-import type { User, RunningMode, SyncStatus } from '@n8n/db';
-import { Service, Container } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
+import { isValidEmail, SettingsRepository, User } from '@n8n/db';
+import type { RunningMode, SyncStatus } from '@n8n/db';
+import { Constructable, Container } from '@n8n/di';
+import type { IPasswordAuthHandler } from '@n8n/decorators';
+import { AuthHandler } from '@n8n/decorators';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -45,8 +46,9 @@ import {
 	getUserByLdapId,
 } from './helpers.ee';
 
-@Service()
-export class LdapService {
+@AuthHandler()
+export class LdapService implements IPasswordAuthHandler<User> {
+	readonly metadata = { name: 'ldap', type: 'password' as const };
 	private client: Client | undefined;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -55,6 +57,8 @@ export class LdapService {
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
 
 	config: LdapConfig;
+
+	readonly userClass: Constructable<User> = User;
 
 	constructor(
 		private readonly logger: Logger,
@@ -92,7 +96,7 @@ export class LdapService {
 			ldapConfig.enforceEmailUniqueness = true;
 		}
 
-		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
+		ldapConfig.bindingAdminPassword = await this.cipher.decryptV2(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
 
@@ -109,7 +113,7 @@ export class LdapService {
 
 		this.setConfig({ ...ldapConfig });
 
-		ldapConfig.bindingAdminPassword = this.cipher.encrypt(ldapConfig.bindingAdminPassword);
+		ldapConfig.bindingAdminPassword = await this.cipher.encryptV2(ldapConfig.bindingAdminPassword);
 
 		if (!ldapConfig.loginEnabled) {
 			ldapConfig.synchronizationEnabled = false;
@@ -383,8 +387,12 @@ export class LdapService {
 
 		const localAdUsers = await getLdapIds();
 
+		const processableAdUsers = this.config.enforceEmailUniqueness
+			? this.filterEmailDuplicates(adUsers)
+			: adUsers;
+
 		const { usersToCreate, usersToUpdate, usersToDisable } = this.getUsersToProcess(
-			adUsers,
+			processableAdUsers,
 			localAdUsers,
 		);
 
@@ -419,10 +427,8 @@ export class LdapService {
 				await processUsers(filteredUsersToCreate, filteredUsersToUpdate, usersToDisable);
 			}
 		} catch (error) {
-			if (error instanceof QueryFailedError) {
-				status = 'error';
-				errorMessage = `${error.message}`;
-			}
+			status = 'error';
+			errorMessage = error instanceof Error ? error.message : String(error);
 		}
 
 		await saveLdapSynchronization({
@@ -439,13 +445,17 @@ export class LdapService {
 
 		this.eventService.emit('ldap-general-sync-finished', {
 			type: !this.syncTimer ? 'scheduled' : `manual_${mode}`,
-			succeeded: true,
+			succeeded: status === 'success',
 			usersSynced:
 				filteredUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
 			error: errorMessage,
 		});
 
-		this.logger.debug('LDAP - Synchronization finished successfully');
+		if (status === 'success') {
+			this.logger.debug('LDAP - Synchronization finished successfully');
+		} else {
+			this.logger.error('LDAP - Synchronization finished with errors', { error: errorMessage });
+		}
 	}
 
 	/** Stop the current job scheduled, if any */
@@ -468,6 +478,33 @@ export class LdapService {
 			usersToUpdate: this.getUsersToUpdate(adUsers, localAdUsers),
 			usersToDisable: this.getUsersToDisable(adUsers, localAdUsers),
 		};
+	}
+
+	/**
+	 * Drop LDAP entries whose email appears on more than one entry in the same
+	 * batch. Prevents the sync from linking or creating ambiguous identities
+	 * when `enforceEmailUniqueness` is enabled — parity with the guard applied
+	 * on the login path.
+	 */
+	private filterEmailDuplicates(adUsers: LdapUser[]): LdapUser[] {
+		const emailCounts = new Map<string, number>();
+		for (const adUser of adUsers) {
+			const email = adUser[this.config.emailAttribute] as string | undefined;
+			if (!email) continue;
+			emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
+		}
+
+		return adUsers.filter((adUser) => {
+			const email = adUser[this.config.emailAttribute] as string | undefined;
+			if (email && (emailCounts.get(email) ?? 0) > 1) {
+				this.logger.warn('LDAP sync skipped entry: multiple LDAP accounts share the same email', {
+					email,
+					ldapId: adUser[this.config.ldapIdAttribute] as string,
+				});
+				return false;
+			}
+			return true;
+		});
 	}
 
 	/** Get users in LDAP that are not in the database yet */
@@ -496,7 +533,7 @@ export class LdapService {
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}
 
-	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
+	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
 		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;

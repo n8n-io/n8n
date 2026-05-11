@@ -1,5 +1,13 @@
 import { YjsProvider } from '../providers/yjs';
-import type { CRDTDoc, CRDTMap, CRDTUndoManager, UndoStackChangeEvent } from '../types';
+import type {
+	CRDTDoc,
+	CRDTMap,
+	CRDTUndoManager,
+	DeepChange,
+	DeepChangeEvent,
+	TransactionBatch,
+	UndoStackChangeEvent,
+} from '../types';
 
 // Run tests for all providers
 describe.each([['Yjs', () => new YjsProvider()]])('%s UndoManager', (_name, createProvider) => {
@@ -493,6 +501,330 @@ describe('UndoManager - provider-specific tests', () => {
 			expect(() => doc.createUndoManager()).toThrow('Undo manager already exists');
 
 			um1.destroy();
+			doc.destroy();
+		});
+	});
+
+	describe('Yjs - doc.transact integration', () => {
+		it('should track changes made via doc.transact', () => {
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const map = doc.getMap<string>('test-map');
+			const undoManager = doc.createUndoManager({ captureTimeout: 0 });
+
+			// Use doc.transact like the real app does
+			doc.transact(() => {
+				map.set('key', 'value1');
+			});
+
+			expect(undoManager.canUndo()).toBe(true);
+			expect(map.get('key')).toBe('value1');
+
+			// Undo should revert the change
+			const undoResult = undoManager.undo();
+			expect(undoResult).toBe(true);
+			expect(map.get('key')).toBeUndefined();
+
+			// Redo should restore it
+			const redoResult = undoManager.redo();
+			expect(redoResult).toBe(true);
+			expect(map.get('key')).toBe('value1');
+
+			undoManager.destroy();
+			doc.destroy();
+		});
+
+		it('should track nested map changes via doc.transact', () => {
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const nodesMap = doc.getMap('nodes');
+			const undoManager = doc.createUndoManager({ captureTimeout: 0 });
+
+			// Simulate adding a node (like useCrdtWorkflowDoc does)
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodeMap.set('name', 'Test Node');
+				nodesMap.set('node-1', nodeMap);
+			});
+
+			expect(undoManager.canUndo()).toBe(true);
+			expect(nodesMap.get('node-1')).toBeDefined();
+
+			// Undo should remove the node
+			undoManager.undo();
+			expect(nodesMap.get('node-1')).toBeUndefined();
+
+			// Redo should restore it
+			undoManager.redo();
+			const node = nodesMap.get('node-1');
+			expect(node).toBeDefined();
+
+			undoManager.destroy();
+			doc.destroy();
+		});
+
+		it('should track position update via doc.transact', () => {
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const nodesMap = doc.getMap('nodes');
+			const undoManager = doc.createUndoManager({ captureTimeout: 0 });
+
+			// Add a node first
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodesMap.set('node-1', nodeMap);
+			});
+			undoManager.stopCapturing();
+
+			// Get the node and update position (like drag does)
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
+			doc.transact(() => {
+				nodeMap.set('position', [300, 400]);
+			});
+
+			expect(nodeMap.get('position')).toEqual([300, 400]);
+			expect(undoManager.canUndo()).toBe(true);
+
+			// Undo should revert position
+			undoManager.undo();
+			expect(nodeMap.get('position')).toEqual([100, 200]);
+
+			undoManager.destroy();
+			doc.destroy();
+		});
+
+		it('should work when undo manager is created after maps exist', () => {
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+
+			// Access maps BEFORE creating undo manager (like real app flow)
+			const nodesMap = doc.getMap('nodes');
+			const edgesMap = doc.getMap('edges');
+
+			// Now create undo manager (should include nodes and edges in scope)
+			const undoManager = doc.createUndoManager({ captureTimeout: 0 });
+
+			// Make a change
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodesMap.set('node-1', nodeMap);
+			});
+
+			expect(undoManager.canUndo()).toBe(true);
+			expect(nodesMap.get('node-1')).toBeDefined();
+
+			// Undo should work
+			undoManager.undo();
+			expect(nodesMap.get('node-1')).toBeUndefined();
+
+			// Suppress unused variable warning
+			void edgesMap;
+
+			undoManager.destroy();
+			doc.destroy();
+		});
+
+		it('should emit undoRedo origin when undo/redo is triggered', async () => {
+			const { ChangeOrigin } = await import('../types');
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const nodesMap = doc.getMap('nodes');
+			const undoManager = doc.createUndoManager({ captureTimeout: 0 });
+
+			// Track origins from onTransactionBatch
+			const origins: string[] = [];
+			doc.onTransactionBatch(['nodes'], (batch) => {
+				origins.push(batch.origin);
+			});
+
+			// Make a change (should be 'local')
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodesMap.set('node-1', nodeMap);
+			});
+
+			expect(origins).toContain(ChangeOrigin.local);
+			origins.length = 0; // Clear
+
+			// Undo (should be 'undoRedo')
+			undoManager.undo();
+			expect(origins).toContain(ChangeOrigin.undoRedo);
+			origins.length = 0;
+
+			// Redo (should be 'undoRedo')
+			undoManager.redo();
+			expect(origins).toContain(ChangeOrigin.undoRedo);
+
+			undoManager.destroy();
+			doc.destroy();
+		});
+
+		it('should emit position changes on undo via onTransactionBatch', async () => {
+			const { ChangeOrigin, isMapChange } = await import('../types');
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const nodesMap = doc.getMap('nodes');
+			const undoManager = doc.createUndoManager({ captureTimeout: 0 });
+
+			// Track changes from onTransactionBatch
+			interface TrackedChange {
+				origin: string;
+				changes: DeepChange[];
+			}
+			const tracked: TrackedChange[] = [];
+			doc.onTransactionBatch(['nodes'], (batch: TransactionBatch) => {
+				const allChanges: DeepChange[] = [];
+				for (const changes of batch.changes.values()) {
+					allChanges.push(...changes);
+				}
+				tracked.push({
+					origin: batch.origin,
+					changes: allChanges,
+				});
+			});
+
+			// Add a node
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodesMap.set('node-1', nodeMap);
+			});
+			undoManager.stopCapturing();
+			tracked.length = 0; // Clear initial add
+
+			// Get the node and update position
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
+			doc.transact(() => {
+				nodeMap.set('position', [300, 400]);
+			});
+
+			// Verify we got the position change
+			expect(tracked.length).toBe(1);
+			expect(tracked[0].origin).toBe(ChangeOrigin.local);
+			const positionChange = tracked[0].changes.find(
+				(c) => isMapChange(c) && c.path.includes('position'),
+			);
+			expect(positionChange).toBeDefined();
+			tracked.length = 0;
+
+			// Undo the position change
+			undoManager.undo();
+
+			// Verify we got the undo change with undoRedo origin
+			expect(tracked.length).toBe(1);
+			expect(tracked[0].origin).toBe(ChangeOrigin.undoRedo);
+			const undoChange = tracked[0].changes.find(
+				(c) => isMapChange(c) && c.path.includes('position'),
+			);
+			expect(undoChange).toBeDefined();
+			expect(isMapChange(undoChange!)).toBe(true);
+			expect((undoChange as DeepChangeEvent).value).toEqual([100, 200]); // Original position restored
+
+			undoManager.destroy();
+			doc.destroy();
+		});
+
+		it('should emit position changes with correct path structure', async () => {
+			const { isMapChange } = await import('../types');
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const nodesMap = doc.getMap('nodes');
+
+			// Track all changes
+			const changes: DeepChange[] = [];
+			doc.onTransactionBatch(['nodes'], (batch) => {
+				for (const [, mapChanges] of batch.changes) {
+					for (const change of mapChanges) {
+						changes.push(change);
+					}
+				}
+			});
+
+			// Add a node
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodesMap.set('node-1', nodeMap);
+			});
+
+			// Find the node add change
+			const nodeAddChange = changes.find(
+				(c) => isMapChange(c) && c.path.length === 1 && c.path[0] === 'node-1',
+			);
+			expect(nodeAddChange).toBeDefined();
+			expect(isMapChange(nodeAddChange!)).toBe(true);
+			expect((nodeAddChange as DeepChangeEvent).action).toBe('add');
+
+			changes.length = 0;
+
+			// Update position on existing node
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
+			doc.transact(() => {
+				nodeMap.set('position', [300, 400]);
+			});
+
+			// onTransactionBatch uses changedParentTypes with target filtering
+			// to only get direct changes, avoiding duplicate propagated events
+			expect(changes.length).toBe(1);
+			const posChange = changes.find(
+				(c) =>
+					isMapChange(c) &&
+					c.path.length === 2 &&
+					c.path[0] === 'node-1' &&
+					c.path[1] === 'position',
+			);
+			expect(posChange).toBeDefined();
+			expect(isMapChange(posChange!)).toBe(true);
+			expect((posChange as DeepChangeEvent).action).toBe('update');
+			expect((posChange as DeepChangeEvent).value).toEqual([300, 400]);
+
+			doc.destroy();
+		});
+
+		it('should receive nested changes via observeDeep on the root map', async () => {
+			const { isMapChange } = await import('../types');
+			const provider = new YjsProvider();
+			const doc = provider.createDoc('test');
+			const nodesMap = doc.getMap('nodes');
+
+			// Track changes using onDeepChange (which uses observeDeep internally)
+			const changes: DeepChange[] = [];
+			nodesMap.onDeepChange((changesFromDeep, _origin) => {
+				changes.push(...changesFromDeep);
+			});
+
+			// Add a node
+			doc.transact(() => {
+				const nodeMap = doc.createMap();
+				nodeMap.set('position', [100, 200]);
+				nodesMap.set('node-1', nodeMap);
+			});
+
+			changes.length = 0;
+
+			// Update position on existing node
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
+			doc.transact(() => {
+				nodeMap.set('position', [300, 400]);
+			});
+
+			// observeDeep DOES receive nested changes with path relative to observed type
+			const posChange = changes.find(
+				(c) =>
+					isMapChange(c) &&
+					c.path.length === 2 &&
+					c.path[0] === 'node-1' &&
+					c.path[1] === 'position',
+			);
+			expect(posChange).toBeDefined();
+			expect(isMapChange(posChange!)).toBe(true);
+			expect((posChange as DeepChangeEvent).action).toBe('update');
+			expect((posChange as DeepChangeEvent).value).toEqual([300, 400]);
+
 			doc.destroy();
 		});
 	});

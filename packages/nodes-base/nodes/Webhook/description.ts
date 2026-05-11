@@ -48,6 +48,11 @@ export const credentialsProperty = (
 	},
 ];
 
+export const inboundTriggerAuthenticationBuilderHint = {
+	propertyHint:
+		"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+};
+
 export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
 	displayName: 'Authentication',
 	name: propertyName,
@@ -150,6 +155,10 @@ export const responseModeProperty: INodeProperties = {
 	options: responseModeOptions,
 	default: 'onReceived',
 	description: 'When and how to respond to the webhook',
+	builderHint: {
+		propertyHint:
+			"Use 'responseNode' to respond via a 'Respond to Webhook' node later in the workflow",
+	},
 	displayOptions: {
 		show: {
 			'@version': [1, 1.1, 2],
@@ -171,6 +180,10 @@ export const responseModePropertyStreaming: INodeProperties = {
 	],
 	default: 'onReceived',
 	description: 'When and how to respond to the webhook',
+	builderHint: {
+		propertyHint:
+			"Use 'responseNode' to respond via a 'Respond to Webhook' node later in the workflow",
+	},
 	displayOptions: {
 		hide: {
 			'@version': [1, 1.1, 2],

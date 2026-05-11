@@ -1,4 +1,5 @@
-import { WorkflowRepository } from '@n8n/db';
+import type { WorkflowHistory } from '@n8n/db';
+import { WorkflowRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import fs from 'fs';
@@ -7,6 +8,10 @@ import path from 'path';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
+
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
+
+import '../../zod-alias-support';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),
@@ -17,6 +22,7 @@ const flagsSchema = z.object({
 		)
 		.optional(),
 	id: z.string().describe('The ID of the workflow to export').optional(),
+	projectId: z.string().describe('Export all workflows in the specified project').optional(),
 	output: z
 		.string()
 		.alias('o')
@@ -29,6 +35,8 @@ const flagsSchema = z.object({
 			'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
 		)
 		.optional(),
+	version: z.string().describe('The version ID to export').optional(),
+	published: z.boolean().describe('Export the published/active version').optional(),
 });
 
 @Command({
@@ -36,7 +44,11 @@ const flagsSchema = z.object({
 	description: 'Export workflows',
 	examples: [
 		'--all',
+		'--projectId=Ox8O54VQrmBrb4qL',
 		'--id=5 --output=file.json',
+		'--id=5 --version=abc-123-def',
+		'--id=5 --published',
+		'--all --published --output=backups/latest/',
 		'--all --output=backups/latest/',
 		'--backup --output=backups/latest/',
 	],
@@ -53,13 +65,25 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			flags.separate = true;
 		}
 
-		if (!flags.all && !flags.id) {
-			this.logger.info('Either option "--all" or "--id" have to be set!');
+		if (flags.version && flags.published) {
+			this.logger.info('Cannot use both --version and --published flags. Please specify one.');
 			return;
 		}
 
-		if (flags.all && flags.id) {
-			this.logger.info('You should either use "--all" or "--id" but never both!');
+		if (flags.version && flags.all) {
+			this.logger.info('--version flag cannot be used with --all flag.');
+			return;
+		}
+
+		const selectorCount = [flags.all, flags.id, flags.projectId].filter(Boolean).length;
+
+		if (selectorCount === 0) {
+			this.logger.info('One of "--all", "--id", or "--projectId" has to be set!');
+			return;
+		}
+
+		if (selectorCount > 1) {
+			this.logger.info('Use exactly one of "--all", "--id", or "--projectId".');
 			return;
 		}
 
@@ -81,16 +105,9 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 					fs.mkdirSync(flags.output, { recursive: true });
 				}
 			} catch (e) {
-				this.logger.error(
-					'Aborting execution as a filesystem error has been encountered while creating the output directory. See log messages for details.',
+				throw new UserError(
+					`Filesystem error while creating the output directory: ${e instanceof Error ? e.message : String(e)}`,
 				);
-				this.logger.error('\nFILESYSTEM ERROR');
-				this.logger.info('====================================');
-				if (e instanceof Error) {
-					this.logger.error(e.message);
-					this.logger.error(e.stack!);
-				}
-				process.exit(1);
 			}
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
@@ -102,7 +119,7 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		}
 
 		const workflows = await Container.get(WorkflowRepository).find({
-			where: flags.id ? { id: flags.id } : {},
+			where: this.getWhereFilter(flags),
 			relations: ['tags', 'shared', 'shared.project'],
 		});
 
@@ -110,25 +127,43 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			throw new UserError('No workflows found with specified filters');
 		}
 
+		const workflowsToExport = await getWorkflowsToExport(workflows, flags);
+
+		if (flags.published && workflowsToExport.length === 0) {
+			if (flags.id)
+				throw new UserError(
+					`No published version found for workflow "${workflows[0].name}" (${workflows[0].id})`,
+				);
+			else throw new UserError('No workflows with published versions found.');
+		}
+		if (flags.version && flags.id && workflowsToExport.length === 0) {
+			throw new UserError(
+				`Version "${flags.version}" not found for workflow "${workflows[0].name}" (${workflows[0].id})`,
+			);
+		}
+		if (workflowsToExport.length === 0) {
+			throw new UserError('No workflows found with specified filters');
+		}
+
 		if (flags.separate) {
 			let fileContents: string;
 			let i: number;
-			for (i = 0; i < workflows.length; i++) {
-				fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
+			for (i = 0; i < workflowsToExport.length; i++) {
+				fileContents = JSON.stringify(workflowsToExport[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
 					(flags.output!.endsWith(path.sep) ? flags.output : flags.output + path.sep) +
-					workflows[i].id
+					workflowsToExport[i].id
 				}.json`;
 				fs.writeFileSync(filename, fileContents);
 			}
 			this.logger.info(`Successfully exported ${i} workflows.`);
 		} else {
-			const fileContents = JSON.stringify(workflows, null, flags.pretty ? 2 : undefined);
+			const fileContents = JSON.stringify(workflowsToExport, null, flags.pretty ? 2 : undefined);
 			if (flags.output) {
 				fs.writeFileSync(flags.output, fileContents);
 				this.logger.info(
-					`Successfully exported ${workflows.length} ${
-						workflows.length === 1 ? 'workflow.' : 'workflows.'
+					`Successfully exported ${workflowsToExport.length} ${
+						workflowsToExport.length === 1 ? 'workflow.' : 'workflows.'
 					}`,
 				);
 			} else {
@@ -139,6 +174,96 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 	async catch(error: Error) {
 		this.logger.error('Error exporting workflows. See log messages for details.');
-		this.logger.error(error.message);
+		this.logger.debug(error.message);
 	}
+
+	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {
+		if (flags.id) {
+			return { id: flags.id };
+		}
+
+		if (flags.projectId) {
+			return { shared: { projectId: flags.projectId } };
+		}
+
+		return {};
+	}
+}
+
+/**
+ * For each workflow, determine the target version based on flags and fetch its history.
+ * Then merge the history data into the workflow objects for export with metadata fields (name and description).
+ */
+async function getWorkflowsToExport(
+	workflows: IWorkflowWithVersionMetadata[],
+	flags: z.infer<typeof flagsSchema>,
+) {
+	const versionIdByWorkflow = new Map<string, string>();
+	const workflowVersionPairs: Array<{ workflowId: string; versionId: string }> = [];
+
+	for (const workflow of workflows) {
+		const versionId = getTargetVersionId(workflow, flags);
+		if (versionId) {
+			versionIdByWorkflow.set(workflow.id, versionId);
+			workflowVersionPairs.push({ workflowId: workflow.id, versionId });
+		}
+	}
+
+	const workflowHistories: WorkflowHistory[] =
+		workflowVersionPairs.length > 0
+			? await Container.get(WorkflowHistoryRepository).find({
+					where: workflowVersionPairs,
+				})
+			: [];
+
+	const historyMap = new Map<string, WorkflowHistory>(
+		workflowHistories.map((h) => [`${h.workflowId}:${h.versionId}`, h]),
+	);
+
+	return mergeHistoriesIntoWorkflows(workflows, versionIdByWorkflow, historyMap, flags);
+}
+
+function getTargetVersionId(
+	workflow: IWorkflowWithVersionMetadata,
+	flags: z.infer<typeof flagsSchema>,
+): string | null {
+	if (flags.published) return workflow.activeVersionId ?? null;
+	if (flags.version) return flags.version;
+	return workflow.versionId ?? null;
+}
+
+function mergeHistoriesIntoWorkflows(
+	workflows: IWorkflowWithVersionMetadata[],
+	versionIdByWorkflow: Map<string, string>,
+	historyMap: Map<string, WorkflowHistory>,
+	flags: z.infer<typeof flagsSchema>,
+) {
+	return workflows
+		.map((workflow) => {
+			const versionId = versionIdByWorkflow.get(workflow.id);
+			if (!versionId) return null;
+
+			const history = historyMap.get(`${workflow.id}:${versionId}`);
+
+			if (!history && (flags.published || flags.version)) return null;
+
+			if (history) {
+				return {
+					...workflow,
+					nodes: history.nodes,
+					connections: history.connections,
+					versionId: history.versionId,
+					versionMetadata: {
+						name: history.name,
+						description: history.description,
+					},
+				};
+			}
+
+			return {
+				...workflow,
+				versionMetadata: null,
+			};
+		})
+		.filter((w) => w !== null);
 }

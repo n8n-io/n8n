@@ -10,12 +10,12 @@ test.use({ capability: 'observability' });
 test.skip(
 	'Database connection timeout health check bug @mode:postgres @chaostest @capability:observability',
 	{
-		annotation: {
-			type: 'issue',
-			description: 'CAT-1018',
-		},
+		annotation: [
+			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'issue', description: 'CAT-1018' },
+		],
 	},
-	async ({ api, n8nContainer }) => {
+	async ({ api, n8nContainer, services }) => {
 		test.setTimeout(300000);
 
 		// ========== SETUP: Verify Initial Health ==========
@@ -44,7 +44,7 @@ test.skip(
 
 		// ========== WAIT FOR CONNECTION ISSUES ==========
 		// Query VictoriaLogs for database timeout messages
-		await n8nContainer.logs.waitForLog('Database connection timed out', {
+		await services.observability.logs.waitForLog('Database connection timed out', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
 			start: '-1m',
 		});
@@ -64,7 +64,7 @@ test.skip(
 
 		// ========== VERIFY: Automatic Recovery ==========
 		// Query VictoriaLogs for database recovery messages
-		await n8nContainer.logs.waitForLog('Database connection recovered', {
+		await services.observability.logs.waitForLog('Database connection recovered', {
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
 			start: '-1m',
 		});

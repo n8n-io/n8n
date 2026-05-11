@@ -10,7 +10,11 @@ interface RouteOptions {
 	usesTemplates?: boolean;
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
+	/** When this flag is set to true, requests from bot user agents (e.g. Slackbot) are allowed through */
+	allowBots?: boolean;
 	allowSkipPreviewAuth?: boolean;
+	/** When this flag is set to true, the endpoint can be accessed without authentication */
+	allowUnauthenticated?: boolean;
 	/** When this flag is set to true, the auth cookie does not enforce MFA to be used in the token */
 	allowSkipMFA?: boolean;
 	/** When these options are set, calls to this endpoint are rate limited based on IP address */
@@ -36,8 +40,10 @@ const RouteFactory =
 		routeMetadata.middlewares = options.middlewares ?? [];
 		routeMetadata.usesTemplates = options.usesTemplates ?? false;
 		routeMetadata.skipAuth = options.skipAuth ?? false;
+		routeMetadata.allowBots = options.allowBots ?? false;
 		routeMetadata.allowSkipPreviewAuth = options.allowSkipPreviewAuth ?? false;
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
+		routeMetadata.allowUnauthenticated = options.allowUnauthenticated ?? false;
 		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
 		routeMetadata.ipRateLimit = options.ipRateLimit;
 		routeMetadata.keyedRateLimit = options.keyedRateLimit;

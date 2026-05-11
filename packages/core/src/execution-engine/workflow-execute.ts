@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { GlobalConfig } from '@n8n/config';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -11,6 +10,7 @@ import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
+	ExecutionStorageLocation,
 	GenericValue,
 	IConnection,
 	IDataObject,
@@ -62,7 +62,6 @@ import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { assertExecutionDataExists } from '@/utils/assertions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
@@ -107,6 +106,7 @@ export class WorkflowExecute {
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
 		private runExecutionData: IRunExecutionData = createRunExecutionData(),
+		private readonly storedAt: ExecutionStorageLocation = 'db',
 	) {}
 
 	/**
@@ -140,13 +140,17 @@ export class WorkflowExecute {
 		// If a destination node is given we only run the direct parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
-			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
+			runNodeFilter = [
+				...workflow.getParentNodes(destinationNode.nodeName),
+				...workflow.getParentNodes(destinationNode.nodeName, 'ALL_NON_MAIN'),
+			];
 			if (destinationNode.mode === 'inclusive') {
 				runNodeFilter.push(destinationNode.nodeName);
 			}
 			if (additionalRunFilterNodes) {
 				runNodeFilter.push.apply(runNodeFilter, additionalRunFilterNodes);
 			}
+			runNodeFilter = Array.from(new Set(runNodeFilter));
 		}
 
 		// Initialize the data of the start nodes
@@ -177,6 +181,7 @@ export class WorkflowExecute {
 			resultData: {
 				pinData,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		return this.processRunExecutionData(workflow);
@@ -291,6 +296,7 @@ export class WorkflowExecute {
 				waitingExecution,
 				waitingExecutionSource,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
@@ -997,36 +1003,6 @@ export class WorkflowExecute {
 		return inputData;
 	}
 
-	/**
-	 * Validates execution data for JSON compatibility and reports issues to Sentry
-	 */
-	private reportJsonIncompatibleOutput(
-		data: INodeExecutionData[][] | null,
-		workflow: Workflow,
-		node: INode,
-	): void {
-		if (Container.get(GlobalConfig).sentry.backendDsn) {
-			// If data is not json compatible then log it as incorrect output
-			// Does not block the execution from continuing
-			const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
-			if (!jsonCompatibleResult.isValid) {
-				Container.get(ErrorReporter).error('node execution returned incorrect output', {
-					shouldBeLogged: false,
-					extra: {
-						nodeName: node.name,
-						nodeType: node.type,
-						nodeVersion: node.typeVersion,
-						workflowId: workflow.id,
-						workflowName: workflow.name ?? 'Unnamed workflow',
-						executionId: this.additionalData.executionId ?? 'unsaved-execution',
-						errorPath: jsonCompatibleResult.errorPath,
-						errorMessage: jsonCompatibleResult.errorMessage,
-					},
-				});
-			}
-		}
-	}
-
 	private async executeNode(
 		workflow: Workflow,
 		node: INode,
@@ -1059,42 +1035,55 @@ export class WorkflowExecute {
 		);
 
 		let data: INodeExecutionData[][] | EngineRequest | null;
+		let executionSucceeded = false;
+		let closingError: Error | undefined;
 
-		if (customOperation) {
-			data = await customOperation.call(context);
-		} else if (nodeType.execute) {
-			data =
-				nodeType instanceof Node
-					? await nodeType.execute(context, subNodeExecutionResults)
-					: await nodeType.execute.call(context, subNodeExecutionResults);
-		} else {
-			throw new UnexpectedError(
-				"Can't execute node. There is no custom operation and the node has not execute function.",
-			);
+		try {
+			if (customOperation) {
+				data = await customOperation.call(context);
+			} else if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context, subNodeExecutionResults)
+						: await nodeType.execute.call(context, subNodeExecutionResults);
+			} else {
+				throw new UnexpectedError(
+					"Can't execute node. There is no custom operation and the node has not execute function.",
+				);
+			}
+			executionSucceeded = true;
+		} finally {
+			if (closeFunctions.length > 0) {
+				const closeFunctionsResults = await Promise.allSettled(
+					closeFunctions.map(async (fn) => await fn()),
+				);
+
+				// Only throw close function errors if the execution itself succeeded,
+				// to avoid masking the original execution error.
+				if (executionSucceeded) {
+					const closingErrors = closeFunctionsResults
+						.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						.map((result) => result.reason);
+
+					if (closingErrors.length > 0) {
+						closingError =
+							closingErrors[0] instanceof Error
+								? closingErrors[0]
+								: new ApplicationError("Error on execution node's close function(s)", {
+										extra: { nodeName: node.name },
+										tags: { nodeType: node.type },
+										cause: closingErrors,
+									});
+					}
+				}
+			}
 		}
+
+		if (closingError) throw closingError;
 
 		if (isEngineRequest(data)) {
 			return data;
-		}
-
-		this.reportJsonIncompatibleOutput(data, workflow, node);
-
-		const closeFunctionsResults = await Promise.allSettled(
-			closeFunctions.map(async (fn) => await fn()),
-		);
-
-		const closingErrors = closeFunctionsResults
-			.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			.map((result) => result.reason);
-
-		if (closingErrors.length > 0) {
-			if (closingErrors[0] instanceof Error) throw closingErrors[0];
-			throw new ApplicationError("Error on execution node's close function(s)", {
-				extra: { nodeName: node.name },
-				tags: { nodeType: node.type },
-				cause: closingErrors,
-			});
 		}
 
 		return { data, hints: context.hints };
@@ -1279,6 +1268,12 @@ export class WorkflowExecute {
 			);
 		}
 
+		if (nodeType.supplyData) {
+			throw new ApplicationError(
+				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
+			);
+		}
+
 		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
 		if (nodeType.webhook && !isDeclarativeNode) {
 			// Check if the node have requestDefaults(Declarative Node),
@@ -1460,6 +1455,8 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					await workflow.expression.acquireIsolate();
+
 					// Establish the execution context
 					await establishExecutionContext(
 						workflow,
@@ -1470,6 +1467,8 @@ export class WorkflowExecute {
 
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
+					} else {
+						await hooks.runHook('workflowExecuteResume', [workflow, this.runExecutionData]);
 					}
 				} catch (error) {
 					const e = error as unknown as ExecutionBaseError;
@@ -1528,6 +1527,9 @@ export class WorkflowExecute {
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
+
+					// Reset per-node dynamic credential flag before each node execution
+					this.additionalData.currentNodeUsedDynamicCredentials = false;
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
@@ -1845,6 +1847,8 @@ export class WorkflowExecute {
 						executionTime: Date.now() - taskStartedData.startTime,
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
+						usedDynamicCredentials:
+							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 					};
 
 					if (executionError !== undefined) {
@@ -2323,6 +2327,13 @@ export class WorkflowExecute {
 					}
 
 					return fullRunData;
+				})
+				.finally(async () => {
+					try {
+						await workflow.expression.releaseIsolate();
+					} catch (error) {
+						Container.get(ErrorReporter).error(error);
+					}
 				});
 
 			return await returnPromise.then(resolve);
@@ -2481,6 +2492,7 @@ export class WorkflowExecute {
 			mode: this.mode,
 			startedAt,
 			stoppedAt: stoppedAt ?? new Date(),
+			storedAt: this.storedAt,
 			status: this.status,
 		};
 	}
@@ -2619,6 +2631,13 @@ export class WorkflowExecute {
 				executionData.data.main.length === 1 &&
 				executionData.data.main[0]?.length === nodeSuccessData[0].length;
 
+			// Multiple inputs → single output (e.g., aggregating items into one)
+			const isSingleOutput =
+				nodeSuccessData.length === 1 &&
+				nodeSuccessData[0]?.length === 1 &&
+				executionData.data.main.length === 1 &&
+				(executionData.data.main[0]?.length ?? 0) > 1;
+
 			checkOutputData: for (const outputData of nodeSuccessData) {
 				if (outputData === null) {
 					continue;
@@ -2638,6 +2657,11 @@ export class WorkflowExecute {
 							// is the origin of the corresponding output items
 							item.pairedItem = {
 								item: index,
+							};
+						} else if (isSingleOutput) {
+							// Multiple inputs were aggregated into a single output, pair to first input
+							item.pairedItem = {
+								item: 0,
 							};
 						} else {
 							// In all other cases autofixing is not possible

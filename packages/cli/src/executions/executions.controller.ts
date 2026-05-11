@@ -36,19 +36,10 @@ export class ExecutionsController {
 
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-
-		if (accessibleWorkflowIds.length === 0) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
 		const { rangeQuery: query } = req;
 
-		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
-		query.accessibleWorkflowIds = accessibleWorkflowIds;
+		query.user = req.user;
+		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
@@ -85,6 +76,17 @@ export class ExecutionsController {
 			...executions,
 			concurrentExecutionsCount,
 		};
+	}
+
+	@Get('/versions/:workflowId')
+	async getVersions(req: ExecutionRequest.GetVersions) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
+			return [];
+		}
+
+		return await this.executionService.getExecutedVersions(req.params.workflowId);
 	}
 
 	@Get('/:id')

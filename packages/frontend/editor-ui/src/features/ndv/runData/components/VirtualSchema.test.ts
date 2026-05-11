@@ -1,5 +1,6 @@
 import {
 	createTestNode,
+	createTestWorkflow,
 	defaultNodeDescriptions,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
@@ -14,15 +15,19 @@ import {
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/app/constants';
-import type { IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,
 	NodeConnectionTypes,
@@ -142,10 +147,9 @@ const mockI18nKeys: Record<string, string> = {
 };
 
 async function setupStore() {
-	const workflow = {
+	const workflow = createTestWorkflow({
 		id: '123',
 		name: 'Test Workflow',
-		connections: {},
 		active: true,
 		nodes: [
 			mockNode1,
@@ -159,7 +163,7 @@ async function setupStore() {
 			customerDatastoreNode,
 			mergeNode,
 		],
-	};
+	});
 
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -197,10 +201,20 @@ async function setupStore() {
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
-	workflowsStore.workflow = workflow as IWorkflowDb;
+	workflowsStore.setWorkflowId(workflow.id);
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
 
 	return pinia;
+}
+
+function pinData(node: { name: string }, data: INodeExecutionData[]) {
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	workflowDocumentStore.pinNodeData(node.name, data);
 }
 
 function mockNodeOutputData(nodeName: string, data: INodeExecutionData[], outputIndex = 0) {
@@ -271,6 +285,12 @@ describe('VirtualSchema.vue', () => {
 			isRagStarterCalloutVisible: computed(() => false),
 		});
 
+		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
 				stubs: {
@@ -281,6 +301,9 @@ describe('VirtualSchema.vue', () => {
 					N8nCallout: N8nCalloutStub,
 					Notice: NoticeStub,
 					NodeIcon: NodeIconStub,
+				},
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
 				},
 				mocks: {
 					$locale: {
@@ -321,20 +344,14 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders schema for data', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [
-				{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } },
-				{ json: { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] } },
-			],
-		});
-		useWorkflowsStore().pinData({
-			node: mockNode2,
-			data: [
-				{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } },
-				{ json: { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] } },
-			],
-		});
+		pinData(mockNode1, [
+			{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } },
+			{ json: { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] } },
+		]);
+		pinData(mockNode2, [
+			{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } },
+			{ json: { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] } },
+		]);
 
 		const { getAllByTestId } = renderComponent();
 		await waitFor(() => {
@@ -376,23 +393,20 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders schema with spaces and dots', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [
-				{
-					json: {
-						'hello world': [
-							{
-								test: {
-									'more to think about': 1,
-								},
-								'test.how': 'ignore',
+		pinData(mockNode1, [
+			{
+				json: {
+					'hello world': [
+						{
+							test: {
+								'more to think about': 1,
 							},
-						],
-					},
+							'test.how': 'ignore',
+						},
+					],
 				},
-			],
-		});
+			},
+		]);
 
 		const { container, getAllByTestId } = renderComponent();
 
@@ -405,10 +419,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders no data to show for data empty objects', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: {} }, { json: {} }],
-		});
+		pinData(mockNode1, [{ json: {} }, { json: {} }]);
 
 		const { getAllByText } = renderComponent();
 		await waitFor(() =>
@@ -418,10 +429,7 @@ describe('VirtualSchema.vue', () => {
 
 	// this can happen when setting the output to [{}]
 	it('renders empty state to show for empty data', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{} as INodeExecutionData],
-		});
+		pinData(mockNode1, [{} as INodeExecutionData]);
 
 		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
 		await waitFor(() =>
@@ -542,10 +550,10 @@ describe('VirtualSchema.vue', () => {
 	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(
 		'renders schema instead of showing no data for %o',
 		async (data) => {
-			useWorkflowsStore().pinData({
-				node: mockNode1,
-				data: data.map((item) => ({ json: item })),
-			});
+			pinData(
+				mockNode1,
+				data.map((item) => ({ json: item })),
+			);
 
 			const { getAllByTestId } = renderComponent();
 			await waitFor(() =>
@@ -555,15 +563,8 @@ describe('VirtualSchema.vue', () => {
 	);
 
 	it('should filter invalid connections', async () => {
-		const { pinData } = useWorkflowsStore();
-		pinData({
-			node: mockNode1,
-			data: [{ json: { tx: 1 } }],
-		});
-		pinData({
-			node: mockNode2,
-			data: [{ json: { tx: 2 } }],
-		});
+		pinData(mockNode1, [{ json: { tx: 1 } }]);
+		pinData(mockNode2, [{ json: { tx: 2 } }]);
 
 		const { getAllByTestId } = renderComponent({
 			props: {
@@ -633,10 +634,7 @@ describe('VirtualSchema.vue', () => {
 		}
 
 		it('should track data pill drag and drop', async () => {
-			useWorkflowsStore().pinData({
-				node: mockNode1,
-				data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
-			});
+			pinData(mockNode1, [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }]);
 			const telemetry = useTelemetry();
 			const trackSpy = vi.spyOn(telemetry, 'track');
 
@@ -716,14 +714,8 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('should expand all nodes when searching', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: { name: 'John' } }],
-		});
-		useWorkflowsStore().pinData({
-			node: mockNode2,
-			data: [{ json: { name: 'John' } }],
-		});
+		pinData(mockNode1, [{ json: { name: 'John' } }]);
+		pinData(mockNode2, [{ json: { name: 'John' } }]);
 
 		const { getAllByTestId, queryAllByTestId, rerender, container } = renderComponent();
 
@@ -746,10 +738,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders preview schema when enabled and available', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode2,
-			data: [],
-		});
+		pinData(mockNode2, []);
 		const posthogStore = usePostHog();
 		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 		const schemaPreviewStore = useSchemaPreviewStore();
@@ -785,10 +774,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders variables and context section', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [],
-		});
+		pinData(mockNode1, []);
 
 		const { getAllByTestId, container } = renderComponent({
 			props: {
@@ -821,10 +807,9 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders schema for empty objects and arrays', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: { empty: {}, emptyArray: [], nested: [{ empty: {}, emptyArray: [] }] } }],
-		});
+		pinData(mockNode1, [
+			{ json: { empty: {}, emptyArray: [], nested: [{ empty: {}, emptyArray: [] }] } },
+		]);
 
 		const { container, getAllByTestId } = renderComponent({
 			props: {
@@ -1057,10 +1042,7 @@ describe('VirtualSchema.vue', () => {
 				},
 			};
 
-			useWorkflowsStore().pinData({
-				node: mockNode1,
-				data: [{ json: { actualField: 'actual executed data' } }],
-			});
+			pinData(mockNode1, [{ json: { actualField: 'actual executed data' } }]);
 
 			const { getAllByTestId } = renderComponent({
 				props: {
@@ -1108,10 +1090,7 @@ describe('VirtualSchema.vue', () => {
 
 	describe('execute event emission', () => {
 		it('should emit execute event when schema preview execute link is clicked', async () => {
-			useWorkflowsStore().pinData({
-				node: mockNode2,
-				data: [],
-			});
+			pinData(mockNode2, []);
 
 			const posthogStore = usePostHog();
 			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
@@ -1196,10 +1175,7 @@ describe('VirtualSchema.vue', () => {
 
 	describe('empty data detection with preview', () => {
 		it('should detect single empty object as empty data', async () => {
-			useWorkflowsStore().pinData({
-				node: mockNode1,
-				data: [{ json: {} }],
-			});
+			pinData(mockNode1, [{ json: {} }]);
 
 			const { getAllByText } = renderComponent({
 				props: {
@@ -1216,10 +1192,7 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		it('should show pinData when available even with preview execution', async () => {
-			useWorkflowsStore().pinData({
-				node: mockNode1,
-				data: [{ json: { pinnedField: 'pinned data' } }],
-			});
+			pinData(mockNode1, [{ json: { pinnedField: 'pinned data' } }]);
 
 			const previewExecutionData = {
 				id: 'preview-123',

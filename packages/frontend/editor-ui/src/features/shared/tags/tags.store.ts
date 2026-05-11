@@ -5,7 +5,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const apiMapping = {
 	[STORES.TAGS]: createTagsApi('/tags'),
@@ -24,7 +24,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 			const fetchedUsageCount = ref(false);
 
 			const rootStore = useRootStore();
-			const workflowState = injectWorkflowState();
+			const workflowDocumentStore = injectWorkflowDocumentStore();
 
 			// Computed
 
@@ -123,7 +123,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 
 				if (deleted) {
 					deleteTag(id);
-					workflowState.removeWorkflowTagId(id);
+					workflowDocumentStore.value.removeTag(id);
 				}
 
 				return deleted;

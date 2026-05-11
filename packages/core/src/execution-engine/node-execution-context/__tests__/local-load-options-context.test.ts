@@ -61,28 +61,39 @@ describe('LocalLoadOptionsContext', () => {
 			);
 		});
 
-		it('should throw ApplicationError when useActiveVersion is true but no activeVersion exists', async () => {
+		it('should fall back to draft nodes when useActiveVersion is true but no activeVersion exists', async () => {
 			const workflowId = 'workflow-123';
+			const nodeParameters = { inputSource: 'passthrough' };
 			additionalData.currentNodeParameters = {
 				workflowId: { value: workflowId },
 			};
 
+			const draftNode = mock<INode>({
+				type: targetNodeType,
+				name: 'Draft Trigger',
+				parameters: nodeParameters,
+			});
 			const dbWorkflow = mock<IWorkflowBase>({
 				id: workflowId,
 				name: 'Test Workflow',
-				nodes: [],
+				nodes: [draftNode],
 				activeVersion: null,
 			});
 			workflowLoader.get.mockResolvedValue(dbWorkflow);
 
 			const context = new LocalLoadOptionsContext(nodeTypes, additionalData, path, workflowLoader);
 
-			await expect(context.getWorkflowNodeContext(targetNodeType, true)).rejects.toThrow(
-				ApplicationError,
-			);
-			await expect(context.getWorkflowNodeContext(targetNodeType, true)).rejects.toThrow(
-				`No active version found for workflow "${workflowId}"!`,
-			);
+			const result = await context.getWorkflowNodeContext(targetNodeType, true);
+
+			expect(result).toBeInstanceOf(LoadWorkflowNodeContext);
+			expect(Workflow).toHaveBeenCalledWith({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes: [draftNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
 		});
 
 		it('should return null when no node of the specified type exists in the workflow', async () => {

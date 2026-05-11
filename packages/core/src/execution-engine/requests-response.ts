@@ -60,7 +60,7 @@ function initializeNodeRunData(
 	parentRunIndex: number,
 	actionMetadata: ActionMetadata | undefined,
 	runIndex: number,
-	parentOutputData: INodeExecutionData[][],
+	displayOutputData: INodeExecutionData[][],
 ): number {
 	runData[nodeName] ||= [];
 	const nodeRunData = runData[nodeName];
@@ -73,8 +73,8 @@ function initializeNodeRunData(
 		previousNodeRun: actionMetadata?.parentNodeName ? parentRunIndex : runIndex,
 	};
 	nodeRunData.push({
-		// Necessary for the log on the canvas.
-		inputOverride: { ai_tool: parentOutputData },
+		// Necessary for the log on the canvas. Only show AI-provided tool call arguments.
+		inputOverride: { ai_tool: displayOutputData },
 		// Source must point to the parent node for the frontend logs panel
 		// to correctly display this sub-node under the parent.
 		source: [sourceData],
@@ -126,8 +126,20 @@ function prepareRequestedNodesForExecution(
 			toolCallId: action.id,
 		};
 
+		// For display: only show AI-provided tool call arguments (not parent/agent input or toolCallId)
+		const displayJson = {
+			...action.input,
+		};
+
 		const parentOutputData = buildParentOutputData(
 			mergedJson,
+			parentRunIndex,
+			defaultParentOutputIndex,
+			defaultParentSourceNode,
+		);
+
+		const displayOutputData = buildParentOutputData(
+			displayJson,
 			parentRunIndex,
 			defaultParentOutputIndex,
 			defaultParentSourceNode,
@@ -141,7 +153,7 @@ function prepareRequestedNodesForExecution(
 			parentRunIndex,
 			actionMetadata,
 			runIndex,
-			parentOutputData,
+			displayOutputData,
 		);
 
 		nodesToBeExecuted.push({

@@ -8,6 +8,7 @@ import type {
 	SchemaType,
 } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
 import { isObj } from '@/app/utils/typeGuards';
@@ -25,8 +26,11 @@ import {
 import { ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
+import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
 
 export function useDataSchema() {
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+
 	function getSchema(
 		input: Optional<Primitives | object>,
 		path = '',
@@ -206,8 +210,9 @@ export function useDataSchema() {
 	): INodeExecutionData[] {
 		if (!node) return [];
 
-		const { pinDataByNodeName } = useWorkflowsStore();
-		const pinnedData = pinDataByNodeName(node.name);
+		const pinnedData = workflowDocumentStore.value
+			.getNodePinData(node.name)
+			?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
 
 		if (pinnedData) {
@@ -388,6 +393,7 @@ const isEmptySchema = (schema: Schema) => {
 const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${title}]` : title);
 
 export const useFlattenSchema = () => {
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const closedNodes = ref<Set<string>>(new Set());
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
@@ -560,7 +566,9 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
-						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
+						binaryMode:
+							workflowDocumentStore.value.getSettingsSnapshot().binaryMode ??
+							DEFAULT_SETTINGS.binaryMode,
 					}),
 				}),
 			);

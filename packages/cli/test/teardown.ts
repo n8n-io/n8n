@@ -6,13 +6,12 @@ import { DataSource as Connection } from '@n8n/typeorm';
 
 export default async () => {
 	const { type: dbType } = Container.get(GlobalConfig).database;
-	if (dbType !== 'postgresdb' && dbType !== 'mysqldb') return;
+	if (dbType !== 'postgresdb') return;
 
-	const connection = new Connection(testDb.getBootstrapDBOptions(dbType));
+	const connection = new Connection(testDb.getBootstrapDBOptions());
 	await connection.initialize();
 
-	const query =
-		dbType === 'postgresdb' ? 'SELECT datname as "Database" FROM pg_database' : 'SHOW DATABASES';
+	const query = 'SELECT datname as "Database" FROM pg_database';
 	const results: Array<{ Database: string }> = await connection.query(query);
 	const databases = results
 		.filter(({ Database: dbName }) => dbName.startsWith(testDb.testDbPrefix))

@@ -25,71 +25,127 @@ export class CsvParserService {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 	}
 
-	private processRowWithoutHeaders(
-		row: string[],
-		columnNames: string[],
-	): { rowObject: Record<string, string>; columnNames: string[] } {
-		let updatedColumnNames = columnNames;
-		if (updatedColumnNames.length === 0) {
-			updatedColumnNames = row.map((_, index) => `${this.DEFAULT_COLUMN_PREFIX}${index + 1}`);
-		}
-		const rowObject: Record<string, string> = {};
-		row.forEach((value, index) => {
-			rowObject[updatedColumnNames[index]] = value;
-		});
-		return { rowObject, columnNames: updatedColumnNames };
+	private generateColumnNames(columnCount: number): string[] {
+		return Array.from({ length: columnCount }, (_, i) => `${this.DEFAULT_COLUMN_PREFIX}${i + 1}`);
 	}
 
-	/**
-	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types
-	 */
-	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
+	private mapValuesToColumns(row: string[], columnNames: string[]): Record<string, string> {
+		const rowObject: Record<string, string> = {};
+		row.forEach((value, index) => {
+			rowObject[columnNames[index]] = value;
+		});
+		return rowObject;
+	}
+
+	private readonly TYPE_INFERENCE_SAMPLE_SIZE = 100;
+
+	private createParserOptions(hasHeaders: boolean) {
+		return {
+			columns: hasHeaders ? true : (false as const),
+			skip_empty_lines: true,
+			bom: true,
+		};
+	}
+
+	private trimColumnNames(columns: string[]): string[] {
+		return columns.map((h) => h.trim());
+	}
+
+	private normalizeRow(
+		row: Record<string, string> | string[],
+		hasHeaders: boolean,
+		columnNames: string[],
+	): Record<string, string> | null {
+		if (!hasHeaders && Array.isArray(row)) {
+			return this.mapValuesToColumns(row, columnNames);
+		} else if (!Array.isArray(row)) {
+			return row;
+		}
+		return null;
+	}
+
+	private collectTypeSamples(
+		rowObject: Record<string, string>,
+		columnNames: string[],
+		firstNonEmptyValues: Map<string, string>,
+	) {
+		for (const colName of columnNames) {
+			if (!firstNonEmptyValues.has(colName)) {
+				const value = rowObject[colName];
+				if (value?.trim()) {
+					firstNonEmptyValues.set(colName, value);
+				}
+			}
+		}
+	}
+
+	private buildColumnMetadata(columnNames: string[], firstNonEmptyValues: Map<string, string>) {
+		return columnNames.map((columnName) => {
+			const detectedType = this.inferColumnType(firstNonEmptyValues.get(columnName));
+			return {
+				name: columnName,
+				type: detectedType,
+				compatibleTypes: this.getCompatibleTypes(detectedType),
+			};
+		});
+	}
+
+	private async parseCsvFile<T>(
+		fileId: string,
+		hasHeaders: boolean,
+		onRow: (rowObject: Record<string, string>, columnNames: string[], rowNumber: number) => void,
+		onEnd: (columnNames: string[], totalRows: number) => T,
+	): Promise<T> {
 		const filePath = safeJoinPath(this.uploadDir, fileId);
-		let rowCount = 0;
-		let firstDataRow: Record<string, string> | null = null;
 		let columnNames: string[] = [];
+		let rowCount = 0;
 
 		return await new Promise((resolve, reject) => {
 			const parser = parse({
-				columns: hasHeaders
-					? (header: string[]) => {
-							columnNames = header;
-							return header;
-						}
-					: false,
-				skip_empty_lines: true,
+				...this.createParserOptions(hasHeaders),
+				...(hasHeaders && {
+					columns: (header: string[]) => {
+						columnNames = this.trimColumnNames(header);
+						return columnNames;
+					},
+				}),
 			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
-
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						firstDataRow ??= processed.rowObject;
-					} else if (!Array.isArray(row)) {
-						firstDataRow ??= row;
+					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
+						columnNames = this.generateColumnNames(row.length);
 					}
+					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!rowObject) return;
+					onRow(rowObject, columnNames, rowCount);
 				})
-				.on('end', () => {
-					const columns = columnNames.map((columnName) => {
-						const detectedType = this.inferColumnType(firstDataRow?.[columnName]);
-						return {
-							name: columnName,
-							type: detectedType,
-							compatibleTypes: this.getCompatibleTypes(detectedType),
-						};
-					});
-
-					resolve({
-						rowCount,
-						columnCount: columns.length,
-						columns,
-					});
-				})
+				.on('end', () => resolve(onEnd(columnNames, rowCount)))
 				.on('error', reject);
 
 			createReadStream(filePath).on('error', reject).pipe(parser);
 		});
+	}
+
+	/**
+	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types.
+	 * Samples up to 100 rows to find the first non-empty value per column for type inference.
+	 */
+	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
+		const firstNonEmptyValues = new Map<string, string>();
+
+		return await this.parseCsvFile(
+			fileId,
+			hasHeaders,
+			(rowObject, colNames, rowNumber) => {
+				if (rowNumber <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
+					this.collectTypeSamples(rowObject, colNames, firstNonEmptyValues);
+				}
+			},
+			(colNames, totalRows) => {
+				const columns = this.buildColumnMetadata(colNames, firstNonEmptyValues);
+				return { rowCount: totalRows, columnCount: columns.length, columns };
+			},
+		);
 	}
 
 	/**
@@ -99,32 +155,38 @@ export class CsvParserService {
 		fileId: string,
 		hasHeaders: boolean = true,
 	): Promise<Array<Record<string, string>>> {
-		const filePath = safeJoinPath(this.uploadDir, fileId);
-
 		const rows: Array<Record<string, string>> = [];
-		let columnNames: string[] = [];
 
-		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				columns: hasHeaders ? true : false,
-				skip_empty_lines: true,
-			})
-				.on('data', (row: Record<string, string> | string[]) => {
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						rows.push(processed.rowObject);
-					} else if (!Array.isArray(row)) {
-						rows.push(row);
-					}
-				})
-				.on('end', () => {
-					resolve(rows);
-				})
-				.on('error', reject);
+		return await this.parseCsvFile(
+			fileId,
+			hasHeaders,
+			(rowObject) => rows.push(rowObject),
+			() => rows,
+		);
+	}
 
-			createReadStream(filePath).on('error', reject).pipe(parser);
-		});
+	/**
+	 * Parses a CSV file in a single pass, returning column names and all rows.
+	 * Skips type inference since callers only need column names for matching.
+	 */
+	async parseFileWithData(
+		fileId: string,
+		hasHeaders: boolean = true,
+	): Promise<{ metadata: CsvMetadata; rows: Array<Record<string, string>> }> {
+		const rows: Array<Record<string, string>> = [];
+
+		return await this.parseCsvFile(
+			fileId,
+			hasHeaders,
+			(rowObject) => rows.push(rowObject),
+			(colNames) => {
+				const columns = colNames.map((name) => ({ name, type: 'string' as const }));
+				return {
+					metadata: { rowCount: rows.length, columnCount: columns.length, columns },
+					rows,
+				};
+			},
+		);
 	}
 
 	/**
