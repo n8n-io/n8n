@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { computed, type Ref } from 'vue';
+import { type Ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
@@ -24,17 +24,13 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
@@ -58,10 +54,7 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 };
 
 export function useNodeSettingsParameters() {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();

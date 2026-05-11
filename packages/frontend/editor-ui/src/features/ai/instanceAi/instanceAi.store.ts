@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, inject, provide, type InjectionKey } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -48,7 +48,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		onRunFinish: () => {
 			void loadThreads();
 		},
-		syncThread: async (threadId) => await syncThread(threadId),
 	});
 
 	// --- Settings delegation ---
@@ -187,8 +186,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtime.closeSSE();
 		runtime.resetState(null);
 		// Mirror the initial store state: a fresh UUID that doesn't match any
-		// real thread, so the sidebar highlights nothing and the next
-		// `sendMessage` creates a new thread with this id via `syncThread`.
+		// real thread, so the sidebar highlights nothing. EmptyView's
+		// `handleSubmit` later promotes this id to a real thread via `syncThread`.
 		runtime.currentThreadId.value = uuidv4();
 	}
 
@@ -331,6 +330,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Per-thread actions (re-exported from runtime)
 		loadHistoricalMessages: runtime.loadHistoricalMessages,
 		loadThreadStatus: runtime.loadThreadStatus,
+		syncThread,
 		sendMessage: runtime.sendMessage,
 		cancelRun: runtime.cancelRun,
 		cancelBackgroundTask: runtime.cancelBackgroundTask,
@@ -345,3 +345,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		closeSSE: runtime.closeSSE,
 	};
 });
+
+export type ThreadRuntime = ReturnType<typeof useInstanceAiStore>;
+
+const ThreadKey: InjectionKey<ThreadRuntime> = Symbol('instanceAiThread');
+
+export function provideThread(thread: ThreadRuntime): ThreadRuntime {
+	provide(ThreadKey, thread);
+	return thread;
+}
+
+export function useThread(): ThreadRuntime {
+	const thread = inject(ThreadKey, null);
+	if (!thread) {
+		throw new Error('useThread() requires a provideThread() ancestor.');
+	}
+	return thread;
+}

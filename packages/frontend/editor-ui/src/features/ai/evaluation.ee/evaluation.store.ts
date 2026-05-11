@@ -214,6 +214,25 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		const cancelTestCase = async (params: {
+			workflowId: string;
+			runId: string;
+			caseId: string;
+		}) => {
+			const result = await evaluationsApi.cancelTestCase(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.runId,
+				params.caseId,
+			);
+			// Optimistically reflect the new status until the next poll arrives.
+			const cached = testCaseExecutionsById.value[params.caseId];
+			if (cached) {
+				testCaseExecutionsById.value[params.caseId] = { ...cached, status: 'cancelled' };
+			}
+			return result;
+		};
+
 		const deleteTestRun = async (params: { workflowId: string; runId: string }) => {
 			const result = await evaluationsApi.deleteTestRun(rootStore.restApiContext, params);
 			if (result.success) {
@@ -275,6 +294,7 @@ export const useEvaluationStore = defineStore(
 			getTestRun,
 			startTestRun,
 			cancelTestRun,
+			cancelTestCase,
 			deleteTestRun,
 			cleanupPolling,
 		};
