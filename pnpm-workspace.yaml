@@ -168,3 +168,5 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Renovate security update: postcss@8.5.10
+  - postcss@8.5.10
